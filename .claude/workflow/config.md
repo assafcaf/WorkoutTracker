@@ -10,17 +10,13 @@ that it is yours: edit it when the project changes.
 
 - **Adapter:** `local`. Operations are in `.claude/workflow/trackers/local.md`; the
   alternatives are `jira`, `github` and `local`.
-- **Jira:** site `https://<your-site>.atlassian.net`, cloudId `<your-cloud-id>`, project
-  `PROJ`.
-- **GitHub:** repository `<owner>/<repo>`.
-- **Issue types:** epic `Epic`, task `Task`, bug `Bug`.
-- **Statuses:** todo `To Do`, doing `In Progress`, review `In Review`, done `Done`. Transition
-  ids: filled in by `/setup-workflow`. A task that passes the definition of done moves to done;
-  the epic moves to review when its PR opens.
-- **Blocking link:** `Blocks`.
+- **Location:** Markdown under `.work/tickets/`, gitignored. Epic `E<n>`, task `E<n>-T<m>`.
+  Nothing to authenticate and no connection to check.
+- **Statuses:** the `status:` field in each ticket's frontmatter, one of `todo`, `doing`,
+  `review`, `done`. There are no transition ids — the adapter edits the field. A task that
+  passes the definition of done moves to done; the epic moves to review when its PR opens.
+- **Blocking link:** `blocked_by:` in the task's frontmatter.
 - **Label for agent-created tickets:** `agent-planned`.
-
-Delete the lines for trackers you don't use.
 
 ## Agents
 
@@ -62,6 +58,11 @@ So progress is visible without reading the terminal:
 
 ## Commands
 
+> **UNRESOLVED — the defaults below do not run here.** `/setup-workflow` ran each on
+> 2026-09-22 against an empty repo: `python -m pytest -q` exits 1 with "No module named
+> pytest", and `pip install -e .` fails with no `pyproject.toml`. The stack is undecided.
+> Replace this table before the first `/batch-implement`, or every gate fails.
+
 Replace these with the commands that work in this repo; `/setup-workflow` runs each one and
 reports what fails. The defaults assume Python with pytest.
 
@@ -87,11 +88,12 @@ database. None are configured.
 
 ## Execution
 
-- **Branches:** epic branch `epic/PROJ-<slug>`, in worktree `.claude/worktrees/PROJ`.
-  `.claude/settings.json` must set `worktree.baseRef: head`, so implementer worktrees branch
-  from the epic branch.
+- **Branches:** epic branch `epic/<EPIC>-<slug>` (e.g. `epic/E1-log-a-workout`), in worktree
+  `.claude/worktrees/<EPIC>`. `.claude/settings.json` must set `worktree.baseRef: head`, so
+  implementer worktrees branch from the epic branch.
 - **Parallelism:** at most `3` implementers at once.
 - **Final review:** `off`. Set to a `/code-review` level (`low`, `medium`, …) to run one
   review over the finished epic branch before the PR.
-- **Publishing:** push the epic branch to `origin` after each wave, so tracker comments cite
-  fetchable commits. Open the epic PR as a draft. Never merge it.
+- **Publishing:** this repo has no `origin` and no GitHub remote. Pushes and `gh pr create`
+  are skipped; the epic branch stays local and the run ends at the last merge instead of a
+  draft PR. Add a remote and restore the push/PR steps when there is one.
