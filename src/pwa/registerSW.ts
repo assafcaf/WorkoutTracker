@@ -36,3 +36,13 @@ export function registerServiceWorker(options?: RegisterOptions): void {
     onOfflineReady: () => options?.onOfflineReady?.(),
   })
 }
+
+/**
+ * What the "Update ready" control is driven by: registers the worker once on mount, reports a
+ * waiting new version, and activates it only when `update` is called.
+ *
+ * E2-T3 stub — the behaviour is not written yet.
+ */
+export function useServiceWorkerUpdate(): { needRefresh: boolean; update(): Promise<void> } {
+  throw new Error('useServiceWorkerUpdate is not implemented yet (E2-T3)')
+}
