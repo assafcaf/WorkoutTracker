@@ -1,13 +1,22 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
-import { beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { db, isStorageAvailable } from './storage/db'
 import { setActiveProgramId } from './storage/settingsStore'
-import { finishSession, getActiveSession, logSet, startOrResumeSession } from './storage/sessionStore'
+import {
+  finishSession,
+  getActiveSession,
+  listSessions,
+  logSet,
+  startOrResumeSession,
+} from './storage/sessionStore'
+// A value import, not a type-only one: evaluating `backup.ts` is also what installs the
+// feature-detected `Blob.prototype.text` polyfill these tests read downloaded blobs through.
+import { BACKUP_SCHEMA_VERSION, type BackupFile } from './storage/backup'
 import { loadPrograms } from './data/catalog'
-import type { SetEntry } from './types'
+import type { Session, SetEntry } from './types'
 
 // App composes real components (ProgramPicker, Settings, StorageUnavailableBanner) against the
 // real, fake-indexeddb-backed db. Only isStorageAvailable and loadPrograms are replaced with
@@ -405,4 +414,231 @@ test('O17 the finished session appears in the history list with its date, progra
   expect(within(row).getByText('Workout A')).toBeVisible()
   expect(within(row).getByText('2 sets')).toBeVisible()
   expect(within(row).getByText('600 kg')).toBeVisible()
+})
+
+// --- E2-T8: reaching Export and Import from the app ---------------------------------------
+//
+// `src/storage/backup.ts` is built and proven on its own; what has never existed is the path
+// from the screen to it. Every test below therefore starts at a control the trainee can press
+// -- the Settings screen's Export button, or the file control a backup is chosen with -- and
+// ends at what the browser was handed or what the database holds. Calling `exportBackup` or
+// `importBackup` here instead would prove nothing about the wiring.
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * `count` finished sessions, one per day ending at `startedAt`, newest first -- the order
+ * `listSessions` returns them in, so the fixture doubles as the hand-checked expectation.
+ */
+function loggedSessions(count: number, idPrefix: string, newest: number): Session[] {
+  return Array.from({ length: count }, (_unused, index) => {
+    const startedAt = newest - index * DAY_MS
+    return {
+      id: `${idPrefix}-${index}`,
+      programId: 'assaf-ab-2026',
+      workoutId: 'workout-a',
+      startedAt,
+      finishedAt: startedAt + 3_600_000,
+      entries: [
+        { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, reps: 10, loggedAt: startedAt + 60_000 },
+      ],
+    }
+  })
+}
+
+// Hand-checked for the confirmation O15 asks for: 5 sessions on the phone, a chosen file
+// holding 3 of which 1 (session-0) is already there -> 1 kept, 4 removed, 2 added. 5, 3 and 4
+// are all different, so each number in the confirmation is unambiguous.
+const CURRENT: Session[] = loggedSessions(5, 'session', BASE)
+const IMPORTED: Session[] = [CURRENT[0], ...loggedSessions(2, 'incoming', BASE - 10 * DAY_MS)]
+
+/** The text of a valid backup file holding `IMPORTED`, as it would arrive from another phone. */
+function importedBackupText(): string {
+  const file: BackupFile = {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: BASE + DAY_MS,
+    sessions: IMPORTED,
+    settings: { activeProgramId: 'full-body-starter', lastExportedAt: null },
+  }
+  return JSON.stringify(file)
+}
+
+let anchorClick: { mockRestore(): void } | null = null
+
+/**
+ * Stands in for the one browser capability jsdom has none of: handing a file to the user.
+ * There is no `navigator.share` here, so `downloadOrShare` takes its object-URL download path;
+ * this installs `URL.createObjectURL`/`revokeObjectURL` and swallows the anchor click, and
+ * returns the blobs the app handed over, in order.
+ */
+function captureDownloads(): Blob[] {
+  const blobs: Blob[] = []
+  Object.defineProperty(URL, 'createObjectURL', {
+    value: vi.fn((blob: Blob) => {
+      blobs.push(blob)
+      return 'blob:mock-url'
+    }),
+    configurable: true,
+    writable: true,
+  })
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    value: vi.fn(),
+    configurable: true,
+    writable: true,
+  })
+  anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  return blobs
+}
+
+afterEach(() => {
+  anchorClick?.mockRestore()
+  anchorClick = null
+  delete (URL as unknown as { createObjectURL?: unknown }).createObjectURL
+  delete (URL as unknown as { revokeObjectURL?: unknown }).revokeObjectURL
+})
+
+/** Opens the Settings screen from the picker. */
+async function openSettings(user: UserEvent): Promise<void> {
+  await user.click(await screen.findByRole('button', { name: 'Settings' }, SETTLE))
+}
+
+/**
+ * Chooses a backup file holding `text` on the Settings screen. jsdom has no file picker, so
+ * the file is handed to the `<input type="file">` named "Import backup" the way a picker
+ * would: a change carrying one `File`.
+ */
+async function chooseBackupFile(user: UserEvent, text: string): Promise<void> {
+  const control = screen.getByLabelText(/import backup/i)
+  await user.upload(
+    control,
+    new File([text], 'workout-backup-2026-09-22.json', { type: 'application/json' }),
+  )
+}
+
+// --- O14: Export, pressed on the screen ---------------------------------------------------
+
+test('O14 pressing Export on the settings screen hands the browser a backup holding every logged session', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(CURRENT)
+  await setActiveProgramId('assaf-ab-2026')
+  const downloads = captureDownloads()
+  render(<App />)
+  await openSettings(user)
+
+  await user.click(await screen.findByRole('button', { name: 'Export' }, SETTLE))
+
+  await waitFor(() => {
+    expect(downloads).toHaveLength(1)
+  }, SETTLE)
+  const handed = JSON.parse(await downloads[0].text()) as BackupFile
+  expect(handed.schemaVersion).toBe(1)
+  expect(handed.sessions).toEqual(CURRENT)
+  expect(handed.settings.activeProgramId).toBe('assaf-ab-2026')
+})
+
+test('O14 pressing Export with nothing logged still hands the browser a backup, holding no sessions', async () => {
+  const user = userEvent.setup()
+  await setActiveProgramId('assaf-ab-2026')
+  const downloads = captureDownloads()
+  render(<App />)
+  await openSettings(user)
+
+  await user.click(await screen.findByRole('button', { name: 'Export' }, SETTLE))
+
+  await waitFor(() => {
+    expect(downloads).toHaveLength(1)
+  }, SETTLE)
+  const handed = JSON.parse(await downloads[0].text()) as BackupFile
+  expect(handed.sessions).toEqual([])
+})
+
+// --- O15: the counted confirmation, cancelled and confirmed -------------------------------
+
+test('O15 choosing a backup file shows a confirmation naming the current count, the incoming count and how many local sessions will be removed', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(CURRENT)
+  render(<App />)
+  await openSettings(user)
+
+  await chooseBackupFile(user, importedBackupText())
+
+  const dialog = await screen.findByRole('alertdialog', {}, SETTLE)
+  // In that order: 5 held now, 3 in the file, 4 local sessions to be removed. Ordered, so
+  // handing the confirmation the counts the other way round fails here.
+  expect((dialog.textContent ?? '').replace(/\s+/g, ' ')).toMatch(/5[^0-9]+3[^0-9]+4/)
+})
+
+test('O15 cancelling the import confirmation leaves every session in the database untouched', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(CURRENT)
+  const downloads = captureDownloads()
+  render(<App />)
+  await openSettings(user)
+  await chooseBackupFile(user, importedBackupText())
+  await screen.findByRole('alertdialog', {}, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  await waitFor(() => {
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  }, SETTLE)
+  expect(await listSessions()).toEqual(CURRENT)
+  // Nothing was written, so the pre-import backup had no reason to be made either.
+  expect(downloads).toHaveLength(0)
+})
+
+test('O15 confirming the import replaces the database with the chosen file sessions', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(CURRENT)
+  captureDownloads()
+  render(<App />)
+  await openSettings(user)
+  await chooseBackupFile(user, importedBackupText())
+  await screen.findByRole('alertdialog', {}, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+
+  await waitFor(async () => {
+    expect(await listSessions()).toEqual(IMPORTED)
+  }, SETTLE)
+})
+
+// --- O16: a file the app cannot read ------------------------------------------------------
+
+test('O16 choosing a file that is not valid JSON shows an error naming the problem and changes no session', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(CURRENT)
+  const downloads = captureDownloads()
+  render(<App />)
+  await openSettings(user)
+
+  await chooseBackupFile(user, 'this is not a backup at all')
+
+  const alert = await screen.findByRole('alert', {}, SETTLE)
+  expect(alert.textContent).toMatch(/JSON/i)
+  expect(screen.queryByRole('alertdialog')).toBeNull()
+  expect(await listSessions()).toEqual(CURRENT)
+  expect(downloads).toHaveLength(0)
+})
+
+test('O16 choosing a file with an unknown schemaVersion shows an error naming the problem and changes no session', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(CURRENT)
+  const downloads = captureDownloads()
+  const fromALaterBuild = JSON.stringify({
+    schemaVersion: 2,
+    exportedAt: BASE + DAY_MS,
+    sessions: IMPORTED,
+    settings: { activeProgramId: 'full-body-starter', lastExportedAt: null },
+  })
+  render(<App />)
+  await openSettings(user)
+
+  await chooseBackupFile(user, fromALaterBuild)
+
+  const alert = await screen.findByRole('alert', {}, SETTLE)
+  expect(alert.textContent).toMatch(/schema version/i)
+  expect(screen.queryByRole('alertdialog')).toBeNull()
+  expect(await listSessions()).toEqual(CURRENT)
+  expect(downloads).toHaveLength(0)
 })

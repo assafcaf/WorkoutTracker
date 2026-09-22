@@ -1,3 +1,4 @@
+import type { ChangeEvent } from 'react'
 import type { Program } from '../types'
 
 export type SettingsProps = {
@@ -19,10 +20,24 @@ export type SettingsProps = {
  * `activeProgramId` checked, and calls `onActiveProgramChange(program.id)` when another is
  * chosen. Choosing the already-active program is a no-op, not a redundant call.
  *
- * The Export control calls `onExport` when it is provided, and is a no-op otherwise.
+ * The Export control calls `onExport` when it is provided, and is a no-op otherwise. The
+ * Import backup control reads the chosen file and hands its text to `onImportFile`; dismissing
+ * the picker without choosing one reads nothing and calls nothing.
  */
 export function Settings(props: SettingsProps): JSX.Element {
-  const { programs, activeProgramId, onActiveProgramChange, onExport } = props
+  const { programs, activeProgramId, onActiveProgramChange, onExport, onImportFile } = props
+
+  /** Reads the chosen backup file, if one was chosen, and hands its text over. */
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>): void {
+    const file = event.target.files?.[0]
+    if (!file) return
+    file
+      .text()
+      .then((text) => onImportFile?.(text))
+      .catch(() => {
+        // The file could not be read at all; there is nothing to hand over and nothing to undo.
+      })
+  }
 
   return (
     <>
@@ -46,6 +61,10 @@ export function Settings(props: SettingsProps): JSX.Element {
       <button type="button" onClick={() => onExport?.()}>
         Export
       </button>
+      <label>
+        Import backup
+        <input type="file" accept="application/json,.json" onChange={handleFileChange} />
+      </label>
     </>
   )
 }
