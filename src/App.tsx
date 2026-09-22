@@ -2,6 +2,15 @@ import { useEffect, useState } from 'react'
 import type { Exercise, Program, Session, SetEntry, Workout } from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
+import {
+  BackupFormatError,
+  downloadOrShare,
+  exportBackup,
+  importBackup,
+  importPlan,
+  readBackup,
+} from './storage/backup'
+import type { ImportPlan } from './storage/backup'
 import { db, isStorageAvailable } from './storage/db'
 import {
   ACTIVE_PROGRAM_ID_KEY,
@@ -19,6 +28,7 @@ import {
 import { BackupBadge } from './ui/BackupBadge'
 import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
+import { ImportConfirm } from './ui/ImportConfirm'
 import { ProgramPicker } from './ui/ProgramPicker'
 import { SetScreen } from './ui/SetScreen'
 import { Settings } from './ui/Settings'
@@ -42,6 +52,14 @@ type LoadState =
       staleActiveProgramNotice: boolean
       lastExportedAt: number | null
     }
+
+/** A chosen backup file, read and counted, waiting for the trainee to confirm or cancel it. */
+type PendingImport = {
+  text: string
+  currentCount: number
+  incomingCount: number
+  plan: ImportPlan
+}
 
 /** The program and workout a session was started from, or null when the program is gone. */
 function locateSession(
@@ -109,6 +127,8 @@ function AppViews(): JSX.Element {
   const [session, setSession] = useState<Session | null>(null)
   const [openSet, setOpenSet] = useState<OpenSet | null>(null)
   const [history, setHistory] = useState<Session[]>([])
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -211,6 +231,61 @@ function AppViews(): JSX.Element {
     )
   }
 
+  /** Hands the browser a backup of everything logged so far. */
+  function handleExport(): void {
+    exportBackup(Date.now())
+      .then(async (file) => {
+        await downloadOrShare(file)
+        setState((current) =>
+          current.status === 'ready' ? { ...current, lastExportedAt: file.exportedAt } : current,
+        )
+      })
+      .catch(() => {
+        // Nothing was written; the settings screen stays up with nothing to undo.
+      })
+  }
+
+  /**
+   * Reads and counts the chosen backup file so the trainee can see what importing it would
+   * do before anything is written, or says why it cannot be read at all.
+   */
+  function handleImportFile(text: string): void {
+    let incoming: Session[]
+    try {
+      incoming = readBackup(text).sessions
+    } catch (error) {
+      setPendingImport(null)
+      setImportError(
+        error instanceof BackupFormatError ? error.message : 'backup file could not be read',
+      )
+      return
+    }
+
+    listSessions()
+      .then((current) => {
+        setImportError(null)
+        setPendingImport({
+          text,
+          currentCount: current.length,
+          incomingCount: incoming.length,
+          plan: importPlan(current, incoming),
+        })
+      })
+      .catch(() => {
+        // Without the sessions on the phone the confirmation would name the wrong counts.
+      })
+  }
+
+  /** Replaces the whole database with the file already read into `pendingImport`. */
+  function handleImportConfirm(): void {
+    if (!pendingImport) return
+    const { text } = pendingImport
+    setPendingImport(null)
+    importBackup(text).catch(() => {
+      setImportError('the backup could not be imported')
+    })
+  }
+
   if (view === 'settings') {
     return (
       <div>
@@ -221,7 +296,19 @@ function AppViews(): JSX.Element {
           programs={programs}
           activeProgramId={activeProgramId}
           onActiveProgramChange={handleActiveProgramChange}
+          onExport={handleExport}
+          onImportFile={handleImportFile}
         />
+        {importError ? <div role="alert">{importError}</div> : null}
+        {pendingImport ? (
+          <ImportConfirm
+            currentCount={pendingImport.currentCount}
+            incomingCount={pendingImport.incomingCount}
+            plan={pendingImport.plan}
+            onConfirm={handleImportConfirm}
+            onCancel={() => setPendingImport(null)}
+          />
+        ) : null}
       </div>
     )
   }
