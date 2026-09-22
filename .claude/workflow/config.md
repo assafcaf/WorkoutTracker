@@ -116,6 +116,7 @@ database. None are configured.
 - **Parallelism:** at most `3` implementers at once.
 - **Final review:** `off`. Set to a `/code-review` level (`low`, `medium`, …) to run one
   review over the finished epic branch before the PR.
-- **Publishing:** this repo has no `origin` and no GitHub remote. Pushes and `gh pr create`
-  are skipped; the epic branch stays local and the run ends at the last merge instead of a
-  draft PR. Add a remote and restore the push/PR steps when there is one.
+- **Publishing:** `origin` is https://github.com/assafcaf/WorkoutTracker (public), added
+  2026-09-22 after E1's last merge. Push the epic branch and open a draft PR against `main` as
+  the skill describes. E1 ran before the remote existed, so its push and PR happened after the
+  fact; from E2 on they are part of the run.
