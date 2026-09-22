@@ -7,6 +7,9 @@ export type SettingsProps = {
   // Optional so E1-T6's existing calls, which predate E2-T4, still type-check unchanged;
   // E2-T5/T6 wire a real handler from `App`.
   onExport?(): void | Promise<void>
+  // Optional for the same reason as `onExport`; E2-T6 wires a real handler from `App` that
+  // reads the chosen file and hands its text to `importBackup`.
+  onImportFile?(text: string): void | Promise<void>
 }
 
 /**

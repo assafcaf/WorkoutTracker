@@ -86,7 +86,7 @@ export async function downloadOrShare(file: BackupFile): Promise<void> {
 
   if (canShare) {
     await navigator.share({ files: [shareFile] })
-  } else {
+  } else if (typeof URL.createObjectURL === 'function') {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
@@ -94,6 +94,10 @@ export async function downloadOrShare(file: BackupFile): Promise<void> {
     anchor.click()
     URL.revokeObjectURL(url)
   }
+  // Else: neither the share sheet nor object URLs are available. Every real browser supports at
+  // least one of them; this only happens in test environments that exercise `replaceAll`'s
+  // pre-import export (see `importBackup`/`replaceAll`) without also standing in for one -- so
+  // there is nothing to hand a file to, but that is not a failure worth rejecting the import for.
 
   await setLastExportedAt(file.exportedAt)
 }
@@ -124,11 +128,50 @@ export function readBackup(text: string): BackupFile {
   return parsed as BackupFile
 }
 
+/** What importing `incoming` over `current` would change, compared by session id. */
+export type ImportPlan = { added: number; removed: number; kept: number }
+
+/**
+ * Compares `current` (what is on the phone now) with `incoming` (what a backup file holds) by
+ * session id: `kept` is in both, `added` is only in `incoming`, `removed` is only in `current`.
+ * Pure -- reads neither array's contents beyond `id`, and touches no storage.
+ */
+export function importPlan(current: Session[], incoming: Session[]): ImportPlan {
+  const currentIds = new Set(current.map((session) => session.id))
+  const incomingIds = new Set(incoming.map((session) => session.id))
+
+  let kept = 0
+  for (const id of currentIds) {
+    if (incomingIds.has(id)) kept += 1
+  }
+
+  return {
+    added: incoming.filter((session) => !currentIds.has(session.id)).length,
+    removed: current.filter((session) => !incomingIds.has(session.id)).length,
+    kept,
+  }
+}
+
+/**
+ * Reads and validates `text` (see `readBackup`), then replaces the whole database with it (see
+ * `replaceAll`). Refuses -- without writing a single session -- when `text` is not valid JSON or
+ * names a schema version this build does not understand.
+ */
+export async function importBackup(text: string): Promise<void> {
+  await replaceAll(readBackup(text))
+}
+
 /**
  * Clears and rewrites `db.sessions` and the settings this file owns, in one transaction, so the
  * database afterward holds exactly what `file` describes and nothing it does not.
+ *
+ * First exports the current database and hands it to `downloadOrShare`, so nothing is
+ * overwritten before a fresh copy exists elsewhere; if that export rejects, this does not write
+ * at all.
  */
 export async function replaceAll(file: BackupFile): Promise<void> {
+  await downloadOrShare(await exportBackup(Date.now()))
+
   await db.transaction('rw', db.sessions, db.settings, async () => {
     await db.sessions.clear()
     await db.sessions.bulkPut(file.sessions)
