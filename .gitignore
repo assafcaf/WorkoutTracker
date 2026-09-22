@@ -2,3 +2,10 @@
 .claude/worktrees/
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Node / Vite
+node_modules/
+dist/
+coverage/
+*.local
+.vite/
