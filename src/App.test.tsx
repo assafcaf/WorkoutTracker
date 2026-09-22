@@ -5,7 +5,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { db, isStorageAvailable } from './storage/db'
 import { setActiveProgramId } from './storage/settingsStore'
-import { finishSession, getActiveSession } from './storage/sessionStore'
+import { finishSession, getActiveSession, logSet, startOrResumeSession } from './storage/sessionStore'
 import { loadPrograms } from './data/catalog'
 import type { SetEntry } from './types'
 
@@ -343,4 +343,66 @@ test('O15 no add-set control is offered while planned sets are still to come', a
   await logSetAndOpen(user, 3, 4)
 
   expect(screen.queryByRole('button', { name: 'Add set' })).toBeNull()
+})
+
+// --- O17: finishing a session and the history list ----------------------------------------
+//
+// A fixed calendar date derived by hand from BASE (1_700_000_000_000 ms, UTC): 2023-11-14.
+
+/** Logs one set of back squat, then closes the app, leaving the session active in storage. */
+async function logOneSetAndCloseTheApp(user: UserEvent): Promise<void> {
+  const run = render(<App />)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await waitFor(async () => {
+    expect(await activeSessionEntries()).toHaveLength(1)
+  }, SETTLE)
+
+  run.unmount()
+  db.close()
+  await db.open()
+}
+
+test('O17 finishing the session from the exercise list clears the active session and returns to the picker', async () => {
+  const user = userEvent.setup()
+  await logOneSetAndCloseTheApp(user)
+
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+
+  await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
+  expect(await getActiveSession()).toBeNull()
+})
+
+test('O17 the finished session appears in the history list with its date, program name, workout name, total sets and total volume in kg', async () => {
+  const user = userEvent.setup()
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  await logSet(started.id, {
+    exerciseId: 'back-squat',
+    setIndex: 1,
+    weightKg: 60,
+    reps: 10,
+    loggedAt: BASE + 1,
+  })
+  await logSet(started.id, {
+    exerciseId: 'push-ups',
+    setIndex: 1,
+    weightKg: null,
+    reps: 15,
+    loggedAt: BASE + 2,
+  })
+  await finishSession(started.id, BASE + 3_600_000)
+
+  render(<App />)
+  await user.click(await screen.findByRole('button', { name: 'History' }, SETTLE))
+
+  const row = await screen.findByRole('listitem', {}, SETTLE)
+  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(within(row).getByText('Assaf A/B 2026')).toBeVisible()
+  expect(within(row).getByText('Workout A')).toBeVisible()
+  expect(within(row).getByText('2 sets')).toBeVisible()
+  expect(within(row).getByText('600 kg')).toBeVisible()
 })

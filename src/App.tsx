@@ -214,6 +214,11 @@ export function App(): JSX.Element {
     }
   }
 
+  // E1-T8: not yet wired to finishSession, clearing the session or routing to the picker.
+  function handleFinish(): void {
+    throw new Error('not implemented')
+  }
+
   if (view === 'list' && session && located) {
     return (
       <ExerciseList
@@ -222,6 +227,7 @@ export function App(): JSX.Element {
         catalog={catalog}
         session={session}
         onOpenSet={handleOpenSet}
+        onFinish={handleFinish}
       />
     )
   }

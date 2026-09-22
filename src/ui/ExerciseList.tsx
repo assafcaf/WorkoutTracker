@@ -6,6 +6,8 @@ export type ExerciseListProps = {
   catalog: Map<string, Exercise>
   session: Session
   onOpenSet(exerciseId: string, setIndex: number): void
+  /** Finishes the session. E1-T8: not yet wired to a control. */
+  onFinish(): void
 }
 
 /** How many sets of this exercise the session already holds. */
