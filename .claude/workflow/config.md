@@ -106,7 +106,7 @@ database. None are configured.
 
 | Tag | Meaning | How to run |
 |---|---|---|
-| `<tag>` | `<what needs it>` | `<command that runs a test there, and how to check it's free>` |
+| `iphone` | The trainee's iPhone, with the app installed to the home screen. Needed for outcomes about installing, launching standalone, and cold-starting with no network — no emulator reproduces iOS's behaviour here | Not a command. The orchestrator posts the steps and the expected result, the operator performs them on the phone at the merged commit, and pastes what happened into the run log. The resource is free when the operator says so |
 
 ## Execution
 
