@@ -1,0 +1,17 @@
+{
+  "id": "full-body-starter",
+  "name": "Full body starter",
+  "units": "kg",
+  "workouts": [
+    {
+      "id": "full-body",
+      "name": "Full body",
+      "exercises": [
+        { "exerciseId": "back-squat", "sets": 3, "repRange": [8, 10], "restSeconds": 180 },
+        { "exerciseId": "db-bench-press", "sets": 3, "repRange": [8, 10], "restSeconds": 90 },
+        { "exerciseId": "machine-row", "sets": 3, "repRange": [8, 10], "restSeconds": 90 },
+        { "exerciseId": "hyper-extension", "sets": 2, "repRange": [10, 15], "restSeconds": 90 }
+      ]
+    }
+  ]
+}
