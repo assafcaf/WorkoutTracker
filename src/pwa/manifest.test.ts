@@ -1,0 +1,150 @@
+// @vitest-environment node
+//
+// This file runs a real Vite build, and Vite runs esbuild, which refuses to start under jsdom:
+// jsdom's TextEncoder returns a Uint8Array from another realm and esbuild's startup invariant
+// rejects it. Nothing here touches the DOM, so the node environment is both correct and enough.
+//
+// What a production build has to be for the app to install from GitHub Pages: a web app
+// manifest the browser will accept, and every URL in the build under the Pages base path.
+// These assertions read the real build output — see src/test/buildFixture.ts.
+import { beforeAll, expect, test } from 'vitest'
+import { buildApp, type BuiltApp } from '../test/buildFixture'
+
+// The path the app is served from on GitHub Pages. Written out here rather than read back from
+// the config on purpose: a build that forgets the base path works perfectly on localhost and
+// 404s in production, so the expectation has to be independent of the thing under test.
+const BASE = '/WorkoutTracker/'
+
+type ManifestIcon = {
+  src: string
+  sizes?: string
+  type?: string
+  purpose?: string
+}
+
+type WebManifest = {
+  name?: string
+  short_name?: string
+  display?: string
+  start_url?: string
+  scope?: string
+  theme_color?: string
+  icons?: ManifestIcon[]
+}
+
+let app: BuiltApp
+
+// One production build for the whole file. The timeout is local to this hook rather than a
+// global testTimeout bump: a cold Vite build on Windows runs well past vitest's 10s default,
+// but everything else in the suite should still be held to the default.
+beforeAll(async () => {
+  app = await buildApp()
+}, 180_000)
+
+function manifest(): WebManifest {
+  expect(
+    app.files,
+    'the build must emit manifest.webmanifest at the root of dist',
+  ).toContain('manifest.webmanifest')
+  return app.readJson<WebManifest>('manifest.webmanifest')
+}
+
+/** The path a URL found in the build output has inside dist, or null when it is external. */
+function distPathOf(url: string): string | null {
+  if (/^[a-z]+:/i.test(url) || url.startsWith('//')) return null
+  if (url.startsWith(BASE)) return url.slice(BASE.length)
+  return url.replace(/^\//, '')
+}
+
+/** Every src/href in a built HTML document that points at something this build serves. */
+function localReferences(html: string): string[] {
+  return [...html.matchAll(/\b(?:src|href)="([^"]*)"/g)]
+    .map((m) => m[1])
+    .filter((ref) => ref.length > 0)
+    .filter((ref) => !/^[a-z]+:/i.test(ref) && !ref.startsWith('//') && !ref.startsWith('#'))
+}
+
+test('O1 the production build emits manifest.webmanifest at the root of dist', () => {
+  expect(app.files).toContain('manifest.webmanifest')
+})
+
+test('O1 the manifest names the app "Workout" on the home screen', () => {
+  expect(manifest().short_name).toBe('Workout')
+})
+
+test('O1 the manifest carries a full application name', () => {
+  expect(manifest().name).toBeTruthy()
+})
+
+test('O1 the manifest asks for standalone display, so the installed app has no Safari chrome', () => {
+  expect(manifest().display).toBe('standalone')
+})
+
+test('O1 the manifest declares a theme colour', () => {
+  expect(manifest().theme_color).toMatch(/^#[0-9a-fA-F]{3,8}$/)
+})
+
+test('O1 the manifest declares icons at 192 px and 512 px', () => {
+  const sizes = (manifest().icons ?? []).map((icon) => icon.sizes)
+  expect(sizes).toContain('192x192')
+  expect(sizes).toContain('512x512')
+})
+
+test('O1 the manifest declares a maskable 512 px icon', () => {
+  const maskable = (manifest().icons ?? []).filter((icon) =>
+    (icon.purpose ?? '').split(/\s+/).includes('maskable'),
+  )
+  expect(maskable.map((icon) => icon.sizes)).toContain('512x512')
+})
+
+test('O1 the build ships the three icon files at the paths the rest of the PWA work expects', () => {
+  expect(app.files).toEqual(
+    expect.arrayContaining([
+      'icons/icon-192.png',
+      'icons/icon-512.png',
+      'icons/icon-maskable-512.png',
+    ]),
+  )
+})
+
+test('O1 every icon the manifest declares is a file the build actually serves', () => {
+  const icons = manifest().icons ?? []
+  expect(icons.length).toBeGreaterThan(0)
+  const missing = icons
+    .map((icon) => distPathOf(icon.src))
+    .filter((path): path is string => path !== null)
+    .filter((path) => !app.files.includes(path))
+  expect(missing, 'the manifest declares icons that are not in the build output').toEqual([])
+})
+
+test('O1 the built index.html links the manifest', () => {
+  const html = app.read('index.html')
+  const link = [...html.matchAll(/<link\b[^>]*>/g)]
+    .map((m) => m[0])
+    .find((tag) => /rel="manifest"/.test(tag))
+  expect(link, 'index.html has no <link rel="manifest">').toBeDefined()
+  expect(link).toMatch(/href="[^"]*manifest\.webmanifest"/)
+})
+
+test('O2 every asset reference in the built index.html carries the base path', () => {
+  const refs = localReferences(app.read('index.html'))
+  expect(refs.length, 'index.html references nothing this build serves').toBeGreaterThan(0)
+  const rooted = refs.filter((ref) => !ref.startsWith(BASE))
+  expect(rooted, 'these index.html references do not carry the base path').toEqual([])
+})
+
+test('O2 the manifest start_url is under the configured base path', () => {
+  expect(manifest().start_url ?? '').toMatch(/^\/WorkoutTracker\//)
+})
+
+test('O2 the service worker is emitted at the root of dist, so its scope is the base path', () => {
+  expect(app.files).toContain('sw.js')
+})
+
+test('O2 no URL in the service worker resolves to the domain root', () => {
+  const sw = app.read('sw.js')
+  const urls = [...sw.matchAll(/(?:"url"|'url'|url)\s*:\s*["']([^"']+)["']/g)].map((m) => m[1])
+  expect(urls.length, 'the service worker lists no precached URL at all').toBeGreaterThan(0)
+  const rooted = urls.filter((url) => url.startsWith('/') && !url.startsWith(BASE))
+  expect(rooted, 'these service worker URLs resolve to the domain root').toEqual([])
+})

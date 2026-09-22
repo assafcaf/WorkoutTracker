@@ -39,3 +39,5 @@ rewrite history.
 ## Entries
 
 - [0001](0001-lean-agent-harness.md): a lean agent harness, with outcome-tested parallel delivery
+- [0002](0002-pwa-local-first-workout-tracker.md): a local-first installable PWA, built with React, TypeScript and Vitest
+- [0003](0003-installable-offline-and-backups.md): installs from a project base path, precaches everything, and backs up as one file

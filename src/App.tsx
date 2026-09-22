@@ -1,8 +1,23 @@
 import { useEffect, useState } from 'react'
 import type { Exercise, Program, Session, SetEntry, Workout } from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
+import { useServiceWorkerUpdate } from './pwa/registerSW'
+import {
+  BackupFormatError,
+  downloadOrShare,
+  exportBackup,
+  importBackup,
+  importPlan,
+  readBackup,
+} from './storage/backup'
+import type { ImportPlan } from './storage/backup'
 import { db, isStorageAvailable } from './storage/db'
-import { ACTIVE_PROGRAM_ID_KEY, getActiveProgramId, setActiveProgramId } from './storage/settingsStore'
+import {
+  ACTIVE_PROGRAM_ID_KEY,
+  getActiveProgramId,
+  getLastExportedAt,
+  setActiveProgramId,
+} from './storage/settingsStore'
 import {
   finishSession,
   getActiveSession,
@@ -10,12 +25,15 @@ import {
   listSessions,
   startOrResumeSession,
 } from './storage/sessionStore'
+import { BackupBadge } from './ui/BackupBadge'
 import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
+import { ImportConfirm } from './ui/ImportConfirm'
 import { ProgramPicker } from './ui/ProgramPicker'
 import { SetScreen } from './ui/SetScreen'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
+import { UpdatePill } from './ui/UpdatePill'
 
 type View = 'picker' | 'settings' | 'list' | 'set' | 'history'
 
@@ -32,7 +50,16 @@ type LoadState =
       storageAvailable: boolean
       activeProgramId: string
       staleActiveProgramNotice: boolean
+      lastExportedAt: number | null
     }
+
+/** A chosen backup file, read and counted, waiting for the trainee to confirm or cancel it. */
+type PendingImport = {
+  text: string
+  currentCount: number
+  incomingCount: number
+  plan: ImportPlan
+}
 
 /** The program and workout a session was started from, or null when the program is gone. */
 function locateSession(
@@ -67,20 +94,41 @@ async function activeSessionOrNull(storageAvailable: boolean): Promise<Session |
 }
 
 /**
- * The whole app: loads the catalog and programs, resolves the active program, and renders the
- * session in progress — its exercise list or one of its set screens — or the picker, or a
+ * The whole app: the views below, with the "Update ready" control over them.
+ *
+ * The control lives here rather than in a view because a new deployment must never interrupt
+ * a workout: it is offered once an update is waiting and stays offered, whatever the session
+ * moves on to, until the trainee presses it. Registering the worker from here is also what
+ * starts the app listening for that update.
+ */
+export function App(): JSX.Element {
+  const { needRefresh, update } = useServiceWorkerUpdate()
+
+  return (
+    <>
+      {needRefresh ? <UpdatePill onUpdate={update} /> : null}
+      <AppViews />
+    </>
+  )
+}
+
+/**
+ * The app's views: loads the catalog and programs, resolves the active program, and renders
+ * the session in progress — its exercise list or one of its set screens — or the picker, or a
  * route to Settings, or a hard-error screen when the programs fail to load.
  *
  * A session in progress wins on mount, so reopening the app lands back in it.
  *
  * E1-T8 extends this routing with the history list rather than replacing it.
  */
-export function App(): JSX.Element {
+function AppViews(): JSX.Element {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [view, setView] = useState<View>('picker')
   const [session, setSession] = useState<Session | null>(null)
   const [openSet, setOpenSet] = useState<OpenSet | null>(null)
   const [history, setHistory] = useState<Session[]>([])
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -97,6 +145,7 @@ export function App(): JSX.Element {
           storedProgramId !== undefined &&
           !programs.some((program) => program.id === storedProgramId)
         const inProgress = await activeSessionOrNull(storageAvailable)
+        const lastExportedAt = storageAvailable ? await getLastExportedAt() : null
 
         if (cancelled) return
         setSession(inProgress)
@@ -108,6 +157,7 @@ export function App(): JSX.Element {
           storageAvailable,
           activeProgramId,
           staleActiveProgramNotice,
+          lastExportedAt,
         })
       } catch (error) {
         if (cancelled) return
@@ -130,7 +180,8 @@ export function App(): JSX.Element {
     return <div role="alert">Could not load the workout programs: {state.message}</div>
   }
 
-  const { catalog, programs, storageAvailable, activeProgramId, staleActiveProgramNotice } = state
+  const { catalog, programs, storageAvailable, activeProgramId, staleActiveProgramNotice, lastExportedAt } =
+    state
 
   function handleActiveProgramChange(id: string): void {
     setActiveProgramId(id)
@@ -180,6 +231,61 @@ export function App(): JSX.Element {
     )
   }
 
+  /** Hands the browser a backup of everything logged so far. */
+  function handleExport(): void {
+    exportBackup(Date.now())
+      .then(async (file) => {
+        await downloadOrShare(file)
+        setState((current) =>
+          current.status === 'ready' ? { ...current, lastExportedAt: file.exportedAt } : current,
+        )
+      })
+      .catch(() => {
+        // Nothing was written; the settings screen stays up with nothing to undo.
+      })
+  }
+
+  /**
+   * Reads and counts the chosen backup file so the trainee can see what importing it would
+   * do before anything is written, or says why it cannot be read at all.
+   */
+  function handleImportFile(text: string): void {
+    let incoming: Session[]
+    try {
+      incoming = readBackup(text).sessions
+    } catch (error) {
+      setPendingImport(null)
+      setImportError(
+        error instanceof BackupFormatError ? error.message : 'backup file could not be read',
+      )
+      return
+    }
+
+    listSessions()
+      .then((current) => {
+        setImportError(null)
+        setPendingImport({
+          text,
+          currentCount: current.length,
+          incomingCount: incoming.length,
+          plan: importPlan(current, incoming),
+        })
+      })
+      .catch(() => {
+        // Without the sessions on the phone the confirmation would name the wrong counts.
+      })
+  }
+
+  /** Replaces the whole database with the file already read into `pendingImport`. */
+  function handleImportConfirm(): void {
+    if (!pendingImport) return
+    const { text } = pendingImport
+    setPendingImport(null)
+    importBackup(text).catch(() => {
+      setImportError('the backup could not be imported')
+    })
+  }
+
   if (view === 'settings') {
     return (
       <div>
@@ -190,7 +296,19 @@ export function App(): JSX.Element {
           programs={programs}
           activeProgramId={activeProgramId}
           onActiveProgramChange={handleActiveProgramChange}
+          onExport={handleExport}
+          onImportFile={handleImportFile}
         />
+        {importError ? <div role="alert">{importError}</div> : null}
+        {pendingImport ? (
+          <ImportConfirm
+            currentCount={pendingImport.currentCount}
+            incomingCount={pendingImport.incomingCount}
+            plan={pendingImport.plan}
+            onConfirm={handleImportConfirm}
+            onCancel={() => setPendingImport(null)}
+          />
+        ) : null}
       </div>
     )
   }
@@ -281,6 +399,7 @@ export function App(): JSX.Element {
       <button type="button" onClick={() => setView('settings')}>
         Settings
       </button>
+      <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
       <button type="button" onClick={handleShowHistory}>
         History
       </button>
