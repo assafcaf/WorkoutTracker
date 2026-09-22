@@ -30,6 +30,12 @@ export class WorkoutDb extends Dexie {
 export const db = new WorkoutDb()
 
 /**
+ * The database the probe below opens. A name of its own, so the probe never creates or
+ * upgrades the real one, and nothing has to be deleted to find out whether storage works.
+ */
+const PROBE_DATABASE = 'workout-tracker-storage-probe'
+
+/**
  * Whether IndexedDB can actually be opened in this context.
  *
  * Reads `globalThis.indexedDB` at call time and probes it, so a missing factory, a factory
@@ -37,5 +43,27 @@ export const db = new WorkoutDb()
  * (Firefox private browsing) all resolve `false` instead of throwing at the call site.
  */
 export async function isStorageAvailable(): Promise<boolean> {
-  throw new Error('isStorageAvailable is not implemented')
+  const factory: IDBFactory | undefined = globalThis.indexedDB
+  if (!factory) return false
+
+  return new Promise<boolean>((resolve) => {
+    let request: IDBOpenDBRequest
+    try {
+      request = factory.open(PROBE_DATABASE)
+    } catch {
+      // Safari with storage blocked throws from `open` itself.
+      resolve(false)
+      return
+    }
+    request.onsuccess = () => {
+      try {
+        request.result.close()
+      } catch {
+        // Nothing to close; the probe still proved the factory works.
+      }
+      resolve(true)
+    }
+    request.onerror = () => resolve(false)
+    request.onblocked = () => resolve(false)
+  })
 }

@@ -5,5 +5,10 @@
  * to mount it and disables the logging controls alongside it.
  */
 export function StorageUnavailableBanner(): JSX.Element {
-  return <div />
+  return (
+    <div role="alert">
+      Storage is unavailable on this device, so sets cannot be saved. Write this workout down
+      before you leave.
+    </div>
+  )
 }
