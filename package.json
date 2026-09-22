@@ -20,6 +20,7 @@
     "@testing-library/jest-dom": "6.5.0",
     "@testing-library/react": "16.0.1",
     "@testing-library/user-event": "14.5.2",
+    "@types/node": "18.19.54",
     "@types/react": "18.3.11",
     "@types/react-dom": "18.3.1",
     "@vitejs/plugin-react": "4.3.2",
@@ -32,6 +33,7 @@
     "typescript": "5.5.4",
     "typescript-eslint": "8.8.1",
     "vite": "5.4.8",
+    "vite-plugin-pwa": "0.20.5",
     "vitest": "2.1.2"
   }
 }
