@@ -14,6 +14,12 @@ export type SetScreenProps = {
   sessionId: string
   lastEntries: SetEntry[]
   onLogged(session: Session, nextSetIndex: number): void
+  /**
+   * Told that an extra set past the plan was opened, with the set index it opened at. Optional
+   * so a caller that offers no extra set -- and E1-T5's own tests -- need not pass it; the
+   * "Add set" control is only rendered when it is given.
+   */
+  onAddSet?(exerciseId: string, nextSetIndex: number): void
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -61,7 +67,7 @@ function openSetFor(
  * the rule is E1-T2's, the message is this screen's.
  */
 export function SetScreen(props: SetScreenProps): JSX.Element {
-  const { exercise, plan, sessionId, onLogged } = props
+  const { exercise, plan, sessionId, onLogged, onAddSet } = props
 
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
@@ -133,6 +139,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       <button type="button" className="log-set" onClick={() => void log()}>
         Log set
       </button>
+
+      {/* Every planned set is logged once the set on the dials is past the plan; only then is
+          an extra one offered, and only to a caller that knows what to do with it. */}
+      {onAddSet !== undefined && open.setIndex > plan.sets ? (
+        <button
+          type="button"
+          className="add-set"
+          onClick={() => onAddSet(exercise.id, open.setIndex)}
+        >
+          Add set
+        </button>
+      ) : null}
 
       <p className="rest-timer">
         <span role="timer" aria-label="Rest remaining">
