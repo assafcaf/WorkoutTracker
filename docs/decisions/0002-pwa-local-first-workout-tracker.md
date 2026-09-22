@@ -16,9 +16,12 @@ build is not reachable from this repo at all. The repo was empty, and the workfl
 - Data is local-first: a single Dexie/IndexedDB `sessions` store on the phone, with each logged
   set written as a whole-document `put` so a session is never half written. No backend, no
   accounts, no sync. Durability comes from a manual JSON export, not from a server.
-- The training program is a versioned `src/data/program.json` in this repo, not editable from
-  the phone. Logged sets reference stable exercise ids, so changing the program never
-  invalidates recorded history.
+- Training data is split in two, both versioned in this repo and neither editable from the
+  phone: `src/data/exercises.json` is a catalog of what each lift is (weight step, start weight,
+  bodyweight, info link), and `src/data/programs/*.json` are prescriptions referencing catalog
+  ids with their own sets, rep ranges, order and rest. Logged sets reference the catalog id, so
+  an exercise's history is continuous across every program that prescribes it. One program is
+  active at a time, held in local storage rather than in the repo, because it is user state.
 - Test gates run through `.claude/workflow/bin/vitest-gate.sh`, which maps vitest's results onto
   pytest's exit codes (0 passed, 1 a real failure, 2 nothing ran).
 
@@ -33,6 +36,10 @@ build is not reachable from this repo at all. The repo was empty, and the workfl
 - **An in-app program editor**: the program did not change once between January and March. A
   full CRUD surface with migration of logged sessions roughly doubles the first release to serve
   an edit made a few times a year.
+- **Self-contained program files** (each program defining its own exercises): simpler to author
+  and impossible to leave a dangling reference in, but every new program would restart that
+  exercise's history and the dials would lose their preset on the first day of each block —
+  defeating the reason the app exists.
 - **Importing the Excel history**: a tolerant parser for a hand-written format with about six
   malformed cells, run exactly once, then dead code. The app starts empty instead.
 - **Calling `npx vitest run` directly in the gates**: vitest exits 1 both when a test fails and
@@ -48,8 +55,14 @@ build is not reachable from this repo at all. The repo was empty, and the workfl
 - iOS can evict IndexedDB for a web app. Until the export/import work lands (E2), a cleared
   Safari data store or a device restore loses the log with no recovery. This ordering is
   deliberate: E2 precedes the statistics work.
-- Swapping in a different program later is a JSON edit plus a deploy, not a migration — but it
-  does require someone with the repo, not just the phone.
+- Adding or swapping a program is a new JSON file plus a deploy, not a migration — but it does
+  require someone with the repo, not just the phone.
+- The split introduces a failure a single file could not have: a program referencing an exercise
+  id nobody defined. Both files are validated at startup and a dangling id is a hard error
+  naming the program and the id, not a blank row discovered mid-session.
+- A shared id can lie — `machine-row` at another gym is a different machine, and no code can
+  detect that. The remedy is a new catalog id when the lift genuinely differs; it is a
+  judgement call, not something the schema enforces.
 - Node 18 pins the toolchain. If Vite 5 / Vitest 2 prove awkward, the fix is upgrading Node to
   20, not changing the stack.
 
