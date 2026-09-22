@@ -3,7 +3,12 @@ import type { Exercise, Program, Session, SetEntry, Workout } from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
 import { db, isStorageAvailable } from './storage/db'
-import { ACTIVE_PROGRAM_ID_KEY, getActiveProgramId, setActiveProgramId } from './storage/settingsStore'
+import {
+  ACTIVE_PROGRAM_ID_KEY,
+  getActiveProgramId,
+  getLastExportedAt,
+  setActiveProgramId,
+} from './storage/settingsStore'
 import {
   finishSession,
   getActiveSession,
@@ -11,6 +16,7 @@ import {
   listSessions,
   startOrResumeSession,
 } from './storage/sessionStore'
+import { BackupBadge } from './ui/BackupBadge'
 import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
 import { ProgramPicker } from './ui/ProgramPicker'
@@ -34,6 +40,7 @@ type LoadState =
       storageAvailable: boolean
       activeProgramId: string
       staleActiveProgramNotice: boolean
+      lastExportedAt: number | null
     }
 
 /** The program and workout a session was started from, or null when the program is gone. */
@@ -118,6 +125,7 @@ function AppViews(): JSX.Element {
           storedProgramId !== undefined &&
           !programs.some((program) => program.id === storedProgramId)
         const inProgress = await activeSessionOrNull(storageAvailable)
+        const lastExportedAt = storageAvailable ? await getLastExportedAt() : null
 
         if (cancelled) return
         setSession(inProgress)
@@ -129,6 +137,7 @@ function AppViews(): JSX.Element {
           storageAvailable,
           activeProgramId,
           staleActiveProgramNotice,
+          lastExportedAt,
         })
       } catch (error) {
         if (cancelled) return
@@ -151,7 +160,8 @@ function AppViews(): JSX.Element {
     return <div role="alert">Could not load the workout programs: {state.message}</div>
   }
 
-  const { catalog, programs, storageAvailable, activeProgramId, staleActiveProgramNotice } = state
+  const { catalog, programs, storageAvailable, activeProgramId, staleActiveProgramNotice, lastExportedAt } =
+    state
 
   function handleActiveProgramChange(id: string): void {
     setActiveProgramId(id)
@@ -302,6 +312,7 @@ function AppViews(): JSX.Element {
       <button type="button" onClick={() => setView('settings')}>
         Settings
       </button>
+      <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
       <button type="button" onClick={handleShowHistory}>
         History
       </button>
