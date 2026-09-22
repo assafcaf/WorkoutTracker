@@ -58,23 +58,45 @@ So progress is visible without reading the terminal:
 
 ## Commands
 
-> **UNRESOLVED — the defaults below do not run here.** `/setup-workflow` ran each on
-> 2026-09-22 against an empty repo: `python -m pytest -q` exits 1 with "No module named
-> pytest", and `pip install -e .` fails with no `pyproject.toml`. The stack is undecided.
-> Replace this table before the first `/batch-implement`, or every gate fails.
-
-Replace these with the commands that work in this repo; `/setup-workflow` runs each one and
-reports what fails. The defaults assume Python with pytest.
+The stack is React + TypeScript + Vite + Vitest (decided 2026-09-22; see
+`docs/decisions/0002-pwa-local-first-workout-tracker.md`). The installer's Python defaults are
+gone.
 
 | Gate | Command |
 |---|---|
-| Setup in a fresh worktree | `pip install -e .` |
-| Run named tests | `python -m pytest -q {tests}` (`{tests}` = space-separated node ids) |
-| Full suite | `python -m pytest -q` |
-| Lint | `true` (none configured) |
-| Red means | exit code `1`: tests collected, ran, and failed. Collection errors (exit `2`) do not count |
-| Test paths | `tests/` |
-| Weakened tests | `bash .claude/workflow/bin/weakened-tests.sh <base> <head>` (pytest patterns by default; set `WEAK_ADDED` and `TEST_DEF` for another stack — see the script's header) |
+| Setup in a fresh worktree | `npm ci` |
+| Run named tests | `bash .claude/workflow/bin/vitest-gate.sh {tests}` (`{tests}` = space-separated test file paths) |
+| Full suite | `bash .claude/workflow/bin/vitest-gate.sh` |
+| Lint | `npx tsc --noEmit && npx eslint .` |
+| Red means | exit code `1`: tests ran and at least one failed. A suite that failed to import, or a path matching no test files, exits `2` and does not count |
+| Test paths | `src/`, tests colocated with the code as `*.test.ts` / `*.test.tsx` |
+| Weakened tests | `bash .claude/workflow/bin/weakened-tests.sh <base> <head>`, with the two env vars below exported first |
+
+**Why `vitest-gate.sh` and not `npx vitest run` directly.** The red gate rests on telling "the
+test ran and failed" apart from "the test never ran". pytest splits these across exit codes 1
+and 2; vitest returns 1 for both, so a task whose test file fails to import would certify as
+red without a single assertion executing. `vitest-gate.sh` wraps vitest and restores pytest's
+codes — 0 passed, 1 genuinely red, 2 nothing ran. Verified 2026-09-22 against all four cases
+(pass, real failure, import error, no files matched).
+
+**Weakened-test patterns.** `weakened-tests.sh` defaults to pytest syntax and finds nothing in
+a TypeScript diff. Export these first (verified 2026-09-22 to catch an added `it.skip` and a
+deleted test; the "a moved test is fine" path is untested here):
+
+```sh
+export TEST_DEF="[[:space:]]*(it|test)\(['\"]([^'\"]+)"
+export WEAK_ADDED="((it|test|describe)\.(skip|todo|only|fails)|xit\(|xdescribe\(|TODO)"
+```
+
+`.only` counts as weakening: it silences every other test in the file, which would let a red
+gate pass on a suite that never ran. Test names must be plain quoted strings, not template
+literals, or `TEST_DEF` cannot see them.
+
+> **Not yet runnable.** There is no `package.json` in this repo, so every command above fails
+> today. E1's scaffolding task creates the project and must commit `package.json` *and*
+> `package-lock.json` in its red commit — `verify-red.sh` installs in a throwaway worktree at
+> that commit, so without the lockfile the red check cannot run. The scaffolding task is done
+> when the full-suite command above exits 0 here.
 
 ## Serial resources
 
