@@ -4,9 +4,12 @@ import { listSessions } from './sessionStore'
 import { ACTIVE_PROGRAM_ID_KEY, getLastExportedAt, setActiveProgramId } from './settingsStore'
 import {
   BACKUP_SCHEMA_VERSION,
+  BackupFormatError,
   backupFileName,
   downloadOrShare,
   exportBackup,
+  importBackup,
+  importPlan,
   readBackup,
   replaceAll,
   type BackupFile,
@@ -226,4 +229,109 @@ test('O7 downloadOrShare does not record lastExportedAt when the share sheet fai
   })
 
   expect(await getLastExportedAt()).toBeNull()
+})
+
+// --- importPlan, the counts [O8]'s confirmation names ---------------------------------------
+
+test('O8 importPlan counts sessions kept in both lists, added only by the incoming file and removed from the current database', () => {
+  const current = sessionsFixture(3) // session-0, session-1, session-2
+  const incoming: Session[] = [current[0], current[1], { ...current[2], id: 'incoming-only' }]
+
+  expect(importPlan(current, incoming)).toEqual({ added: 1, removed: 1, kept: 2 })
+})
+
+test('O8 given 34 current sessions and 31 entirely different incoming sessions, importPlan reports all 34 removed and all 31 added', () => {
+  const current = sessionsFixture(34)
+  const incoming = sessionsFixture(31).map((session) => ({
+    ...session,
+    id: `incoming-${session.id}`,
+  }))
+
+  expect(importPlan(current, incoming)).toEqual({ added: 31, removed: 34, kept: 0 })
+})
+
+test('O8 importPlan reports nothing added or removed when current and incoming hold exactly the same sessions', () => {
+  const sessions = sessionsFixture(5)
+
+  expect(importPlan(sessions, sessions)).toEqual({ added: 0, removed: 0, kept: 5 })
+})
+
+test('O8 given an empty current database, importPlan reports every incoming session as added and none removed or kept', () => {
+  const incoming = sessionsFixture(3)
+
+  expect(importPlan([], incoming)).toEqual({ added: 3, removed: 0, kept: 0 })
+})
+
+// --- replaceAll's pre-import export, the ordering [O9] hangs on -----------------------------
+
+test('O9 replaceAll exports the current database to a file before clearing and replacing it', async () => {
+  const current = sessionsFixture(2)
+  await db.sessions.bulkPut(current)
+  await setActiveProgramId('assaf-ab-2026')
+  const { createObjectURL } = installDownloadFallback()
+  const incoming: BackupFile = {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: BASE + DAY,
+    sessions: [{ ...current[0], id: 'incoming-only' }],
+    settings: { activeProgramId: 'full-body-starter', lastExportedAt: null },
+  }
+
+  await replaceAll(incoming)
+
+  // If the export ran after the write (or not at all), the downloaded file would reflect
+  // `incoming`'s one session, not the two sessions that were on the phone beforehand.
+  expect(createObjectURL).toHaveBeenCalledTimes(1)
+  const blobArg = createObjectURL.mock.calls[0][0] as Blob
+  const exported = JSON.parse(await blobArg.text()) as BackupFile
+  expect(exported.sessions).toEqual(current)
+
+  // ...and only then does the database end up holding what `incoming` describes.
+  expect(await listSessions()).toEqual(incoming.sessions)
+})
+
+test('O9 replaceAll does not touch the database when the pre-import export fails', async () => {
+  const current = sessionsFixture(2)
+  await db.sessions.bulkPut(current)
+  await setActiveProgramId('assaf-ab-2026')
+  installShareSupport('rejects')
+  const incoming: BackupFile = {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: BASE + DAY,
+    sessions: [{ ...current[0], id: 'incoming-only' }],
+    settings: { activeProgramId: 'full-body-starter', lastExportedAt: null },
+  }
+
+  await expect(replaceAll(incoming)).rejects.toThrow()
+
+  expect(await listSessions()).toEqual(current)
+  const activeProgramRow = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
+  expect(activeProgramRow?.value).toBe('assaf-ab-2026')
+})
+
+// --- importBackup's refusal of a file it does not understand [O10] --------------------------
+
+test('O10 importBackup refuses text that is not valid JSON, naming the problem and leaving every session untouched', async () => {
+  const current = sessionsFixture(3)
+  await db.sessions.bulkPut(current)
+
+  await expect(importBackup('not valid json')).rejects.toThrow(BackupFormatError)
+
+  expect(await listSessions()).toEqual(current)
+})
+
+test('O10 importBackup refuses a file with an unknown schemaVersion, naming the problem and leaving every session untouched', async () => {
+  const current = sessionsFixture(3)
+  await db.sessions.bulkPut(current)
+  const unknownVersionFile = {
+    schemaVersion: 2,
+    exportedAt: BASE,
+    sessions: sessionsFixture(1),
+    settings: { activeProgramId: 'full-body-starter', lastExportedAt: null },
+  }
+
+  await expect(importBackup(JSON.stringify(unknownVersionFile))).rejects.toThrow(
+    BackupFormatError,
+  )
+
+  expect(await listSessions()).toEqual(current)
 })

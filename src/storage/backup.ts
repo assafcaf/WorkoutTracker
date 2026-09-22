@@ -124,9 +124,34 @@ export function readBackup(text: string): BackupFile {
   return parsed as BackupFile
 }
 
+/** What importing `incoming` over `current` would change, compared by session id. */
+export type ImportPlan = { added: number; removed: number; kept: number }
+
+/**
+ * Compares `current` (what is on the phone now) with `incoming` (what a backup file holds) by
+ * session id: `kept` is in both, `added` is only in `incoming`, `removed` is only in `current`.
+ * Pure -- reads neither array's contents beyond `id`, and touches no storage.
+ */
+export function importPlan(_current: Session[], _incoming: Session[]): ImportPlan {
+  throw new Error('not implemented')
+}
+
+/**
+ * Reads and validates `text` (see `readBackup`), then replaces the whole database with it (see
+ * `replaceAll`). Refuses -- without writing a single session -- when `text` is not valid JSON or
+ * names a schema version this build does not understand.
+ */
+export async function importBackup(_text: string): Promise<void> {
+  throw new Error('not implemented')
+}
+
 /**
  * Clears and rewrites `db.sessions` and the settings this file owns, in one transaction, so the
  * database afterward holds exactly what `file` describes and nothing it does not.
+ *
+ * First exports the current database and hands it to `downloadOrShare`, so nothing is
+ * overwritten before a fresh copy exists elsewhere; if that export rejects, this does not write
+ * at all.
  */
 export async function replaceAll(file: BackupFile): Promise<void> {
   await db.transaction('rw', db.sessions, db.settings, async () => {
