@@ -14,6 +14,13 @@ export type SetScreenProps = {
   sessionId: string
   lastEntries: SetEntry[]
   onLogged(session: Session, nextSetIndex: number): void
+  /**
+   * Told that an extra set past the plan was opened, with the set index it opened at. Optional
+   * so a caller that offers no extra set -- and E1-T5's own tests -- need not pass it.
+   *
+   * STUB (E1-T7, red): declared, but nothing renders the "Add set" control yet.
+   */
+  onAddSet?(exerciseId: string, nextSetIndex: number): void
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
