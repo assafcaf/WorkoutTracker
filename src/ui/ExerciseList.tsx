@@ -6,6 +6,8 @@ export type ExerciseListProps = {
   catalog: Map<string, Exercise>
   session: Session
   onOpenSet(exerciseId: string, setIndex: number): void
+  /** Finishes the session. E1-T8: not yet wired to a control. */
+  onFinish(): void
 }
 
 /** How many sets of this exercise the session already holds. */
@@ -30,26 +32,31 @@ function nextSetIndex(logged: number, plan: ExercisePlan): number {
  * exercise's name, so the list is also the way back into a set.
  */
 export function ExerciseList(props: ExerciseListProps): JSX.Element {
-  const { workout, catalog, session, onOpenSet } = props
+  const { workout, catalog, session, onOpenSet, onFinish } = props
 
   return (
-    <ul className="exercise-list">
-      {workout.exercises.map((plan) => {
-        const exercise = catalog.get(plan.exerciseId)
-        const logged = loggedSets(session.entries, plan.exerciseId)
-        return (
-          <li key={plan.exerciseId}>
-            <button
-              type="button"
-              className="exercise-row"
-              onClick={() => onOpenSet(plan.exerciseId, nextSetIndex(logged, plan))}
-            >
-              <span className="exercise-name">{exercise?.name ?? plan.exerciseId}</span>{' '}
-              <span className="set-progress">{`${logged}/${plan.sets}`}</span>
-            </button>
-          </li>
-        )
-      })}
-    </ul>
+    <div>
+      <ul className="exercise-list">
+        {workout.exercises.map((plan) => {
+          const exercise = catalog.get(plan.exerciseId)
+          const logged = loggedSets(session.entries, plan.exerciseId)
+          return (
+            <li key={plan.exerciseId}>
+              <button
+                type="button"
+                className="exercise-row"
+                onClick={() => onOpenSet(plan.exerciseId, nextSetIndex(logged, plan))}
+              >
+                <span className="exercise-name">{exercise?.name ?? plan.exerciseId}</span>{' '}
+                <span className="set-progress">{`${logged}/${plan.sets}`}</span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <button type="button" onClick={onFinish}>
+        Finish workout
+      </button>
+    </div>
   )
 }

@@ -3,14 +3,21 @@ import type { Exercise, Program, Session, SetEntry, Workout } from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
 import { db, isStorageAvailable } from './storage/db'
 import { ACTIVE_PROGRAM_ID_KEY, getActiveProgramId, setActiveProgramId } from './storage/settingsStore'
-import { getActiveSession, getLastEntriesFor, startOrResumeSession } from './storage/sessionStore'
+import {
+  finishSession,
+  getActiveSession,
+  getLastEntriesFor,
+  listSessions,
+  startOrResumeSession,
+} from './storage/sessionStore'
 import { ExerciseList } from './ui/ExerciseList'
+import { HistoryList } from './ui/HistoryList'
 import { ProgramPicker } from './ui/ProgramPicker'
 import { SetScreen } from './ui/SetScreen'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 
-type View = 'picker' | 'settings' | 'list' | 'set'
+type View = 'picker' | 'settings' | 'list' | 'set' | 'history'
 
 /** The set the set screen is on, with the history it was opened against. */
 type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[] }
@@ -73,6 +80,7 @@ export function App(): JSX.Element {
   const [view, setView] = useState<View>('picker')
   const [session, setSession] = useState<Session | null>(null)
   const [openSet, setOpenSet] = useState<OpenSet | null>(null)
+  const [history, setHistory] = useState<Session[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -214,6 +222,32 @@ export function App(): JSX.Element {
     }
   }
 
+  /** Finishes the session in progress, then returns to the picker. */
+  function handleFinish(): void {
+    if (!session) return
+    finishSession(session.id, Date.now())
+      .then(() => {
+        setSession(null)
+        setOpenSet(null)
+        setView('picker')
+      })
+      .catch(() => {
+        // The list stays up; nothing was cleared, so there is nothing to undo.
+      })
+  }
+
+  /** Loads the finished sessions and shows them. */
+  function handleShowHistory(): void {
+    listSessions()
+      .then((sessions) => {
+        setHistory(sessions)
+        setView('history')
+      })
+      .catch(() => {
+        // The picker stays up; without the sessions there is nothing to show.
+      })
+  }
+
   if (view === 'list' && session && located) {
     return (
       <ExerciseList
@@ -222,7 +256,19 @@ export function App(): JSX.Element {
         catalog={catalog}
         session={session}
         onOpenSet={handleOpenSet}
+        onFinish={handleFinish}
       />
+    )
+  }
+
+  if (view === 'history') {
+    return (
+      <div>
+        <button type="button" onClick={() => setView('picker')}>
+          Back
+        </button>
+        <HistoryList sessions={history} programs={programs} />
+      </div>
     )
   }
 
@@ -234,6 +280,9 @@ export function App(): JSX.Element {
       ) : null}
       <button type="button" onClick={() => setView('settings')}>
         Settings
+      </button>
+      <button type="button" onClick={handleShowHistory}>
+        History
       </button>
       <fieldset disabled={!storageAvailable}>
         <ProgramPicker

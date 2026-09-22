@@ -35,6 +35,7 @@ function sessionWith(entries: SetEntry[]): Session {
 function renderList(entries: SetEntry[]) {
   const user = userEvent.setup()
   const onOpenSet = vi.fn()
+  const onFinish = vi.fn()
   render(
     <ExerciseList
       program={assaf}
@@ -42,9 +43,10 @@ function renderList(entries: SetEntry[]) {
       catalog={catalog}
       session={sessionWith(entries)}
       onOpenSet={onOpenSet}
+      onFinish={onFinish}
     />,
   )
-  return { user, onOpenSet }
+  return { user, onOpenSet, onFinish }
 }
 
 /** The row an exercise is opened from; its accessible name starts with the exercise's name. */
