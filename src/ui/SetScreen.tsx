@@ -3,7 +3,9 @@ import { validateEntry } from '../domain/dial'
 import { presetForSet } from '../domain/prefill'
 import { restState } from '../domain/rest'
 import { logSet } from '../storage/sessionStore'
+import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { RepsDial } from './RepsDial'
+import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
@@ -77,6 +79,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(null)
   const [now, setNow] = useState<number>(() => Date.now())
 
+  useWakeLock(true)
+
   // The rest left is a function of the clock, so a slept phone cannot desync it: re-read the
   // time on a tick rather than counting down a number of our own.
   useEffect(() => {
@@ -121,6 +125,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   return (
     <div className="set-screen">
       <h2>{exercise.name}</h2>
+      <ExerciseInfoLink exercise={exercise} />
       <p className="set-counter">{`Set ${open.setIndex} of ${plan.sets}`}</p>
 
       <WeightDial
