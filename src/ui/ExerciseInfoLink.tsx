@@ -5,9 +5,13 @@ export type ExerciseInfoLinkProps = {
 }
 
 /**
- * Stub for E1-T9. A link to the exercise's curated demonstration, one tap from the set screen
- * for the exercise you have forgotten how to do.
+ * A link to the exercise's curated demonstration, one tap from the set screen for the
+ * exercise you have forgotten how to do.
  */
-export function ExerciseInfoLink(_props: ExerciseInfoLinkProps): JSX.Element {
-  return <div />
+export function ExerciseInfoLink({ exercise }: ExerciseInfoLinkProps): JSX.Element {
+  return (
+    <a href={exercise.infoUrl} target="_blank" rel="noopener noreferrer">
+      Exercise info
+    </a>
+  )
 }
