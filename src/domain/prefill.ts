@@ -15,11 +15,28 @@ import type { Exercise, ExercisePlan, SetEntry } from '../types'
  *
  * A bodyweight exercise always yields `weightKg: null`.
  */
-export function presetForSet(_args: {
+export function presetForSet(args: {
   exercise: Exercise
   plan: ExercisePlan
   setIndex: number
   lastEntries: SetEntry[]
 }): { weightKg: number | null; reps: number } {
-  throw new Error('not implemented')
+  const { exercise, plan, setIndex, lastEntries } = args
+
+  const exactMatch = lastEntries.find((entry) => entry.setIndex === setIndex)
+  if (exactMatch) {
+    return { weightKg: exercise.bodyweight ? null : exactMatch.weightKg, reps: exactMatch.reps }
+  }
+
+  if (lastEntries.length > 0) {
+    const highest = lastEntries.reduce((best, entry) =>
+      entry.setIndex > best.setIndex ? entry : best,
+    )
+    return { weightKg: exercise.bodyweight ? null : highest.weightKg, reps: highest.reps }
+  }
+
+  return {
+    weightKg: exercise.bodyweight ? null : exercise.startWeight,
+    reps: plan.repRange[0],
+  }
 }
