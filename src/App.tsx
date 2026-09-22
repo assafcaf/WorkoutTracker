@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react'
-import type { Exercise, Program } from './types'
+import type { Exercise, Program, Session, SetEntry, Workout } from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
 import { db, isStorageAvailable } from './storage/db'
 import { ACTIVE_PROGRAM_ID_KEY, getActiveProgramId, setActiveProgramId } from './storage/settingsStore'
+import { getActiveSession, getLastEntriesFor, startOrResumeSession } from './storage/sessionStore'
+import { ExerciseList } from './ui/ExerciseList'
 import { ProgramPicker } from './ui/ProgramPicker'
+import { SetScreen } from './ui/SetScreen'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 
-type View = 'picker' | 'settings'
+type View = 'picker' | 'settings' | 'list' | 'set'
+
+/** The set the set screen is on, with the history it was opened against. */
+type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[] }
 
 type LoadState =
   | { status: 'loading' }
@@ -21,16 +27,52 @@ type LoadState =
       staleActiveProgramNotice: boolean
     }
 
+/** The program and workout a session was started from, or null when the program is gone. */
+function locateSession(
+  programs: Program[],
+  session: Session,
+): { program: Program; workout: Workout } | null {
+  const program = programs.find((candidate) => candidate.id === session.programId)
+  const workout = program?.workouts.find((candidate) => candidate.id === session.workoutId)
+  return program && workout ? { program, workout } : null
+}
+
+/**
+ * What a set opens preset from: today's sets for the exercise laid over the last finished
+ * session's, so a set past the plan opens on the set before it as it was actually lifted.
+ */
+function presetHistory(history: SetEntry[], session: Session, exerciseId: string): SetEntry[] {
+  const today = session.entries.filter((entry) => entry.exerciseId === exerciseId)
+  const older = history.filter(
+    (entry) => !today.some((logged) => logged.setIndex === entry.setIndex),
+  )
+  return [...older, ...today]
+}
+
+/** The session in progress, or null when there is none or storage cannot be read. */
+async function activeSessionOrNull(storageAvailable: boolean): Promise<Session | null> {
+  if (!storageAvailable) return null
+  try {
+    return await getActiveSession()
+  } catch {
+    return null
+  }
+}
+
 /**
  * The whole app: loads the catalog and programs, resolves the active program, and renders the
- * picker or a route to Settings — or a hard-error screen when the programs fail to load.
+ * session in progress — its exercise list or one of its set screens — or the picker, or a
+ * route to Settings, or a hard-error screen when the programs fail to load.
  *
- * E1-T7 and E1-T8 extend this routing with the exercise list and the history list rather than
- * replacing it.
+ * A session in progress wins on mount, so reopening the app lands back in it.
+ *
+ * E1-T8 extends this routing with the history list rather than replacing it.
  */
 export function App(): JSX.Element {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [view, setView] = useState<View>('picker')
+  const [session, setSession] = useState<Session | null>(null)
+  const [openSet, setOpenSet] = useState<OpenSet | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -46,8 +88,11 @@ export function App(): JSX.Element {
         const staleActiveProgramNotice =
           storedProgramId !== undefined &&
           !programs.some((program) => program.id === storedProgramId)
+        const inProgress = await activeSessionOrNull(storageAvailable)
 
         if (cancelled) return
+        setSession(inProgress)
+        setView(inProgress ? 'list' : 'picker')
         setState({
           status: 'ready',
           catalog,
@@ -93,6 +138,40 @@ export function App(): JSX.Element {
       })
   }
 
+  /** Starts the chosen workout, or resumes the session already in progress, and lists it. */
+  function handleChoose(programId: string, workoutId: string): void {
+    startOrResumeSession(programId, workoutId, Date.now())
+      .then((started) => {
+        setSession(started)
+        setOpenSet(null)
+        setView('list')
+      })
+      .catch(() => {
+        // The picker stays up; nothing was started, so there is nothing to undo.
+      })
+  }
+
+  /** Opens a set of an exercise, against what that exercise was last lifted with. */
+  function handleOpenSet(exerciseId: string, setIndex: number): void {
+    getLastEntriesFor(exerciseId)
+      .then((history) => {
+        setOpenSet({ exerciseId, setIndex, history })
+        setView('set')
+      })
+      .catch(() => {
+        // Without the history the preset would be wrong; the list stays up instead.
+      })
+  }
+
+  /** Moves the open set past the plan; the history it was opened against still holds. */
+  function handleAddSet(exerciseId: string, nextSetIndex: number): void {
+    setOpenSet((current) =>
+      current && current.exerciseId === exerciseId
+        ? { ...current, setIndex: nextSetIndex }
+        : current,
+    )
+  }
+
   if (view === 'settings') {
     return (
       <div>
@@ -105,6 +184,45 @@ export function App(): JSX.Element {
           onActiveProgramChange={handleActiveProgramChange}
         />
       </div>
+    )
+  }
+
+  // A session whose program has since been retired has nowhere to be shown; the picker is
+  // what is left.
+  const located = session ? locateSession(programs, session) : null
+
+  if (view === 'set' && session && located && openSet) {
+    const plan = located.workout.exercises.find(
+      (candidate) => candidate.exerciseId === openSet.exerciseId,
+    )
+    const exercise = catalog.get(openSet.exerciseId)
+    if (plan && exercise) {
+      return (
+        // Keyed by the set, so opening another set -- or an extra one past the plan -- opens
+        // it preset afresh, while logging within one set screen leaves it standing.
+        <SetScreen
+          key={`${openSet.exerciseId}#${openSet.setIndex}`}
+          exercise={exercise}
+          plan={plan}
+          setIndex={openSet.setIndex}
+          sessionId={session.id}
+          lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
+          onLogged={(logged) => setSession(logged)}
+          onAddSet={handleAddSet}
+        />
+      )
+    }
+  }
+
+  if (view === 'list' && session && located) {
+    return (
+      <ExerciseList
+        program={located.program}
+        workout={located.workout}
+        catalog={catalog}
+        session={session}
+        onOpenSet={handleOpenSet}
+      />
     )
   }
 
@@ -122,9 +240,7 @@ export function App(): JSX.Element {
           programs={programs}
           catalog={catalog}
           activeProgramId={activeProgramId}
-          onChoose={() => {
-            // Starting or resuming a session from here is E1-T7's job.
-          }}
+          onChoose={handleChoose}
         />
       </fieldset>
     </div>
