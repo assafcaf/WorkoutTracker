@@ -66,3 +66,20 @@ test('O18 choosing the already active program does not call onActiveProgramChang
 
   expect(onActiveProgramChange).not.toHaveBeenCalled()
 })
+
+test('O7 using the Export control calls onExport', async () => {
+  const user = userEvent.setup()
+  const onExport = vi.fn()
+  render(
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      onExport={onExport}
+    />,
+  )
+
+  await user.click(screen.getByRole('button', { name: 'Export' }))
+
+  expect(onExport).toHaveBeenCalledTimes(1)
+})

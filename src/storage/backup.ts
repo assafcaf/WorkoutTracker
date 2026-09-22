@@ -1,0 +1,142 @@
+import type { Session } from '../types'
+import { db } from './db'
+import { listSessions } from './sessionStore'
+import {
+  ACTIVE_PROGRAM_ID_KEY,
+  LAST_EXPORTED_AT_KEY,
+  getLastExportedAt,
+  setActiveProgramId,
+  setLastExportedAt,
+} from './settingsStore'
+
+/** Bumped whenever the shape below changes in a way `readBackup` cannot translate on its own. */
+export const BACKUP_SCHEMA_VERSION = 1
+
+/**
+ * Everything a backup file carries: every logged session and the settings this app owns,
+ * dated by when the export was made.
+ */
+export type BackupFile = {
+  schemaVersion: 1
+  exportedAt: number
+  sessions: Session[]
+  settings: { activeProgramId: string; lastExportedAt: number | null }
+}
+
+/**
+ * The file name an export made at `exportedAt` is given: `workout-backup-<yyyy-mm-dd>.json`,
+ * dated by the local calendar day, so it matches what the trainee sees on the device that made
+ * it.
+ */
+export function backupFileName(exportedAt: number): string {
+  const date = new Date(exportedAt)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `workout-backup-${year}-${month}-${day}.json`
+}
+
+/**
+ * Every logged session and the settings this app owns, as of `now`.
+ */
+export async function exportBackup(now: number): Promise<BackupFile> {
+  const [sessions, activeProgramRow, lastExportedAt] = await Promise.all([
+    listSessions(),
+    db.settings.get(ACTIVE_PROGRAM_ID_KEY),
+    getLastExportedAt(),
+  ])
+  const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
+
+  return {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: now,
+    sessions,
+    settings: { activeProgramId, lastExportedAt },
+  }
+}
+
+// `Blob.prototype.text` is missing in some runtimes that otherwise implement `Blob` and
+// `FileReader` fully — older Safari, and jsdom (the environment this file's tests run under).
+// Feature-detected so real, capable browsers are left untouched.
+if (typeof Blob !== 'undefined' && typeof Blob.prototype.text !== 'function') {
+  Blob.prototype.text = function (this: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = () => reject(reader.error ?? new Error('failed to read blob'))
+      reader.readAsText(this)
+    })
+  }
+}
+
+/**
+ * Hands `file` to the browser's share sheet when `navigator.canShare({ files })` says it can,
+ * otherwise downloads it through an object-URL anchor. Records
+ * `setLastExportedAt(file.exportedAt)` once that succeeds.
+ */
+export async function downloadOrShare(file: BackupFile): Promise<void> {
+  const name = backupFileName(file.exportedAt)
+  const blob = new Blob([JSON.stringify(file)], { type: 'application/json' })
+  const shareFile = new File([blob], name, { type: 'application/json' })
+
+  const canShare =
+    typeof navigator.canShare === 'function' &&
+    typeof navigator.share === 'function' &&
+    navigator.canShare({ files: [shareFile] })
+
+  if (canShare) {
+    await navigator.share({ files: [shareFile] })
+  } else {
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = name
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+
+  await setLastExportedAt(file.exportedAt)
+}
+
+/** Raised by `readBackup` for text that is not valid JSON or names an unknown schema version. */
+export class BackupFormatError extends Error {}
+
+/**
+ * Parses and validates `text` as a `BackupFile`, throwing `BackupFormatError` when it is not
+ * valid JSON or carries a `schemaVersion` this build does not know.
+ */
+export function readBackup(text: string): BackupFile {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    throw new BackupFormatError('backup file is not valid JSON')
+  }
+
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    (parsed as { schemaVersion?: unknown }).schemaVersion !== BACKUP_SCHEMA_VERSION
+  ) {
+    throw new BackupFormatError('backup file has an unknown schema version')
+  }
+
+  return parsed as BackupFile
+}
+
+/**
+ * Clears and rewrites `db.sessions` and the settings this file owns, in one transaction, so the
+ * database afterward holds exactly what `file` describes and nothing it does not.
+ */
+export async function replaceAll(file: BackupFile): Promise<void> {
+  await db.transaction('rw', db.sessions, db.settings, async () => {
+    await db.sessions.clear()
+    await db.sessions.bulkPut(file.sessions)
+    await setActiveProgramId(file.settings.activeProgramId)
+    if (file.settings.lastExportedAt === null) {
+      await db.settings.delete(LAST_EXPORTED_AT_KEY)
+    } else {
+      await setLastExportedAt(file.settings.lastExportedAt)
+    }
+  })
+}
