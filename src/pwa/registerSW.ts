@@ -2,9 +2,11 @@
 /**
  * Registering the app's service worker, and the handle the "Update ready" control needs.
  *
- * `E2-T2` only has to register; `E2-T3` is what calls `onNeedRefresh` and builds the control
- * that uses the handle.
+ * `registerServiceWorker` is the low-level call; `useServiceWorkerUpdate` is what the app
+ * mounts, and the only place that registers, so one registration carries the callbacks the
+ * "Update ready" control is driven by.
  */
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { registerSW } from 'virtual:pwa-register'
 
 /** What the UI calls to let a waiting worker take over. */
@@ -41,8 +43,26 @@ export function registerServiceWorker(options?: RegisterOptions): void {
  * What the "Update ready" control is driven by: registers the worker once on mount, reports a
  * waiting new version, and activates it only when `update` is called.
  *
- * E2-T3 stub — the behaviour is not written yet.
+ * Finding an update does nothing on its own — no reload, no `skipWaiting` — because that is
+ * exactly what would throw away the workout in progress.
  */
 export function useServiceWorkerUpdate(): { needRefresh: boolean; update(): Promise<void> } {
-  throw new Error('useServiceWorkerUpdate is not implemented yet (E2-T3)')
+  const [waiting, setWaiting] = useState<UpdateHandle | null>(null)
+  const registered = useRef(false)
+
+  useEffect(() => {
+    // StrictMode invokes a mount effect twice. Registering twice would leave two handles and
+    // a second update to find, so the first registration of this mount is the only one.
+    if (registered.current) return
+    registered.current = true
+    registerServiceWorker({ onNeedRefresh: (handle) => setWaiting(handle) })
+  }, [])
+
+  const update = useCallback(async () => {
+    // Reloading is the point: activating the waiting worker while the old code keeps running
+    // would leave the trainee on the version they just asked to replace.
+    if (waiting) await waiting.updateServiceWorker(true)
+  }, [waiting])
+
+  return { needRefresh: waiting !== null, update }
 }

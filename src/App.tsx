@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Exercise, Program, Session, SetEntry, Workout } from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
+import { useServiceWorkerUpdate } from './pwa/registerSW'
 import { db, isStorageAvailable } from './storage/db'
 import { ACTIVE_PROGRAM_ID_KEY, getActiveProgramId, setActiveProgramId } from './storage/settingsStore'
 import {
@@ -16,6 +17,7 @@ import { ProgramPicker } from './ui/ProgramPicker'
 import { SetScreen } from './ui/SetScreen'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
+import { UpdatePill } from './ui/UpdatePill'
 
 type View = 'picker' | 'settings' | 'list' | 'set' | 'history'
 
@@ -67,15 +69,34 @@ async function activeSessionOrNull(storageAvailable: boolean): Promise<Session |
 }
 
 /**
- * The whole app: loads the catalog and programs, resolves the active program, and renders the
- * session in progress — its exercise list or one of its set screens — or the picker, or a
+ * The whole app: the views below, with the "Update ready" control over them.
+ *
+ * The control lives here rather than in a view because a new deployment must never interrupt
+ * a workout: it is offered once an update is waiting and stays offered, whatever the session
+ * moves on to, until the trainee presses it. Registering the worker from here is also what
+ * starts the app listening for that update.
+ */
+export function App(): JSX.Element {
+  const { needRefresh, update } = useServiceWorkerUpdate()
+
+  return (
+    <>
+      {needRefresh ? <UpdatePill onUpdate={update} /> : null}
+      <AppViews />
+    </>
+  )
+}
+
+/**
+ * The app's views: loads the catalog and programs, resolves the active program, and renders
+ * the session in progress — its exercise list or one of its set screens — or the picker, or a
  * route to Settings, or a hard-error screen when the programs fail to load.
  *
  * A session in progress wins on mount, so reopening the app lands back in it.
  *
  * E1-T8 extends this routing with the history list rather than replacing it.
  */
-export function App(): JSX.Element {
+function AppViews(): JSX.Element {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [view, setView] = useState<View>('picker')
   const [session, setSession] = useState<Session | null>(null)
