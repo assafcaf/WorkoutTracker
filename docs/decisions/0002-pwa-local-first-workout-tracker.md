@@ -67,4 +67,58 @@ build is not reachable from this repo at all. The repo was empty, and the workfl
   20, not changing the stack.
 
 ## Outcome
-Added when the work lands.
+
+E1 "Log a workout" landed on `epic/E1-log-a-workout` across nine tasks in five waves, ending
+at `7cf025b` with 150 tests passing, `tsc --noEmit` clean and `eslint` reporting one warning
+and no errors. All 20 spec outcomes are covered, each by at least one test written before the
+code that satisfies it. The branch is not pushed and no PR exists: this repo has no `origin`,
+and `.claude/workflow/config.md` skips both.
+
+What was built, as decided above: the React 18 + TypeScript + Vite 5 + Vitest 2 project;
+`src/data/exercises.json` as the 14-exercise catalog and two programs under
+`src/data/programs/` referencing it by id; a Dexie `sessions` store whose writes are
+whole-document puts; pure domain modules for the weight ladder, entry validation, rest and set
+prefill; and a UI of program picker, exercise list, set screen, settings and history list.
+
+Where it departed from the decision above, and why:
+
+- **The gate was broken before the first task could pass it.** `vitest-gate.sh` matched its
+  patterns against vitest's raw output, but vitest colours its summary on Windows regardless of
+  whether the output is a TTY, so the anchored `^[[:space:]]*Tests[[:space:]]+.*failed` pattern
+  never matched. Every genuine red would have been reported as exit 2, "nothing ran" — the one
+  result the red gate treats as a failure. The gate now matches on an escape-stripped copy and
+  still prints the original. The claim in `config.md` that it had been "verified against all
+  four cases" was made through a stubbed runner, which emits no colour; it has now been
+  re-verified against a real vitest 2.1.2 for all four (no files matched → 2, import failure →
+  2, genuine failure → 1, passing → 0).
+- **The whole epic's dependencies were installed by the scaffolding task**, including `dexie`
+  and `fake-indexeddb`, which it does not itself use. `verify-red.sh` runs `npm ci` in a
+  throwaway worktree at each task's red commit, and no later ticket owned `package.json`, so a
+  task that first needed a dependency could never have proven red.
+- **`getLastEntriesFor` scans at most 200 finished sessions**, newest-first, and stops at the
+  first containing the exercise. The decision above says history follows the exercise across
+  programs but sets no bound; this one keeps a cold start from walking an unbounded log.
+- **`startOrResumeSession` returns the in-progress session even when a different program or
+  workout is asked for.** The "at most one unfinished session" invariant is what lets four
+  later tasks share the store without coordinating; the app routes an active session straight
+  to its exercise list, so the conflicting choice is close to unreachable.
+- **`logSet` and `finishSession` reject on an unknown session id** rather than no-op'ing. A set
+  that vanishes without a trace is the failure this app can least afford, and the
+  storage-unavailable banner already establishes that the app says when it cannot save.
+- **The active program defaults to the first program** when nothing is stored, which is
+  `assaf-ab-2026`; a stored id naming a program that no longer exists falls back to the first
+  and says so on screen.
+- **The dials' scroll-snap behaviour is not covered by the suite.** jsdom has no layout,
+  scrolling or snap physics, so the column is asserted as markup and the values are driven
+  through the minus/plus buttons and the keypad. Snapping, momentum and scroll-changes-value
+  remain unverified until someone logs a session on the phone — which is what the spec's
+  acceptance step was already for.
+- **The catalog's `infoUrl`s were authored as literals and are never fetched**, by the app or
+  the tests. Four of them are the site's search URL where no specific page could be confirmed.
+  A gate that depended on the network would fail for reasons that have nothing to do with the
+  code.
+
+Consequences worth carrying into E2: iOS can still evict IndexedDB and there is no export yet,
+so a cleared Safari store loses the log. `src/ui/HistoryList.tsx` exports both `summarise` and
+`HistoryList`, which trips `react-refresh/only-export-components` as a warning; splitting the
+pure function out would silence it.

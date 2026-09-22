@@ -1,0 +1,33 @@
+{
+  "id": "assaf-ab-2026",
+  "name": "Assaf A/B 2026",
+  "units": "kg",
+  "workouts": [
+    {
+      "id": "workout-a",
+      "name": "Workout A",
+      "exercises": [
+        { "exerciseId": "back-squat", "sets": 4, "repRange": [8, 10], "restSeconds": 180 },
+        { "exerciseId": "lunges", "sets": 3, "repRange": [10, 12], "restSeconds": 90 },
+        { "exerciseId": "db-bench-press", "sets": 4, "repRange": [8, 10], "restSeconds": 90 },
+        { "exerciseId": "push-ups", "sets": 3, "repRange": [10, 15], "restSeconds": 90 },
+        { "exerciseId": "machine-shoulder-press", "sets": 3, "repRange": [8, 10], "restSeconds": 90 },
+        { "exerciseId": "lateral-raises", "sets": 3, "repRange": [10, 15], "restSeconds": 90 },
+        { "exerciseId": "cable-push-down", "sets": 3, "repRange": [10, 12], "restSeconds": 90 }
+      ]
+    },
+    {
+      "id": "workout-b",
+      "name": "Workout B",
+      "exercises": [
+        { "exerciseId": "deadlift", "sets": 3, "repRange": [8, 10], "restSeconds": 180 },
+        { "exerciseId": "assisted-pull-ups", "sets": 4, "repRange": [5, 8], "restSeconds": 90 },
+        { "exerciseId": "narrow-grip-pull-down", "sets": 3, "repRange": [10, 12], "restSeconds": 90 },
+        { "exerciseId": "machine-row", "sets": 4, "repRange": [8, 10], "restSeconds": 90 },
+        { "exerciseId": "face-pull", "sets": 3, "repRange": [10, 15], "restSeconds": 90 },
+        { "exerciseId": "hyper-extension", "sets": 3, "repRange": [10, 15], "restSeconds": 90 },
+        { "exerciseId": "seated-biceps-curls", "sets": 3, "repRange": [10, 12], "restSeconds": 90 }
+      ]
+    }
+  ]
+}

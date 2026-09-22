@@ -1,0 +1,128 @@
+[
+  {
+    "id": "back-squat",
+    "name": "Back squat",
+    "weightStep": 2.5,
+    "startWeight": 50,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/squat.html"
+  },
+  {
+    "id": "lunges",
+    "name": "Lunges",
+    "weightStep": 1,
+    "startWeight": 7,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/dumbbell-lunge.html"
+  },
+  {
+    "id": "db-bench-press",
+    "name": "DB bench press",
+    "weightStep": 1,
+    "startWeight": 10,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/dumbbell-bench-press.html"
+  },
+  {
+    "id": "push-ups",
+    "name": "Push-ups",
+    "weightStep": 1,
+    "startWeight": null,
+    "bodyweight": true,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/push-up.html"
+  },
+  {
+    "id": "machine-shoulder-press",
+    "name": "Machine shoulder press",
+    "weightStep": 1.25,
+    "startWeight": 5,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/machine-shoulder-press.html"
+  },
+  {
+    "id": "lateral-raises",
+    "name": "Lateral raises",
+    "weightStep": 1,
+    "startWeight": 3,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/side-lateral-raise.html"
+  },
+  {
+    "id": "cable-push-down",
+    "name": "Cable push-down",
+    "weightStep": 2.5,
+    "startWeight": 17.5,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/tricep-pushdown.html"
+  },
+  {
+    "id": "deadlift",
+    "name": "Deadlift",
+    "weightStep": 2.5,
+    "startWeight": 55,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/deadlift.html"
+  },
+  {
+    "id": "assisted-pull-ups",
+    "name": "Assisted pull-ups",
+    "weightStep": 1,
+    "startWeight": 27,
+    "bodyweight": false,
+    "invertProgress": true,
+    "infoUrl": "https://www.muscleandstrength.com/search?query=assisted+pull+up"
+  },
+  {
+    "id": "narrow-grip-pull-down",
+    "name": "Narrow-grip pull-down",
+    "weightStep": 1.25,
+    "startWeight": 41,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/search?query=close+grip+lat+pulldown"
+  },
+  {
+    "id": "machine-row",
+    "name": "Machine row",
+    "weightStep": 5,
+    "startWeight": 50,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/search?query=machine+row"
+  },
+  {
+    "id": "face-pull",
+    "name": "Face pull",
+    "weightStep": 2.5,
+    "startWeight": 15,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/face-pull.html"
+  },
+  {
+    "id": "hyper-extension",
+    "name": "Hyper-extension",
+    "weightStep": 1,
+    "startWeight": null,
+    "bodyweight": true,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/search?query=hyperextension"
+  },
+  {
+    "id": "seated-biceps-curls",
+    "name": "Seated biceps curls",
+    "weightStep": 1,
+    "startWeight": 8,
+    "bodyweight": false,
+    "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/seated-dumbbell-curl.html"
+  }
+]
