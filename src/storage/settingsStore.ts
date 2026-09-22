@@ -40,13 +40,14 @@ export const LAST_EXPORTED_AT_KEY = 'lastExportedAt'
  * When the database was last exported, or null when it never has been.
  */
 export async function getLastExportedAt(): Promise<number | null> {
-  throw new Error('getLastExportedAt is not implemented')
+  const row = await db.settings.get(LAST_EXPORTED_AT_KEY)
+  return typeof row?.value === 'number' ? row.value : null
 }
 
 /**
  * Records `at` as the time of the most recent successful export, so a later
  * `getLastExportedAt` call — even after the database is closed and reopened — returns it.
  */
-export async function setLastExportedAt(_at: number): Promise<void> {
-  throw new Error('setLastExportedAt is not implemented')
+export async function setLastExportedAt(at: number): Promise<void> {
+  await db.settings.put({ key: LAST_EXPORTED_AT_KEY, value: at })
 }

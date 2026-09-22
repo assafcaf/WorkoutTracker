@@ -16,11 +16,10 @@ export type SettingsProps = {
  * `activeProgramId` checked, and calls `onActiveProgramChange(program.id)` when another is
  * chosen. Choosing the already-active program is a no-op, not a redundant call.
  *
- * E2-T4 stub: the Export control renders but does not yet call `onExport` — that wiring is
- * this task's to finish.
+ * The Export control calls `onExport` when it is provided, and is a no-op otherwise.
  */
 export function Settings(props: SettingsProps): JSX.Element {
-  const { programs, activeProgramId, onActiveProgramChange } = props
+  const { programs, activeProgramId, onActiveProgramChange, onExport } = props
 
   return (
     <>
@@ -41,7 +40,9 @@ export function Settings(props: SettingsProps): JSX.Element {
           </label>
         ))}
       </fieldset>
-      <button type="button">Export</button>
+      <button type="button" onClick={() => onExport?.()}>
+        Export
+      </button>
     </>
   )
 }
