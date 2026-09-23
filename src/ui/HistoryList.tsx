@@ -1,4 +1,5 @@
 import type { Program, Session } from '../types'
+import './HistoryList.css'
 
 /**
  * A finished session, reduced to what the history list shows for it.
@@ -55,7 +56,7 @@ export function HistoryList(props: { sessions: Session[]; programs: Program[] })
       {sessions.map((session) => {
         const summary = summarise(session, programs)
         return (
-          <li key={summary.sessionId}>
+          <li key={summary.sessionId} className="history-row">
             <span className="history-date">{calendarDate(summary.date)}</span>{' '}
             <span className="history-program">{summary.programName}</span>{' '}
             <span className="history-workout">{summary.workoutName}</span>{' '}
