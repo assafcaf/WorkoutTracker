@@ -23,7 +23,6 @@
 .tab-bar-tab {
   position: relative;
   display: flex;
-  height: calc(var(--tap-min) + var(--space-3));
   min-height: var(--tap-min);
   flex: 1;
   flex-direction: column;

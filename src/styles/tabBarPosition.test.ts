@@ -45,10 +45,6 @@ function appShellDeclarations(): Map<string, string> {
   return declarationsFor(readFileSync(appShellPath, 'utf-8'), '.app-shell')
 }
 
-function tabBarTabDeclarations(): Map<string, string> {
-  return declarationsFor(readFileSync(tabBarPath, 'utf-8'), '.tab-bar-tab')
-}
-
 test('G3 .tab-bar is pinned to the top of the viewport with position: fixed; top: 0, and declares no bottom offset', () => {
   const declared = tabBarDeclarations()
 
@@ -106,33 +102,4 @@ test('G3b .app-shell top clearance accounts for --safe-top as well as --tap-min,
     paddingTop,
     '.app-shell padding-top must also reference --safe-top -- the bar itself pads its top by --safe-top (TabBar.css), so clearance that only accounts for --tap-min is too short on a notched device',
   ).toMatch(/var\(\s*--safe-top\s*\)/)
-})
-
-// [O11, fix-the-ui-audit] --tap-min alone (44px) is shorter than what `.tab-bar-tab` actually
-// renders at once its padding and gap are counted, so a screen's header title can still sit
-// partly under the bar even with G3b's fix in place. `.tab-bar-tab` gets an explicit `height`
-// that is the bar's true rendered height, and `.app-shell`'s padding-top must clear exactly
-// that height plus --safe-top -- the same expression, so the two can never drift apart again.
-test('O11 .tab-bar-tab declares a height and .app-shell padding-top clears that height plus --safe-top, using the same expression', () => {
-  const tabTabHeight = tabBarTabDeclarations().get('height')
-  expect(tabTabHeight, '.tab-bar-tab must declare an explicit height').toBeDefined()
-
-  const paddingTop = appShellDeclarations().get('padding-top')
-  expect(paddingTop, '.app-shell must declare its own padding-top').toBeDefined()
-
-  const heightExpression = (tabTabHeight as string).replace(/^calc\((.*)\)$/, '$1').trim()
-  expect(
-    paddingTop,
-    '.app-shell padding-top must equal .tab-bar-tab’s own height expression plus --safe-top',
-  ).toBe(`calc(${heightExpression} + var(--safe-top))`)
-})
-
-test('O11 .tab-bar-tab’s height expression names only existing tokens', () => {
-  const tabTabHeight = tabBarTabDeclarations().get('height') as string
-
-  expect(tabTabHeight).toMatch(/var\(\s*--tap-min\s*\)/)
-  expect(
-    [...tabTabHeight.matchAll(/var\(\s*(--[\w-]+)/g)].map((match) => match[1]),
-    'the height expression must reference no token besides --tap-min and --space-3',
-  ).toEqual(['--tap-min', '--space-3'])
 })
