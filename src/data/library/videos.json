@@ -1,1 +1,407 @@
-{}
+{
+  "Barbell_Deadlift": {
+    "provider": "youtube",
+    "id": "wjsu6ceEkAQ",
+    "source": "https://www.muscleandstrength.com/exercises/deadlifts.html"
+  },
+  "Barbell_Hack_Squat": {
+    "provider": "youtube",
+    "id": "cSId0_Q9fdM",
+    "source": "https://www.muscleandstrength.com/exercises/barbell-hack-squat.html"
+  },
+  "Barbell_Lunge": {
+    "provider": "vimeo",
+    "id": "877885592",
+    "source": "https://www.muscleandstrength.com/exercises/barbell-lunge.html"
+  },
+  "Barbell_Seated_Calf_Raise": {
+    "provider": "vimeo",
+    "id": "756793477",
+    "source": "https://www.muscleandstrength.com/exercises/seated-barbell-calf-raise.html"
+  },
+  "Barbell_Shrug": {
+    "provider": "youtube",
+    "id": "6hNudn7Peco",
+    "source": "https://www.muscleandstrength.com/exercises/barbell-shrug.html"
+  },
+  "Barbell_Side_Bend": {
+    "provider": "vimeo",
+    "id": "877885441",
+    "source": "https://www.muscleandstrength.com/exercises/barbell-side-bends.html"
+  },
+  "Barbell_Squat": {
+    "provider": "youtube",
+    "id": "R2dMsNhN3DE",
+    "source": "https://www.muscleandstrength.com/exercises/squat.html"
+  },
+  "Barbell_Step_Ups": {
+    "provider": "youtube",
+    "id": "_uzlVEERPyM",
+    "source": "https://www.muscleandstrength.com/exercises/barbell-step-ups.html"
+  },
+  "Barbell_Walking_Lunge": {
+    "provider": "youtube",
+    "id": "Kt6pWpaCMGE",
+    "source": "https://www.muscleandstrength.com/exercises/walking-barbell-lunge.html"
+  },
+  "Bench_Dips": {
+    "provider": "vimeo",
+    "id": "756783893",
+    "source": "https://www.muscleandstrength.com/exercises/tricep-bench-dip.html"
+  },
+  "Bodyweight_Walking_Lunge": {
+    "provider": "vimeo",
+    "id": "877885520",
+    "source": "https://www.muscleandstrength.com/exercises/bodyweight-walking-lunge.html"
+  },
+  "Box_Squat": {
+    "provider": "youtube",
+    "id": "ejK25kB7FR8",
+    "source": "https://www.muscleandstrength.com/exercises/box-squat-shown-with-bench.html"
+  },
+  "Cable_Chest_Press": {
+    "provider": "youtube",
+    "id": "n4CEULDvATA",
+    "source": "https://www.muscleandstrength.com/exercises/cable-chest-press.html"
+  },
+  "Cable_Crunch": {
+    "provider": "vimeo",
+    "id": "760008287",
+    "source": "https://www.muscleandstrength.com/exercises/cable-crunch.html"
+  },
+  "Cable_Hip_Adduction": {
+    "provider": "vimeo",
+    "id": "760008232",
+    "source": "https://www.muscleandstrength.com/exercises/cable-hip-adduction.html"
+  },
+  "Cable_Incline_Triceps_Extension": {
+    "provider": "vimeo",
+    "id": "756788230",
+    "source": "https://www.muscleandstrength.com/exercises/incline-cable-tricep-extension.html"
+  },
+  "Cable_Iron_Cross": {
+    "provider": "youtube",
+    "id": "DumkKcC_nHI",
+    "source": "https://www.muscleandstrength.com/exercises/cable-crossovers.html"
+  },
+  "Cable_Lying_Triceps_Extension": {
+    "provider": "vimeo",
+    "id": "756788144",
+    "source": "https://www.muscleandstrength.com/exercises/lying-cable-tricep-extension.html"
+  },
+  "Cable_Preacher_Curl": {
+    "provider": "vimeo",
+    "id": "760008192",
+    "source": "https://www.muscleandstrength.com/exercises/preacher-cable-curl.html"
+  },
+  "Cable_Seated_Crunch": {
+    "provider": "vimeo",
+    "id": "760008273",
+    "source": "https://www.muscleandstrength.com/exercises/seated-cable-crunch.html"
+  },
+  "Cable_Shrugs": {
+    "provider": "youtube",
+    "id": "LwTq3v2GUF4",
+    "source": "https://www.muscleandstrength.com/exercises/cable-shrug.html"
+  },
+  "Close-Grip_Front_Lat_Pulldown": {
+    "provider": "youtube",
+    "id": "uAyrz5GTEHg",
+    "source": "https://www.muscleandstrength.com/exercises/close-grip-pull-down.html"
+  },
+  "Concentration_Curls": {
+    "provider": "youtube",
+    "id": "LHDwya1KY8M",
+    "source": "https://www.muscleandstrength.com/exercises/concentration-cur.html"
+  },
+  "Decline_Dumbbell_Bench_Press": {
+    "provider": "youtube",
+    "id": "5pDbtYmX5fM",
+    "source": "https://www.muscleandstrength.com/exercises/decline-dumbbell-bench-press.html"
+  },
+  "Donkey_Calf_Raises": {
+    "provider": "vimeo",
+    "id": "756793723",
+    "source": "https://www.muscleandstrength.com/exercises/donkey-calf-raise.html"
+  },
+  "Dumbbell_Bench_Press": {
+    "provider": "youtube",
+    "id": "dGqI0Z5ul4k",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-bench-press.html"
+  },
+  "Dumbbell_Floor_Press": {
+    "provider": "youtube",
+    "id": "gaBOfLlIXjs",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-floor-press.html"
+  },
+  "Dumbbell_Lunges": {
+    "provider": "vimeo",
+    "id": "877881961",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-lunge.html"
+  },
+  "Dumbbell_One-Arm_Upright_Row": {
+    "provider": "vimeo",
+    "id": "756787860",
+    "source": "https://www.muscleandstrength.com/exercises/one-arm-dumbbell-upright-row.html"
+  },
+  "Dumbbell_Prone_Incline_Curl": {
+    "provider": "vimeo",
+    "id": "756794413",
+    "source": "https://www.muscleandstrength.com/exercises/prone-incline-dumbbell-curl.html"
+  },
+  "Dumbbell_Rear_Lunge": {
+    "provider": "youtube",
+    "id": "Ix9QZ3Pnneo",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-rear-lunge.html"
+  },
+  "Dumbbell_Seated_One-Leg_Calf_Raise": {
+    "provider": "vimeo",
+    "id": "756793707",
+    "source": "https://www.muscleandstrength.com/exercises/one-leg-seated-dumbbell-calf-raise.html"
+  },
+  "Dumbbell_Shrug": {
+    "provider": "youtube",
+    "id": "dj2Gm628kas",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-shrugs.html"
+  },
+  "Dumbbell_Side_Bend": {
+    "provider": "vimeo",
+    "id": "877885243",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-side-bends.html"
+  },
+  "Dumbbell_Squat": {
+    "provider": "vimeo",
+    "id": "1077314446",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-squat.html"
+  },
+  "Dumbbell_Step_Ups": {
+    "provider": "vimeo",
+    "id": "877882016",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-step-up.html"
+  },
+  "Exercise_Ball_Crunch": {
+    "provider": "vimeo",
+    "id": "1082965087",
+    "source": "https://www.muscleandstrength.com/exercises/swiss-ball-crunch.html"
+  },
+  "Floor_Press": {
+    "provider": "vimeo",
+    "id": "756783643",
+    "source": "https://www.muscleandstrength.com/exercises/floor-bench-press.html"
+  },
+  "Good_Morning": {
+    "provider": "youtube",
+    "id": "8sGgyquE1Bs",
+    "source": "https://www.muscleandstrength.com/exercises/good-mornings.html"
+  },
+  "Hanging_Leg_Raise": {
+    "provider": "vimeo",
+    "id": "1082967611",
+    "source": "https://www.muscleandstrength.com/exercises/hanging-leg-raise.html"
+  },
+  "Hyperextensions_Back_Extensions": {
+    "provider": "youtube",
+    "id": "BZMnTSobIAQ",
+    "source": "https://www.muscleandstrength.com/exercises/hyperextension.html"
+  },
+  "Incline_Dumbbell_Curl": {
+    "provider": "youtube",
+    "id": "UeleXjsE-98",
+    "source": "https://www.muscleandstrength.com/exercises/incline-dumbbell-curl.html"
+  },
+  "Incline_Hammer_Curls": {
+    "provider": "vimeo",
+    "id": "756794332",
+    "source": "https://www.muscleandstrength.com/exercises/incline-hammer-curl.html"
+  },
+  "Inverted_Row": {
+    "provider": "vimeo",
+    "id": "756788811",
+    "source": "https://www.muscleandstrength.com/exercises/high-inverted-row.html"
+  },
+  "Leg_Extensions": {
+    "provider": "youtube",
+    "id": "0fl1RRgJ83I",
+    "source": "https://www.muscleandstrength.com/exercises/leg-extension.html"
+  },
+  "Leg_Press": {
+    "provider": "youtube",
+    "id": "sEM_zo9w2ss",
+    "source": "https://www.muscleandstrength.com/exercises/45-degree-leg-press.html"
+  },
+  "Leverage_Iso_Row": {
+    "provider": "vimeo",
+    "id": "877881179",
+    "source": "https://www.muscleandstrength.com/exercises/machine-row.html"
+  },
+  "Machine_Bicep_Curl": {
+    "provider": "vimeo",
+    "id": "760001918",
+    "source": "https://www.muscleandstrength.com/exercises/bicep-machine-curl.html"
+  },
+  "Overhead_Squat": {
+    "provider": "youtube",
+    "id": "eJQffNbakL4",
+    "source": "https://www.muscleandstrength.com/exercises/overhead-squat.html"
+  },
+  "Plank": {
+    "provider": "vimeo",
+    "id": "877881002",
+    "source": "https://www.muscleandstrength.com/exercises/hover.html"
+  },
+  "Preacher_Hammer_Dumbbell_Curl": {
+    "provider": "youtube",
+    "id": "ZdcFOgFi1Dg",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-hammer-preacher-curl.html"
+  },
+  "Pushups": {
+    "provider": "youtube",
+    "id": "KEFQyLkDYtI",
+    "source": "https://www.muscleandstrength.com/exercises/push-up.html"
+  },
+  "Rocking_Standing_Calf_Raise": {
+    "provider": "vimeo",
+    "id": "756793784",
+    "source": "https://www.muscleandstrength.com/exercises/rocking-standing-calf-raise.html"
+  },
+  "Russian_Twist": {
+    "provider": "vimeo",
+    "id": "877885324",
+    "source": "https://www.muscleandstrength.com/exercises/russian-twist.html"
+  },
+  "Seated_Barbell_Twist": {
+    "provider": "vimeo",
+    "id": "877885279",
+    "source": "https://www.muscleandstrength.com/exercises/seated-barbell-twist.html"
+  },
+  "Seated_Cable_Rows": {
+    "provider": "vimeo",
+    "id": "756788734",
+    "source": "https://www.muscleandstrength.com/exercises/seated-row.html"
+  },
+  "Seated_Calf_Raise": {
+    "provider": "youtube",
+    "id": "Yh5TXz99xwY",
+    "source": "https://www.muscleandstrength.com/exercises/seated-calf-raise.html"
+  },
+  "Seated_Dumbbell_Curl": {
+    "provider": "vimeo",
+    "id": "756794196",
+    "source": "https://www.muscleandstrength.com/exercises/seated-dumbbell-curl.html"
+  },
+  "Seated_Dumbbell_Press": {
+    "provider": "youtube",
+    "id": "FRxZ6wr5bpA",
+    "source": "https://www.muscleandstrength.com/exercises/seated-dumbbell-press.html"
+  },
+  "Seated_Good_Mornings": {
+    "provider": "youtube",
+    "id": "XZ7mDHLBQCs",
+    "source": "https://www.muscleandstrength.com/exercises/seated-good-mornings.html"
+  },
+  "Shotgun_Row": {
+    "provider": "youtube",
+    "id": "vGvryEp84qE",
+    "source": "https://www.muscleandstrength.com/exercises/standing-one-arm-cable-row.html"
+  },
+  "Side_Lateral_Raise": {
+    "provider": "vimeo",
+    "id": "760008500",
+    "source": "https://www.muscleandstrength.com/exercises/dumbbell-lateral-raise.html"
+  },
+  "Smith_Machine_Bench_Press": {
+    "provider": "vimeo",
+    "id": "756783677",
+    "source": "https://www.muscleandstrength.com/exercises/smith-machine-bench-press.html"
+  },
+  "Smith_Machine_Calf_Raise": {
+    "provider": "vimeo",
+    "id": "877881498",
+    "source": "https://www.muscleandstrength.com/exercises/smith-machine-calf-raise.html"
+  },
+  "Smith_Machine_Incline_Bench_Press": {
+    "provider": "vimeo",
+    "id": "756783757",
+    "source": "https://www.muscleandstrength.com/exercises/incline-smith-machine-bench-press.html"
+  },
+  "Smith_Machine_Squat": {
+    "provider": "youtube",
+    "id": "BtfMX4WqUBo",
+    "source": "https://www.muscleandstrength.com/exercises/smith-machine-squat.html"
+  },
+  "Smith_Machine_Upright_Row": {
+    "provider": "youtube",
+    "id": "MeuEww_fjnk",
+    "source": "https://www.muscleandstrength.com/exercises/smith-machine-upright-row.html"
+  },
+  "Spider_Curl": {
+    "provider": "vimeo",
+    "id": "756793887",
+    "source": "https://www.muscleandstrength.com/exercises/spider-curl.html"
+  },
+  "Standing_Barbell_Calf_Raise": {
+    "provider": "vimeo",
+    "id": "756793820",
+    "source": "https://www.muscleandstrength.com/exercises/standing-calf-raise.html"
+  },
+  "Standing_Dumbbell_Reverse_Curl": {
+    "provider": "youtube",
+    "id": "i5h3myNHVFk",
+    "source": "https://www.muscleandstrength.com/exercises/standing-dumbbell-reverse-curl.html"
+  },
+  "Tate_Press": {
+    "provider": "vimeo",
+    "id": "1082966438",
+    "source": "https://www.muscleandstrength.com/exercises/tate-press.html"
+  },
+  "Tricep_Dumbbell_Kickback": {
+    "provider": "vimeo",
+    "id": "756784100",
+    "source": "https://www.muscleandstrength.com/exercises/tricep-kickback.html"
+  },
+  "Upright_Barbell_Row": {
+    "provider": "vimeo",
+    "id": "760008475",
+    "source": "https://www.muscleandstrength.com/exercises/upright-row.html"
+  },
+  "Upright_Cable_Row": {
+    "provider": "youtube",
+    "id": "kZpdmn_djFI",
+    "source": "https://www.muscleandstrength.com/exercises/cable-upright-row.html"
+  },
+  "Weighted_Bench_Dip": {
+    "provider": "vimeo",
+    "id": "756783909",
+    "source": "https://www.muscleandstrength.com/exercises/weighted-bench-dips.html"
+  },
+  "Weighted_Sissy_Squat": {
+    "provider": "vimeo",
+    "id": "877882084",
+    "source": "https://www.muscleandstrength.com/exercises/weighted-sissy-squat.html"
+  },
+  "Wide_Stance_Barbell_Squat": {
+    "provider": "vimeo",
+    "id": "877885574",
+    "source": "https://www.muscleandstrength.com/exercises/wide-squat.html"
+  },
+  "Wrist_Roller": {
+    "provider": "vimeo",
+    "id": "760001989",
+    "source": "https://www.muscleandstrength.com/exercises/wrist-rollers.html"
+  },
+  "Zercher_Squats": {
+    "provider": "youtube",
+    "id": "4roeIJ-zfwM",
+    "source": "https://www.muscleandstrength.com/exercises/zerchers-squat.html"
+  },
+  "Zottman_Curl": {
+    "provider": "youtube",
+    "id": "rVEwDJdHE2c",
+    "source": "https://www.muscleandstrength.com/exercises/zottman-curl.html"
+  },
+  "Zottman_Preacher_Curl": {
+    "provider": "youtube",
+    "id": "7yPINa6H47o",
+    "source": "https://www.muscleandstrength.com/exercises/zottman-preacher-curl.html"
+  }
+}
