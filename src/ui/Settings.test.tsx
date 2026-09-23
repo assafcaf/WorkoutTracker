@@ -13,9 +13,21 @@ const programs: Program[] = [
   program('full-body-starter', 'Full body starter'),
 ]
 
+// The E5-T16 gym-equipment props every render below now needs (`equipmentTypes`,
+// `gymEquipment`, `onGymEquipmentChange`), so the pre-existing O18/O7 tests above keep
+// compiling and passing unchanged -- none of them assert on "My gym's equipment".
+const equipmentTypes = ['barbell', 'dumbbell', 'machine']
+
 test('O18 Settings lists every program by name', () => {
   render(
-    <Settings programs={programs} activeProgramId="assaf-ab-2026" onActiveProgramChange={vi.fn()} />,
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
+    />,
   )
 
   expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeInTheDocument()
@@ -28,6 +40,9 @@ test('O18 Settings marks the active program as selected and the rest as not sele
       programs={programs}
       activeProgramId="full-body-starter"
       onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
     />,
   )
 
@@ -43,6 +58,9 @@ test('O18 choosing a different program calls onActiveProgramChange with its id',
       programs={programs}
       activeProgramId="assaf-ab-2026"
       onActiveProgramChange={onActiveProgramChange}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
     />,
   )
 
@@ -59,6 +77,9 @@ test('O18 choosing the already active program does not call onActiveProgramChang
       programs={programs}
       activeProgramId="assaf-ab-2026"
       onActiveProgramChange={onActiveProgramChange}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
     />,
   )
 
@@ -76,6 +97,9 @@ test('O7 using the Export control calls onExport', async () => {
       activeProgramId="assaf-ab-2026"
       onActiveProgramChange={vi.fn()}
       onExport={onExport}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
     />,
   )
 
@@ -125,6 +149,9 @@ test('O15 choosing a backup file hands its text to onImportFile', async () => {
       activeProgramId="assaf-ab-2026"
       onActiveProgramChange={vi.fn()}
       onImportFile={onImportFile}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
     />,
   )
 
@@ -147,6 +174,9 @@ test('O15 dismissing the file picker without choosing a file does not call onImp
       activeProgramId="assaf-ab-2026"
       onActiveProgramChange={vi.fn()}
       onImportFile={onImportFile}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
     />,
   )
 
@@ -158,4 +188,82 @@ test('O15 dismissing the file picker without choosing a file does not call onImp
     setTimeout(resolve, 0)
   })
   expect(onImportFile).not.toHaveBeenCalled()
+})
+
+// --- E5-T16: "My gym's equipment" -----------------------------------------------------------
+//
+// `equipmentTypes` is handed in already computed (per the ticket, the library scan that
+// excludes `body only` is App's job -- see the S14/S15 integration tests in App.test.tsx);
+// Settings only renders the list it is given and reports the next list to save.
+
+test('S14 Settings lists every given equipment type in "My gym\'s equipment", all ticked when nothing is saved', () => {
+  render(
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
+    />,
+  )
+
+  for (const equipment of equipmentTypes) {
+    expect(screen.getByRole('checkbox', { name: equipment })).toBeChecked()
+  }
+})
+
+test('S14 Settings ticks only the equipment types in a saved gym equipment list', () => {
+  render(
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={['barbell']}
+      onGymEquipmentChange={vi.fn()}
+    />,
+  )
+
+  expect(screen.getByRole('checkbox', { name: 'barbell' })).toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'dumbbell' })).not.toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'machine' })).not.toBeChecked()
+})
+
+test('S14 unticking machine calls onGymEquipmentChange with every other equipment type still in the list', async () => {
+  const user = userEvent.setup()
+  const onGymEquipmentChange = vi.fn()
+  render(
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={onGymEquipmentChange}
+    />,
+  )
+
+  await user.click(screen.getByRole('checkbox', { name: 'machine' }))
+
+  expect(onGymEquipmentChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
+})
+
+test('S14 re-ticking a previously unticked equipment type adds it back to the saved list', async () => {
+  const user = userEvent.setup()
+  const onGymEquipmentChange = vi.fn()
+  render(
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={['barbell']}
+      onGymEquipmentChange={onGymEquipmentChange}
+    />,
+  )
+
+  await user.click(screen.getByRole('checkbox', { name: 'dumbbell' }))
+
+  expect(onGymEquipmentChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
 })

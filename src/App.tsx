@@ -31,6 +31,7 @@ import {
   getGymEquipment,
   getLastExportedAt,
   setActiveProgramId,
+  setGymEquipment as persistGymEquipment,
 } from './storage/settingsStore'
 import {
   clearSwap,
@@ -240,7 +241,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // The in-app detail overlay (E5-T8). Looked up against `library` at render time, so it is
   // never stale once the library has loaded, and stays `null` until something opens it.
   const [overlay, setOverlay] = useState<Overlay | null>(null)
-  // The gym's saved equipment (E5-T12's Out of scope: passed through as-is, no settings UI).
+  // The gym's saved equipment; read/written through the Settings screen's "My gym's equipment"
+  // checklist (E5-T16). `null` until a gym equipment list has ever been saved.
   const [gymEquipment, setGymEquipment] = useState<string[] | null>(null)
   // The harvested exercise videos (E5-T7), keyed by library id; loaded once alongside the
   // library so the detail overlay can show one when it has it.
@@ -400,6 +402,17 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             ? { ...current, activeProgramId: id, staleActiveProgramNotice: false }
             : current,
         )
+      })
+      .catch(() => {
+        // Nothing to recover to here; a later read will surface the same failure.
+      })
+  }
+
+  /** `Settings.onGymEquipmentChange`: saves the next gym equipment list and reflects it. */
+  function handleGymEquipmentChange(list: string[]): void {
+    persistGymEquipment(list)
+      .then(() => {
+        setGymEquipment(list)
       })
       .catch(() => {
         // Nothing to recover to here; a later read will surface the same failure.
@@ -566,6 +579,16 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   let content: JSX.Element | null = null
 
   if (content === null && view === 'settings') {
+    // Every distinct equipment type the library carries, except `body only` (already always
+    // available, per `alternativesFor`'s own rule) -- "My gym's equipment"'s checklist.
+    const equipmentTypes = Array.from(
+      new Set(
+        library
+          .map((exercise) => exercise.equipment)
+          .filter((equipment): equipment is string => equipment !== null && equipment !== 'body only'),
+      ),
+    ).sort((a, b) => a.localeCompare(b))
+
     content = (
       <AppShell
         title="Settings"
@@ -580,6 +603,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           onActiveProgramChange={handleActiveProgramChange}
           onExport={handleExport}
           onImportFile={handleImportFile}
+          equipmentTypes={equipmentTypes}
+          gymEquipment={gymEquipment}
+          onGymEquipmentChange={handleGymEquipmentChange}
         />
         <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
         {importError ? <div role="alert">{importError}</div> : null}
@@ -775,11 +801,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             </option>
           ))}
         </select>
-        {filteredLibrary.length === 0 ? (
-          <p>No exercises match</p>
-        ) : (
-          <LibraryList library={filteredLibrary} onOpen={handleOpenInfo} />
-        )}
+        <LibraryList library={filteredLibrary} onOpen={handleOpenInfo} gymEquipment={gymEquipment} />
       </AppShell>
     )
   }

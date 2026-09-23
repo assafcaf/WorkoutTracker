@@ -4,7 +4,7 @@ import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { db, isStorageAvailable } from './storage/db'
-import { setActiveProgramId } from './storage/settingsStore'
+import { getGymEquipment, setActiveProgramId, setGymEquipment } from './storage/settingsStore'
 import {
   finishSession,
   getActiveSession,
@@ -1600,5 +1600,91 @@ test('S10 tapping Last time: Hammer Curls records the swap on the new session', 
     expect(session?.finishedAt).toBeNull()
     expect(session?.swaps).toEqual({ 'seated-biceps-curls': 'Hammer_Curls' })
   }, SETTLE)
+})
+
+// --- E5-T16: the gym's equipment ([S14], [S15]) ---------------------------------------------
+//
+// Every distinct `equipment` value in the real library fixture, excluding `null` (no equipment
+// needed, so never excludable) and `body only` (already always allowed -- see
+// `alternativesFor`'s own `passesEquipment` rule) -- hand-checked against
+// src/data/library/exercises.json, the same source L9/L10 above use directly.
+const EQUIPMENT_TYPES = Array.from(new Set(LIBRARY.map((exercise) => exercise.equipment)))
+  .filter((equipment): equipment is string => equipment !== null && equipment !== 'body only')
+  .sort((a, b) => a.localeCompare(b))
+
+// Hand-checked against src/data/library/exercises.json: Ab_Crunch_Machine is named "Ab Crunch
+// Machine", its `equipment` is 'machine', and no other entry shares that name.
+const MACHINE_EXERCISE_NAME = 'Ab Crunch Machine'
+
+test('S14 opening Settings with no saved gym equipment lists every library equipment type except body only, all ticked', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await openSettings(user)
+
+  for (const equipment of EQUIPMENT_TYPES) {
+    expect(await screen.findByRole('checkbox', { name: equipment }, SETTLE)).toBeChecked()
+  }
+  expect(screen.queryByRole('checkbox', { name: 'body only' })).toBeNull()
+})
+
+test('S14 unticking machine in Settings persists across a reload', async () => {
+  const user = userEvent.setup()
+  const run = render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await openSettings(user)
+
+  await user.click(await screen.findByRole('checkbox', { name: 'machine' }, SETTLE))
+  await waitFor(async () => {
+    expect(await getGymEquipment()).not.toBeNull()
+  }, SETTLE)
+
+  // A reload: the tree is unmounted and the database is shut, so nothing but storage crosses
+  // into the next render -- the same close/reopen App.test.tsx uses for O13's session survival.
+  run.unmount()
+  db.close()
+  await db.open()
+
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await openSettings(user)
+
+  expect(await screen.findByRole('checkbox', { name: 'machine' }, SETTLE)).not.toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'barbell' })).toBeChecked()
+})
+
+test('S15 with machine unticked, the Exercises tab opens with the My gym only chip on and no machine exercises listed', async () => {
+  await setGymEquipment(EQUIPMENT_TYPES.filter((equipment) => equipment !== 'machine'))
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
+
+  expect(
+    await screen.findByRole('button', { name: 'My gym only', pressed: true }, SETTLE),
+  ).toBeVisible()
+
+  await user.type(search, MACHINE_EXERCISE_NAME)
+
+  expect(await screen.findByText('No exercises match', {}, SETTLE)).toBeVisible()
+  expect(screen.queryByText(MACHINE_EXERCISE_NAME)).toBeNull()
+})
+
+test('S15 turning the My gym only chip off lists machine exercises again', async () => {
+  await setGymEquipment(EQUIPMENT_TYPES.filter((equipment) => equipment !== 'machine'))
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
+  await user.type(search, MACHINE_EXERCISE_NAME)
+  await screen.findByText('No exercises match', {}, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'My gym only' }))
+
+  expect(await screen.findByText(MACHINE_EXERCISE_NAME, {}, SETTLE)).toBeVisible()
 })
 
