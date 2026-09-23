@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Exercise, Program, Session, SetEntry, Workout } from './types'
+import type { Exercise, LibraryExercise, Muscle, Program, Session, SetEntry, Workout } from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
+import { MUSCLES, loadLibrary } from './data/library'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
 import {
   BackupFormatError,
@@ -32,6 +33,7 @@ import { BackupBadge, isBackupDue } from './ui/BackupBadge'
 import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
 import { ImportConfirm } from './ui/ImportConfirm'
+import { LibraryList } from './ui/LibraryList'
 import { ProgramPicker } from './ui/ProgramPicker'
 import { ResumeCard } from './ui/ResumeCard'
 import { SetScreen } from './ui/SetScreen'
@@ -39,7 +41,7 @@ import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 import { UpdatePill } from './ui/UpdatePill'
 
-type View = 'picker' | 'settings' | 'list' | 'set' | 'history'
+type View = 'picker' | 'settings' | 'list' | 'set' | 'history' | 'exercises'
 
 /**
  * The tab each view sits under, and `null` for the views that are inside a session: a
@@ -47,6 +49,7 @@ type View = 'picker' | 'settings' | 'list' | 'set' | 'history'
  */
 const TAB_OF: Record<View, Tab | null> = {
   picker: 'workout',
+  exercises: 'exercises',
   history: 'history',
   settings: 'settings',
   list: null,
@@ -154,6 +157,11 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   const [history, setHistory] = useState<Session[]>([])
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  const [library, setLibrary] = useState<LibraryExercise[]>([])
+  const [libraryLoaded, setLibraryLoaded] = useState(false)
+  const [librarySearch, setLibrarySearch] = useState('')
+  const [libraryMuscle, setLibraryMuscle] = useState('')
+  const [libraryEquipment, setLibraryEquipment] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -315,13 +323,34 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     })
   }
 
+  /** Loads the library, once, then shows the Exercises tab. */
+  function handleShowExercises(): void {
+    if (libraryLoaded) {
+      setView('exercises')
+      return
+    }
+    loadLibrary()
+      .then((loaded) => {
+        setLibrary([...loaded.values()])
+        setLibraryLoaded(true)
+        setView('exercises')
+      })
+      .catch(() => {
+        // The previous view stays up; without the library there is nothing to show.
+      })
+  }
+
   /**
-   * Moves to the tab that was pressed. History goes through `handleShowHistory`, so the
-   * finished sessions are loaded before the list they feed is shown.
+   * Moves to the tab that was pressed. History goes through `handleShowHistory`, and Exercises
+   * through `handleShowExercises`, so their data is loaded before the list they feed is shown.
    */
   function handleTabChange(tab: Tab): void {
     if (tab === 'history') {
       handleShowHistory()
+      return
+    }
+    if (tab === 'exercises') {
+      handleShowExercises()
       return
     }
     setView(tab === 'workout' ? 'picker' : 'settings')
@@ -458,6 +487,81 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         settingsBadge={settingsBadge}
       >
         <HistoryList sessions={history} programs={programs} />
+      </AppShell>
+    )
+  }
+
+  if (view === 'exercises') {
+    // Every distinct raw `equipment` string in the library, sorted, with a `'none'` sentinel
+    // standing in for the exercises free-exercise-db gives no equipment at all.
+    const libraryEquipmentOptions = Array.from(
+      new Set(library.map((exercise) => exercise.equipment)),
+    )
+      .sort((a, b) => {
+        if (a === null) return 1
+        if (b === null) return -1
+        return a.localeCompare(b)
+      })
+      .map((equipment) => equipment ?? 'none')
+
+    const search = librarySearch.trim().toLowerCase()
+    const filteredLibrary = library.filter((exercise) => {
+      const matchesSearch = search === '' || exercise.name.toLowerCase().includes(search)
+      const matchesMuscle =
+        libraryMuscle === '' || exercise.primaryMuscles.includes(libraryMuscle as Muscle)
+      const matchesEquipment =
+        libraryEquipment === ''
+          ? true
+          : libraryEquipment === 'none'
+            ? exercise.equipment === null
+            : exercise.equipment === libraryEquipment
+
+      return matchesSearch && matchesMuscle && matchesEquipment
+    })
+
+    return (
+      <AppShell
+        title="Exercises"
+        tab={tabFor(view)}
+        onTabChange={handleTabChange}
+        trailing={trailing}
+        settingsBadge={settingsBadge}
+      >
+        <input
+          type="search"
+          aria-label="Search exercises"
+          value={librarySearch}
+          onChange={(event) => setLibrarySearch(event.target.value)}
+        />
+        <select
+          aria-label="Muscle"
+          value={libraryMuscle}
+          onChange={(event) => setLibraryMuscle(event.target.value)}
+        >
+          <option value="">All muscles</option>
+          {MUSCLES.map((muscle) => (
+            <option key={muscle} value={muscle}>
+              {muscle}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Equipment"
+          value={libraryEquipment}
+          onChange={(event) => setLibraryEquipment(event.target.value)}
+        >
+          <option value="">All equipment</option>
+          {libraryEquipmentOptions.map((equipment) => (
+            <option key={equipment} value={equipment}>
+              {equipment}
+            </option>
+          ))}
+        </select>
+        {filteredLibrary.length === 0 ? (
+          <p>No exercises match</p>
+        ) : (
+          <LibraryList library={filteredLibrary} onOpen={() => {}} />
+        )}
       </AppShell>
     )
   }
