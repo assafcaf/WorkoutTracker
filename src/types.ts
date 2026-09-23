@@ -85,4 +85,9 @@ export type Session = {
   startedAt: number
   finishedAt: number | null
   entries: SetEntry[]
+  /**
+   * Planned exerciseId -> exerciseId done instead, for a plan swapped mid-session (E5-T11).
+   * Absent on a session with no swap, and on every session recorded before this epic.
+   */
+  swaps?: Record<string, string>
 }

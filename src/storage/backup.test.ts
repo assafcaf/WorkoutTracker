@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { db } from './db'
 import { listSessions } from './sessionStore'
-import { ACTIVE_PROGRAM_ID_KEY, getLastExportedAt, setActiveProgramId } from './settingsStore'
+import {
+  ACTIVE_PROGRAM_ID_KEY,
+  getGymEquipment,
+  getLastExportedAt,
+  setActiveProgramId,
+  setGymEquipment,
+} from './settingsStore'
 import {
   BACKUP_SCHEMA_VERSION,
   BackupFormatError,
@@ -139,6 +145,59 @@ test('O6 given 34 logged sessions, importing the exported file yields a database
   expect(await listSessions()).toEqual(original)
   const activeProgramRow = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
   expect(activeProgramRow?.value).toBe('assaf-ab-2026')
+})
+
+// --- swaps and gym equipment round-trip through backup (E5-T11 S16) -------------------------
+
+test('S16 given a session with swaps and a saved equipment list, exporting and importing into an empty store returns both intact', async () => {
+  const withSwap: Session = {
+    ...sessionsFixture(1)[0],
+    swaps: { 'back-squat': 'leg-press' },
+  }
+  await db.sessions.put(withSwap)
+  await setActiveProgramId('assaf-ab-2026')
+  await setGymEquipment(['barbell', 'dumbbell', 'bench'])
+
+  const file = await exportBackup(BASE)
+  const parsed = readBackup(JSON.stringify(file))
+  // An empty store: everything must come back from `parsed` alone.
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await replaceAll(parsed)
+
+  const [imported] = await listSessions()
+  expect(imported.swaps).toEqual({ 'back-squat': 'leg-press' })
+  expect(await getGymEquipment()).toEqual(['barbell', 'dumbbell', 'bench'])
+})
+
+test('S16 a schemaVersion 1 backup made before this epic, with neither swaps nor gymEquipment, still imports', async () => {
+  const legacyBackup = {
+    schemaVersion: 1,
+    exportedAt: BASE,
+    sessions: [
+      {
+        id: 'legacy-session',
+        programId: 'assaf-ab-2026',
+        workoutId: 'workout-a',
+        startedAt: BASE - DAY,
+        finishedAt: BASE - DAY + 3600 * SECOND,
+        entries: [entry('lunges', 0, 20, 10, BASE - DAY + 60 * SECOND)],
+        // No `swaps` key at all -- shaped exactly like a backup made before this epic.
+      },
+    ],
+    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+    // No `settings.gymEquipment` key at all.
+  }
+
+  await expect(
+    replaceAll(readBackup(JSON.stringify(legacyBackup))),
+  ).resolves.toBeUndefined()
+
+  const [imported] = await listSessions()
+  expect(imported.id).toBe('legacy-session')
+  expect(imported.swaps).toBeUndefined()
+  expect(await getGymEquipment()).toBeNull()
 })
 
 // --- downloadOrShare, the boundary O7 hangs on ------------------------------------------------
