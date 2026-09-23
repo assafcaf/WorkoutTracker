@@ -7,8 +7,16 @@
 // What a production build has to be for the app to install from GitHub Pages: a web app
 // manifest the browser will accept, and every URL in the build under the Pages base path.
 // These assertions read the real build output — see src/test/buildFixture.ts.
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { beforeAll, expect, test } from 'vitest'
 import { buildApp, type BuiltApp } from '../test/buildFixture'
+import { readTokens } from '../test/cssAudit'
+
+// src/pwa/manifest.test.ts -> the repository root.
+const repoRoot = resolve(fileURLToPath(import.meta.url), '..', '..', '..')
+const tokensPath = join(repoRoot, 'src', 'styles', 'tokens.css')
 
 // The path the app is served from on GitHub Pages. Written out here rather than read back from
 // the config on purpose: a build that forgets the base path works perfectly on localhost and
@@ -29,6 +37,7 @@ type WebManifest = {
   start_url?: string
   scope?: string
   theme_color?: string
+  background_color?: string
   icons?: ManifestIcon[]
 }
 
@@ -147,4 +156,21 @@ test('O2 no URL in the service worker resolves to the domain root', () => {
   expect(urls.length, 'the service worker lists no precached URL at all').toBeGreaterThan(0)
   const rooted = urls.filter((url) => url.startsWith('/') && !url.startsWith(BASE))
   expect(rooted, 'these service worker URLs resolve to the domain root').toEqual([])
+})
+
+// [O5] The installed app's splash screen and status bar have to match the app's own
+// background, or the launch sequence seams: iOS paints the manifest's background_color and
+// theme_color before the app's own CSS ever runs. Reading the expected value from
+// tokens.css — never a hard-coded hex — is the point: either side drifting alone must fail
+// this test.
+test('O5 the manifest theme_color matches the --color-bg token, so the status bar does not seam against the app background', () => {
+  const colorBg = readTokens(readFileSync(tokensPath, 'utf-8')).get('--color-bg')
+  expect(colorBg, 'tokens.css has no --color-bg token').toBeDefined()
+  expect((manifest().theme_color ?? '').toLowerCase()).toBe((colorBg ?? '').toLowerCase())
+})
+
+test('O5 the manifest background_color matches the --color-bg token, so the iOS splash screen does not seam against the app background', () => {
+  const colorBg = readTokens(readFileSync(tokensPath, 'utf-8')).get('--color-bg')
+  expect(colorBg, 'tokens.css has no --color-bg token').toBeDefined()
+  expect((manifest().background_color ?? '').toLowerCase()).toBe((colorBg ?? '').toLowerCase())
 })
