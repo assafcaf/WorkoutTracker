@@ -32,9 +32,9 @@ export const MUSCLES: readonly Muscle[] = [
  *
  * Loads `src/data/library/exercises.json` with a dynamic `import()`, so the ~1 MB dataset gets
  * its own chunk instead of landing in the Workout tab's start-up bundle.
- *
- * E5-T1 stub -- not implemented yet.
  */
 export async function loadLibrary(): Promise<Map<string, LibraryExercise>> {
-  throw new Error('loadLibrary is not implemented yet (E5-T1)')
+  const { default: entries } = await import('./library/exercises.json')
+  const library = entries as unknown as LibraryExercise[]
+  return new Map(library.map((exercise) => [exercise.id, exercise] as const))
 }

@@ -47,12 +47,16 @@ export function assertPlansAreInCatalog(
 
 /**
  * Throws on the first catalog exercise whose `libraryId` the library does not define.
- *
- * E5-T1 stub -- not implemented yet.
  */
 export function assertCatalogInLibrary(
-  _catalog: Map<string, Exercise>,
-  _library: Map<string, LibraryExercise>,
+  catalog: Map<string, Exercise>,
+  library: Map<string, LibraryExercise>,
 ): void {
-  throw new Error('assertCatalogInLibrary is not implemented yet (E5-T1)')
+  for (const exercise of catalog.values()) {
+    if (!library.has(exercise.libraryId)) {
+      throw new Error(
+        `exercise ${exercise.id}: no libraryId ${exercise.libraryId} in the library`,
+      )
+    }
+  }
 }
