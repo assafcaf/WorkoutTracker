@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { AlternativesList } from './AlternativesList'
-import type { LibraryExercise, Video } from '../types'
+import { BodyMap } from './body/BodyMap'
+import { toRegionCounts, type Region } from '../domain/muscles'
+import type { LibraryExercise, Muscle, Video } from '../types'
 import './ExerciseDetail.css'
 
 export type ExerciseDetailProps = {
@@ -23,6 +25,18 @@ export type ExerciseDetailProps = {
   onChoose?(id: string): void
 }
 
+/** What `entry` trains, per region: 1 per primary muscle, 0.5 per secondary muscle (M10). */
+function exerciseRegionCounts(entry: LibraryExercise): Map<Region, number> {
+  const muscleCounts = new Map<Muscle, number>()
+  for (const muscle of entry.primaryMuscles) {
+    muscleCounts.set(muscle, (muscleCounts.get(muscle) ?? 0) + 1)
+  }
+  for (const muscle of entry.secondaryMuscles) {
+    muscleCounts.set(muscle, (muscleCounts.get(muscle) ?? 0) + 0.5)
+  }
+  return toRegionCounts(muscleCounts)
+}
+
 /**
  * The exercise detail screen: profile, numbered instructions, video link and photos (E5-T4).
  *
@@ -34,6 +48,9 @@ export type ExerciseDetailProps = {
  * used mid-session, capped to the top 5, with no swap -- each row opens that alternative's own
  * detail screen instead. It offers "Do this instead" only when `onChoose` is given, i.e. this
  * screen was opened from a live set rather than the Exercises tab.
+ *
+ * A body map (E5-T17) under the profile shows what the exercise trains: its primary muscles'
+ * regions in the primary shade, its secondary muscles' regions in the secondary shade.
  */
 export function ExerciseDetail({
   entry,
@@ -63,6 +80,8 @@ export function ExerciseDetail({
         <p className="exercise-detail-field">Force: {entry.force}</p>
         <p className="exercise-detail-field">Level: {entry.level}</p>
       </div>
+
+      <BodyMap counts={exerciseRegionCounts(entry)} scale="exercise" />
 
       {video && (
         <p className="exercise-detail-video">

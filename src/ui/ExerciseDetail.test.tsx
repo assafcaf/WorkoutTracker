@@ -149,6 +149,33 @@ test('L13 ExerciseDetail replaces a photo that fails to load with a "Photos need
   expect(screen.queryByRole('img')).not.toBeInTheDocument()
 })
 
+// --- M10: the body map on the detail screen (E5-T17) ----------------------------------------
+//
+// BARBELL_SQUAT's primaryMuscles ['quadriceps'] and secondaryMuscles ['calves', 'glutes',
+// 'hamstrings', 'lower back'] map through src/domain/muscles.ts's regionsFor one-for-one:
+// quadriceps->quadriceps, calves->calves, glutes->gluteal, hamstrings->hamstring, 'lower
+// back'->lower-back (hand-checked against MUSCLE_REGIONS there, not computed from it).
+
+test('M10 the detail screen body map shows quadriceps in the primary shade for Barbell_Squat', () => {
+  const { container } = render(
+    <ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />,
+  )
+
+  const quadriceps = container.querySelectorAll('[data-region="quadriceps"][data-shade="primary"]')
+  expect(quadriceps.length, 'expected at least one quadriceps shape shaded primary').toBeGreaterThan(0)
+})
+
+test('M10 the detail screen body map shows calves, glutes, hamstrings and lower back in the secondary shade for Barbell_Squat', () => {
+  const { container } = render(
+    <ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />,
+  )
+
+  for (const region of ['calves', 'gluteal', 'hamstring', 'lower-back']) {
+    const elements = container.querySelectorAll(`[data-region="${region}"][data-shade="secondary"]`)
+    expect(elements.length, `expected at least one ${region} shape shaded secondary`).toBeGreaterThan(0)
+  }
+})
+
 // --- S13: "Similar exercises" -----------------------------------------------------------------
 //
 // A small hand-built library, not the real one, so its `alternativesFor` (E5-T5) ranking is
