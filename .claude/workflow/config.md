@@ -31,8 +31,31 @@ in the agent file.
 | Merging | `epic-merger` | `sonnet` | One per run. The epic branch's only writer: re-checks, merges one task at a time, gates, pushes |
 | Tests | `test-designer` | `sonnet` | Its own worktree, dispatched by the ticket owner. Writes the failing tests and stubs |
 | Code | `code-writer` | `sonnet` | Its own worktree, dispatched by the ticket owner. Cherry-picks the red commit; may not change tests |
+| Memory curation | `memory-curator` | `sonnet` | Once per epic, at the end. Keeps the agents' memory clean; never adds a lesson |
 
-Use `opus` for a task labelled `complex`, and for the retry of a task that failed a gate.
+### Tiers
+
+`/tickets` gives every task a tier (`.claude/workflow/ticket-template.md`, "Tiers"). The tier
+picks the flow and the models; the Tests and Code rows above are the `standard` defaults.
+
+| Tier | Flow | Test-designer | Code-writer | Retry |
+|---|---|---|---|---|
+| `small` | one `code-writer` in solo mode: red commit, then green | — | `sonnet` | `opus`, standard flow |
+| `standard` | `test-designer`, with a `code-writer` started alongside that implements once red is proven | `sonnet` | `sonnet` | `opus` code-writer |
+| `complex` | as standard, wider reading brief | `opus` | `opus` | `opus` code-writer |
+
+A ticket with no `## Tier` section is `standard`; one labelled `complex` is `complex`.
+
+**Thinking effort** is set in an agent file's `effort:` field, and a dispatch can't override it,
+so it can't follow a task's tier. The coordinators, whose work is the same in every task, have
+one: `ticket-owner` `medium` (it makes the occasional ruling), `epic-merger` `low`. The test
+and code agents inherit the session's effort; their tier brief ("Effort by tier") is what
+scales their reading and thinking.
+
+**Memory.** `test-designer`, `code-writer`, `ticket-owner`, `epic-merger` and `tracker` have
+`memory: project`: each keeps lessons in `.claude/agent-memory/<agent>/MEMORY.md`, committed and
+loaded on every start. The rules are in `.claude/workflow/agent-memory.md`, and
+`memory-curator` enforces them at the end of each epic.
 
 ## Tracker updates during a run
 
@@ -41,8 +64,8 @@ So progress is visible without reading the terminal:
 | When | Task | Comment |
 |---|---|---|
 | Wave starts | → doing | run id and epic branch |
-| Red proven | — | red sha, outcome → test mapping |
-| Merged and gates green | → done | merge and red shas, commands and results, files outside the ticket's list |
+| Red proven (standard, complex) | — | red sha, test count and files. A small task puts it in the done comment |
+| Merged and gates green | → done | at most five lines: merge and red shas, red and green commands with results, files outside the ticket's list. The full evidence is in `.work/runs/<run id>/<KEY>.md` |
 | Gate failed or blocked | stays doing | what failed, and what is needed |
 | Epic finished | epic → review | PR URL |
 
@@ -139,7 +162,7 @@ database. None are configured.
 - **Branches:** epic branch `epic/<EPIC>-<slug>` (e.g. `epic/E1-log-a-workout`), in worktree
   `.claude/worktrees/<EPIC>`. `.claude/settings.json` must set `worktree.baseRef: head`, so
   implementer worktrees branch from the epic branch.
-- **Parallelism:** at most `3` tasks (ticket owners) at once.
+- **Parallelism:** at most `5` tasks (ticket owners) at once. Raised from 3 on 2026-09-23: E5 ran at 5 on the operator's ruling.
 - **Final review:** `off`. Set to a `/code-review` level (`low`, `medium`, …) to run one
   review over the finished epic branch before the PR.
 - **Publishing:** `origin` is https://github.com/assafcaf/WorkoutTracker (public), added
