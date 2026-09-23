@@ -22,6 +22,20 @@ export default defineConfig({
         // added by the plugin itself). The bundled exercise photos in public/library-photos/
         // are .jpg, so they are named here too, or they would not work offline.
         globPatterns: ['**/*.{js,wasm,css,html,jpg}'],
+        // Non-catalog library exercise photos are never bundled (src/data/photos.ts fetches
+        // them from raw.githubusercontent.com instead) — cache them at runtime the first time
+        // they are fetched online, so they keep working offline afterwards.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'library-photos',
+              expiration: { maxEntries: 300 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
       manifest: {
         name: 'Workout Tracker',
