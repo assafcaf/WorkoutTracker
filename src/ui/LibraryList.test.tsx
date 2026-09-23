@@ -73,9 +73,17 @@ test('F4 tapping Show more on the full library eventually reaches Barbell Squat 
 
   render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
 
+  // Queried once and reused, not re-queried per tap: `getByRole`'s accessible-name lookup
+  // scales with the number of `<button>` candidates in the DOM, so re-running it 87 times
+  // against a list growing toward 876 rows blew this test's budget. The button keeps its own
+  // identity across the re-renders each tap causes -- it does not unmount until the last one --
+  // so one reference taken up front is reused for every click, and only the final state (rows,
+  // names, the button's absence) is queried fresh.
+  const showMore = screen.getByRole('button', { name: 'Show more' })
+
   // 876 rows, 10 shown at a time: 86 taps reach 870, one more reaches all 876.
   for (let i = 0; i < 87; i += 1) {
-    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    await user.click(showMore)
   }
 
   const rows = screen.getAllByRole('listitem')

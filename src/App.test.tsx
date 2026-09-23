@@ -1191,6 +1191,13 @@ describe('E3-T7', () => {
 // through the whole L10 scenario in one test rather than re-mounting per assertion, and never
 // asserts an exact 876-row count (LibraryList.test.tsx already proves that).
 
+// RULING (fix-popups, F4): this test used to assert that both "Barbell Squat" and "Zottman
+// Preacher Curl" (the alphabetically first and last of the 876) were visible immediately after
+// opening the tab with no search -- true when LibraryList rendered every filtered row at once,
+// but neither name is in the first-10 default view F4 now requires (Zottman Preacher Curl is
+// the very last of 876; Barbell Squat only surfaces after ~86-87 "Show more" taps, per
+// LibraryList.test.tsx's own F4 test). A sibling of the L10 and M9 rewrites below, missed on
+// the first pass and caught during the code-writer's own gate run -- same ruling, same reason.
 test('L9 tapping the Exercises tab shows the library, with a search box, and makes Exercises the current tab', async () => {
   const user = userEvent.setup()
   render(<App />)
@@ -1198,11 +1205,12 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
 
   await pressTab(user, 'Exercises')
 
-  expect(await screen.findByRole('searchbox', { name: /search/i }, SETTLE)).toBeVisible()
-  // Hand-checked against src/data/library.test.ts's own fixture fact and the real library
-  // fixture's alphabetical extremes -- a couple of known names, not a count.
-  expect(await screen.findByText('Barbell Squat', {}, SETTLE)).toBeVisible()
-  expect(screen.getByText('Zottman Preacher Curl')).toBeVisible()
+  expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toBeVisible()
+  // Hand-checked against the real library fixture's alphabetically (locale-aware) first name --
+  // the first-10 default view F4 now requires, plus its "Show more" control.
+  expect(await screen.findByText('3/4 Sit-Up', {}, SETTLE)).toBeVisible()
+  expect(screen.getAllByRole('listitem')).toHaveLength(10)
+  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
   expect(currentTabNames()).toEqual(['Exercises'])
 })
 
@@ -1372,8 +1380,10 @@ test('F1 tapping a row on the Exercises tab opens the detail overlay as a modal 
   const dialog = await screen.findByRole('dialog', { name: 'Barbell Squat' }, SETTLE)
   expect(dialog).toHaveAttribute('aria-modal', 'true')
   // The popup sits over the Exercises tab rather than replacing it: the tab's own search box
-  // is still in the document underneath.
-  expect(screen.getByRole('searchbox', { name: /search/i })).toBeInTheDocument()
+  // is still in the document underneath. Exact name, not a /search/i regex: the dialog's own
+  // "Similar exercises" section composes AlternativesList, whose own search box is named
+  // "Search alternatives" (src/ui/AlternativesList.tsx) and would also match the regex.
+  expect(screen.getByRole('searchbox', { name: 'Search exercises' })).toBeInTheDocument()
 })
 
 // --- E5-T12: swapping an exercise mid-session ([S6], [S7]) --------------------------------
