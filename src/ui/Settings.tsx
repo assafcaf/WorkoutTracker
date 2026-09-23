@@ -1,5 +1,6 @@
 import type { ChangeEvent } from 'react'
 import type { Program } from '../types'
+import './Settings.css'
 
 export type SettingsProps = {
   programs: Program[]
@@ -40,31 +41,42 @@ export function Settings(props: SettingsProps): JSX.Element {
   }
 
   return (
-    <>
-      <fieldset>
-        <legend>Active program</legend>
-        {programs.map((program) => (
-          <label key={program.id}>
-            <input
-              type="radio"
-              name="active-program"
-              value={program.id}
-              checked={program.id === activeProgramId}
-              onChange={() => {
-                if (program.id !== activeProgramId) onActiveProgramChange(program.id)
-              }}
-            />
-            {program.name}
-          </label>
-        ))}
+    <div className="settings">
+      <fieldset className="settings-group">
+        <legend className="settings-legend">Active program</legend>
+        {programs.map((program) => {
+          const checked = program.id === activeProgramId
+          return (
+            <label
+              key={program.id}
+              className={`settings-action${checked ? ' settings-action-active' : ''}`}
+            >
+              <input
+                type="radio"
+                name="active-program"
+                value={program.id}
+                checked={checked}
+                onChange={() => {
+                  if (!checked) onActiveProgramChange(program.id)
+                }}
+              />
+              <span className="settings-action-label">{program.name}</span>
+            </label>
+          )
+        })}
       </fieldset>
-      <button type="button" onClick={() => onExport?.()}>
-        Export
+      <button type="button" className="settings-action" onClick={() => onExport?.()}>
+        <span className="settings-action-label">Export</span>
       </button>
-      <label>
-        Import backup
-        <input type="file" accept="application/json,.json" onChange={handleFileChange} />
+      <label className="settings-action">
+        <span className="settings-action-label">Import backup</span>
+        <input
+          className="settings-file-input"
+          type="file"
+          accept="application/json,.json"
+          onChange={handleFileChange}
+        />
       </label>
-    </>
+    </div>
   )
 }

@@ -1,0 +1,67 @@
+/* The import confirmation: a centred sheet over the whole screen, so a destructive action
+ * cannot be missed as one more row in the settings list.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css. The count of sessions an
+ * import would remove carries `--color-danger`, which is the one thing on the sheet that warns.
+ */
+
+.import-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  background: var(--color-bg);
+}
+
+.import-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 360px;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.import-confirm-text {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.import-confirm-danger {
+  color: var(--color-danger);
+}
+
+.import-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.import-confirm-cancel,
+.import-confirm-confirm {
+  display: flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.import-confirm-cancel {
+  background: var(--color-raised);
+  color: var(--color-text);
+}
+
+.import-confirm-confirm {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
