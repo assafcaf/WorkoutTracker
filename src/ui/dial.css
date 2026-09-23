@@ -1,0 +1,33 @@
+/* The dial: one control with two ladders. RepsDial.tsx and WeightDial.tsx both import this
+ * sheet, since they share the same scroll-snap column, the same minus/plus step buttons and
+ * the same readout — only the ladder they drag through differs.
+ *
+ * The scroll-snap physics used to live in the `style` prop on `.dial-column` and `.dial-rung`;
+ * moving them here changes where they are declared, not what they do:
+ *   - `.dial-column` carries the `overflow-y: auto` and `scroll-snap-type: y mandatory` that
+ *     were inline on the `<ul>`.
+ *   - `.dial-rung` carries the `scroll-snap-align: center` that was inline on the `<li>`.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css.
+ */
+
+.dial-column {
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+}
+
+.dial-rung {
+  scroll-snap-align: center;
+}
+
+/* The minus/plus buttons either side of the column. */
+.dial-step {
+  min-height: var(--tap-min);
+}
+
+/* The readout that opens the keypad. */
+.dial-readout {
+  min-height: var(--tap-min);
+  font-size: var(--text-display);
+  font-variant-numeric: tabular-nums;
+}

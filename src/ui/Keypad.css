@@ -1,0 +1,35 @@
+/* The number pad a dial's readout opens.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css.
+ */
+
+.keypad {
+  background: var(--color-surface);
+  padding: var(--space-4);
+}
+
+.keypad-entry {
+  display: block;
+  font-size: var(--text-xl);
+}
+
+.keypad-keys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.keypad-keys button {
+  min-height: var(--tap-min);
+}
+
+.keypad-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.keypad-actions button {
+  min-height: var(--tap-min);
+  flex: 1;
+}

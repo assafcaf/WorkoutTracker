@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Keypad } from './Keypad'
+import './dial.css'
 
 export type RepsDialProps = {
   value: number
@@ -25,7 +26,12 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
 
   return (
     <div className="dial">
-      <button type="button" aria-label="Decrease reps" onClick={() => step(-1)}>
+      <button
+        type="button"
+        aria-label="Decrease reps"
+        className="dial-step"
+        onClick={() => step(-1)}
+      >
         &minus;
       </button>
       <div className="dial-body">
@@ -38,19 +44,13 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
           {value}
         </button>
         <span className="dial-unit">reps</span>
-        <ul
-          role="listbox"
-          aria-label="Reps ladder"
-          className="dial-column"
-          style={{ overflowY: 'auto', scrollSnapType: 'y mandatory' }}
-        >
+        <ul role="listbox" aria-label="Reps ladder" className="dial-column">
           {REPS_COLUMN.map((rung) => (
             <li
               key={rung}
               role="option"
               aria-selected={rung === value}
               className="dial-rung"
-              style={{ scrollSnapAlign: 'center' }}
               onClick={() => onChange(rung)}
             >
               {rung}
@@ -58,7 +58,12 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
           ))}
         </ul>
       </div>
-      <button type="button" aria-label="Increase reps" onClick={() => step(1)}>
+      <button
+        type="button"
+        aria-label="Increase reps"
+        className="dial-step"
+        onClick={() => step(1)}
+      >
         +
       </button>
       {keypadOpen ? (
