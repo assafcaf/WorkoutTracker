@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Keypad } from './Keypad'
+import { useCentredRung } from './useCentredRung'
 import './dial.css'
 
 export type RepsDialProps = {
@@ -19,6 +20,7 @@ const REPS_COLUMN = Array.from({ length: 30 }, (_, index) => index + 1)
 export function RepsDial(props: RepsDialProps): JSX.Element {
   const { value, onChange } = props
   const [keypadOpen, setKeypadOpen] = useState(false)
+  const columnRef = useCentredRung(value)
 
   function step(dir: 1 | -1): void {
     onChange(Math.max(0, value + dir))
@@ -44,7 +46,7 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
           {value}
         </button>
         <span className="dial-unit">reps</span>
-        <ul role="listbox" aria-label="Reps ladder" className="dial-column">
+        <ul role="listbox" aria-label="Reps ladder" className="dial-column" ref={columnRef}>
           {REPS_COLUMN.map((rung) => (
             <li
               key={rung}

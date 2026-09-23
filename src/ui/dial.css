@@ -8,21 +8,95 @@
  *     were inline on the `<ul>`.
  *   - `.dial-rung` carries the `scroll-snap-align: center` that was inline on the `<li>`.
  *
+ * Layout: a card of three columns — minus, the body, plus. The body wraps the readout and its
+ * unit onto one line and the ladder onto a full-width line under them, a window three rungs
+ * tall with the chosen rung in the middle. The keypad, when open, takes the card's full width.
+ *
  * Every colour comes through a `var(--…)` from src/styles/tokens.css.
  */
+
+/* A rung is one tap target tall, and the column's window is three rungs. */
+.dial {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.dial-body {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+}
 
 .dial-column {
   overflow-y: auto;
   scroll-snap-type: y mandatory;
+
+  flex-basis: 100%;
+  /* The offset parent the centring in useCentredRung.ts measures a rung's offsetTop from. */
+  position: relative;
+  height: calc(var(--tap-min) * 3);
+  margin: 0;
+  /* A rung's worth of room above the first and below the last, so either can sit centred. */
+  padding: var(--tap-min) 0;
+  list-style: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-card);
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.dial-column::-webkit-scrollbar {
+  display: none;
 }
 
 .dial-rung {
   scroll-snap-align: center;
+
+  height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dial-rung[aria-selected='true'] {
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: var(--text-xl);
 }
 
 /* The minus/plus buttons either side of the column. */
 .dial-step {
   min-height: var(--tap-min);
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
+  font-size: var(--text-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dial-step:active {
+  background: var(--color-border);
 }
 
 /* The readout that opens the keypad. */
@@ -30,4 +104,24 @@
   min-height: var(--tap-min);
   font-size: var(--text-display);
   font-variant-numeric: tabular-nums;
+
+  padding: 0;
+  border: none;
+  background: none;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.dial-readout:disabled {
+  cursor: default;
+}
+
+.dial-unit {
+  color: var(--color-muted);
+  font-size: var(--text-md);
+}
+
+.dial > .keypad {
+  grid-column: 1 / -1;
 }
