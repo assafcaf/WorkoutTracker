@@ -25,7 +25,7 @@ function fixturePage(overrides: Partial<MsPage> = {}): MsPage {
     slug: 'barbell-squat',
     title: 'Barbell Squat',
     equipment: 'Barbell',
-    youtubeId: 'R2dMsNhN3DE',
+    video: { provider: 'youtube', id: 'R2dMsNhN3DE' },
     ...overrides,
   }
 }

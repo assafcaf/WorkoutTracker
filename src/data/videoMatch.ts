@@ -5,7 +5,7 @@ export type MsPage = {
   slug: string
   title: string
   equipment: string | null
-  youtubeId: string | null
+  video: { provider: 'youtube' | 'vimeo'; id: string } | null
 }
 
 /** Word-level synonyms that normalise to the same canonical word. */
