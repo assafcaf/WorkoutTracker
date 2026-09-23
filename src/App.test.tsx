@@ -2138,3 +2138,110 @@ test('with nothing logged in the last 7 days the Program tab’s This week still
   ).toBeVisible()
 })
 
+// --- E4-T4: Stats inside History, and what it says with nothing logged ([O10]) -------------
+//
+// Stats is not a tab of its own: it is the second half of a History | Stats switch that sits
+// in the History tab. What is proven here is the path the trainee takes -- the History tab,
+// then the switch's Stats button -- and what that screen says with nothing logged. Stats' own
+// contract is proven in src/ui/Stats.test.tsx.
+
+/** The History | Stats switch. */
+function historyViewSwitch(): HTMLElement {
+  return screen.getByRole('group', { name: 'History view' })
+}
+
+/** From a fresh render, presses the History tab and then the switch's Stats button. */
+async function openStatsThroughHistory(user: UserEvent): Promise<void> {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'History')
+  const group = await screen.findByRole('group', { name: 'History view' }, SETTLE)
+  await user.click(within(group).getByRole('button', { name: 'Stats' }))
+  await screen.findByRole('heading', { name: 'Stats', level: 1 }, SETTLE)
+}
+
+function statsSection(name: 'Exercise progress' | 'Volume'): HTMLElement {
+  return screen.getByRole('region', { name })
+}
+
+test('O10 with nothing logged, Stats reached through the History tab says a set has to be logged before an exercise can be chosen', async () => {
+  const user = userEvent.setup()
+  await openStatsThroughHistory(user)
+
+  const text = textOf(statsSection('Exercise progress'))
+  expect(text).toMatch(/\blog/i)
+  expect(text).toMatch(/\bset\b/i)
+  expect(text).toMatch(/\bexercise\b/i)
+})
+
+test('O10 with nothing logged, Stats reached through the History tab says a session has to be finished before a bar can be drawn', async () => {
+  const user = userEvent.setup()
+  await openStatsThroughHistory(user)
+
+  const text = textOf(statsSection('Volume'))
+  expect(text).toMatch(/\bsession\b/i)
+  expect(text).toMatch(/\bfinish/i)
+})
+
+test('O10 with nothing logged, Stats reached through the History tab draws no chart in either section', async () => {
+  const user = userEvent.setup()
+  await openStatsThroughHistory(user)
+
+  expect(statsSection('Exercise progress').querySelector('svg')).toBeNull()
+  expect(statsSection('Volume').querySelector('svg')).toBeNull()
+})
+
+test('O10 the History tab opens the History list with the switch on History, never Stats', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'History')
+
+  await screen.findByRole('listitem', {}, SETTLE)
+  expect(screen.getByRole('heading', { name: 'History', level: 1 })).toBeVisible()
+  const group = historyViewSwitch()
+  expect(within(group).getByRole('button', { name: 'History' })).toHaveAttribute('aria-pressed', 'true')
+  expect(within(group).getByRole('button', { name: 'Stats' })).not.toHaveAttribute('aria-pressed', 'true')
+  expect(screen.queryByRole('region', { name: 'Volume' })).toBeNull()
+})
+
+test('O10 Stats is titled Stats, keeps History the current tab and marks Stats as the pressed switch button', async () => {
+  const user = userEvent.setup()
+  await openStatsThroughHistory(user)
+
+  expect(currentTabNames()).toEqual(['History'])
+  const group = historyViewSwitch()
+  expect(within(group).getByRole('button', { name: 'Stats' })).toHaveAttribute('aria-pressed', 'true')
+  expect(within(group).getByRole('button', { name: 'History' })).not.toHaveAttribute('aria-pressed', 'true')
+  // The switch rides inside the shell with the content, like every other tab screen's body.
+  expect(shellMain()?.contains(group)).toBe(true)
+})
+
+test('O10 choosing History in the switch goes back from Stats to the History list', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  await openStatsThroughHistory(user)
+
+  await user.click(within(historyViewSwitch()).getByRole('button', { name: 'History' }))
+
+  // Hand-checked from the fixture: BASE is 2023-11-14 UTC.
+  const row = await screen.findByRole('listitem', {}, SETTLE)
+  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'History', level: 1 })).toBeVisible()
+  expect(screen.queryByRole('region', { name: 'Exercise progress' })).toBeNull()
+})
+
+test('O10 pressing the History tab from Stats opens the History list, not Stats', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  await openStatsThroughHistory(user)
+
+  await pressTab(user, 'History')
+
+  await screen.findByRole('listitem', {}, SETTLE)
+  expect(screen.getByRole('heading', { name: 'History', level: 1 })).toBeVisible()
+  expect(screen.queryByRole('region', { name: 'Volume' })).toBeNull()
+})
+
