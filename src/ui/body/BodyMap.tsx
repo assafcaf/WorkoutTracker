@@ -1,6 +1,7 @@
 import { band } from '../../domain/band'
 import type { Region } from '../../domain/muscles'
 import { BACK_POLYGONS, FRONT_POLYGONS, type BodyPolygon } from './bodyPolygons'
+import './BodyMap.css'
 
 export type BodyMapProps = {
   /** A region's set count, session/week/exercise depending on `scale` -- 0 or absent means

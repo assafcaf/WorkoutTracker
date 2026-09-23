@@ -1,0 +1,8 @@
+/* BodyMap's own layout (fix-layout, G2): not yet styled.
+ *
+ * src/styles/bodyMapLayout.test.ts holds the shape this file must take -- the front and back
+ * views laid out side by side (never stacked), each view's svg scaling by width with its
+ * aspect ratio kept, and the container capped to a proportion-sized max-width: 280px by
+ * default (the detail screen, the session summary and the Program tab's weekly/"This week"
+ * maps), 160px inside a workout card.
+ */
