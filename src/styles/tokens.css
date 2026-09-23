@@ -1,7 +1,57 @@
-/* STUB — filling this in is the implementation task (E3-T1).
-
-   `:root` must declare exactly the twenty-nine documented custom properties and no others.
-   src/styles/tokens.test.ts names every one of them and the value it carries, so that file is
-   the specification; this one is only here so the audits have something to parse. */
+/* The design system's one definition site.
+ *
+ * Every colour, space, radius, size and shadow the app draws with is declared here and used
+ * through `var(--…)` everywhere else, so the palette can only change in one place. The set is
+ * closed: src/styles/tokens.test.ts holds this file to exactly these twenty-nine tokens, and
+ * to the values the spec's token table documents.
+ *
+ * The palette is dark-only by design — there is no `prefers-color-scheme` block and no second
+ * palette — and the contrast of every foreground/background pair the UI uses is asserted at
+ * 4.5:1 or better.
+ */
 :root {
+  /* Palette. Surfaces go from the page background up through cards to raised controls. */
+  --color-bg: #0B0B0F;
+  --color-surface: #16161C;
+  --color-raised: #1F1F27;
+  --color-border: #2A2A33;
+  --color-text: #FFFFFF;
+  --color-muted: #8A8A94;
+  --color-accent: #C6F84E;
+  --color-on-accent: #0B0B0F;
+  --color-warn: #FFB020;
+  --color-danger: #FF6B6B;
+
+  /* Spacing scale, in 4px steps that widen as they grow. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Corner radii. `--radius-pill` is any value past half the tallest control. */
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* The tap-target floor every interactive control has to reach. */
+  --tap-min: 44px;
+
+  /* The system stack: no web font is downloaded, so text paints on the first frame. */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Type scale. */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+  --text-display: 56px;
+
+  /* One inset hairline instead of a drop shadow, so a card reads as an edge, not a lift. */
+  --shadow-card: inset 0 0 0 1px var(--color-border);
+
+  /* The home-indicator inset, 0px anywhere that reports no safe area. */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
