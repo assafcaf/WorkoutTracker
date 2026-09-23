@@ -8,14 +8,29 @@ export type MsPage = {
   youtubeId: string | null
 }
 
+/** Word-level synonyms that normalise to the same canonical word. */
+const WORD_SYNONYMS: Record<string, string> = {
+  db: 'dumbbell',
+  bb: 'barbell',
+}
+
 /**
  * Normalises an exercise name for comparison: case, punctuation, plurals, word order and the
  * db/dumbbell, bb/barbell, pushup/push-up synonyms all collapse to the same string.
- *
- * E5-T2 stub -- the behaviour is not written yet.
  */
-export function normaliseName(_name: string): string {
-  throw new Error('normaliseName is not implemented yet (E5-T2)')
+export function normaliseName(name: string): string {
+  const withoutHyphens = name.replace(/-/g, '')
+  const cleaned = withoutHyphens.toLowerCase().replace(/[^a-z0-9\s]/g, ' ')
+  const words = cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      const singular = word.endsWith('s') && !word.endsWith('ss') ? word.slice(0, -1) : word
+      return WORD_SYNONYMS[singular] ?? singular
+    })
+    .sort()
+
+  return words.join(' ')
 }
 
 /**
@@ -25,13 +40,23 @@ export function normaliseName(_name: string): string {
  * overriding a match to `null`. Absent an override, returns the one library id whose normalised
  * name equals the page's normalised name, or `null` when there are zero or two-or-more
  * candidates.
- *
- * E5-T2 stub -- the behaviour is not written yet.
  */
 export function matchVideo(
-  _page: MsPage,
-  _library: Map<string, LibraryExercise>,
-  _overrides: Record<string, string | null>,
+  page: MsPage,
+  library: Map<string, LibraryExercise>,
+  overrides: Record<string, string | null>,
 ): string | null {
-  throw new Error('matchVideo is not implemented yet (E5-T2)')
+  if (Object.prototype.hasOwnProperty.call(overrides, page.slug)) {
+    return overrides[page.slug]
+  }
+
+  const target = normaliseName(page.title)
+  const candidates: string[] = []
+  for (const [id, exercise] of library) {
+    if (normaliseName(exercise.name) === target) {
+      candidates.push(id)
+    }
+  }
+
+  return candidates.length === 1 ? candidates[0] : null
 }
