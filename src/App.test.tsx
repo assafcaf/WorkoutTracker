@@ -10,6 +10,7 @@ import {
   getActiveSession,
   listSessions,
   logSet,
+  setSwap,
   startOrResumeSession,
 } from './storage/sessionStore'
 // A value import, not a type-only one: evaluating `backup.ts` is also what installs the
@@ -1413,3 +1414,191 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   expect(readoutValue(weightReadout())).toBe('0')
   expect(readoutValue(repsReadout())).toBe('10')
 })
+
+// --- E5-T14: a swap is honest for the rest of the session ([S8], [S9]) and one tap away next
+// time ([S10]) -----------------------------------------------------------------------------
+//
+// The same seated-biceps-curls -> Hammer_Curls swap as E5-T12's, in Workout B, which is the
+// workout that plans seated-biceps-curls (sets: 3, repRange: [10, 12], restSeconds: 90).
+
+/** The swapped row's accessible name, as E5-T12 already renders it. */
+const HAMMER_ROW = /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/
+
+/**
+ * From seated-biceps-curls' set screen: opens Alternatives, taps "Do this instead" on Hammer
+ * Curls, and waits for the exercise list to show the swapped row.
+ */
+async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLElement> {
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+  const hammerRowName = await screen.findByText(
+    'Hammer Curls',
+    { selector: '.alternatives-row-name' },
+    SETTLE,
+  )
+  const hammerRow = hammerRowName.closest('li')
+  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
+}
+
+/**
+ * Starts Workout B, logs 2 of seated-biceps-curls' 3 sets, then swaps it for Hammer_Curls,
+ * which leaves the app on the exercise list with the swapped row showing.
+ */
+async function logTwoSeatedCurlsThenSwap(user: UserEvent): Promise<HTMLElement> {
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await logSetAndOpen(user, 2, 3)
+  await logSetAndOpen(user, 3, 3)
+  return swapSeatedCurlsForHammerCurls(user)
+}
+
+/** Opens the swapped row and logs Hammer_Curls' first set, staying on its set screen. */
+async function logFirstHammerCurlsSet(user: UserEvent): Promise<void> {
+  await user.click(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE))
+  await screen.findByRole('heading', { name: 'Hammer Curls' }, SETTLE)
+  await screen.findByText('Set 1 of 3', undefined, SETTLE)
+  await logSetAndOpen(user, 2, 3)
+}
+
+test('S8 the exercise list offers Undo swap after the swap while no Hammer_Curls set is logged', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+
+  expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
+})
+
+test('S8 tapping Undo swap brings back the seated biceps curls row with its 2 logged sets', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+
+  await user.click(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE))
+
+  const seatedCurls = await screen.findByRole('button', { name: /^Seated biceps curls/ }, SETTLE)
+  expect(progressOf(seatedCurls)).toBe('2/3')
+  expect(screen.queryByRole('button', { name: HAMMER_ROW })).toBeNull()
+})
+
+test('S8 tapping Undo swap removes the swap from the stored session', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+
+  await user.click(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE))
+  await screen.findByRole('button', { name: /^Seated biceps curls/ }, SETTLE)
+
+  await waitFor(async () => {
+    const session = await getActiveSession()
+    expect(session?.swaps?.['seated-biceps-curls']).toBeUndefined()
+  }, SETTLE)
+})
+
+test('S8 once the first Hammer_Curls set is logged under it, Undo swap is no longer offered', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+  // Offered first, so its absence below is the withdrawal and not a control that never was.
+  expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
+
+  await logFirstHammerCurlsSet(user)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+
+  expect(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Undo swap' })).toBeNull()
+  // The 2 sets from before the swap stay under the planned exercise; the one after it is the
+  // done exercise's own first set.
+  const entries = await activeSessionEntries()
+  expect(entries.map((logged) => [logged.exerciseId, logged.setIndex])).toEqual([
+    ['seated-biceps-curls', 1],
+    ['seated-biceps-curls', 2],
+    ['Hammer_Curls', 1],
+  ])
+})
+
+/** Swaps seated-biceps-curls for Hammer_Curls in Workout B, then closes the app. */
+async function swapThenCloseTheApp(user: UserEvent): Promise<void> {
+  const run = render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+  run.unmount()
+  db.close()
+  await db.open()
+}
+
+test('S9 reopening the app resumes the session with the swap still applied and still undoable', async () => {
+  const user = userEvent.setup()
+  await swapThenCloseTheApp(user)
+
+  render(<App />)
+
+  // The swap itself is what E5-T11/E5-T12 already persist; what reopening must also keep is
+  // the swap's standing as undoable, since no Hammer_Curls set has been logged yet.
+  expect(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: /^Seated biceps curls/ })).toBeNull()
+  expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
+})
+
+/**
+ * Stores one finished Workout B session in which seated-biceps-curls was swapped for
+ * Hammer_Curls and one Hammer_Curls set was logged -- the "last time" S10 starts from.
+ */
+async function finishWorkoutBWithHammerCurlsSwap(): Promise<void> {
+  const last = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE)
+  await setSwap(last.id, 'seated-biceps-curls', 'Hammer_Curls')
+  await logSet(last.id, {
+    exerciseId: 'Hammer_Curls',
+    setIndex: 1,
+    weightKg: 12,
+    reps: 10,
+    loggedAt: BASE + 60_000,
+  })
+  await finishSession(last.id, BASE + 3_600_000)
+}
+
+test('S10 starting Workout B again shows the seated biceps curls row with a Last time: Hammer Curls button', async () => {
+  await finishWorkoutBWithHammerCurlsSwap()
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await startWorkout(user, 'Workout B')
+
+  expect(await screen.findByRole('button', { name: /^Seated biceps curls/ }, SETTLE)).toBeVisible()
+  expect(
+    await screen.findByRole('button', { name: 'Last time: Hammer Curls' }, SETTLE),
+  ).toBeVisible()
+  expect(screen.queryByRole('button', { name: HAMMER_ROW })).toBeNull()
+})
+
+test('S10 tapping Last time: Hammer Curls applies the same swap to the exercise list row', async () => {
+  await finishWorkoutBWithHammerCurlsSwap()
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+
+  await user.click(await screen.findByRole('button', { name: 'Last time: Hammer Curls' }, SETTLE))
+
+  expect(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Last time: Hammer Curls' })).toBeNull()
+})
+
+test('S10 tapping Last time: Hammer Curls records the swap on the new session', async () => {
+  await finishWorkoutBWithHammerCurlsSwap()
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+
+  await user.click(await screen.findByRole('button', { name: 'Last time: Hammer Curls' }, SETTLE))
+  await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
+
+  await waitFor(async () => {
+    const session = await getActiveSession()
+    expect(session?.finishedAt).toBeNull()
+    expect(session?.swaps).toEqual({ 'seated-biceps-curls': 'Hammer_Curls' })
+  }, SETTLE)
+})
+
