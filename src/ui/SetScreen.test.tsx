@@ -308,6 +308,16 @@ test('L14 tapping Exercise info tells the caller to open the on-screen exercise 
   expect(onOpenInfo).toHaveBeenCalledWith('back-squat')
 })
 
+test('S6 tapping Alternatives tells the caller to open alternatives for the on-screen exercise id', async () => {
+  const onOpenAlternatives = vi.fn()
+  const { user } = renderSetScreen({ onOpenAlternatives })
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+
+  expect(onOpenAlternatives).toHaveBeenCalledTimes(1)
+  expect(onOpenAlternatives).toHaveBeenCalledWith('back-squat')
+})
+
 test('O12 the rest timer reads 0:00 before any set is logged', () => {
   renderSetScreen({ setIndex: 2, lastEntries: [historyEntry(2, 60, 10)] })
 

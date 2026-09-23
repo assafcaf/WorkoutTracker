@@ -32,6 +32,14 @@ export type SetScreenProps = {
    * button itself always renders, it just has nothing to tell if untapped.
    */
   onOpenInfo?(exerciseId: string): void
+  /**
+   * Told that "Alternatives" was tapped for the exercise on screen, so the caller can open the
+   * ranked alternatives list for it (E5-T12). Optional for the same reason `onOpenInfo` is --
+   * `src/ui/useWakeLock.test.ts`'s `renderSetScreen`, predating this prop, need not pass it.
+   *
+   * STUB (E5-T12 test-designer): accepted but not yet wired to the "Alternatives" button.
+   */
+  onOpenAlternatives?(exerciseId: string): void
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -79,7 +87,7 @@ function openSetFor(
  * the rule is E1-T2's, the message is this screen's.
  */
 export function SetScreen(props: SetScreenProps): JSX.Element {
-  const { exercise, plan, sessionId, onLogged, onAddSet, onOpenInfo } = props
+  const { exercise, plan, sessionId, onLogged, onAddSet, onOpenInfo, onOpenAlternatives } = props
 
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
@@ -158,8 +166,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   return (
     <div className="set-screen">
-      <h2>{exercise.name}</h2>
+      {/* The exercise's name is the shell's own header title (`AppShell`'s `<h1>`, set by every
+          caller to `exercise.name`); a second heading here would duplicate it verbatim, which
+          collides for a caller matching an exercise's set screen by its accessible name alone
+          (E5-T12's S7, opening a swapped-in exercise's set screen). */}
       <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
+      <button
+        type="button"
+        className="open-alternatives"
+        onClick={() => onOpenAlternatives?.(exercise.id)}
+      >
+        Alternatives
+      </button>
       <p className="set-counter">{`Set ${open.setIndex} of ${plan.sets}`}</p>
 
       <WeightDial

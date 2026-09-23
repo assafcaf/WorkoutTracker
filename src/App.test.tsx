@@ -1321,3 +1321,95 @@ test('L14 tapping a row on the Exercises tab opens the same in-app detail overla
     within(overlay as HTMLElement).getByRole('heading', { name: 'Barbell Squat' }),
   ).toBeVisible()
 })
+
+// --- E5-T12: swapping an exercise mid-session ([S6], [S7]) --------------------------------
+//
+// seated-biceps-curls (Workout B, sets: 3, repRange: [10, 12], restSeconds: 90 in
+// src/data/programs/assaf-ab-2026.json) maps to the library entry Seated_Dumbbell_Curl
+// (src/data/exercises.json). Hammer_Curls is a real free-exercise-db entry, hand-checked
+// against src/data/library/exercises.json: primary muscle biceps, category strength, equipment
+// dumbbell -- so it ranks as an alternative to Seated_Dumbbell_Curl under `alternativesFor`
+// with no gym-equipment filter, the same real domain function the list renders through.
+
+test('S6 tapping Alternatives on the seated biceps curls set screen opens the ranked alternatives list', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+
+  expect(await screen.findByRole('searchbox', { name: /search/i }, FAST)).toBeVisible()
+  const hammerRowName = await screen.findByText(
+    'Hammer Curls',
+    { selector: '.alternatives-row-name' },
+    FAST,
+  )
+  const hammerRow = hammerRowName.closest('li')
+  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
+  expect(within(hammerRow).getByRole('button', { name: 'Do this instead' })).toBeVisible()
+})
+
+test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates the exercise list row', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+  const hammerRowName = await screen.findByText(
+    'Hammer Curls',
+    { selector: '.alternatives-row-name' },
+    FAST,
+  )
+  const hammerRow = hammerRowName.closest('li')
+  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+
+  // The done exercise carries the planned sets, rep range and rest -- seated-biceps-curls'
+  // own plan (sets: 3, repRange: [10, 12], restSeconds: 90).
+  const swappedRow = await screen.findByRole(
+    'button',
+    { name: /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/ },
+    SETTLE,
+  )
+  expect(swappedRow).toBeVisible()
+})
+
+test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled with no history as 0 kg and the bottom of the rep range', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+  const hammerRowName = await screen.findByText(
+    'Hammer Curls',
+    { selector: '.alternatives-row-name' },
+    FAST,
+  )
+  const hammerRow = hammerRowName.closest('li')
+  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+
+  const swappedRow = await screen.findByRole(
+    'button',
+    { name: /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/ },
+    SETTLE,
+  )
+  await user.click(swappedRow)
+
+  expect(await screen.findByRole('heading', { name: 'Hammer Curls' }, SETTLE)).toBeVisible()
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  // Hammer_Curls has no logged history of its own yet: `trainingFieldsFor`'s dumbbell
+  // startWeight (0, hand-checked against src/domain/trainingFields.ts) and the bottom of
+  // seated-biceps-curls' own repRange ([10, 12]).
+  expect(readoutValue(weightReadout())).toBe('0')
+  expect(readoutValue(repsReadout())).toBe('10')
+})

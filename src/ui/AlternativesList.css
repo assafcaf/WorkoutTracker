@@ -1,0 +1,65 @@
+/* The ranked alternatives list (E5-T12): a search box over one tappable row per ranked
+ * alternative, each offering "Do this instead" when the list is not browse-only.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
+ * one definition site, matching `.exercise-list` / `.library-list`.
+ */
+
+.alternatives-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.alternatives-search {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.alternatives-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.alternatives-row {
+  display: flex;
+  width: 100%;
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.alternatives-row-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-height: var(--tap-min);
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.alternatives-row-name {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.alternatives-row-choose {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-accent);
+}
