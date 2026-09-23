@@ -11,7 +11,7 @@ import type { Program } from '../types'
 // settingsStore only needs a program's id, so the fixtures below are the minimal shape rather
 // than the full bundled catalog/program fixtures other test files use.
 function program(id: string, name = id): Program {
-  return { id, name, units: 'kg', workouts: [] }
+  return { id, name, units: 'kg', workouts: [], sessionsPerWeek: 3 }
 }
 
 beforeEach(async () => {

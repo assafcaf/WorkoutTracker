@@ -5,7 +5,7 @@ import { Settings } from './Settings'
 import type { Program } from '../types'
 
 function program(id: string, name: string): Program {
-  return { id, name, units: 'kg', workouts: [] }
+  return { id, name, units: 'kg', workouts: [], sessionsPerWeek: 3 }
 }
 
 const programs: Program[] = [
