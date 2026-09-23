@@ -56,6 +56,20 @@ So progress is visible without reading the terminal:
 
 `spec_commit: ask`. After a spec is approved, ask once whether to promote it. Default: no.
 
+The status line reads `.work/tickets/` directly on the `local` adapter, so nothing here writes
+`.work/progress.json`. That file is for the `jira` and `github` adapters, where counting the
+epic means an API call the status line can't make.
+
+## Project knowledge
+
+Mode: off
+
+Off is what every skill and agent did before the knowledge layer existed, so leaving it off
+changes nothing. Run `/knowledge-layer` to turn it on: it scans the repo for what it can cite,
+asks you for what it cannot, writes `CONTEXT.md` and `.claude/workflow/project.md`, and
+replaces this paragraph with the table of what each reader reads. Until then, agents work from
+`CLAUDE.md` as they always have.
+
 ## Commands
 
 The stack is React + TypeScript + Vite + Vitest (decided 2026-09-22; see
