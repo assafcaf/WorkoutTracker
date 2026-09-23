@@ -23,7 +23,12 @@ export function RegionPanel({
   onClose,
 }: RegionPanelProps): JSX.Element {
   return (
-    <div role="dialog" aria-label={region} className="region-panel">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={region}
+      className="region-panel overlay-panel"
+    >
       <h3 className="region-panel-heading">{region}</h3>
       <p className="region-panel-count">{`${count} sets`}</p>
       {contributors.length > 0 ? (

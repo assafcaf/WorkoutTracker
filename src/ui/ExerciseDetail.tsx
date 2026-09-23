@@ -66,7 +66,12 @@ export function ExerciseDetail({
   const [failedPhotos, setFailedPhotos] = useState<Set<number>>(new Set())
 
   return (
-    <article className="exercise-detail">
+    <article
+      className="exercise-detail overlay-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-label={heading ?? entry.name}
+    >
       <button type="button" className="exercise-detail-back" onClick={onBack}>
         Back
       </button>

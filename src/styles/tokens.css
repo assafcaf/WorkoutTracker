@@ -69,4 +69,8 @@
 
   /* The home-indicator inset, 0px anywhere that reports no safe area. */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* The notch/status-bar inset, 0px anywhere that reports no safe area. Popups cover the whole
+   * viewport and so need both insets regardless of where the tab bar sits. */
+  --safe-top: env(safe-area-inset-top, 0px);
 }
