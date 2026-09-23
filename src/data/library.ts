@@ -1,4 +1,4 @@
-import type { LibraryExercise, Muscle } from '../types'
+import type { LibraryExercise, Muscle, Video } from '../types'
 
 /**
  * The free-exercise-db commit `src/data/library/exercises.json` is pinned to. Also used to
@@ -37,4 +37,19 @@ export async function loadLibrary(): Promise<Map<string, LibraryExercise>> {
   const { default: entries } = await import('./library/exercises.json')
   const library = entries as unknown as LibraryExercise[]
   return new Map(library.map((exercise) => [exercise.id, exercise] as const))
+}
+
+/**
+ * The harvested Muscle & Strength videos, keyed by library id (E5-T7).
+ *
+ * Loads `src/data/library/videos.json` (built by `scripts/build-videos.ts`) with a dynamic
+ * `import()`, the same chunking rationale as `loadLibrary()`.
+ *
+ * STUB (E5-T7 test-designer): `videos.json` is a placeholder `{}` until the code-writer runs
+ * the real build, so this currently always resolves to an empty map.
+ */
+export async function loadVideos(): Promise<Map<string, Video>> {
+  const { default: entries } = await import('./library/videos.json')
+  const videos = entries as unknown as Record<string, Video>
+  return new Map(Object.entries(videos))
 }

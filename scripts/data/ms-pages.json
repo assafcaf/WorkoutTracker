@@ -1,0 +1,5417 @@
+[
+  {
+    "slug": "1-4-squat",
+    "title": "Barbell Quarter Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885839"
+    }
+  },
+  {
+    "slug": "1-leg-pushup",
+    "title": "1 Leg Push Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "pd5ya77uEhc"
+    }
+  },
+  {
+    "slug": "45-degree-leg-press",
+    "title": "Leg Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "sEM_zo9w2ss"
+    }
+  },
+  {
+    "slug": "45-degree-toe-raise",
+    "title": "45 Degree Toe Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793651"
+    }
+  },
+  {
+    "slug": "45-degress-calf-press",
+    "title": "45 Degree Leg Press Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "RcKQbiL-ZOc"
+    }
+  },
+  {
+    "slug": "abdominal-air-bike",
+    "title": "Abdominal Air Bike (AKA Bicycle)",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "vV_sKNCpiVM"
+    }
+  },
+  {
+    "slug": "abdominal-barbell-rollouts",
+    "title": "Barbell Abdominal Rollouts",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885260"
+    }
+  },
+  {
+    "slug": "abdominal-pendulum",
+    "title": "Abdominal Pendulum",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880949"
+    }
+  },
+  {
+    "slug": "adductors",
+    "title": "Adductors Exercises: 50+ Free Video Exercise Guides | Muscle & Strength",
+    "equipment": null,
+    "video": null
+  },
+  {
+    "slug": "alternate-bent-over-dumbbell-kickback",
+    "title": "Alternating Bent-Over Dumbbell Kickback",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784478"
+    }
+  },
+  {
+    "slug": "alternate-bent-over-dumbbell-reverse-fly",
+    "title": "Alternating Rear Delt Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877882122"
+    }
+  },
+  {
+    "slug": "alternate-decline-dumbbell-flys",
+    "title": "Alternating Decline Dumbbell Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783540"
+    }
+  },
+  {
+    "slug": "alternate-dumbbell-bench-press-high-start",
+    "title": "Alternate Dumbbell Bench Press (high start)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "LL561B2xQu0"
+    }
+  },
+  {
+    "slug": "alternate-dumbbell-bench-press-low-start",
+    "title": "Alternating Dumbbell Bench Press (Low Start)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783506"
+    }
+  },
+  {
+    "slug": "alternate-dumbbell-flys",
+    "title": "Alternating Dumbbell Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783487"
+    }
+  },
+  {
+    "slug": "alternate-dumbbell-hammer-preacher-curl",
+    "title": "Alternating Dumbbell Hammer Preacher Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793976"
+    }
+  },
+  {
+    "slug": "alternate-dumbbell-lateral-raise",
+    "title": "Alternating Dumbbell Lateral Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002335"
+    }
+  },
+  {
+    "slug": "alternate-dumbbell-preacher-curl",
+    "title": "Alternating Dumbbell Preacher Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793942"
+    }
+  },
+  {
+    "slug": "alternate-dumbbell-reverse-fly-on-incline-bench",
+    "title": "Alternating Incline Rear Delt Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001349"
+    }
+  },
+  {
+    "slug": "alternate-incline-dumbbell-curl",
+    "title": "Alternating Incline Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794367"
+    }
+  },
+  {
+    "slug": "alternate-incline-dumbbell-flys",
+    "title": "Alternating Incline Dumbbell Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783420"
+    }
+  },
+  {
+    "slug": "alternate-incline-hammer-curl",
+    "title": "Alternating Incline Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794345"
+    }
+  },
+  {
+    "slug": "alternate-lying-dumbbell-extension",
+    "title": "Alternating Lying Dumbbell Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783972"
+    }
+  },
+  {
+    "slug": "alternate-lying-dumbbell-reverse-fly",
+    "title": "Alternating Lying Rear Delt Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007881"
+    }
+  },
+  {
+    "slug": "alternate-one-arm-standing-palms-in-dumbbell-press",
+    "title": "Standing Neutral Grip Alternating Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "G0eJa-Bwlhc"
+    }
+  },
+  {
+    "slug": "alternate-reach-and-catch",
+    "title": "Alternating Reach And Catch",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "1077314576"
+    }
+  },
+  {
+    "slug": "alternate-seated-arnold-press",
+    "title": "Seated Alternating Arnold Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007903"
+    }
+  },
+  {
+    "slug": "alternate-seated-bent-over-dumbbell-kickback",
+    "title": "Seated Alternating Bent Over Dumbbell Kickback",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784048"
+    }
+  },
+  {
+    "slug": "alternate-seated-bent-over-dumbbell-reverse-fly",
+    "title": "Alternating Seated Bent Over Rear Delt Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007778"
+    }
+  },
+  {
+    "slug": "alternate-seated-dumbbell-curl",
+    "title": "Alternating Seated Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794216"
+    }
+  },
+  {
+    "slug": "alternate-seated-dumbbell-front-raise",
+    "title": "Seated Alternating Dumbbell Front Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007842"
+    }
+  },
+  {
+    "slug": "alternate-seated-dumbbell-press",
+    "title": "Alternate Seated Dumbbell Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "AYacfAeoNGo"
+    }
+  },
+  {
+    "slug": "alternate-seated-hammer-curl",
+    "title": "Alternating Seated Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794279"
+    }
+  },
+  {
+    "slug": "alternate-seated-palms-in-dumbbell-press",
+    "title": "Seated Alternating Neutral Grip Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877882169"
+    }
+  },
+  {
+    "slug": "alternate-standing-arnold-press",
+    "title": "Alternating Standing Arnold Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880493"
+    }
+  },
+  {
+    "slug": "alternate-standing-dumbbell-front-raise",
+    "title": "Alternating Dumbbell Front Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002356"
+    }
+  },
+  {
+    "slug": "alternate-standing-dumbbell-press",
+    "title": "Alternating Standing Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002193"
+    }
+  },
+  {
+    "slug": "alternate-standing-hammer-curl",
+    "title": "Alternating Standing Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794147"
+    }
+  },
+  {
+    "slug": "alternating-standing-dumbbell-curl",
+    "title": "Alternating Standing Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794096"
+    }
+  },
+  {
+    "slug": "back-of-the-head-lying-tricep-extension",
+    "title": "45 Degree Lying Tricep Extension",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784188"
+    }
+  },
+  {
+    "slug": "barbell-bench-press",
+    "title": "Barbell Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "tuwHzzPdaGc"
+    }
+  },
+  {
+    "slug": "barbell-concentration-curl",
+    "title": "Barbell Concentration Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794296"
+    }
+  },
+  {
+    "slug": "barbell-drag-curl",
+    "title": "Barbell Drag Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "1086770204"
+    }
+  },
+  {
+    "slug": "barbell-front-raise",
+    "title": "Barbell Front Raise",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "lhV2-z6s_bI"
+    }
+  },
+  {
+    "slug": "barbell-hack-squat",
+    "title": "Barbell Hack Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "cSId0_Q9fdM"
+    }
+  },
+  {
+    "slug": "barbell-hammer-curl",
+    "title": "Hammer Bar Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881789"
+    }
+  },
+  {
+    "slug": "barbell-jumping-squats",
+    "title": "Barbell Jumping Squats",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "1083932058"
+    }
+  },
+  {
+    "slug": "barbell-lunge",
+    "title": "Barbell Lunge",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885592"
+    }
+  },
+  {
+    "slug": "barbell-pullover",
+    "title": "Barbell Pullover",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783462"
+    }
+  },
+  {
+    "slug": "barbell-pullover-and-press",
+    "title": "Barbell Pullover And Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783475"
+    }
+  },
+  {
+    "slug": "barbell-rear-lunge",
+    "title": "Barbell Reverse Lunge",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "U1gWfjAIS4Q"
+    }
+  },
+  {
+    "slug": "barbell-shrug",
+    "title": "Barbell Shrug",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "6hNudn7Peco"
+    }
+  },
+  {
+    "slug": "barbell-side-bends",
+    "title": "Barbell Side Bends",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885441"
+    }
+  },
+  {
+    "slug": "barbell-side-lunge",
+    "title": "Barbell Lateral Lunge",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "frdrLD_-VAw"
+    }
+  },
+  {
+    "slug": "barbell-side-split-squat",
+    "title": "Barbell Lateral Split Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885942"
+    }
+  },
+  {
+    "slug": "barbell-split-jump",
+    "title": "Barbell Split Squat With Jump",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885497"
+    }
+  },
+  {
+    "slug": "barbell-step-ups",
+    "title": "Barbell Step Ups",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "_uzlVEERPyM"
+    }
+  },
+  {
+    "slug": "barbell-wrist-curl",
+    "title": "Seated Barbell Wrist Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "cOBaYeX3bYo"
+    }
+  },
+  {
+    "slug": "barbell-wrist-curl-over-bench",
+    "title": "Barbell Wrist Curl (Over Bench)",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002661"
+    }
+  },
+  {
+    "slug": "behind-neck-lat-pull-down",
+    "title": "Behind Neck Lat Pull Down",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "u0NAUhxSt6M"
+    }
+  },
+  {
+    "slug": "behind-the-back-barbell-shrug",
+    "title": "Behind-The-Back Barbell Shrug",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787954"
+    }
+  },
+  {
+    "slug": "bench-jack-knife",
+    "title": "Jackknife (On Bench)",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880975"
+    }
+  },
+  {
+    "slug": "bench-one-leg-dumbbell-squat",
+    "title": "Dumbbell Pistol Squat (On Bench)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881699"
+    }
+  },
+  {
+    "slug": "bench-pushups",
+    "title": "Push-Up (On Bench)",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783517"
+    }
+  },
+  {
+    "slug": "bent-over-barbell-row",
+    "title": "Bent Over Row",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "paCfxhgW6bI"
+    }
+  },
+  {
+    "slug": "bent-over-dumbbell-kickback",
+    "title": "Bent Over Dumbbell Tricep Kickback",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "BL9CzOQZDrs"
+    }
+  },
+  {
+    "slug": "bent-over-dumbbell-reverse-fly",
+    "title": "Bent Over Dumbbell Reverse Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "Fgz_FdzDukE"
+    }
+  },
+  {
+    "slug": "bent-over-dumbbell-row",
+    "title": "Bent Over Dumbbell Row",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "DhewkuU_95s"
+    }
+  },
+  {
+    "slug": "bent-over-row",
+    "title": "T-Bar Row",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "gJSov9rHIf0"
+    }
+  },
+  {
+    "slug": "bicep-machine-curl",
+    "title": "Machine Bicep Curl",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001918"
+    }
+  },
+  {
+    "slug": "bodyweight-jump-squat",
+    "title": "Bodyweight Squat Jump",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885611"
+    }
+  },
+  {
+    "slug": "bodyweight-lunge",
+    "title": "Bodyweight Lunge",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "4hqtPrp-E8A"
+    }
+  },
+  {
+    "slug": "bodyweight-side-lunge",
+    "title": "Bodyweight Lateral Lunge",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885800"
+    }
+  },
+  {
+    "slug": "bodyweight-squat",
+    "title": "Prisoner Squat",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "0PboqagHAjs"
+    }
+  },
+  {
+    "slug": "bodyweight-standing-calf-raise",
+    "title": "Bodyweight Standing Calf Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793507"
+    }
+  },
+  {
+    "slug": "bodyweight-step-up",
+    "title": "Bodyweight Step Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "90-X4kqhY3E"
+    }
+  },
+  {
+    "slug": "bodyweight-walking-lunge",
+    "title": "Bodyweight Walking Lunge",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885520"
+    }
+  },
+  {
+    "slug": "bodyweight-wall-squat",
+    "title": "Bodyweight Wall Squat",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008179"
+    }
+  },
+  {
+    "slug": "box-squat-shown-with-bench",
+    "title": "Box Squat",
+    "equipment": "Box",
+    "video": {
+      "provider": "youtube",
+      "id": "ejK25kB7FR8"
+    }
+  },
+  {
+    "slug": "cable-calf-raise",
+    "title": "Cable Calf Raise",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793691"
+    }
+  },
+  {
+    "slug": "cable-chest-press",
+    "title": "Cable Chest Press",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "n4CEULDvATA"
+    }
+  },
+  {
+    "slug": "cable-concentration-curl",
+    "title": "Cable Concentration Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001654"
+    }
+  },
+  {
+    "slug": "cable-concentration-tricep-extension",
+    "title": "Cable Concentration Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788212"
+    }
+  },
+  {
+    "slug": "cable-crossovers",
+    "title": "Cable Iron Cross",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "DumkKcC_nHI"
+    }
+  },
+  {
+    "slug": "cable-crossovers-(mid-chest)",
+    "title": "Standing Cable Fly",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "OPYrUGZL8nU"
+    }
+  },
+  {
+    "slug": "cable-crossovers-(upper-chest)",
+    "title": "Cable Crossovers (Upper Chest)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783830"
+    }
+  },
+  {
+    "slug": "cable-crossovers-bent-over",
+    "title": "Standing High to Low Cable Fly",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "JHqmhZ12rr0"
+    }
+  },
+  {
+    "slug": "cable-crunch",
+    "title": "Cable Crunch",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008287"
+    }
+  },
+  {
+    "slug": "cable-curl",
+    "title": "Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001419"
+    }
+  },
+  {
+    "slug": "cable-drag-curl",
+    "title": "Cable Drag Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001460"
+    }
+  },
+  {
+    "slug": "cable-front-raise",
+    "title": "Cable Front Raise (Bilateral)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "CsnKFGAx0Zc"
+    }
+  },
+  {
+    "slug": "cable-hip-abduction",
+    "title": "Cable Hip Abduction",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008214"
+    }
+  },
+  {
+    "slug": "cable-hip-adduction",
+    "title": "Cable Hip Adduction",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008232"
+    }
+  },
+  {
+    "slug": "cable-inner-chest-press",
+    "title": "Cable Inner Chest Press",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783850"
+    }
+  },
+  {
+    "slug": "cable-lower-chest-raise",
+    "title": "Standing Low to High Cable Fly",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "8YjdqeIXPUQ"
+    }
+  },
+  {
+    "slug": "cable-palm-rotational-row",
+    "title": "Cable Palm Rotational Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788612"
+    }
+  },
+  {
+    "slug": "cable-row-to-neck",
+    "title": "Cable Row to Neck",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787906"
+    }
+  },
+  {
+    "slug": "cable-shrug",
+    "title": "Cable Shrug",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "LwTq3v2GUF4"
+    }
+  },
+  {
+    "slug": "cable-tricep-extension-with-v-bar",
+    "title": "Cable Tricep Extension With V-Bar",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "KYGarkmUqvk"
+    }
+  },
+  {
+    "slug": "cable-tricep-kickback",
+    "title": "Cable Tricep Kickback",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788079"
+    }
+  },
+  {
+    "slug": "cable-underhand-pull-down",
+    "title": "Lateral Pulldown Bicep Curl",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001376"
+    }
+  },
+  {
+    "slug": "cable-upright-row",
+    "title": "Cable Upright Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "kZpdmn_djFI"
+    }
+  },
+  {
+    "slug": "chair-knee-raise",
+    "title": "Roman Chair Knee Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880808"
+    }
+  },
+  {
+    "slug": "chair-twisting-knee-raise",
+    "title": "Roman Chair Twisting Knee Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880832"
+    }
+  },
+  {
+    "slug": "chest-dip",
+    "title": "Chest Dip",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "FG1ENBFsdHU"
+    }
+  },
+  {
+    "slug": "chin-up",
+    "title": "Chin Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "1EJ3A3rEtlo"
+    }
+  },
+  {
+    "slug": "clean-press",
+    "title": "Barbell Clean and Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885140"
+    }
+  },
+  {
+    "slug": "close-grip-bench-press",
+    "title": "Close Grip Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "j-NhORwJDb4"
+    }
+  },
+  {
+    "slug": "close-grip-cable-curl",
+    "title": "Close Grip Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001475"
+    }
+  },
+  {
+    "slug": "close-grip-chest-press",
+    "title": "Close Grip Chest Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788419"
+    }
+  },
+  {
+    "slug": "close-grip-dumbbell-press",
+    "title": "Close Grip Dumbbell Press (AKA Crush Press)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "XZ3XSwmk1Os"
+    }
+  },
+  {
+    "slug": "close-grip-ez-bar-curl",
+    "title": "Close Grip EZ Bar Curl",
+    "equipment": "EZ Bar",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794039"
+    }
+  },
+  {
+    "slug": "close-grip-press-behind-neck",
+    "title": "Close Grip Press Behind-The-Neck",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784348"
+    }
+  },
+  {
+    "slug": "close-grip-pull-down",
+    "title": "Close Grip Lat Pull Down",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "uAyrz5GTEHg"
+    }
+  },
+  {
+    "slug": "close-grip-pull-up",
+    "title": "Close Grip Pull Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "tgDl9PlA4-Q"
+    }
+  },
+  {
+    "slug": "close-grip-push-up",
+    "title": "Close Grip Push Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784503"
+    }
+  },
+  {
+    "slug": "close-grip-standing-barbell-curl",
+    "title": "Close Grip Standing Barbell Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "exqx_2Uyopw"
+    }
+  },
+  {
+    "slug": "concentration-cur",
+    "title": "Concentration Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "LHDwya1KY8M"
+    }
+  },
+  {
+    "slug": "deadlifts",
+    "title": "Deadlift",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "wjsu6ceEkAQ"
+    }
+  },
+  {
+    "slug": "decline-abdominal-reach",
+    "title": "Decline Bench Abdominal Reach",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880723"
+    }
+  },
+  {
+    "slug": "decline-bench-alternate-knee-raise",
+    "title": "Decline Bench Alternating Knee Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880705"
+    }
+  },
+  {
+    "slug": "decline-bench-alternate-leg-raise",
+    "title": "Decline Bench Alternating Leg Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880743"
+    }
+  },
+  {
+    "slug": "decline-bench-barbell-lunge",
+    "title": "Decline Bench Barbell Lunge",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877882062"
+    }
+  },
+  {
+    "slug": "decline-bench-cable-crunch",
+    "title": "Decline Bench Cable Crunch",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008386"
+    }
+  },
+  {
+    "slug": "decline-bench-knee-raise",
+    "title": "Decline Bench Knee Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880597"
+    }
+  },
+  {
+    "slug": "decline-bench-leg-raise",
+    "title": "Decline Bench Leg Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880681"
+    }
+  },
+  {
+    "slug": "decline-bench-press",
+    "title": "Decline Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "oIgci8aNsG0"
+    }
+  },
+  {
+    "slug": "decline-cable-flys",
+    "title": "Decline Cable Flys",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "-wTylfHsZ0I"
+    }
+  },
+  {
+    "slug": "decline-cable-knee-raise",
+    "title": "Decline Bench Cable Knee Raise",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881446"
+    }
+  },
+  {
+    "slug": "decline-close-grip-bench-press",
+    "title": "Decline Close Grip Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "N0njbO0ziio"
+    }
+  },
+  {
+    "slug": "decline-dumbbell-bench-press",
+    "title": "Decline Dumbbell Bench Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "5pDbtYmX5fM"
+    }
+  },
+  {
+    "slug": "decline-dumbbell-flys",
+    "title": "Decline Dumbbell Flys",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "4ahnfPhKoFo"
+    }
+  },
+  {
+    "slug": "decline-dumbbell-situp",
+    "title": "Decline Weighted Sit Up with Twist",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967665"
+    }
+  },
+  {
+    "slug": "decline-leg-raise-with-hip-thrust",
+    "title": "Decline Leg Raise With Hip Thrust",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880619"
+    }
+  },
+  {
+    "slug": "decline-lying-dumbbell-extension",
+    "title": "Decline Lying Dumbbell Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "hKGDJNuPsb0"
+    }
+  },
+  {
+    "slug": "decline-lying-tricep-extension-skullcrusher",
+    "title": "Decline Lying Tricep Extension (Skullcrusher)",
+    "equipment": "EZ Bar",
+    "video": {
+      "provider": "youtube",
+      "id": "kVJrVTEt1gE"
+    }
+  },
+  {
+    "slug": "decline-situp",
+    "title": "Decline Bench Sit Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880639"
+    }
+  },
+  {
+    "slug": "decline-smith-machine-bench-press",
+    "title": "Decline Smith Machine Bench Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "W6Z2HY8_lDU"
+    }
+  },
+  {
+    "slug": "decline-weighted-twist",
+    "title": "Decline Weighted Twist",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967633"
+    }
+  },
+  {
+    "slug": "deep-push-ups",
+    "title": "Stretch Push Up (On Risers)",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "168QDdvpDag"
+    }
+  },
+  {
+    "slug": "deep-squat",
+    "title": "Barbell Deep Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885542"
+    }
+  },
+  {
+    "slug": "donkey-calf-raise",
+    "title": "Donkey Calf Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793723"
+    }
+  },
+  {
+    "slug": "dublin-press",
+    "title": "Dublin Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002772"
+    }
+  },
+  {
+    "slug": "dumbbell-bench-press",
+    "title": "Dumbbell Bench Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "dGqI0Z5ul4k"
+    }
+  },
+  {
+    "slug": "dumbbell-deadlift",
+    "title": "Dumbbell Deadlift",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967268"
+    }
+  },
+  {
+    "slug": "dumbbell-floor-press",
+    "title": "Dumbbell Floor Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "gaBOfLlIXjs"
+    }
+  },
+  {
+    "slug": "dumbbell-flys",
+    "title": "Dumbbell Flys",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "-lcbvOddoi8"
+    }
+  },
+  {
+    "slug": "dumbbell-front-raise",
+    "title": "Standing Dumbbell Front Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002236"
+    }
+  },
+  {
+    "slug": "dumbbell-front-raise-on-incline-bench",
+    "title": "Lying Dumbbell Front Raise On Incline Bench",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "brYmE1oIWfc"
+    }
+  },
+  {
+    "slug": "dumbbell-hammer-preacher-curl",
+    "title": "Dumbbell Hammer Preacher Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "ZdcFOgFi1Dg"
+    }
+  },
+  {
+    "slug": "dumbbell-hamstring-curl",
+    "title": "Dumbbell Hamstring Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793322"
+    }
+  },
+  {
+    "slug": "dumbbell-jumping-squat",
+    "title": "Dumbbell Squat Jump",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880574"
+    }
+  },
+  {
+    "slug": "dumbbell-lateral-raise",
+    "title": "Dumbbell Lateral Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008500"
+    }
+  },
+  {
+    "slug": "dumbbell-lunge",
+    "title": "Dumbbell Lunge",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881961"
+    }
+  },
+  {
+    "slug": "dumbbell-preacher-curl",
+    "title": "Dumbbell Preacher Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "pwEhS1sg9mU"
+    }
+  },
+  {
+    "slug": "dumbbell-pullover",
+    "title": "Dumbbell Pullover",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008438"
+    }
+  },
+  {
+    "slug": "dumbbell-rear-lunge",
+    "title": "Dumbbell Rear Lunge",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "Ix9QZ3Pnneo"
+    }
+  },
+  {
+    "slug": "dumbbell-reverse-fly",
+    "title": "Seated Bent Over Dumbbell Reverse Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "b9YUtRP184o"
+    }
+  },
+  {
+    "slug": "dumbbell-reverse-fly-on-incline-bench",
+    "title": "Incline Rear Delt Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002858"
+    }
+  },
+  {
+    "slug": "dumbbell-reverse-preacher-curl",
+    "title": "Reverse Grip Dumbbell Preacher Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008025"
+    }
+  },
+  {
+    "slug": "dumbbell-shrugs",
+    "title": "Dumbbell Shrug",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "dj2Gm628kas"
+    }
+  },
+  {
+    "slug": "dumbbell-side-bends",
+    "title": "Dumbbell Side Bends",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885243"
+    }
+  },
+  {
+    "slug": "dumbbell-side-lunge",
+    "title": "Dumbbell Lateral Lunge",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885900"
+    }
+  },
+  {
+    "slug": "dumbbell-split-jump",
+    "title": "Dumbbell Split Squat With Jump",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885777"
+    }
+  },
+  {
+    "slug": "dumbbell-squat",
+    "title": "Dumbbell Squat",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "1077314446"
+    }
+  },
+  {
+    "slug": "dumbbell-squat-to-bench",
+    "title": "Dumbbell Box Squat",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885860"
+    }
+  },
+  {
+    "slug": "dumbbell-step-up",
+    "title": "Dumbbell Step Up",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877882016"
+    }
+  },
+  {
+    "slug": "dumbbell-stiff-leg-deadlift",
+    "title": "Dumbbell Stiff Leg Deadlift",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880547"
+    }
+  },
+  {
+    "slug": "dumbbell-stiff-leg-deadlift-on-bench",
+    "title": "Dumbbell Stiff Leg Deadlift (On Bench)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793267"
+    }
+  },
+  {
+    "slug": "dumbbell-upright-row",
+    "title": "Dumbbell Upright Row",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "Cxrmdrq1s3E"
+    }
+  },
+  {
+    "slug": "dumbbell-walking-lunge",
+    "title": "Dumbbell Walking Lunge",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "uRSsOoZG9z8"
+    }
+  },
+  {
+    "slug": "dumbbell-wall-squat",
+    "title": "Dumbbell Wall Squat",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885691"
+    }
+  },
+  {
+    "slug": "dumbbell-wrist-curl",
+    "title": "Seated Dumbbell Wrist Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881857"
+    }
+  },
+  {
+    "slug": "dumbbell-wrist-curl-over-bench",
+    "title": "Dumbbell Wrist Curl (Over Bench)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881923"
+    }
+  },
+  {
+    "slug": "exercise-ball-dip",
+    "title": "Exercise Ball Dip",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784418"
+    }
+  },
+  {
+    "slug": "exercise-ball-dumbbell-kickbacks",
+    "title": "Exercise Ball Dumbbell Kickbacks",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784400"
+    }
+  },
+  {
+    "slug": "exercise-ball-hip-roll",
+    "title": "Exercise Ball Hip Roll",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881087"
+    }
+  },
+  {
+    "slug": "exercise-ball-lateral-raise",
+    "title": "Exercise Ball Lateral Raise",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007956"
+    }
+  },
+  {
+    "slug": "exercise-ball-leg-tuck",
+    "title": "Exercise Ball Knee Tuck",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881126"
+    }
+  },
+  {
+    "slug": "exercise-ball-on-the-wall-calf-raise",
+    "title": "Exercise Ball On-The-Wall Calf Raise",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793834"
+    }
+  },
+  {
+    "slug": "exercise-ball-one-arm-dumbbell-extension",
+    "title": "Exercise Ball One-Arm Dumbbell Extension",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784468"
+    }
+  },
+  {
+    "slug": "exercise-ball-two-arm-dumbbell-extension",
+    "title": "Exercise Ball Two-Arm Dumbbell Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784453"
+    }
+  },
+  {
+    "slug": "ez-bar-back-of-the-head-lying-tricep-extension",
+    "title": "45 Degree Lying Tricep Extension (EZ Bar)",
+    "equipment": "EZ Bar",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784245"
+    }
+  },
+  {
+    "slug": "ez-bar-curl",
+    "title": "EZ Bar Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794053"
+    }
+  },
+  {
+    "slug": "ez-bar-incline-skullcrusher",
+    "title": "EZ Bar Incline Skullcrusher",
+    "equipment": "EZ Bar",
+    "video": {
+      "provider": "youtube",
+      "id": "Bt3k2C9uwbs"
+    }
+  },
+  {
+    "slug": "ez-bar-preacher-curl",
+    "title": "EZ Bar Preacher Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793901"
+    }
+  },
+  {
+    "slug": "ez-bar-reverse-grip-barbell-curl",
+    "title": "Reverse Grip Barbell Curl (EZ Bar)",
+    "equipment": "EZ Bar",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002555"
+    }
+  },
+  {
+    "slug": "ez-bar-reverse-grip-bent-over-row",
+    "title": "Reverse Grip Bent-Over Row (EZ Bar)",
+    "equipment": "EZ Bar",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788498"
+    }
+  },
+  {
+    "slug": "ez-bar-reverse-grip-preacher-curl",
+    "title": "Reverse Grip Preacher Curl (EZ Bar)",
+    "equipment": "EZ Bar",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002570"
+    }
+  },
+  {
+    "slug": "ez-bar-skullcrusher",
+    "title": "EZ Bar Skullcrusher",
+    "equipment": "EZ Bar",
+    "video": {
+      "provider": "youtube",
+      "id": "K6MSN4hCDM4"
+    }
+  },
+  {
+    "slug": "feet-forward-smith-machine-squat",
+    "title": "Smith Machine Squat (Feet Forward)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881767"
+    }
+  },
+  {
+    "slug": "flat-bench-cable-flys",
+    "title": "Flat Bench Cable Flys",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "ZC_whx-bNfU"
+    }
+  },
+  {
+    "slug": "floor-barbell-calf-raise",
+    "title": "Standing Barbell Calf Raise (On Floor)",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793800"
+    }
+  },
+  {
+    "slug": "floor-barbell-twist",
+    "title": "Seated Barbell Twist (On Floor)",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885203"
+    }
+  },
+  {
+    "slug": "floor-bench-press",
+    "title": "Floor Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783643"
+    }
+  },
+  {
+    "slug": "floor-calf-raise",
+    "title": "Bodyweight Floor Calf Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793493"
+    }
+  },
+  {
+    "slug": "floor-crunch-legs-on-bench",
+    "title": "Floor Crunch (legs on bench)",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967602"
+    }
+  },
+  {
+    "slug": "floor-reach",
+    "title": "Straight Leg Toe Touch (Floor Toe Reach)",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "yjfLpiFyGxs"
+    }
+  },
+  {
+    "slug": "french-press",
+    "title": "French Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784267"
+    }
+  },
+  {
+    "slug": "frog-squat",
+    "title": "Frog Squat",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881989"
+    }
+  },
+  {
+    "slug": "front-squat",
+    "title": "Front Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "9xAkoz95IFE"
+    }
+  },
+  {
+    "slug": "front-squat-to-bench",
+    "title": "Barbell Front Box Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885877"
+    }
+  },
+  {
+    "slug": "glute-kick-back",
+    "title": "Glute Kick Back",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "aX0U98L4Ywk"
+    }
+  },
+  {
+    "slug": "good-mornings",
+    "title": "Good Mornings",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "8sGgyquE1Bs"
+    }
+  },
+  {
+    "slug": "guillotine-press",
+    "title": "Guillotine Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783627"
+    }
+  },
+  {
+    "slug": "hack-calf-raise",
+    "title": "Hack Squat Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793543"
+    }
+  },
+  {
+    "slug": "hack-one-leg-calf-raise",
+    "title": "One-Leg Hack Squat Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793564"
+    }
+  },
+  {
+    "slug": "hack-squat",
+    "title": "Machine Hack Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "63tboDKQksc"
+    }
+  },
+  {
+    "slug": "half-squat",
+    "title": "Barbell Half Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885816"
+    }
+  },
+  {
+    "slug": "hammer-bar-preacher-curl",
+    "title": "Hammer Bar Preacher Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881808"
+    }
+  },
+  {
+    "slug": "hammer-curl-across-the-body",
+    "title": "Cross Body Hammer Curl (Pinwheel Curls)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794179"
+    }
+  },
+  {
+    "slug": "hammer-strength-bench-press",
+    "title": "Hammer Strength Bench Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "dMQdd40Y3FQ"
+    }
+  },
+  {
+    "slug": "hanging-knee-raise",
+    "title": "Hanging Knee Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967622"
+    }
+  },
+  {
+    "slug": "hanging-leg-raise",
+    "title": "Hanging Leg Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967611"
+    }
+  },
+  {
+    "slug": "high-barbell-front-raise",
+    "title": "Barbell Overhead Front Raise",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "jPso71PdPqA"
+    }
+  },
+  {
+    "slug": "high-inverted-row",
+    "title": "Inverted Row",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788811"
+    }
+  },
+  {
+    "slug": "high-pulley-overhead-tricep-extension",
+    "title": "High Pulley Overhead Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788098"
+    }
+  },
+  {
+    "slug": "high-weight-plate-front-raise",
+    "title": "Overhead Front Raise (with Weight Plate)",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002305"
+    }
+  },
+  {
+    "slug": "hip-abduction-machine",
+    "title": "Hip Abduction Machine",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "7pbZA7ncuq8"
+    }
+  },
+  {
+    "slug": "hip-adduction-machine",
+    "title": "Hip Adduction Machine",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "Oj7IN952fSg"
+    }
+  },
+  {
+    "slug": "hip-extensions",
+    "title": "Hip Flexion Machine",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967240"
+    }
+  },
+  {
+    "slug": "hip-thrusts",
+    "title": "Abominal Hip Thrust",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880915"
+    }
+  },
+  {
+    "slug": "horizontal-leg-raise",
+    "title": "Roman Chair Leg Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880783"
+    }
+  },
+  {
+    "slug": "hover",
+    "title": "Plank",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881002"
+    }
+  },
+  {
+    "slug": "hyperextension",
+    "title": "Hyperextension",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "BZMnTSobIAQ"
+    }
+  },
+  {
+    "slug": "incline-bench-barbell-row",
+    "title": "Incline Bench Barbell Row",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788753"
+    }
+  },
+  {
+    "slug": "incline-bench-bodyweight-lunge",
+    "title": "Decline Bench Bodyweight Lunge",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008043"
+    }
+  },
+  {
+    "slug": "incline-bench-cable-row",
+    "title": "Incline Bench Cable Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788628"
+    }
+  },
+  {
+    "slug": "incline-bench-cable-row-rope-extension",
+    "title": "Incline Bench Cable Row (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788642"
+    }
+  },
+  {
+    "slug": "incline-bench-dumbbell-curl",
+    "title": "Incline Bench Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794382"
+    }
+  },
+  {
+    "slug": "incline-bench-dumbbell-lunge",
+    "title": "Decline Bench Dumbbell Lunge",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008071"
+    }
+  },
+  {
+    "slug": "incline-bench-hammer-curl",
+    "title": "Incline Bench Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794393"
+    }
+  },
+  {
+    "slug": "incline-bench-press",
+    "title": "Incline Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "uIzbJX5EVIY"
+    }
+  },
+  {
+    "slug": "incline-bench-rope-extension",
+    "title": "Incline Cable Tricep Extension (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788258"
+    }
+  },
+  {
+    "slug": "incline-bench-two-arm-dumbbell-row",
+    "title": "Incline Bench Two Arm Dumbbell Row",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "WPpMRmgoe8I"
+    }
+  },
+  {
+    "slug": "incline-cable-flys",
+    "title": "Incline Cable Flys",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "zrnnlaC0kew"
+    }
+  },
+  {
+    "slug": "incline-cable-tricep-extension",
+    "title": "Incline Cable Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788230"
+    }
+  },
+  {
+    "slug": "incline-close-grip-bench-press",
+    "title": "Incline Close Grip Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "4pWWhwkezAk"
+    }
+  },
+  {
+    "slug": "incline-dumbbell-bench-press",
+    "title": "Incline Dumbbell Bench Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "8nNi8jbbUPE"
+    }
+  },
+  {
+    "slug": "incline-dumbbell-curl",
+    "title": "Incline Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "UeleXjsE-98"
+    }
+  },
+  {
+    "slug": "incline-dumbbell-flys",
+    "title": "Incline Dumbbell Flys",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "beazxb8q-SA"
+    }
+  },
+  {
+    "slug": "incline-hammer-curl",
+    "title": "Incline Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794332"
+    }
+  },
+  {
+    "slug": "incline-push-ups",
+    "title": "Incline Push Ups",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "I-UcpGYK5cM"
+    }
+  },
+  {
+    "slug": "incline-skullcrusher",
+    "title": "Incline Skull Crusher",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784389"
+    }
+  },
+  {
+    "slug": "incline-smith-machine-bench-press",
+    "title": "Smith Machine Incline Bench Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783757"
+    }
+  },
+  {
+    "slug": "incline-swiss-ball-push-up",
+    "title": "Push Up (Feet on Swiss Ball)",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "youtube",
+      "id": "tXh-rBPNhXE"
+    }
+  },
+  {
+    "slug": "incline-two-arm-dumbbell-extension",
+    "title": "Incline Dumbbell Tricep Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "LEw44j2iw-M"
+    }
+  },
+  {
+    "slug": "inline-bench-french-press",
+    "title": "Inline Bench French Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784372"
+    }
+  },
+  {
+    "slug": "knee-pushups",
+    "title": "Knee Push-Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783570"
+    }
+  },
+  {
+    "slug": "kneeling-overhead-tricep-extension-over-flat-bench",
+    "title": "Kneeling Overhead Tricep Extension (Over Flat Bench)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787981"
+    }
+  },
+  {
+    "slug": "lat-pull-down",
+    "title": "Lat Pull Down",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "iKrKgWR9wbY"
+    }
+  },
+  {
+    "slug": "leg-curl",
+    "title": "Leg Curl",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881471"
+    }
+  },
+  {
+    "slug": "leg-extension",
+    "title": "Leg Extension",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "0fl1RRgJ83I"
+    }
+  },
+  {
+    "slug": "low-wood-chop",
+    "title": "Low Cable Wood Chop",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "avweSt-TARk"
+    }
+  },
+  {
+    "slug": "lower-abdominal-hip-roll",
+    "title": "Lower Abdominal Hip Roll",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885465"
+    }
+  },
+  {
+    "slug": "lying-alternate-floor-leg-raise",
+    "title": "Alternating Lying Leg Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967640"
+    }
+  },
+  {
+    "slug": "lying-alternate-knee-raise",
+    "title": "Lying Alternating Knee Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881025"
+    }
+  },
+  {
+    "slug": "lying-barbell-curl-on-incline-bench",
+    "title": "Lying Incline Bench Barbell Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793850"
+    }
+  },
+  {
+    "slug": "lying-barbell-reverse-extension",
+    "title": "Lying Barbell Reverse Extension",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784209"
+    }
+  },
+  {
+    "slug": "lying-bench-leg-raise",
+    "title": "Lying Leg Raise (On Bench)",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885227"
+    }
+  },
+  {
+    "slug": "lying-cable-crunch",
+    "title": "Lying Cable Crunch",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008335"
+    }
+  },
+  {
+    "slug": "lying-cable-curl-floor",
+    "title": "Lying Cable Curl (On Floor)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001517"
+    }
+  },
+  {
+    "slug": "lying-cable-front-raise",
+    "title": "Lying Cable Front Raise",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001838"
+    }
+  },
+  {
+    "slug": "lying-cable-hamstring-curl",
+    "title": "Lying Cable Leg Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881354"
+    }
+  },
+  {
+    "slug": "lying-cable-knee-raise",
+    "title": "Lying Cable Knee Raise",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881307"
+    }
+  },
+  {
+    "slug": "lying-cable-pullover",
+    "title": "Lying Cable Pullover",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783813"
+    }
+  },
+  {
+    "slug": "lying-cable-pullover-rope-extension",
+    "title": "Lying Cable Pullover (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783794"
+    }
+  },
+  {
+    "slug": "lying-cable-shrug",
+    "title": "Lying Cable Shrug",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787871"
+    }
+  },
+  {
+    "slug": "lying-cable-tricep-extension",
+    "title": "Lying Cable Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788144"
+    }
+  },
+  {
+    "slug": "lying-cable-upright-row",
+    "title": "Lying Cable Upright Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787886"
+    }
+  },
+  {
+    "slug": "lying-dumbbell-curl",
+    "title": "Lying Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794309"
+    }
+  },
+  {
+    "slug": "lying-dumbbell-extension",
+    "title": "Lying Dumbbell Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784027"
+    }
+  },
+  {
+    "slug": "lying-dumbbell-reverse-fly",
+    "title": "Lying Rear Delt Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008529"
+    }
+  },
+  {
+    "slug": "lying-floor-knee-raise",
+    "title": "Lying Floor Knee Tuck",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "V95h0UX8UyI"
+    }
+  },
+  {
+    "slug": "lying-floor-leg-raise",
+    "title": "Lying Floor Leg Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "r24ntO4IvKc"
+    }
+  },
+  {
+    "slug": "lying-heel-touches",
+    "title": "Lying Alternate Heel Touches",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "JQie3dPMphA"
+    }
+  },
+  {
+    "slug": "lying-high-pulley-cable-curl",
+    "title": "Lying High Pulley Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082966899"
+    }
+  },
+  {
+    "slug": "lying-high-pulley-close-grip-cable-curl",
+    "title": "Lying High Pulley Close Grip Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "1083893610"
+    }
+  },
+  {
+    "slug": "lying-leg-raise-with-hip-thrust",
+    "title": "Lying Leg Raise With Hip Thrust",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885182"
+    }
+  },
+  {
+    "slug": "lying-on-floor-tricep-extension-(rope-extension)",
+    "title": "Lying Cable Tricep Extension (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788041"
+    }
+  },
+  {
+    "slug": "lying-rear-delt-barbell-raise",
+    "title": "Lying Rear Delt Barbell Raise",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002750"
+    }
+  },
+  {
+    "slug": "lying-single-dumbbell-extension",
+    "title": "Lying Dumbbell Extension (Single Dumbbell)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784147"
+    }
+  },
+  {
+    "slug": "lying-tricep-extension",
+    "title": "Lying Barbell Tricep Extension (Skull Crusher)",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784165"
+    }
+  },
+  {
+    "slug": "lying-wide-dumbbell-curl",
+    "title": "Lying Wide Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794318"
+    }
+  },
+  {
+    "slug": "machine-lateral-raise",
+    "title": "Lateral Raise Machine",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082966892"
+    }
+  },
+  {
+    "slug": "machine-row",
+    "title": "Machine Row",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881179"
+    }
+  },
+  {
+    "slug": "machine-t-bar-row",
+    "title": "Machine T-Bar Row",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "kHW23afzaUs"
+    }
+  },
+  {
+    "slug": "military-press",
+    "title": "Military Press (AKA Overhead Press)",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "j7ULT6dznNc"
+    }
+  },
+  {
+    "slug": "military-press-behind-neck",
+    "title": "Military Press Behind Neck",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "Ud80UFJ_zxs"
+    }
+  },
+  {
+    "slug": "narrow-hack-squat",
+    "title": "Narrow Stance Machine Hack Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "D5Or1qF6WNY"
+    }
+  },
+  {
+    "slug": "narrow-smith-machine-squat",
+    "title": "Narrow Stance Smith Machine Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881673"
+    }
+  },
+  {
+    "slug": "narrow-squat",
+    "title": "Barbell Narrow Stance Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885666"
+    }
+  },
+  {
+    "slug": "narrow-stance-45-degree-leg-press",
+    "title": "Narrow Stance 45 Degree Leg Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "7h288S0b_ko"
+    }
+  },
+  {
+    "slug": "neutral-dumbbell-wrist-curl-over-bench",
+    "title": "Neutral Grip Dumbbell Wrist Curl (Over Bench)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002652"
+    }
+  },
+  {
+    "slug": "one-arm-bent-over-dumbbell-kickback",
+    "title": "One Arm Bent Over Dumbbell Tricep Kickback",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "-fnJ97rBUKs"
+    }
+  },
+  {
+    "slug": "one-arm-bent-over-dumbbell-reverse-fly",
+    "title": "One-Arm Dumbbell Rear Delt Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880520"
+    }
+  },
+  {
+    "slug": "one-arm-bent-over-row",
+    "title": "One-Arm Landmine Row",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788793"
+    }
+  },
+  {
+    "slug": "one-arm-cable-curl",
+    "title": "One-Arm Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001492"
+    }
+  },
+  {
+    "slug": "one-arm-cable-extension",
+    "title": "One-Arm Cable Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788023"
+    }
+  },
+  {
+    "slug": "one-arm-cable-front-raise",
+    "title": "One-Arm Cable Front Raise",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001864"
+    }
+  },
+  {
+    "slug": "one-arm-cable-lateral-raise",
+    "title": "Single Arm Cable Lateral Raise (Crossbody)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "Fv-eAW1uKDI"
+    }
+  },
+  {
+    "slug": "one-arm-cable-reverse-fly",
+    "title": "One-Arm Bent-Over Cable Reverse Fly",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881387"
+    }
+  },
+  {
+    "slug": "one-arm-cable-row",
+    "title": "One-Arm Seated Cable Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788697"
+    }
+  },
+  {
+    "slug": "one-arm-dumbbell-bench-press",
+    "title": "One-Arm Dumbbell Bench Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783437"
+    }
+  },
+  {
+    "slug": "one-arm-dumbbell-extension",
+    "title": "One-Arm Standing Dumbbell Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783880"
+    }
+  },
+  {
+    "slug": "one-arm-dumbbell-front-raise-on-incline-bench",
+    "title": "One-Arm Incline Dumbbell Front Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007858"
+    }
+  },
+  {
+    "slug": "one-arm-dumbbell-hammer-preacher-curl",
+    "title": "One-Arm Dumbbell Hammer Preacher Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793962"
+    }
+  },
+  {
+    "slug": "one-arm-dumbbell-lateral-raise",
+    "title": "One-Arm Dumbbell Lateral Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002130"
+    }
+  },
+  {
+    "slug": "one-arm-dumbbell-reverse-fly-on-incline-bench",
+    "title": "One Arm Dumbbell Rear Delt Fly On Incline Bench",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "qIDc4exCHBs"
+    }
+  },
+  {
+    "slug": "one-arm-dumbbell-row",
+    "title": "One Arm Dumbbell Row",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "YZgVEy6cmaY"
+    }
+  },
+  {
+    "slug": "one-arm-dumbbell-upright-row",
+    "title": "One-Arm Dumbbell Upright Row",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787860"
+    }
+  },
+  {
+    "slug": "one-arm-dumbbell-wrist-curl-over-bench",
+    "title": "One-Arm Dumbbell Wrist Curl (Over Bench)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002487"
+    }
+  },
+  {
+    "slug": "one-arm-lying-dumbbell-extension",
+    "title": "One-Arm Lying Dumbbell Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784009"
+    }
+  },
+  {
+    "slug": "one-arm-lying-dumbbell-reverse-fly",
+    "title": "One-Arm Lying Rear Delt Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007777"
+    }
+  },
+  {
+    "slug": "one-arm-machine-row",
+    "title": "One-Arm Machine Row",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881203"
+    }
+  },
+  {
+    "slug": "one-arm-neutral-dumbbell-wrist-curl-over-bench",
+    "title": "One-Arm Neutral Grip Dumbbell Wrist Curl (Over Bench)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002635"
+    }
+  },
+  {
+    "slug": "one-arm-preacher-curl",
+    "title": "One-Arm Dumbbell Preacher Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793927"
+    }
+  },
+  {
+    "slug": "one-arm-pronated-dumbbell-extension",
+    "title": "One-Arm Lying Pronated Dumbbell Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "OfOtqWEeqrY"
+    }
+  },
+  {
+    "slug": "one-arm-prone-dumbbell-curl",
+    "title": "One-Arm Prone Incline Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794439"
+    }
+  },
+  {
+    "slug": "one-arm-prone-hammer-dumbbell-curl",
+    "title": "One-Arm Prone Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794497"
+    }
+  },
+  {
+    "slug": "one-arm-reverse-dumbbell-preacher-curl",
+    "title": "One-Arm Reverse Grip Dumbbell Preacher Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008523"
+    }
+  },
+  {
+    "slug": "one-arm-reverse-dumbbell-wrist-curl-over-bench",
+    "title": "One Arm Reverse Dumbbell Wrist Curl Over Bench",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "1083932024"
+    }
+  },
+  {
+    "slug": "one-arm-seated-arnold-press",
+    "title": "One-Arm Seated Arnold Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007717"
+    }
+  },
+  {
+    "slug": "one-arm-seated-bent-over-dumbbell-kickback",
+    "title": "One-Arm Seated Bent Over Dumbbell Kickback",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783986"
+    }
+  },
+  {
+    "slug": "one-arm-seated-bent-over-dumbbell-reverse-fly",
+    "title": "One-Arm Seated Rear Delt Fly",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007796"
+    }
+  },
+  {
+    "slug": "one-arm-seated-dumbbell-curl",
+    "title": "One-Arm Seated Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794231"
+    }
+  },
+  {
+    "slug": "one-arm-seated-dumbbell-extension",
+    "title": "One-Arm Seated Dumbbell Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784121"
+    }
+  },
+  {
+    "slug": "one-arm-seated-dumbbell-front-raise",
+    "title": "One-Arm Seated Dumbbell Front Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007735"
+    }
+  },
+  {
+    "slug": "one-arm-seated-dumbbell-kickback",
+    "title": "One-Arm Seated Dumbbell Kickback",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784078"
+    }
+  },
+  {
+    "slug": "one-arm-seated-dumbbell-press",
+    "title": "One-Arm Seated Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007701"
+    }
+  },
+  {
+    "slug": "one-arm-seated-dumbbell-wrist-curl",
+    "title": "One-Arm Seated Dumbbell Wrist Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002526"
+    }
+  },
+  {
+    "slug": "one-arm-seated-hammer-curl",
+    "title": "One-Arm Seated Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794243"
+    }
+  },
+  {
+    "slug": "one-arm-seated-neutral-dumbbell-wrist-curl",
+    "title": "One-Arm Seated Neutral Grip Dumbbell Wrist Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002702"
+    }
+  },
+  {
+    "slug": "one-arm-seated-overhead-tricep-extension",
+    "title": "One-Arm Seated Overhead Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788058"
+    }
+  },
+  {
+    "slug": "one-arm-seated-palms-in-dumbbell-press",
+    "title": "One-Arm Seated Neutral Grip Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002793"
+    }
+  },
+  {
+    "slug": "one-arm-seated-reverse-dumbbell-wrist-curl",
+    "title": "One-Arm Seated Reverse Grip Dumbbell Wrist Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881836"
+    }
+  },
+  {
+    "slug": "one-arm-standing-arnold-press",
+    "title": "One-Arm Standing Arnold Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877882184"
+    }
+  },
+  {
+    "slug": "one-arm-standing-dumbbell-curl",
+    "title": "One-Arm Standing Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794117"
+    }
+  },
+  {
+    "slug": "one-arm-standing-dumbbell-front-raise",
+    "title": "One-Arm Dumbbell Front Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002316"
+    }
+  },
+  {
+    "slug": "one-arm-standing-dumbbell-press",
+    "title": "One-Arm Standing Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002147"
+    }
+  },
+  {
+    "slug": "one-arm-standing-hammer-curl",
+    "title": "One-Arm Standing Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794136"
+    }
+  },
+  {
+    "slug": "one-arm-standing-overhead-cable-tricep-extension",
+    "title": "One-Arm Cable Overhead Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788292"
+    }
+  },
+  {
+    "slug": "one-arm-standing-palms-in-dumbbell-press",
+    "title": "One-Arm Neutral Grip Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002420"
+    }
+  },
+  {
+    "slug": "one-leg-45-degree-calf-raise",
+    "title": "One-Leg 45 Degree Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793600"
+    }
+  },
+  {
+    "slug": "one-leg-45-degree-leg-press",
+    "title": "One Leg 45 Degree Leg Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "6KTTfLmdwE0"
+    }
+  },
+  {
+    "slug": "one-leg-barbell-squat",
+    "title": "Barbell Bulgarian Split Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885625"
+    }
+  },
+  {
+    "slug": "one-leg-bodyweight-squat",
+    "title": "Bodyweight Bulgarian Split Squat",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885756"
+    }
+  },
+  {
+    "slug": "one-leg-bodyweight-wall-squat",
+    "title": "Single Leg Wall Squat",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885921"
+    }
+  },
+  {
+    "slug": "one-leg-cable-calf-raise",
+    "title": "One-Leg Cable Calf Raise",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793670"
+    }
+  },
+  {
+    "slug": "one-leg-donkey-calf-raise",
+    "title": "One-Leg Donkey Calf Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793754"
+    }
+  },
+  {
+    "slug": "one-leg-dumbbell-squat-aka-bulgarian-squat",
+    "title": "One Leg Dumbbell Squat (AKA Dumbbell Bulgarian Split Squat)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "uqI3GVwfToU"
+    }
+  },
+  {
+    "slug": "one-leg-floor-calf-raise",
+    "title": "One-Leg Floor Calf Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793417"
+    }
+  },
+  {
+    "slug": "one-leg-hack-squat",
+    "title": "One-Leg Hack Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008117"
+    }
+  },
+  {
+    "slug": "one-leg-lying-cable-hamstring-curl",
+    "title": "One-Leg Lying Cable Hamstring Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793261"
+    }
+  },
+  {
+    "slug": "one-leg-lying-cable-knee-raise",
+    "title": "One-Leg Lying Cable Knee Raise",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881331"
+    }
+  },
+  {
+    "slug": "one-leg-seated-calf-raise",
+    "title": "One-Leg Seated Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082966874"
+    }
+  },
+  {
+    "slug": "one-leg-seated-dumbbell-calf-raise",
+    "title": "One-Leg Seated Dumbbell Calf Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793707"
+    }
+  },
+  {
+    "slug": "one-leg-smith-machine-seated-calf-raise",
+    "title": "One-Leg Smith Machine Seated Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793389"
+    }
+  },
+  {
+    "slug": "one-leg-standing-calf-raise",
+    "title": "One-Leg Standing Bodyweight Calf Raise",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793522"
+    }
+  },
+  {
+    "slug": "overhand-close-grip-lat-pull-down",
+    "title": "Overhand Close Grip Lateral Pulldown",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788575"
+    }
+  },
+  {
+    "slug": "overhead-barbell-extension",
+    "title": "Seated French Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784303"
+    }
+  },
+  {
+    "slug": "overhead-squat",
+    "title": "Overhead Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "eJQffNbakL4"
+    }
+  },
+  {
+    "slug": "overhead-tricep-extension",
+    "title": "High Pulley Overhead Tricep Extension (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "NRENeEgaIgA"
+    }
+  },
+  {
+    "slug": "palm-rotational-row",
+    "title": "Palm Rotational Row",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788451"
+    }
+  },
+  {
+    "slug": "palms-in-bent-over-dumbbell-row",
+    "title": "Palms In Bent-Over Dumbbell Row",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788479"
+    }
+  },
+  {
+    "slug": "palms-in-decline-dumbbell-bench-press",
+    "title": "Neutral Grip Decline Dumbbell Bench Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "P3195c15Z-o"
+    }
+  },
+  {
+    "slug": "palms-in-dumbbell-bench-press",
+    "title": "Neutral Grip Dumbbell Bench Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "3CYW028cECg"
+    }
+  },
+  {
+    "slug": "palms-in-incline-dumbbell-bench-press",
+    "title": "Neutral Grip Incline Dumbbell Bench Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "xgQyRCcah4g"
+    }
+  },
+  {
+    "slug": "pec-dec",
+    "title": "Pec Deck",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008416"
+    }
+  },
+  {
+    "slug": "pile-squat",
+    "title": "Plie Squat",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "MsxLG_ZEoOQ"
+    }
+  },
+  {
+    "slug": "plank-with-feet-on-bench",
+    "title": "Feet Elevated Plank",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885298"
+    }
+  },
+  {
+    "slug": "preacher-cable-curl",
+    "title": "Cable Preacher Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008192"
+    }
+  },
+  {
+    "slug": "preacher-curl",
+    "title": "Barbell Preacher Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793994"
+    }
+  },
+  {
+    "slug": "prone-incline-dumbbell-curl",
+    "title": "Prone Incline Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794413"
+    }
+  },
+  {
+    "slug": "prone-incline-hammer-curl",
+    "title": "Prone Incline Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794477"
+    }
+  },
+  {
+    "slug": "push-up",
+    "title": "Push Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "KEFQyLkDYtI"
+    }
+  },
+  {
+    "slug": "reach-and-catch",
+    "title": "Reach And Catch",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885397"
+    }
+  },
+  {
+    "slug": "rear-bodyweight-lunge",
+    "title": "Bodyweight Reverse Lunge",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "hufyk-2xQ5g"
+    }
+  },
+  {
+    "slug": "rear-delt-barbell-row-to-neck",
+    "title": "Barbell Rear Delt Row To Neck",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877882105"
+    }
+  },
+  {
+    "slug": "reverse-barbell-curl",
+    "title": "Reverse Grip Barbell Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002600"
+    }
+  },
+  {
+    "slug": "reverse-barbell-wrist-curl",
+    "title": "Reverse Grip Barbell Wrist Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008069"
+    }
+  },
+  {
+    "slug": "reverse-barbell-wrist-curl-over-bench",
+    "title": "Reverse Grip Barbell Wrist Curl (Over Bench)",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002622"
+    }
+  },
+  {
+    "slug": "reverse-cable-curl",
+    "title": "Reverse Grip Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001760"
+    }
+  },
+  {
+    "slug": "reverse-cable-preacher-curl",
+    "title": "Reverse Grip Cable Preacher Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001793"
+    }
+  },
+  {
+    "slug": "reverse-concentration-curl",
+    "title": "Reverse Grip Concentration Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002676"
+    }
+  },
+  {
+    "slug": "reverse-dumbbell-bench-press",
+    "title": "Reverse Grip Dumbbell Bench Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783404"
+    }
+  },
+  {
+    "slug": "reverse-dumbbell-wrist-curl",
+    "title": "Seated Reverse Grip Dumbbell Wrist Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881908"
+    }
+  },
+  {
+    "slug": "reverse-dumbbell-wrist-curl-over-bench",
+    "title": "Reverse Grip Dumbbell Wrist Curl (Over Bench)",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881888"
+    }
+  },
+  {
+    "slug": "reverse-grip-bench-press",
+    "title": "Reverse Grip Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783590"
+    }
+  },
+  {
+    "slug": "reverse-grip-bent-over-dumbbell-row",
+    "title": "Reverse Grip Bent-Over Dumbbell Row",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788460"
+    }
+  },
+  {
+    "slug": "reverse-grip-bent-over-row",
+    "title": "Reverse Grip Bent Over Row",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967592"
+    }
+  },
+  {
+    "slug": "reverse-grip-cable-tricep-kickback",
+    "title": "Reverse Grip Cable Tricep Kickback",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788359"
+    }
+  },
+  {
+    "slug": "reverse-grip-close-grip-bench-press",
+    "title": "Reverse Grip Close Grip Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788436"
+    }
+  },
+  {
+    "slug": "reverse-grip-french-press",
+    "title": "Reverse Grip French Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784284"
+    }
+  },
+  {
+    "slug": "reverse-grip-incline-bench-barbell-row",
+    "title": "Reverse Grip Incline Bench Barbell Row",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788778"
+    }
+  },
+  {
+    "slug": "reverse-grip-incline-bench-cable-row",
+    "title": "Reverse Grip Incline Bench Cable Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788657"
+    }
+  },
+  {
+    "slug": "reverse-grip-incline-bench-press",
+    "title": "Reverse Grip Incline Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783664"
+    }
+  },
+  {
+    "slug": "reverse-grip-incline-bench-two-arm-dumbbell-row",
+    "title": "Reverse Grip Incline Bench Two-Arm Dumbbell Row",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788519"
+    }
+  },
+  {
+    "slug": "reverse-grip-lat-pull-down",
+    "title": "Reverse Grip Lat Pull Down (Underhand)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "8DAFwftgZHQ"
+    }
+  },
+  {
+    "slug": "reverse-grip-machine-t-bar-row",
+    "title": "Reverse Grip Machine T-Bar Row",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788537"
+    }
+  },
+  {
+    "slug": "reverse-grip-one-arm-seated-overhead-tricep-extension",
+    "title": "Seated Reverse Grip One-Arm Overhead Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788190"
+    }
+  },
+  {
+    "slug": "reverse-grip-one-arm-standing-overhead-cable-tricep-extension",
+    "title": "Reverse Grip One-Arm Overhead Cable Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788307"
+    }
+  },
+  {
+    "slug": "reverse-grip-one-arm-tricep-pushdown",
+    "title": "Reverse One-Arm Cable Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788129"
+    }
+  },
+  {
+    "slug": "reverse-grip-seated-cable-wrist-curl",
+    "title": "Seated Reverse Grip Cable Wrist Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001728"
+    }
+  },
+  {
+    "slug": "reverse-grip-seated-french-press",
+    "title": "Reverse Grip Seated French Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784325"
+    }
+  },
+  {
+    "slug": "reverse-grip-skullcrusher",
+    "title": "Reverse Grip Skull Crusher",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784224"
+    }
+  },
+  {
+    "slug": "reverse-grip-smith-machine-bent-over-row",
+    "title": "Reverse Grip Smith Machine Bent-Over Row",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788891"
+    }
+  },
+  {
+    "slug": "reverse-grip-tricep-extension",
+    "title": "Reverse Grip Cable Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "mNDpEivaal8"
+    }
+  },
+  {
+    "slug": "reverse-hack-squat",
+    "title": "Reverse Hack Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793584"
+    }
+  },
+  {
+    "slug": "reverse-one-arm-cable-curl",
+    "title": "Reverse One-Arm Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967583"
+    }
+  },
+  {
+    "slug": "reverse-preacher-curl",
+    "title": "Reverse Grip Preacher Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008015"
+    }
+  },
+  {
+    "slug": "rocking-standing-calf-raise",
+    "title": "Rocking Standing Calf Raise",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793784"
+    }
+  },
+  {
+    "slug": "rope-cable-curl",
+    "title": "Cable Curl (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001402"
+    }
+  },
+  {
+    "slug": "rope-cable-preacher-curl",
+    "title": "Cable Preacher Curl (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001635"
+    }
+  },
+  {
+    "slug": "rope-crossover-seated-row",
+    "title": "Rope Crossover Seated Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788678"
+    }
+  },
+  {
+    "slug": "rope-lat-pull-down",
+    "title": "Lateral Pulldown (Rope Extension)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788551"
+    }
+  },
+  {
+    "slug": "rope-pull-up",
+    "title": "Rope Pull Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "1077314599"
+    }
+  },
+  {
+    "slug": "rope-tricep-extension",
+    "title": "Rope Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "LzwgB15UdO8"
+    }
+  },
+  {
+    "slug": "russian-twist",
+    "title": "Russian Twist",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885324"
+    }
+  },
+  {
+    "slug": "seated-alternate-dumbbell-lateral-raise",
+    "title": "Seated Alternating Dumbbell Lateral Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007828"
+    }
+  },
+  {
+    "slug": "seated-alternating-front-back-barbell-press",
+    "title": "Seated Bradford Press (AKA Seated Rocky Press)",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "UdOyAA4Z28E"
+    }
+  },
+  {
+    "slug": "seated-arnold-press",
+    "title": "Seated Arnold Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "hmnZKRpYaV8"
+    }
+  },
+  {
+    "slug": "seated-barbell-calf-raise",
+    "title": "Seated Barbell Calf Raise",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793477"
+    }
+  },
+  {
+    "slug": "seated-barbell-curl",
+    "title": "Seated Barbell Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793866"
+    }
+  },
+  {
+    "slug": "seated-barbell-front-raise",
+    "title": "Seated Barbell Front Raise",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002838"
+    }
+  },
+  {
+    "slug": "seated-barbell-press-behind-neck",
+    "title": "Seated Behind the Neck Shoulder Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "dCjtWWSxp98"
+    }
+  },
+  {
+    "slug": "seated-barbell-twist",
+    "title": "Seated Barbell Twist",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885279"
+    }
+  },
+  {
+    "slug": "seated-bent-over-dumbbell-kickback",
+    "title": "Seated Bent Over Tricep Dumbbell Kickback",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "NbHAsXM_9BM"
+    }
+  },
+  {
+    "slug": "seated-cable-crunch",
+    "title": "Seated Cable Crunch",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008273"
+    }
+  },
+  {
+    "slug": "seated-cable-curl",
+    "title": "Seated Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001618"
+    }
+  },
+  {
+    "slug": "seated-cable-shrug",
+    "title": "Seated Cable Shrug",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787924"
+    }
+  },
+  {
+    "slug": "seated-cable-wrist-curl",
+    "title": "Seated Cable Wrist Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001707"
+    }
+  },
+  {
+    "slug": "seated-calf-raise",
+    "title": "Seated Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "Yh5TXz99xwY"
+    }
+  },
+  {
+    "slug": "seated-dumbbell-calf-raise",
+    "title": "Seated Dumbbell Calf Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793478"
+    }
+  },
+  {
+    "slug": "seated-dumbbell-curl",
+    "title": "Seated Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794196"
+    }
+  },
+  {
+    "slug": "seated-dumbbell-front-raise",
+    "title": "Seated Dumbbell Front Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002814"
+    }
+  },
+  {
+    "slug": "seated-dumbbell-lateral-raise",
+    "title": "Seated Dumbbell Lateral Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002728"
+    }
+  },
+  {
+    "slug": "seated-dumbbell-press",
+    "title": "Seated Dumbbell Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "FRxZ6wr5bpA"
+    }
+  },
+  {
+    "slug": "seated-dumbbell-shrug",
+    "title": "Seated Dumbbell Shrug",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787846"
+    }
+  },
+  {
+    "slug": "seated-dumbbell-side-bends",
+    "title": "Alternating Seated Dumbbell Side Bends",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877882038"
+    }
+  },
+  {
+    "slug": "seated-good-mornings",
+    "title": "Seated Good Mornings",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "XZ7mDHLBQCs"
+    }
+  },
+  {
+    "slug": "seated-hammer-curl",
+    "title": "Seated Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794261"
+    }
+  },
+  {
+    "slug": "seated-high-barbell-front-raise",
+    "title": "Seated Barbell Overhead Front Raise",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007674"
+    }
+  },
+  {
+    "slug": "seated-high-cable-row",
+    "title": "Seated High Cable Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881282"
+    }
+  },
+  {
+    "slug": "seated-leg-tucks",
+    "title": "Seated Knee Tucks",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881043"
+    }
+  },
+  {
+    "slug": "seated-low-pulley-overhead-tricep-extension",
+    "title": "Seated Low Pulley Overhead Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788167"
+    }
+  },
+  {
+    "slug": "seated-low-pulley-overhead-tricep-extension-(rope-extension)",
+    "title": "Seated Low Pulley Overhead Tricep Extension (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788155"
+    }
+  },
+  {
+    "slug": "seated-neutral-dumbbell-wrist-curl",
+    "title": "Seated Neutral Grip Dumbbell Wrist Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002510"
+    }
+  },
+  {
+    "slug": "seated-one-arm-dumbbell-lateral-raise",
+    "title": "One-Arm Seated Dumbbell Lateral Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002449"
+    }
+  },
+  {
+    "slug": "seated-palms-in-dumbbell-press",
+    "title": "Seated Neutral Grip Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "y03eDnIFfK8"
+    }
+  },
+  {
+    "slug": "seated-row",
+    "title": "Seated Cable Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788734"
+    }
+  },
+  {
+    "slug": "seated-row-using-rope",
+    "title": "Seated Row (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788717"
+    }
+  },
+  {
+    "slug": "seated-shoulder-press",
+    "title": "Seated Barbell Shoulder Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "Gxhx7GpRb5g"
+    }
+  },
+  {
+    "slug": "side-crunch",
+    "title": "Side Crunch (AKA Oblique Crunch)",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "dRhloYXeE3E"
+    }
+  },
+  {
+    "slug": "side-crunch-with-leg-lift",
+    "title": "Side Crunch With Leg Lift",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885378"
+    }
+  },
+  {
+    "slug": "side-hover",
+    "title": "Side Plank",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885425"
+    }
+  },
+  {
+    "slug": "single-bench-dip",
+    "title": "Single Bench Dip",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783927"
+    }
+  },
+  {
+    "slug": "single-leg-curl",
+    "title": "Single Leg Curl",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881259"
+    }
+  },
+  {
+    "slug": "single-leg-extension",
+    "title": "Single Leg Extension",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "ymCvLgI9wlA"
+    }
+  },
+  {
+    "slug": "sissy-squat",
+    "title": "Sissy Squat",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881940"
+    }
+  },
+  {
+    "slug": "sit-up",
+    "title": "Sit Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "MQDopvLZOS8"
+    }
+  },
+  {
+    "slug": "smith-machine-bench-press",
+    "title": "Smith Machine Bench Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783677"
+    }
+  },
+  {
+    "slug": "smith-machine-bent-over-row",
+    "title": "Smith Machine Bent-Over Row",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788850"
+    }
+  },
+  {
+    "slug": "smith-machine-bicep-curl",
+    "title": "Smith Machine Bicep Curl",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008086"
+    }
+  },
+  {
+    "slug": "smith-machine-bodyweight-row",
+    "title": "Feet Elevated Inverted Row",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788829"
+    }
+  },
+  {
+    "slug": "smith-machine-calf-raise",
+    "title": "Smith Machine Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881498"
+    }
+  },
+  {
+    "slug": "smith-machine-close-grip-bench-press",
+    "title": "Smith Machine Close Grip Bench Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783716"
+    }
+  },
+  {
+    "slug": "smith-machine-deadlift",
+    "title": "Smith Machine Deadlift",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788871"
+    }
+  },
+  {
+    "slug": "smith-machine-front-squat",
+    "title": "Smith Machine Front Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "KxncKSqtRZU"
+    }
+  },
+  {
+    "slug": "smith-machine-incline-tricep-extension",
+    "title": "Smith Machine Incline Tricep Extension",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783772"
+    }
+  },
+  {
+    "slug": "smith-machine-lunge",
+    "title": "Smith Machine Lunge",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "y0xcouTthps"
+    }
+  },
+  {
+    "slug": "smith-machine-one-arm-row",
+    "title": "Smith Machine One-Arm Row",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787801"
+    }
+  },
+  {
+    "slug": "smith-machine-one-leg-calf-raise",
+    "title": "One-Leg Smith Machine Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881599"
+    }
+  },
+  {
+    "slug": "smith-machine-one-leg-squat",
+    "title": "Smith Machine Bulgarian Split Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082966532"
+    }
+  },
+  {
+    "slug": "smith-machine-one-leg-toe-raise",
+    "title": "One-Leg Smith Machine Toe Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881576"
+    }
+  },
+  {
+    "slug": "smith-machine-reverse-close-grip-bench-press",
+    "title": "Smith Machine Reverse Close Grip Bench Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783740"
+    }
+  },
+  {
+    "slug": "smith-machine-seated-calf-raise",
+    "title": "Smith Machine Seated Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793455"
+    }
+  },
+  {
+    "slug": "smith-machine-seated-toe-raise",
+    "title": "Smith Machine Seated Toe Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793372"
+    }
+  },
+  {
+    "slug": "smith-machine-seated-wrist-curl",
+    "title": "Smith Machine Seated Wrist Curl",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008099"
+    }
+  },
+  {
+    "slug": "smith-machine-shoulder-press",
+    "title": "Smith Machine Shoulder Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008402"
+    }
+  },
+  {
+    "slug": "smith-machine-shoulder-press-behind-neck",
+    "title": "Smith Machine Behind the Neck Shoulder Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881633"
+    }
+  },
+  {
+    "slug": "smith-machine-shrug",
+    "title": "Smith Machine Shrug",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787942"
+    }
+  },
+  {
+    "slug": "smith-machine-squat",
+    "title": "Smith Machine Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "BtfMX4WqUBo"
+    }
+  },
+  {
+    "slug": "smith-machine-squat-to-bench",
+    "title": "Smith Machine Box Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881741"
+    }
+  },
+  {
+    "slug": "smith-machine-stiff-leg-deadlift",
+    "title": "Smith Machine Stiff Leg Deadlift",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793204"
+    }
+  },
+  {
+    "slug": "smith-machine-toe-raise",
+    "title": "Smith Machine Toe Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881614"
+    }
+  },
+  {
+    "slug": "smith-machine-upright-row",
+    "title": "Smith Machine Upright Row",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "MeuEww_fjnk"
+    }
+  },
+  {
+    "slug": "smith-machine-wide-grip-bench-press",
+    "title": "Smith Machine Wide Grip Bench Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783697"
+    }
+  },
+  {
+    "slug": "smith-machine-zercher-squat",
+    "title": "Smith Machine Zercher Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881723"
+    }
+  },
+  {
+    "slug": "speed-squats",
+    "title": "Barbell Speed Squats",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885734"
+    }
+  },
+  {
+    "slug": "spider-curl",
+    "title": "Spider Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793887"
+    }
+  },
+  {
+    "slug": "squat",
+    "title": "Barbell Back Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "R2dMsNhN3DE"
+    }
+  },
+  {
+    "slug": "squat-to-bench",
+    "title": "Barbell Box Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885718"
+    }
+  },
+  {
+    "slug": "squatting-cable-curl",
+    "title": "Squatting Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001433"
+    }
+  },
+  {
+    "slug": "standing-alternate-dumbbell-reverse-curl",
+    "title": "Alternating Dumbbell Reverse Grip Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002036"
+    }
+  },
+  {
+    "slug": "standing-alternating-front-back-barbell-press",
+    "title": "Standing Bradford Press (Rocky Press)",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "Jy41sDNP_jE"
+    }
+  },
+  {
+    "slug": "standing-arnold-press",
+    "title": "Standing Arnold Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002116"
+    }
+  },
+  {
+    "slug": "standing-barbell-curl",
+    "title": "Standing Barbell Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008460"
+    }
+  },
+  {
+    "slug": "standing-barbell-twist",
+    "title": "Standing Barbell Twist",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885169"
+    }
+  },
+  {
+    "slug": "standing-cable-crunch",
+    "title": "Standing Cable Crunch",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008371"
+    }
+  },
+  {
+    "slug": "standing-cable-flys",
+    "title": "Standing Cable Reverse Fly",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "XG78cUVtKYY"
+    }
+  },
+  {
+    "slug": "standing-cable-hamstring-curl",
+    "title": "Standing Cable Hamstring Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793229"
+    }
+  },
+  {
+    "slug": "standing-cable-reverse-curl",
+    "title": "Standing Reverse Grip Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001777"
+    }
+  },
+  {
+    "slug": "standing-cable-wrist-curl-(behind-back)",
+    "title": "Behind-The-Back Cable Wrist Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001691"
+    }
+  },
+  {
+    "slug": "standing-calf-raise",
+    "title": "Standing Barbell Calf Raise",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793820"
+    }
+  },
+  {
+    "slug": "standing-dublin-press",
+    "title": "Standing Dublin Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002289"
+    }
+  },
+  {
+    "slug": "standing-dumbbell-curl",
+    "title": "Standing Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794078"
+    }
+  },
+  {
+    "slug": "standing-dumbbell-press",
+    "title": "Standing Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002177"
+    }
+  },
+  {
+    "slug": "standing-dumbbell-reverse-curl",
+    "title": "Standing Dumbbell Reverse Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "i5h3myNHVFk"
+    }
+  },
+  {
+    "slug": "standing-glute-kickback",
+    "title": "Standing Glute Kickback Machine",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082966528"
+    }
+  },
+  {
+    "slug": "standing-hammer-curl",
+    "title": "Standing Hammer Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794163"
+    }
+  },
+  {
+    "slug": "standing-high-pulley-cable-curl",
+    "title": "Standing High Pulley Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001551"
+    }
+  },
+  {
+    "slug": "standing-low-pulley-overhead-tricep-extension",
+    "title": "Standing Low Pulley Overhead Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788111"
+    }
+  },
+  {
+    "slug": "standing-low-pulley-overhead-tricep-extension-(rope-extension)",
+    "title": "Standing Low Pulley Overhead Tricep Extension (Rope Extension)",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787995"
+    }
+  },
+  {
+    "slug": "standing-oblique-cable-crunch",
+    "title": "Oblique Cable Crunch",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008276"
+    }
+  },
+  {
+    "slug": "standing-one-arm-cable-row",
+    "title": "Shotgun Row",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "vGvryEp84qE"
+    }
+  },
+  {
+    "slug": "standing-one-arm-dumbbell-reverse-curl",
+    "title": "One-Arm Dumbbell Reverse Grip Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001971"
+    }
+  },
+  {
+    "slug": "standing-one-leg-calf-raise-with-dumbbell",
+    "title": "Standing One-Leg Calf Raise With Dumbbell",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793346"
+    }
+  },
+  {
+    "slug": "standing-palms-in-dumbbell-press",
+    "title": "Standing Neutral Grip Dumbbell Shoulder Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002544"
+    }
+  },
+  {
+    "slug": "standing-smith-machine-wrist-curl-(behind-back)",
+    "title": "Standing Smith Machine Wrist Curl (behind back)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "1083932078"
+    }
+  },
+  {
+    "slug": "standing-two-arm-tricep-cable-extension",
+    "title": "Two-Arm Tricep Cable Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788330"
+    }
+  },
+  {
+    "slug": "standing-wrist-curl",
+    "title": "Behind-The-Back Barbell Wrist Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001952"
+    }
+  },
+  {
+    "slug": "stiff-leg-deadlift-aka-romanian-deadlift",
+    "title": "Stiff Leg Deadlift",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "CkrqLaDGvOA"
+    }
+  },
+  {
+    "slug": "stiff-leg-deadlift-on-bench",
+    "title": "Stiff Leg Deadlift (On Bench)",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793290"
+    }
+  },
+  {
+    "slug": "straight-arm-lat-pull-down",
+    "title": "Straight Arm Lat Pull Down",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "gDtXrJWPdlY"
+    }
+  },
+  {
+    "slug": "sumo-squat",
+    "title": "Barbell Sumo Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885647"
+    }
+  },
+  {
+    "slug": "swiss-ball-barbell-press",
+    "title": "Exercise Ball Barbell Shoulder Press",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007989"
+    }
+  },
+  {
+    "slug": "swiss-ball-cable-flys",
+    "title": "Exercise Ball Cable Fly",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783864"
+    }
+  },
+  {
+    "slug": "swiss-ball-crunch",
+    "title": "Exercise Ball Crunch",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082965087"
+    }
+  },
+  {
+    "slug": "swiss-ball-dumbbell-bench-press",
+    "title": "Exercise Ball Dumbbell Bench Press",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "youtube",
+      "id": "WahnbGWHAg8"
+    }
+  },
+  {
+    "slug": "swiss-ball-dumbbell-curl",
+    "title": "Exercise Ball Dumbbell Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794518"
+    }
+  },
+  {
+    "slug": "swiss-ball-dumbbell-flys",
+    "title": "Exercise Ball Dumbbell Fly",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783533"
+    }
+  },
+  {
+    "slug": "swiss-ball-dumbbell-press",
+    "title": "Exercise Ball Dumbbell Shoulder Press",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007994"
+    }
+  },
+  {
+    "slug": "swiss-ball-french-press",
+    "title": "Exercise Ball French Press",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784432"
+    }
+  },
+  {
+    "slug": "swiss-ball-hover",
+    "title": "Exercise Ball Plank",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881065"
+    }
+  },
+  {
+    "slug": "swiss-ball-preacher-curl",
+    "title": "Exercise Ball Preacher Curl",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "760007942"
+    }
+  },
+  {
+    "slug": "swiss-ball-push-up",
+    "title": "Exercise Ball Push Up",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "youtube",
+      "id": "ZFnBwlPCQtY"
+    }
+  },
+  {
+    "slug": "swiss-ball-wall-squat",
+    "title": "Exercise Ball Wall Squat",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880879"
+    }
+  },
+  {
+    "slug": "tate-press",
+    "title": "Tate Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082966438"
+    }
+  },
+  {
+    "slug": "three-bench-dip",
+    "title": "Three Bench Dip",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788375"
+    }
+  },
+  {
+    "slug": "toes-in-45-degree-calf-raise",
+    "title": "45 Degree Calf Raise (Toes In)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793640"
+    }
+  },
+  {
+    "slug": "toes-in-leg-extension",
+    "title": "Leg Extension (Toes In)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008140"
+    }
+  },
+  {
+    "slug": "toes-in-seated-calf-raise",
+    "title": "Toes In Seated Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "GNNggarciHY"
+    }
+  },
+  {
+    "slug": "toes-in-smith-machine-calf-raise",
+    "title": "Smith Machine Calf Raise (Toes In)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881523"
+    }
+  },
+  {
+    "slug": "toes-out-45-degree-calf-raise",
+    "title": "45 Degree Calf Raise (Toes Out)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793617"
+    }
+  },
+  {
+    "slug": "toes-out-leg-extension",
+    "title": "Leg Extension (Toes Out)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008157"
+    }
+  },
+  {
+    "slug": "toes-out-seated-calf-raise",
+    "title": "Toes Out Seated Calf Raise",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "grb_PSkmVls"
+    }
+  },
+  {
+    "slug": "toes-out-smith-machine-calf-raise",
+    "title": "Smith Machine Calf Raise (Toes Out)",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881543"
+    }
+  },
+  {
+    "slug": "tricep-bench-dip",
+    "title": "Bench Dip",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783893"
+    }
+  },
+  {
+    "slug": "tricep-dip",
+    "title": "Tricep Dip",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788398"
+    }
+  },
+  {
+    "slug": "tricep-extension",
+    "title": "Straight Bar Tricep Extension",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "mpZ9VRisAyw"
+    }
+  },
+  {
+    "slug": "tricep-kickback",
+    "title": "Dumbbell Tricep Kickback",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756784100"
+    }
+  },
+  {
+    "slug": "twisting-bench-crunch",
+    "title": "Rotating Crunch (Legs On Bench)",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885485"
+    }
+  },
+  {
+    "slug": "twisting-cable-crunch",
+    "title": "Twisting Cable Crunch",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008316"
+    }
+  },
+  {
+    "slug": "twisting-decline-sit-up",
+    "title": "Decline Bench Sit Up With Twist",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880656"
+    }
+  },
+  {
+    "slug": "twisting-dumbbell-bench-press",
+    "title": "Twisting Dumbbell Bench Press",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783391"
+    }
+  },
+  {
+    "slug": "twisting-floor-crunch",
+    "title": "Twisting Crunch",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "1082967653"
+    }
+  },
+  {
+    "slug": "twisting-hanging-knee-raise",
+    "title": "Hanging Knee Raise With Twist",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885352"
+    }
+  },
+  {
+    "slug": "twisting-lying-cable-crunch",
+    "title": "Twisting Lying Cable Crunch",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008353"
+    }
+  },
+  {
+    "slug": "twisting-standing-dumbbell-curl",
+    "title": "Alternating Standing Dumbbell Twisting Curls",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756793174"
+    }
+  },
+  {
+    "slug": "two-arm-cable-curl",
+    "title": "Two-Arm Low Pulley Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001575"
+    }
+  },
+  {
+    "slug": "two-arm-cable-curl-on-incline-bench",
+    "title": "Incline Cable Bicep Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001599"
+    }
+  },
+  {
+    "slug": "two-arm-cable-lateral-raise",
+    "title": "Cable Lateral Raise",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001811"
+    }
+  },
+  {
+    "slug": "two-arm-cable-tricep-kickback",
+    "title": "Two-Arm Cable Tricep Kickback",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881415"
+    }
+  },
+  {
+    "slug": "two-arm-dumbbell-extension",
+    "title": "Seated Dumbbell Tricep Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "LlCFtWCQc5s"
+    }
+  },
+  {
+    "slug": "two-arm-standing-dumbbell-extension",
+    "title": "Two Arm Standing Dumbbell Extension",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "VjmgzEmODnI"
+    }
+  },
+  {
+    "slug": "underhand-close-grip-lat-pull-down",
+    "title": "Underhand Close Grip Lateral Pulldown",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788564"
+    }
+  },
+  {
+    "slug": "upright-row",
+    "title": "Barbell Upright Row",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "760008475"
+    }
+  },
+  {
+    "slug": "v-bar-pull-up",
+    "title": "V-Bar Pull Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881231"
+    }
+  },
+  {
+    "slug": "walking-barbell-lunge",
+    "title": "Barbell Walking Lunge",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "Kt6pWpaCMGE"
+    }
+  },
+  {
+    "slug": "weight-plate-front-raise",
+    "title": "Weight Plate Front Raise",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "760002019"
+    }
+  },
+  {
+    "slug": "weight-plate-pinches",
+    "title": "Weight Plate Pinches",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001933"
+    }
+  },
+  {
+    "slug": "weighted-bench-dips",
+    "title": "Weighted Bench Dip",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783909"
+    }
+  },
+  {
+    "slug": "weighted-chair-knee-raise",
+    "title": "Roman Chair Weighted Knee Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877880759"
+    }
+  },
+  {
+    "slug": "weighted-chest-dip",
+    "title": "Weighted Chest Dip",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783554"
+    }
+  },
+  {
+    "slug": "weighted-crunch",
+    "title": "Weighted Crunch",
+    "equipment": "Other",
+    "video": {
+      "provider": "youtube",
+      "id": "6kHg3JAFNFo"
+    }
+  },
+  {
+    "slug": "weighted-exercise-ball-sit-up",
+    "title": "Exercise Ball Weighted Sit up",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881103"
+    }
+  },
+  {
+    "slug": "weighted-hanging-knee-raise",
+    "title": "Weighted Hanging Knee Raise",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885341"
+    }
+  },
+  {
+    "slug": "weighted-side-touches",
+    "title": "Weighted Russian Twist",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885312"
+    }
+  },
+  {
+    "slug": "weighted-sissy-squat",
+    "title": "Weighted Sissy Squat",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "877882084"
+    }
+  },
+  {
+    "slug": "weighted-squat",
+    "title": "Belt Squat",
+    "equipment": "Other",
+    "video": {
+      "provider": "youtube",
+      "id": "HfwExr3geIk"
+    }
+  },
+  {
+    "slug": "weighted-swiss-ball-wall-squat",
+    "title": "Exercise Ball Dumbbell Wall Squat",
+    "equipment": "Exercise Ball",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885552"
+    }
+  },
+  {
+    "slug": "weighted-three-bench-dips",
+    "title": "Weighted Three Bench Dip",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783950"
+    }
+  },
+  {
+    "slug": "weighted-tricep-dips",
+    "title": "Weighted Tricep Dips",
+    "equipment": "Other",
+    "video": {
+      "provider": "youtube",
+      "id": "ZQnPQG5d67E"
+    }
+  },
+  {
+    "slug": "wide-grip-bench-press",
+    "title": "Wide Grip Barbell Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "YQnZuQLnJ3k"
+    }
+  },
+  {
+    "slug": "wide-grip-cable-curl",
+    "title": "Wide Grip Cable Curl",
+    "equipment": "Cable",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001451"
+    }
+  },
+  {
+    "slug": "wide-grip-chin-up",
+    "title": "Wide Grip Chin Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "vimeo",
+      "id": "756788596"
+    }
+  },
+  {
+    "slug": "wide-grip-ez-bar-curl",
+    "title": "Wide Grip EZ Bar Curl",
+    "equipment": "EZ Bar",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794030"
+    }
+  },
+  {
+    "slug": "wide-grip-pull-up",
+    "title": "Wide Grip Pull Up",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "5oxviYmdHCY"
+    }
+  },
+  {
+    "slug": "wide-grip-push-ups",
+    "title": "Wide Grip Push Ups",
+    "equipment": "Bodyweight",
+    "video": {
+      "provider": "youtube",
+      "id": "U8O_qJ1yUdA"
+    }
+  },
+  {
+    "slug": "wide-grip-standing-barbell-curl",
+    "title": "Wide Grip Standing Barbell Curl",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756794014"
+    }
+  },
+  {
+    "slug": "wide-grip-upright-rows",
+    "title": "Wide Grip Upright Row",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756787972"
+    }
+  },
+  {
+    "slug": "wide-hack-squat",
+    "title": "Wide Hack Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "6GQPsZ1-jYk"
+    }
+  },
+  {
+    "slug": "wide-reverse-grip-bench-press",
+    "title": "Wide Reverse Grip Bench Press",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "756783603"
+    }
+  },
+  {
+    "slug": "wide-smith-machine-squat",
+    "title": "Wide Stance Smith Machine Squat",
+    "equipment": "Machine",
+    "video": {
+      "provider": "vimeo",
+      "id": "877881650"
+    }
+  },
+  {
+    "slug": "wide-squat",
+    "title": "Barbell Wide Stance Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "vimeo",
+      "id": "877885574"
+    }
+  },
+  {
+    "slug": "wide-stance-45-degree-leg-press",
+    "title": "Wide Stance 45 Degree Leg Press",
+    "equipment": "Machine",
+    "video": {
+      "provider": "youtube",
+      "id": "V3iccY5syPs"
+    }
+  },
+  {
+    "slug": "wood-chop",
+    "title": "Wood Chop",
+    "equipment": "Cable",
+    "video": {
+      "provider": "youtube",
+      "id": "0VWnOjUO7ks"
+    }
+  },
+  {
+    "slug": "wrist-rollers",
+    "title": "Wrist Rollers",
+    "equipment": "Other",
+    "video": {
+      "provider": "vimeo",
+      "id": "760001989"
+    }
+  },
+  {
+    "slug": "zerchers-squat",
+    "title": "Zerchers Squat",
+    "equipment": "Barbell",
+    "video": {
+      "provider": "youtube",
+      "id": "4roeIJ-zfwM"
+    }
+  },
+  {
+    "slug": "zottman-curl",
+    "title": "Zottman Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "rVEwDJdHE2c"
+    }
+  },
+  {
+    "slug": "zottman-preacher-curl",
+    "title": "Zottman Preacher Curl",
+    "equipment": "Dumbbell",
+    "video": {
+      "provider": "youtube",
+      "id": "7yPINa6H47o"
+    }
+  }
+]

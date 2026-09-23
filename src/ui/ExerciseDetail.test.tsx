@@ -68,15 +68,31 @@ test('L11 ExerciseDetail shows the instructions as a numbered list in dataset or
 // --- L12: the video link and its credit -----------------------------------------------------
 
 const SQUAT_VIDEO: Video = {
-  youtubeId: 'dQw4w9WgXcQ',
+  provider: 'youtube',
+  id: 'dQw4w9WgXcQ',
   source: 'https://www.muscleandstrength.com/exercises/barbell-squat.html',
 }
 
-test('L12 ExerciseDetail opens a "Watch video" link to the youtube watch URL in a new tab when given a video', () => {
+const LUNGE_VIDEO: Video = {
+  provider: 'vimeo',
+  id: '877881961',
+  source: 'https://www.muscleandstrength.com/exercises/dumbbell-lunge.html',
+}
+
+test('L12 ExerciseDetail opens a "Watch video" link to the youtube watch URL in a new tab when given a youtube video', () => {
   render(<ExerciseDetail entry={BARBELL_SQUAT} video={SQUAT_VIDEO} photos={[]} onBack={onBack} />)
 
   const link = screen.getByRole('link', { name: 'Watch video' })
   expect(link).toHaveAttribute('href', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+})
+
+test('L12 ExerciseDetail opens a "Watch video" link to the video\'s own source page in a new tab when given a vimeo video', () => {
+  render(<ExerciseDetail entry={BARBELL_SQUAT} video={LUNGE_VIDEO} photos={[]} onBack={onBack} />)
+
+  const link = screen.getByRole('link', { name: 'Watch video' })
+  expect(link).toHaveAttribute('href', LUNGE_VIDEO.source)
   expect(link).toHaveAttribute('target', '_blank')
   expect(link).toHaveAttribute('rel', 'noopener noreferrer')
 })

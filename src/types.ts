@@ -46,7 +46,8 @@ export type LibraryExercise = {
 
 /** A harvested Muscle & Strength video for one library exercise (E5-T2/E5-T7). */
 export type Video = {
-  youtubeId: string
+  provider: 'youtube' | 'vimeo'
+  id: string
   source: string
 }
 

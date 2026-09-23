@@ -39,7 +39,12 @@ export function ExerciseDetail({ entry, video, heading, photos, onBack }: Exerci
       {video && (
         <p className="exercise-detail-video">
           <a
-            href={`https://www.youtube.com/watch?v=${video.youtubeId}`}
+            href={
+              // Vimeo embeds are domain-locked to M&S, so a vimeo video is watched on its page.
+              video.provider === 'youtube'
+                ? `https://www.youtube.com/watch?v=${video.id}`
+                : video.source
+            }
             target="_blank"
             rel="noopener noreferrer"
           >

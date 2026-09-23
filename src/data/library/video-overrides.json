@@ -1,1 +1,12 @@
-{}
+{
+  "close-grip-pull-down": "Close-Grip_Front_Lat_Pulldown",
+  "deadlifts": "Barbell_Deadlift",
+  "dumbbell-bench-press": "Dumbbell_Bench_Press",
+  "dumbbell-lateral-raise": "Side_Lateral_Raise",
+  "dumbbell-lunge": "Dumbbell_Lunges",
+  "hyperextension": "Hyperextensions_Back_Extensions",
+  "machine-row": "Leverage_Iso_Row",
+  "push-up": "Pushups",
+  "seated-dumbbell-curl": "Seated_Dumbbell_Curl",
+  "squat": "Barbell_Squat"
+}
