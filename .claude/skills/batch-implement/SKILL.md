@@ -20,6 +20,7 @@ You orchestrate and never write product code yourself. You run three layers of a
 | `test-designer` | The task's failing tests + stubs, committed red | Its ticket owner |
 | `code-writer` | Makes those tests pass, suite and lint green | Its ticket owner |
 | `tracker` | Every tracker read and write | Anyone who needs one. You make no tracker calls directly |
+| `memory-curator` | Keeps the agents' persistent memory clean: keeps, tightens, merges or deletes lessons, never adds them | You, once, at the end of the epic |
 
 You pick the waves, answer what the owners can't settle, run the serial resources, and finish
 the epic. A task's detail stays with its owner: you act on one report per task, not every step
@@ -60,6 +61,11 @@ waves. When the tickets don't settle something, decide it and log
 | Task keys | Those tasks, plus any unfinished blockers (ask before pulling in extras) |
 | Plan path | The plan file's tasks and their recorded keys |
 | Outcomes in quotes | One task, no tracker. Run it inline (3d) on the current branch, after asking: current branch, or a worktree? |
+
+**Write each ticket body once,** to `.work/runs/<run id>/tickets/<KEY>.md` in the epic
+worktree, with `Write`, as `tracker` returned it. From here every agent gets the file's
+absolute path and reads it, rather than being handed the body as text. Each copy retyped into
+a prompt is output that someone waits for, three times per task.
 
 The run id is the epic key or a slug; the run log is `.work/runs/<run id>/progress.md` in the
 epic worktree. Owners append their own lines to it, so you only ever append too, one line at a
@@ -109,7 +115,7 @@ for a whole wave to close. Whenever an owner reports `DONE`, `FAILED` or `BLOCKE
 whatever is ready now. The waves are the plan's order, not a barrier.
 
 **b. Dispatch one `ticket-owner` per task, in one message,** so they run in parallel. Name each
-`<task key>-owner`, and append `agents: <task key>-owner <id>` to the run log. Each prompt carries: the ticket body verbatim, the task key,
+`<task key>-owner`, and append `agents: <task key>-owner <id>` to the run log. Each prompt carries: the ticket file's absolute path (not its text), the task key,
 the task's tier (`small` | `standard` | `complex` from its `## Tier` section; a ticket with
 none is `standard`, and one labelled `complex` is `complex`), the run id and epic branch, the
 setup, named-tests, full-suite and lint commands, the config's test paths, that tier's models
@@ -171,8 +177,16 @@ it, so write the development record after they land.
    name, a blocker whose answer was already an Invariant. Put the list in the PR body and tell
    the operator to run `/knowledge-layer refresh`. Do not edit those files yourself: a line the
    operator did not write is the kind that measures worse than no line at all.
-5. **Push and open a draft PR** (`gh pr create --draft`) whose body has the epic link, a table
-   of tasks (key, outcomes, merge sha), the rulings, failed or blocked tasks, and what was not
-   verified. Then have `tracker` move the epic to the review status and comment the PR URL.
-6. **Report:** the PR URL, done / failed / blocked counts, and every `Ruling:` line — those are
+5. **Curate the agents' memory.** Dispatch `memory-curator` as `<epic key>-memory` with the
+   epic worktree's path, the epic branch and the run log's path, and wait for its report.
+   Agents added lessons to their memory during the run (`.claude/workflow/agent-memory.md`).
+   The curator keeps, tightens, merges or deletes them, and commits the result on the epic
+   branch. A `BLOCKED` doesn't stop the epic: note it for the PR body.
+6. **Push and open a draft PR** (`gh pr create --draft`) whose body has the epic link, a table
+   of tasks (key, outcomes, merge sha), the rulings, failed or blocked tasks, what was not
+   verified, and an **Agent memory** section: the curator's `CHANGED` lines, its
+   `PROJECT_MD_CANDIDATES` (for the operator to add to `project.md` or drop), and its
+   `UPSTREAM_FIXES`. Then have `tracker` move the epic to the review status and comment the PR
+   URL.
+7. **Report:** the PR URL, done / failed / blocked counts, and every `Ruling:` line — those are
    the decisions you made on the operator's behalf.
