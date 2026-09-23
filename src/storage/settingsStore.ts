@@ -51,3 +51,25 @@ export async function getLastExportedAt(): Promise<number | null> {
 export async function setLastExportedAt(at: number): Promise<void> {
   await db.settings.put({ key: LAST_EXPORTED_AT_KEY, value: at })
 }
+
+/**
+ * The `settings` table key the gym's saved equipment list is stored under (E5-T11).
+ */
+export const GYM_EQUIPMENT_KEY = 'gymEquipment'
+
+/**
+ * The gym's saved equipment list, or null when it has never been set — meaning everything is
+ * available.
+ */
+export async function getGymEquipment(): Promise<string[] | null> {
+  const row = await db.settings.get(GYM_EQUIPMENT_KEY)
+  return Array.isArray(row?.value) ? (row.value as string[]) : null
+}
+
+/**
+ * Records `list` as the gym's equipment, so a later `getGymEquipment` call — even after the
+ * database is closed and reopened — returns it.
+ */
+export async function setGymEquipment(list: string[]): Promise<void> {
+  await db.settings.put({ key: GYM_EQUIPMENT_KEY, value: list })
+}

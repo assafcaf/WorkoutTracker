@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import exercisesJson from './exercises.json'
-import { loadCatalog, loadPrograms } from './catalog'
+import { loadCatalog, loadPrograms, assertProgramsHaveSessionsPerWeek } from './catalog'
 import type { Exercise, Program, Workout } from '../types'
 
 // The JSON files are hand-authored fixtures. Building the fixture catalog here — rather than
@@ -56,7 +56,9 @@ test('O1 loadCatalog keeps each exercise its own weight step and start weight', 
     startWeight: 50,
     bodyweight: false,
     invertProgress: false,
-    infoUrl: 'https://www.muscleandstrength.com/exercises/squat.html',
+    // libraryId is E5-T1's addition to Exercise; back-squat maps to Barbell_Squat per the
+    // mapping table in .work/plans/exercise-library.md.
+    libraryId: 'Barbell_Squat',
   })
   expect(catalog.get('machine-shoulder-press')?.weightStep).toBe(1.25)
   expect(catalog.get('machine-shoulder-press')?.startWeight).toBe(5)
@@ -79,13 +81,15 @@ test('O1 loadCatalog inverts progress only for the assisted pull-up', () => {
   expect(catalog.get('assisted-pull-ups')?.startWeight).toBe(27)
 })
 
-test('O1 loadCatalog points every exercise at a muscleandstrength.com info url', () => {
+// Every catalog exercise's libraryId already resolves in the real library (L3, proven in
+// src/data/library.test.ts); what is new here is that infoUrl is gone.
+test('L2 loadCatalog carries no infoUrl on any catalog exercise any more', () => {
   const catalog = loadCatalog()
 
-  const offSite = [...catalog.values()].filter(
-    (e) => !e.infoUrl.startsWith('https://www.muscleandstrength.com/'),
+  const stillCarryingInfoUrl = [...catalog.values()].filter((e) =>
+    Object.prototype.hasOwnProperty.call(e, 'infoUrl'),
   )
-  expect(offSite.map((e) => e.id)).toEqual([])
+  expect(stillCarryingInfoUrl.map((e) => e.id)).toEqual([])
 })
 
 test('O1 loadPrograms returns both bundled programs', () => {
@@ -144,6 +148,33 @@ test('O2 loadPrograms throws naming the program and the exercise id the catalog 
   expect(thrown).toBeInstanceOf(Error)
   expect((thrown as Error).message).toContain('assaf-ab-2026')
   expect((thrown as Error).message).toContain('deadlift')
+})
+
+test('M7 loadPrograms gives assaf-ab-2026 a sessionsPerWeek of 3', () => {
+  const programs = loadPrograms(fixtureCatalog())
+
+  const assaf = programs.find((p) => p.id === 'assaf-ab-2026')
+  expect(assaf?.sessionsPerWeek).toBe(3)
+})
+
+test('M7 assertProgramsHaveSessionsPerWeek throws naming a program missing sessionsPerWeek', () => {
+  // Cast through unknown, not a JSON import, per E5-T13's guidance: sessionsPerWeek is required
+  // on Program, so this fixture deliberately omits it to exercise the missing-field path.
+  const missingField = {
+    id: 'no-sessions-program',
+    name: 'No Sessions Program',
+    units: 'kg',
+    workouts: [],
+  } as unknown as Program
+  let thrown: unknown
+  try {
+    assertProgramsHaveSessionsPerWeek([missingField])
+  } catch (error) {
+    thrown = error
+  }
+
+  expect(thrown).toBeInstanceOf(Error)
+  expect((thrown as Error).message).toContain('no-sessions-program')
 })
 
 test('O2 loadPrograms throws on an empty catalog instead of returning programs', () => {

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { expect, test } from 'vitest'
 import { HistoryList, summarise } from './HistoryList'
-import type { Program, Session, SetEntry } from '../types'
+import type { Exercise, Program, Session, SetEntry } from '../types'
 
 // summarise is pure over a session and the programs it is checked against, so these tests need
 // no database: they build both by hand. The end-to-end half of O17 -- that a session finished
@@ -29,6 +29,7 @@ const assaf: Program = {
   name: 'Assaf A/B 2026',
   units: 'kg',
   workouts: [workoutA],
+  sessionsPerWeek: 3,
 }
 
 function sessionWith(entries: SetEntry[]): Session {
@@ -117,7 +118,7 @@ test('O17 HistoryList shows a finished session date, program name, workout name,
     bodyweightEntry('push-ups', 1, 15),
   ])
 
-  render(<HistoryList sessions={[session]} programs={[assaf]} />)
+  render(<HistoryList sessions={[session]} programs={[assaf]} resolve={() => undefined} />)
 
   const [row] = screen.getAllByRole('listitem')
   expect(within(row).getByText('2023-11-14')).toBeVisible()
@@ -125,4 +126,62 @@ test('O17 HistoryList shows a finished session date, program name, workout name,
   expect(within(row).getByText('Workout A')).toBeVisible()
   expect(within(row).getByText('2 sets')).toBeVisible()
   expect(within(row).getByText('600 kg')).toBeVisible()
+})
+
+// --- S11: a swapped-in exercise's sets read under its own name --------------------------------
+
+/** Resolves `Hammer_Curls` (a library id swapped in for the planned catalog exercise) and
+ * `back-squat` (a real catalog id) to their `Exercise` names, the way `resolveExercise` (E5-T6)
+ * would -- built by hand here so this test needs no database or real catalog/library. */
+function resolveFixture(id: string): Exercise | undefined {
+  if (id === 'Hammer_Curls') {
+    return {
+      id: 'Hammer_Curls',
+      libraryId: 'Hammer_Curls',
+      name: 'Hammer Curls',
+      weightStep: 2.5,
+      startWeight: null,
+      bodyweight: false,
+      invertProgress: false,
+    }
+  }
+  if (id === 'back-squat') {
+    return {
+      id: 'back-squat',
+      libraryId: 'Barbell_Squat',
+      name: 'Back Squat',
+      weightStep: 2.5,
+      startWeight: null,
+      bodyweight: false,
+      invertProgress: false,
+    }
+  }
+  return undefined
+}
+
+test('S11 HistoryList groups a session\'s sets by exercise, headed by the resolved name, so swapped-in Hammer_Curls sets list under "Hammer Curls"', () => {
+  const session = sessionWith([
+    loadedEntry('Hammer_Curls', 1, 12, 12),
+    loadedEntry('Hammer_Curls', 2, 12, 10),
+    loadedEntry('back-squat', 1, 60, 10),
+  ])
+
+  render(<HistoryList sessions={[session]} programs={[assaf]} resolve={resolveFixture} />)
+
+  const hammerHeading = screen.getByRole('heading', { name: 'Hammer Curls', exact: true })
+  const hammerGroup = hammerHeading.closest('li')
+  if (!hammerGroup) throw new Error('the "Hammer Curls" heading is not inside a group list item')
+
+  expect(within(hammerGroup).getByText(/Set 1/)).toBeVisible()
+  expect(within(hammerGroup).getByText(/Set 2/)).toBeVisible()
+  expect(within(hammerGroup).queryByText(/Set 3/)).not.toBeInTheDocument()
+
+  const squatHeading = screen.getByRole('heading', { name: 'Back Squat', exact: true })
+  const squatGroup = squatHeading.closest('li')
+  if (!squatGroup) throw new Error('the "Back Squat" heading is not inside a group list item')
+
+  expect(within(squatGroup).getByText(/Set 1/)).toBeVisible()
+
+  // The back-squat set stays under its own group, not mixed into the Hammer Curls one.
+  expect(within(hammerGroup).queryByText(/60/)).not.toBeInTheDocument()
 })

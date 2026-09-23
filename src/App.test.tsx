@@ -4,19 +4,25 @@ import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { db, isStorageAvailable } from './storage/db'
-import { setActiveProgramId } from './storage/settingsStore'
+import { getGymEquipment, setActiveProgramId, setGymEquipment } from './storage/settingsStore'
 import {
   finishSession,
   getActiveSession,
   listSessions,
   logSet,
+  setSwap,
   startOrResumeSession,
 } from './storage/sessionStore'
 // A value import, not a type-only one: evaluating `backup.ts` is also what installs the
 // feature-detected `Blob.prototype.text` polyfill these tests read downloaded blobs through.
 import { BACKUP_SCHEMA_VERSION, type BackupFile } from './storage/backup'
 import { loadPrograms } from './data/catalog'
-import type { Session, SetEntry } from './types'
+import type { LibraryExercise, Session, SetEntry } from './types'
+// The real 876-entry library fixture, imported directly (not through `loadLibrary()`) so the
+// E5-T3 tests below can compute their own expected counts independently of the app's code.
+import libraryFixture from './data/library/exercises.json'
+
+const LIBRARY = libraryFixture as unknown as LibraryExercise[]
 
 // App composes real components (ProgramPicker, Settings, StorageUnavailableBanner) against the
 // real, fake-indexeddb-backed db. Only isStorageAvailable and loadPrograms are replaced with
@@ -715,11 +721,13 @@ function looseButtons(names: string[]): string[] {
     .map((button) => accessibleNameOf(button))
 }
 
-test('O7 the app on load offers a Main nav holding exactly the Workout, History and Settings tabs', async () => {
+test('O7 the app on load offers a Main nav holding exactly the Workout, Program, Exercises, History and Settings tabs', async () => {
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
-  expect(tabNames()).toEqual(['Workout', 'History', 'Settings'])
+  // E5-T3 inserts Exercises between Workout and History. E5-T18 (M11) inserts Program between
+  // Workout and Exercises.
+  expect(tabNames()).toEqual(['Workout', 'Program', 'Exercises', 'History', 'Settings'])
 })
 
 test('O7 the app on load, with no session in progress, is on the Workout tab', async () => {
@@ -1171,3 +1179,962 @@ describe('E3-T7', () => {
     ).toBeVisible()
   })
 })
+
+// --- E5-T3: the Exercises tab ([L9], [L10]) -------------------------------------------------
+//
+// L9's "876 rows, sorted, name + primary muscle" contract is proven directly on `LibraryList`
+// in src/ui/LibraryList.test.tsx; what is proven here is the wiring the ticket's Interfaces
+// section puts in App rather than in LibraryList's own props -- tapping the Exercises tab
+// actually loads the real library and shows it, plus the search box and the muscle/equipment
+// filters, since LibraryList's props are just `{ library, onOpen }` with no filtering of its
+// own. Per the ticket's performance note, this section renders the app once and drives it
+// through the whole L10 scenario in one test rather than re-mounting per assertion, and never
+// asserts an exact 876-row count (LibraryList.test.tsx already proves that).
+
+// RULING (fix-popups, F4): this test used to assert that both "Barbell Squat" and "Zottman
+// Preacher Curl" (the alphabetically first and last of the 876) were visible immediately after
+// opening the tab with no search -- true when LibraryList rendered every filtered row at once,
+// but neither name is in the first-10 default view F4 now requires (Zottman Preacher Curl is
+// the very last of 876; Barbell Squat only surfaces after ~86-87 "Show more" taps, per
+// LibraryList.test.tsx's own F4 test). A sibling of the L10 and M9 rewrites below, missed on
+// the first pass and caught during the code-writer's own gate run -- same ruling, same reason.
+test('L9 tapping the Exercises tab shows the library, with a search box, and makes Exercises the current tab', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Exercises')
+
+  expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toBeVisible()
+  // Hand-checked against the real library fixture's alphabetically (locale-aware) first name --
+  // the first-10 default view F4 now requires, plus its "Show more" control.
+  expect(await screen.findByText('3/4 Sit-Up', {}, SETTLE)).toBeVisible()
+  expect(screen.getAllByRole('listitem')).toHaveLength(10)
+  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+  expect(currentTabNames()).toEqual(['Exercises'])
+})
+
+// RULING (fix-popups, F4): this test used to assert exact listitem counts of 36 ("lat") and 24
+// (biceps + dumbbell) -- both above the 10-per-page cap LibraryList now applies, so it was
+// found by inspection (not named by the operator's ticket) to break under F4 the same way L9's
+// and M9's did. Rewritten to prove the filters still narrow across the whole library -- only
+// the first 10 of each result render, with "Show more" offered -- and a combination matching
+// nothing still shows "No exercises match" with no "Show more" (0 is unaffected by the cap).
+test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with "Show more" -- and a combination matching nothing shows "No exercises match"', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
+
+  // Hand-checked against the real library fixture: 36 names contain "lat", case-insensitively --
+  // above the 10-per-page cap, so only the first 10 show until "Show more" is tapped.
+  const latMatches = LIBRARY.filter((exercise) => exercise.name.toLowerCase().includes('lat'))
+  expect(latMatches.length).toBeGreaterThan(10)
+  await user.type(search, 'lat')
+  await waitFor(() => {
+    const rows = screen.getAllByRole('listitem')
+    expect(rows).toHaveLength(10)
+    rows.forEach((row) => {
+      expect(textOf(row).toLowerCase()).toContain('lat')
+    })
+  }, SETTLE)
+  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+
+  await user.click(screen.getByRole('button', { name: 'Show more' }))
+  await waitFor(() => {
+    const rows = screen.getAllByRole('listitem')
+    expect(rows).toHaveLength(20)
+    rows.forEach((row) => {
+      expect(textOf(row).toLowerCase()).toContain('lat')
+    })
+  }, SETTLE)
+
+  // Clearing the search and setting muscle to biceps and equipment to dumbbell narrows to
+  // exercises matching both (hand-checked: 24 in the real library fixture, by primaryMuscles),
+  // also above the cap -- and changing the filter resets back to the new result's own first 10.
+  const bicepsDumbbellMatches = LIBRARY.filter(
+    (exercise) => exercise.primaryMuscles.includes('biceps') && exercise.equipment === 'dumbbell',
+  )
+  expect(bicepsDumbbellMatches.length).toBeGreaterThan(10)
+  await user.clear(search)
+  await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
+  await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
+  await waitFor(() => {
+    expect(screen.getAllByRole('listitem')).toHaveLength(10)
+  }, SETTLE)
+  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+
+  // Typing "lat" back in on top of those two filters matches nothing in the real library
+  // fixture (hand-checked: 0), which is what "No exercises match" is for.
+  await user.type(search, 'lat')
+  expect(await screen.findByText('No exercises match', {}, SETTLE)).toBeVisible()
+  expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
+})
+
+// --- E5-T8: the in-app detail overlay ([L14]) -----------------------------------------------
+//
+// "Exercise info" used to leave the app for a muscleandstrength.com link; now it opens the
+// in-app detail screen over the current view rather than replacing it, so the set screen's own
+// dial state survives the round trip. The overlay's own root and controls are scoped by
+// `.exercise-detail` throughout, since the set screen underneath is never unmounted and carries
+// its own heading naming the same exercise.
+
+/** The detail overlay's own root element, or null when it is not rendered. */
+function detailOverlay(): HTMLElement | null {
+  return document.body.querySelector('.exercise-detail')
+}
+
+test('L14 tapping Exercise info on the deadlift set screen opens the in-app detail overlay for Barbell_Deadlift headed "Deadlift"', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Deadlift')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Exercise info' }))
+
+  const overlay = detailOverlay()
+  expect(overlay, 'no in-app detail overlay was rendered').not.toBeNull()
+  expect(within(overlay as HTMLElement).getByRole('heading', { name: 'Deadlift' })).toBeVisible()
+  // Hand-checked against src/data/library/exercises.json: Barbell_Deadlift's only primary
+  // muscle is lower back -- proof this is really that library entry, not just any heading.
+  expect(within(overlay as HTMLElement).getByText('Primary muscle: lower back')).toBeVisible()
+})
+
+test('L14 the set screen underneath the detail overlay is not unmounted, so its dials survive the round trip', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Deadlift')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  // Nudges the dial off its preset value, so a remounted set screen would be caught below.
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  const weightBefore = readoutValue(weightReadout())
+
+  await user.click(screen.getByRole('button', { name: 'Exercise info' }))
+
+  expect(detailOverlay(), 'no in-app detail overlay was rendered').not.toBeNull()
+  // The set screen underneath was not unmounted: its dials are still in the document.
+  expect(screen.getByRole('button', { name: 'Weight' })).toBeInTheDocument()
+
+  // [F1, fix-popups] the overlay is a real modal popup, not content in normal document flow
+  // below the set screen -- the operator's device-check defect ("the details appear in the
+  // bottom instead of a dedicated popup"). Extends this existing L14 guarantee rather than
+  // replacing it: the "not unmounted" assertions above are unchanged.
+  const overlay = detailOverlay() as HTMLElement
+  expect(overlay).toHaveAttribute('role', 'dialog')
+  expect(overlay).toHaveAttribute('aria-modal', 'true')
+
+  await user.click(within(overlay).getByRole('button', { name: 'Back' }))
+
+  expect(detailOverlay()).toBeNull()
+  expect(readoutValue(weightReadout())).toBe(weightBefore)
+})
+
+test('L14 tapping a row on the Exercises tab opens the same in-app detail overlay', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
+  await user.type(search, 'Barbell Squat')
+
+  // The real library also has "Barbell Squat To A Bench", so a name-prefix match is ambiguous;
+  // an exact match on the row's own name text (LibraryList's `.library-row-name`) is not.
+  const squatRowName = await screen.findByText(
+    'Barbell Squat',
+    { selector: '.library-row-name' },
+    SETTLE,
+  )
+  const squatRowButton = squatRowName.closest('button')
+  if (!squatRowButton) throw new Error('the Barbell Squat row is not inside a button')
+  await user.click(squatRowButton)
+
+  const overlay = detailOverlay()
+  expect(overlay, 'no in-app detail overlay was rendered').not.toBeNull()
+  expect(
+    within(overlay as HTMLElement).getByRole('heading', { name: 'Barbell Squat' }),
+  ).toBeVisible()
+})
+
+test('F1 tapping a row on the Exercises tab opens the detail overlay as a modal dialog, with the Exercises tab still mounted underneath', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
+  await user.type(search, 'Barbell Squat')
+  const squatRowName = await screen.findByText(
+    'Barbell Squat',
+    { selector: '.library-row-name' },
+    SETTLE,
+  )
+  const squatRowButton = squatRowName.closest('button')
+  if (!squatRowButton) throw new Error('the Barbell Squat row is not inside a button')
+  await user.click(squatRowButton)
+
+  const dialog = await screen.findByRole('dialog', { name: 'Barbell Squat' }, SETTLE)
+  expect(dialog).toHaveAttribute('aria-modal', 'true')
+  // The popup sits over the Exercises tab rather than replacing it: the tab's own search box
+  // is still in the document underneath. Exact name, not a /search/i regex: the dialog's own
+  // "Similar exercises" section composes AlternativesList, whose own search box is named
+  // "Search alternatives" (src/ui/AlternativesList.tsx) and would also match the regex.
+  expect(screen.getByRole('searchbox', { name: 'Search exercises' })).toBeInTheDocument()
+})
+
+// --- E5-T12: swapping an exercise mid-session ([S6], [S7]) --------------------------------
+//
+// seated-biceps-curls (Workout B, sets: 3, repRange: [10, 12], restSeconds: 90 in
+// src/data/programs/assaf-ab-2026.json) maps to the library entry Seated_Dumbbell_Curl
+// (src/data/exercises.json). Hammer_Curls is a real free-exercise-db entry, hand-checked
+// against src/data/library/exercises.json: primary muscle biceps, category strength, equipment
+// dumbbell -- so it ranks as an alternative to Seated_Dumbbell_Curl under `alternativesFor`
+// with no gym-equipment filter, the same real domain function the list renders through.
+
+test('S6 tapping Alternatives on the seated biceps curls set screen opens the ranked alternatives list', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+
+  expect(await screen.findByRole('searchbox', { name: /search/i }, FAST)).toBeVisible()
+  const hammerRowName = await screen.findByText(
+    'Hammer Curls',
+    { selector: '.alternatives-row-name' },
+    FAST,
+  )
+  const hammerRow = hammerRowName.closest('li')
+  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
+  expect(within(hammerRow).getByRole('button', { name: 'Do this instead' })).toBeVisible()
+})
+
+// --- F2/F3: the alternatives overlay renders as a modal popup (fix-popups) -----------------
+//
+// AlternativesList itself is also composed inline, browse-only, inside ExerciseDetail's own
+// "Similar exercises" section (S13) -- not a popup there. It is App's own top-level overlay
+// (this SetScreen "Alternatives" flow) that must carry the popup treatment, named "Alternatives"
+// (this task's own naming choice; the ticket does not pin one), with its own "Close" control.
+
+test('F2 tapping Alternatives on a live set opens the alternatives list as a modal dialog, closable without swapping', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+
+  const dialog = await screen.findByRole('dialog', { name: 'Alternatives' }, SETTLE)
+  expect(dialog).toHaveAttribute('aria-modal', 'true')
+  expect(within(dialog).getByRole('searchbox', { name: /search/i })).toBeVisible()
+
+  await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog', { name: 'Alternatives' })).toBeNull()
+  }, SETTLE)
+  // The set screen underneath stays mounted, and nothing was swapped.
+  expect(screen.getByRole('button', { name: 'Weight' })).toBeInTheDocument()
+  expect(screen.queryByText(/instead of Seated biceps curls/)).toBeNull()
+})
+
+test('F3 the Alternatives overlay carries the shared overlay-panel class', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+
+  const dialog = await screen.findByRole('dialog', { name: 'Alternatives' }, SETTLE)
+  expect(dialog).toHaveClass('overlay-panel')
+})
+
+test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates the exercise list row', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+  const hammerRowName = await screen.findByText(
+    'Hammer Curls',
+    { selector: '.alternatives-row-name' },
+    FAST,
+  )
+  const hammerRow = hammerRowName.closest('li')
+  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+
+  // The done exercise carries the planned sets, rep range and rest -- seated-biceps-curls'
+  // own plan (sets: 3, repRange: [10, 12], restSeconds: 90).
+  const swappedRow = await screen.findByRole(
+    'button',
+    { name: /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/ },
+    SETTLE,
+  )
+  expect(swappedRow).toBeVisible()
+})
+
+test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled with no history as 0 kg and the bottom of the rep range', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+  const hammerRowName = await screen.findByText(
+    'Hammer Curls',
+    { selector: '.alternatives-row-name' },
+    FAST,
+  )
+  const hammerRow = hammerRowName.closest('li')
+  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+
+  const swappedRow = await screen.findByRole(
+    'button',
+    { name: /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/ },
+    SETTLE,
+  )
+  await user.click(swappedRow)
+
+  expect(await screen.findByRole('heading', { name: 'Hammer Curls' }, SETTLE)).toBeVisible()
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  // Hammer_Curls has no logged history of its own yet: `trainingFieldsFor`'s dumbbell
+  // startWeight (0, hand-checked against src/domain/trainingFields.ts) and the bottom of
+  // seated-biceps-curls' own repRange ([10, 12]).
+  expect(readoutValue(weightReadout())).toBe('0')
+  expect(readoutValue(repsReadout())).toBe('10')
+})
+
+// --- E5-T14: a swap is honest for the rest of the session ([S8], [S9]) and one tap away next
+// time ([S10]) -----------------------------------------------------------------------------
+//
+// The same seated-biceps-curls -> Hammer_Curls swap as E5-T12's, in Workout B, which is the
+// workout that plans seated-biceps-curls (sets: 3, repRange: [10, 12], restSeconds: 90).
+
+/** The swapped row's accessible name, as E5-T12 already renders it. */
+const HAMMER_ROW = /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/
+
+/**
+ * From seated-biceps-curls' set screen: opens Alternatives, taps "Do this instead" on Hammer
+ * Curls, and waits for the exercise list to show the swapped row.
+ */
+async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLElement> {
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+  const hammerRowName = await screen.findByText(
+    'Hammer Curls',
+    { selector: '.alternatives-row-name' },
+    SETTLE,
+  )
+  const hammerRow = hammerRowName.closest('li')
+  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
+}
+
+/**
+ * Starts Workout B, logs 2 of seated-biceps-curls' 3 sets, then swaps it for Hammer_Curls,
+ * which leaves the app on the exercise list with the swapped row showing.
+ */
+async function logTwoSeatedCurlsThenSwap(user: UserEvent): Promise<HTMLElement> {
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await logSetAndOpen(user, 2, 3)
+  await logSetAndOpen(user, 3, 3)
+  return swapSeatedCurlsForHammerCurls(user)
+}
+
+/** Opens the swapped row and logs Hammer_Curls' first set, staying on its set screen. */
+async function logFirstHammerCurlsSet(user: UserEvent): Promise<void> {
+  await user.click(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE))
+  await screen.findByRole('heading', { name: 'Hammer Curls' }, SETTLE)
+  await screen.findByText('Set 1 of 3', undefined, SETTLE)
+  await logSetAndOpen(user, 2, 3)
+}
+
+test('S8 the exercise list offers Undo swap after the swap while no Hammer_Curls set is logged', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+
+  expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
+})
+
+test('S8 tapping Undo swap brings back the seated biceps curls row with its 2 logged sets', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+
+  await user.click(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE))
+
+  const seatedCurls = await screen.findByRole('button', { name: /^Seated biceps curls/ }, SETTLE)
+  expect(progressOf(seatedCurls)).toBe('2/3')
+  expect(screen.queryByRole('button', { name: HAMMER_ROW })).toBeNull()
+})
+
+test('S8 tapping Undo swap removes the swap from the stored session', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+
+  await user.click(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE))
+  await screen.findByRole('button', { name: /^Seated biceps curls/ }, SETTLE)
+
+  await waitFor(async () => {
+    const session = await getActiveSession()
+    expect(session?.swaps?.['seated-biceps-curls']).toBeUndefined()
+  }, SETTLE)
+})
+
+test('S8 once the first Hammer_Curls set is logged under it, Undo swap is no longer offered', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+  // Offered first, so its absence below is the withdrawal and not a control that never was.
+  expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
+
+  await logFirstHammerCurlsSet(user)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+
+  expect(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Undo swap' })).toBeNull()
+  // The 2 sets from before the swap stay under the planned exercise; the one after it is the
+  // done exercise's own first set.
+  const entries = await activeSessionEntries()
+  expect(entries.map((logged) => [logged.exerciseId, logged.setIndex])).toEqual([
+    ['seated-biceps-curls', 1],
+    ['seated-biceps-curls', 2],
+    ['Hammer_Curls', 1],
+  ])
+})
+
+/** Swaps seated-biceps-curls for Hammer_Curls in Workout B, then closes the app. */
+async function swapThenCloseTheApp(user: UserEvent): Promise<void> {
+  const run = render(<App />)
+  await logTwoSeatedCurlsThenSwap(user)
+  run.unmount()
+  db.close()
+  await db.open()
+}
+
+test('S9 reopening the app resumes the session with the swap still applied and still undoable', async () => {
+  const user = userEvent.setup()
+  await swapThenCloseTheApp(user)
+
+  render(<App />)
+
+  // The swap itself is what E5-T11/E5-T12 already persist; what reopening must also keep is
+  // the swap's standing as undoable, since no Hammer_Curls set has been logged yet.
+  expect(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: /^Seated biceps curls/ })).toBeNull()
+  expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
+})
+
+/**
+ * Stores one finished Workout B session in which seated-biceps-curls was swapped for
+ * Hammer_Curls and one Hammer_Curls set was logged -- the "last time" S10 starts from.
+ */
+async function finishWorkoutBWithHammerCurlsSwap(): Promise<void> {
+  const last = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE)
+  await setSwap(last.id, 'seated-biceps-curls', 'Hammer_Curls')
+  await logSet(last.id, {
+    exerciseId: 'Hammer_Curls',
+    setIndex: 1,
+    weightKg: 12,
+    reps: 10,
+    loggedAt: BASE + 60_000,
+  })
+  await finishSession(last.id, BASE + 3_600_000)
+}
+
+test('S10 starting Workout B again shows the seated biceps curls row with a Last time: Hammer Curls button', async () => {
+  await finishWorkoutBWithHammerCurlsSwap()
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await startWorkout(user, 'Workout B')
+
+  expect(await screen.findByRole('button', { name: /^Seated biceps curls/ }, SETTLE)).toBeVisible()
+  expect(
+    await screen.findByRole('button', { name: 'Last time: Hammer Curls' }, SETTLE),
+  ).toBeVisible()
+  expect(screen.queryByRole('button', { name: HAMMER_ROW })).toBeNull()
+})
+
+test('S10 tapping Last time: Hammer Curls applies the same swap to the exercise list row', async () => {
+  await finishWorkoutBWithHammerCurlsSwap()
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+
+  await user.click(await screen.findByRole('button', { name: 'Last time: Hammer Curls' }, SETTLE))
+
+  expect(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Last time: Hammer Curls' })).toBeNull()
+})
+
+test('S10 tapping Last time: Hammer Curls records the swap on the new session', async () => {
+  await finishWorkoutBWithHammerCurlsSwap()
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+
+  await user.click(await screen.findByRole('button', { name: 'Last time: Hammer Curls' }, SETTLE))
+  await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
+
+  await waitFor(async () => {
+    const session = await getActiveSession()
+    expect(session?.finishedAt).toBeNull()
+    expect(session?.swaps).toEqual({ 'seated-biceps-curls': 'Hammer_Curls' })
+  }, SETTLE)
+})
+
+// --- E5-T16: the gym's equipment ([S14], [S15]) ---------------------------------------------
+//
+// Every distinct `equipment` value in the real library fixture, excluding `null` (no equipment
+// needed, so never excludable) and `body only` (already always allowed -- see
+// `alternativesFor`'s own `passesEquipment` rule) -- hand-checked against
+// src/data/library/exercises.json, the same source L9/L10 above use directly.
+const EQUIPMENT_TYPES = Array.from(new Set(LIBRARY.map((exercise) => exercise.equipment)))
+  .filter((equipment): equipment is string => equipment !== null && equipment !== 'body only')
+  .sort((a, b) => a.localeCompare(b))
+
+// Hand-checked against src/data/library/exercises.json: Ab_Crunch_Machine is named "Ab Crunch
+// Machine", its `equipment` is 'machine', and no other entry shares that name.
+const MACHINE_EXERCISE_NAME = 'Ab Crunch Machine'
+
+test('S14 opening Settings with no saved gym equipment lists every library equipment type except body only, all ticked', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await openSettings(user)
+
+  for (const equipment of EQUIPMENT_TYPES) {
+    expect(await screen.findByRole('checkbox', { name: equipment }, SETTLE)).toBeChecked()
+  }
+  expect(screen.queryByRole('checkbox', { name: 'body only' })).toBeNull()
+})
+
+test('S14 unticking machine in Settings persists across a reload', async () => {
+  const user = userEvent.setup()
+  const run = render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await openSettings(user)
+
+  await user.click(await screen.findByRole('checkbox', { name: 'machine' }, SETTLE))
+  await waitFor(async () => {
+    expect(await getGymEquipment()).not.toBeNull()
+  }, SETTLE)
+
+  // A reload: the tree is unmounted and the database is shut, so nothing but storage crosses
+  // into the next render -- the same close/reopen App.test.tsx uses for O13's session survival.
+  run.unmount()
+  db.close()
+  await db.open()
+
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await openSettings(user)
+
+  expect(await screen.findByRole('checkbox', { name: 'machine' }, SETTLE)).not.toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'barbell' })).toBeChecked()
+})
+
+test('S15 with machine unticked, the Exercises tab opens with the My gym only chip on and no machine exercises listed', async () => {
+  await setGymEquipment(EQUIPMENT_TYPES.filter((equipment) => equipment !== 'machine'))
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
+
+  expect(
+    await screen.findByRole('button', { name: 'My gym only', pressed: true }, SETTLE),
+  ).toBeVisible()
+
+  await user.type(search, MACHINE_EXERCISE_NAME)
+
+  expect(await screen.findByText('No exercises match', {}, SETTLE)).toBeVisible()
+  expect(screen.queryByText(MACHINE_EXERCISE_NAME)).toBeNull()
+})
+
+test('S15 turning the My gym only chip off lists machine exercises again', async () => {
+  await setGymEquipment(EQUIPMENT_TYPES.filter((equipment) => equipment !== 'machine'))
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
+  await user.type(search, MACHINE_EXERCISE_NAME)
+  await screen.findByText('No exercises match', {}, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'My gym only' }))
+
+  expect(await screen.findByText(MACHINE_EXERCISE_NAME, {}, SETTLE)).toBeVisible()
+})
+
+// --- E5-T18: planning moves to a Program tab ([M11], [M12], [M13]) -------------------------
+//
+// M11 (the tab bar itself, in order) is proven at the TabBar/AppShell level in
+// src/ui/AppShell.test.tsx; the O7 test above proves it end to end through App. M13's own
+// content (the workout cards, their rest lines and their per-workout body maps, and the
+// program switcher) is proven directly on the real ProgramPage in src/ui/ProgramPage.test.tsx
+// (moved from src/ui/ProgramPicker.test.tsx); what is proven here is the wiring -- the Program
+// tab actually reaches it -- and M12's own claim, that the Workout tab now shows only the
+// active program's start buttons.
+
+test('M12 the Workout tab shows none of its workouts’ exercise plan details, only the start buttons', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeVisible()
+  // Hand-checked against src/data/programs/assaf-ab-2026.json: Workout A's first exercise line,
+  // as ProgramPicker (E1-T2) used to render it directly on this tab.
+  expect(screen.queryByText('Back squat 8-10 x 4')).toBeNull()
+})
+
+test('M12 the Workout tab offers no way to see or start another program’s workouts', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(screen.queryByRole('button', { name: /Other programs/ })).toBeNull()
+  expect(screen.queryByText('Full body starter')).toBeNull()
+})
+
+test('M13 tapping the Program tab shows the active program’s name and makes Program the current tab', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Program')
+
+  expect(await screen.findByRole('heading', { name: 'Assaf A/B 2026' }, SETTLE)).toBeVisible()
+  expect(currentTabNames()).toEqual(['Program'])
+})
+
+test('M13 choosing another program in the Program tab’s switcher makes it the active program', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Program')
+  await user.click(await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE))
+
+  // The Program tab itself now leads with the chosen program...
+  expect(await screen.findByRole('heading', { name: 'Full body starter' }, SETTLE)).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeChecked()
+  // ...and so does the Workout tab: hand-checked against full-body-starter.json, whose one
+  // workout is "Full body".
+  await pressTab(user, 'Workout')
+  expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
+})
+
+// --- E5-T20: the session summary ([M16]) and the region panel ([M9]) --------------------------
+//
+// Finish now shows the finished session's summary -- a `role="dialog"` named "Session summary"
+// holding its body map on the session scale -- over the picker, and "Done" closes it. A History
+// row's "Open session" button shows the same summary for a finished session. Tapping a region
+// on a summary's map opens `RegionPanel` (a dialog named by the region id); its "Browse
+// exercises" closes both and lands on the Exercises tab listing only exercises primary in the
+// region's muscles.
+//
+// Hand-checked against src/data/exercises.json and the real library fixture:
+//   back-squat -> Barbell_Squat: quadriceps primary; calves, glutes, hamstrings, lower back
+//   secondary. Three sets: quadriceps 3 (session band 2), hamstring 1.5 (band 1), chest 0.
+//
+//   Workout B: assisted-pull-ups -> lats primary, middle back secondary;
+//   deadlift -> lats and middle back both secondary; face-pull -> middle back secondary.
+//   Two pull-up sets, two deadlift sets, one face pull set: lats 2 + 1 = 3, middle back
+//   1 + 1 + 0.5 = 2.5, so upper-back 5.5; contributors Assisted pull-ups 3, Deadlift 2,
+//   Face pull 0.5.
+
+function sessionSummary(): HTMLElement | null {
+  return screen.queryByRole('dialog', { name: 'Session summary' })
+}
+
+/** region -> data-band for every region shape the summary draws. */
+function summaryBands(summary: HTMLElement): Record<string, string | null> {
+  const bands: Record<string, string | null> = {}
+  for (const shape of summary.querySelectorAll('[data-region]')) {
+    bands[shape.getAttribute('data-region') as string] = shape.getAttribute('data-band')
+  }
+  return bands
+}
+
+function expectSummaryBand(summary: HTMLElement, region: string, band: string): void {
+  const shapes = [...summary.querySelectorAll(`[data-region="${region}"]`)]
+  expect(shapes.length, `${region} must be drawn on the summary`).toBeGreaterThan(0)
+  for (const shape of shapes) {
+    expect(shape, region).toHaveAttribute('data-band', band)
+  }
+}
+
+/** Leaves three back squat sets in a Workout A session still in progress. */
+async function threeBackSquatSetsInProgress(): Promise<void> {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  for (const setIndex of [1, 2, 3]) {
+    await logSet(started.id, {
+      exerciseId: 'back-squat',
+      setIndex,
+      weightKg: 60,
+      reps: 10,
+      loggedAt: BASE + setIndex,
+    })
+  }
+}
+
+/** Stores one finished Workout B session training upper-back as the header above works out. */
+async function finishedUpperBackSession(): Promise<void> {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE)
+  const entries: SetEntry[] = [
+    { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: 20, reps: 8, loggedAt: BASE + 1 },
+    { exerciseId: 'assisted-pull-ups', setIndex: 2, weightKg: 20, reps: 8, loggedAt: BASE + 2 },
+    { exerciseId: 'deadlift', setIndex: 1, weightKg: 80, reps: 8, loggedAt: BASE + 3 },
+    { exerciseId: 'deadlift', setIndex: 2, weightKg: 80, reps: 8, loggedAt: BASE + 4 },
+    { exerciseId: 'face-pull', setIndex: 1, weightKg: 15, reps: 12, loggedAt: BASE + 5 },
+  ]
+  for (const entry of entries) await logSet(started.id, entry)
+  await finishSession(started.id, BASE + 3_600_000)
+}
+
+/** Opens the only History row's session summary. */
+async function openOnlyHistorySession(user: UserEvent): Promise<HTMLElement> {
+  await pressTab(user, 'History')
+  const row = await screen.findByRole('listitem', {}, SETTLE)
+  await user.click(within(row).getByRole('button', { name: 'Open session' }))
+  return screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+}
+
+/** Taps `region` on `summary`'s map and returns the region panel it opens. */
+async function tapSummaryRegion(
+  user: UserEvent,
+  summary: HTMLElement,
+  region: string,
+): Promise<HTMLElement> {
+  const shape = summary.querySelector(`[data-region="${region}"]`)
+  expect(shape, `${region} must be drawn on the summary`).not.toBeNull()
+  await user.click(shape as Element)
+  return screen.findByRole('dialog', { name: region }, SETTLE)
+}
+
+test('M16 tapping Finish workout shows the session summary with its body map on the session scale', async () => {
+  const user = userEvent.setup()
+  await threeBackSquatSetsInProgress()
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+
+  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  // On the week scale, 3 would be band 1; band 2 is what pins the session scale.
+  expectSummaryBand(summary, 'quadriceps', '2')
+  expectSummaryBand(summary, 'hamstring', '1')
+  expectSummaryBand(summary, 'chest', '0')
+})
+
+test('F2 the Finish workout session summary is an aria-modal dialog', async () => {
+  const user = userEvent.setup()
+  await threeBackSquatSetsInProgress()
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+
+  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  expect(summary).toHaveAttribute('aria-modal', 'true')
+})
+
+test('M16 Done on the finish summary closes it onto the picker with the session finished', async () => {
+  const user = userEvent.setup()
+  await threeBackSquatSetsInProgress()
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+
+  await user.click(within(summary).getByRole('button', { name: 'Done' }))
+
+  await waitFor(() => {
+    expect(sessionSummary()).toBeNull()
+  }, SETTLE)
+  expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
+  expect(await getActiveSession()).toBeNull()
+})
+
+test('M16 opening the finished session from History shows the same body map the finish summary showed', async () => {
+  const user = userEvent.setup()
+  await threeBackSquatSetsInProgress()
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+  const atFinish = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  const finishBands = summaryBands(atFinish)
+  expect(Object.keys(finishBands).length).toBeGreaterThan(0)
+  await user.click(within(atFinish).getByRole('button', { name: 'Done' }))
+  await waitFor(() => {
+    expect(sessionSummary()).toBeNull()
+  }, SETTLE)
+
+  const fromHistory = await openOnlyHistorySession(user)
+
+  expectSummaryBand(fromHistory, 'quadriceps', '2')
+  expect(summaryBands(fromHistory)).toEqual(finishBands)
+})
+
+test('M9 tapping upper-back on a History session’s map opens a panel with its 5.5 sets and contributors', async () => {
+  const user = userEvent.setup()
+  await finishedUpperBackSession()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  const summary = await openOnlyHistorySession(user)
+
+  const panel = await tapSummaryRegion(user, summary, 'upper-back')
+
+  const count = within(panel)
+    .getAllByText('5.5 sets')
+    .filter((element) => element.closest('li') === null)
+  expect(count).toHaveLength(1)
+  const items = within(panel).getAllByRole('listitem')
+  expect(items).toHaveLength(3)
+  const byName = (name: string) => items.find((item) => within(item).queryByText(name) !== null)
+  expect(within(byName('Assisted pull-ups')!).getByText('3 sets')).toBeVisible()
+  expect(within(byName('Deadlift')!).getByText('2 sets')).toBeVisible()
+  expect(within(byName('Face pull')!).getByText('0.5 sets')).toBeVisible()
+})
+
+// RULING (fix-popups, F4): this test used to assert exactly 72 listitems, rendering every
+// lats-or-middle-back exercise at once -- above the 10-per-page cap. Rewritten to the first 10
+// (still only lats/middle back), then "Show more" tapped through to all 72 and the button
+// disappearing -- named by the operator's ticket as one of F4's authorised rewrites.
+test('M9 Browse exercises on upper-back opens the Exercises tab listing only lats or middle back exercises, first 10 with Show more reaching all 72', async () => {
+  const user = userEvent.setup()
+  await finishedUpperBackSession()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  const summary = await openOnlyHistorySession(user)
+  const panel = await tapSummaryRegion(user, summary, 'upper-back')
+
+  await user.click(within(panel).getByRole('button', { name: 'Browse exercises' }))
+
+  // Hand-checked against the real library fixture: 38 exercises are lats primary and 34 middle
+  // back primary, 72 in all -- above the 10-per-page cap -- and every one of them lists lats or
+  // middle back first.
+  const upperBack = LIBRARY.filter(
+    (exercise) =>
+      exercise.primaryMuscles.includes('lats') || exercise.primaryMuscles.includes('middle back'),
+  )
+  expect(upperBack).toHaveLength(72)
+  await waitFor(() => {
+    expect(currentTabNames()).toEqual(['Exercises'])
+    expect(screen.getAllByRole('listitem')).toHaveLength(10)
+  }, SETTLE)
+  expect(sessionSummary()).toBeNull()
+  expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
+  expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
+
+  // Tapping "Show more" repeatedly reaches all 72, then the button disappears: 6 taps of 10
+  // reach 70, a 7th reaches the remaining 2.
+  for (let shown = 10; shown < 72; shown += 10) {
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    const expectedCount = Math.min(shown + 10, 72)
+    await waitFor(() => {
+      expect(screen.getAllByRole('listitem')).toHaveLength(expectedCount)
+    }, SETTLE)
+  }
+  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
+  const muscles = new Set(
+    screen
+      .getAllByRole('listitem')
+      .map((row) => (row.querySelector('.library-row-muscle')?.textContent ?? '').trim()),
+  )
+  expect([...muscles].sort()).toEqual(['lats', 'middle back'])
+  expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
+}, 20000)
+
+// --- E5-T20: App wires the logged sessions into the Program tab's "This week" --------------
+//
+// ProgramPage (E5-T19) takes `sessions`, `now` and `resolve`, defaulting to no sessions; these
+// prove App hands it the real ones. Band values are ProgramPage.test.tsx's business -- here
+// only whether logged sets reach the done map at all.
+
+/** Stores one finished Workout A session of three back squat sets, logged at `loggedAt`. */
+async function finishedBackSquatSessionAt(loggedAt: number): Promise<void> {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', loggedAt - 60_000)
+  for (const setIndex of [1, 2, 3]) {
+    await logSet(started.id, {
+      exerciseId: 'back-squat',
+      setIndex,
+      weightKg: 60,
+      reps: 10,
+      loggedAt: loggedAt + setIndex,
+    })
+  }
+  await finishSession(started.id, loggedAt + 60_000)
+}
+
+/** The Program tab's "This week" section. */
+function thisWeekSection(): HTMLElement {
+  const heading = screen.getByRole('heading', { name: 'This week' })
+  return heading.closest('section') as HTMLElement
+}
+
+test('the Program tab’s This week reflects sets actually logged in the last 7 days', async () => {
+  const user = userEvent.setup()
+  await finishedBackSquatSessionAt(Date.now() - DAY_MS)
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Program')
+  await screen.findByRole('heading', { name: 'This week' }, SETTLE)
+
+  // The done map is the section's second body map (the first is the prescribed one).
+  await waitFor(() => {
+    const maps = thisWeekSection().querySelectorAll('.body-map')
+    expect(maps).toHaveLength(2)
+    const doneQuadriceps = maps[1].querySelector('[data-region="quadriceps"]')
+    expect(doneQuadriceps).not.toBeNull()
+    expect(doneQuadriceps).not.toHaveAttribute('data-band', '0')
+    expect(within(thisWeekSection()).queryByText('No sets logged in the last 7 days')).toBeNull()
+  }, SETTLE)
+})
+
+test('with nothing logged in the last 7 days the Program tab’s This week still reads No sets logged in the last 7 days', async () => {
+  const user = userEvent.setup()
+  // Logged, but eight days ago: outside the window, so it must not count as this week.
+  await finishedBackSquatSessionAt(Date.now() - 8 * DAY_MS)
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Program')
+  await screen.findByRole('heading', { name: 'This week' }, SETTLE)
+
+  expect(
+    within(thisWeekSection()).getByText('No sets logged in the last 7 days'),
+  ).toBeVisible()
+})
+

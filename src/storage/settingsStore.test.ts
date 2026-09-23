@@ -1,12 +1,17 @@
 import { beforeEach, expect, test } from 'vitest'
 import { db } from './db'
-import { getActiveProgramId, setActiveProgramId } from './settingsStore'
+import {
+  getActiveProgramId,
+  getGymEquipment,
+  setActiveProgramId,
+  setGymEquipment,
+} from './settingsStore'
 import type { Program } from '../types'
 
 // settingsStore only needs a program's id, so the fixtures below are the minimal shape rather
 // than the full bundled catalog/program fixtures other test files use.
 function program(id: string, name = id): Program {
-  return { id, name, units: 'kg', workouts: [] }
+  return { id, name, units: 'kg', workouts: [], sessionsPerWeek: 3 }
 }
 
 beforeEach(async () => {
@@ -52,4 +57,25 @@ test('O18 getActiveProgramId falls back to the first program when the stored id 
   await setActiveProgramId('retired-program')
 
   expect(await getActiveProgramId(programs)).toBe('assaf-ab-2026')
+})
+
+// --- getGymEquipment / setGymEquipment (E5-T11) --------------------------------------------
+
+test('S16 getGymEquipment returns null when nothing has been stored, meaning everything is available', async () => {
+  expect(await getGymEquipment()).toBeNull()
+})
+
+test('S16 setGymEquipment then getGymEquipment returns the newly saved list', async () => {
+  await setGymEquipment(['barbell', 'dumbbell', 'bench'])
+
+  expect(await getGymEquipment()).toEqual(['barbell', 'dumbbell', 'bench'])
+})
+
+test('S16 the gym equipment list survives closing and reopening the database', async () => {
+  await setGymEquipment(['barbell', 'dumbbell'])
+
+  db.close()
+  await db.open()
+
+  expect(await getGymEquipment()).toEqual(['barbell', 'dumbbell'])
 })

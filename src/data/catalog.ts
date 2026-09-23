@@ -1,4 +1,4 @@
-import type { Exercise, Program } from '../types'
+import type { Exercise, LibraryExercise, Program } from '../types'
 import exercisesJson from './exercises.json'
 import assafAb2026 from './programs/assaf-ab-2026.json'
 import fullBodyStarter from './programs/full-body-starter.json'
@@ -24,6 +24,7 @@ export function loadCatalog(): Map<string, Exercise> {
 export function loadPrograms(_catalog?: Map<string, Exercise>): Program[] {
   const catalog = _catalog ?? loadCatalog()
   for (const program of bundledPrograms) assertPlansAreInCatalog(program, catalog)
+  assertProgramsHaveSessionsPerWeek(bundledPrograms)
   return bundledPrograms
 }
 
@@ -41,6 +42,34 @@ export function assertPlansAreInCatalog(
           `program ${program.id}, workout ${workout.id}: no exercise ${plan.exerciseId} in the catalog`,
         )
       }
+    }
+  }
+}
+
+/**
+ * Throws on the first program in `programs` with no `sessionsPerWeek` (a program's own required
+ * frequency, E5-T13; decision 0002). Naming follows `assertPlansAreInCatalog`.
+ */
+export function assertProgramsHaveSessionsPerWeek(programs: Program[]): void {
+  for (const program of programs) {
+    if (typeof program.sessionsPerWeek !== 'number') {
+      throw new Error(`program ${program.id}: missing sessionsPerWeek`)
+    }
+  }
+}
+
+/**
+ * Throws on the first catalog exercise whose `libraryId` the library does not define.
+ */
+export function assertCatalogInLibrary(
+  catalog: Map<string, Exercise>,
+  library: Map<string, LibraryExercise>,
+): void {
+  for (const exercise of catalog.values()) {
+    if (!library.has(exercise.libraryId)) {
+      throw new Error(
+        `exercise ${exercise.id}: no libraryId ${exercise.libraryId} in the library`,
+      )
     }
   }
 }

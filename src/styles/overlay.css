@@ -1,0 +1,19 @@
+/* The shared popup shape.
+ *
+ * ExerciseDetail, the App-level Alternatives overlay, SessionSummary and RegionPanel each carry
+ * `.overlay-panel` on their own root instead of repeating their own copy of the fixed,
+ * full-viewport, scrolling, above-the-tab-bar shape. Each component keeps only its own look
+ * (padding, background, gap) in its own stylesheet.
+ *
+ * The z-index here only has to beat `.tab-bar`'s -- src/styles/overlay.test.ts checks the two
+ * numbers directly and makes no assumption about where the tab bar sits on screen, because a
+ * later, separate fix task moves it from the bottom to the top.
+ */
+.overlay-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow-y: auto;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}

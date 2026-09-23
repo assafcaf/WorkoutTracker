@@ -1,0 +1,81 @@
+/* The Program tab (E5-T18): the active program's name, a card per workout with
+ * its own small body map, and a program switcher styled like Settings' "Active program"
+ * radio group (`.settings-action`, from Settings.css).
+ *
+ * Every colour comes through a var(--…) from src/styles/tokens.css.
+ */
+
+.program-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.program-page .workout-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.program-page .workout-card ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+/* A workout's own body map: small, so the card stays a card. */
+.program-page-map {
+  max-width: calc(var(--space-6) * 6);
+}
+
+/* E5-T19: the prescribed weekly body map and its gap list (M14). */
+.program-page-weekly {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.program-page-gaps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+/* E5-T19: "This week"'s prescribed-vs-done comparison (M15). */
+.program-page-thisweek {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.program-page-thisweek-maps {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-4);
+}
+
+.program-page-thisweek-maps .program-page-map {
+  flex: 1;
+}

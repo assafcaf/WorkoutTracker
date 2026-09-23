@@ -1,0 +1,60 @@
+/* The region tap panel (E5-T20): a region's set count, its contributors, browse and close.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
+ * one definition site.
+ */
+
+.region-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
+}
+
+.region-panel-heading {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.region-panel-count {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-accent);
+}
+
+.region-panel-contributors {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.region-panel-contributor {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font-size: var(--text-sm);
+}
+
+.region-panel-contributor-sets {
+  color: var(--color-muted);
+}
+
+.region-panel-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.region-panel-button {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}

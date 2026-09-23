@@ -1,15 +1,22 @@
-/* The bottom tab bar.
+/* The top tab bar (fix-layout, G3: the operator's phone had it pinned to the bottom).
  *
  * Colours come through `var(--…)` only, and `.tab-bar-tab` carries `min-height:
  * var(--tap-min)` on its bare selector, which is where E3-T8's tap-target audit reads it.
+ * `position: fixed` (not `sticky`) pins it to the very top of the viewport from the first
+ * frame regardless of where it sits in the DOM -- src/ui/AppShell.tsx renders it last, so a
+ * sticky bar would not behave the same way. Because that takes it out of document flow,
+ * `.app-shell` (src/ui/AppShell.css) reserves top clearance of its own.
  */
 
 .tab-bar {
-  position: sticky;
-  bottom: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
   display: flex;
-  padding-bottom: var(--safe-bottom);
-  border-top: 1px solid var(--color-border);
+  padding-top: var(--safe-top);
+  border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
 }
 
