@@ -19,5 +19,31 @@ export function alternativesFor(
   library: Map<string, LibraryExercise>,
   gymEquipment: string[] | null,
 ): LibraryExercise[] {
-  throw new Error('not implemented')
+  const sharesPrimaryMuscle = (candidate: LibraryExercise): boolean =>
+    candidate.primaryMuscles.some((muscle) => target.primaryMuscles.includes(muscle))
+
+  const passesEquipment = (candidate: LibraryExercise): boolean => {
+    if (gymEquipment === null) return true
+    if (candidate.equipment === null || candidate.equipment === 'body only') return true
+    return gymEquipment.includes(candidate.equipment)
+  }
+
+  const sharedSecondaryMuscleCount = (candidate: LibraryExercise): number =>
+    candidate.secondaryMuscles.filter((muscle) => target.secondaryMuscles.includes(muscle)).length
+
+  return Array.from(library.values())
+    .filter((candidate) => candidate.id !== target.id)
+    .filter((candidate) => candidate.category === 'strength' || candidate.category === 'powerlifting')
+    .filter(sharesPrimaryMuscle)
+    .filter(passesEquipment)
+    .sort((a, b) => {
+      const aMechanicMatches = a.mechanic === target.mechanic
+      const bMechanicMatches = b.mechanic === target.mechanic
+      if (aMechanicMatches !== bMechanicMatches) return aMechanicMatches ? -1 : 1
+
+      const secondaryDiff = sharedSecondaryMuscleCount(b) - sharedSecondaryMuscleCount(a)
+      if (secondaryDiff !== 0) return secondaryDiff
+
+      return a.name.localeCompare(b.name)
+    })
 }
