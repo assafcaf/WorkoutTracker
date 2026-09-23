@@ -3,10 +3,12 @@
 // program switcher that changes the active program.
 //
 // The O1/O2 tests below are carried over from src/ui/ProgramPicker.test.tsx (E1-T2), whose
-// workout-card list, exercise-line format and "Other programs (N)" disclosure move here per the
-// spec ("ProgramPicker's list and switching move here") -- moved, not deleted. The exercise-line
-// assertions gain rest (M13: "sets x rep range and rest"), which is the one place their content
-// had to change; see this task's NOTES for the exact names that could not stay byte-identical.
+// workout-card list and exercise-line format move here per the spec ("ProgramPicker's list and
+// switching move here") -- moved, not deleted. The exercise-line assertions gain rest (M13:
+// "sets x rep range and rest"). ProgramPicker's "Other programs (N)" disclosure does not move:
+// by operator ruling (E5-T18 attempt 2) the Program tab's switcher is an always-visible radio
+// list of every program, the active one checked -- the same shape as Settings' "Active program"
+// group -- so the O1 tests that were about the disclosure are rewritten against that switcher.
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
@@ -59,19 +61,14 @@ function lines(list: HTMLElement): string[] {
 
 // --- carried over from ProgramPicker.test.tsx's O1/O2 --------------------------------------
 
-test('O1 the active program leads with Workout A then Workout B, above the other programs', () => {
+test('O1 the active program leads with its name, then Workout A, then Workout B', () => {
   renderProgramPage()
 
   const program = screen.getByRole('heading', { name: 'Assaf A/B 2026' })
   const workoutA = screen.getByRole('heading', { name: 'Workout A' })
   const workoutB = screen.getByRole('heading', { name: 'Workout B' })
-  const others = screen.getByRole('button', { name: 'Other programs (1)' })
 
-  expect([
-    precedes(program, workoutA),
-    precedes(workoutA, workoutB),
-    precedes(workoutB, others),
-  ]).toEqual([true, true, true])
+  expect([precedes(program, workoutA), precedes(workoutA, workoutB)]).toEqual([true, true])
 })
 
 test('O1 Workout A names its seven exercises with rep target, set count and rest', () => {
@@ -104,25 +101,53 @@ test('O1 Workout B names its seven exercises with rep target, set count and rest
   ])
 })
 
-test('O1 the one remaining program sits collapsed under "Other programs (1)"', () => {
+test('O1 the program switcher offers every loaded program as a choice, with no disclosure to open', () => {
   renderProgramPage()
 
-  const others = screen.getByRole('button', { name: 'Other programs (1)' })
-  expect(others).toHaveAttribute('aria-expanded', 'false')
-  expect(screen.queryByText('Full body starter')).toBeNull()
+  expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual([
+    'assaf-ab-2026',
+    'full-body-starter',
+  ])
+  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: /Other programs/ })).toBeNull()
 })
 
-test('O1 opening the other programs disclosure reveals the remaining program', async () => {
-  const user = userEvent.setup()
+test('O1 the remaining program is only a switcher choice: none of its workouts are laid out', () => {
   renderProgramPage()
 
-  await user.click(screen.getByRole('button', { name: 'Other programs (1)' }))
+  // Hand-checked against src/data/programs/full-body-starter.json: its one workout is "Full body".
+  expect(screen.getByRole('radio', { name: 'Full body starter' })).not.toBeChecked()
+  expect(screen.queryByRole('heading', { name: 'Full body starter' })).toBeNull()
+  expect(screen.queryByRole('heading', { name: 'Full body' })).toBeNull()
+})
 
-  expect(screen.getByText('Full body starter')).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Other programs (1)' })).toHaveAttribute(
-    'aria-expanded',
-    'true',
+test('O1 with the other program active, the page leads with it and its radio is the checked one', () => {
+  render(
+    <ProgramPage
+      programs={[assaf, starter]}
+      activeProgramId="full-body-starter"
+      catalog={catalogWithout()}
+      library={new Map()}
+      onChooseProgram={vi.fn()}
+    />,
   )
+
+  expect(screen.getByRole('heading', { name: 'Full body starter' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Full body' })).toBeVisible()
+  expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
+  expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeChecked()
+  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).not.toBeChecked()
+})
+
+test('O1 choosing the already-active program does not call onChooseProgram', async () => {
+  const user = userEvent.setup()
+  const { onChooseProgram } = renderProgramPage()
+
+  await user.click(screen.getByRole('radio', { name: 'Assaf A/B 2026' }))
+
+  expect(onChooseProgram).not.toHaveBeenCalled()
+  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeChecked()
 })
 
 test('O2 a plan referencing an id absent from the catalog fails naming the program and the id', () => {

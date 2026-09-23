@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { Exercise, ExercisePlan, LibraryExercise, Program, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import './ProgramPage.css'
@@ -23,17 +22,18 @@ function planLine(plan: ExercisePlan, catalog: Map<string, Exercise>): string {
 
 /**
  * The Program tab (E5-T18): the active program's name, a card per workout listing its
- * exercises, and the rest of the loaded programs collapsed under a disclosure -- carried over
- * from `ProgramPicker` (E1-T2), which this replaces on the Workout tab (M12).
+ * exercises, and a program switcher -- an always-visible radio list of every loaded program,
+ * the active one checked, the same shape as Settings' "Active program" group (operator ruling:
+ * no "Other programs" disclosure). Carried over from `ProgramPicker` (E1-T2), which this
+ * replaces on the Workout tab (M12).
  *
  * Stub for the red commit: neither the per-workout body map (`prescribedWeekly` +
- * `toRegionCounts` + `BodyMap`, `scale="session"`) nor the program switcher (Settings'
- * "Active program" radio-group pattern, `onChooseProgram`) is wired in yet -- see
- * ProgramPage.test.tsx's M13 tests. `library` and `onChooseProgram` are not yet consulted.
+ * `toRegionCounts` + `BodyMap`, `scale="session"`) nor the program switcher (`onChooseProgram`)
+ * is wired in yet -- see ProgramPage.test.tsx's M13 and O1 switcher tests. `library` and
+ * `onChooseProgram` are not yet consulted.
  */
 export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const { programs, activeProgramId, catalog, library, onChooseProgram } = props
-  const [othersOpen, setOthersOpen] = useState(false)
   // Not yet consulted by this stub -- see the note above.
   void library
   void onChooseProgram
@@ -44,7 +44,6 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 
   const active = programs.find((program) => program.id === activeProgramId)
   if (!active) throw new Error(`no program ${activeProgramId} among the loaded programs`)
-  const others = programs.filter((program) => program.id !== activeProgramId)
 
   function renderWorkout(program: Program, workout: Workout): JSX.Element {
     return (
@@ -63,22 +62,6 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     <div className="program-page">
       <h2>{active.name}</h2>
       {active.workouts.map((workout) => renderWorkout(active, workout))}
-      <button
-        type="button"
-        className="other-programs-toggle"
-        aria-expanded={othersOpen}
-        onClick={() => setOthersOpen((open) => !open)}
-      >
-        Other programs ({others.length})
-      </button>
-      {othersOpen
-        ? others.map((program) => (
-            <section key={program.id}>
-              <h2>{program.name}</h2>
-              {program.workouts.map((workout) => renderWorkout(program, workout))}
-            </section>
-          ))
-        : null}
     </div>
   )
 }

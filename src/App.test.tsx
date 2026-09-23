@@ -1729,3 +1729,21 @@ test('M13 tapping the Program tab shows the active program’s name and makes Pr
   expect(currentTabNames()).toEqual(['Program'])
 })
 
+test('M13 choosing another program in the Program tab’s switcher makes it the active program', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Program')
+  await user.click(await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE))
+
+  // The Program tab itself now leads with the chosen program...
+  expect(await screen.findByRole('heading', { name: 'Full body starter' }, SETTLE)).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeChecked()
+  // ...and so does the Workout tab: hand-checked against full-body-starter.json, whose one
+  // workout is "Full body".
+  await pressTab(user, 'Workout')
+  expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
+})
+
