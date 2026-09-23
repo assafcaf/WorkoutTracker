@@ -91,8 +91,18 @@ type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[] }
  * current. `plannedId` is the workout plan's own `exerciseId` -- the swap `setSwap` is recorded
  * against -- even when the set screen it was opened from is itself already showing a swapped-in
  * exercise.
+ *
+ * The detail overlay's own `plannedId` (E5-T15) is set only when it was opened from a live set
+ * (`handleOpenInfoForExercise`, via `SetScreen.onOpenInfo`) rather than the Exercises tab
+ * (`handleOpenInfo`/`LibraryList.onOpen`); its presence is what offers "Do this instead" on the
+ * detail screen's "Similar exercises" rows. Opening one of those rows' own detail screen
+ * (`onOpenDetail`) replaces the overlay's target through the plain, plannedId-less
+ * `handleOpenInfo(id)`, so "Do this instead" is not offered past that first hop -- this exact
+ * chain has no test coverage in this task.
  */
-type Overlay = { kind: 'detail'; libraryId: string; heading?: string } | { kind: 'alternatives'; plannedId: string }
+type Overlay =
+  | { kind: 'detail'; libraryId: string; heading?: string; plannedId?: string }
+  | { kind: 'alternatives'; plannedId: string }
 
 type LoadState =
   | { status: 'loading' }
@@ -492,20 +502,46 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     setView('exercises')
   }
 
-  /** Opens the in-app detail overlay for `libraryId`, optionally headed by a different name. */
-  function handleOpenInfo(libraryId: string, heading?: string): void {
-    setOverlay({ kind: 'detail', libraryId, heading })
+  /**
+   * Opens the in-app detail overlay for `libraryId`, optionally headed by a different name.
+   * `plannedId`, when given, marks the overlay as opened from a live set (E5-T15) -- the plan's
+   * own `exerciseId`, the same shape `handleChooseAlternative` swaps against -- so its "Similar
+   * exercises" rows offer "Do this instead".
+   */
+  function handleOpenInfo(libraryId: string, heading?: string, plannedId?: string): void {
+    setOverlay({ kind: 'detail', libraryId, heading, plannedId })
   }
 
   /**
    * `SetScreen.onOpenInfo`: opens the overlay for the catalog exercise on screen, headed by its
    * own catalog name (e.g. "Deadlift") rather than the library entry's own name (e.g. "Barbell
-   * Deadlift"), which can differ.
+   * Deadlift"), which can differ, and marked with the plan's own id (E5-T15) so the overlay
+   * knows it came from a live set.
    */
   function handleOpenInfoForExercise(exerciseId: string): void {
     const exercise = catalog.get(exerciseId)
     if (!exercise) return
-    handleOpenInfo(exercise.libraryId, exercise.name)
+    const plannedId = session ? plannedExerciseIdFor(session, exerciseId) : exerciseId
+    handleOpenInfo(exercise.libraryId, exercise.name, plannedId)
+  }
+
+  /**
+   * `ExerciseDetail.onChoose`, when the detail overlay was opened from a live set (E5-T15):
+   * swaps to `chosenId` for the exercise currently on screen and closes the overlay, mirroring
+   * `handleChooseAlternative`'s swap-and-close-overlay behavior.
+   */
+  function handleChooseFromDetail(plannedId: string, chosenId: string): void {
+    if (!session) return
+    setSwap(session.id, plannedId, chosenId)
+      .then(() => {
+        setSession((current) =>
+          current ? { ...current, swaps: { ...current.swaps, [plannedId]: chosenId } } : current,
+        )
+        setOverlay(null)
+      })
+      .catch(() => {
+        // Nothing was recorded; the overlay stays open so the trainee can try again.
+      })
   }
 
   /**
@@ -668,7 +704,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         trailing={trailing}
         settingsBadge={settingsBadge}
       >
-        <HistoryList sessions={history} programs={programs} />
+        <HistoryList sessions={history} programs={programs} resolve={resolveListExercise} />
       </AppShell>
     )
   }
@@ -812,6 +848,14 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           heading={overlay.heading}
           photos={photoUrls(overlayEntry, catalogLibraryIds, import.meta.env.BASE_URL)}
           onBack={() => setOverlay(null)}
+          library={libraryMap}
+          gymEquipment={gymEquipment}
+          onOpenDetail={(id) => handleOpenInfo(id)}
+          onChoose={
+            overlay.plannedId !== undefined
+              ? (id) => handleChooseFromDetail(overlay.plannedId!, id)
+              : undefined
+          }
         />
       ) : null}
       {overlay?.kind === 'alternatives' && alternativesTarget ? (
