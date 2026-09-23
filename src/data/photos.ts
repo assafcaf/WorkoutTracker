@@ -1,4 +1,5 @@
 import type { LibraryExercise } from '../types'
+import { LIBRARY_COMMIT } from './library'
 
 /**
  * The photo URLs for `entry`, in `entry.images` order.
@@ -9,9 +10,14 @@ import type { LibraryExercise } from '../types'
  * on raw.githubusercontent.com, since only the catalog's own exercises are bundled offline.
  */
 export function photoUrls(
-  _entry: LibraryExercise,
-  _catalogLibraryIds: Set<string>,
-  _base: string,
+  entry: LibraryExercise,
+  catalogLibraryIds: Set<string>,
+  base: string,
 ): string[] {
-  throw new Error('not implemented')
+  const isCatalog = catalogLibraryIds.has(entry.id)
+  return entry.images.map((path) =>
+    isCatalog
+      ? `${base}library-photos/${path}`
+      : `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${LIBRARY_COMMIT}/exercises/${path}`,
+  )
 }

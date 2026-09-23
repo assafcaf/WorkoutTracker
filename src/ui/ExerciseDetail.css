@@ -1,9 +1,81 @@
 /* The exercise detail screen: profile, numbered instructions, video link and photos (E5-T4).
  *
  * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
- * one definition site. Styling itself is code-writer work; this stub keeps the .tsx's
- * `import './ExerciseDetail.css'` resolvable while the tests run red.
+ * one definition site.
  */
 
 .exercise-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.exercise-detail-back {
+  align-self: flex-start;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.exercise-detail-heading {
+  margin: 0;
+  font-size: var(--text-xl);
+  color: var(--color-text);
+}
+
+.exercise-detail-profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.exercise-detail-field {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.exercise-detail-video a {
+  color: var(--color-accent);
+}
+
+.exercise-detail-instructions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.exercise-detail-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.exercise-detail-photo {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--color-surface);
+}
+
+.exercise-detail-photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  text-align: center;
 }
