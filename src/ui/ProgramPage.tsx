@@ -1,7 +1,7 @@
 import type { Exercise, ExercisePlan, LibraryExercise, Program, Session, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
-import { toRegionCounts } from '../domain/muscles'
-import { prescribedWeekly } from '../domain/programVolume'
+import { toRegionCounts, weekSets } from '../domain/muscles'
+import { prescribedWeekly, programGaps } from '../domain/programVolume'
 import { BodyMap } from './body/BodyMap'
 import './Settings.css'
 import './ProgramPage.css'
@@ -41,7 +41,16 @@ function planLine(plan: ExercisePlan, catalog: Map<string, Exercise>): string {
  * over from `ProgramPicker` (E1-T2), which this replaces on the Workout tab (M12).
  */
 export function ProgramPage(props: ProgramPageProps): JSX.Element {
-  const { programs, activeProgramId, catalog, library, onChooseProgram } = props
+  const {
+    programs,
+    activeProgramId,
+    catalog,
+    library,
+    onChooseProgram,
+    sessions = [],
+    now = Date.now(),
+    resolve = (id: string) => catalog.get(id),
+  } = props
 
   // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
   // half-built page behind -- the same rule `ProgramPicker` enforced.
@@ -49,6 +58,18 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 
   const active = programs.find((program) => program.id === activeProgramId)
   if (!active) throw new Error(`no program ${activeProgramId} among the loaded programs`)
+
+  // The whole active program's prescribed weekly volume (M14/M15's prescribed side) -- distinct
+  // from a single workout card's session-scale map (`renderWorkout` below), which is why the
+  // fixtures band the same muscle differently at the two scales.
+  const prescribedMuscleCounts = prescribedWeekly(active, catalog, library)
+  const prescribedRegionCounts = toRegionCounts(prescribedMuscleCounts)
+  const gaps = programGaps(prescribedMuscleCounts)
+
+  // "This week"'s done side (M15): real sets logged in the last 7 days up to `now`.
+  const doneMuscleCounts = weekSets(sessions, now, resolve, library)
+  const doneRegionCounts = toRegionCounts(doneMuscleCounts)
+  const noSetsThisWeek = doneMuscleCounts.size === 0
 
   function renderWorkout(program: Program, workout: Workout): JSX.Element {
     // One workout's sets at weight 1: the workout as a program of its own, done once a week.
@@ -73,6 +94,34 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     <div className="program-page">
       <h2>{active.name}</h2>
       {active.workouts.map((workout) => renderWorkout(active, workout))}
+
+      <section className="program-page-weekly">
+        <h3>Weekly volume</h3>
+        <div className="program-page-map">
+          <BodyMap counts={prescribedRegionCounts} scale="week" />
+        </div>
+        {gaps.length > 0 && (
+          <ul className="program-page-gaps">
+            {gaps.map((muscle) => (
+              <li key={muscle}>{`No direct ${muscle} work`}</li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="program-page-thisweek">
+        <h3>This week</h3>
+        <div className="program-page-thisweek-maps">
+          <div className="program-page-map">
+            <BodyMap counts={prescribedRegionCounts} scale="week" />
+          </div>
+          <div className="program-page-map">
+            <BodyMap counts={doneRegionCounts} scale="week" />
+          </div>
+        </div>
+        {noSetsThisWeek && <p>No sets logged in the last 7 days</p>}
+      </section>
+
       <fieldset className="settings-group">
         <legend className="settings-legend">Active program</legend>
         {programs.map((program) => {
