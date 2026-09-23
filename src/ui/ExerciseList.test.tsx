@@ -3,8 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import assafJson from '../data/programs/assaf-ab-2026.json'
 import exercisesJson from '../data/exercises.json'
+import libraryJson from '../data/library/exercises.json'
+import { resolveExercise } from '../data/resolve'
 import { ExerciseList } from './ExerciseList'
-import type { Exercise, Program, Session, SetEntry } from '../types'
+import type { Exercise, LibraryExercise, Program, Session, SetEntry } from '../types'
 
 // The list is pure presentation over a session it is handed, so these tests need no database:
 // they feed it the shipped program and catalog and a session built by hand. The end-to-end
@@ -48,6 +50,9 @@ function renderList(entries: SetEntry[]) {
       session={sessionWith(entries)}
       onOpenSet={onOpenSet}
       onFinish={onFinish}
+      lastSwaps={{}}
+      onUndoSwap={vi.fn()}
+      onApplySwap={vi.fn()}
     />,
   )
   return { user, onOpenSet, onFinish }
@@ -148,4 +153,109 @@ test('O10 the exercise list renders no Finish workout control of its own', () =>
   // one trailing the rows would be a second way to end the workout, off-screen on a long list.
   expect(screen.queryByRole('button', { name: 'Finish workout' })).toBeNull()
   expect(row('Back squat')).toBeVisible()
+})
+
+// --- E5-T14: a swap is honest for the rest of the session, and one tap away next time --------
+//
+// seated-biceps-curls is Workout B's last plan (sets: 3, repRange: [10, 12], restSeconds: 90 in
+// src/data/programs/assaf-ab-2026.json). Hammer_Curls is a real free-exercise-db entry named
+// "Hammer Curls" (src/data/library/exercises.json), so these rows resolve it through the same
+// `resolveExercise` the app hands the list, against the real library fixture.
+
+const workoutB = assaf.workouts[1]
+const library = new Map(
+  (libraryJson as unknown as LibraryExercise[]).map((libraryEntry) => [libraryEntry.id, libraryEntry] as const),
+)
+const resolveWithLibrary = (id: string): Exercise | undefined => resolveExercise(id, catalog, library)
+
+/** The accessible-name prefix of seated-biceps-curls' row once it is swapped for Hammer_Curls. */
+const SWAPPED_ROW = /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/
+
+const HAMMER_SWAP = { 'seated-biceps-curls': 'Hammer_Curls' }
+
+function workoutBSession(entries: SetEntry[], swaps?: Record<string, string>): Session {
+  return {
+    id: 'session-under-test',
+    programId: assaf.id,
+    workoutId: workoutB.id,
+    startedAt: BASE,
+    finishedAt: null,
+    entries,
+    ...(swaps ? { swaps } : {}),
+  }
+}
+
+function renderWorkoutB(session: Session, lastSwaps: Record<string, string> = {}) {
+  const user = userEvent.setup()
+  const onUndoSwap = vi.fn()
+  const onApplySwap = vi.fn()
+  const props = {
+    program: assaf,
+    workout: workoutB,
+    resolve: resolveWithLibrary,
+    onOpenSet: vi.fn(),
+    onFinish: vi.fn(),
+    lastSwaps,
+    onUndoSwap,
+    onApplySwap,
+  }
+  const view = render(<ExerciseList {...props} session={session} />)
+  const rerenderWith = (next: Session) => view.rerender(<ExerciseList {...props} session={next} />)
+  return { user, onUndoSwap, onApplySwap, rerenderWith }
+}
+
+test('S8 a swapped row with no Hammer_Curls set logged offers Undo swap', () => {
+  renderWorkoutB(
+    workoutBSession([entry('seated-biceps-curls', 1), entry('seated-biceps-curls', 2)], HAMMER_SWAP),
+  )
+
+  expect(screen.getByRole('button', { name: SWAPPED_ROW })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Undo swap' })).toBeVisible()
+})
+
+test('S8 tapping Undo swap asks to undo the swap of the planned seated-biceps-curls', async () => {
+  const { user, onUndoSwap } = renderWorkoutB(workoutBSession([], HAMMER_SWAP))
+
+  await user.click(screen.getByRole('button', { name: 'Undo swap' }))
+
+  expect(onUndoSwap.mock.calls).toEqual([['seated-biceps-curls']])
+})
+
+test('S8 Undo swap is withdrawn once the first Hammer_Curls set is logged', () => {
+  const before = [entry('seated-biceps-curls', 1), entry('seated-biceps-curls', 2)]
+  const { rerenderWith } = renderWorkoutB(workoutBSession(before, HAMMER_SWAP))
+  expect(screen.getByRole('button', { name: 'Undo swap' })).toBeVisible()
+
+  rerenderWith(workoutBSession([...before, entry('Hammer_Curls', 1)], HAMMER_SWAP))
+
+  expect(screen.getByRole('button', { name: SWAPPED_ROW })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Undo swap' })).toBeNull()
+})
+
+test('S10 a plan swapped last time and not today shows its own row with a Last time button naming the done exercise', () => {
+  renderWorkoutB(workoutBSession([]), HAMMER_SWAP)
+
+  expect(screen.getByRole('button', { name: /^Seated biceps curls/ })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Last time: Hammer Curls' })).toBeVisible()
+})
+
+test('S10 tapping Last time asks to apply the same swap of seated-biceps-curls for Hammer_Curls', async () => {
+  const { user, onApplySwap } = renderWorkoutB(workoutBSession([]), HAMMER_SWAP)
+
+  await user.click(screen.getByRole('button', { name: 'Last time: Hammer Curls' }))
+
+  expect(onApplySwap.mock.calls).toEqual([['seated-biceps-curls', 'Hammer_Curls']])
+})
+
+test('S10 a Last time swap to an id neither catalog nor library knows is named by its raw id', () => {
+  renderWorkoutB(workoutBSession([]), { 'seated-biceps-curls': 'Retired_Curl' })
+
+  expect(screen.getByRole('button', { name: 'Last time: Retired_Curl' })).toBeVisible()
+})
+
+test('S10 a plan already swapped today offers no Last time button', () => {
+  renderWorkoutB(workoutBSession([], HAMMER_SWAP), HAMMER_SWAP)
+
+  expect(screen.getByRole('button', { name: 'Undo swap' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: /^Last time/ })).toBeNull()
 })

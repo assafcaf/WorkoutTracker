@@ -17,6 +17,16 @@ export type ExerciseListProps = {
    * itself renders none: E3-T4 moved it out from under the rows.
    */
   onFinish(): void
+  /**
+   * The swap each plan carried in the last finished session of this workout (E5-T14), keyed
+   * plannedId -> doneId, as `getLastSwap` answers it. A plan listed here and not swapped today
+   * offers "Last time: <done exercise's name>".
+   */
+  lastSwaps: Record<string, string>
+  /** Undoes today's swap of `plannedId` -- offered until the done exercise has a logged set. */
+  onUndoSwap(plannedId: string): void
+  /** Applies the "Last time" swap of `plannedId` for `doneId` to this session. */
+  onApplySwap(plannedId: string, doneId: string): void
 }
 
 /** How many sets of this exercise the session already holds. */
