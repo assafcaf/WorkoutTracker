@@ -3,8 +3,11 @@
 These checks cannot run in CI or an emulator. iOS is the only platform with the install,
 offline cold-launch and safe-area behaviour this app depends on, so a person runs these steps
 by hand on a real iPhone, in Safari, and records what actually happened. This document is that
-script. It proves outcomes [O12] and [O13] from the `E2-T7` ticket, and — continuing in the
-same sitting once the app is installed — [O15], [O16] and [O18] from the `E3-T9` ticket.
+script. It proves outcomes [O12] and [O13] from the `E2-T7` ticket — re-run here, at E3's styled
+head, as [O19] and [O20], which `E3-T10` renumbered from those same two outcomes so they do not
+collide with E3's own spec numbering. Continuing in the same sitting once the app is installed,
+it also proves [O17] from `E3-T6`, and [O15], [O16] and [O18] from `E3-T9`. All six outcomes
+below are checked once, in one sitting, at the same installed build.
 
 Follow the steps in order, exactly as written. Do not skip the "clear a previous install"
 section on a re-run — skipping it is the single most common way to get a false result.
@@ -48,7 +51,33 @@ two things behind that must both be removed, or the re-run will not be clean:
 
 Only once both steps are done is the phone in a clean state to start [O12].
 
-## [O12]: installs to the home screen and launches standalone
+## Deploying and confirming the commit under test
+
+`.github/workflows/deploy.yml` publishes `dist` to the URL above. It runs automatically on a
+push to `main`, and can also be run by hand against any branch — including an unmerged epic
+branch — via `workflow_dispatch`. Do this once, before [O12], so the whole sitting below runs
+against a build you can actually name:
+
+1. In the GitHub repository, open **Actions > Deploy to GitHub Pages > Run workflow**, and pick
+   the branch (or tag/commit) you intend to check — the E3 epic branch's tip for this run.
+2. Wait for the run to finish with a green check, then open its details and read the exact
+   commit SHA the `actions/checkout` step resolved. Write that SHA down now — it is what goes
+   in the result block's "Commit / merged sha checked against" field below. "The epic branch"
+   is not precise enough once more commits land on it after this run.
+3. Nothing in the built app shows a version string on screen, so the surest way to know you are
+   not looking at a stale cached copy is to start from a clean slate: complete "Clearing a
+   previous install" below (even on a first-ever run, this also clears any plain-Safari-tab
+   cache of the URL from earlier browsing) before loading the URL for the first time in the
+   Preconditions check.
+4. If you re-run this whole document later against a newer commit, repeat steps 1-3 with the
+   new SHA — do not assume a previously-deployed page has picked up new commits on its own.
+
+## [O12] and [O19]: installs to the home screen and launches standalone
+
+[O19] is [O12] verbatim, renumbered by `E3-T10` and re-pointed at E3's styled head instead of
+E2's bare one — the same steps prove both, and the expected results below already describe the
+styled head. Record them as separate rows in the result block below; they are the same run
+checked once, kept distinct because they belong to two different tickets' records.
 
 1. Open Safari and navigate to `https://assafcaf.github.io/WorkoutTracker/`.
    **Expected:** the app loads in a normal Safari tab, with the address bar and Safari's tab
@@ -75,7 +104,19 @@ Only once both steps are done is the phone in a clean state to start [O12].
    display means; if any piece of Safari's UI is visible, this step fails (see "What failure
    looks like" below).
 
-## [O13]: cold-launches offline, and a logged set survives a restart
+   The brief splash and the status bar area are the app's own near-black
+   (`#0B0B0F`) background, not white and not E2's `#111827` — there is no light flash between
+   the icon tap and the app appearing. What appears once it renders is the **Workout tab**: the
+   program picker's dark `.workout-card` rows (or, if a session is already in progress, a
+   "Resume ..." card above them), sitting above a three-tab bar fixed to the bottom of the
+   screen (Workout, History, Settings). This is a styled shell behind a tab bar, not E1's bare
+   unstyled picker — if what appears instead is a plain white or default-styled page with no tab
+   bar, this step fails.
+
+## [O13] and [O20]: cold-launches offline, and a logged set survives a restart
+
+[O20] is [O13] verbatim, renumbered by `E3-T10` and re-pointed at E3's styled head. As with
+[O12]/[O19] above, the same steps prove both; record them as separate rows in the result block.
 
 **A cold start is not the same as returning to the home screen.** Pressing the home button or
 swiping up briefly and letting go leaves the app suspended in memory — iOS can resume it
@@ -100,9 +141,12 @@ Now run the check:
 
 3. **Cold-launch the app from the home-screen icon** — tap the "Workout" icon on the home
    screen (not from the app switcher, which does not exist right now since you swiped it away).
-   **Expected:** the app opens standalone (no Safari chrome, as in [O12]) and the program picker
-   screen renders with a program and its workouts listed, even though the phone has no network
-   connection at all.
+   **Expected:** the app opens standalone (no Safari chrome, dark `#0B0B0F` shell, as in
+   [O12]/[O19]) and the **Workout tab** renders behind the three-tab bar: the active program's
+   workouts listed as dark `.workout-card` rows, each with its exercises and a "Start ..."
+   button — or, if a session from an earlier step is already in progress, a "Resume ..." card
+   above the picker instead. Either is a correct offline render. This happens even though the
+   phone has no network connection at all.
 
 4. **Start a workout.** Tap the "Start ..." button under one of the listed workouts (it reads
    "Start" followed by that workout's name).
@@ -124,6 +168,22 @@ Now run the check:
    the same exercise/set you logged in step 5 (via the history list or by resuming the session).
    **Expected:** the set you logged in step 5 is present, with the **same weight and reps
    values you wrote down** — not defaults, not a different set's values, not missing.
+
+## [O17]: the weight and reps dials still snap to a rung when dragged
+
+Stay on the same installed app, still offline from [O13]/[O20] above, on the set screen you
+already have open from step 4 of that section (or open any set screen fresh via a workout's
+exercise list if you moved on).
+
+1. Drag the weight dial's scrolling column with your finger and release it between two rungs,
+   not squarely on one. **Expected:** the column keeps moving briefly on its own after you let
+   go and comes to rest with exactly one rung centred and marked selected — it does not stop
+   part-way between two rungs.
+2. Do the same on the reps dial. **Expected:** same as step 1 — it settles on a rung, not
+   between two.
+3. With both dials settled from steps 1-2, note the two values shown, then tap **Log set**.
+   **Expected:** the set that gets logged carries exactly the two rung values you noted — not an
+   in-between value, and not the values the dials held before you dragged them.
 
 ## [O15]: the six screens are dark-on-dark, with the lime primary action
 
@@ -204,19 +264,44 @@ These three are known and deliberate; they are not things to report as failures:
 
 ## Result block — paste this back into the run log, filled in
 
+One sitting, one installed build, all six outcomes below plus E2's two. [O19]/[O20] are
+[O12]/[O13] re-run at E3's styled head, recorded as their own rows because they belong to a
+different ticket's record than E2's.
+
 ```
-Device check: E2-T7 (O12, O13)
+Device check: E2-T7 (O12, O13) and E3 (O17, O15, O16, O18, O19, O20)
 Date:
 Commit / merged sha checked against:
 iOS version:
 Device model:
 
-[O12] install + standalone launch: PASS / FAIL
+[O12] (E2-T7) install + standalone launch: PASS / FAIL
   What actually happened:
 
-[O13] offline cold-launch + set survives restart: PASS / FAIL
+[O13] (E2-T7) offline cold-launch + set survives restart: PASS / FAIL
   Weight logged:      kg
   Reps logged:
+  What actually happened:
+
+[O19] (E3-T10) install + standalone launch, at E3's styled head: PASS / FAIL
+  What actually happened:
+
+[O20] (E3-T10) offline cold-launch + set survives restart, at E3's styled head: PASS / FAIL
+  Weight logged:      kg
+  Reps logged:
+  What actually happened:
+
+[O17] (E3-T6) weight/reps dials snap to a rung when dragged; the snapped rung is what logs: PASS / FAIL
+  What actually happened:
+
+[O15] (E3-T9) six screens dark-on-dark with the lime primary action, no browser-default serif: PASS / FAIL
+  Screenshots attached (6): Y / N
+  What actually happened:
+
+[O16] (E3-T9) tab bar and sticky action bar clear the notch and the home indicator: PASS / FAIL
+  What actually happened:
+
+[O18] (E3-T9) nothing scrolls sideways; every control is one-thumb reachable: PASS / FAIL
   What actually happened:
 
 Notes:
