@@ -1,3 +1,5 @@
+import './StorageUnavailableBanner.css'
+
 /**
  * Tells the trainee that sets cannot be saved, shown when `isStorageAvailable()` is false.
  *
@@ -6,7 +8,7 @@
  */
 export function StorageUnavailableBanner(): JSX.Element {
   return (
-    <div role="alert">
+    <div role="alert" className="storage-unavailable-banner">
       Storage is unavailable on this device, so sets cannot be saved. Write this workout down
       before you leave.
     </div>

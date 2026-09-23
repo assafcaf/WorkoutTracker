@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Exercise, ExercisePlan, Program, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
+import './ProgramPicker.css'
 
 export type ProgramPickerProps = {
   programs: Program[]
@@ -36,14 +37,18 @@ export function ProgramPicker(props: ProgramPickerProps): JSX.Element {
 
   function renderWorkout(program: Program, workout: Workout): JSX.Element {
     return (
-      <section key={`${program.id}/${workout.id}`}>
+      <section key={`${program.id}/${workout.id}`} className="workout-card">
         <h3>{workout.name}</h3>
         <ul>
           {workout.exercises.map((plan) => (
             <li key={plan.exerciseId}>{planLine(plan, catalog)}</li>
           ))}
         </ul>
-        <button type="button" onClick={() => onChoose(program.id, workout.id)}>
+        <button
+          type="button"
+          className="start-workout"
+          onClick={() => onChoose(program.id, workout.id)}
+        >
           Start {workout.name}
         </button>
       </section>
@@ -51,11 +56,12 @@ export function ProgramPicker(props: ProgramPickerProps): JSX.Element {
   }
 
   return (
-    <div>
+    <div className="program-picker">
       <h2>{active.name}</h2>
       {active.workouts.map((workout) => renderWorkout(active, workout))}
       <button
         type="button"
+        className="other-programs-toggle"
         aria-expanded={othersOpen}
         onClick={() => setOthersOpen((open) => !open)}
       >

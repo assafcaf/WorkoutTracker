@@ -965,3 +965,58 @@ test('O11 Add set sits in the action bar beside Log set once every planned set i
     true,
   )
 })
+
+// --- E3-T5: the resume card on the picker ([O12]) ------------------------------------------
+//
+// Backing out of a session in progress must not strand it behind a bare "Start Workout A": the
+// Workout tab has to offer a way back into the same session, sets and all.
+
+/** The resume control on the picker, or null when none is shown. */
+function resumeControl(): HTMLElement | null {
+  return document.body.querySelector('button.resume-workout')
+}
+
+/** Starts Workout A, logs one set of back squat, then backs all the way out to the picker. */
+async function startLogOneSetAndBackToPicker(user: UserEvent): Promise<void> {
+  await startWorkoutA(user)
+  await openExercise(user, 'Back squat')
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await waitFor(async () => {
+    expect(await activeSessionEntries()).toHaveLength(1)
+  }, SETTLE)
+  // Back out of the set screen to the exercise list, then out of the exercise list to the
+  // picker -- the session stays in progress the whole way (proven by O10 and O11 above).
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+}
+
+test('O12 backing out of a session in progress shows a resume control naming the workout in progress instead of the bare picker', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await startLogOneSetAndBackToPicker(user)
+
+  const resume = resumeControl()
+  expect(resume, 'no resume control is shown for the session in progress').not.toBeNull()
+  expect(textOf(resume as Element)).toContain('Workout A')
+})
+
+test('O12 pressing the resume control returns to the same session with its logged sets intact', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await startLogOneSetAndBackToPicker(user)
+  const before = await getActiveSession()
+  if (!before) throw new Error('the session was never started')
+
+  const resume = resumeControl()
+  expect(resume, 'no resume control is shown for the session in progress').not.toBeNull()
+  await user.click(resume as HTMLElement)
+
+  const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  expect(progressOf(backSquat)).toBe('1/4')
+  const after = await getActiveSession()
+  expect(after?.id).toBe(before.id)
+  expect(after?.entries.map((entry) => [entry.exerciseId, entry.setIndex])).toEqual([
+    ['back-squat', 1],
+  ])
+})
