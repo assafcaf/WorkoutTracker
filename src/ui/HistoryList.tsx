@@ -83,7 +83,7 @@ export function HistoryList(props: {
   /** Opens a session's summary (E5-T20, M16) from its row's "Open session" button. */
   onOpen?(sessionId: string): void
 }): JSX.Element {
-  const { sessions, programs, resolve } = props
+  const { sessions, programs, resolve, onOpen } = props
 
   return (
     <ul className="history-list">
@@ -99,6 +99,15 @@ export function HistoryList(props: {
               <span className="history-sets">{`${summary.totalSets} sets`}</span>{' '}
               <span className="history-volume">{`${summary.totalVolumeKg} kg`}</span>
             </div>
+            {onOpen ? (
+              <button
+                type="button"
+                className="history-open"
+                onClick={() => onOpen(session.id)}
+              >
+                Open session
+              </button>
+            ) : null}
             {/* `role="presentation"` on the group `<li>`s below: `getByRole('listitem')` must
                 keep finding exactly the session row above (App.test.tsx's O8/O9/O17 pre-date
                 grouping and query it singular), while S11 still needs a real `<li>` ancestor to
