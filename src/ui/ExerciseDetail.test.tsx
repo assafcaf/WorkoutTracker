@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { expect, test } from 'vitest'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { expect, test, vi } from 'vitest'
 import { ExerciseDetail } from './ExerciseDetail'
 import type { LibraryExercise, Video } from '../types'
 
@@ -29,28 +30,34 @@ const BARBELL_SQUAT: LibraryExercise = {
 
 const onBack = () => {}
 
+// L11/L12/L13 predate `library`/`gymEquipment`/`onOpenDetail` (E5-T15): a minimal library and a
+// no-op onOpenDetail let their existing render calls keep compiling and behaving the same --
+// this is the interface fix the ticket calls for, not a behavior change.
+const LIBRARY = new Map<string, LibraryExercise>([[BARBELL_SQUAT.id, BARBELL_SQUAT]])
+const onOpenDetail = () => {}
+
 // --- L11: profile, muscles and numbered instructions ---------------------------------------
 
 test('L11 ExerciseDetail shows the exercise name as its heading', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   expect(screen.getByRole('heading', { name: 'Barbell Squat' })).toBeVisible()
 })
 
 test('L11 ExerciseDetail shows the primary muscle quadriceps', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   expect(screen.getByText('Primary muscle: quadriceps')).toBeVisible()
 })
 
 test('L11 ExerciseDetail shows the secondary muscles in dataset order', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   expect(screen.getByText('Secondary muscles: calves, glutes, hamstrings, lower back')).toBeVisible()
 })
 
 test('L11 ExerciseDetail shows equipment, mechanic, force and level', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   expect(screen.getByText('Equipment: barbell')).toBeVisible()
   expect(screen.getByText('Mechanic: compound')).toBeVisible()
@@ -59,7 +66,7 @@ test('L11 ExerciseDetail shows equipment, mechanic, force and level', () => {
 })
 
 test('L11 ExerciseDetail shows the instructions as a numbered list in dataset order', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   const steps = screen.getAllByRole('listitem').map((item) => item.textContent)
   expect(steps).toEqual(BARBELL_SQUAT.instructions)
@@ -80,7 +87,7 @@ const LUNGE_VIDEO: Video = {
 }
 
 test('L12 ExerciseDetail opens a "Watch video" link to the youtube watch URL in a new tab when given a youtube video', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} video={SQUAT_VIDEO} photos={[]} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} video={SQUAT_VIDEO} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   const link = screen.getByRole('link', { name: 'Watch video' })
   expect(link).toHaveAttribute('href', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
@@ -89,7 +96,7 @@ test('L12 ExerciseDetail opens a "Watch video" link to the youtube watch URL in 
 })
 
 test('L12 ExerciseDetail opens a "Watch video" link to the video\'s own source page in a new tab when given a vimeo video', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} video={LUNGE_VIDEO} photos={[]} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} video={LUNGE_VIDEO} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   const link = screen.getByRole('link', { name: 'Watch video' })
   expect(link).toHaveAttribute('href', LUNGE_VIDEO.source)
@@ -98,7 +105,7 @@ test('L12 ExerciseDetail opens a "Watch video" link to the video\'s own source p
 })
 
 test('L12 ExerciseDetail shows a "Video: Muscle & Strength" credit linking to the video source page when given a video', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} video={SQUAT_VIDEO} photos={[]} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} video={SQUAT_VIDEO} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   const credit = screen.getByRole('link', { name: 'Video: Muscle & Strength' })
   expect(credit).toHaveAttribute('href', SQUAT_VIDEO.source)
@@ -107,7 +114,7 @@ test('L12 ExerciseDetail shows a "Video: Muscle & Strength" credit linking to th
 })
 
 test('L12 ExerciseDetail renders neither the "Watch video" link nor its credit when given no video', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   // Anchored to the heading so a stub that renders nothing at all does not pass this
   // negative check vacuously -- the screen must have rendered the exercise for real.
@@ -124,7 +131,7 @@ test('L13 ExerciseDetail renders each given photo url as an image', () => {
     '/WorkoutTracker/library-photos/Barbell_Squat/1.jpg',
   ]
 
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={photos} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={photos} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   const images = screen.getAllByRole('img')
   expect(images.map((image) => image.getAttribute('src'))).toEqual(photos)
@@ -133,11 +140,182 @@ test('L13 ExerciseDetail renders each given photo url as an image', () => {
 test('L13 ExerciseDetail replaces a photo that fails to load with a "Photos need a connection" placeholder', () => {
   const photos = ['/WorkoutTracker/library-photos/Barbell_Squat/0.jpg']
 
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={photos} onBack={onBack} />)
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={photos} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   const image = screen.getByRole('img')
   fireEvent.error(image)
 
   expect(screen.getByText('Photos need a connection')).toBeVisible()
   expect(screen.queryByRole('img')).not.toBeInTheDocument()
+})
+
+// --- S13: "Similar exercises" -----------------------------------------------------------------
+//
+// A small hand-built library, not the real one, so its `alternativesFor` (E5-T5) ranking is
+// hand-checked here rather than trusted: every candidate shares TARGET_CURL's primary muscle
+// ('biceps') and is category 'strength', so all 6 pass `alternativesFor`'s muscle/category
+// filters, and `equipment: null` on every entry passes its equipment filter regardless of
+// `gymEquipment`. Ranking is by mechanic match first, then by how many of TARGET_CURL's
+// secondaryMuscles (['forearms', 'shoulders']) a candidate shares, then by name A-Z:
+//   Alpha Curl    (isolation, shares 2) -----\
+//   Foxtrot Curl  (isolation, shares 2) ------ } shared=2, name order Alpha < Foxtrot
+//   Beta Curl     (isolation, shares 1) -----\
+//   Charlie Curl  (isolation, shares 1) ------ } shared=1, name order Beta < Charlie
+//   Delta Curl    (isolation, shares 0)
+//   Echo Curl     (compound -- mechanic mismatch, ranks last regardless of shared count)
+// so the top 5 are exactly Alpha, Foxtrot, Beta, Charlie, Delta; Echo Curl is 6th and cut by
+// `limit={5}`.
+
+const TARGET_CURL: LibraryExercise = {
+  id: 'Target_Curl',
+  name: 'Target Curl',
+  force: 'pull',
+  level: 'beginner',
+  mechanic: 'isolation',
+  equipment: null,
+  primaryMuscles: ['biceps'],
+  secondaryMuscles: ['forearms', 'shoulders'],
+  instructions: [],
+  category: 'strength',
+  images: [],
+}
+
+function curlCandidate(
+  id: string,
+  name: string,
+  mechanic: LibraryExercise['mechanic'],
+  secondaryMuscles: LibraryExercise['secondaryMuscles'],
+): LibraryExercise {
+  return {
+    id,
+    name,
+    force: 'pull',
+    level: 'beginner',
+    mechanic,
+    equipment: null,
+    primaryMuscles: ['biceps'],
+    secondaryMuscles,
+    instructions: [],
+    category: 'strength',
+    images: [],
+  }
+}
+
+const ALPHA_CURL = curlCandidate('Alpha_Curl', 'Alpha Curl', 'isolation', ['forearms', 'shoulders'])
+const FOXTROT_CURL = curlCandidate('Foxtrot_Curl', 'Foxtrot Curl', 'isolation', ['forearms', 'shoulders'])
+const BETA_CURL = curlCandidate('Beta_Curl', 'Beta Curl', 'isolation', ['forearms'])
+const CHARLIE_CURL = curlCandidate('Charlie_Curl', 'Charlie Curl', 'isolation', ['shoulders'])
+const DELTA_CURL = curlCandidate('Delta_Curl', 'Delta Curl', 'isolation', [])
+const ECHO_CURL = curlCandidate('Echo_Curl', 'Echo Curl', 'compound', ['forearms', 'shoulders'])
+
+const SIMILAR_LIBRARY = new Map<string, LibraryExercise>(
+  [TARGET_CURL, ALPHA_CURL, FOXTROT_CURL, BETA_CURL, CHARLIE_CURL, DELTA_CURL, ECHO_CURL].map(
+    (exercise) => [exercise.id, exercise],
+  ),
+)
+
+const TOP_FIVE_NAMES = ['Alpha Curl', 'Foxtrot Curl', 'Beta Curl', 'Charlie Curl', 'Delta Curl']
+
+/** The control a "Similar exercises" row offers to open that alternative's own detail screen --
+ * a link or a button, matching `AlternativesList`'s existing `onOpenDetail` row pattern. */
+function openControlFor(name: string): HTMLElement {
+  return screen.queryByRole('link', { name, exact: true }) ?? screen.getByRole('button', { name, exact: true })
+}
+
+/** The row containing `name`'s open control, so a "Do this instead" button can be looked up
+ * scoped to that row rather than any other row's. */
+function rowFor(name: string): HTMLElement {
+  const row = openControlFor(name).closest('li')
+  if (!row) throw new Error(`no row list item found for "${name}"`)
+  return row
+}
+
+test('S13 ExerciseDetail lists its top 5 ranked alternatives under a "Similar exercises" heading', () => {
+  render(
+    <ExerciseDetail
+      entry={TARGET_CURL}
+      photos={[]}
+      onBack={onBack}
+      library={SIMILAR_LIBRARY}
+      gymEquipment={null}
+      onOpenDetail={onOpenDetail}
+    />,
+  )
+
+  expect(screen.getByRole('heading', { name: 'Similar exercises' })).toBeVisible()
+
+  for (const name of TOP_FIVE_NAMES) {
+    expect(openControlFor(name)).toBeVisible()
+  }
+  // Echo Curl ranks 6th (mechanic mismatch), cut by the top-5 limit.
+  expect(screen.queryByText('Echo Curl')).not.toBeInTheDocument()
+})
+
+test('S13 tapping a "Similar exercises" row opens that alternative\'s own detail screen instead of swapping to it', async () => {
+  const onOpenDetailSpy = vi.fn()
+  const onChoose = vi.fn()
+  const user = userEvent.setup()
+
+  render(
+    <ExerciseDetail
+      entry={TARGET_CURL}
+      photos={[]}
+      onBack={onBack}
+      library={SIMILAR_LIBRARY}
+      gymEquipment={null}
+      onOpenDetail={onOpenDetailSpy}
+      onChoose={onChoose}
+    />,
+  )
+
+  await user.click(openControlFor('Alpha Curl'))
+
+  expect(onOpenDetailSpy).toHaveBeenCalledWith('Alpha_Curl')
+  expect(onChoose).not.toHaveBeenCalled()
+})
+
+test('S13 no "Similar exercises" row offers "Do this instead" when ExerciseDetail is opened without onChoose', () => {
+  render(
+    <ExerciseDetail
+      entry={TARGET_CURL}
+      photos={[]}
+      onBack={onBack}
+      library={SIMILAR_LIBRARY}
+      gymEquipment={null}
+      onOpenDetail={onOpenDetail}
+    />,
+  )
+
+  // Anchored to the rows actually rendering, so a stub that shows no "Similar exercises"
+  // section at all does not pass this negative check vacuously.
+  expect(screen.getByRole('heading', { name: 'Similar exercises' })).toBeVisible()
+  for (const name of TOP_FIVE_NAMES) {
+    expect(openControlFor(name)).toBeVisible()
+  }
+  expect(screen.queryByRole('button', { name: 'Do this instead' })).not.toBeInTheDocument()
+})
+
+test('S13 every "Similar exercises" row offers "Do this instead" when ExerciseDetail is opened from a live set, and tapping it calls onChoose with that row\'s id', async () => {
+  const onChoose = vi.fn()
+  const user = userEvent.setup()
+
+  render(
+    <ExerciseDetail
+      entry={TARGET_CURL}
+      photos={[]}
+      onBack={onBack}
+      library={SIMILAR_LIBRARY}
+      gymEquipment={null}
+      onOpenDetail={onOpenDetail}
+      onChoose={onChoose}
+    />,
+  )
+
+  for (const name of TOP_FIVE_NAMES) {
+    expect(within(rowFor(name)).getByRole('button', { name: 'Do this instead' })).toBeVisible()
+  }
+
+  await user.click(within(rowFor('Beta Curl')).getByRole('button', { name: 'Do this instead' }))
+
+  expect(onChoose).toHaveBeenCalledWith('Beta_Curl')
 })

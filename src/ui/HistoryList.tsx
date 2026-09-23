@@ -1,4 +1,4 @@
-import type { Program, Session } from '../types'
+import type { Exercise, Program, Session } from '../types'
 import './HistoryList.css'
 
 /**
@@ -47,8 +47,16 @@ function calendarDate(date: number): string {
 
 /**
  * The finished sessions given, each reduced through `summarise` and rendered as one row.
+ *
+ * `resolve` answers the `Exercise` for a logged entry's `exerciseId` -- a catalog id or a
+ * library id swapped in mid-session (E5-T15) -- so each session's sets can be grouped by
+ * exercise under the resolved name (E5-T15 stub: grouping itself is not yet implemented).
  */
-export function HistoryList(props: { sessions: Session[]; programs: Program[] }): JSX.Element {
+export function HistoryList(props: {
+  sessions: Session[]
+  programs: Program[]
+  resolve: (id: string) => Exercise | undefined
+}): JSX.Element {
   const { sessions, programs } = props
 
   return (

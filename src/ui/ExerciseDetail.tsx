@@ -8,6 +8,18 @@ export type ExerciseDetailProps = {
   heading?: string
   photos: string[]
   onBack(): void
+  /** Every library exercise, keyed by id -- ranks the "Similar exercises" section (E5-T15). */
+  library: Map<string, LibraryExercise>
+  /** Filters "Similar exercises" to the gym's equipment; `null` means no filter. */
+  gymEquipment: string[] | null
+  /** Opens another exercise's own detail screen from a "Similar exercises" row. */
+  onOpenDetail(id: string): void
+  /**
+   * Swaps to a "Similar exercises" row for today's session. Left `undefined` when the detail
+   * screen was opened from the Exercises tab rather than a live set, in which case no row
+   * offers "Do this instead" (E5-T15).
+   */
+  onChoose?(id: string): void
 }
 
 /**
@@ -16,6 +28,9 @@ export type ExerciseDetailProps = {
  * `heading` defaults to `entry.name`. `photos` is a list of already-resolved URLs (see
  * `photoUrls` in `src/data/photos.ts`); a photo that fails to load is replaced in place with a
  * "Photos need a connection" placeholder, tracked by index so the other photos are unaffected.
+ *
+ * E5-T15 stub -- the "Similar exercises" section (`library`, `gymEquipment`, `onOpenDetail`,
+ * `onChoose`) is not yet implemented.
  */
 export function ExerciseDetail({ entry, video, heading, photos, onBack }: ExerciseDetailProps): JSX.Element {
   const [failedPhotos, setFailedPhotos] = useState<Set<number>>(new Set())

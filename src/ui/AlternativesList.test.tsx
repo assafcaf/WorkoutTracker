@@ -109,3 +109,77 @@ test('S7 tapping "Do this instead" on a row calls onChoose with that alternative
   expect(onChoose).toHaveBeenCalledTimes(1)
   expect(onChoose).toHaveBeenCalledWith('Hammer_Curls')
 })
+
+// --- S12: an equipment filter that leaves nothing explains itself -----------------------------
+//
+// A small hand-built target/library pair, not the real library: EQUIPMENT_ONLY_CANDIDATE is
+// the only exercise sharing EQUIPMENT_ONLY_TARGET's primary muscle, and its `equipment` is
+// `'machine'` -- not `null`/`'body only'` -- so `gymEquipment={[]}` (a gym with no listed
+// equipment) empties `alternativesFor`'s ranked list per its filter (src/domain/alternatives.ts):
+// candidate.equipment is neither null/'body only' nor included in `[]`.
+
+const EQUIPMENT_ONLY_TARGET: LibraryExercise = {
+  id: 'Equipment_Only_Target',
+  name: 'Equipment Only Target',
+  force: 'pull',
+  level: 'beginner',
+  mechanic: 'isolation',
+  equipment: null,
+  primaryMuscles: ['biceps'],
+  secondaryMuscles: [],
+  instructions: [],
+  category: 'strength',
+  images: [],
+}
+
+const EQUIPMENT_ONLY_CANDIDATE: LibraryExercise = {
+  id: 'Equipment_Only_Candidate',
+  name: 'Machine Only Candidate',
+  force: 'pull',
+  level: 'beginner',
+  mechanic: 'isolation',
+  equipment: 'machine',
+  primaryMuscles: ['biceps'],
+  secondaryMuscles: [],
+  instructions: [],
+  category: 'strength',
+  images: [],
+}
+
+const EQUIPMENT_ONLY_LIBRARY = new Map<string, LibraryExercise>([
+  [EQUIPMENT_ONLY_TARGET.id, EQUIPMENT_ONLY_TARGET],
+  [EQUIPMENT_ONLY_CANDIDATE.id, EQUIPMENT_ONLY_CANDIDATE],
+])
+
+test('S12 AlternativesList reads "No alternatives with your gym\'s equipment" and offers "Show all equipment" when gymEquipment leaves no alternatives', () => {
+  render(
+    <AlternativesList
+      target={EQUIPMENT_ONLY_TARGET}
+      library={EQUIPMENT_ONLY_LIBRARY}
+      gymEquipment={[]}
+      onOpenDetail={vi.fn()}
+    />,
+  )
+
+  expect(screen.getByText("No alternatives with your gym's equipment")).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Show all equipment' })).toBeVisible()
+})
+
+test('S12 tapping "Show all equipment" lifts the equipment filter for this list only, showing what it was hiding', async () => {
+  const user = userEvent.setup()
+
+  render(
+    <AlternativesList
+      target={EQUIPMENT_ONLY_TARGET}
+      library={EQUIPMENT_ONLY_LIBRARY}
+      gymEquipment={[]}
+      onOpenDetail={vi.fn()}
+    />,
+  )
+  expect(screen.queryByText('Machine Only Candidate')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Show all equipment' }))
+
+  expect(screen.getByText('Machine Only Candidate')).toBeVisible()
+  expect(screen.queryByText("No alternatives with your gym's equipment")).not.toBeInTheDocument()
+})
