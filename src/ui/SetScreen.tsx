@@ -40,6 +40,30 @@ export type SetScreenProps = {
    * STUB (E5-T12 test-designer): accepted but not yet wired to the "Alternatives" button.
    */
   onOpenAlternatives?(exerciseId: string): void
+  /**
+   * Whether the set on the dials was opened by "Add set" as an extra set past the plan (E6-T1).
+   * A screen opened past the plan with `extra` false is in the done state.
+   *
+   * STUB (E6-T1 test-designer): accepted but not yet read. Optional here only so the callers
+   * predating it still type-check; the ticket's interface is `extra: boolean`.
+   */
+  extra?: boolean
+}
+
+/**
+ * The set counter's text (E6-T1): "Set 2 of 3" | "Set 4 · extra" | "All 3 sets logged" |
+ * "4 sets logged · 3 planned". `loggedCount` is this Session's Sets for the Exercise.
+ *
+ * STUB (E6-T1 test-designer).
+ */
+export function setCounterText(
+  setIndex: number,
+  plannedSets: number,
+  loggedCount: number,
+  done: boolean,
+): string {
+  void [setIndex, plannedSets, loggedCount, done]
+  throw new Error('NotImplementedError: setCounterText')
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
