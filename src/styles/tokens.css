@@ -1,0 +1,7 @@
+/* STUB — filling this in is the implementation task (E3-T1).
+
+   `:root` must declare exactly the twenty-nine documented custom properties and no others.
+   src/styles/tokens.test.ts names every one of them and the value it carries, so that file is
+   the specification; this one is only here so the audits have something to parse. */
+:root {
+}
