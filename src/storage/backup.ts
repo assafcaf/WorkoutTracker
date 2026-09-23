@@ -20,7 +20,15 @@ export type BackupFile = {
   schemaVersion: 1
   exportedAt: number
   sessions: Session[]
-  settings: { activeProgramId: string; lastExportedAt: number | null }
+  settings: {
+    activeProgramId: string
+    lastExportedAt: number | null
+    /**
+     * The gym's saved equipment list (E5-T11). Absent on a `schemaVersion: 1` backup made
+     * before this epic; `undefined` and `null` both mean "never set" on import.
+     */
+    gymEquipment?: string[] | null
+  }
 }
 
 /**

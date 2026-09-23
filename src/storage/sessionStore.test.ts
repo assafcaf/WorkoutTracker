@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { db, isStorageAvailable } from './db'
 import {
+  clearSwap,
   finishSession,
   getActiveSession,
   getLastEntriesFor,
+  getLastSwap,
   listSessions,
   logSet,
+  setSwap,
   startOrResumeSession,
 } from './sessionStore'
 import type { Session, SetEntry } from '../types'
@@ -299,6 +302,116 @@ test('O3 listSessions returns sessions from every program', async () => {
     'full-body-starter',
     'assaf-ab-2026',
   ])
+})
+
+// --- setSwap / clearSwap / getLastSwap (E5-T11) -------------------------------------------
+
+test('S16 setSwap records the swap on the session, keyed by the planned exercise id', async () => {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+
+  await setSwap(started.id, 'back-squat', 'leg-press')
+
+  const stored = await db.sessions.get(started.id)
+  expect(stored?.swaps).toEqual({ 'back-squat': 'leg-press' })
+})
+
+test('S16 a swap survives closing and reopening the database', async () => {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  await setSwap(started.id, 'back-squat', 'leg-press')
+
+  db.close()
+  await db.open()
+
+  const stored = await db.sessions.get(started.id)
+  expect(stored?.swaps).toEqual({ 'back-squat': 'leg-press' })
+})
+
+test('S16 setSwap keeps swaps for other planned exercises on the same session', async () => {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  await setSwap(started.id, 'back-squat', 'leg-press')
+
+  await setSwap(started.id, 'lunges', 'step-ups')
+
+  const stored = await db.sessions.get(started.id)
+  expect(stored?.swaps).toEqual({ 'back-squat': 'leg-press', lunges: 'step-ups' })
+})
+
+test('S16 clearSwap removes the entry for the planned exercise', async () => {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  await setSwap(started.id, 'back-squat', 'leg-press')
+
+  await clearSwap(started.id, 'back-squat')
+
+  const stored = await db.sessions.get(started.id)
+  expect(stored?.swaps?.['back-squat']).toBeUndefined()
+})
+
+test('S16 clearSwap rejects when the session already has a logged entry for the done id', async () => {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  await setSwap(started.id, 'back-squat', 'leg-press')
+  await logSet(started.id, entry('leg-press', 0, 40, 10, BASE + 120 * SECOND))
+
+  await expect(clearSwap(started.id, 'back-squat')).rejects.toThrow(/leg-press/)
+
+  const stored = await db.sessions.get(started.id)
+  expect(stored?.swaps).toEqual({ 'back-squat': 'leg-press' })
+})
+
+test('S16 getLastSwap returns null when no finished session of that workout has a swap for the planned id', async () => {
+  await db.sessions.bulkPut(history(3))
+
+  expect(await getLastSwap('assaf-ab-2026', 'workout-a', 'back-squat')).toBeNull()
+})
+
+test('S16 getLastSwap returns the swap from the most recent finished session of that workout', async () => {
+  const older = storedSession({
+    id: 'older',
+    startedAt: BASE - DAY,
+    finishedAt: BASE - DAY + 3600 * SECOND,
+    swaps: { 'back-squat': 'hack-squat' },
+  })
+  const newest = storedSession({
+    id: 'newest',
+    startedAt: BASE,
+    finishedAt: BASE + 3600 * SECOND,
+    swaps: { 'back-squat': 'leg-press' },
+  })
+  await db.sessions.bulkPut([older, newest])
+
+  expect(await getLastSwap('assaf-ab-2026', 'workout-a', 'back-squat')).toBe('leg-press')
+})
+
+test('S16 getLastSwap ignores the session still in progress', async () => {
+  const finished = storedSession({
+    id: 'finished',
+    startedAt: BASE - DAY,
+    finishedAt: BASE - DAY + 3600 * SECOND,
+    swaps: { 'back-squat': 'hack-squat' },
+  })
+  await db.sessions.bulkPut([finished])
+  await db.sessions.put(
+    storedSession({
+      id: 'in-progress',
+      startedAt: BASE,
+      finishedAt: null,
+      swaps: { 'back-squat': 'leg-press' },
+    }),
+  )
+
+  expect(await getLastSwap('assaf-ab-2026', 'workout-a', 'back-squat')).toBe('hack-squat')
+})
+
+test('S16 getLastSwap only considers sessions of the given program and workout', async () => {
+  const otherWorkout = storedSession({
+    id: 'other-workout',
+    workoutId: 'workout-b',
+    startedAt: BASE,
+    finishedAt: BASE + 3600 * SECOND,
+    swaps: { 'back-squat': 'leg-press' },
+  })
+  await db.sessions.bulkPut([otherWorkout])
+
+  expect(await getLastSwap('assaf-ab-2026', 'workout-a', 'back-squat')).toBeNull()
 })
 
 // --- getLastEntriesFor --------------------------------------------------------------------
