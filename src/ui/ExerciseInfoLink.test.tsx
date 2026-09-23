@@ -1,28 +1,29 @@
 import { render, screen } from '@testing-library/react'
-import { expect, test } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { expect, test, vi } from 'vitest'
 import { loadCatalog } from '../data/catalog'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import type { Exercise } from '../types'
 
-// `deadlift`'s infoUrl is a literal muscleandstrength.com URL in src/data/exercises.json. It is
-// never fetched here or anywhere else -- only its markup is asserted.
+// deadlift is used only as a plausible Exercise fixture. E5-T8 turns "Exercise info" into a
+// button that opens the in-app detail screen instead of leaving the app, so nothing below
+// reads exercise.infoUrl or asserts on an href.
 const catalog = loadCatalog()
 const deadlift = catalog.get('deadlift') as Exercise
 
-test('O16 the deadlift info control links to its curated muscleandstrength.com URL', () => {
-  render(<ExerciseInfoLink exercise={deadlift} />)
+test('L14 the exercise info control renders as a button named "Exercise info", not a link', () => {
+  render(<ExerciseInfoLink exercise={deadlift} onOpen={() => {}} />)
 
-  const link = screen.getByRole('link', { name: 'Exercise info' })
-  expect(link).toHaveAttribute(
-    'href',
-    'https://www.muscleandstrength.com/exercises/deadlift.html',
-  )
+  expect(screen.getByRole('button', { name: 'Exercise info' })).toBeVisible()
+  expect(screen.queryByRole('link')).toBeNull()
 })
 
-test('O16 the deadlift info control opens in a new tab without exposing the opener', () => {
-  render(<ExerciseInfoLink exercise={deadlift} />)
+test('L14 tapping the exercise info control calls onOpen exactly once', async () => {
+  const user = userEvent.setup()
+  const onOpen = vi.fn()
+  render(<ExerciseInfoLink exercise={deadlift} onOpen={onOpen} />)
 
-  const link = screen.getByRole('link', { name: 'Exercise info' })
-  expect(link).toHaveAttribute('target', '_blank')
-  expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  await user.click(screen.getByRole('button', { name: 'Exercise info' }))
+
+  expect(onOpen).toHaveBeenCalledTimes(1)
 })

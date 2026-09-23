@@ -2,6 +2,11 @@ import type { Exercise } from '../types'
 
 export type ExerciseInfoLinkProps = {
   exercise: Exercise
+  /**
+   * Opens the exercise's in-app detail screen (E5-T8). Replaces the old outbound
+   * muscleandstrength.com link -- the control is a button now, not an anchor.
+   */
+  onOpen(): void
 }
 
 /**

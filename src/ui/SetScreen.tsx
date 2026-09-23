@@ -25,6 +25,11 @@ export type SetScreenProps = {
    * "Add set" control is only rendered when it is given.
    */
   onAddSet?(exerciseId: string, nextSetIndex: number): void
+  /**
+   * Told that "Exercise info" was tapped, with the open exercise's id. The caller opens the
+   * in-app detail overlay for it (E5-T8) -- the screen itself owns no navigation.
+   */
+  onOpenInfo(exerciseId: string): void
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
