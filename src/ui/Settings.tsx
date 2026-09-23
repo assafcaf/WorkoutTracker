@@ -12,6 +12,18 @@ export type SettingsProps = {
   // Optional for the same reason as `onExport`; E2-T6 wires a real handler from `App` that
   // reads the chosen file and hands its text to `importBackup`.
   onImportFile?(text: string): void | Promise<void>
+  /**
+   * Every equipment type the library carries, except `body only` (E5-T16). Renders as "My
+   * gym's equipment"'s checkbox list, in the order given.
+   */
+  equipmentTypes: string[]
+  /**
+   * The gym's saved equipment, or `null` when nothing has been saved yet -- rendered as every
+   * type in `equipmentTypes` ticked (E5-T16).
+   */
+  gymEquipment: string[] | null
+  /** Called with the next gym equipment list when a type in "My gym's equipment" is (un)ticked. */
+  onGymEquipmentChange(list: string[]): void
 }
 
 /**
@@ -24,6 +36,9 @@ export type SettingsProps = {
  * The Export control calls `onExport` when it is provided, and is a no-op otherwise. The
  * Import backup control reads the chosen file and hands its text to `onImportFile`; dismissing
  * the picker without choosing one reads nothing and calls nothing.
+ *
+ * E5-T16 stub -- "My gym's equipment" (`equipmentTypes`, `gymEquipment`, `onGymEquipmentChange`)
+ * is not yet implemented.
  */
 export function Settings(props: SettingsProps): JSX.Element {
   const { programs, activeProgramId, onActiveProgramChange, onExport, onImportFile } = props

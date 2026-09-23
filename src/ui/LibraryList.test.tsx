@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { expect, test } from 'vitest'
 import { LibraryList } from './LibraryList'
 import { loadLibrary } from '../data/library'
@@ -46,7 +47,7 @@ function rowMuscle(row: HTMLElement): string {
 test('L9 LibraryList renders all 876 library exercises, sorted by name, each row showing its name and primary muscle', async () => {
   const library = [...(await loadLibrary()).values()]
 
-  render(<LibraryList library={library} onOpen={() => {}} />)
+  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
 
   const rows = screen.getAllByRole('listitem')
   expect(rows).toHaveLength(876)
@@ -76,8 +77,65 @@ test('L9 LibraryList sorts case-insensitively rather than by raw code point', ()
     fixture({ id: 'a', name: 'ab wheel rollout', primaryMuscles: ['abdominals'] }),
   ]
 
-  render(<LibraryList library={library} onOpen={() => {}} />)
+  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
 
   const rows = screen.getAllByRole('listitem')
   expect(rows.map(rowName)).toEqual(['ab wheel rollout', 'Banana Curl'])
+})
+
+// --- E5-T16: the "My gym only" chip ---------------------------------------------------------
+//
+// A machine exercise (fixture equipment 'machine') alongside a barbell one (fixture equipment
+// 'barbell'), narrowed by `gymEquipment` -- a saved list that does not include 'machine'.
+
+const machineExercise = fixture({
+  id: 'machine-row',
+  name: 'Leg Press Machine',
+  equipment: 'machine',
+  primaryMuscles: ['quadriceps'],
+})
+const barbellExercise = fixture({
+  id: 'barbell-row',
+  name: 'Barbell Row',
+  equipment: 'barbell',
+  primaryMuscles: ['lats'],
+})
+const bodyOnlyExercise = fixture({
+  id: 'body-only-row',
+  name: 'Push-Up',
+  equipment: 'body only',
+  primaryMuscles: ['chest'],
+})
+
+test('S15 with a saved gym equipment list, the My gym only chip is on by default and excludes exercises whose equipment is not in it', () => {
+  render(
+    <LibraryList
+      library={[machineExercise, barbellExercise, bodyOnlyExercise]}
+      onOpen={() => {}}
+      gymEquipment={['barbell']}
+    />,
+  )
+
+  expect(screen.getByRole('button', { name: 'My gym only', pressed: true })).toBeInTheDocument()
+  expect(screen.queryByText('Leg Press Machine')).toBeNull()
+  expect(screen.getByText('Barbell Row')).toBeVisible()
+  // `body only` is always available, regardless of what is saved (mirrors alternativesFor).
+  expect(screen.getByText('Push-Up')).toBeVisible()
+})
+
+test('S15 turning the My gym only chip off lists the excluded equipment again', async () => {
+  const user = userEvent.setup()
+  render(
+    <LibraryList
+      library={[machineExercise, barbellExercise]}
+      onOpen={() => {}}
+      gymEquipment={['barbell']}
+    />,
+  )
+  expect(screen.queryByText('Leg Press Machine')).toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'My gym only' }))
+
+  expect(screen.getByRole('button', { name: 'My gym only', pressed: false })).toBeInTheDocument()
+  expect(screen.getByText('Leg Press Machine')).toBeVisible()
 })
