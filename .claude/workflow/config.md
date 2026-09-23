@@ -27,8 +27,10 @@ in the agent file.
 |---|---|---|---|
 | Tracker | `tracker` | `haiku` | The only agent with tracker tools. Every ticket read and write goes through it |
 | Planning | `task-planner` | `sonnet` | Read-only. Runs once per `/batch-implement` run |
-| Tests | `test-designer` | `sonnet` | Its own worktree. Writes the failing tests and stubs |
-| Code | `code-writer` | `sonnet` | Its own worktree. Cherry-picks the red commit; may not change tests |
+| Task ownership | `ticket-owner` | `sonnet` | One per task. Runs the task's test-designer and code-writer, proves red, gates the branch, moves the ticket |
+| Merging | `epic-merger` | `sonnet` | One per run. The epic branch's only writer: re-checks, merges one task at a time, gates, pushes |
+| Tests | `test-designer` | `sonnet` | Its own worktree, dispatched by the ticket owner. Writes the failing tests and stubs |
+| Code | `code-writer` | `sonnet` | Its own worktree, dispatched by the ticket owner. Cherry-picks the red commit; may not change tests |
 
 Use `opus` for a task labelled `complex`, and for the retry of a task that failed a gate.
 
@@ -137,10 +139,10 @@ database. None are configured.
 - **Branches:** epic branch `epic/<EPIC>-<slug>` (e.g. `epic/E1-log-a-workout`), in worktree
   `.claude/worktrees/<EPIC>`. `.claude/settings.json` must set `worktree.baseRef: head`, so
   implementer worktrees branch from the epic branch.
-- **Parallelism:** at most `3` implementers at once.
+- **Parallelism:** at most `3` tasks (ticket owners) at once.
 - **Final review:** `off`. Set to a `/code-review` level (`low`, `medium`, …) to run one
   review over the finished epic branch before the PR.
 - **Publishing:** `origin` is https://github.com/assafcaf/WorkoutTracker (public), added
-  2026-09-22 after E1's last merge. Push the epic branch and open a draft PR against `main` as
-  the skill describes. E1 ran before the remote existed, so its push and PR happened after the
+  2026-09-22 after E1's last merge. The merger pushes the epic branch after each merge, so
+  tracker comments cite fetchable commits; open a draft PR against `main` as the skill describes. E1 ran before the remote existed, so its push and PR happened after the
   fact; from E2 on they are part of the run.
