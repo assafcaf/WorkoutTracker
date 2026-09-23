@@ -597,7 +597,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       return
     }
     if (tab === 'program') {
-      setView('program')
+      handleShowProgram()
       return
     }
     setView(tab === 'workout' ? 'picker' : 'settings')
@@ -710,6 +710,21 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       })
   }
 
+  /**
+   * Loads the finished sessions, so the Program tab's "This week" (E5-T20) counts them, then
+   * shows the Program tab -- with whatever was loaded before, if they cannot be read.
+   */
+  function handleShowProgram(): void {
+    listSessions()
+      .then((sessions) => {
+        setHistory(sessions)
+        setView('program')
+      })
+      .catch(() => {
+        setView('program')
+      })
+  }
+
   /** Loads the finished sessions and shows them. */
   function handleShowHistory(): void {
     listSessions()
@@ -767,6 +782,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           catalog={catalog}
           library={libraryMap}
           onChooseProgram={handleActiveProgramChange}
+          sessions={session ? [...history, session] : history}
+          now={Date.now()}
+          resolve={resolveListExercise}
         />
       </AppShell>
     )
