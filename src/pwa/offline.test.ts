@@ -65,6 +65,13 @@ type OfflineLaunch = {
 let launch: Promise<OfflineLaunch> | undefined
 
 /**
+ * The time limit for a test that calls `launchFromCache`. Whichever such test runs first pays
+ * for the whole launch — a rollup relink plus up to 10s waiting for the first render — which
+ * vitest's default 5s cannot hold on a loaded machine.
+ */
+const LAUNCH_TIMEOUT = 60_000
+
+/**
  * Starts the app the way a cold launch with no network does, and hands back the window it is
  * running in.
  *
@@ -212,11 +219,11 @@ test('O4 with the network down every asset the shell references is served from t
 
 test('O4 with the network down the program picker renders the active program', async () => {
   expect(await screenText()).toContain('Assaf A/B 2026')
-})
+}, LAUNCH_TIMEOUT)
 
 test('O4 with the network down the program picker offers the workouts to start', async () => {
   expect(await screenText()).toContain('Start Workout A')
-})
+}, LAUNCH_TIMEOUT)
 
 // E5-T18 (M13) moves this exercise-plan text off the Workout tab and onto the Program tab
 // (M12 leaves only the start buttons on the Workout tab), so reaching it now means clicking
@@ -237,7 +244,7 @@ test('O4 with the network down the Program tab names exercises out of the cached
   }
 
   expect(window.document.body.textContent ?? '').toContain(expected)
-})
+}, LAUNCH_TIMEOUT)
 
 test('O4 launching the cached app asks the network for nothing', async () => {
   await launchFromCache()
@@ -245,7 +252,7 @@ test('O4 launching the cached app asks the network for nothing', async () => {
     sw.networkLog.slice(networkCallsBeforeOffline),
     'the app asked the network for these while it was offline',
   ).toEqual([])
-})
+}, LAUNCH_TIMEOUT)
 
 test('O4 a request for an asset the build never emitted is not answered with the app shell', async () => {
   // The navigation fallback must answer navigations only. If it answers a subresource too, a
@@ -258,7 +265,7 @@ test('O4 a request for an asset the build never emitted is not answered with the
 test('O4 the app registers the built service worker under the base path when it starts', async () => {
   const { registeredWorkers } = await launchFromCache()
   expect(registeredWorkers).toContain('/WorkoutTracker/sw.js')
-})
+}, LAUNCH_TIMEOUT)
 
 test('O4 registerServiceWorker does nothing in a browser with no service worker', () => {
   // An insecure origin, a locked-down Safari and this very test suite all land here. Throwing
