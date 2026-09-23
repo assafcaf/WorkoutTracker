@@ -32,7 +32,18 @@ in the agent file.
 | Tests | `test-designer` | `sonnet` | Its own worktree, dispatched by the ticket owner. Writes the failing tests and stubs |
 | Code | `code-writer` | `sonnet` | Its own worktree, dispatched by the ticket owner. Cherry-picks the red commit; may not change tests |
 
-Use `opus` for a task labelled `complex`, and for the retry of a task that failed a gate.
+### Tiers
+
+`/tickets` gives every task a tier (`.claude/workflow/ticket-template.md`, "Tiers"). The tier
+picks the flow and the models; the Tests and Code rows above are the `standard` defaults.
+
+| Tier | Flow | Test-designer | Code-writer | Retry |
+|---|---|---|---|---|
+| `small` | one `code-writer` in solo mode: red commit, then green | — | `sonnet` | `opus`, standard flow |
+| `standard` | `test-designer`, then `code-writer` | `sonnet` | `sonnet` | `opus` code-writer |
+| `complex` | as standard, wider reading brief | `opus` | `opus` | `opus` code-writer |
+
+A ticket with no `## Tier` section is `standard`; one labelled `complex` is `complex`.
 
 ## Tracker updates during a run
 
@@ -41,7 +52,7 @@ So progress is visible without reading the terminal:
 | When | Task | Comment |
 |---|---|---|
 | Wave starts | → doing | run id and epic branch |
-| Red proven | — | red sha, outcome → test mapping |
+| Red proven (standard, complex) | — | red sha, outcome → test mapping. A small task puts it in the done comment |
 | Merged and gates green | → done | merge and red shas, commands and results, files outside the ticket's list |
 | Gate failed or blocked | stays doing | what failed, and what is needed |
 | Epic finished | epic → review | PR URL |
@@ -139,7 +150,7 @@ database. None are configured.
 - **Branches:** epic branch `epic/<EPIC>-<slug>` (e.g. `epic/E1-log-a-workout`), in worktree
   `.claude/worktrees/<EPIC>`. `.claude/settings.json` must set `worktree.baseRef: head`, so
   implementer worktrees branch from the epic branch.
-- **Parallelism:** at most `3` tasks (ticket owners) at once.
+- **Parallelism:** at most `5` tasks (ticket owners) at once. Raised from 3 on 2026-09-23: E5 ran at 5 on the operator's ruling.
 - **Final review:** `off`. Set to a `/code-review` level (`low`, `medium`, …) to run one
   review over the finished epic branch before the PR.
 - **Publishing:** `origin` is https://github.com/assafcaf/WorkoutTracker (public), added
