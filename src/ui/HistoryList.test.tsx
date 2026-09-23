@@ -29,6 +29,7 @@ const assaf: Program = {
   name: 'Assaf A/B 2026',
   units: 'kg',
   workouts: [workoutA],
+  sessionsPerWeek: 3,
 }
 
 function sessionWith(entries: SetEntry[]): Session {

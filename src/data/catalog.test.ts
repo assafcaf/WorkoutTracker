@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import exercisesJson from './exercises.json'
-import { loadCatalog, loadPrograms } from './catalog'
+import { loadCatalog, loadPrograms, assertProgramsHaveSessionsPerWeek } from './catalog'
 import type { Exercise, Program, Workout } from '../types'
 
 // The JSON files are hand-authored fixtures. Building the fixture catalog here — rather than
@@ -148,6 +148,33 @@ test('O2 loadPrograms throws naming the program and the exercise id the catalog 
   expect(thrown).toBeInstanceOf(Error)
   expect((thrown as Error).message).toContain('assaf-ab-2026')
   expect((thrown as Error).message).toContain('deadlift')
+})
+
+test('M7 loadPrograms gives assaf-ab-2026 a sessionsPerWeek of 3', () => {
+  const programs = loadPrograms(fixtureCatalog())
+
+  const assaf = programs.find((p) => p.id === 'assaf-ab-2026')
+  expect(assaf?.sessionsPerWeek).toBe(3)
+})
+
+test('M7 assertProgramsHaveSessionsPerWeek throws naming a program missing sessionsPerWeek', () => {
+  // Cast through unknown, not a JSON import, per E5-T13's guidance: sessionsPerWeek is required
+  // on Program, so this fixture deliberately omits it to exercise the missing-field path.
+  const missingField = {
+    id: 'no-sessions-program',
+    name: 'No Sessions Program',
+    units: 'kg',
+    workouts: [],
+  } as unknown as Program
+  let thrown: unknown
+  try {
+    assertProgramsHaveSessionsPerWeek([missingField])
+  } catch (error) {
+    thrown = error
+  }
+
+  expect(thrown).toBeInstanceOf(Error)
+  expect((thrown as Error).message).toContain('no-sessions-program')
 })
 
 test('O2 loadPrograms throws on an empty catalog instead of returning programs', () => {

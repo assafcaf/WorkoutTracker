@@ -46,6 +46,18 @@ export function assertPlansAreInCatalog(
 }
 
 /**
+ * Throws on the first program in `programs` with no `sessionsPerWeek` (a program's own required
+ * frequency, E5-T13; decision 0002). Naming follows `assertPlansAreInCatalog`.
+ *
+ * STUB (E5-T13 test-designer): not implemented, and not yet wired into `loadPrograms`'s
+ * validation loop -- the code-writer adds `sessionsPerWeek` to the bundled program JSON and
+ * calls this alongside `assertPlansAreInCatalog`.
+ */
+export function assertProgramsHaveSessionsPerWeek(_programs: Program[]): void {
+  // STUB (E5-T13 test-designer): not implemented.
+}
+
+/**
  * Throws on the first catalog exercise whose `libraryId` the library does not define.
  */
 export function assertCatalogInLibrary(

@@ -68,6 +68,8 @@ export type Program = {
   name: string
   units: 'kg'
   workouts: Workout[]
+  /** How many sessions per week the program prescribes, averaged over its rotation (E5-T13). */
+  sessionsPerWeek: number
 }
 
 export type SetEntry = {
