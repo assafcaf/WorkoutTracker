@@ -1,0 +1,5 @@
+/* The bottom tab bar.
+ *
+ * E3-T3 stub — the rules are not written yet. Colours come through `var(--…)` only, and
+ * E3-T8's tap-target audit reads `min-height` off the bare `.tab-bar-tab` selector.
+ */

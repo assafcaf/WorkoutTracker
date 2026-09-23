@@ -1,0 +1,7 @@
+/* The shell's own layout: the header, the scrolling main region and the sticky action bar.
+ *
+ * E3-T3 stub — the rules are not written yet. Every colour here has to come through a
+ * `var(--…)` from src/styles/tokens.css; src/styles/cssAudit.test.ts fails on a literal one.
+ * E3-T8's tap-target audit reads `min-height` off the bare `.app-header-back` and
+ * `.action-bar > button` selectors, so those two have to carry it.
+ */
