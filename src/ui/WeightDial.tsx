@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { buildLadder, stepWeight } from '../domain/dial'
 import { Keypad } from './Keypad'
+import { useCentredRung } from './useCentredRung'
 import type { Exercise } from '../types'
+import './dial.css'
 
 export type WeightDialProps = {
   exercise: Exercise
@@ -24,6 +26,7 @@ function readWeight(value: number | null): string {
 export function WeightDial(props: WeightDialProps): JSX.Element {
   const { exercise, value, onChange } = props
   const [keypadOpen, setKeypadOpen] = useState(false)
+  const columnRef = useCentredRung(value)
   const ladder = buildLadder(exercise)
   const adjustable = ladder.length > 0 && value !== null
 
@@ -34,7 +37,12 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
 
   return (
     <div className="dial">
-      <button type="button" aria-label="Decrease weight" onClick={() => step(-1)}>
+      <button
+        type="button"
+        aria-label="Decrease weight"
+        className="dial-step"
+        onClick={() => step(-1)}
+      >
         &minus;
       </button>
       <div className="dial-body">
@@ -49,19 +57,13 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
         </button>
         <span className="dial-unit">{value === null ? '' : 'kg'}</span>
         {ladder.length > 0 ? (
-          <ul
-            role="listbox"
-            aria-label="Weight ladder"
-            className="dial-column"
-            style={{ overflowY: 'auto', scrollSnapType: 'y mandatory' }}
-          >
+          <ul role="listbox" aria-label="Weight ladder" className="dial-column" ref={columnRef}>
             {ladder.map((rung) => (
               <li
                 key={rung}
                 role="option"
                 aria-selected={rung === value}
                 className="dial-rung"
-                style={{ scrollSnapAlign: 'center' }}
                 onClick={() => onChange(rung)}
               >
                 {rung}
@@ -70,7 +72,12 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
           </ul>
         ) : null}
       </div>
-      <button type="button" aria-label="Increase weight" onClick={() => step(1)}>
+      <button
+        type="button"
+        aria-label="Increase weight"
+        className="dial-step"
+        onClick={() => step(1)}
+      >
         +
       </button>
       {keypadOpen ? (

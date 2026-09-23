@@ -1,0 +1,43 @@
+/* The exercise list: one tappable row per planned exercise, with its set progress.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
+ * one definition site. `.exercise-row` carries `min-height: var(--tap-min)` on its bare
+ * selector, which is where E3-T8's tap-target audit reads the floor off.
+ */
+
+.exercise-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.exercise-row {
+  display: flex;
+  width: 100%;
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+}
+
+.exercise-name {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+/* The progress reads as a count, not as a heading: quiet, and always on the same edge so the
+ * column of them can be scanned down in one look. */
+.set-progress {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}

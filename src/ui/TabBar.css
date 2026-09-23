@@ -1,0 +1,55 @@
+/* The bottom tab bar.
+ *
+ * Colours come through `var(--…)` only, and `.tab-bar-tab` carries `min-height:
+ * var(--tap-min)` on its bare selector, which is where E3-T8's tap-target audit reads it.
+ */
+
+.tab-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  padding-bottom: var(--safe-bottom);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.tab-bar-tab {
+  position: relative;
+  display: flex;
+  min-height: var(--tap-min);
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+/* The current tab is the one thing in the bar that carries the accent. */
+.tab-bar-tab[aria-current='page'] {
+  color: var(--color-accent);
+}
+
+.tab-bar-glyph {
+  display: block;
+}
+
+.tab-bar-label {
+  line-height: 1;
+}
+
+/* The backup-due marker: a dot on the Settings tab, which announces itself to a screen
+ * reader rather than leaning on the tab's own name. */
+.tab-bar-badge {
+  position: absolute;
+  top: var(--space-1);
+  right: calc(50% - var(--space-5));
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-warn);
+}

@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { db, isStorageAvailable } from './storage/db'
 import { setActiveProgramId } from './storage/settingsStore'
@@ -32,6 +32,22 @@ vi.mock('./data/catalog', async (importOriginal) => {
   return { ...actual, loadPrograms: vi.fn(actual.loadPrograms) }
 })
 
+// `virtual:pwa-register` is vite-plugin-pwa's generated module; under vitest it has no real
+// service worker to drive, so it is replaced with a double that mirrors the real module the
+// same way `src/ui/UpdatePill.test.tsx` does, which is what lets the E3-T7 tests below actually
+// find a waiting update.
+const pwa = vi.hoisted(() => ({
+  registrations: [] as { onNeedRefresh?(): void }[],
+  updateServiceWorker: vi.fn(async (_reloadPage?: boolean) => {}),
+}))
+
+vi.mock('virtual:pwa-register', () => ({
+  registerSW(options: { onNeedRefresh?(): void } = {}) {
+    pwa.registrations.push(options)
+    return pwa.updateServiceWorker
+  },
+}))
+
 beforeEach(async () => {
   const actualDb = await vi.importActual<typeof import('./storage/db')>('./storage/db')
   const actualCatalog = await vi.importActual<typeof import('./data/catalog')>('./data/catalog')
@@ -59,7 +75,8 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
   await user.click(await screen.findByRole('radio', { name: 'Full body starter' }, FAST))
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  // E3-T3 took the free-standing Back button away: the Workout tab is the way back.
+  await user.click(screen.getByRole('button', { name: 'Workout' }))
 
   expect(await screen.findByRole('heading', { name: 'Full body starter' }, FAST)).toBeVisible()
   expect(screen.queryByRole('heading', { name: 'Assaf A/B 2026' })).toBeNull()
@@ -73,6 +90,10 @@ test('O18 App navigates to Settings, hiding the picker, and back again', async (
   await user.click(screen.getByRole('button', { name: 'Settings' }))
 
   expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
+
+  // And back again, which since E3-T3 is the Workout tab rather than a free-standing Back.
+  await user.click(screen.getByRole('button', { name: 'Workout' }))
+  expect(await screen.findByRole('heading', { name: 'Workout A' }, FAST)).toBeVisible()
 })
 
 test('O18 App falls back to the first program and says so on screen when the stored active program no longer exists', async () => {
@@ -641,4 +662,512 @@ test('O16 choosing a file with an unknown schemaVersion shows an error naming th
   expect(screen.queryByRole('alertdialog')).toBeNull()
   expect(await listSessions()).toEqual(CURRENT)
   expect(downloads).toHaveLength(0)
+})
+
+// --- E3-T3: one shell, and a tab bar instead of loose buttons ([O7], [O8], [O9]) ----------
+//
+// These go through App because the outcomes are about the app's chrome as a whole: which tabs
+// exist, which one is current, and -- [O9] -- what E1 and E2 left above the picker that is now
+// gone. AppShell's and TabBar's own contract is proven in src/ui/AppShell.test.tsx.
+
+/** What a screen reader would announce an element as: its `aria-label`, else its text. */
+function accessibleNameOf(element: Element): string {
+  return (element.getAttribute('aria-label') ?? element.textContent ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** The tab bar, which is the nav labelled "Main". */
+function mainNav(): HTMLElement {
+  return screen.getByRole('navigation', { name: 'Main' })
+}
+
+/** The tab bar's tabs, in document order, by the name each one carries. */
+function tabNames(): string[] {
+  return within(mainNav())
+    .getAllByRole('button')
+    .map((tab) => accessibleNameOf(tab))
+}
+
+/** The name of every tab currently marked `aria-current="page"`. */
+function currentTabNames(): string[] {
+  return within(mainNav())
+    .getAllByRole('button')
+    .filter((tab) => tab.getAttribute('aria-current') === 'page')
+    .map((tab) => accessibleNameOf(tab))
+}
+
+/** Presses a tab in the tab bar. */
+async function pressTab(user: UserEvent, name: string): Promise<void> {
+  await user.click(within(mainNav()).getByRole('button', { name }))
+}
+
+/**
+ * Every button with one of `names` that is not part of the tab bar -- the loose controls [O9]
+ * is about. The tab bar has its own Settings and History buttons, so "gone from the document"
+ * can only mean gone from outside the nav.
+ */
+function looseButtons(names: string[]): string[] {
+  const nav = mainNav()
+  return names
+    .flatMap((name) => screen.queryAllByRole('button', { name }))
+    .filter((button) => !nav.contains(button))
+    .map((button) => accessibleNameOf(button))
+}
+
+test('O7 the app on load offers a Main nav holding exactly the Workout, History and Settings tabs', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(tabNames()).toEqual(['Workout', 'History', 'Settings'])
+})
+
+test('O7 the app on load, with no session in progress, is on the Workout tab', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(currentTabNames()).toEqual(['Workout'])
+})
+
+test('O8 pressing the History tab lists the finished sessions with the tab bar still on screen', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'History')
+
+  // Hand-checked from the fixture: BASE is 2023-11-14 UTC, and one set of 60 kg x 10 is 600 kg.
+  const row = await screen.findByRole('listitem', {}, SETTLE)
+  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(within(row).getByText('600 kg')).toBeVisible()
+  // The shell stays put: the trainee is never stranded on a screen with no way off it.
+  expect(mainNav()).toBeVisible()
+})
+
+test('O8 pressing the History tab makes History the current tab', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'History')
+
+  await waitFor(() => {
+    expect(currentTabNames()).toEqual(['History'])
+  }, SETTLE)
+})
+
+test('O9 the Workout tab carries no free-standing Settings, History or Back button outside the tab bar', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
+})
+
+test('O9 the History tab carries no free-standing Settings, History or Back button outside the tab bar', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'History')
+  await screen.findByRole('listitem', {}, SETTLE)
+
+  expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
+})
+
+test('O9 the Settings tab carries no free-standing Settings, History or Back button outside the tab bar', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Settings')
+  await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+
+  expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
+})
+
+// --- E3-T4: the workout in progress inside the shell ([O10], [O11]) -----------------------
+//
+// Both outcomes are about what wraps an in-session screen, and it is App that wraps it: the
+// header that names the workout or the exercise, the back control, the sticky action bar the
+// one action that matters is pinned to, and the tab bar an in-session screen must not have.
+// AppShell's own contract is proven in src/ui/AppShell.test.tsx; what is proven here is what
+// the exercise list and the set screen are actually given.
+//
+// These O10 and O11 are E3's, not the O10 and O12 of E1 that src/ui/SetScreen.test.tsx names.
+
+/** The shell around whatever screen is showing, or null when a screen renders bare. */
+function shell(): HTMLElement | null {
+  return document.body.querySelector('.app-shell')
+}
+
+/** The shell's header, or null when there is none. */
+function shellHeader(): HTMLElement | null {
+  return document.body.querySelector('header.app-header')
+}
+
+/** The shell's main region: the screen itself, without the chrome around it. */
+function shellMain(): HTMLElement | null {
+  return document.body.querySelector('main.app-main')
+}
+
+/** The shell's sticky action bar, or null when the screen has none. */
+function actionBar(): HTMLElement | null {
+  return document.body.querySelector('.action-bar')
+}
+
+/** Text with its whitespace collapsed, so a header reads as the one line it is. */
+function textOf(element: Element): string {
+  return (element.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/** Starts Workout A and waits for its exercise list to be the screen showing. */
+async function startWorkoutA(user: UserEvent): Promise<void> {
+  await startWorkout(user, 'Workout A')
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+}
+
+/** Starts Workout A, opens back squat, and waits for its dials to be the screen showing. */
+async function openBackSquat(user: UserEvent): Promise<void> {
+  await startWorkoutA(user)
+  await openExercise(user, 'Back squat')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+}
+
+// --- O10: the exercise list ----------------------------------------------------------------
+
+test('O10 the exercise list renders inside a shell whose header names the workout', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await startWorkoutA(user)
+
+  const header = shellHeader()
+  expect(header, 'the exercise list is not inside the shell at all').not.toBeNull()
+  // "Workout" alone would be the picker's title: the trainee has to see which workout is on.
+  expect(textOf(header as HTMLElement)).toContain('Workout A')
+})
+
+test('O10 the exercise list is inside the shell and no tab bar is rendered with it', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await startWorkoutA(user)
+
+  const inShell = shell()
+  expect(inShell, 'the exercise list is not inside the shell at all').not.toBeNull()
+  expect(
+    within(inShell as HTMLElement).getByRole('button', { name: /^Back squat/ }),
+  ).toBeVisible()
+  // A workout in progress is not a tab: the way out of it is the back control and finishing,
+  // never a tab that would strand a half-logged session behind it.
+  expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
+})
+
+test('O10 the exercise list shell offers a back control in its header', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await startWorkoutA(user)
+
+  const header = shellHeader()
+  expect(header, 'the exercise list is not inside the shell at all').not.toBeNull()
+  const back = (header as HTMLElement).querySelector('button.app-header-back')
+  expect(back, 'the shell around the exercise list offers no way back out of it').not.toBeNull()
+  expect(accessibleNameOf(back as Element)).toMatch(/back/i)
+})
+
+test('O10 the exercise list back control lands on the picker with the session still in progress', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await startWorkoutA(user)
+
+  const back = screen.queryByRole('button', { name: 'Back' })
+  expect(back, 'the exercise list offers no back control').not.toBeNull()
+  await user.click(back as HTMLElement)
+
+  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+  // Backing out is not finishing: the session is still there to come back to, which is what
+  // E3-T5's resume card hangs off.
+  expect(await getActiveSession()).not.toBeNull()
+})
+
+test('O10 Finish workout sits in the sticky action bar rather than after the exercise list', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await startWorkoutA(user)
+
+  const bar = actionBar()
+  expect(bar, 'the exercise list has no sticky action bar').not.toBeNull()
+  const finish = screen.getByRole('button', { name: 'Finish workout' })
+  expect((bar as HTMLElement).contains(finish)).toBe(true)
+  const main = shellMain()
+  expect(main, 'the exercise list is not inside the shell at all').not.toBeNull()
+  // The list scrolls; the action does not. A Finish button still trailing the rows would be
+  // off the bottom of a long workout however the bar is styled.
+  expect((main as HTMLElement).contains(finish)).toBe(false)
+  expect((main as HTMLElement).querySelector('.exercise-list')).not.toBeNull()
+})
+
+// --- O11: the set screen -------------------------------------------------------------------
+
+test('O11 the set screen renders inside a shell whose header names the exercise', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await openBackSquat(user)
+
+  const header = shellHeader()
+  expect(header, 'the set screen is not inside the shell at all').not.toBeNull()
+  expect(textOf(header as HTMLElement)).toContain('Back squat')
+})
+
+test('O11 the set screen is inside the shell and no tab bar is rendered with it', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await openBackSquat(user)
+
+  const inShell = shell()
+  expect(inShell, 'the set screen is not inside the shell at all').not.toBeNull()
+  expect(within(inShell as HTMLElement).getByRole('button', { name: 'Weight' })).toBeVisible()
+  expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
+})
+
+test('O11 the set screen back control returns to the exercise list', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await openBackSquat(user)
+
+  const back = screen.queryByRole('button', { name: 'Back' })
+  expect(back, 'the set screen offers no back control').not.toBeNull()
+  await user.click(back as HTMLElement)
+
+  expect(await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Weight' })).toBeNull()
+})
+
+test('O11 Log set sits in the sticky action bar rather than in the set screen body', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await openBackSquat(user)
+
+  const bar = actionBar()
+  expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
+  const logSetButton = screen.getByRole('button', { name: 'Log set' })
+  expect((bar as HTMLElement).contains(logSetButton)).toBe(true)
+  const main = shellMain()
+  expect(main, 'the set screen is not inside the shell at all').not.toBeNull()
+  // The dials stay in the body; only the action that ends the set is pinned to the bottom.
+  expect((main as HTMLElement).contains(logSetButton)).toBe(false)
+  expect((main as HTMLElement).contains(weightReadout())).toBe(true)
+})
+
+test('O11 Add set sits in the action bar beside Log set once every planned set is logged', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logFourSetsOfBackSquat(user)
+
+  const addSet = await screen.findByRole('button', { name: 'Add set' }, SETTLE)
+
+  const bar = actionBar()
+  expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
+  expect((bar as HTMLElement).contains(addSet)).toBe(true)
+  expect((bar as HTMLElement).contains(screen.getByRole('button', { name: 'Log set' }))).toBe(
+    true,
+  )
+})
+
+// --- E3-T5: the resume card on the picker ([O12]) ------------------------------------------
+//
+// Backing out of a session in progress must not strand it behind a bare "Start Workout A": the
+// Workout tab has to offer a way back into the same session, sets and all.
+
+/** The resume control on the picker, or null when none is shown. */
+function resumeControl(): HTMLElement | null {
+  return document.body.querySelector('button.resume-workout')
+}
+
+/** Starts Workout A, logs one set of back squat, then backs all the way out to the picker. */
+async function startLogOneSetAndBackToPicker(user: UserEvent): Promise<void> {
+  await startWorkoutA(user)
+  await openExercise(user, 'Back squat')
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await waitFor(async () => {
+    expect(await activeSessionEntries()).toHaveLength(1)
+  }, SETTLE)
+  // Back out of the set screen to the exercise list, then out of the exercise list to the
+  // picker -- the session stays in progress the whole way (proven by O10 and O11 above).
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+}
+
+test('O12 backing out of a session in progress shows a resume control naming the workout in progress instead of the bare picker', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await startLogOneSetAndBackToPicker(user)
+
+  const resume = resumeControl()
+  expect(resume, 'no resume control is shown for the session in progress').not.toBeNull()
+  expect(textOf(resume as Element)).toContain('Workout A')
+})
+
+test('O12 pressing the resume control returns to the same session with its logged sets intact', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await startLogOneSetAndBackToPicker(user)
+  const before = await getActiveSession()
+  if (!before) throw new Error('the session was never started')
+
+  const resume = resumeControl()
+  expect(resume, 'no resume control is shown for the session in progress').not.toBeNull()
+  await user.click(resume as HTMLElement)
+
+  const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  expect(progressOf(backSquat)).toBe('1/4')
+  const after = await getActiveSession()
+  expect(after?.id).toBe(before.id)
+  expect(after?.entries.map((entry) => [entry.exerciseId, entry.setIndex])).toEqual([
+    ['back-squat', 1],
+  ])
+})
+
+// --- E3-T7: the shell carries "Update ready" and the backup-due marker ([O13], [O14]) -----
+//
+// Both outcomes are about what lives in the shell rather than in one screen: the "Update
+// ready" control must not be re-parented into whichever screen is showing when the update is
+// found, and the backup-due marker on the Settings tab must not replace BackupBadge. Scoped in
+// its own describe so the service-worker double it needs is only installed for these tests.
+
+describe('E3-T7', () => {
+  let realLocation: Location
+
+  beforeEach(() => {
+    pwa.registrations.length = 0
+    pwa.updateServiceWorker.mockClear()
+    // jsdom has no service worker at all, and `registerServiceWorker` correctly does nothing
+    // without one, so the capability has to be there for a registration -- and an update -- to
+    // ever be found.
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { controller: null, register: vi.fn(), addEventListener: vi.fn() },
+    })
+    realLocation = window.location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...realLocation, reload: vi.fn(), assign: vi.fn(), replace: vi.fn() },
+    })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: realLocation })
+    Reflect.deleteProperty(navigator, 'serviceWorker')
+  })
+
+  /** The options the app last registered the service worker with. */
+  function lastRegistration(): { onNeedRefresh?(): void } {
+    const latest = pwa.registrations[pwa.registrations.length - 1]
+    if (!latest) throw new Error('nothing registered a service worker')
+    return latest
+  }
+
+  /** What the browser does when a new deployment has installed and is waiting to take over. */
+  function deployNewVersion(): void {
+    const { onNeedRefresh } = lastRegistration()
+    act(() => {
+      onNeedRefresh?.()
+    })
+  }
+
+  /** The current shell's header trailing slot, or null when it renders none. */
+  function trailingSlot(): HTMLElement | null {
+    return document.body.querySelector('.app-header-trailing')
+  }
+
+  /** The Settings tab button in the nav. */
+  function settingsTabButton(): HTMLElement {
+    return within(mainNav()).getByRole('button', { name: 'Settings' })
+  }
+
+  // --- O13: "Update ready" lives in the shell, not re-parented into a screen --------------
+
+  test('O13 the Update ready control renders inside the shell header trailing slot once an update is waiting', async () => {
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+    deployNewVersion()
+
+    const trailing = trailingSlot()
+    expect(trailing, 'no trailing slot rendered in the header').not.toBeNull()
+    expect(
+      within(trailing as HTMLElement).getByRole('button', { name: 'Update ready' }),
+    ).toBeVisible()
+  })
+
+  test('O13 the Update ready control stays in the header trailing slot across a tab change, never moving into the screen body', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+    deployNewVersion()
+    await screen.findByRole('button', { name: 'Update ready' }, SETTLE)
+
+    await pressTab(user, 'History')
+    await waitFor(() => {
+      expect(currentTabNames()).toEqual(['History'])
+    }, SETTLE)
+
+    // Exactly one control exists -- it was not left behind on the Workout screen -- and it
+    // sits in the new shell's trailing slot rather than inside the History screen's own body.
+    expect(screen.getAllByRole('button', { name: 'Update ready' })).toHaveLength(1)
+    const updateButton = screen.getByRole('button', { name: 'Update ready' })
+    const trailingAfterHistory = trailingSlot()
+    expect(trailingAfterHistory, 'no trailing slot rendered in the header').not.toBeNull()
+    expect((trailingAfterHistory as HTMLElement).contains(updateButton)).toBe(true)
+    const main = shellMain()
+    expect(main, 'the History tab is not inside the shell at all').not.toBeNull()
+    expect((main as HTMLElement).contains(updateButton)).toBe(false)
+
+    await pressTab(user, 'Settings')
+    await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+
+    expect(screen.getAllByRole('button', { name: 'Update ready' })).toHaveLength(1)
+    const trailingAfterSettings = trailingSlot()
+    expect(trailingAfterSettings, 'no trailing slot rendered in the header').not.toBeNull()
+    expect(
+      within(trailingAfterSettings as HTMLElement).getByRole('button', { name: 'Update ready' }),
+    ).toBeVisible()
+  })
+
+  // --- O14: the backup-due marker lives in the nav, and never replaces BackupBadge --------
+
+  test('O14 the Settings tab in the nav carries a marker whose accessible name says a backup is due, without changing the tab own name', async () => {
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+    // A fresh database has never been exported, so a backup is due from the start.
+    expect(
+      within(settingsTabButton()).getByRole('status', { name: /backup is due/i }),
+    ).toBeVisible()
+    // The seven E2 tests and this file's own openSettings helper match the button's own name
+    // exactly: a badge joining it, rather than announcing itself, would break every one of them.
+    expect(accessibleNameOf(settingsTabButton())).toBe('Settings')
+  })
+
+  test('O14 the Settings screen still renders BackupBadge in full when a backup is due', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+    await pressTab(user, 'Settings')
+    await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+
+    expect(
+      screen.getByText('Back up your data — it has been a while since the last export.'),
+    ).toBeVisible()
+  })
 })

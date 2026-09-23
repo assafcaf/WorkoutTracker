@@ -1,0 +1,62 @@
+/* The base stylesheet: the reset, the page's own paint, and the focus ring.
+ *
+ * This is where the token graph starts — src/main.tsx imports this file and this file imports
+ * the tokens, so nothing else has to remember to. Every colour here comes through a `var(--…)`;
+ * src/styles/cssAudit.test.ts fails on a literal one, because the palette has exactly one
+ * definition site and it is tokens.css.
+ */
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Dark-only, and said out loud so form controls and scrollbars paint dark too. */
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  /* index.html's `viewport-fit=cover` lets the page paint under the notch and the home
+   * indicator instead of behind letterboxing; without a background of its own here, that
+   * area would show the browser's default white rather than the app's field. */
+  height: 100%;
+  background: var(--color-bg);
+  /* Nothing in this app is meant to be wider than the viewport, so anything that overflows
+   * horizontally is a bug, not a feature -- the phone should never rubber-band sideways. */
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: 1.4;
+  /* The phone's own grey flash on tap would fight the controls' own pressed states. */
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

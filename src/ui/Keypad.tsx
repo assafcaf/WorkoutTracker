@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import './Keypad.css'
 
 export type KeypadProps = {
   label: string

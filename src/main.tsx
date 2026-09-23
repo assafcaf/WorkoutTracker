@@ -1,6 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { App } from './App'
+// The base stylesheet, which @imports the tokens: importing it here is what puts the design
+// system in the bundle, and it is the only stylesheet imported from outside src/ui.
+import './styles/base.css'
 
 const root = document.getElementById('root')
 if (!root) throw new Error('index.html is missing the #root element')

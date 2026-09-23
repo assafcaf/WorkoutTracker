@@ -1,0 +1,14 @@
+/* The storage-unavailable notice: a warning bar, not a wall of body text.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css.
+ */
+
+.storage-unavailable-banner {
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-warn);
+  color: var(--color-on-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}

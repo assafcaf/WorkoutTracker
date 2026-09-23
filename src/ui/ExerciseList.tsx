@@ -1,3 +1,4 @@
+import './ExerciseList.css'
 import type { Exercise, ExercisePlan, Program, Session, SetEntry, Workout } from '../types'
 
 export type ExerciseListProps = {
@@ -6,7 +7,10 @@ export type ExerciseListProps = {
   catalog: Map<string, Exercise>
   session: Session
   onOpenSet(exerciseId: string, setIndex: number): void
-  /** Finishes the session. E1-T8: not yet wired to a control. */
+  /**
+   * Finishes the session. The control is the shell's, in its sticky action bar, so the list
+   * itself renders none: E3-T4 moved it out from under the rows.
+   */
   onFinish(): void
 }
 
@@ -32,31 +36,26 @@ function nextSetIndex(logged: number, plan: ExercisePlan): number {
  * exercise's name, so the list is also the way back into a set.
  */
 export function ExerciseList(props: ExerciseListProps): JSX.Element {
-  const { workout, catalog, session, onOpenSet, onFinish } = props
+  const { workout, catalog, session, onOpenSet } = props
 
   return (
-    <div>
-      <ul className="exercise-list">
-        {workout.exercises.map((plan) => {
-          const exercise = catalog.get(plan.exerciseId)
-          const logged = loggedSets(session.entries, plan.exerciseId)
-          return (
-            <li key={plan.exerciseId}>
-              <button
-                type="button"
-                className="exercise-row"
-                onClick={() => onOpenSet(plan.exerciseId, nextSetIndex(logged, plan))}
-              >
-                <span className="exercise-name">{exercise?.name ?? plan.exerciseId}</span>{' '}
-                <span className="set-progress">{`${logged}/${plan.sets}`}</span>
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-      <button type="button" onClick={onFinish}>
-        Finish workout
-      </button>
-    </div>
+    <ul className="exercise-list">
+      {workout.exercises.map((plan) => {
+        const exercise = catalog.get(plan.exerciseId)
+        const logged = loggedSets(session.entries, plan.exerciseId)
+        return (
+          <li key={plan.exerciseId}>
+            <button
+              type="button"
+              className="exercise-row"
+              onClick={() => onOpenSet(plan.exerciseId, nextSetIndex(logged, plan))}
+            >
+              <span className="exercise-name">{exercise?.name ?? plan.exerciseId}</span>{' '}
+              <span className="set-progress">{`${logged}/${plan.sets}`}</span>
+            </button>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
