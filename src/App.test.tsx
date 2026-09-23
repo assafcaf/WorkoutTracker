@@ -16,7 +16,12 @@ import {
 // feature-detected `Blob.prototype.text` polyfill these tests read downloaded blobs through.
 import { BACKUP_SCHEMA_VERSION, type BackupFile } from './storage/backup'
 import { loadPrograms } from './data/catalog'
-import type { Session, SetEntry } from './types'
+import type { LibraryExercise, Session, SetEntry } from './types'
+// The real 876-entry library fixture, imported directly (not through `loadLibrary()`) so the
+// E5-T3 tests below can compute their own expected counts independently of the app's code.
+import libraryFixture from './data/library/exercises.json'
+
+const LIBRARY = libraryFixture as unknown as LibraryExercise[]
 
 // App composes real components (ProgramPicker, Settings, StorageUnavailableBanner) against the
 // real, fake-indexeddb-backed db. Only isStorageAvailable and loadPrograms are replaced with
@@ -715,11 +720,12 @@ function looseButtons(names: string[]): string[] {
     .map((button) => accessibleNameOf(button))
 }
 
-test('O7 the app on load offers a Main nav holding exactly the Workout, History and Settings tabs', async () => {
+test('O7 the app on load offers a Main nav holding exactly the Workout, Exercises, History and Settings tabs', async () => {
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
-  expect(tabNames()).toEqual(['Workout', 'History', 'Settings'])
+  // E5-T3 inserts Exercises between Workout and History.
+  expect(tabNames()).toEqual(['Workout', 'Exercises', 'History', 'Settings'])
 })
 
 test('O7 the app on load, with no session in progress, is on the Workout tab', async () => {
@@ -1170,4 +1176,67 @@ describe('E3-T7', () => {
       screen.getByText('Back up your data — it has been a while since the last export.'),
     ).toBeVisible()
   })
+})
+
+// --- E5-T3: the Exercises tab ([L9], [L10]) -------------------------------------------------
+//
+// L9's "876 rows, sorted, name + primary muscle" contract is proven directly on `LibraryList`
+// in src/ui/LibraryList.test.tsx; what is proven here is the wiring the ticket's Interfaces
+// section puts in App rather than in LibraryList's own props -- tapping the Exercises tab
+// actually loads the real library and shows it, plus the search box and the muscle/equipment
+// filters, since LibraryList's props are just `{ library, onOpen }` with no filtering of its
+// own. Per the ticket's performance note, this section renders the app once and drives it
+// through the whole L10 scenario in one test rather than re-mounting per assertion, and never
+// asserts an exact 876-row count (LibraryList.test.tsx already proves that).
+
+test('L9 tapping the Exercises tab shows the library, with a search box, and makes Exercises the current tab', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Exercises')
+
+  expect(await screen.findByRole('searchbox', { name: /search/i }, SETTLE)).toBeVisible()
+  // Hand-checked against src/data/library.test.ts's own fixture fact and the real library
+  // fixture's alphabetical extremes -- a couple of known names, not a count.
+  expect(await screen.findByText('Barbell Squat', {}, SETTLE)).toBeVisible()
+  expect(screen.getByText('Zottman Preacher Curl')).toBeVisible()
+  expect(currentTabNames()).toEqual(['Exercises'])
+})
+
+test('L10 the search box narrows by name, the muscle and equipment filters narrow further, and a combination matching nothing shows "No exercises match"', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
+
+  // Hand-checked against the real library fixture: 36 names contain "lat", case-insensitively.
+  const latMatches = LIBRARY.filter((exercise) => exercise.name.toLowerCase().includes('lat'))
+  await user.type(search, 'lat')
+  await waitFor(() => {
+    const rows = screen.getAllByRole('listitem')
+    expect(rows).toHaveLength(latMatches.length)
+    rows.forEach((row) => {
+      expect(textOf(row).toLowerCase()).toContain('lat')
+    })
+  }, SETTLE)
+
+  // Clearing the search and setting muscle to biceps and equipment to dumbbell narrows to
+  // exercises matching both (hand-checked: 24 in the real library fixture, by primaryMuscles).
+  const bicepsDumbbellMatches = LIBRARY.filter(
+    (exercise) => exercise.primaryMuscles.includes('biceps') && exercise.equipment === 'dumbbell',
+  )
+  await user.clear(search)
+  await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
+  await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
+  await waitFor(() => {
+    expect(screen.getAllByRole('listitem')).toHaveLength(bicepsDumbbellMatches.length)
+  }, SETTLE)
+
+  // Typing "lat" back in on top of those two filters matches nothing in the real library
+  // fixture (hand-checked: 0), which is what "No exercises match" is for.
+  await user.type(search, 'lat')
+  expect(await screen.findByText('No exercises match', {}, SETTLE)).toBeVisible()
+  expect(screen.queryAllByRole('listitem')).toHaveLength(0)
 })

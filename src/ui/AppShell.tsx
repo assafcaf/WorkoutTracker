@@ -4,8 +4,8 @@ import { ActionBarHostContext } from './actionBarSlot'
 import { TabBar } from './TabBar'
 import './AppShell.css'
 
-/** The three top-level destinations the tab bar moves between. */
-export type Tab = 'workout' | 'history' | 'settings'
+/** The four top-level destinations the tab bar moves between. */
+export type Tab = 'workout' | 'exercises' | 'history' | 'settings'
 
 export type AppShellProps = {
   title: string
