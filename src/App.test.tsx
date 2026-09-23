@@ -1420,8 +1420,9 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
 //
 // AlternativesList itself is also composed inline, browse-only, inside ExerciseDetail's own
 // "Similar exercises" section (S13) -- not a popup there. It is App's own top-level overlay
-// (this SetScreen "Alternatives" flow) that must carry the popup treatment, named "Alternatives"
-// (this task's own naming choice; the ticket does not pin one), with its own "Close" control.
+// (this SetScreen "Alternatives" flow) that must carry the popup treatment, with its own "Close"
+// control. Its accessible name is "Alternatives to {name}" (E6-T4's O10), so these fixtures use
+// "Alternatives to Seated biceps curls", biceps curls' own plan name in Workout B.
 
 test('F2 tapping Alternatives on a live set opens the alternatives list as a modal dialog, closable without swapping', async () => {
   const user = userEvent.setup()
@@ -1433,14 +1434,18 @@ test('F2 tapping Alternatives on a live set opens the alternatives list as a mod
 
   await user.click(screen.getByRole('button', { name: 'Alternatives' }))
 
-  const dialog = await screen.findByRole('dialog', { name: 'Alternatives' }, SETTLE)
+  const dialog = await screen.findByRole(
+    'dialog',
+    { name: 'Alternatives to Seated biceps curls' },
+    SETTLE,
+  )
   expect(dialog).toHaveAttribute('aria-modal', 'true')
   expect(within(dialog).getByRole('searchbox', { name: /search/i })).toBeVisible()
 
   await user.click(within(dialog).getByRole('button', { name: 'Close' }))
 
   await waitFor(() => {
-    expect(screen.queryByRole('dialog', { name: 'Alternatives' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Alternatives to Seated biceps curls' })).toBeNull()
   }, SETTLE)
   // The set screen underneath stays mounted, and nothing was swapped.
   expect(screen.getByRole('button', { name: 'Weight' })).toBeInTheDocument()
@@ -1457,7 +1462,11 @@ test('F3 the Alternatives overlay carries the shared overlay-panel class', async
 
   await user.click(screen.getByRole('button', { name: 'Alternatives' }))
 
-  const dialog = await screen.findByRole('dialog', { name: 'Alternatives' }, SETTLE)
+  const dialog = await screen.findByRole(
+    'dialog',
+    { name: 'Alternatives to Seated biceps curls' },
+    SETTLE,
+  )
   expect(dialog).toHaveClass('overlay-panel')
 })
 
