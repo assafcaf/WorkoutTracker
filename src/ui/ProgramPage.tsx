@@ -1,4 +1,4 @@
-import type { Exercise, ExercisePlan, LibraryExercise, Program, Workout } from '../types'
+import type { Exercise, ExercisePlan, LibraryExercise, Program, Session, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { toRegionCounts } from '../domain/muscles'
 import { prescribedWeekly } from '../domain/programVolume'
@@ -12,6 +12,15 @@ export type ProgramPageProps = {
   catalog: Map<string, Exercise>
   library: Map<string, LibraryExercise>
   onChooseProgram(id: string): void
+  /**
+   * This week's logged sets, for the "This week" done map (M15). Optional -- and defaults to
+   * `[]` -- only because this task does not own `App.tsx`; E5-T20 wires it from there.
+   */
+  sessions?: Session[]
+  /** "Now", for `weekSets`'s 7-day window (M15). Defaults to `Date.now()`. */
+  now?: number
+  /** Resolves a set entry's exerciseId for `weekSets` (M15). Defaults to a catalog lookup. */
+  resolve?: (id: string) => Exercise | undefined
 }
 
 /**
