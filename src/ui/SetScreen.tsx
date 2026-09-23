@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { presetForSet } from '../domain/prefill'
 import { restState } from '../domain/rest'
 import { logSet } from '../storage/sessionStore'
+import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { RepsDial } from './RepsDial'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
+import './SetScreen.css'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
 export type SetScreenProps = {
@@ -79,6 +82,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(null)
   const [now, setNow] = useState<number>(() => Date.now())
 
+  // The controls belong to the screen's bottom edge, which inside the shell is the sticky
+  // action bar; outside one -- the screen rendered bare -- they stay where they are written.
+  const actionBar = useActionBarSlot()
+
   useWakeLock(true)
 
   // The rest left is a function of the clock, so a slept phone cannot desync it: re-read the
@@ -122,6 +129,26 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     }
   }
 
+  const actions = (
+    <>
+      <button type="button" className="log-set" onClick={() => void log()}>
+        Log set
+      </button>
+
+      {/* Every planned set is logged once the set on the dials is past the plan; only then is
+          an extra one offered, and only to a caller that knows what to do with it. */}
+      {onAddSet !== undefined && open.setIndex > plan.sets ? (
+        <button
+          type="button"
+          className="add-set"
+          onClick={() => onAddSet(exercise.id, open.setIndex)}
+        >
+          Add set
+        </button>
+      ) : null}
+    </>
+  )
+
   return (
     <div className="set-screen">
       <h2>{exercise.name}</h2>
@@ -141,21 +168,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </p>
       )}
 
-      <button type="button" className="log-set" onClick={() => void log()}>
-        Log set
-      </button>
-
-      {/* Every planned set is logged once the set on the dials is past the plan; only then is
-          an extra one offered, and only to a caller that knows what to do with it. */}
-      {onAddSet !== undefined && open.setIndex > plan.sets ? (
-        <button
-          type="button"
-          className="add-set"
-          onClick={() => onAddSet(exercise.id, open.setIndex)}
-        >
-          Add set
-        </button>
-      ) : null}
+      {actionBar === null ? actions : createPortal(actions, actionBar)}
 
       <p className="rest-timer">
         <span role="timer" aria-label="Rest remaining">

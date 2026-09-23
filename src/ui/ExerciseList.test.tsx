@@ -130,3 +130,18 @@ test('O13 opening an exercise with nothing logged asks for its first set', async
 
   expect(onOpenSet.mock.calls).toEqual([['lunges', 1]])
 })
+
+// --- E3-T4's [O10]: the list is rows, and nothing else ------------------------------------
+//
+// This O10 is E3's -- the exercise list inside the shell -- not E1's O10 in SetScreen.test.tsx.
+// That the action bar holds "Finish workout", and that pressing it still finishes the session,
+// is proven through App in src/App.test.tsx; what the list itself owes is the absence.
+
+test('O10 the exercise list renders no Finish workout control of its own', () => {
+  renderList([])
+
+  // The one action that matters is the shell's, pinned to the bottom of the screen. A second
+  // one trailing the rows would be a second way to end the workout, off-screen on a long list.
+  expect(screen.queryByRole('button', { name: 'Finish workout' })).toBeNull()
+  expect(row('Back squat')).toBeVisible()
+})
