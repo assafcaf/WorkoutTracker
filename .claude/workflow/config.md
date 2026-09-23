@@ -62,13 +62,23 @@ epic means an API call the status line can't make.
 
 ## Project knowledge
 
-Mode: off
+Mode: on
 
-Off is what every skill and agent did before the knowledge layer existed, so leaving it off
-changes nothing. Run `/knowledge-layer` to turn it on: it scans the repo for what it can cite,
-asks you for what it cannot, writes `CONTEXT.md` and `.claude/workflow/project.md`, and
-replaces this paragraph with the table of what each reader reads. Until then, agents work from
-`CLAUDE.md` as they always have.
+| Reader | Reads |
+|---|---|
+| `/spec` | `CONTEXT.md`, so outcomes are written in this project's terms |
+| `/tickets` | `project.md` Module map, for each task's Files and Interfaces |
+| `task-planner` | `project.md` Module map and Standing overlaps, before computing waves |
+| `test-designer` | `CONTEXT.md`, so test names use the project's words |
+| `code-writer` | `CONTEXT.md`, plus `project.md` Invariants and Pitfalls |
+
+Nothing else reads them. A reader not in this table is a reader paying for context it was not
+given a use for.
+
+Enabled 2026-09-23 from a scan plus the committed decision records, without an operator grill.
+Every line in both files is either transcribed from `docs/decisions/` with the record cited, or
+carries a path a scanner checked. `project.md`'s Unsettled section holds what the scan found
+and nobody has ruled on yet. Run `/knowledge-layer refresh` to re-scan.
 
 ## Commands
 
