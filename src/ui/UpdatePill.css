@@ -1,0 +1,19 @@
+/* The "Update ready" control: a pill in the header's trailing slot, not a bar of its own.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css. `.update-pill` carries
+ * `min-height: var(--tap-min)` on its bare selector, which is where E3-T8's tap-target audit
+ * reads the floor off.
+ */
+
+.update-pill {
+  display: inline-flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}

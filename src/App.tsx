@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { Exercise, Program, Session, SetEntry, Workout } from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
@@ -27,7 +28,7 @@ import {
 } from './storage/sessionStore'
 import { ActionBarSlot, AppShell } from './ui/AppShell'
 import type { Tab } from './ui/AppShell'
-import { BackupBadge } from './ui/BackupBadge'
+import { BackupBadge, isBackupDue } from './ui/BackupBadge'
 import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
 import { ImportConfirm } from './ui/ImportConfirm'
@@ -124,12 +125,16 @@ async function activeSessionOrNull(storageAvailable: boolean): Promise<Session |
 export function App(): JSX.Element {
   const { needRefresh, update } = useServiceWorkerUpdate()
 
-  return (
-    <>
-      {needRefresh ? <UpdatePill onUpdate={update} /> : null}
-      <AppViews />
-    </>
-  )
+  return <AppViews trailing={needRefresh ? <UpdatePill onUpdate={update} /> : null} />
+}
+
+type AppViewsProps = {
+  /**
+   * The shell header's trailing slot, carried down from `App` so it rides every shell this
+   * component renders rather than being re-parented into whichever screen is up when an
+   * update is found — that is what keeps "Update ready" in place across a tab change.
+   */
+  trailing?: ReactNode
 }
 
 /**
@@ -141,7 +146,7 @@ export function App(): JSX.Element {
  *
  * E1-T8 extends this routing with the history list rather than replacing it.
  */
-function AppViews(): JSX.Element {
+function AppViews({ trailing }: AppViewsProps): JSX.Element {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [view, setView] = useState<View>('picker')
   const [session, setSession] = useState<Session | null>(null)
@@ -202,6 +207,10 @@ function AppViews(): JSX.Element {
 
   const { catalog, programs, storageAvailable, activeProgramId, staleActiveProgramNotice, lastExportedAt } =
     state
+
+  // The backup-due marker the Settings tab carries in the nav, computed once here so the tab
+  // bar and the Settings screen's own `BackupBadge` never disagree about whether one is due.
+  const settingsBadge = isBackupDue(lastExportedAt, Date.now())
 
   function handleActiveProgramChange(id: string): void {
     setActiveProgramId(id)
@@ -320,7 +329,13 @@ function AppViews(): JSX.Element {
 
   if (view === 'settings') {
     return (
-      <AppShell title="Settings" tab={tabFor(view)} onTabChange={handleTabChange}>
+      <AppShell
+        title="Settings"
+        tab={tabFor(view)}
+        onTabChange={handleTabChange}
+        trailing={trailing}
+        settingsBadge={settingsBadge}
+      >
         <Settings
           programs={programs}
           activeProgramId={activeProgramId}
@@ -328,6 +343,7 @@ function AppViews(): JSX.Element {
           onExport={handleExport}
           onImportFile={handleImportFile}
         />
+        <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
         {importError ? <div role="alert">{importError}</div> : null}
         {pendingImport ? (
           <ImportConfirm
@@ -360,6 +376,7 @@ function AppViews(): JSX.Element {
           title={exercise.name}
           onBack={() => setView('list')}
           action={<ActionBarSlot />}
+          trailing={trailing}
         >
           {/* Keyed by the set, so opening another set -- or an extra one past the plan --
               opens it preset afresh, while logging within one set screen leaves it standing. */}
@@ -417,6 +434,7 @@ function AppViews(): JSX.Element {
             Finish workout
           </button>
         }
+        trailing={trailing}
       >
         <ExerciseList
           program={located.program}
@@ -432,14 +450,26 @@ function AppViews(): JSX.Element {
 
   if (view === 'history') {
     return (
-      <AppShell title="History" tab={tabFor(view)} onTabChange={handleTabChange}>
+      <AppShell
+        title="History"
+        tab={tabFor(view)}
+        onTabChange={handleTabChange}
+        trailing={trailing}
+        settingsBadge={settingsBadge}
+      >
         <HistoryList sessions={history} programs={programs} />
       </AppShell>
     )
   }
 
   return (
-    <AppShell title="Workout" tab={tabFor('picker')} onTabChange={handleTabChange}>
+    <AppShell
+      title="Workout"
+      tab={tabFor('picker')}
+      onTabChange={handleTabChange}
+      trailing={trailing}
+      settingsBadge={settingsBadge}
+    >
       {!storageAvailable ? <StorageUnavailableBanner /> : null}
       {staleActiveProgramNotice ? (
         <p>The saved active program no longer exists; showing the first program instead.</p>

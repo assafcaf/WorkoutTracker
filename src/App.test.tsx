@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { db, isStorageAvailable } from './storage/db'
 import { setActiveProgramId } from './storage/settingsStore'
@@ -31,6 +31,22 @@ vi.mock('./data/catalog', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./data/catalog')>()
   return { ...actual, loadPrograms: vi.fn(actual.loadPrograms) }
 })
+
+// `virtual:pwa-register` is vite-plugin-pwa's generated module; under vitest it has no real
+// service worker to drive, so it is replaced with a double that mirrors the real module the
+// same way `src/ui/UpdatePill.test.tsx` does, which is what lets the E3-T7 tests below actually
+// find a waiting update.
+const pwa = vi.hoisted(() => ({
+  registrations: [] as { onNeedRefresh?(): void }[],
+  updateServiceWorker: vi.fn(async (_reloadPage?: boolean) => {}),
+}))
+
+vi.mock('virtual:pwa-register', () => ({
+  registerSW(options: { onNeedRefresh?(): void } = {}) {
+    pwa.registrations.push(options)
+    return pwa.updateServiceWorker
+  },
+}))
 
 beforeEach(async () => {
   const actualDb = await vi.importActual<typeof import('./storage/db')>('./storage/db')
@@ -1019,4 +1035,139 @@ test('O12 pressing the resume control returns to the same session with its logge
   expect(after?.entries.map((entry) => [entry.exerciseId, entry.setIndex])).toEqual([
     ['back-squat', 1],
   ])
+})
+
+// --- E3-T7: the shell carries "Update ready" and the backup-due marker ([O13], [O14]) -----
+//
+// Both outcomes are about what lives in the shell rather than in one screen: the "Update
+// ready" control must not be re-parented into whichever screen is showing when the update is
+// found, and the backup-due marker on the Settings tab must not replace BackupBadge. Scoped in
+// its own describe so the service-worker double it needs is only installed for these tests.
+
+describe('E3-T7', () => {
+  let realLocation: Location
+
+  beforeEach(() => {
+    pwa.registrations.length = 0
+    pwa.updateServiceWorker.mockClear()
+    // jsdom has no service worker at all, and `registerServiceWorker` correctly does nothing
+    // without one, so the capability has to be there for a registration -- and an update -- to
+    // ever be found.
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { controller: null, register: vi.fn(), addEventListener: vi.fn() },
+    })
+    realLocation = window.location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...realLocation, reload: vi.fn(), assign: vi.fn(), replace: vi.fn() },
+    })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: realLocation })
+    Reflect.deleteProperty(navigator, 'serviceWorker')
+  })
+
+  /** The options the app last registered the service worker with. */
+  function lastRegistration(): { onNeedRefresh?(): void } {
+    const latest = pwa.registrations[pwa.registrations.length - 1]
+    if (!latest) throw new Error('nothing registered a service worker')
+    return latest
+  }
+
+  /** What the browser does when a new deployment has installed and is waiting to take over. */
+  function deployNewVersion(): void {
+    const { onNeedRefresh } = lastRegistration()
+    act(() => {
+      onNeedRefresh?.()
+    })
+  }
+
+  /** The current shell's header trailing slot, or null when it renders none. */
+  function trailingSlot(): HTMLElement | null {
+    return document.body.querySelector('.app-header-trailing')
+  }
+
+  /** The Settings tab button in the nav. */
+  function settingsTabButton(): HTMLElement {
+    return within(mainNav()).getByRole('button', { name: 'Settings' })
+  }
+
+  // --- O13: "Update ready" lives in the shell, not re-parented into a screen --------------
+
+  test('O13 the Update ready control renders inside the shell header trailing slot once an update is waiting', async () => {
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+    deployNewVersion()
+
+    const trailing = trailingSlot()
+    expect(trailing, 'no trailing slot rendered in the header').not.toBeNull()
+    expect(
+      within(trailing as HTMLElement).getByRole('button', { name: 'Update ready' }),
+    ).toBeVisible()
+  })
+
+  test('O13 the Update ready control stays in the header trailing slot across a tab change, never moving into the screen body', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+    deployNewVersion()
+    await screen.findByRole('button', { name: 'Update ready' }, SETTLE)
+
+    await pressTab(user, 'History')
+    await waitFor(() => {
+      expect(currentTabNames()).toEqual(['History'])
+    }, SETTLE)
+
+    // Exactly one control exists -- it was not left behind on the Workout screen -- and it
+    // sits in the new shell's trailing slot rather than inside the History screen's own body.
+    expect(screen.getAllByRole('button', { name: 'Update ready' })).toHaveLength(1)
+    const updateButton = screen.getByRole('button', { name: 'Update ready' })
+    const trailingAfterHistory = trailingSlot()
+    expect(trailingAfterHistory, 'no trailing slot rendered in the header').not.toBeNull()
+    expect((trailingAfterHistory as HTMLElement).contains(updateButton)).toBe(true)
+    const main = shellMain()
+    expect(main, 'the History tab is not inside the shell at all').not.toBeNull()
+    expect((main as HTMLElement).contains(updateButton)).toBe(false)
+
+    await pressTab(user, 'Settings')
+    await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+
+    expect(screen.getAllByRole('button', { name: 'Update ready' })).toHaveLength(1)
+    const trailingAfterSettings = trailingSlot()
+    expect(trailingAfterSettings, 'no trailing slot rendered in the header').not.toBeNull()
+    expect(
+      within(trailingAfterSettings as HTMLElement).getByRole('button', { name: 'Update ready' }),
+    ).toBeVisible()
+  })
+
+  // --- O14: the backup-due marker lives in the nav, and never replaces BackupBadge --------
+
+  test('O14 the Settings tab in the nav carries a marker whose accessible name says a backup is due, without changing the tab own name', async () => {
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+    // A fresh database has never been exported, so a backup is due from the start.
+    expect(
+      within(settingsTabButton()).getByRole('status', { name: /backup is due/i }),
+    ).toBeVisible()
+    // The seven E2 tests and this file's own openSettings helper match the button's own name
+    // exactly: a badge joining it, rather than announcing itself, would break every one of them.
+    expect(accessibleNameOf(settingsTabButton())).toBe('Settings')
+  })
+
+  test('O14 the Settings screen still renders BackupBadge in full when a backup is due', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+    await pressTab(user, 'Settings')
+    await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+
+    expect(
+      screen.getByText('Back up your data — it has been a while since the last export.'),
+    ).toBeVisible()
+  })
 })

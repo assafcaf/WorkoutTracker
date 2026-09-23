@@ -1,3 +1,5 @@
+import './UpdatePill.css'
+
 /**
  * The "Update ready" control: the one thing that lets a new deployment take over.
  *
@@ -14,6 +16,7 @@ export function UpdatePill({ onUpdate }: UpdatePillProps): JSX.Element {
   return (
     <button
       type="button"
+      className="update-pill"
       onClick={() => {
         void onUpdate()
       }}

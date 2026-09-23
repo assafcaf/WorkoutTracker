@@ -1,7 +1,7 @@
+import './BackupBadge.css'
+
 /**
  * The backup reminder: a quiet marker on the Settings entry, never a modal or a notification.
- *
- * E2-T6 stub — the behaviour is not written yet.
  */
 export const BACKUP_REMINDER_DAYS = 14
 
@@ -27,5 +27,9 @@ export type BackupBadgeProps = {
 export function BackupBadge(props: BackupBadgeProps): JSX.Element | null {
   const { lastExportedAt, now } = props
   if (!isBackupDue(lastExportedAt, now)) return null
-  return <span role="status">Back up your data — it has been a while since the last export.</span>
+  return (
+    <span className="backup-badge" role="status">
+      Back up your data — it has been a while since the last export.
+    </span>
+  )
 }
