@@ -60,19 +60,16 @@ export const GYM_EQUIPMENT_KEY = 'gymEquipment'
 /**
  * The gym's saved equipment list, or null when it has never been set — meaning everything is
  * available.
- *
- * STUB: not implemented.
  */
 export async function getGymEquipment(): Promise<string[] | null> {
-  throw new Error('not implemented')
+  const row = await db.settings.get(GYM_EQUIPMENT_KEY)
+  return Array.isArray(row?.value) ? (row.value as string[]) : null
 }
 
 /**
  * Records `list` as the gym's equipment, so a later `getGymEquipment` call — even after the
  * database is closed and reopened — returns it.
- *
- * STUB: not implemented.
  */
 export async function setGymEquipment(list: string[]): Promise<void> {
-  throw new Error('not implemented')
+  await db.settings.put({ key: GYM_EQUIPMENT_KEY, value: list })
 }

@@ -134,43 +134,59 @@ export async function listSessions(): Promise<Session[]> {
 }
 
 // --- swaps (E5-T11) -------------------------------------------------------------------------
-//
-// Stubs only: the test-designer added these signatures so sessionStore.test.ts compiles and
-// fails at runtime (red), not at type-check. The code-writer implements the real behavior.
 
 /**
  * Records that `plannedId` was swapped for `doneId` on `sessionId`.
- *
- * STUB: not implemented.
  */
 export async function setSwap(
   sessionId: string,
   plannedId: string,
   doneId: string,
 ): Promise<void> {
-  throw new Error('not implemented')
+  await db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const swaps = { ...session.swaps, [plannedId]: doneId }
+    await db.sessions.put({ ...session, swaps })
+  })
 }
 
 /**
  * Removes the swap for `plannedId` on `sessionId`. Rejects if the session already has a
  * logged entry for the done id.
- *
- * STUB: not implemented.
  */
 export async function clearSwap(sessionId: string, plannedId: string): Promise<void> {
-  throw new Error('not implemented')
+  await db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const doneId = session.swaps?.[plannedId]
+    if (doneId !== undefined) {
+      const hasLoggedEntry = session.entries.some((entry) => entry.exerciseId === doneId)
+      if (hasLoggedEntry) {
+        throw new Error(
+          `cannot clear swap for ${plannedId}: session ${sessionId} already has a logged entry for ${doneId}`,
+        )
+      }
+    }
+
+    const swaps = { ...session.swaps }
+    delete swaps[plannedId]
+    await db.sessions.put({ ...session, swaps })
+  })
 }
 
 /**
  * The swap recorded for `plannedId`, from the most recent finished session of `workoutId`
  * under `programId`, or null when none exists.
- *
- * STUB: not implemented.
  */
 export async function getLastSwap(
   programId: string,
   workoutId: string,
   plannedId: string,
 ): Promise<string | null> {
-  throw new Error('not implemented')
+  const sessions = await finishedSessionsNewestFirst()
+  for (const session of sessions) {
+    if (session.programId !== programId || session.workoutId !== workoutId) continue
+    const doneId = session.swaps?.[plannedId]
+    if (doneId !== undefined) return doneId
+  }
+  return null
 }

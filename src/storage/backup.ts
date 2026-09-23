@@ -3,9 +3,12 @@ import { db } from './db'
 import { listSessions } from './sessionStore'
 import {
   ACTIVE_PROGRAM_ID_KEY,
+  GYM_EQUIPMENT_KEY,
   LAST_EXPORTED_AT_KEY,
+  getGymEquipment,
   getLastExportedAt,
   setActiveProgramId,
+  setGymEquipment,
   setLastExportedAt,
 } from './settingsStore'
 
@@ -48,10 +51,11 @@ export function backupFileName(exportedAt: number): string {
  * Every logged session and the settings this app owns, as of `now`.
  */
 export async function exportBackup(now: number): Promise<BackupFile> {
-  const [sessions, activeProgramRow, lastExportedAt] = await Promise.all([
+  const [sessions, activeProgramRow, lastExportedAt, gymEquipment] = await Promise.all([
     listSessions(),
     db.settings.get(ACTIVE_PROGRAM_ID_KEY),
     getLastExportedAt(),
+    getGymEquipment(),
   ])
   const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
 
@@ -59,7 +63,7 @@ export async function exportBackup(now: number): Promise<BackupFile> {
     schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: now,
     sessions,
-    settings: { activeProgramId, lastExportedAt },
+    settings: { activeProgramId, lastExportedAt, gymEquipment },
   }
 }
 
@@ -188,6 +192,11 @@ export async function replaceAll(file: BackupFile): Promise<void> {
       await db.settings.delete(LAST_EXPORTED_AT_KEY)
     } else {
       await setLastExportedAt(file.settings.lastExportedAt)
+    }
+    if (file.settings.gymEquipment === undefined || file.settings.gymEquipment === null) {
+      await db.settings.delete(GYM_EQUIPMENT_KEY)
+    } else {
+      await setGymEquipment(file.settings.gymEquipment)
     }
   })
 }
