@@ -92,8 +92,16 @@ const SCALE_TOKENS: Record<string, string> = {
   '--text-display': '56px',
 }
 
-// `--font-sans`, `--shadow-card` and `--safe-bottom` carry values that are not a plain literal,
-// so they are named here and asserted on their own below.
+// `--font-sans`, `--shadow-card`, `--safe-bottom` and `--safe-top` carry values that are not a
+// plain literal, so they are named here and asserted on their own below.
+//
+// RULING (fix-popups, F3): `--safe-top` was added here to match the popup layer's overlay,
+// which has to clear the top safe-area inset as well as the bottom one -- the tab bar is moving
+// to the top of the screen in a later, separate fix task, but the popup covering the whole
+// viewport needs both insets regardless of where the tab bar ends up. This makes the documented
+// set thirty-six rather than thirty-five; the test name and count below are updated to match,
+// and a new test mirroring the existing `--safe-bottom` one is added for it. This is an
+// authorised rewrite of this file, not a weakening -- see the fix-popups ticket's addendum.
 const DOCUMENTED_TOKENS = [
   ...Object.keys(COLOUR_TOKENS),
   ...Object.keys(MAP_TOKENS),
@@ -101,6 +109,7 @@ const DOCUMENTED_TOKENS = [
   '--font-sans',
   '--shadow-card',
   '--safe-bottom',
+  '--safe-top',
 ].sort()
 
 // The pairs [O2] iterates, from the spec's contrast table. `--color-border`, `--color-raised`
@@ -118,7 +127,7 @@ const CONTRAST_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['--color-danger', '--color-bg'],
 ]
 
-test('O1 tokens.css declares exactly the thirty-five documented tokens on :root', () => {
+test('O1 tokens.css declares exactly the thirty-six documented tokens on :root', () => {
   expect([...tokens().keys()].sort()).toEqual(DOCUMENTED_TOKENS)
 })
 
@@ -174,6 +183,15 @@ test('O1 --shadow-card is an inset hairline expressed through --color-border', (
 test('O1 --safe-bottom reads the bottom safe-area inset and falls back to 0px', () => {
   expect(normalise(tokens().get('--safe-bottom'))).toMatch(
     /^env\(\s*safe-area-inset-bottom\s*,\s*0px\s*\)$/,
+  )
+})
+
+// [F3, fix-popups] the popup overlay clears the top safe-area inset too, so a dialog that
+// covers the whole viewport does not paint under the notch -- mirrors the --safe-bottom test
+// above.
+test('O1 --safe-top reads the top safe-area inset and falls back to 0px', () => {
+  expect(normalise(tokens().get('--safe-top'))).toMatch(
+    /^env\(\s*safe-area-inset-top\s*,\s*0px\s*\)$/,
   )
 })
 

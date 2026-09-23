@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { LibraryExercise, Muscle } from '../types'
 import './LibraryList.css'
+
+/** How many rows "Show more" reveals per tap, and the count shown before any tap (F4). */
+const PAGE_SIZE = 10
 
 export type LibraryListProps = {
   library: LibraryExercise[]
@@ -38,6 +41,7 @@ export function LibraryList({
   initialMuscles,
 }: LibraryListProps): JSX.Element {
   const [gymOnly, setGymOnly] = useState(true)
+  const [shown, setShown] = useState(PAGE_SIZE)
 
   const passesEquipment = (exercise: LibraryExercise): boolean => {
     if (exercise.equipment === null || exercise.equipment === 'body only') return true
@@ -56,6 +60,22 @@ export function LibraryList({
   )
   const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
 
+  // "Show more" (F4): the filtered/sorted result shows only its first `shown` rows, growing by
+  // PAGE_SIZE per tap. Whenever the result itself changes -- a new `library` prop (App's search/
+  // muscle/equipment filters), `gymOnly`, or `initialMuscles` -- `shown` resets back to
+  // PAGE_SIZE, keyed on the sorted ids rather than array identity so a same-content re-filter
+  // (e.g. toggling gymOnly back) also resets.
+  const sortedKey = sorted.map((exercise) => exercise.id).join(',')
+  const previousKey = useRef(sortedKey)
+  useEffect(() => {
+    if (previousKey.current !== sortedKey) {
+      previousKey.current = sortedKey
+      setShown(PAGE_SIZE)
+    }
+  }, [sortedKey])
+
+  const visible = sorted.slice(0, shown)
+
   return (
     <div className="library-list-container">
       <button
@@ -69,20 +89,31 @@ export function LibraryList({
       {sorted.length === 0 ? (
         <p>No exercises match</p>
       ) : (
-        <ul className="library-list">
-          {sorted.map((exercise) => (
-            <li key={exercise.id} className="library-row">
-              <button
-                type="button"
-                className="library-row-button"
-                onClick={() => onOpen(exercise.id)}
-              >
-                <span className="library-row-name">{exercise.name}</span>
-                <span className="library-row-muscle">{exercise.primaryMuscles[0]}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="library-list">
+            {visible.map((exercise) => (
+              <li key={exercise.id} className="library-row">
+                <button
+                  type="button"
+                  className="library-row-button"
+                  onClick={() => onOpen(exercise.id)}
+                >
+                  <span className="library-row-name">{exercise.name}</span>
+                  <span className="library-row-muscle">{exercise.primaryMuscles[0]}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {shown < sorted.length ? (
+            <button
+              type="button"
+              className="library-show-more"
+              onClick={() => setShown((current) => current + PAGE_SIZE)}
+            >
+              Show more
+            </button>
+          ) : null}
+        </>
       )}
     </div>
   )

@@ -54,7 +54,12 @@ export function SessionSummary({
   const counts = toRegionCounts(muscleSets(session.entries, resolve, library))
 
   return (
-    <div role="dialog" aria-label="Session summary" className="session-summary">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Session summary"
+      className="session-summary overlay-panel"
+    >
       <h2 className="session-summary-heading">Session summary</h2>
       <BodyMap counts={counts} scale="session" onRegionTap={setOpenRegion} />
       {openRegion !== null ? (

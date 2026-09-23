@@ -72,6 +72,64 @@ test('L11 ExerciseDetail shows the instructions as a numbered list in dataset or
   expect(steps).toEqual(BARBELL_SQUAT.instructions)
 })
 
+// --- F1: the detail screen renders as a modal popup (fix-popups) ---------------------------
+//
+// The overlay used to land in normal document flow, below whatever view was showing (an
+// 876-row list or the set screen) -- the operator's device-check defect. It is a
+// `role="dialog"` / `aria-modal="true"` element named by its own heading, with the existing
+// "Back" control inside it.
+
+test('F1 ExerciseDetail is a modal dialog named by the exercise heading', () => {
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
+
+  const dialog = screen.getByRole('dialog', { name: 'Barbell Squat' })
+  expect(dialog).toHaveAttribute('aria-modal', 'true')
+})
+
+test('F1 ExerciseDetail\'s dialog is named by the heading override rather than the entry\'s own name', () => {
+  render(
+    <ExerciseDetail
+      entry={BARBELL_SQUAT}
+      heading="Deadlift"
+      photos={[]}
+      onBack={onBack}
+      library={LIBRARY}
+      gymEquipment={null}
+      onOpenDetail={onOpenDetail}
+    />,
+  )
+
+  expect(screen.getByRole('dialog', { name: 'Deadlift' })).toBeInTheDocument()
+})
+
+test('F1 the Back control that closes ExerciseDetail is inside its own dialog', async () => {
+  const user = userEvent.setup()
+  const onBackSpy = vi.fn()
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBackSpy} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
+
+  const dialog = screen.getByRole('dialog', { name: 'Barbell Squat' })
+  await user.click(within(dialog).getByRole('button', { name: 'Back' }))
+
+  expect(onBackSpy).toHaveBeenCalledTimes(1)
+})
+
+// --- F3: the popup layer's shared CSS (fix-popups) ------------------------------------------
+//
+// `src/styles/overlay.test.ts` audits `.overlay-panel`'s own declarations as data; this proves
+// ExerciseDetail's root actually carries that shared class, scoped by the existing
+// `.exercise-detail` selector rather than by role, so this fails specifically on the missing
+// class and not on a missing dialog role.
+
+test('F3 ExerciseDetail\'s root carries the shared overlay-panel class', () => {
+  const { container } = render(
+    <ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />,
+  )
+
+  const root = container.querySelector('.exercise-detail')
+  expect(root, '.exercise-detail must still be the root ExerciseDetail renders').not.toBeNull()
+  expect(root).toHaveClass('overlay-panel')
+})
+
 // --- L12: the video link and its credit -----------------------------------------------------
 
 const SQUAT_VIDEO: Video = {

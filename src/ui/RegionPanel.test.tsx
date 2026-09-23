@@ -62,6 +62,25 @@ test('M9 RegionPanel for a region nothing counted shows 0 sets and no contributo
   expect(within(panel).getByRole('button', { name: 'Browse exercises' })).toBeVisible()
 })
 
+// --- F2/F3: the panel renders as a modal popup (fix-popups) --------------------------------
+//
+// RegionPanel already carried `role="dialog"`, but it was rendered as an inline panel below
+// SessionSummary's body map rather than as its own popup -- these prove the two things that
+// device-check defect needs: `aria-modal`, and the shared `.overlay-panel` class `src/styles/
+// overlay.test.ts` audits as data.
+
+test('F2 RegionPanel\'s dialog is aria-modal', () => {
+  renderUpperBack()
+
+  expect(screen.getByRole('dialog', { name: 'upper-back' })).toHaveAttribute('aria-modal', 'true')
+})
+
+test('F3 RegionPanel\'s dialog carries the shared overlay-panel class', () => {
+  renderUpperBack()
+
+  expect(screen.getByRole('dialog', { name: 'upper-back' })).toHaveClass('overlay-panel')
+})
+
 test('M9 Browse exercises on upper-back browses lats or middle back', async () => {
   const user = userEvent.setup()
   const { onBrowse } = renderUpperBack()

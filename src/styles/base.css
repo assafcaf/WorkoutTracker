@@ -6,6 +6,7 @@
  * definition site and it is tokens.css.
  */
 @import './tokens.css';
+@import './overlay.css';
 
 *,
 *::before,

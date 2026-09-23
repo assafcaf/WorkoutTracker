@@ -973,13 +973,18 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         />
       ) : null}
       {overlay?.kind === 'alternatives' && alternativesTarget ? (
-        <AlternativesList
-          target={alternativesTarget}
-          library={libraryMap}
-          gymEquipment={gymEquipment}
-          onChoose={(chosenId) => handleChooseAlternative(overlay.plannedId, chosenId)}
-          onOpenDetail={handleOpenInfo}
-        />
+        <div role="dialog" aria-modal="true" aria-label="Alternatives" className="overlay-panel alternatives-overlay">
+          <button type="button" className="alternatives-overlay-close" onClick={() => setOverlay(null)}>
+            Close
+          </button>
+          <AlternativesList
+            target={alternativesTarget}
+            library={libraryMap}
+            gymEquipment={gymEquipment}
+            onChoose={(chosenId) => handleChooseAlternative(overlay.plannedId, chosenId)}
+            onOpenDetail={handleOpenInfo}
+          />
+        </div>
       ) : null}
     </>
   )
