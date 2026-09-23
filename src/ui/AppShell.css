@@ -4,12 +4,21 @@
  * src/styles/cssAudit.test.ts fails on a literal one. `.app-header-back` and
  * `.action-bar > button` carry `min-height: var(--tap-min)` on their bare selectors, which is
  * where E3-T8's tap-target audit reads the floor off.
+ *
+ * `.app-shell`'s own `padding-top` (fix-layout, G3) reserves clearance for `.tab-bar`
+ * (src/ui/TabBar.css), which is `position: fixed` at the top of the viewport and so out of
+ * document flow -- without it the fixed bar would render over the header. It reuses
+ * `--tap-min` (the bar's own tap-target floor) rather than a new token. That padding pushes
+ * this whole flex column down, so `.app-header`'s own `top: 0` sticky point already sits below
+ * the fixed bar; its `z-index` stays lower than the bar's so the bar always wins if they ever
+ * overlap during a scroll.
  */
 
 .app-shell {
   display: flex;
   min-height: 100vh;
   flex-direction: column;
+  padding-top: var(--tap-min);
   background: var(--color-bg);
 }
 

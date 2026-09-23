@@ -62,4 +62,5 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-accent);
+  color: var(--color-on-accent);
 }
