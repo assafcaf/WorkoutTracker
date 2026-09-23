@@ -39,7 +39,7 @@ import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 import { UpdatePill } from './ui/UpdatePill'
 
-type View = 'picker' | 'settings' | 'list' | 'set' | 'history'
+type View = 'picker' | 'settings' | 'list' | 'set' | 'history' | 'exercises'
 
 /**
  * The tab each view sits under, and `null` for the views that are inside a session: a
@@ -47,6 +47,7 @@ type View = 'picker' | 'settings' | 'list' | 'set' | 'history'
  */
 const TAB_OF: Record<View, Tab | null> = {
   picker: 'workout',
+  exercises: 'exercises',
   history: 'history',
   settings: 'settings',
   list: null,
@@ -324,6 +325,10 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       handleShowHistory()
       return
     }
+    if (tab === 'exercises') {
+      setView('exercises')
+      return
+    }
     setView(tab === 'workout' ? 'picker' : 'settings')
   }
 
@@ -458,6 +463,24 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         settingsBadge={settingsBadge}
       >
         <HistoryList sessions={history} programs={programs} />
+      </AppShell>
+    )
+  }
+
+  if (view === 'exercises') {
+    // STUB for E5-T3's red commit: no loadLibrary(), no search box, no muscle/equipment
+    // filters and no <LibraryList> yet -- the code-writer loads the library, holds the search
+    // text and the two filters in state here, filters it, and renders <LibraryList> (or "No
+    // exercises match") below. Reaching this branch at all is what makes Exercises a tab.
+    return (
+      <AppShell
+        title="Exercises"
+        tab={tabFor(view)}
+        onTabChange={handleTabChange}
+        trailing={trailing}
+        settingsBadge={settingsBadge}
+      >
+        {null}
       </AppShell>
     )
   }

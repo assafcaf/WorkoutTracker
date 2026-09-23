@@ -163,14 +163,14 @@ test('O7 AppShell renders no action bar when it is given no action', () => {
 
 // --- the tab bar the shell holds -----------------------------------------------------------
 
-test('O7 AppShell holds a nav labelled Main with exactly the Workout, History and Settings tabs when it is given a tab', () => {
+test('O7 AppShell holds a nav labelled Main with exactly the Workout, Exercises, History and Settings tabs when it is given a tab', () => {
   render(
     <AppShell title="Workout" tab="workout" onTabChange={vi.fn()}>
       <p>the program picker</p>
     </AppShell>,
   )
 
-  expect(tabNames()).toEqual(['Workout', 'History', 'Settings'])
+  expect(tabNames()).toEqual(['Workout', 'Exercises', 'History', 'Settings'])
 })
 
 test('O7 AppShell marks the tab it was given, and no other, as the current page', () => {
@@ -249,7 +249,7 @@ test('O7 AppShell leaves the Settings tab named exactly Settings while the backu
 
   // The marker sits inside the tab, so unless the tab names itself the trainee -- and every
   // test that reaches Settings by name -- loses the control called "Settings".
-  expect(tabNames()).toEqual(['Workout', 'History', 'Settings'])
+  expect(tabNames()).toEqual(['Workout', 'Exercises', 'History', 'Settings'])
 })
 
 test('O7 AppShell shows no backup-due marker when settingsBadge is not set', () => {
@@ -265,12 +265,12 @@ test('O7 AppShell shows no backup-due marker when settingsBadge is not set', () 
 
 // --- the tab bar on its own ----------------------------------------------------------------
 
-test('O7 TabBar offers the three tabs as buttons inside a nav labelled Main', () => {
+test('O7 TabBar offers the four tabs as buttons inside a nav labelled Main', () => {
   const { container } = render(<TabBar current="workout" onChange={vi.fn()} />)
 
-  expect(tabNames()).toEqual(['Workout', 'History', 'Settings'])
+  expect(tabNames()).toEqual(['Workout', 'Exercises', 'History', 'Settings'])
   // E3-T8's tap-target audit reads its floor off `.tab-bar-tab`, so the class is contract.
-  expect([...container.querySelectorAll('nav.tab-bar button.tab-bar-tab')]).toHaveLength(3)
+  expect([...container.querySelectorAll('nav.tab-bar button.tab-bar-tab')]).toHaveLength(4)
 })
 
 test('O7 TabBar marks its current tab, and no other, as the current page', () => {
