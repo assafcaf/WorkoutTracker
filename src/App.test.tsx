@@ -262,6 +262,33 @@ test('O5 with nothing logged anywhere, a lift opens on its start weight and the 
   expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['50', '8'])
 })
 
+// --- O6: the rest timer is scoped to the session in progress (E6-T2) ---------------------
+
+test('O6 opening a lift last logged in an earlier, finished session shows no rest timer', async () => {
+  const user = userEvent.setup()
+  const firstRun = render(<App />)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await waitFor(async () => {
+    expect(await activeSessionEntries()).toHaveLength(1)
+  }, SETTLE)
+  const first = await getActiveSession()
+  if (!first) throw new Error('the first session was never started')
+  await finishSession(first.id, Date.now())
+  firstRun.unmount()
+
+  // A fresh session: back-squat's only lastEntries now come from the session just finished,
+  // not from this one -- App must thread sessionStartedAt through so that history does not
+  // read as "logged in this session".
+  render(<App />)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  expect(screen.queryByRole('timer')).toBeNull()
+})
+
 // --- O13: the session survives the app being closed --------------------------------------
 
 /**
