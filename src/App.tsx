@@ -33,9 +33,11 @@ import {
   setActiveProgramId,
 } from './storage/settingsStore'
 import {
+  clearSwap,
   finishSession,
   getActiveSession,
   getLastEntriesFor,
+  getLastSwap,
   listSessions,
   setSwap,
   startOrResumeSession,
@@ -157,6 +159,31 @@ async function activeSessionOrNull(storageAvailable: boolean): Promise<Session |
 }
 
 /**
+ * The swap each plan of `session`'s workout carried in the last finished session of that
+ * workout (E5-T14), keyed plannedId -> doneId. Read once, before the list shows: it comes from
+ * finished sessions, which cannot change while this one is in progress. Empty when the workout
+ * is gone or storage cannot answer -- the list then just offers no "Last time".
+ */
+async function lastSwapsFor(
+  programs: Program[],
+  session: Session | null,
+): Promise<Record<string, string>> {
+  if (!session) return {}
+  const located = locateSession(programs, session)
+  if (!located) return {}
+  try {
+    const found: Record<string, string> = {}
+    for (const plan of located.workout.exercises) {
+      const doneId = await getLastSwap(session.programId, session.workoutId, plan.exerciseId)
+      if (doneId !== null) found[plan.exerciseId] = doneId
+    }
+    return found
+  } catch {
+    return {}
+  }
+}
+
+/**
  * The whole app: the views below, with the "Update ready" control over them.
  *
  * The control lives here rather than in a view because a new deployment must never interrupt
@@ -208,6 +235,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // The harvested exercise videos (E5-T7), keyed by library id; loaded once alongside the
   // library so the detail overlay can show one when it has it.
   const [videos, setVideos] = useState<Map<string, Video>>(new Map())
+  // The swap each plan of the session's workout carried last time it was finished (E5-T14),
+  // keyed plannedId -> doneId, so the exercise list can offer "Last time" as one tap.
+  const [lastSwaps, setLastSwaps] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -224,6 +254,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           storedProgramId !== undefined &&
           !programs.some((program) => program.id === storedProgramId)
         const inProgress = await activeSessionOrNull(storageAvailable)
+        const inProgressLastSwaps = await lastSwapsFor(programs, inProgress)
         const lastExportedAt = storageAvailable ? await getLastExportedAt() : null
         const gymEquipmentList = storageAvailable ? await getGymEquipment() : null
         // Loaded here rather than lazily on the Exercises tab (E5-T3's original scheme), so the
@@ -234,6 +265,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
 
         if (cancelled) return
         setSession(inProgress)
+        setLastSwaps(inProgressLastSwaps)
         setView(inProgress ? 'list' : 'picker')
         setLibrary([...loadedLibrary.values()])
         setGymEquipment(gymEquipmentList)
@@ -316,6 +348,40 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       })
   }
 
+  /** `ExerciseList.onApplySwap`: applies last time's swap of `plannedId` to this session. */
+  function handleApplySwap(plannedId: string, doneId: string): void {
+    if (!session) return
+    setSwap(session.id, plannedId, doneId)
+      .then(() => {
+        setSession((current) =>
+          current ? { ...current, swaps: { ...current.swaps, [plannedId]: doneId } } : current,
+        )
+      })
+      .catch(() => {
+        // Nothing was recorded; the "Last time" offer stays so the trainee can try again.
+      })
+  }
+
+  /**
+   * `ExerciseList.onUndoSwap`: removes today's swap of `plannedId`, bringing back the planned
+   * exercise's own row. `clearSwap` refuses once the done exercise has a logged set.
+   */
+  function handleUndoSwap(plannedId: string): void {
+    if (!session) return
+    clearSwap(session.id, plannedId)
+      .then(() => {
+        setSession((current) => {
+          if (!current) return current
+          const swaps = { ...current.swaps }
+          delete swaps[plannedId]
+          return { ...current, swaps }
+        })
+      })
+      .catch(() => {
+        // The swap stands; the list keeps showing it as it is stored.
+      })
+  }
+
   function handleActiveProgramChange(id: string): void {
     setActiveProgramId(id)
       .then(() => {
@@ -333,8 +399,10 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   /** Starts the chosen workout, or resumes the session already in progress, and lists it. */
   function handleChoose(programId: string, workoutId: string): void {
     startOrResumeSession(programId, workoutId, Date.now())
-      .then((started) => {
+      .then(async (started) => {
+        const startedLastSwaps = await lastSwapsFor(programs, started)
         setSession(started)
+        setLastSwaps(startedLastSwaps)
         setOpenSet(null)
         setView('list')
       })
@@ -583,6 +651,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           session={session}
           onOpenSet={handleOpenSet}
           onFinish={handleFinish}
+          lastSwaps={lastSwaps}
+          onUndoSwap={handleUndoSwap}
+          onApplySwap={handleApplySwap}
         />
       </AppShell>
     )

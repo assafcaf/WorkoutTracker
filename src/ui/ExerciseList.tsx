@@ -53,9 +53,13 @@ function nextSetIndex(logged: number, plan: ExercisePlan): number {
  * A plan swapped mid-session (`session.swaps`, E5-T11/E5-T12) reads instead as the done
  * exercise's name, "instead of" the planned one, with the plan's own sets, rep range and rest
  * -- and opens the *done* exercise's id, not the planned one.
+ *
+ * Beside a swapped row, "Undo swap" is offered until the done exercise's first set is logged
+ * (E5-T14). An unswapped row whose plan was swapped last time (`lastSwaps`) offers
+ * "Last time: <done exercise's name>", which applies the same swap.
  */
 export function ExerciseList(props: ExerciseListProps): JSX.Element {
-  const { workout, resolve, session, onOpenSet } = props
+  const { workout, resolve, session, onOpenSet, lastSwaps, onUndoSwap, onApplySwap } = props
 
   return (
     <ul className="exercise-list">
@@ -64,6 +68,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         const effectiveId = doneId ?? plan.exerciseId
         const exercise = resolve(effectiveId)
         const logged = loggedSets(session.entries, effectiveId)
+        const lastDoneId = lastSwaps[plan.exerciseId]
 
         const label =
           doneId !== undefined ? (
@@ -84,6 +89,16 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
             >
               {label}
             </button>
+            {doneId !== undefined && logged === 0 ? (
+              <button type="button" onClick={() => onUndoSwap(plan.exerciseId)}>
+                Undo swap
+              </button>
+            ) : null}
+            {doneId === undefined && lastDoneId !== undefined ? (
+              <button type="button" onClick={() => onApplySwap(plan.exerciseId, lastDoneId)}>
+                {`Last time: ${resolve(lastDoneId)?.name ?? lastDoneId}`}
+              </button>
+            ) : null}
           </li>
         )
       })}
