@@ -54,6 +54,7 @@ import { ImportConfirm } from './ui/ImportConfirm'
 import { LibraryList } from './ui/LibraryList'
 import { ProgramPage } from './ui/ProgramPage'
 import { ResumeCard } from './ui/ResumeCard'
+import { SessionSummary } from './ui/SessionSummary'
 import { SetScreen } from './ui/SetScreen'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
@@ -243,6 +244,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // The in-app detail overlay (E5-T8). Looked up against `library` at render time, so it is
   // never stale once the library has loaded, and stays `null` until something opens it.
   const [overlay, setOverlay] = useState<Overlay | null>(null)
+  // The session summary (E5-T20, M16) shown over whatever view is current: the session just
+  // finished, or one opened from History.
+  const [summarySession, setSummarySession] = useState<Session | null>(null)
+  // The muscles a region panel's "Browse exercises" (M9) opened the Exercises tab on; cleared
+  // when the tab is reached any other way.
+  const [libraryInitialMuscles, setLibraryInitialMuscles] = useState<Muscle[] | null>(null)
   // The gym's saved equipment; read/written through the Settings screen's "My gym's equipment"
   // checklist (E5-T16). `null` until a gym equipment list has ever been saved.
   const [gymEquipment, setGymEquipment] = useState<string[] | null>(null)
@@ -514,7 +521,24 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
 
   /** Shows the Exercises tab; the library itself is loaded once, up front, on mount. */
   function handleShowExercises(): void {
+    setLibraryInitialMuscles(null)
     setView('exercises')
+  }
+
+  /**
+   * `SessionSummary.onBrowse` (E5-T20, M9): closes the summary and shows the Exercises tab
+   * listing only exercises primary in `muscles`.
+   */
+  function handleBrowseMuscles(muscles: Muscle[]): void {
+    setSummarySession(null)
+    setLibraryInitialMuscles(muscles)
+    setView('exercises')
+  }
+
+  /** `HistoryList.onOpen` (E5-T20, M16): shows a finished session's summary. */
+  function handleOpenHistorySession(sessionId: string): void {
+    const opened = history.find((candidate) => candidate.id === sessionId)
+    if (opened) setSummarySession(opened)
   }
 
   /**
@@ -573,7 +597,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       return
     }
     if (tab === 'program') {
-      setView('program')
+      handleShowProgram()
       return
     }
     setView(tab === 'workout' ? 'picker' : 'settings')
@@ -671,17 +695,33 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     }
   }
 
-  /** Finishes the session in progress, then returns to the picker. */
+  /** Finishes the session in progress, then returns to the picker under its summary (M16). */
   function handleFinish(): void {
     if (!session) return
     finishSession(session.id, Date.now())
-      .then(() => {
+      .then((finished) => {
         setSession(null)
         setOpenSet(null)
         setView('picker')
+        setSummarySession(finished)
       })
       .catch(() => {
         // The list stays up; nothing was cleared, so there is nothing to undo.
+      })
+  }
+
+  /**
+   * Loads the finished sessions, so the Program tab's "This week" (E5-T20) counts them, then
+   * shows the Program tab -- with whatever was loaded before, if they cannot be read.
+   */
+  function handleShowProgram(): void {
+    listSessions()
+      .then((sessions) => {
+        setHistory(sessions)
+        setView('program')
+      })
+      .catch(() => {
+        setView('program')
       })
   }
 
@@ -742,6 +782,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           catalog={catalog}
           library={libraryMap}
           onChooseProgram={handleActiveProgramChange}
+          sessions={session ? [...history, session] : history}
+          now={Date.now()}
+          resolve={resolveListExercise}
         />
       </AppShell>
     )
@@ -756,7 +799,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         trailing={trailing}
         settingsBadge={settingsBadge}
       >
-        <HistoryList sessions={history} programs={programs} resolve={resolveListExercise} />
+        <HistoryList
+          sessions={history}
+          programs={programs}
+          resolve={resolveListExercise}
+          onOpen={handleOpenHistorySession}
+        />
       </AppShell>
     )
   }
@@ -827,7 +875,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             </option>
           ))}
         </select>
-        <LibraryList library={filteredLibrary} onOpen={handleOpenInfo} gymEquipment={gymEquipment} />
+        <LibraryList
+          library={filteredLibrary}
+          onOpen={handleOpenInfo}
+          gymEquipment={gymEquipment}
+          initialMuscles={libraryInitialMuscles ?? undefined}
+        />
       </AppShell>
     )
   }
@@ -908,6 +961,15 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
               ? (id) => handleChooseFromDetail(overlay.plannedId!, id)
               : undefined
           }
+        />
+      ) : null}
+      {summarySession ? (
+        <SessionSummary
+          session={summarySession}
+          resolve={resolveListExercise}
+          library={libraryMap}
+          onClose={() => setSummarySession(null)}
+          onBrowse={handleBrowseMuscles}
         />
       ) : null}
       {overlay?.kind === 'alternatives' && alternativesTarget ? (

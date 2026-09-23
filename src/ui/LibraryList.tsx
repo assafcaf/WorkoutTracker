@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { LibraryExercise } from '../types'
+import type { LibraryExercise, Muscle } from '../types'
 import './LibraryList.css'
 
 export type LibraryListProps = {
@@ -11,6 +11,11 @@ export type LibraryListProps = {
    * while the "My gym only" chip is on (E5-T16).
    */
   gymEquipment: string[] | null
+  /**
+   * The muscles a region panel's "Browse exercises" opened the tab on (E5-T20, M9): when given
+   * and non-empty, only exercises with at least one of them among `primaryMuscles` are listed.
+   */
+  initialMuscles?: Muscle[]
 }
 
 /**
@@ -23,9 +28,15 @@ export type LibraryListProps = {
  * The "My gym only" chip (E5-T16) defaults to on and, while on and `gymEquipment` is not
  * `null`, filters `library` down to exercises whose equipment is in `gymEquipment` -- an
  * exercise with no equipment or `body only` always passes, the same predicate `alternativesFor`
- * uses (src/domain/alternatives.ts).
+ * uses (src/domain/alternatives.ts). `initialMuscles` (E5-T20), when non-empty, further keeps
+ * only exercises primary in at least one of them.
  */
-export function LibraryList({ library, onOpen, gymEquipment }: LibraryListProps): JSX.Element {
+export function LibraryList({
+  library,
+  onOpen,
+  gymEquipment,
+  initialMuscles,
+}: LibraryListProps): JSX.Element {
   const [gymOnly, setGymOnly] = useState(true)
 
   const passesEquipment = (exercise: LibraryExercise): boolean => {
@@ -34,7 +45,15 @@ export function LibraryList({ library, onOpen, gymEquipment }: LibraryListProps)
     return gymEquipment.includes(exercise.equipment)
   }
 
-  const filtered = gymOnly && gymEquipment !== null ? library.filter(passesEquipment) : library
+  const passesMuscles = (exercise: LibraryExercise): boolean =>
+    initialMuscles === undefined ||
+    initialMuscles.length === 0 ||
+    exercise.primaryMuscles.some((muscle) => initialMuscles.includes(muscle))
+
+  const filtered = library.filter(
+    (exercise) =>
+      passesMuscles(exercise) && (!gymOnly || gymEquipment === null || passesEquipment(exercise)),
+  )
   const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
