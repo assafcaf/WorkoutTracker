@@ -1,5 +1,9 @@
 import type { Exercise, ExercisePlan, LibraryExercise, Program, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
+import { toRegionCounts } from '../domain/muscles'
+import { prescribedWeekly } from '../domain/programVolume'
+import { BodyMap } from './body/BodyMap'
+import './Settings.css'
 import './ProgramPage.css'
 
 export type ProgramPageProps = {
@@ -22,21 +26,13 @@ function planLine(plan: ExercisePlan, catalog: Map<string, Exercise>): string {
 
 /**
  * The Program tab (E5-T18): the active program's name, a card per workout listing its
- * exercises, and a program switcher -- an always-visible radio list of every loaded program,
- * the active one checked, the same shape as Settings' "Active program" group (operator ruling:
- * no "Other programs" disclosure). Carried over from `ProgramPicker` (E1-T2), which this
- * replaces on the Workout tab (M12).
- *
- * Stub for the red commit: neither the per-workout body map (`prescribedWeekly` +
- * `toRegionCounts` + `BodyMap`, `scale="session"`) nor the program switcher (`onChooseProgram`)
- * is wired in yet -- see ProgramPage.test.tsx's M13 and O1 switcher tests. `library` and
- * `onChooseProgram` are not yet consulted.
+ * exercises with a small body map of that workout's sets, and a program switcher -- an
+ * always-visible radio list of every loaded program, the active one checked, the same shape as
+ * Settings' "Active program" group (operator ruling: no "Other programs" disclosure). Carried
+ * over from `ProgramPicker` (E1-T2), which this replaces on the Workout tab (M12).
  */
 export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const { programs, activeProgramId, catalog, library, onChooseProgram } = props
-  // Not yet consulted by this stub -- see the note above.
-  void library
-  void onChooseProgram
 
   // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
   // half-built page behind -- the same rule `ProgramPicker` enforced.
@@ -46,6 +42,9 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   if (!active) throw new Error(`no program ${activeProgramId} among the loaded programs`)
 
   function renderWorkout(program: Program, workout: Workout): JSX.Element {
+    // One workout's sets at weight 1: the workout as a program of its own, done once a week.
+    const oneWorkout: Program = { ...program, workouts: [workout], sessionsPerWeek: 1 }
+    const counts = toRegionCounts(prescribedWeekly(oneWorkout, catalog, library))
     return (
       <section key={`${program.id}/${workout.id}`} className="workout-card">
         <h3>{workout.name}</h3>
@@ -54,6 +53,9 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
             <li key={plan.exerciseId}>{planLine(plan, catalog)}</li>
           ))}
         </ul>
+        <div className="program-page-map">
+          <BodyMap counts={counts} scale="session" />
+        </div>
       </section>
     )
   }
@@ -62,6 +64,29 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     <div className="program-page">
       <h2>{active.name}</h2>
       {active.workouts.map((workout) => renderWorkout(active, workout))}
+      <fieldset className="settings-group">
+        <legend className="settings-legend">Active program</legend>
+        {programs.map((program) => {
+          const checked = program.id === activeProgramId
+          return (
+            <label
+              key={program.id}
+              className={`settings-action${checked ? ' settings-action-active' : ''}`}
+            >
+              <input
+                type="radio"
+                name="program-page-active-program"
+                value={program.id}
+                checked={checked}
+                onChange={() => {
+                  if (!checked) onChooseProgram(program.id)
+                }}
+              />
+              <span className="settings-action-label">{program.name}</span>
+            </label>
+          )
+        })}
+      </fieldset>
     </div>
   )
 }

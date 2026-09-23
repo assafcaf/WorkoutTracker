@@ -10,7 +10,7 @@ import type {
   Video,
   Workout,
 } from './types'
-import { loadCatalog, loadPrograms } from './data/catalog'
+import { assertPlansAreInCatalog, loadCatalog, loadPrograms } from './data/catalog'
 import { MUSCLES, loadLibrary, loadVideos } from './data/library'
 import { photoUrls } from './data/photos'
 import { resolveExercise } from './data/resolve'
@@ -52,14 +52,15 @@ import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
 import { ImportConfirm } from './ui/ImportConfirm'
 import { LibraryList } from './ui/LibraryList'
-import { ProgramPicker } from './ui/ProgramPicker'
+import { ProgramPage } from './ui/ProgramPage'
 import { ResumeCard } from './ui/ResumeCard'
 import { SetScreen } from './ui/SetScreen'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 import { UpdatePill } from './ui/UpdatePill'
+import { WorkoutStartButtons } from './ui/WorkoutStartButtons'
 
-type View = 'picker' | 'settings' | 'list' | 'set' | 'history' | 'exercises'
+type View = 'picker' | 'program' | 'settings' | 'list' | 'set' | 'history' | 'exercises'
 
 /**
  * The tab each view sits under, and `null` for the views that are inside a session: a
@@ -67,6 +68,7 @@ type View = 'picker' | 'settings' | 'list' | 'set' | 'history' | 'exercises'
  */
 const TAB_OF: Record<View, Tab | null> = {
   picker: 'workout',
+  program: 'program',
   exercises: 'exercises',
   history: 'history',
   settings: 'settings',
@@ -570,6 +572,10 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       handleShowExercises()
       return
     }
+    if (tab === 'program') {
+      setView('program')
+      return
+    }
     setView(tab === 'workout' ? 'picker' : 'settings')
   }
 
@@ -721,6 +727,26 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     )
   }
 
+  if (content === null && view === 'program') {
+    content = (
+      <AppShell
+        title="Program"
+        tab={tabFor(view)}
+        onTabChange={handleTabChange}
+        trailing={trailing}
+        settingsBadge={settingsBadge}
+      >
+        <ProgramPage
+          programs={programs}
+          activeProgramId={activeProgramId}
+          catalog={catalog}
+          library={libraryMap}
+          onChooseProgram={handleActiveProgramChange}
+        />
+      </AppShell>
+    )
+  }
+
   if (content === null && view === 'history') {
     content = (
       <AppShell
@@ -807,6 +833,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   }
 
   if (content === null) {
+    // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
+    // half-built Workout tab behind.
+    for (const program of programs) assertPlansAreInCatalog(program, catalog)
+    const activeProgram = programs.find((program) => program.id === activeProgramId)
+    if (!activeProgram) throw new Error(`no program ${activeProgramId} among the loaded programs`)
+
     content = (
       <AppShell
         title="Workout"
@@ -828,11 +860,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           />
         ) : null}
         <fieldset disabled={!storageAvailable}>
-          <ProgramPicker
-            programs={programs}
-            catalog={catalog}
-            activeProgramId={activeProgramId}
-            onChoose={handleChoose}
+          <WorkoutStartButtons
+            program={activeProgram}
+            onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}
           />
         </fieldset>
       </AppShell>

@@ -33,7 +33,7 @@ function glyph(path: ReactNode): JSX.Element {
   )
 }
 
-/** The four destinations, in the order they sit in the bar. */
+/** The five destinations, in the order they sit in the bar. */
 const TABS: { id: Tab; label: string; icon: JSX.Element }[] = [
   {
     id: 'workout',
@@ -43,6 +43,17 @@ const TABS: { id: Tab; label: string; icon: JSX.Element }[] = [
       <>
         <path d="M4 9v6M7 7v10M17 7v10M20 9v6" />
         <path d="M7 12h10" />
+      </>,
+    ),
+  },
+  {
+    id: 'program',
+    label: 'Program',
+    // A clipboard: the plan the trainee follows.
+    icon: glyph(
+      <>
+        <rect x="6" y="4" width="12" height="17" rx="2" />
+        <path d="M9 4h6v3H9zM9 12h6M9 16h4" />
       </>,
     ),
   },
@@ -84,7 +95,7 @@ const TABS: { id: Tab; label: string; icon: JSX.Element }[] = [
 ]
 
 /**
- * The bottom tab bar: the only way between Workout, Exercises, History and Settings.
+ * The bottom tab bar: the only way between Workout, Program, Exercises, History and Settings.
  *
  * Each tab names itself with an `aria-label` rather than leaning on its text, so the
  * backup-due marker the Settings tab can carry never lands in that tab's accessible name —
