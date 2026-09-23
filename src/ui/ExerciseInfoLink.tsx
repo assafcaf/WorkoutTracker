@@ -2,16 +2,20 @@ import type { Exercise } from '../types'
 
 export type ExerciseInfoLinkProps = {
   exercise: Exercise
+  onOpen(): void
 }
 
 /**
- * A link to the exercise's curated demonstration, one tap from the set screen for the
- * exercise you have forgotten how to do.
+ * The set screen's control onto the exercise's in-app detail screen (E5-T8). Used to be a
+ * link straight out to a curated muscleandstrength.com URL; is now a button that tells its
+ * caller to open the overlay instead of leaving the app.
+ *
+ * STUB (E5-T8 test-designer): renders the button but does not yet call `onOpen`.
  */
-export function ExerciseInfoLink({ exercise }: ExerciseInfoLinkProps): JSX.Element {
+export function ExerciseInfoLink({ onOpen: _onOpen }: ExerciseInfoLinkProps): JSX.Element {
   return (
-    <a href={exercise.infoUrl} target="_blank" rel="noopener noreferrer">
+    <button type="button">
       Exercise info
-    </a>
+    </button>
   )
 }

@@ -418,6 +418,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
             onLogged={(logged) => setSession(logged)}
             onAddSet={handleAddSet}
+            // STUB (E5-T8 test-designer): the in-app detail overlay is not wired up yet.
+            onOpenInfo={() => {}}
           />
         </AppShell>
       )
