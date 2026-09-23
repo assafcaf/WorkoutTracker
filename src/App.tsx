@@ -685,6 +685,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             setIndex={openSet.setIndex}
             sessionId={session.id}
             lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
+            sessionStartedAt={session.startedAt}
             onLogged={(logged) => setSession(logged)}
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
