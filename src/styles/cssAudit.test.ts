@@ -10,11 +10,12 @@ import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import postcss from 'postcss'
 import { expect, test } from 'vitest'
-import { declarationsFor, literalColours } from '../test/cssAudit'
+import { declarationsFor, literalColours, readTokens } from '../test/cssAudit'
 
 // src/styles/cssAudit.test.ts -> the repository root.
 const repoRoot = resolve(fileURLToPath(import.meta.url), '..', '..', '..')
 const srcDir = join(repoRoot, 'src')
+const tokensPath = join(srcDir, 'styles', 'tokens.css')
 
 /** An absolute path as a repo-relative, '/'-separated one, which is how failures read. */
 function rel(absolute: string): string {
@@ -136,4 +137,55 @@ test('O4 declarationsFor returns a selector rule declarations, merged across rul
     [...declarationsFor(css, '.dial-step').keys()],
     'a selector no rule declares has no declarations',
   ).toEqual([])
+})
+
+// [O4] the twelve interactive selectors documented in E3-T8's ticket, each written by an
+// earlier task except `.settings-action`, which E3-T8 adds. A selector may be declared in more
+// than one stylesheet only by accident, so declarations are merged across every stylesheet
+// under src, later files (in the sorted order `stylesheets()` already uses) winning -- the same
+// rule `declarationsFor` applies within a single file.
+const TAP_TARGET_SELECTORS = [
+  '.tab-bar-tab',
+  '.app-header-back',
+  '.action-bar > button',
+  '.exercise-row',
+  '.start-workout',
+  '.resume-workout',
+  '.dial-step',
+  '.dial-readout',
+  '.keypad-keys button',
+  '.keypad-actions button',
+  '.update-pill',
+  '.settings-action',
+]
+
+/** `selector`'s declarations, merged across every stylesheet under src that mentions it. */
+function declarationsAcrossStylesheets(selector: string): Map<string, string> {
+  const merged = new Map<string, string>()
+  for (const path of stylesheets()) {
+    for (const [prop, value] of declarationsFor(readFileSync(path, 'utf-8'), selector)) {
+      merged.set(prop, value)
+    }
+  }
+  return merged
+}
+
+test('O4 every interactive selector declares min-height: var(--tap-min)', () => {
+  const offenders = TAP_TARGET_SELECTORS.filter(
+    (selector) => declarationsAcrossStylesheets(selector).get('min-height') !== 'var(--tap-min)',
+  )
+
+  expect(
+    offenders,
+    'these selectors do not declare min-height: var(--tap-min) in any stylesheet under src',
+  ).toEqual([])
+})
+
+test('O4 --tap-min is at least 44px', () => {
+  const tapMin = readTokens(readFileSync(tokensPath, 'utf-8')).get('--tap-min')
+
+  expect(tapMin, '--tap-min must be declared on :root in tokens.css').toBeDefined()
+  const match = /^(-?[\d.]+)px$/.exec((tapMin as string).trim())
+  expect(match, `--tap-min (${tapMin}) is not a plain pixel length`).not.toBeNull()
+  expect(Number(match?.[1])).toBeGreaterThanOrEqual(44)
 })
