@@ -721,12 +721,13 @@ function looseButtons(names: string[]): string[] {
     .map((button) => accessibleNameOf(button))
 }
 
-test('O7 the app on load offers a Main nav holding exactly the Workout, Exercises, History and Settings tabs', async () => {
+test('O7 the app on load offers a Main nav holding exactly the Workout, Program, Exercises, History and Settings tabs', async () => {
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
-  // E5-T3 inserts Exercises between Workout and History.
-  expect(tabNames()).toEqual(['Workout', 'Exercises', 'History', 'Settings'])
+  // E5-T3 inserts Exercises between Workout and History. E5-T18 (M11) inserts Program between
+  // Workout and Exercises.
+  expect(tabNames()).toEqual(['Workout', 'Program', 'Exercises', 'History', 'Settings'])
 })
 
 test('O7 the app on load, with no session in progress, is on the Workout tab', async () => {
@@ -1686,5 +1687,45 @@ test('S15 turning the My gym only chip off lists machine exercises again', async
   await user.click(screen.getByRole('button', { name: 'My gym only' }))
 
   expect(await screen.findByText(MACHINE_EXERCISE_NAME, {}, SETTLE)).toBeVisible()
+})
+
+// --- E5-T18: planning moves to a Program tab ([M11], [M12], [M13]) -------------------------
+//
+// M11 (the tab bar itself, in order) is proven at the TabBar/AppShell level in
+// src/ui/AppShell.test.tsx; the O7 test above proves it end to end through App. M13's own
+// content (the workout cards, their rest lines and their per-workout body maps, and the
+// program switcher) is proven directly on the real ProgramPage in src/ui/ProgramPage.test.tsx
+// (moved from src/ui/ProgramPicker.test.tsx); what is proven here is the wiring -- the Program
+// tab actually reaches it -- and M12's own claim, that the Workout tab now shows only the
+// active program's start buttons.
+
+test('M12 the Workout tab shows none of its workouts’ exercise plan details, only the start buttons', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeVisible()
+  // Hand-checked against src/data/programs/assaf-ab-2026.json: Workout A's first exercise line,
+  // as ProgramPicker (E1-T2) used to render it directly on this tab.
+  expect(screen.queryByText('Back squat 8-10 x 4')).toBeNull()
+})
+
+test('M12 the Workout tab offers no way to see or start another program’s workouts', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(screen.queryByRole('button', { name: /Other programs/ })).toBeNull()
+  expect(screen.queryByText('Full body starter')).toBeNull()
+})
+
+test('M13 tapping the Program tab shows the active program’s name and makes Program the current tab', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Program')
+
+  expect(await screen.findByRole('heading', { name: 'Assaf A/B 2026' }, SETTLE)).toBeVisible()
+  expect(currentTabNames()).toEqual(['Program'])
 })
 

@@ -4,8 +4,13 @@ import { ActionBarHostContext } from './actionBarSlot'
 import { TabBar } from './TabBar'
 import './AppShell.css'
 
-/** The four top-level destinations the tab bar moves between. */
-export type Tab = 'workout' | 'exercises' | 'history' | 'settings'
+/**
+ * The five top-level destinations the tab bar moves between.
+ *
+ * E5-T18 (M11) adds 'program': the Program tab holds the workouts' details, their body maps
+ * and program switching, which the Workout tab (M12) no longer carries.
+ */
+export type Tab = 'workout' | 'program' | 'exercises' | 'history' | 'settings'
 
 export type AppShellProps = {
   title: string
