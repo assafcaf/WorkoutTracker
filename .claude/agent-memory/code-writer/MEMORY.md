@@ -1,0 +1,1 @@
+- [dataviz skill missing](dataviz-skill-missing.md) — E4 tickets cite a "dataviz" skill that doesn't exist; use BodyMap.tsx/contrast.test.ts instead.
