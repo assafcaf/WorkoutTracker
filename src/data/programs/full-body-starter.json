@@ -2,6 +2,7 @@
   "id": "full-body-starter",
   "name": "Full body starter",
   "units": "kg",
+  "sessionsPerWeek": 3,
   "workouts": [
     {
       "id": "full-body",

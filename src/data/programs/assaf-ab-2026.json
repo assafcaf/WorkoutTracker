@@ -2,6 +2,7 @@
   "id": "assaf-ab-2026",
   "name": "Assaf A/B 2026",
   "units": "kg",
+  "sessionsPerWeek": 3,
   "workouts": [
     {
       "id": "workout-a",

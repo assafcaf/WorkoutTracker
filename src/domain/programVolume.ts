@@ -26,22 +26,38 @@ export const TRACKED_MUSCLES: readonly Muscle[] = [
  * the same 1-primary/0.5-secondary split `muscleSets` (`src/domain/muscles.ts`) applies per
  * set. A plan whose `exerciseId` is not in `catalog`, or whose resolved exercise's `libraryId`
  * is not in `library`, is skipped.
- *
- * STUB (E5-T13 test-designer): not implemented.
  */
 export function prescribedWeekly(
-  _program: Program,
-  _catalog: Map<string, Exercise>,
-  _library: Map<string, LibraryExercise>,
+  program: Program,
+  catalog: Map<string, Exercise>,
+  library: Map<string, LibraryExercise>,
 ): Map<Muscle, number> {
-  return new Map()
+  const weight = program.sessionsPerWeek / program.workouts.length
+  const counts = new Map<Muscle, number>()
+
+  for (const workout of program.workouts) {
+    for (const plan of workout.exercises) {
+      const exercise = catalog.get(plan.exerciseId)
+      if (!exercise) continue
+      const libraryExercise = library.get(exercise.libraryId)
+      if (!libraryExercise) continue
+
+      const weightedSets = plan.sets * weight
+      for (const muscle of libraryExercise.primaryMuscles) {
+        counts.set(muscle, (counts.get(muscle) ?? 0) + weightedSets)
+      }
+      for (const muscle of libraryExercise.secondaryMuscles) {
+        counts.set(muscle, (counts.get(muscle) ?? 0) + weightedSets * 0.5)
+      }
+    }
+  }
+
+  return counts
 }
 
 /**
  * The `TRACKED_MUSCLES` absent from `prescribed`, or present with zero prescribed sets.
- *
- * STUB (E5-T13 test-designer): not implemented.
  */
-export function programGaps(_prescribed: Map<Muscle, number>): Muscle[] {
-  return []
+export function programGaps(prescribed: Map<Muscle, number>): Muscle[] {
+  return TRACKED_MUSCLES.filter((muscle) => (prescribed.get(muscle) ?? 0) === 0)
 }

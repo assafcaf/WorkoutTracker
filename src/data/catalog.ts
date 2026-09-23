@@ -24,6 +24,7 @@ export function loadCatalog(): Map<string, Exercise> {
 export function loadPrograms(_catalog?: Map<string, Exercise>): Program[] {
   const catalog = _catalog ?? loadCatalog()
   for (const program of bundledPrograms) assertPlansAreInCatalog(program, catalog)
+  assertProgramsHaveSessionsPerWeek(bundledPrograms)
   return bundledPrograms
 }
 
@@ -48,13 +49,13 @@ export function assertPlansAreInCatalog(
 /**
  * Throws on the first program in `programs` with no `sessionsPerWeek` (a program's own required
  * frequency, E5-T13; decision 0002). Naming follows `assertPlansAreInCatalog`.
- *
- * STUB (E5-T13 test-designer): not implemented, and not yet wired into `loadPrograms`'s
- * validation loop -- the code-writer adds `sessionsPerWeek` to the bundled program JSON and
- * calls this alongside `assertPlansAreInCatalog`.
  */
-export function assertProgramsHaveSessionsPerWeek(_programs: Program[]): void {
-  // STUB (E5-T13 test-designer): not implemented.
+export function assertProgramsHaveSessionsPerWeek(programs: Program[]): void {
+  for (const program of programs) {
+    if (typeof program.sessionsPerWeek !== 'number') {
+      throw new Error(`program ${program.id}: missing sessionsPerWeek`)
+    }
+  }
 }
 
 /**
