@@ -7,7 +7,13 @@
  * token `BodyMap` (M8) paints a region with no count in.
  */
 export function band(count: number, scale: 'session' | 'week'): 0 | 1 | 2 | 3 {
-  void count
-  void scale
-  throw new Error('not implemented')
+  if (count <= 0) return 0
+  if (scale === 'session') {
+    if (count < 3) return 1
+    if (count < 6) return 2
+    return 3
+  }
+  if (count < 10) return 1
+  if (count <= 20) return 2
+  return 3
 }

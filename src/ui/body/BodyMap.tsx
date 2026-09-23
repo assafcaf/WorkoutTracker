@@ -1,3 +1,4 @@
+import { band } from '../../domain/band'
 import type { Region } from '../../domain/muscles'
 import { BACK_POLYGONS, FRONT_POLYGONS, type BodyPolygon } from './bodyPolygons'
 
@@ -13,37 +14,47 @@ export type BodyMapProps = {
   onRegionTap?(region: Region): void
 }
 
+/** The data attributes and fill token one region's shapes get for `count` at `scale`. */
+function regionShade(
+  count: number,
+  scale: BodyMapProps['scale'],
+): { 'data-band'?: number; 'data-shade'?: 'primary' | 'secondary' | 'empty'; fill: string } {
+  if (scale === 'exercise') {
+    if (count >= 1) return { 'data-shade': 'primary', fill: 'var(--map-primary)' }
+    if (count > 0) return { 'data-shade': 'secondary', fill: 'var(--map-secondary)' }
+    return { 'data-shade': 'empty', fill: 'var(--map-shade-0)' }
+  }
+  const regionBand = band(count, scale)
+  return { 'data-band': regionBand, fill: `var(--map-shade-${regionBand})` }
+}
+
 /**
  * The body-map component (E5-T17): a front and a back view drawn from `bodyPolygons.ts`'s
  * silhouette data, each counted region an SVG shape carrying `data-region="<Region>"` plus
  * either `data-band="<0-3>"` ('session'/'week' scale, M5/M8) or `data-shade="primary"|
- * "secondary"` ('exercise' scale, M10). Filler shapes (`region: null` in bodyPolygons.ts, e.g.
- * head/knees) carry neither and are not interactive.
- *
- * Stub: every counted region currently renders `data-band="0"` regardless of `counts`/`scale`,
- * and no `data-shade` is ever set -- E5-T17's code-writer wires in `band()` (M5) for
- * 'session'/'week' and the primary/secondary threshold (M10) for 'exercise'.
+ * "secondary"|"empty"` ('exercise' scale, M10). Every shape of one region, on either view, gets
+ * the same shade. Filler shapes (`region: null` in bodyPolygons.ts, e.g. head/knees) carry
+ * neither, are painted the empty shade and are not interactive.
  */
 export function BodyMap({ counts, scale, onRegionTap }: BodyMapProps): JSX.Element {
-  // Not yet consulted by this stub -- see the note above.
-  void counts
-  void scale
-
   const renderView = (view: 'front' | 'back', polygons: BodyPolygon[]) => (
     <svg data-view={view} viewBox="0 0 100 220">
-      {polygons.map((polygon, index) =>
-        polygon.region === null ? (
-          <polygon key={index} points={polygon.points} />
-        ) : (
+      {polygons.map(({ region, points }, index) => {
+        if (region === null) {
+          return <polygon key={index} points={points} style={{ fill: 'var(--map-shade-0)' }} />
+        }
+        const { fill, ...attributes } = regionShade(counts.get(region) ?? 0, scale)
+        return (
           <polygon
             key={index}
-            points={polygon.points}
-            data-region={polygon.region}
-            data-band={0}
-            onClick={onRegionTap ? () => onRegionTap(polygon.region as Region) : undefined}
+            points={points}
+            data-region={region}
+            {...attributes}
+            style={{ fill }}
+            onClick={onRegionTap ? () => onRegionTap(region) : undefined}
           />
-        ),
-      )}
+        )
+      })}
     </svg>
   )
 
