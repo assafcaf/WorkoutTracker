@@ -62,7 +62,6 @@ function historyEntry(setIndex: number, weightKg: number | null, reps: number): 
 function renderSetScreen(over: Partial<SetScreenProps> = {}) {
   const user = userEvent.setup()
   const onLogged = vi.fn()
-  const onOpenInfo = vi.fn()
   const props: SetScreenProps = {
     exercise: backSquat,
     plan: squatPlan,
@@ -70,11 +69,10 @@ function renderSetScreen(over: Partial<SetScreenProps> = {}) {
     sessionId: SESSION_ID,
     lastEntries: [],
     onLogged,
-    onOpenInfo,
     ...over,
   }
   render(<SetScreen {...props} />)
-  return { user, onLogged, onOpenInfo }
+  return { user, onLogged }
 }
 
 /** The weight readout, which is also the button that opens the weight keypad. */
@@ -320,21 +318,4 @@ test('O12 the rest timer formats the remaining rest as minutes and seconds', asy
   await waitFor(() => {
     expect(readoutValue(screen.getByRole('timer'))).toBe('1:20')
   })
-})
-
-// --- L14: "Exercise info" opens the in-app detail overlay instead of leaving the app -------
-
-test('L14 SetScreen renders "Exercise info" as a button rather than a link', () => {
-  renderSetScreen()
-
-  expect(screen.getByRole('button', { name: 'Exercise info' })).toBeVisible()
-  expect(screen.queryByRole('link', { name: 'Exercise info' })).toBeNull()
-})
-
-test('L14 tapping Exercise info calls onOpenInfo with the open exercise id', async () => {
-  const { user, onOpenInfo } = renderSetScreen()
-
-  await user.click(screen.getByRole('button', { name: 'Exercise info' }))
-
-  expect(onOpenInfo).toHaveBeenCalledWith('back-squat')
 })

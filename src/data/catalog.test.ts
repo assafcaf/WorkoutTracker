@@ -1,7 +1,6 @@
 import { expect, test } from 'vitest'
 import exercisesJson from './exercises.json'
-import { assertCatalogInLibrary, loadCatalog, loadPrograms } from './catalog'
-import { loadLibrary } from './library'
+import { loadCatalog, loadPrograms } from './catalog'
 import type { Exercise, Program, Workout } from '../types'
 
 // The JSON files are hand-authored fixtures. Building the fixture catalog here — rather than
@@ -57,9 +56,9 @@ test('O1 loadCatalog keeps each exercise its own weight step and start weight', 
     startWeight: 50,
     bodyweight: false,
     invertProgress: false,
+    infoUrl: 'https://www.muscleandstrength.com/exercises/squat.html',
     // libraryId is E5-T1's addition to Exercise; back-squat maps to Barbell_Squat per the
-    // mapping table in .work/plans/exercise-library.md. infoUrl is gone as of E5-T8: the
-    // catalog no longer carries an outbound link.
+    // mapping table in .work/plans/exercise-library.md.
     libraryId: 'Barbell_Squat',
   })
   expect(catalog.get('machine-shoulder-press')?.weightStep).toBe(1.25)
@@ -83,24 +82,13 @@ test('O1 loadCatalog inverts progress only for the assisted pull-up', () => {
   expect(catalog.get('assisted-pull-ups')?.startWeight).toBe(27)
 })
 
-// --- L2: "Exercise info" opens the in-app detail screen; the catalog carries no outbound link,
-// only a libraryId every catalog exercise resolves through (E5-T8) ------------------------
-
-test('L2 every catalog exercise has a libraryId that exists in the library, no catalog exercise carries infoUrl any more, and back-squat maps to Barbell_Squat', async () => {
+test('O1 loadCatalog points every exercise at a muscleandstrength.com info url', () => {
   const catalog = loadCatalog()
-  const library = await loadLibrary()
 
-  // Every catalog exercise's libraryId resolves in the library -- assertCatalogInLibrary is
-  // E5-T1's own throw-on-mismatch check, exercised here rather than re-implemented.
-  expect(() => assertCatalogInLibrary(catalog, library)).not.toThrow()
-
-  const stillCarryingInfoUrl = [...catalog.values()].filter(
-    (exercise) => 'infoUrl' in exercise,
+  const offSite = [...catalog.values()].filter(
+    (e) => !e.infoUrl.startsWith('https://www.muscleandstrength.com/'),
   )
-  expect(stillCarryingInfoUrl.map((exercise) => exercise.id)).toEqual([])
-
-  // Hand-checked against the mapping table in .work/plans/exercise-library.md.
-  expect(catalog.get('back-squat')?.libraryId).toBe('Barbell_Squat')
+  expect(offSite.map((e) => e.id)).toEqual([])
 })
 
 test('O1 loadPrograms returns both bundled programs', () => {

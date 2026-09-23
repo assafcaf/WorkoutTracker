@@ -5,6 +5,7 @@ export type Exercise = {
   startWeight: number | null
   bodyweight: boolean
   invertProgress: boolean
+  infoUrl: string
   libraryId: string
 }
 

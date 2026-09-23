@@ -57,7 +57,17 @@ test('S5 resolveExercise builds an Exercise from a library entry, with id and li
     startWeight: 0,
     bodyweight: false,
     invertProgress: false,
+    infoUrl: '',
   })
+})
+
+test('S5 resolveExercise leaves a library-only Exercise infoUrl as the empty-string placeholder', () => {
+  const catalog = fixtureCatalog()
+  const library = fixtureLibrary(['Hammer_Curls'])
+
+  const resolved = resolveExercise('Hammer_Curls', catalog, library)
+
+  expect(resolved?.infoUrl).toBe('')
 })
 
 test('S5 resolveExercise returns undefined for an id in neither the catalog nor the library', () => {

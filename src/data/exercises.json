@@ -6,6 +6,7 @@
     "startWeight": 50,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/squat.html",
     "libraryId": "Barbell_Squat"
   },
   {
@@ -15,6 +16,7 @@
     "startWeight": 7,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/dumbbell-lunge.html",
     "libraryId": "Dumbbell_Lunges"
   },
   {
@@ -24,6 +26,7 @@
     "startWeight": 10,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/dumbbell-bench-press.html",
     "libraryId": "Dumbbell_Bench_Press"
   },
   {
@@ -33,6 +36,7 @@
     "startWeight": null,
     "bodyweight": true,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/push-up.html",
     "libraryId": "Pushups"
   },
   {
@@ -42,6 +46,7 @@
     "startWeight": 5,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/machine-shoulder-press.html",
     "libraryId": "Machine_Shoulder_Military_Press"
   },
   {
@@ -51,6 +56,7 @@
     "startWeight": 3,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/side-lateral-raise.html",
     "libraryId": "Side_Lateral_Raise"
   },
   {
@@ -60,6 +66,7 @@
     "startWeight": 17.5,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/tricep-pushdown.html",
     "libraryId": "Triceps_Pushdown"
   },
   {
@@ -69,6 +76,7 @@
     "startWeight": 55,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/deadlift.html",
     "libraryId": "Barbell_Deadlift"
   },
   {
@@ -78,6 +86,7 @@
     "startWeight": 27,
     "bodyweight": false,
     "invertProgress": true,
+    "infoUrl": "https://www.muscleandstrength.com/search?query=assisted+pull+up",
     "libraryId": "Band_Assisted_Pull-Up"
   },
   {
@@ -87,6 +96,7 @@
     "startWeight": 41,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/search?query=close+grip+lat+pulldown",
     "libraryId": "Close-Grip_Front_Lat_Pulldown"
   },
   {
@@ -96,6 +106,7 @@
     "startWeight": 50,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/search?query=machine+row",
     "libraryId": "Leverage_Iso_Row"
   },
   {
@@ -105,6 +116,7 @@
     "startWeight": 15,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/face-pull.html",
     "libraryId": "Face_Pull"
   },
   {
@@ -114,6 +126,7 @@
     "startWeight": null,
     "bodyweight": true,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/search?query=hyperextension",
     "libraryId": "Hyperextensions_Back_Extensions"
   },
   {
@@ -123,6 +136,7 @@
     "startWeight": 8,
     "bodyweight": false,
     "invertProgress": false,
+    "infoUrl": "https://www.muscleandstrength.com/exercises/seated-dumbbell-curl.html",
     "libraryId": "Seated_Dumbbell_Curl"
   }
 ]

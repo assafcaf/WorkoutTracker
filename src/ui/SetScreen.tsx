@@ -25,11 +25,6 @@ export type SetScreenProps = {
    * "Add set" control is only rendered when it is given.
    */
   onAddSet?(exerciseId: string, nextSetIndex: number): void
-  /**
-   * Told that "Exercise info" was tapped, with the open exercise's id. The caller opens the
-   * in-app detail overlay for it (E5-T8) -- the screen itself owns no navigation.
-   */
-  onOpenInfo?(exerciseId: string): void
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -77,7 +72,7 @@ function openSetFor(
  * the rule is E1-T2's, the message is this screen's.
  */
 export function SetScreen(props: SetScreenProps): JSX.Element {
-  const { exercise, plan, sessionId, onLogged, onAddSet, onOpenInfo } = props
+  const { exercise, plan, sessionId, onLogged, onAddSet } = props
 
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
@@ -157,7 +152,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   return (
     <div className="set-screen">
       <h2>{exercise.name}</h2>
-      <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
+      <ExerciseInfoLink exercise={exercise} />
       <p className="set-counter">{`Set ${open.setIndex} of ${plan.sets}`}</p>
 
       <WeightDial
