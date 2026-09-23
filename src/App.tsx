@@ -4,6 +4,7 @@ import type { Exercise, LibraryExercise, Muscle, Program, Session, SetEntry, Wor
 import { loadCatalog, loadPrograms } from './data/catalog'
 import { MUSCLES, loadLibrary } from './data/library'
 import { photoUrls } from './data/photos'
+import { resolveExercise } from './data/resolve'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
 import {
   BackupFormatError,
@@ -237,6 +238,15 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // bar and the Settings screen's own `BackupBadge` never disagree about whether one is due.
   const settingsBadge = isBackupDue(lastExportedAt, Date.now())
 
+  // Keyed the same way `loadLibrary()` hands it out, so `resolveExercise` (E5-T6) can answer a
+  // swapped-in library id (E5-T12) the same way it answers every other caller.
+  const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
+
+  /** `ExerciseList.resolve`: a catalog id or a library id (a swap, E5-T12) to its `Exercise`. */
+  function resolveListExercise(id: string): Exercise | undefined {
+    return resolveExercise(id, catalog, libraryMap)
+  }
+
   function handleActiveProgramChange(id: string): void {
     setActiveProgramId(id)
       .then(() => {
@@ -445,6 +455,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             onLogged={(logged) => setSession(logged)}
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
+            // STUB (E5-T12 test-designer): the ranked alternatives overlay is not wired up yet.
+            onOpenAlternatives={() => {}}
           />
         </AppShell>
       )
@@ -495,7 +507,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         <ExerciseList
           program={located.program}
           workout={located.workout}
-          catalog={catalog}
+          resolve={resolveListExercise}
           session={session}
           onOpenSet={handleOpenSet}
           onFinish={handleFinish}

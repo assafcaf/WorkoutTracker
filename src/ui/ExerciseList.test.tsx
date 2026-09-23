@@ -13,6 +13,10 @@ import type { Exercise, Program, Session, SetEntry } from '../types'
 const assaf = assafJson as unknown as Program
 const workoutA = assaf.workouts[0]
 const catalog = new Map((exercisesJson as Exercise[]).map((exercise) => [exercise.id, exercise] as const))
+// E5-T12's interface correction: `ExerciseList` takes a `resolve` function rather than the
+// catalog map directly, since a swapped-in library id is not in the catalog. None of the cases
+// below involve a swap, so wrapping the same catalog map is enough here.
+const resolve = (id: string): Exercise | undefined => catalog.get(id)
 
 /** A fixed wall-clock base, so every timestamp below is a literal derived by hand. */
 const BASE = 1_700_000_000_000
@@ -40,7 +44,7 @@ function renderList(entries: SetEntry[]) {
     <ExerciseList
       program={assaf}
       workout={workoutA}
-      catalog={catalog}
+      resolve={resolve}
       session={sessionWith(entries)}
       onOpenSet={onOpenSet}
       onFinish={onFinish}

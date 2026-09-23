@@ -32,6 +32,14 @@ export type SetScreenProps = {
    * button itself always renders, it just has nothing to tell if untapped.
    */
   onOpenInfo?(exerciseId: string): void
+  /**
+   * Told that "Alternatives" was tapped for the exercise on screen, so the caller can open the
+   * ranked alternatives list for it (E5-T12). Optional for the same reason `onOpenInfo` is --
+   * `src/ui/useWakeLock.test.ts`'s `renderSetScreen`, predating this prop, need not pass it.
+   *
+   * STUB (E5-T12 test-designer): accepted but not yet wired to the "Alternatives" button.
+   */
+  onOpenAlternatives?(exerciseId: string): void
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -160,6 +168,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     <div className="set-screen">
       <h2>{exercise.name}</h2>
       <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
+      {/* STUB (E5-T12 test-designer): renders the button but does not yet call
+          onOpenAlternatives. */}
+      <button type="button" className="open-alternatives">
+        Alternatives
+      </button>
       <p className="set-counter">{`Set ${open.setIndex} of ${plan.sets}`}</p>
 
       <WeightDial

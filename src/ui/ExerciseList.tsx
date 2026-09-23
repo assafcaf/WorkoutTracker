@@ -4,7 +4,12 @@ import type { Exercise, ExercisePlan, Program, Session, SetEntry, Workout } from
 export type ExerciseListProps = {
   program: Program
   workout: Workout
-  catalog: Map<string, Exercise>
+  /**
+   * Resolves a catalog or library id to the `Exercise` it names (E5-T12). Replaces the earlier
+   * `catalog: Map<string, Exercise>` prop: a swapped-in library id (`session.swaps`) is not in
+   * the catalog, so a plain map lookup can no longer answer every row.
+   */
+  resolve(id: string): Exercise | undefined
   session: Session
   onOpenSet(exerciseId: string, setIndex: number): void
   /**
@@ -36,12 +41,12 @@ function nextSetIndex(logged: number, plan: ExercisePlan): number {
  * exercise's name, so the list is also the way back into a set.
  */
 export function ExerciseList(props: ExerciseListProps): JSX.Element {
-  const { workout, catalog, session, onOpenSet } = props
+  const { workout, resolve, session, onOpenSet } = props
 
   return (
     <ul className="exercise-list">
       {workout.exercises.map((plan) => {
-        const exercise = catalog.get(plan.exerciseId)
+        const exercise = resolve(plan.exerciseId)
         const logged = loggedSets(session.entries, plan.exerciseId)
         return (
           <li key={plan.exerciseId}>
