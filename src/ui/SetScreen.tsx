@@ -27,11 +27,11 @@ export type SetScreenProps = {
   onAddSet?(exerciseId: string, nextSetIndex: number): void
   /**
    * Told that "Exercise info" was tapped for the exercise on screen, so the caller can open the
-   * in-app detail overlay for it (E5-T8).
-   *
-   * STUB (E5-T8 test-designer): accepted but not yet wired to `ExerciseInfoLink`.
+   * in-app detail overlay for it (E5-T8). Optional so a caller with nothing to open it onto --
+   * src/ui/useWakeLock.test.ts's `renderSetScreen`, predating this prop -- need not pass it; the
+   * button itself always renders, it just has nothing to tell if untapped.
    */
-  onOpenInfo(exerciseId: string): void
+  onOpenInfo?(exerciseId: string): void
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -79,7 +79,7 @@ function openSetFor(
  * the rule is E1-T2's, the message is this screen's.
  */
 export function SetScreen(props: SetScreenProps): JSX.Element {
-  const { exercise, plan, sessionId, onLogged, onAddSet, onOpenInfo: _onOpenInfo } = props
+  const { exercise, plan, sessionId, onLogged, onAddSet, onOpenInfo } = props
 
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
@@ -159,7 +159,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   return (
     <div className="set-screen">
       <h2>{exercise.name}</h2>
-      <ExerciseInfoLink exercise={exercise} onOpen={() => {}} />
+      <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
       <p className="set-counter">{`Set ${open.setIndex} of ${plan.sets}`}</p>
 
       <WeightDial

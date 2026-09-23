@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { Exercise, LibraryExercise, Muscle, Program, Session, SetEntry, Workout } from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
 import { MUSCLES, loadLibrary } from './data/library'
+import { photoUrls } from './data/photos'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
 import {
   BackupFormatError,
@@ -30,6 +31,7 @@ import {
 import { ActionBarSlot, AppShell } from './ui/AppShell'
 import type { Tab } from './ui/AppShell'
 import { BackupBadge, isBackupDue } from './ui/BackupBadge'
+import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
 import { ImportConfirm } from './ui/ImportConfirm'
@@ -63,6 +65,14 @@ function tabFor(view: View): Tab | undefined {
 
 /** The set the set screen is on, with the history it was opened against. */
 type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[] }
+
+/**
+ * The in-app exercise detail overlay (E5-T8): rendered over whatever view is current without
+ * unmounting it, so a set screen's dial state survives a trip through "Exercise info". `heading`
+ * overrides the library entry's own name, since a catalog exercise's own name (e.g. "Deadlift")
+ * can differ from the library entry it maps to ("Barbell Deadlift").
+ */
+type Overlay = { kind: 'detail'; libraryId: string; heading?: string }
 
 type LoadState =
   | { status: 'loading' }
@@ -158,10 +168,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [library, setLibrary] = useState<LibraryExercise[]>([])
-  const [libraryLoaded, setLibraryLoaded] = useState(false)
   const [librarySearch, setLibrarySearch] = useState('')
   const [libraryMuscle, setLibraryMuscle] = useState('')
   const [libraryEquipment, setLibraryEquipment] = useState('')
+  // The in-app detail overlay (E5-T8). Looked up against `library` at render time, so it is
+  // never stale once the library has loaded, and stays `null` until something opens it.
+  const [overlay, setOverlay] = useState<Overlay | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -179,10 +191,15 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           !programs.some((program) => program.id === storedProgramId)
         const inProgress = await activeSessionOrNull(storageAvailable)
         const lastExportedAt = storageAvailable ? await getLastExportedAt() : null
+        // Loaded here rather than lazily on the Exercises tab (E5-T3's original scheme), so the
+        // in-app detail overlay (E5-T8) can open from a set screen too, without waiting on a
+        // fetch mid-session.
+        const loadedLibrary = await loadLibrary()
 
         if (cancelled) return
         setSession(inProgress)
         setView(inProgress ? 'list' : 'picker')
+        setLibrary([...loadedLibrary.values()])
         setState({
           status: 'ready',
           catalog,
@@ -323,21 +340,25 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     })
   }
 
-  /** Loads the library, once, then shows the Exercises tab. */
+  /** Shows the Exercises tab; the library itself is loaded once, up front, on mount. */
   function handleShowExercises(): void {
-    if (libraryLoaded) {
-      setView('exercises')
-      return
-    }
-    loadLibrary()
-      .then((loaded) => {
-        setLibrary([...loaded.values()])
-        setLibraryLoaded(true)
-        setView('exercises')
-      })
-      .catch(() => {
-        // The previous view stays up; without the library there is nothing to show.
-      })
+    setView('exercises')
+  }
+
+  /** Opens the in-app detail overlay for `libraryId`, optionally headed by a different name. */
+  function handleOpenInfo(libraryId: string, heading?: string): void {
+    setOverlay({ kind: 'detail', libraryId, heading })
+  }
+
+  /**
+   * `SetScreen.onOpenInfo`: opens the overlay for the catalog exercise on screen, headed by its
+   * own catalog name (e.g. "Deadlift") rather than the library entry's own name (e.g. "Barbell
+   * Deadlift"), which can differ.
+   */
+  function handleOpenInfoForExercise(exerciseId: string): void {
+    const exercise = catalog.get(exerciseId)
+    if (!exercise) return
+    handleOpenInfo(exercise.libraryId, exercise.name)
   }
 
   /**
@@ -356,8 +377,13 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     setView(tab === 'workout' ? 'picker' : 'settings')
   }
 
-  if (view === 'settings') {
-    return (
+  // Built up by whichever view branch below matches, then rendered once at the end alongside
+  // the detail overlay -- rather than each branch returning straight away -- so the overlay can
+  // sit over the current view's own JSX without unmounting it (E5-T8).
+  let content: JSX.Element | null = null
+
+  if (content === null && view === 'settings') {
+    content = (
       <AppShell
         title="Settings"
         tab={tabFor(view)}
@@ -391,13 +417,13 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // what is left.
   const located = session ? locateSession(programs, session) : null
 
-  if (view === 'set' && session && located && openSet) {
+  if (content === null && view === 'set' && session && located && openSet) {
     const plan = located.workout.exercises.find(
       (candidate) => candidate.exerciseId === openSet.exerciseId,
     )
     const exercise = catalog.get(openSet.exerciseId)
     if (plan && exercise) {
-      return (
+      content = (
         // No tab prop: a set being logged is inside the session, and the way out of it is the
         // back control to the exercise list. The screen fills the action bar itself, because
         // "Log set" is gated by the set on its dials, which is the screen's own state.
@@ -418,8 +444,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
             onLogged={(logged) => setSession(logged)}
             onAddSet={handleAddSet}
-            // STUB (E5-T8 test-designer): the in-app detail overlay is not wired up yet.
-            onOpenInfo={() => {}}
+            onOpenInfo={handleOpenInfoForExercise}
           />
         </AppShell>
       )
@@ -452,8 +477,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       })
   }
 
-  if (view === 'list' && session && located) {
-    return (
+  if (content === null && view === 'list' && session && located) {
+    content = (
       // The header names the workout that is on, the action bar holds the one action that ends
       // it, and there is no tab bar: backing out of a session is the back control's job, and it
       // leaves the session in progress to come back to.
@@ -479,8 +504,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     )
   }
 
-  if (view === 'history') {
-    return (
+  if (content === null && view === 'history') {
+    content = (
       <AppShell
         title="History"
         tab={tabFor(view)}
@@ -493,7 +518,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     )
   }
 
-  if (view === 'exercises') {
+  if (content === null && view === 'exercises') {
     // Every distinct raw `equipment` string in the library, sorted, with a `'none'` sentinel
     // standing in for the exercises free-exercise-db gives no equipment at all.
     const libraryEquipmentOptions = Array.from(
@@ -521,7 +546,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       return matchesSearch && matchesMuscle && matchesEquipment
     })
 
-    return (
+    content = (
       <AppShell
         title="Exercises"
         tab={tabFor(view)}
@@ -562,40 +587,65 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         {filteredLibrary.length === 0 ? (
           <p>No exercises match</p>
         ) : (
-          <LibraryList library={filteredLibrary} onOpen={() => {}} />
+          <LibraryList library={filteredLibrary} onOpen={handleOpenInfo} />
         )}
       </AppShell>
     )
   }
 
+  if (content === null) {
+    content = (
+      <AppShell
+        title="Workout"
+        tab={tabFor('picker')}
+        onTabChange={handleTabChange}
+        trailing={trailing}
+        settingsBadge={settingsBadge}
+      >
+        {!storageAvailable ? <StorageUnavailableBanner /> : null}
+        {staleActiveProgramNotice ? (
+          <p>The saved active program no longer exists; showing the first program instead.</p>
+        ) : null}
+        <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
+        {session && located ? (
+          <ResumeCard
+            programName={located.program.name}
+            workoutName={located.workout.name}
+            onResume={() => handleChoose(session.programId, session.workoutId)}
+          />
+        ) : null}
+        <fieldset disabled={!storageAvailable}>
+          <ProgramPicker
+            programs={programs}
+            catalog={catalog}
+            activeProgramId={activeProgramId}
+            onChoose={handleChoose}
+          />
+        </fieldset>
+      </AppShell>
+    )
+  }
+
+  // The detail overlay's entry, looked up from the already-loaded library by the id the
+  // overlay was opened with; `null` while the entry cannot be found (the library has not
+  // finished loading yet, or, in principle, a stale/bad id), in which case the overlay simply
+  // does not render rather than showing a broken screen.
+  const overlayEntry = overlay ? library.find((entry) => entry.id === overlay.libraryId) : null
+  const catalogLibraryIds = new Set(
+    Array.from(catalog.values(), (exercise) => exercise.libraryId),
+  )
+
   return (
-    <AppShell
-      title="Workout"
-      tab={tabFor('picker')}
-      onTabChange={handleTabChange}
-      trailing={trailing}
-      settingsBadge={settingsBadge}
-    >
-      {!storageAvailable ? <StorageUnavailableBanner /> : null}
-      {staleActiveProgramNotice ? (
-        <p>The saved active program no longer exists; showing the first program instead.</p>
-      ) : null}
-      <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
-      {session && located ? (
-        <ResumeCard
-          programName={located.program.name}
-          workoutName={located.workout.name}
-          onResume={() => handleChoose(session.programId, session.workoutId)}
+    <>
+      {content}
+      {overlay && overlayEntry ? (
+        <ExerciseDetail
+          entry={overlayEntry}
+          heading={overlay.heading}
+          photos={photoUrls(overlayEntry, catalogLibraryIds, import.meta.env.BASE_URL)}
+          onBack={() => setOverlay(null)}
         />
       ) : null}
-      <fieldset disabled={!storageAvailable}>
-        <ProgramPicker
-          programs={programs}
-          catalog={catalog}
-          activeProgramId={activeProgramId}
-          onChoose={handleChoose}
-        />
-      </fieldset>
-    </AppShell>
+    </>
   )
 }
