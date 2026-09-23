@@ -17,6 +17,14 @@ html {
   /* Dark-only, and said out loud so form controls and scrollbars paint dark too. */
   color-scheme: dark;
   -webkit-text-size-adjust: 100%;
+  /* index.html's `viewport-fit=cover` lets the page paint under the notch and the home
+   * indicator instead of behind letterboxing; without a background of its own here, that
+   * area would show the browser's default white rather than the app's field. */
+  height: 100%;
+  background: var(--color-bg);
+  /* Nothing in this app is meant to be wider than the viewport, so anything that overflows
+   * horizontally is a bug, not a feature -- the phone should never rubber-band sideways. */
+  overflow-x: hidden;
 }
 
 body {
@@ -29,6 +37,7 @@ body {
   line-height: 1.4;
   /* The phone's own grey flash on tap would fight the controls' own pressed states. */
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
 }
 
 h1,
