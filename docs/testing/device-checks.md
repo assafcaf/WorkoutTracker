@@ -415,3 +415,96 @@ Use this to tell *what* broke, not just that something did.
   `assafcaf.github.io` still exists in Settings > Safari > Advanced > Website Data after the
   failure: if it is gone, that confirms eviction; if it is still there but the set is missing,
   that is an app bug worth filing separately.
+
+## E4-T9: the charts read in a gym ([O14], [O15])
+
+This section proves [O14] and [O15] from ticket `E4-T9`. Its goal is that the charts and the
+progression bar are judged where they will be read — on the phone, at arm's length, between
+sets — which no jsdom test can do. It is its own sitting, against E4's head, so it has its own
+deploy step and its own result block below. If the app is not yet installed on this phone, do
+"Clearing a previous install" and [O12]'s install steps first, after the deploy step below.
+
+Stats is reached through the **History** tab, then its **Stats** switch.
+
+### Deploying and confirming the commit under test (E4-T9)
+
+1. In the GitHub repository, open **Actions > Deploy to GitHub Pages > Run workflow**, and pick
+   the branch `epic/E4-see-progress`.
+2. Wait for the run to finish with a green check, then open its details and read the exact
+   commit SHA the `actions/checkout` step resolved. Write that SHA down now — it is what goes
+   in this section's result block's "Commit / merged sha checked against" field. "The epic
+   branch" is not precise enough once more commits land on it after this run.
+3. Launch the installed app from its home-screen icon, online, and let it fully load so the
+   service worker picks up the new build; then force a cold start (as in [O13]) and launch it
+   again. If in doubt that the new build is showing — for example, History has no **Stats**
+   switch — do "Clearing a previous install" and reinstall as in [O12].
+   **Expected:** the History tab shows a **Stats** switch.
+
+### Making sure the phone has history for all three exercise kinds
+
+[O14] needs logged history for a loaded exercise (`back-squat`), a bodyweight exercise
+(`push-ups`) and an inverted, assisted exercise (`assisted-pull-ups`).
+
+1. Open History, tap **Stats**, and pick each of the three exercises in turn.
+   **Expected:** each shows a series chart with more than one point and at least one record.
+2. If any of the three lacks history, import a backup that has it: **Settings → Import**, pick
+   the backup file, and confirm. Write down which backup file was used (its file name and the
+   date it was exported) for the result block.
+   **Expected:** after the import, step 1 holds for all three exercises.
+
+### [O14]: Stats is legible at arm's length for a loaded, a bodyweight and an inverted exercise
+
+Hold the phone at arm's length, in the gym's own light (or the dimmest normal room light if you
+are not in a gym). For each of the three exercises below, open History → **Stats** and pick it:
+
+1. **`back-squat` (loaded).**
+   **Expected:** the progression bar, the series chart and the records are all readable at arm's
+   length without bringing the phone closer: the bar's fill and label, the chart's line/points
+   and axis labels, and each record's value and date. Nothing is cut off or clipped at the
+   phone's width, and nothing scrolls sideways. Take a screenshot.
+2. **`push-ups` (bodyweight).**
+   **Expected:** same as step 1 — progression bar, series chart and records all legible at arm's
+   length, nothing clipped at the phone's width. Take a screenshot.
+3. **`assisted-pull-ups` (inverted).**
+   **Expected:** same as step 1, and in addition the chart reads as **rising** over time while
+   the assistance weight **falls** — progress looks like going up, not down. Take a screenshot.
+
+**Expected overall:** all three hold; attach the three screenshots to the run log, each labelled
+with its exercise id.
+
+### [O15]: the exercise list's progression bars read at a glance between sets
+
+1. From the Workout tab, start a workout (or resume the one in progress), and log at least one
+   set so a session is in progress.
+   **Expected:** the session's exercise list is on screen, one row per exercise, each with its
+   progression bar.
+2. Glance at the list the way you would between sets — a second or two, phone at a normal
+   holding distance, without zooming.
+   **Expected:** each row's progression bar is readable at that glance: how full it is can be
+   told apart from row to row.
+3. Find a row whose progression bar is full. If none is full in this workout, note that in the
+   result block and check whichever row is closest to full.
+   **Expected:** that row's suggested next weight is legible right on the row, without opening
+   the exercise.
+4. Take a screenshot of the exercise list and attach it to the run log.
+
+### Result block (E4-T9) — paste this back into the run log, filled in
+
+```
+Device check: E4-T9 (O14, O15)
+Date:
+Commit / merged sha checked against:
+iOS version:
+Device model:
+Backup imported for history (file name + export date, or "none"):
+
+[O14] (E4-T9) Stats legible at arm's length for back-squat, push-ups, assisted-pull-ups; inverted chart rises; nothing clips: PASS / FAIL
+  Screenshots attached (3): Y / N
+  What actually happened:
+
+[O15] (E4-T9) exercise list progression bars readable at a glance; full bar's suggested next weight legible on the row: PASS / FAIL
+  Screenshot attached (1): Y / N
+  What actually happened:
+
+Notes:
+```
