@@ -1,0 +1,11 @@
+/* The backup reminder: a quiet warning line, not a modal or a notification.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css.
+ */
+
+.backup-badge {
+  display: block;
+  margin-bottom: var(--space-4);
+  color: var(--color-warn);
+  font-size: var(--text-sm);
+}
