@@ -76,3 +76,30 @@ test('G3 .app-shell reserves top clearance so its header and content do not rend
   ).toBeDefined()
   expect(paddingTop).toMatch(/var\(\s*--tap-min\s*\)/)
 })
+
+// [G3b, fix-layout follow-up] The bar's own rendered height is not just --tap-min: TabBar.css's
+// `.tab-bar` also carries `padding-top: var(--safe-top)` (G3's own top-safe-area clearance), so
+// on a notched iPhone the fixed bar is taller than --tap-min alone by however tall the notch
+// inset is. `.app-shell`'s padding-top must account for *both* -- --tap-min alone (what the
+// test above still, correctly, requires) is not sufficient on its own: it passes even when
+// --safe-top is left out of the calc, which is exactly the bug a code review caught in the
+// merged fix (src/ui/AppShell.css's `.app-shell { padding-top: var(--tap-min); }` never
+// references --safe-top at all). This test is strictly stronger than the one above and must
+// keep passing together with it.
+test('G3b .app-shell top clearance accounts for --safe-top as well as --tap-min, matching the bar’s own rendered height', () => {
+  const declared = appShellDeclarations()
+  const paddingTop = declared.get('padding-top')
+
+  expect(
+    paddingTop,
+    '.app-shell must declare its own padding-top to account for the fixed tab bar',
+  ).toBeDefined()
+  expect(
+    paddingTop,
+    '.app-shell padding-top must reference --tap-min (the bar’s own tap-target floor)',
+  ).toMatch(/var\(\s*--tap-min\s*\)/)
+  expect(
+    paddingTop,
+    '.app-shell padding-top must also reference --safe-top -- the bar itself pads its top by --safe-top (TabBar.css), so clearance that only accounts for --tap-min is too short on a notched device',
+  ).toMatch(/var\(\s*--safe-top\s*\)/)
+})
