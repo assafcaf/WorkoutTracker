@@ -13,10 +13,10 @@ export type ExerciseInfoLinkProps = {
  * A link to the exercise's curated demonstration, one tap from the set screen for the
  * exercise you have forgotten how to do.
  */
-export function ExerciseInfoLink({ exercise }: ExerciseInfoLinkProps): JSX.Element {
+export function ExerciseInfoLink({ onOpen }: ExerciseInfoLinkProps): JSX.Element {
   return (
-    <a href={exercise.infoUrl} target="_blank" rel="noopener noreferrer">
+    <button type="button" onClick={onOpen}>
       Exercise info
-    </a>
+    </button>
   )
 }
