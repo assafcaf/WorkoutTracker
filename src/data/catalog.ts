@@ -1,4 +1,4 @@
-import type { Exercise, Program } from '../types'
+import type { Exercise, LibraryExercise, Program } from '../types'
 import exercisesJson from './exercises.json'
 import assafAb2026 from './programs/assaf-ab-2026.json'
 import fullBodyStarter from './programs/full-body-starter.json'
@@ -43,4 +43,16 @@ export function assertPlansAreInCatalog(
       }
     }
   }
+}
+
+/**
+ * Throws on the first catalog exercise whose `libraryId` the library does not define.
+ *
+ * E5-T1 stub -- not implemented yet.
+ */
+export function assertCatalogInLibrary(
+  _catalog: Map<string, Exercise>,
+  _library: Map<string, LibraryExercise>,
+): void {
+  throw new Error('assertCatalogInLibrary is not implemented yet (E5-T1)')
 }

@@ -57,6 +57,9 @@ test('O1 loadCatalog keeps each exercise its own weight step and start weight', 
     bodyweight: false,
     invertProgress: false,
     infoUrl: 'https://www.muscleandstrength.com/exercises/squat.html',
+    // libraryId is E5-T1's addition to Exercise; back-squat maps to Barbell_Squat per the
+    // mapping table in .work/plans/exercise-library.md.
+    libraryId: 'Barbell_Squat',
   })
   expect(catalog.get('machine-shoulder-press')?.weightStep).toBe(1.25)
   expect(catalog.get('machine-shoulder-press')?.startWeight).toBe(5)
