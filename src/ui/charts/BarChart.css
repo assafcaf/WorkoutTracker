@@ -1,0 +1,9 @@
+/* BarChart (E4-T8): every colour comes through a `var(--…)` from src/styles/tokens.css. No
+ * literal colour and no token added here.
+ */
+
+.bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
