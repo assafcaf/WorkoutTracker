@@ -1,6 +1,6 @@
 ---
 name: setup-workflow
-description: Wire this repo's delivery workflow to a machine and a tracker - detect the environment, verify the tracker connection, write the config and the tracker agent, and check the harness is sound. Run once per machine, and again when the tracker or the toolchain changes.
+description: Wire this repo's delivery workflow to a machine and a tracker - detect the environment and the test stack, verify the tracker connection, write the config and the tracker agent, and check the harness is sound. Run once per machine, and again when the tracker or the toolchain changes.
 argument-hint: "[jira | github | local]"
 disable-model-invocation: true
 ---
@@ -40,7 +40,37 @@ Observed <yyyy-mm-dd> by /setup-workflow.
 
 Anything true on every machine belongs in `CLAUDE.md` or a skill instead, not here.
 
-## 2. The tracker
+## 2. The stack
+
+`config.md`'s **Commands** section ships as the installer's pytest defaults
+(`config.example.md`); nothing detects the real stack for you. Do that here, every time this
+runs — a repo can change stacks between visits.
+
+- **Detect the runner.** Look for a manifest: `pyproject.toml` / `setup.cfg` → pytest,
+  `package.json` → whatever its `test` script or devDependencies name (vitest, jest), `go.mod`
+  → `go test`, `Cargo.toml` → `cargo test`. Ask the operator if none matches, or more than one
+  does.
+- **Fill in the table.** Setup, run-named-tests, full-suite and lint commands that actually
+  work here — confirm each by running it, same as step 1's suite check.
+- **Settle the exit-code contract.** The red gate needs to tell "ran and failed" apart from
+  "never ran" (`definition-of-done.md`, item 2). Run the detected runner against a file with a
+  failing assertion and against a file with an import error, and compare the exit codes.
+  - **Different codes** (pytest: `1` vs `2`): record them in the Commands table's Red means row
+    as they are. No wrapper needed.
+  - **Same code** (vitest, jest, `go test` and `cargo test` all exit `1` for both): a task
+    whose test file fails to import would otherwise certify as red with no assertion executed.
+    Write a wrapper that restores the split, using `.claude/workflow/bin/vitest-gate.sh` as a
+    worked example — adapt its output-matching to what the detected runner actually prints
+    (its own "no test files" and "failed to load" wording), not vitest's. Put the wrapper in
+    `.claude/workflow/bin/` and point the Commands table's run/full-suite rows at it instead of
+    the runner directly. Verify it against all three cases: a passing run, a real failure, and
+    an import error.
+- **Weakened-test patterns.** `weakened-tests.sh` also defaults to pytest syntax (`def test_*`,
+  `pytest.mark.skip`). Work out `WEAK_ADDED` and `TEST_DEF` for the detected syntax (see the
+  script's header), verify each catches a real case, and record them in the Commands table's
+  Weakened tests row so a run knows to export them.
+
+## 3. The tracker
 
 **`jira`:**
 1. **Connection.** Call `atlassianUserInfo`. If the tools are missing or unauthorized, stop
@@ -66,7 +96,7 @@ Then write `.claude/agents/tracker.md` from
 tools it needs (`mcp__atlassian` for Jira, `Bash` for GitHub, `Read, Edit, Write` for local).
 Everything else the agent reads from the config at run time.
 
-## 3. The status line
+## 4. The status line
 
 `.claude/statusline.py` is committed; where it lives on this machine is not. Install it into
 `.claude/settings.local.json` (gitignored), merging with whatever that file already holds
@@ -86,12 +116,14 @@ rather than overwriting it:
 - Write the checkout's **absolute path with forward slashes**, even on Windows: Git Bash eats
   backslashes in this field and the status line then fails silently.
 - If the operator already has a `statusLine` in their user settings, say what this one adds
-  (the run progress of `/batch-implement`) and ask before shadowing it for this project.
+  (progress through the epic this session is on: live from the run log during
+  `/batch-implement`, and from the ledger between runs) and ask before shadowing it for this project. Porting the segment
+  into their own status line is often the better trade — it reads two files and calls no API.
 - Test it before reporting success:
   `echo '{"model":{"display_name":"test"}}' | python3 .claude/statusline.py`
   should print one line. It takes effect in the next session.
 
-## 4. The harness
+## 5. The harness
 
 Check, fix what you safely can, and report the rest:
 
@@ -109,13 +141,33 @@ Check, fix what you safely can, and report the rest:
   `push origin`, and `gh pr create`; with pushes to the default branch denied. Report anything
   missing rather than adding it — widening permissions is the operator's to approve.
 
-## 5. CLAUDE.md
+## 6. Project knowledge
+
+Ask once:
+
+> Knowledge-layer mode? (recommended: **on**)
+
+Recommended on because every skill and agent here already works from `CLAUDE.md` alone, and
+`CLAUDE.md` is loaded into every session whether a run needs it or not. The knowledge layer
+gives a run two files scoped to what it actually reads: a glossary, and the notes an agent
+cannot infer from the code.
+
+| Answer | Do |
+|---|---|
+| **on** | Call the Skill tool with "knowledge-layer" and let it finish, then come back here. It writes `CONTEXT.md`, `.claude/workflow/project.md`, and the `Mode: on` table in the config |
+| **off** | Leave the config's `## Project knowledge` section as it is. Nothing changes: off is the behavior everything had before the layer existed |
+
+Off is not a worse answer for a repo whose `CLAUDE.md` is already good. It stays available:
+`/knowledge-layer` can be run at any point later, and asks nothing of `/setup-workflow`.
+
+## 7. CLAUDE.md
 
 Offer the sections in `.claude/workflow/claude-md-snippet.md` — how work flows here, and the
 writing rules — for the repo's `CLAUDE.md`. Show them, add only what the operator accepts, and
 keep each addition short: every line of `CLAUDE.md` loads into every session.
 
-## 6. Report
+## 8. Report
 
 One checklist. For anything unresolved, name the command the operator should run. Finish with
-the flow they can now use: `/spec` → `/tickets` → `/batch-implement`.
+the flow they can now use: `/spec` → `/tickets` → `/batch-implement`. Where the knowledge
+layer is on, say that `/knowledge-layer refresh` re-scans it when the repo moves.

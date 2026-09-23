@@ -56,6 +56,30 @@ So progress is visible without reading the terminal:
 
 `spec_commit: ask`. After a spec is approved, ask once whether to promote it. Default: no.
 
+The status line reads `.work/tickets/` directly on the `local` adapter, so nothing here writes
+`.work/progress.json`. That file is for the `jira` and `github` adapters, where counting the
+epic means an API call the status line can't make.
+
+## Project knowledge
+
+Mode: on
+
+| Reader | Reads |
+|---|---|
+| `/spec` | `CONTEXT.md`, so outcomes are written in this project's terms |
+| `/tickets` | `project.md` Module map, for each task's Files and Interfaces |
+| `task-planner` | `project.md` Module map and Standing overlaps, before computing waves |
+| `test-designer` | `CONTEXT.md`, so test names use the project's words |
+| `code-writer` | `CONTEXT.md`, plus `project.md` Invariants and Pitfalls |
+
+Nothing else reads them. A reader not in this table is a reader paying for context it was not
+given a use for.
+
+Enabled 2026-09-23 from a scan plus the committed decision records, without an operator grill.
+Every line in both files is either transcribed from `docs/decisions/` with the record cited, or
+carries a path a scanner checked. `project.md`'s Unsettled section holds what the scan found
+and nobody has ruled on yet. Run `/knowledge-layer refresh` to re-scan.
+
 ## Commands
 
 The stack is React + TypeScript + Vite + Vitest (decided 2026-09-22; see
