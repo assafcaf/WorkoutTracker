@@ -50,18 +50,28 @@ import { BackupBadge, isBackupDue } from './ui/BackupBadge'
 import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
+import { HistoryStatsSwitch } from './ui/HistoryStatsSwitch'
 import { ImportConfirm } from './ui/ImportConfirm'
 import { LibraryList } from './ui/LibraryList'
 import { ProgramPage } from './ui/ProgramPage'
 import { ResumeCard } from './ui/ResumeCard'
 import { SessionSummary } from './ui/SessionSummary'
 import { SetScreen } from './ui/SetScreen'
+import { Stats } from './ui/Stats'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 import { UpdatePill } from './ui/UpdatePill'
 import { WorkoutStartButtons } from './ui/WorkoutStartButtons'
 
-type View = 'picker' | 'program' | 'settings' | 'list' | 'set' | 'history' | 'exercises'
+type View =
+  | 'picker'
+  | 'program'
+  | 'settings'
+  | 'list'
+  | 'set'
+  | 'history'
+  | 'stats'
+  | 'exercises'
 
 /**
  * The tab each view sits under, and `null` for the views that are inside a session: a
@@ -72,6 +82,7 @@ const TAB_OF: Record<View, Tab | null> = {
   program: 'program',
   exercises: 'exercises',
   history: 'history',
+  stats: 'history',
   settings: 'settings',
   list: null,
   set: null,
@@ -790,21 +801,29 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     )
   }
 
-  if (content === null && view === 'history') {
+  // The History tab holds two views behind one switch (E4-T4): the list of finished sessions
+  // and the statistics drawn from them. Both read the `history` `handleShowHistory` loaded when
+  // the tab was pressed, so flipping the switch loads nothing.
+  if (content === null && (view === 'history' || view === 'stats')) {
     content = (
       <AppShell
-        title="History"
+        title={view === 'stats' ? 'Stats' : 'History'}
         tab={tabFor(view)}
         onTabChange={handleTabChange}
         trailing={trailing}
         settingsBadge={settingsBadge}
       >
-        <HistoryList
-          sessions={history}
-          programs={programs}
-          resolve={resolveListExercise}
-          onOpen={handleOpenHistorySession}
-        />
+        <HistoryStatsSwitch current={view} onChange={setView} />
+        {view === 'stats' ? (
+          <Stats sessions={history} resolve={resolveListExercise} programs={programs} />
+        ) : (
+          <HistoryList
+            sessions={history}
+            programs={programs}
+            resolve={resolveListExercise}
+            onOpen={handleOpenHistorySession}
+          />
+        )}
       </AppShell>
     )
   }
