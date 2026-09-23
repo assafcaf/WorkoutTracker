@@ -1,4 +1,4 @@
-# Device checks: install, offline cold-launch, and the styled shell (E2-T7, E3)
+# Device checks: install, offline cold-launch, the styled shell, and offline/maps/tabs at E5's head (E2-T7, E3, E5-T21)
 
 These checks cannot run in CI or an emulator. iOS is the only platform with the install,
 offline cold-launch and safe-area behaviour this app depends on, so a person runs these steps
@@ -6,8 +6,9 @@ by hand on a real iPhone, in Safari, and records what actually happened. This do
 script. It proves outcomes [O12] and [O13] from the `E2-T7` ticket — re-run here, at E3's styled
 head, as [O19] and [O20], which `E3-T10` renumbered from those same two outcomes so they do not
 collide with E3's own spec numbering. Continuing in the same sitting once the app is installed,
-it also proves [O17] from `E3-T6`, and [O15], [O16] and [O18] from `E3-T9`. All six outcomes
-below are checked once, in one sitting, at the same installed build.
+it also proves [O17] from `E3-T6`, and [O15], [O16] and [O18] from `E3-T9`. Re-run again at E5's
+head in the same sitting, it also proves [L17] and [M17] from `E5-T21`. All eight outcomes below
+are checked once, in one sitting, at the same installed build.
 
 Follow the steps in order, exactly as written. Do not skip the "clear a previous install"
 section on a re-run — skipping it is the single most common way to get a false result.
@@ -246,6 +247,77 @@ On each of the six screens from [O15]:
    **Expected:** nothing requires a second hand or a stretch past a comfortable one-thumb reach
    at the phone's own width.
 
+## [L17]: a catalog exercise's detail screen works offline, and "Watch video" opens the right destination for each provider
+
+This section proves `E5-T21`'s [L17]. It re-uses the same installed app from the sections
+above — see "Deploying and confirming the commit under test" for redeploying to E5's head first
+if you have not already, and "Clearing a previous install" if this is a fresh sitting rather
+than a continuation of the sections above. Do both flows below (offline detail screen, then
+online "Watch video") back to back for each of the two exercises, so you only need to reach each
+exercise's detail screen once.
+
+**Exercise 1: Back squat (YouTube-sourced video).**
+
+1. **Enable Airplane Mode**, same as in the [O13]/[O20] section above.
+   **Expected:** the status bar shows the airplane icon; Wi-Fi and cellular are both off.
+2. From the Exercises tab, open **Back squat**'s detail screen.
+   **Expected:** the screen opens with no error and no blank area — the heading reads "Back
+   squat", the profile fields (primary muscle, secondary muscles, equipment, mechanic, force,
+   level) show text, the numbered instructions list shows its steps, and at least one photo
+   renders as an image (not a "Photos need a connection" placeholder).
+3. **Disable Airplane Mode** so the phone is back online.
+   **Expected:** the status bar's airplane icon is gone; Wi-Fi or cellular shows connected.
+4. On the same Back squat detail screen, tap **Watch video**.
+   **Expected:** the video opens in the YouTube app (if installed) or as YouTube in Safari —
+   the destination's address is `youtube.com/watch?v=R2dMsNhN3DE`, not the Muscle & Strength
+   site.
+
+**Exercise 2: Lunges (Vimeo-sourced video).**
+
+5. **Enable Airplane Mode** again.
+   **Expected:** the status bar shows the airplane icon; Wi-Fi and cellular are both off.
+6. From the Exercises tab, open **Lunges**'s detail screen.
+   **Expected:** same as step 2 — heading "Lunges", profile fields, instructions and at least
+   one photo all render with no blank area and no "Photos need a connection" placeholder.
+7. **Disable Airplane Mode.**
+   **Expected:** same as step 3 — back online.
+8. On the same Lunges detail screen, tap **Watch video**.
+   **Expected:** unlike Back squat, this opens the Muscle & Strength exercise page in Safari, not
+   a Vimeo player and not the YouTube app — Lunges' video is hosted on Vimeo, which is
+   domain-locked to the M&S site, so landing on the M&S page is the correct, expected result
+   here, not a failure.
+
+## [M17]: the Program tab's maps are legible, the session summary map is thumb-tappable, and the five tabs fit without truncation
+
+This section proves `E5-T21`'s [M17]. Stay on the same installed app from [L17] above (online,
+airplane mode off).
+
+1. Open the **Program tab** (second icon in the tab bar).
+   **Expected:** the tab opens with no error. Each workout card shows its own small body map,
+   and further down the page the "Weekly volume" and "This week" sections each show a body map.
+   Every one of these maps is legible at a glance on the phone's own width: the body outline and
+   its shaded regions are distinguishable from each other and from the page background, and no
+   map's labels or shading are cut off, overlapping, or squeezed illegibly small.
+2. Try tapping a shaded region on one of the Program tab's maps (any of the per-workout maps, or
+   the "Weekly volume" / "This week" maps).
+   **Expected:** nothing happens — no panel opens. This is a known, accepted gap, not a defect:
+   only the session summary map (checked in the next steps) supports tapping a region. Do not
+   report the Program tab's maps as a failure for not responding to a tap.
+3. Open a session summary: either tap **Finish** at the end of an in-progress workout, or open
+   the **History tab** and tap **Open session** on any past session row.
+   **Expected:** the "Session summary" screen opens showing its own body map.
+4. Holding the phone in one hand, tap a shaded region on the session summary map with your
+   thumb.
+   **Expected:** the tap registers and a panel opens beneath/over the map showing that region's
+   name, its set count, and the contributing exercises. Try a second region.
+   **Expected:** the panel updates to the newly tapped region.
+5. Still holding the phone in one hand, check the bottom **tab bar** (visible on the Workout,
+   Program, Exercises, History and Settings tabs — go back to any of those from the session
+   summary via **Done** if the tab bar is not currently on screen).
+   **Expected:** all five tab labels — **Workout, Program, Exercises, History, Settings** — are
+   fully readable, none is cut off (no label truncated with an ellipsis or clipped at an edge),
+   and no two labels or icons overlap each other, at the phone's own screen width.
+
 ## Judgement calls for the operator — not defects, just yours to decide
 
 These three are known and deliberate; they are not things to report as failures:
@@ -264,12 +336,12 @@ These three are known and deliberate; they are not things to report as failures:
 
 ## Result block — paste this back into the run log, filled in
 
-One sitting, one installed build, all six outcomes below plus E2's two. [O19]/[O20] are
-[O12]/[O13] re-run at E3's styled head, recorded as their own rows because they belong to a
-different ticket's record than E2's.
+One sitting, one installed build, all six outcomes below plus E2's two, plus E5-T21's two.
+[O19]/[O20] are [O12]/[O13] re-run at E3's styled head, recorded as their own rows because they
+belong to a different ticket's record than E2's.
 
 ```
-Device check: E2-T7 (O12, O13) and E3 (O17, O15, O16, O18, O19, O20)
+Device check: E2-T7 (O12, O13), E3 (O17, O15, O16, O18, O19, O20), E5-T21 (L17, M17)
 Date:
 Commit / merged sha checked against:
 iOS version:
@@ -302,6 +374,16 @@ Device model:
   What actually happened:
 
 [O18] (E3-T9) nothing scrolls sideways; every control is one-thumb reachable: PASS / FAIL
+  What actually happened:
+
+[L17] (E5-T21) catalog exercise detail works offline; Watch video opens the right destination per provider: PASS / FAIL
+  Back squat (YouTube) -- offline detail screen (text+photos) rendered: Y / N
+  Back squat (YouTube) -- Watch video destination:
+  Lunges (Vimeo) -- offline detail screen (text+photos) rendered: Y / N
+  Lunges (Vimeo) -- Watch video destination:
+  What actually happened:
+
+[M17] (E5-T21) Program tab maps legible; session summary map thumb-tappable; five tabs fit without truncation: PASS / FAIL
   What actually happened:
 
 Notes:
