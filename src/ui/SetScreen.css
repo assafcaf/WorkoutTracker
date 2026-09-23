@@ -1,0 +1,46 @@
+/* The set screen's own layout: the stack the dials sit in, the set counter, the validation
+ * line and the rest timer. The dials and the keypad style themselves (E3-T6), and the two
+ * controls this screen renders are laid out by the shell's action bar (src/ui/AppShell.css)
+ * once they are portalled into it.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
+ * one definition site.
+ */
+
+.set-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Which set of how many, above the dials: the one line that says where in the exercise the
+ * trainee is. */
+.set-counter {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.set-error {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+/* The rest left, read off the clock. Tabular figures so the seconds do not shift the line as
+ * they count down. */
+.rest-timer {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The two controls reach the tap-target floor wherever they are rendered -- the action bar
+ * sets the same floor on its own children, so this is what holds outside a shell. */
+.log-set,
+.add-set {
+  min-height: var(--tap-min);
+}

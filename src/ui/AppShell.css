@@ -73,7 +73,14 @@
   background: var(--color-surface);
 }
 
-.action-bar > button {
+/* The slot a screen fills the bar through: out of the layout altogether, so the controls it
+ * portals in are the bar's own flex items and carry the bar's own button styling. */
+.action-bar-slot {
+  display: contents;
+}
+
+.action-bar > button,
+.action-bar-slot > button {
   flex: 1;
   min-height: var(--tap-min);
   padding: var(--space-3) var(--space-4);

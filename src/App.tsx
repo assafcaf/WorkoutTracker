@@ -25,7 +25,7 @@ import {
   listSessions,
   startOrResumeSession,
 } from './storage/sessionStore'
-import { AppShell } from './ui/AppShell'
+import { ActionBarSlot, AppShell } from './ui/AppShell'
 import type { Tab } from './ui/AppShell'
 import { BackupBadge } from './ui/BackupBadge'
 import { ExerciseList } from './ui/ExerciseList'
@@ -352,18 +352,27 @@ function AppViews(): JSX.Element {
     const exercise = catalog.get(openSet.exerciseId)
     if (plan && exercise) {
       return (
-        // Keyed by the set, so opening another set -- or an extra one past the plan -- opens
-        // it preset afresh, while logging within one set screen leaves it standing.
-        <SetScreen
-          key={`${openSet.exerciseId}#${openSet.setIndex}`}
-          exercise={exercise}
-          plan={plan}
-          setIndex={openSet.setIndex}
-          sessionId={session.id}
-          lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
-          onLogged={(logged) => setSession(logged)}
-          onAddSet={handleAddSet}
-        />
+        // No tab prop: a set being logged is inside the session, and the way out of it is the
+        // back control to the exercise list. The screen fills the action bar itself, because
+        // "Log set" is gated by the set on its dials, which is the screen's own state.
+        <AppShell
+          title={exercise.name}
+          onBack={() => setView('list')}
+          action={<ActionBarSlot />}
+        >
+          {/* Keyed by the set, so opening another set -- or an extra one past the plan --
+              opens it preset afresh, while logging within one set screen leaves it standing. */}
+          <SetScreen
+            key={`${openSet.exerciseId}#${openSet.setIndex}`}
+            exercise={exercise}
+            plan={plan}
+            setIndex={openSet.setIndex}
+            sessionId={session.id}
+            lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
+            onLogged={(logged) => setSession(logged)}
+            onAddSet={handleAddSet}
+          />
+        </AppShell>
       )
     }
   }
@@ -396,14 +405,27 @@ function AppViews(): JSX.Element {
 
   if (view === 'list' && session && located) {
     return (
-      <ExerciseList
-        program={located.program}
-        workout={located.workout}
-        catalog={catalog}
-        session={session}
-        onOpenSet={handleOpenSet}
-        onFinish={handleFinish}
-      />
+      // The header names the workout that is on, the action bar holds the one action that ends
+      // it, and there is no tab bar: backing out of a session is the back control's job, and it
+      // leaves the session in progress to come back to.
+      <AppShell
+        title={located.workout.name}
+        onBack={() => setView('picker')}
+        action={
+          <button type="button" onClick={handleFinish}>
+            Finish workout
+          </button>
+        }
+      >
+        <ExerciseList
+          program={located.program}
+          workout={located.workout}
+          catalog={catalog}
+          session={session}
+          onOpenSet={handleOpenSet}
+          onFinish={handleFinish}
+        />
+      </AppShell>
     )
   }
 
