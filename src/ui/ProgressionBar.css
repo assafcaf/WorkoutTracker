@@ -1,0 +1,32 @@
+/* The progression bar on an exercise row (E4-T6): an accent fill on a raised track, and the
+ * suggested next step beside it. Every colour is a `var(--…)` from src/styles/tokens.css. */
+
+.progression {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+}
+
+.progression-track {
+  flex: 1;
+  height: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-raised);
+}
+
+.progression-fill {
+  height: 100%;
+  background: var(--color-accent);
+  /* The fill holds no text, but the contrast audit wants every accent background to name its
+   * own foreground. */
+  color: var(--color-on-accent);
+}
+
+.progression-next {
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
