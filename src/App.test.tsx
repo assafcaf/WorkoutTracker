@@ -59,7 +59,8 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
   await user.click(await screen.findByRole('radio', { name: 'Full body starter' }, FAST))
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  // E3-T3 took the free-standing Back button away: the Workout tab is the way back.
+  await user.click(screen.getByRole('button', { name: 'Workout' }))
 
   expect(await screen.findByRole('heading', { name: 'Full body starter' }, FAST)).toBeVisible()
   expect(screen.queryByRole('heading', { name: 'Assaf A/B 2026' })).toBeNull()
@@ -73,6 +74,10 @@ test('O18 App navigates to Settings, hiding the picker, and back again', async (
   await user.click(screen.getByRole('button', { name: 'Settings' }))
 
   expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
+
+  // And back again, which since E3-T3 is the Workout tab rather than a free-standing Back.
+  await user.click(screen.getByRole('button', { name: 'Workout' }))
+  expect(await screen.findByRole('heading', { name: 'Workout A' }, FAST)).toBeVisible()
 })
 
 test('O18 App falls back to the first program and says so on screen when the stored active program no longer exists', async () => {
@@ -641,4 +646,128 @@ test('O16 choosing a file with an unknown schemaVersion shows an error naming th
   expect(screen.queryByRole('alertdialog')).toBeNull()
   expect(await listSessions()).toEqual(CURRENT)
   expect(downloads).toHaveLength(0)
+})
+
+// --- E3-T3: one shell, and a tab bar instead of loose buttons ([O7], [O8], [O9]) ----------
+//
+// These go through App because the outcomes are about the app's chrome as a whole: which tabs
+// exist, which one is current, and -- [O9] -- what E1 and E2 left above the picker that is now
+// gone. AppShell's and TabBar's own contract is proven in src/ui/AppShell.test.tsx.
+
+/** What a screen reader would announce an element as: its `aria-label`, else its text. */
+function accessibleNameOf(element: Element): string {
+  return (element.getAttribute('aria-label') ?? element.textContent ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** The tab bar, which is the nav labelled "Main". */
+function mainNav(): HTMLElement {
+  return screen.getByRole('navigation', { name: 'Main' })
+}
+
+/** The tab bar's tabs, in document order, by the name each one carries. */
+function tabNames(): string[] {
+  return within(mainNav())
+    .getAllByRole('button')
+    .map((tab) => accessibleNameOf(tab))
+}
+
+/** The name of every tab currently marked `aria-current="page"`. */
+function currentTabNames(): string[] {
+  return within(mainNav())
+    .getAllByRole('button')
+    .filter((tab) => tab.getAttribute('aria-current') === 'page')
+    .map((tab) => accessibleNameOf(tab))
+}
+
+/** Presses a tab in the tab bar. */
+async function pressTab(user: UserEvent, name: string): Promise<void> {
+  await user.click(within(mainNav()).getByRole('button', { name }))
+}
+
+/**
+ * Every button with one of `names` that is not part of the tab bar -- the loose controls [O9]
+ * is about. The tab bar has its own Settings and History buttons, so "gone from the document"
+ * can only mean gone from outside the nav.
+ */
+function looseButtons(names: string[]): string[] {
+  const nav = mainNav()
+  return names
+    .flatMap((name) => screen.queryAllByRole('button', { name }))
+    .filter((button) => !nav.contains(button))
+    .map((button) => accessibleNameOf(button))
+}
+
+test('O7 the app on load offers a Main nav holding exactly the Workout, History and Settings tabs', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(tabNames()).toEqual(['Workout', 'History', 'Settings'])
+})
+
+test('O7 the app on load, with no session in progress, is on the Workout tab', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(currentTabNames()).toEqual(['Workout'])
+})
+
+test('O8 pressing the History tab lists the finished sessions with the tab bar still on screen', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'History')
+
+  // Hand-checked from the fixture: BASE is 2023-11-14 UTC, and one set of 60 kg x 10 is 600 kg.
+  const row = await screen.findByRole('listitem', {}, SETTLE)
+  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(within(row).getByText('600 kg')).toBeVisible()
+  // The shell stays put: the trainee is never stranded on a screen with no way off it.
+  expect(mainNav()).toBeVisible()
+})
+
+test('O8 pressing the History tab makes History the current tab', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'History')
+
+  await waitFor(() => {
+    expect(currentTabNames()).toEqual(['History'])
+  }, SETTLE)
+})
+
+test('O9 the Workout tab carries no free-standing Settings, History or Back button outside the tab bar', async () => {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
+})
+
+test('O9 the History tab carries no free-standing Settings, History or Back button outside the tab bar', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'History')
+  await screen.findByRole('listitem', {}, SETTLE)
+
+  expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
+})
+
+test('O9 the Settings tab carries no free-standing Settings, History or Back button outside the tab bar', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Settings')
+  await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+
+  expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
 })

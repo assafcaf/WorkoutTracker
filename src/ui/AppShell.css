@@ -1,0 +1,86 @@
+/* The shell's own layout: the header, the scrolling main region and the sticky action bar.
+ *
+ * Every colour here comes through a `var(--…)` from src/styles/tokens.css; the audit in
+ * src/styles/cssAudit.test.ts fails on a literal one. `.app-header-back` and
+ * `.action-bar > button` carry `min-height: var(--tap-min)` on their bare selectors, which is
+ * where E3-T8's tap-target audit reads the floor off.
+ */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+/* Sticky, so the screen's title and its trailing slot stay reachable while the main region
+ * scrolls under them. */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.app-header-back {
+  display: inline-flex;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.app-header-title {
+  flex: 1;
+  overflow: hidden;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header-trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-main {
+  flex: 1;
+  padding: var(--space-4);
+}
+
+/* The action bar rides the bottom of the viewport above the home indicator, so the screen's
+ * one commitment -- finishing a workout, logging a set -- is always in reach of a thumb. */
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  padding-bottom: calc(var(--space-3) + var(--safe-bottom));
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.action-bar > button {
+  flex: 1;
+  min-height: var(--tap-min);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: var(--text-md);
+  font-weight: 600;
+}

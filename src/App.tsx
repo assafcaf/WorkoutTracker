@@ -25,6 +25,8 @@ import {
   listSessions,
   startOrResumeSession,
 } from './storage/sessionStore'
+import { AppShell } from './ui/AppShell'
+import type { Tab } from './ui/AppShell'
 import { BackupBadge } from './ui/BackupBadge'
 import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
@@ -36,6 +38,23 @@ import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 import { UpdatePill } from './ui/UpdatePill'
 
 type View = 'picker' | 'settings' | 'list' | 'set' | 'history'
+
+/**
+ * The tab each view sits under, and `null` for the views that are inside a session: a
+ * workout in progress shows the header and the action bar, but no way out of it by tab.
+ */
+const TAB_OF: Record<View, Tab | null> = {
+  picker: 'workout',
+  history: 'history',
+  settings: 'settings',
+  list: null,
+  set: null,
+}
+
+/** The tab a view's shell is on, as `AppShell` takes it: no tab bar for the in-session views. */
+function tabFor(view: View): Tab | undefined {
+  return TAB_OF[view] ?? undefined
+}
 
 /** The set the set screen is on, with the history it was opened against. */
 type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[] }
@@ -286,12 +305,21 @@ function AppViews(): JSX.Element {
     })
   }
 
+  /**
+   * Moves to the tab that was pressed. History goes through `handleShowHistory`, so the
+   * finished sessions are loaded before the list they feed is shown.
+   */
+  function handleTabChange(tab: Tab): void {
+    if (tab === 'history') {
+      handleShowHistory()
+      return
+    }
+    setView(tab === 'workout' ? 'picker' : 'settings')
+  }
+
   if (view === 'settings') {
     return (
-      <div>
-        <button type="button" onClick={() => setView('picker')}>
-          Back
-        </button>
+      <AppShell title="Settings" tab={tabFor(view)} onTabChange={handleTabChange}>
         <Settings
           programs={programs}
           activeProgramId={activeProgramId}
@@ -309,7 +337,7 @@ function AppViews(): JSX.Element {
             onCancel={() => setPendingImport(null)}
           />
         ) : null}
-      </div>
+      </AppShell>
     )
   }
 
@@ -381,28 +409,19 @@ function AppViews(): JSX.Element {
 
   if (view === 'history') {
     return (
-      <div>
-        <button type="button" onClick={() => setView('picker')}>
-          Back
-        </button>
+      <AppShell title="History" tab={tabFor(view)} onTabChange={handleTabChange}>
         <HistoryList sessions={history} programs={programs} />
-      </div>
+      </AppShell>
     )
   }
 
   return (
-    <div>
+    <AppShell title="Workout" tab={tabFor('picker')} onTabChange={handleTabChange}>
       {!storageAvailable ? <StorageUnavailableBanner /> : null}
       {staleActiveProgramNotice ? (
         <p>The saved active program no longer exists; showing the first program instead.</p>
       ) : null}
-      <button type="button" onClick={() => setView('settings')}>
-        Settings
-      </button>
       <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
-      <button type="button" onClick={handleShowHistory}>
-        History
-      </button>
       <fieldset disabled={!storageAvailable}>
         <ProgramPicker
           programs={programs}
@@ -411,6 +430,6 @@ function AppViews(): JSX.Element {
           onChoose={handleChoose}
         />
       </fieldset>
-    </div>
+    </AppShell>
   )
 }
