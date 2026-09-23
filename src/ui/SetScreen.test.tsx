@@ -62,6 +62,7 @@ function historyEntry(setIndex: number, weightKg: number | null, reps: number): 
 function renderSetScreen(over: Partial<SetScreenProps> = {}) {
   const user = userEvent.setup()
   const onLogged = vi.fn()
+  const onOpenInfo = vi.fn()
   const props: SetScreenProps = {
     exercise: backSquat,
     plan: squatPlan,
@@ -69,10 +70,11 @@ function renderSetScreen(over: Partial<SetScreenProps> = {}) {
     sessionId: SESSION_ID,
     lastEntries: [],
     onLogged,
+    onOpenInfo,
     ...over,
   }
   render(<SetScreen {...props} />)
-  return { user, onLogged }
+  return { user, onLogged, onOpenInfo }
 }
 
 /** The weight readout, which is also the button that opens the weight keypad. */
@@ -295,6 +297,15 @@ test('O12 an entry outside the accepted reps range writes nothing', async () => 
   await screen.findByText('Reps must be between 0.5 and 100.')
   expect(await storedEntries()).toEqual([])
   expect(screen.getByText('Set 2 of 4')).toBeVisible()
+})
+
+test('L14 tapping Exercise info tells the caller to open the on-screen exercise id', async () => {
+  const { user, onOpenInfo } = renderSetScreen()
+
+  await user.click(screen.getByRole('button', { name: 'Exercise info' }))
+
+  expect(onOpenInfo).toHaveBeenCalledTimes(1)
+  expect(onOpenInfo).toHaveBeenCalledWith('back-squat')
 })
 
 test('O12 the rest timer reads 0:00 before any set is logged', () => {
