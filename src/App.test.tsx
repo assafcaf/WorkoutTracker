@@ -1747,3 +1747,258 @@ test('M13 choosing another program in the Program tab’s switcher makes it the 
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 })
 
+// --- E5-T20: the session summary ([M16]) and the region panel ([M9]) --------------------------
+//
+// Finish now shows the finished session's summary -- a `role="dialog"` named "Session summary"
+// holding its body map on the session scale -- over the picker, and "Done" closes it. A History
+// row's "Open session" button shows the same summary for a finished session. Tapping a region
+// on a summary's map opens `RegionPanel` (a dialog named by the region id); its "Browse
+// exercises" closes both and lands on the Exercises tab listing only exercises primary in the
+// region's muscles.
+//
+// Hand-checked against src/data/exercises.json and the real library fixture:
+//   back-squat -> Barbell_Squat: quadriceps primary; calves, glutes, hamstrings, lower back
+//   secondary. Three sets: quadriceps 3 (session band 2), hamstring 1.5 (band 1), chest 0.
+//
+//   Workout B: assisted-pull-ups -> lats primary, middle back secondary;
+//   deadlift -> lats and middle back both secondary; face-pull -> middle back secondary.
+//   Two pull-up sets, two deadlift sets, one face pull set: lats 2 + 1 = 3, middle back
+//   1 + 1 + 0.5 = 2.5, so upper-back 5.5; contributors Assisted pull-ups 3, Deadlift 2,
+//   Face pull 0.5.
+
+function sessionSummary(): HTMLElement | null {
+  return screen.queryByRole('dialog', { name: 'Session summary' })
+}
+
+/** region -> data-band for every region shape the summary draws. */
+function summaryBands(summary: HTMLElement): Record<string, string | null> {
+  const bands: Record<string, string | null> = {}
+  for (const shape of summary.querySelectorAll('[data-region]')) {
+    bands[shape.getAttribute('data-region') as string] = shape.getAttribute('data-band')
+  }
+  return bands
+}
+
+function expectSummaryBand(summary: HTMLElement, region: string, band: string): void {
+  const shapes = [...summary.querySelectorAll(`[data-region="${region}"]`)]
+  expect(shapes.length, `${region} must be drawn on the summary`).toBeGreaterThan(0)
+  for (const shape of shapes) {
+    expect(shape, region).toHaveAttribute('data-band', band)
+  }
+}
+
+/** Leaves three back squat sets in a Workout A session still in progress. */
+async function threeBackSquatSetsInProgress(): Promise<void> {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  for (const setIndex of [1, 2, 3]) {
+    await logSet(started.id, {
+      exerciseId: 'back-squat',
+      setIndex,
+      weightKg: 60,
+      reps: 10,
+      loggedAt: BASE + setIndex,
+    })
+  }
+}
+
+/** Stores one finished Workout B session training upper-back as the header above works out. */
+async function finishedUpperBackSession(): Promise<void> {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE)
+  const entries: SetEntry[] = [
+    { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: 20, reps: 8, loggedAt: BASE + 1 },
+    { exerciseId: 'assisted-pull-ups', setIndex: 2, weightKg: 20, reps: 8, loggedAt: BASE + 2 },
+    { exerciseId: 'deadlift', setIndex: 1, weightKg: 80, reps: 8, loggedAt: BASE + 3 },
+    { exerciseId: 'deadlift', setIndex: 2, weightKg: 80, reps: 8, loggedAt: BASE + 4 },
+    { exerciseId: 'face-pull', setIndex: 1, weightKg: 15, reps: 12, loggedAt: BASE + 5 },
+  ]
+  for (const entry of entries) await logSet(started.id, entry)
+  await finishSession(started.id, BASE + 3_600_000)
+}
+
+/** Opens the only History row's session summary. */
+async function openOnlyHistorySession(user: UserEvent): Promise<HTMLElement> {
+  await pressTab(user, 'History')
+  const row = await screen.findByRole('listitem', {}, SETTLE)
+  await user.click(within(row).getByRole('button', { name: 'Open session' }))
+  return screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+}
+
+/** Taps `region` on `summary`'s map and returns the region panel it opens. */
+async function tapSummaryRegion(
+  user: UserEvent,
+  summary: HTMLElement,
+  region: string,
+): Promise<HTMLElement> {
+  const shape = summary.querySelector(`[data-region="${region}"]`)
+  expect(shape, `${region} must be drawn on the summary`).not.toBeNull()
+  await user.click(shape as Element)
+  return screen.findByRole('dialog', { name: region }, SETTLE)
+}
+
+test('M16 tapping Finish workout shows the session summary with its body map on the session scale', async () => {
+  const user = userEvent.setup()
+  await threeBackSquatSetsInProgress()
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+
+  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  // On the week scale, 3 would be band 1; band 2 is what pins the session scale.
+  expectSummaryBand(summary, 'quadriceps', '2')
+  expectSummaryBand(summary, 'hamstring', '1')
+  expectSummaryBand(summary, 'chest', '0')
+})
+
+test('M16 Done on the finish summary closes it onto the picker with the session finished', async () => {
+  const user = userEvent.setup()
+  await threeBackSquatSetsInProgress()
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+
+  await user.click(within(summary).getByRole('button', { name: 'Done' }))
+
+  await waitFor(() => {
+    expect(sessionSummary()).toBeNull()
+  }, SETTLE)
+  expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
+  expect(await getActiveSession()).toBeNull()
+})
+
+test('M16 opening the finished session from History shows the same body map the finish summary showed', async () => {
+  const user = userEvent.setup()
+  await threeBackSquatSetsInProgress()
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+  const atFinish = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  const finishBands = summaryBands(atFinish)
+  expect(Object.keys(finishBands).length).toBeGreaterThan(0)
+  await user.click(within(atFinish).getByRole('button', { name: 'Done' }))
+  await waitFor(() => {
+    expect(sessionSummary()).toBeNull()
+  }, SETTLE)
+
+  const fromHistory = await openOnlyHistorySession(user)
+
+  expectSummaryBand(fromHistory, 'quadriceps', '2')
+  expect(summaryBands(fromHistory)).toEqual(finishBands)
+})
+
+test('M9 tapping upper-back on a History session’s map opens a panel with its 5.5 sets and contributors', async () => {
+  const user = userEvent.setup()
+  await finishedUpperBackSession()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  const summary = await openOnlyHistorySession(user)
+
+  const panel = await tapSummaryRegion(user, summary, 'upper-back')
+
+  const count = within(panel)
+    .getAllByText('5.5 sets')
+    .filter((element) => element.closest('li') === null)
+  expect(count).toHaveLength(1)
+  const items = within(panel).getAllByRole('listitem')
+  expect(items).toHaveLength(3)
+  const byName = (name: string) => items.find((item) => within(item).queryByText(name) !== null)
+  expect(within(byName('Assisted pull-ups')!).getByText('3 sets')).toBeVisible()
+  expect(within(byName('Deadlift')!).getByText('2 sets')).toBeVisible()
+  expect(within(byName('Face pull')!).getByText('0.5 sets')).toBeVisible()
+})
+
+test('M9 Browse exercises on upper-back opens the Exercises tab listing only lats or middle back exercises', async () => {
+  const user = userEvent.setup()
+  await finishedUpperBackSession()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  const summary = await openOnlyHistorySession(user)
+  const panel = await tapSummaryRegion(user, summary, 'upper-back')
+
+  await user.click(within(panel).getByRole('button', { name: 'Browse exercises' }))
+
+  // Hand-checked against the real library fixture: 38 exercises are lats primary and 34 middle
+  // back primary, 72 in all, and every one of them lists lats or middle back first.
+  const upperBack = LIBRARY.filter(
+    (exercise) =>
+      exercise.primaryMuscles.includes('lats') || exercise.primaryMuscles.includes('middle back'),
+  )
+  expect(upperBack).toHaveLength(72)
+  await waitFor(() => {
+    expect(currentTabNames()).toEqual(['Exercises'])
+    expect(screen.getAllByRole('listitem')).toHaveLength(72)
+  }, SETTLE)
+  expect(sessionSummary()).toBeNull()
+  expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
+  const muscles = new Set(
+    screen
+      .getAllByRole('listitem')
+      .map((row) => (row.querySelector('.library-row-muscle')?.textContent ?? '').trim()),
+  )
+  expect([...muscles].sort()).toEqual(['lats', 'middle back'])
+  expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
+})
+
+// --- E5-T20: App wires the logged sessions into the Program tab's "This week" --------------
+//
+// ProgramPage (E5-T19) takes `sessions`, `now` and `resolve`, defaulting to no sessions; these
+// prove App hands it the real ones. Band values are ProgramPage.test.tsx's business -- here
+// only whether logged sets reach the done map at all.
+
+/** Stores one finished Workout A session of three back squat sets, logged at `loggedAt`. */
+async function finishedBackSquatSessionAt(loggedAt: number): Promise<void> {
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', loggedAt - 60_000)
+  for (const setIndex of [1, 2, 3]) {
+    await logSet(started.id, {
+      exerciseId: 'back-squat',
+      setIndex,
+      weightKg: 60,
+      reps: 10,
+      loggedAt: loggedAt + setIndex,
+    })
+  }
+  await finishSession(started.id, loggedAt + 60_000)
+}
+
+/** The Program tab's "This week" section. */
+function thisWeekSection(): HTMLElement {
+  const heading = screen.getByRole('heading', { name: 'This week' })
+  return heading.closest('section') as HTMLElement
+}
+
+test('the Program tab’s This week reflects sets actually logged in the last 7 days', async () => {
+  const user = userEvent.setup()
+  await finishedBackSquatSessionAt(Date.now() - DAY_MS)
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Program')
+  await screen.findByRole('heading', { name: 'This week' }, SETTLE)
+
+  // The done map is the section's second body map (the first is the prescribed one).
+  await waitFor(() => {
+    const maps = thisWeekSection().querySelectorAll('.body-map')
+    expect(maps).toHaveLength(2)
+    const doneQuadriceps = maps[1].querySelector('[data-region="quadriceps"]')
+    expect(doneQuadriceps).not.toBeNull()
+    expect(doneQuadriceps).not.toHaveAttribute('data-band', '0')
+    expect(within(thisWeekSection()).queryByText('No sets logged in the last 7 days')).toBeNull()
+  }, SETTLE)
+})
+
+test('with nothing logged in the last 7 days the Program tab’s This week still reads No sets logged in the last 7 days', async () => {
+  const user = userEvent.setup()
+  // Logged, but eight days ago: outside the window, so it must not count as this week.
+  await finishedBackSquatSessionAt(Date.now() - 8 * DAY_MS)
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'Program')
+  await screen.findByRole('heading', { name: 'This week' }, SETTLE)
+
+  expect(
+    within(thisWeekSection()).getByText('No sets logged in the last 7 days'),
+  ).toBeVisible()
+})
+

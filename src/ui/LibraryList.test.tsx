@@ -139,3 +139,50 @@ test('S15 turning the My gym only chip off lists the excluded equipment again', 
   expect(screen.getByRole('button', { name: 'My gym only', pressed: false })).toBeInTheDocument()
   expect(screen.getByText('Leg Press Machine')).toBeVisible()
 })
+
+// --- M9: `initialMuscles`, the muscle filter a region panel's "Browse exercises" presets ----
+//
+// E5-T20's contract: when `initialMuscles` is given and non-empty, only exercises with at least
+// one of those muscles among their `primaryMuscles` are listed -- an OR across the muscles, so
+// upper-back's lats-or-middle-back browse is one filter. A secondary-only match does not count.
+
+const latsExercise = fixture({ id: 'Lat_Pulldown', name: 'Lat Pulldown', primaryMuscles: ['lats'] })
+const middleBackExercise = fixture({
+  id: 'Seated_Row',
+  name: 'Seated Row',
+  primaryMuscles: ['middle back'],
+})
+const chestExercise = fixture({ id: 'Bench_Press', name: 'Bench Press', primaryMuscles: ['chest'] })
+const latsSecondaryOnly = fixture({
+  id: 'Pullover',
+  name: 'Pullover',
+  primaryMuscles: ['chest'],
+  secondaryMuscles: ['lats'],
+})
+
+test('M9 LibraryList with initialMuscles lats and middle back lists exercises primary in either, and no others', () => {
+  render(
+    <LibraryList
+      library={[latsExercise, middleBackExercise, chestExercise, latsSecondaryOnly]}
+      onOpen={() => {}}
+      gymEquipment={null}
+      initialMuscles={['lats', 'middle back']}
+    />,
+  )
+
+  expect(screen.getAllByRole('listitem').map(rowName)).toEqual(['Lat Pulldown', 'Seated Row'])
+})
+
+test('M9 LibraryList with initialMuscles matching nothing shows "No exercises match"', () => {
+  render(
+    <LibraryList
+      library={[latsExercise, chestExercise]}
+      onOpen={() => {}}
+      gymEquipment={null}
+      initialMuscles={['calves']}
+    />,
+  )
+
+  expect(screen.getByText('No exercises match')).toBeVisible()
+  expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+})

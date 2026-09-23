@@ -80,6 +80,8 @@ export function HistoryList(props: {
   sessions: Session[]
   programs: Program[]
   resolve: (id: string) => Exercise | undefined
+  /** Opens a session's summary (E5-T20, M16) from its row's "Open session" button. */
+  onOpen?(sessionId: string): void
 }): JSX.Element {
   const { sessions, programs, resolve } = props
 

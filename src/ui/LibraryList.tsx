@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { LibraryExercise } from '../types'
+import type { LibraryExercise, Muscle } from '../types'
 import './LibraryList.css'
 
 export type LibraryListProps = {
@@ -11,6 +11,11 @@ export type LibraryListProps = {
    * while the "My gym only" chip is on (E5-T16).
    */
   gymEquipment: string[] | null
+  /**
+   * The muscles a region panel's "Browse exercises" opened the tab on (E5-T20, M9): when given
+   * and non-empty, only exercises with at least one of them among `primaryMuscles` are listed.
+   */
+  initialMuscles?: Muscle[]
 }
 
 /**
