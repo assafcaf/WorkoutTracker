@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AlternativesList } from './AlternativesList'
 import type { LibraryExercise, Video } from '../types'
 import './ExerciseDetail.css'
 
@@ -29,10 +30,22 @@ export type ExerciseDetailProps = {
  * `photoUrls` in `src/data/photos.ts`); a photo that fails to load is replaced in place with a
  * "Photos need a connection" placeholder, tracked by index so the other photos are unaffected.
  *
- * E5-T15 stub -- the "Similar exercises" section (`library`, `gymEquipment`, `onOpenDetail`,
- * `onChoose`) is not yet implemented.
+ * A "Similar exercises" section (E5-T15) composes the same ranked `AlternativesList` (E5-T12)
+ * used mid-session, capped to the top 5, with no swap -- each row opens that alternative's own
+ * detail screen instead. It offers "Do this instead" only when `onChoose` is given, i.e. this
+ * screen was opened from a live set rather than the Exercises tab.
  */
-export function ExerciseDetail({ entry, video, heading, photos, onBack }: ExerciseDetailProps): JSX.Element {
+export function ExerciseDetail({
+  entry,
+  video,
+  heading,
+  photos,
+  onBack,
+  library,
+  gymEquipment,
+  onOpenDetail,
+  onChoose,
+}: ExerciseDetailProps): JSX.Element {
   const [failedPhotos, setFailedPhotos] = useState<Set<number>>(new Set())
 
   return (
@@ -94,6 +107,18 @@ export function ExerciseDetail({ entry, video, heading, photos, onBack }: Exerci
           ),
         )}
       </div>
+
+      <section className="exercise-detail-similar">
+        <h2 className="exercise-detail-similar-heading">Similar exercises</h2>
+        <AlternativesList
+          target={entry}
+          library={library}
+          gymEquipment={gymEquipment}
+          onOpenDetail={onOpenDetail}
+          onChoose={onChoose}
+          limit={5}
+        />
+      </section>
     </article>
   )
 }

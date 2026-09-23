@@ -32,8 +32,28 @@ export function AlternativesList({
   limit,
 }: AlternativesListProps): JSX.Element {
   const [query, setQuery] = useState('')
+  // Lifts the equipment filter for this rendered list only, when it leaves nothing ranked
+  // (S12) -- never a prop-changing callback, since there isn't one for "just this list".
+  const [showAllEquipment, setShowAllEquipment] = useState(false)
 
-  const ranked = alternativesFor(target, library, gymEquipment)
+  const effectiveGymEquipment = showAllEquipment ? null : gymEquipment
+  const ranked = alternativesFor(target, library, effectiveGymEquipment)
+
+  if (ranked.length === 0 && effectiveGymEquipment !== null) {
+    return (
+      <div className="alternatives-list">
+        <p className="alternatives-empty">{"No alternatives with your gym's equipment"}</p>
+        <button
+          type="button"
+          className="alternatives-show-all"
+          onClick={() => setShowAllEquipment(true)}
+        >
+          Show all equipment
+        </button>
+      </div>
+    )
+  }
+
   const search = query.trim().toLowerCase()
   const matching = search === '' ? ranked : ranked.filter((alternative) =>
     alternative.name.toLowerCase().includes(search),
