@@ -32,6 +32,7 @@ import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
 import { ImportConfirm } from './ui/ImportConfirm'
 import { ProgramPicker } from './ui/ProgramPicker'
+import { ResumeCard } from './ui/ResumeCard'
 import { SetScreen } from './ui/SetScreen'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
@@ -444,6 +445,13 @@ function AppViews(): JSX.Element {
         <p>The saved active program no longer exists; showing the first program instead.</p>
       ) : null}
       <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
+      {session && located ? (
+        <ResumeCard
+          programName={located.program.name}
+          workoutName={located.workout.name}
+          onResume={() => handleChoose(session.programId, session.workoutId)}
+        />
+      ) : null}
       <fieldset disabled={!storageAvailable}>
         <ProgramPicker
           programs={programs}

@@ -1,0 +1,56 @@
+/* The program picker: the active program's workouts, each a card, with the rest collapsed
+ * below a muted disclosure.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css. `.start-workout` carries
+ * `min-height: var(--tap-min)` on its bare selector, which is where E3-T8's tap-target audit
+ * reads the floor off.
+ */
+
+.program-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.workout-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.workout-card ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.start-workout {
+  display: flex;
+  width: 100%;
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.other-programs-toggle {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
