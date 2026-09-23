@@ -1,3 +1,4 @@
+import { trainingFieldsFor } from '../domain/trainingFields'
 import type { Exercise, LibraryExercise } from '../types'
 
 /**
@@ -8,9 +9,25 @@ import type { Exercise, LibraryExercise } from '../types'
  * `infoUrl` from `Exercise`). An id in neither map returns `undefined`.
  */
 export function resolveExercise(
-  _id: string,
-  _catalog: Map<string, Exercise>,
-  _library: Map<string, LibraryExercise>,
+  id: string,
+  catalog: Map<string, Exercise>,
+  library: Map<string, LibraryExercise>,
 ): Exercise | undefined {
-  throw new Error('not implemented')
+  const catalogExercise = catalog.get(id)
+  if (catalogExercise) {
+    return catalogExercise
+  }
+
+  const libraryEntry = library.get(id)
+  if (libraryEntry) {
+    return {
+      id,
+      libraryId: id,
+      name: libraryEntry.name,
+      infoUrl: '',
+      ...trainingFieldsFor(libraryEntry),
+    }
+  }
+
+  return undefined
 }
