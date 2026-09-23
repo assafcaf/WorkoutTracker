@@ -1,5 +1,7 @@
+import { volumeSeries } from '../domain/volume'
 import type { Resolve } from '../domain/muscles'
 import type { Program, Session } from '../types'
+import { BarChart } from './charts/BarChart'
 import './Stats.css'
 
 export type StatsProps = { sessions: Session[]; resolve: Resolve; programs: Program[] }
@@ -13,8 +15,10 @@ export type StatsProps = { sessions: Session[]; resolve: Resolve; programs: Prog
  * than drawing an empty chart.
  */
 export function Stats(props: StatsProps): JSX.Element {
-  const { sessions } = props
+  const { sessions, resolve, programs } = props
   const empty = sessions.length === 0
+  const points = volumeSeries(sessions, resolve, programs)
+  const bodyweightPoints = points.filter((point) => point.bodyweightReps > 0)
 
   return (
     <div className="stats">
@@ -28,7 +32,21 @@ export function Stats(props: StatsProps): JSX.Element {
         <h2 className="stats-heading">Volume</h2>
         {empty ? (
           <p className="stats-empty">No sessions yet. Finish a session to draw its volume bar.</p>
-        ) : null}
+        ) : (
+          <>
+            <BarChart
+              bars={points.map((point) => ({ at: point.at, label: point.workoutName, value: point.kg }))}
+              title="Volume per session"
+            />
+            {bodyweightPoints.length > 0 ? (
+              <ul className="stats-bodyweight-reps">
+                {bodyweightPoints.map((point) => (
+                  <li key={point.at}>{`${point.workoutName}: ${point.bodyweightReps} bodyweight reps`}</li>
+                ))}
+              </ul>
+            ) : null}
+          </>
+        )}
       </section>
     </div>
   )
