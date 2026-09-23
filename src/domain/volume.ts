@@ -12,5 +12,31 @@ export type VolumePoint = { at: number; workoutName: string; kg: number; bodywei
  * gone, as `summarise` in `src/ui/HistoryList.tsx` does.
  */
 export function volumeSeries(sessions: Session[], resolve: Resolve, programs: Program[]): VolumePoint[] {
-  throw new Error('not implemented')
+  return [...sessions]
+    .sort((a, b) => a.startedAt - b.startedAt)
+    .map((session) => {
+      let kg = 0
+      let bodyweightReps = 0
+
+      for (const entry of session.entries) {
+        const exercise = resolve(entry.exerciseId)
+        if (!exercise) continue
+
+        if (!exercise.bodyweight && !exercise.invertProgress && entry.weightKg !== null) {
+          kg += entry.reps * entry.weightKg
+        } else {
+          bodyweightReps += entry.reps
+        }
+      }
+
+      const program = programs.find((candidate) => candidate.id === session.programId)
+      const workout = program?.workouts.find((candidate) => candidate.id === session.workoutId)
+
+      return {
+        at: session.startedAt,
+        workoutName: workout?.name ?? session.workoutId,
+        kg,
+        bodyweightReps,
+      }
+    })
 }
