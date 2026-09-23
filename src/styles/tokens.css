@@ -2,8 +2,9 @@
  *
  * Every colour, space, radius, size and shadow the app draws with is declared here and used
  * through `var(--…)` everywhere else, so the palette can only change in one place. The set is
- * closed: src/styles/tokens.test.ts holds this file to exactly these twenty-nine tokens, and
- * to the values the spec's token table documents.
+ * closed: src/styles/tokens.test.ts holds this file to exactly these thirty-five tokens, and
+ * to the values the spec's token table (plus this file's own body-map comment, for the six
+ * `--map-…` tokens E5-T17 added) documents.
  *
  * The palette is dark-only by design — there is no `prefers-color-scheme` block and no second
  * palette — and the contrast of every foreground/background pair the UI uses is asserted at
@@ -21,6 +22,20 @@
   --color-on-accent: #0B0B0F;
   --color-warn: #FFB020;
   --color-danger: #FF6B6B;
+
+  /* BodyMap's four shade bands (E5-T17, M5/M8), a ramp from --color-surface's near-black toward
+   * --color-accent's lime, so an unstressed region reads close to the page and a heavily-trained
+   * one reads in the accent hue. --map-shade-0 is also the "nothing counted" empty token. Plus
+   * the exercise-scale pair (M10): --map-primary for a count >= 1 (a primary muscle),
+   * --map-secondary for 0 < count < 1 (a secondary muscle) -- picked distinguishable from each
+   * other and from the four-step ramp; neither is a text/background pair, so O2's contrast audit
+   * does not cover them. */
+  --map-shade-0: #23232B;
+  --map-shade-1: #3E4A22;
+  --map-shade-2: #7C9A2E;
+  --map-shade-3: #C6F84E;
+  --map-primary: #C6F84E;
+  --map-secondary: #6B8F3D;
 
   /* Spacing scale, in 4px steps that widen as they grow. */
   --space-1: 4px;
