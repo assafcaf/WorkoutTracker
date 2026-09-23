@@ -77,6 +77,46 @@ function contentTypeOf(relPath: string): string {
   return CONTENT_TYPES[extension] ?? 'application/octet-stream'
 }
 
+/**
+ * The only cross-origin host the app ever fetches from (src/data/photos.ts): a non-catalog
+ * library exercise's photo, pinned to a free-exercise-db commit. A real fetch to it succeeds,
+ * so the harness answers it with fake-but-stable bytes instead of the generic off-origin 404 —
+ * otherwise a runtime-caching route for it could never observe a cacheable response to cache.
+ */
+const REMOTE_PHOTO_HOST = /^https:\/\/raw\.githubusercontent\.com\//
+
+/** The `Response` a real fetch to a remote free-exercise-db photo URL would resolve with. */
+function remotePhotoResponse(url: string): Response {
+  return new Response(new TextEncoder().encode(`fake remote photo bytes for ${url}`), {
+    status: 200,
+    headers: { 'content-type': 'image/jpeg' },
+  })
+}
+
+/** Every global `fake-indexeddb/auto` (src/test/setup.ts) defines on the node process global. */
+const IDB_GLOBAL_NAMES = [
+  'indexedDB',
+  'IDBCursor',
+  'IDBCursorWithValue',
+  'IDBDatabase',
+  'IDBFactory',
+  'IDBIndex',
+  'IDBKeyRange',
+  'IDBObjectStore',
+  'IDBOpenDBRequest',
+  'IDBRequest',
+  'IDBTransaction',
+  'IDBVersionChangeEvent',
+] as const
+
+/** The subset of the node global that carries the fake IndexedDB the worker's vm scope needs. */
+function idbGlobals(): Record<string, unknown> {
+  const source = globalThis as unknown as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  for (const name of IDB_GLOBAL_NAMES) out[name] = source[name]
+  return out
+}
+
 /** The URL of a `fetch`/cache argument, which the Cache API accepts as a string or a Request. */
 function urlOf(input: unknown): string {
   if (typeof input === 'string') return new URL(input, `${ORIGIN}${BASE}`).href
@@ -259,7 +299,10 @@ export async function startServiceWorker(app: BuiltApp): Promise<ServiceWorkerHa
     networkLog.push(url)
     if (offline) throw new TypeError('Failed to fetch')
     const relPath = distPathOf(url)
-    if (relPath === null) return new Response('off origin', { status: 404 })
+    if (relPath === null) {
+      if (REMOTE_PHOTO_HOST.test(url)) return remotePhotoResponse(url)
+      return new Response('off origin', { status: 404 })
+    }
     return serve(relPath.split('?')[0])
   }
 
@@ -283,6 +326,13 @@ export async function startServiceWorker(app: BuiltApp): Promise<ServiceWorkerHa
     queueMicrotask,
     fetch: harnessFetch,
     caches: cacheStorage,
+    // Workbox's ExpirationPlugin (a runtime-caching `expiration` option) tracks cache entry
+    // timestamps in IndexedDB, through the `idb` package's `instanceof IDB*` checks. Tests
+    // setup.ts installs `fake-indexeddb/auto` on the node global for the rest of the suite
+    // (Dexie reads it the same way); the worker runs in its own `vm` context though, so its
+    // global has to be handed every IDB* constructor `fake-indexeddb/auto` defines, not just
+    // `indexedDB` itself.
+    ...idbGlobals(),
     navigator: { userAgent: 'workout-tracker-sw-harness', onLine: true },
     // vitest builds with NODE_ENV=test, so Workbox emits its logging build. Silence it, or a
     // single install buries the assertion output under a hundred lines.
