@@ -1,9 +1,10 @@
-# Device checks: install and cold-launch offline (E2-T7)
+# Device checks: install, offline cold-launch, and the styled shell (E2-T7, E3)
 
-These checks cannot run in CI or an emulator. iOS is the only platform with the install and
-offline cold-launch behaviour this app depends on, so a person runs these steps by hand on a
-real iPhone, in Safari, and records what actually happened. This document is that script. It
-proves outcomes [O12] and [O13] from the `E2-T7` ticket.
+These checks cannot run in CI or an emulator. iOS is the only platform with the install,
+offline cold-launch and safe-area behaviour this app depends on, so a person runs these steps
+by hand on a real iPhone, in Safari, and records what actually happened. This document is that
+script. It proves outcomes [O12] and [O13] from the `E2-T7` ticket, and — continuing in the
+same sitting once the app is installed — [O15], [O16] and [O18] from the `E3-T9` ticket.
 
 Follow the steps in order, exactly as written. Do not skip the "clear a previous install"
 section on a re-run — skipping it is the single most common way to get a false result.
@@ -123,6 +124,83 @@ Now run the check:
    the same exercise/set you logged in step 5 (via the history list or by resuming the session).
    **Expected:** the set you logged in step 5 is present, with the **same weight and reps
    values you wrote down** — not defaults, not a different set's values, not missing.
+
+## [O15]: the six screens are dark-on-dark, with the lime primary action
+
+Stay on the same installed app from [O12]/[O13] above — you do not need to reinstall or go
+back offline for this section. On each of the six screens below, check for all four of:
+
+- **Dark-on-dark:** the page background and every card sit on a near-black field (no white or
+  light-grey panel anywhere).
+- **The lime primary action:** the screen's one primary button (where it has one) is the same
+  lime-green accent colour, not the page's default blue/grey.
+- **Cards on a near-black field:** any card or row sits visibly above the page background as a
+  slightly lighter panel, not flush with it.
+- **No browser-default serif:** every piece of text is in the system UI sans-serif font — no
+  Times/Georgia-style serif anywhere (this shows up if a font failed to apply).
+
+Open each of the following six screens in turn and take a screenshot of each one:
+
+1. **Workout tab** — the tab bar's leftmost (dumbbell) icon. This is the program picker /
+   resume-card screen.
+2. **History tab** — the tab bar's middle (clock) icon. The list of past sessions.
+3. **Settings tab** — the tab bar's rightmost (sliders) icon.
+4. **Exercise list** — from the Workout tab, tap "Start ..." under a workout. This is the list
+   of that workout's exercises, each showing a set-progress count.
+5. **Set screen** — tap any exercise row in the exercise list. This is the two-dial screen
+   (weight and reps) with the rest timer and "Log set" button.
+6. **Keypad** — on the set screen, tap either dial's number readout (the weight or the reps
+   value). This opens the on-screen number pad over the dial.
+
+**Expected:** all four checks above hold on all six screens. Attach a screenshot of each of the
+six screens to the run log, labelled with the screen name.
+
+## [O16]: the tab bar and action bar clear the notch and the home indicator
+
+Still on the same standalone install, with the six screens above in front of you:
+
+1. On the Workout, History and Settings tabs, look at the bottom **tab bar**. **Expected:** the
+   tab bar's own background extends down to the bottom edge of the screen, but the icons and
+   labels inside it sit above the home indicator with visible clearance — nothing is drawn
+   underneath or overlapped by the home indicator's on-screen bar.
+2. On the exercise list and set screens, look at the bottom **action bar** (the sticky
+   "Finish"/"Log set" button strip). **Expected:** same as the tab bar — the button itself sits
+   fully above the home indicator, tappable with clearance, not crowded against or hidden by it.
+3. On every screen, look at the top of the screen, including the header on the exercise list
+   and set screen. **Expected:** no title, icon or button is cut off or drawn underneath the
+   notch/status-bar area at the top.
+
+**Expected overall:** on none of the six screens does the notch or the home indicator clip or
+overlap any content or control.
+
+## [O18]: nothing scrolls sideways, and everything is one-thumb reachable
+
+On each of the six screens from [O15]:
+
+1. Try to scroll the screen horizontally (a left-right swipe). **Expected:** nothing moves
+   sideways — the screen does not pan, rubber-band, or reveal any content to the left or right
+   of what was already visible. Vertical scrolling (where a screen is taller than the viewport,
+   such as a long history list or exercise list) is expected and fine.
+2. Holding the phone in one hand, try to reach every visible control — the tab bar icons, the
+   dial step buttons, the keypad's digits, the action bar's button — with just your thumb.
+   **Expected:** nothing requires a second hand or a stretch past a comfortable one-thumb reach
+   at the phone's own width.
+
+## Judgement calls for the operator — not defects, just yours to decide
+
+These three are known and deliberate; they are not things to report as failures:
+
+- **Whether the lime accent (`#C6F84E`) is right at full brightness on an OLED screen in a dark
+  gym.** If it reads as too bright or harsh in person, the fix is a one-line change to
+  `--color-accent` in `tokens.css` — note your judgement in the run log either way.
+- **The set screen shows the exercise's name twice** — once in the shell's header, once again
+  in the set screen's own heading. This is deliberate (the set screen's accessible name is
+  pinned by an earlier ticket), not a bug to flag.
+- **The keypad's surface colour, its key grid's corner rounding, and its entry line's text
+  size are each set on their own separate piece** (the group itself, the key grid, and the
+  entry readout) rather than as one combined style. This is an intentional reading of the
+  design's keypad clause, not something to flag as inconsistent if the keypad still reads as
+  one cohesive control.
 
 ## Result block — paste this back into the run log, filled in
 
