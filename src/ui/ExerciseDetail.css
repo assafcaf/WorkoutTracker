@@ -1,0 +1,9 @@
+/* The exercise detail screen: profile, numbered instructions, video link and photos (E5-T4).
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
+ * one definition site. Styling itself is code-writer work; this stub keeps the .tsx's
+ * `import './ExerciseDetail.css'` resolvable while the tests run red.
+ */
+
+.exercise-detail {
+}
