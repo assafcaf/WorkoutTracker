@@ -1,0 +1,33 @@
+/* The statistics screen: one card per view.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css.
+ */
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stats-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.stats-heading {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.stats-empty {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
