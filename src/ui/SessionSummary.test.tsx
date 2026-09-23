@@ -157,6 +157,26 @@ test('M16 SessionSummary for a session with no sets draws every region in band 0
   }
 })
 
+// --- F2/F3: the summary renders as a modal popup (fix-popups) ------------------------------
+//
+// The summary already carried `role="dialog"`; the device-check defect was that it (and the
+// alternatives list and region panel) landed in normal document flow instead of as a real
+// popup over the current view -- these prove the two things role="dialog" alone did not: it is
+// marked `aria-modal`, and its root carries the shared `.overlay-panel` class `src/styles/
+// overlay.test.ts` audits as data.
+
+test('F2 SessionSummary\'s dialog is aria-modal', () => {
+  renderSummary()
+
+  expect(summaryDialog()).toHaveAttribute('aria-modal', 'true')
+})
+
+test('F3 SessionSummary\'s dialog carries the shared overlay-panel class', () => {
+  renderSummary()
+
+  expect(summaryDialog()).toHaveClass('overlay-panel')
+})
+
 test('M16 Done on the session summary calls onClose', async () => {
   const user = userEvent.setup()
   const { onClose } = renderSummary()

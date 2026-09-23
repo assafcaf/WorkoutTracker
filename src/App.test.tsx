@@ -1206,41 +1206,63 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
   expect(currentTabNames()).toEqual(['Exercises'])
 })
 
-test('L10 the search box narrows by name, the muscle and equipment filters narrow further, and a combination matching nothing shows "No exercises match"', async () => {
+// RULING (fix-popups, F4): this test used to assert exact listitem counts of 36 ("lat") and 24
+// (biceps + dumbbell) -- both above the 10-per-page cap LibraryList now applies, so it was
+// found by inspection (not named by the operator's ticket) to break under F4 the same way L9's
+// and M9's did. Rewritten to prove the filters still narrow across the whole library -- only
+// the first 10 of each result render, with "Show more" offered -- and a combination matching
+// nothing still shows "No exercises match" with no "Show more" (0 is unaffected by the cap).
+test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with "Show more" -- and a combination matching nothing shows "No exercises match"', async () => {
   const user = userEvent.setup()
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await pressTab(user, 'Exercises')
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
 
-  // Hand-checked against the real library fixture: 36 names contain "lat", case-insensitively.
+  // Hand-checked against the real library fixture: 36 names contain "lat", case-insensitively --
+  // above the 10-per-page cap, so only the first 10 show until "Show more" is tapped.
   const latMatches = LIBRARY.filter((exercise) => exercise.name.toLowerCase().includes('lat'))
+  expect(latMatches.length).toBeGreaterThan(10)
   await user.type(search, 'lat')
   await waitFor(() => {
     const rows = screen.getAllByRole('listitem')
-    expect(rows).toHaveLength(latMatches.length)
+    expect(rows).toHaveLength(10)
+    rows.forEach((row) => {
+      expect(textOf(row).toLowerCase()).toContain('lat')
+    })
+  }, SETTLE)
+  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+
+  await user.click(screen.getByRole('button', { name: 'Show more' }))
+  await waitFor(() => {
+    const rows = screen.getAllByRole('listitem')
+    expect(rows).toHaveLength(20)
     rows.forEach((row) => {
       expect(textOf(row).toLowerCase()).toContain('lat')
     })
   }, SETTLE)
 
   // Clearing the search and setting muscle to biceps and equipment to dumbbell narrows to
-  // exercises matching both (hand-checked: 24 in the real library fixture, by primaryMuscles).
+  // exercises matching both (hand-checked: 24 in the real library fixture, by primaryMuscles),
+  // also above the cap -- and changing the filter resets back to the new result's own first 10.
   const bicepsDumbbellMatches = LIBRARY.filter(
     (exercise) => exercise.primaryMuscles.includes('biceps') && exercise.equipment === 'dumbbell',
   )
+  expect(bicepsDumbbellMatches.length).toBeGreaterThan(10)
   await user.clear(search)
   await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
   await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
   await waitFor(() => {
-    expect(screen.getAllByRole('listitem')).toHaveLength(bicepsDumbbellMatches.length)
+    expect(screen.getAllByRole('listitem')).toHaveLength(10)
   }, SETTLE)
+  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
 
   // Typing "lat" back in on top of those two filters matches nothing in the real library
   // fixture (hand-checked: 0), which is what "No exercises match" is for.
   await user.type(search, 'lat')
   expect(await screen.findByText('No exercises match', {}, SETTLE)).toBeVisible()
   expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
 })
 
 // --- E5-T8: the in-app detail overlay ([L14]) -----------------------------------------------
@@ -1291,7 +1313,14 @@ test('L14 the set screen underneath the detail overlay is not unmounted, so its 
   // The set screen underneath was not unmounted: its dials are still in the document.
   expect(screen.getByRole('button', { name: 'Weight' })).toBeInTheDocument()
 
+  // [F1, fix-popups] the overlay is a real modal popup, not content in normal document flow
+  // below the set screen -- the operator's device-check defect ("the details appear in the
+  // bottom instead of a dedicated popup"). Extends this existing L14 guarantee rather than
+  // replacing it: the "not unmounted" assertions above are unchanged.
   const overlay = detailOverlay() as HTMLElement
+  expect(overlay).toHaveAttribute('role', 'dialog')
+  expect(overlay).toHaveAttribute('aria-modal', 'true')
+
   await user.click(within(overlay).getByRole('button', { name: 'Back' }))
 
   expect(detailOverlay()).toBeNull()
@@ -1324,6 +1353,29 @@ test('L14 tapping a row on the Exercises tab opens the same in-app detail overla
   ).toBeVisible()
 })
 
+test('F1 tapping a row on the Exercises tab opens the detail overlay as a modal dialog, with the Exercises tab still mounted underneath', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
+  await user.type(search, 'Barbell Squat')
+  const squatRowName = await screen.findByText(
+    'Barbell Squat',
+    { selector: '.library-row-name' },
+    SETTLE,
+  )
+  const squatRowButton = squatRowName.closest('button')
+  if (!squatRowButton) throw new Error('the Barbell Squat row is not inside a button')
+  await user.click(squatRowButton)
+
+  const dialog = await screen.findByRole('dialog', { name: 'Barbell Squat' }, SETTLE)
+  expect(dialog).toHaveAttribute('aria-modal', 'true')
+  // The popup sits over the Exercises tab rather than replacing it: the tab's own search box
+  // is still in the document underneath.
+  expect(screen.getByRole('searchbox', { name: /search/i })).toBeInTheDocument()
+})
+
 // --- E5-T12: swapping an exercise mid-session ([S6], [S7]) --------------------------------
 //
 // seated-biceps-curls (Workout B, sets: 3, repRange: [10, 12], restSeconds: 90 in
@@ -1352,6 +1404,51 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   expect(within(hammerRow).getByRole('button', { name: 'Do this instead' })).toBeVisible()
+})
+
+// --- F2/F3: the alternatives overlay renders as a modal popup (fix-popups) -----------------
+//
+// AlternativesList itself is also composed inline, browse-only, inside ExerciseDetail's own
+// "Similar exercises" section (S13) -- not a popup there. It is App's own top-level overlay
+// (this SetScreen "Alternatives" flow) that must carry the popup treatment, named "Alternatives"
+// (this task's own naming choice; the ticket does not pin one), with its own "Close" control.
+
+test('F2 tapping Alternatives on a live set opens the alternatives list as a modal dialog, closable without swapping', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+
+  const dialog = await screen.findByRole('dialog', { name: 'Alternatives' }, SETTLE)
+  expect(dialog).toHaveAttribute('aria-modal', 'true')
+  expect(within(dialog).getByRole('searchbox', { name: /search/i })).toBeVisible()
+
+  await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog', { name: 'Alternatives' })).toBeNull()
+  }, SETTLE)
+  // The set screen underneath stays mounted, and nothing was swapped.
+  expect(screen.getByRole('button', { name: 'Weight' })).toBeInTheDocument()
+  expect(screen.queryByText(/instead of Seated biceps curls/)).toBeNull()
+})
+
+test('F3 the Alternatives overlay carries the shared overlay-panel class', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Seated biceps curls')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+
+  const dialog = await screen.findByRole('dialog', { name: 'Alternatives' }, SETTLE)
+  expect(dialog).toHaveClass('overlay-panel')
 })
 
 test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates the exercise list row', async () => {
@@ -1850,6 +1947,18 @@ test('M16 tapping Finish workout shows the session summary with its body map on 
   expectSummaryBand(summary, 'chest', '0')
 })
 
+test('F2 the Finish workout session summary is an aria-modal dialog', async () => {
+  const user = userEvent.setup()
+  await threeBackSquatSetsInProgress()
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+
+  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  expect(summary).toHaveAttribute('aria-modal', 'true')
+})
+
 test('M16 Done on the finish summary closes it onto the picker with the session finished', async () => {
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
@@ -1908,7 +2017,11 @@ test('M9 tapping upper-back on a History session’s map opens a panel with its 
   expect(within(byName('Face pull')!).getByText('0.5 sets')).toBeVisible()
 })
 
-test('M9 Browse exercises on upper-back opens the Exercises tab listing only lats or middle back exercises', async () => {
+// RULING (fix-popups, F4): this test used to assert exactly 72 listitems, rendering every
+// lats-or-middle-back exercise at once -- above the 10-per-page cap. Rewritten to the first 10
+// (still only lats/middle back), then "Show more" tapped through to all 72 and the button
+// disappearing -- named by the operator's ticket as one of F4's authorised rewrites.
+test('M9 Browse exercises on upper-back opens the Exercises tab listing only lats or middle back exercises, first 10 with Show more reaching all 72', async () => {
   const user = userEvent.setup()
   await finishedUpperBackSession()
   render(<App />)
@@ -1919,7 +2032,8 @@ test('M9 Browse exercises on upper-back opens the Exercises tab listing only lat
   await user.click(within(panel).getByRole('button', { name: 'Browse exercises' }))
 
   // Hand-checked against the real library fixture: 38 exercises are lats primary and 34 middle
-  // back primary, 72 in all, and every one of them lists lats or middle back first.
+  // back primary, 72 in all -- above the 10-per-page cap -- and every one of them lists lats or
+  // middle back first.
   const upperBack = LIBRARY.filter(
     (exercise) =>
       exercise.primaryMuscles.includes('lats') || exercise.primaryMuscles.includes('middle back'),
@@ -1927,10 +2041,22 @@ test('M9 Browse exercises on upper-back opens the Exercises tab listing only lat
   expect(upperBack).toHaveLength(72)
   await waitFor(() => {
     expect(currentTabNames()).toEqual(['Exercises'])
-    expect(screen.getAllByRole('listitem')).toHaveLength(72)
+    expect(screen.getAllByRole('listitem')).toHaveLength(10)
   }, SETTLE)
   expect(sessionSummary()).toBeNull()
   expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
+  expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
+
+  // Tapping "Show more" repeatedly reaches all 72, then the button disappears: 6 taps of 10
+  // reach 70, a 7th reaches the remaining 2.
+  for (let shown = 10; shown < 72; shown += 10) {
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    const expectedCount = Math.min(shown + 10, 72)
+    await waitFor(() => {
+      expect(screen.getAllByRole('listitem')).toHaveLength(expectedCount)
+    }, SETTLE)
+  }
+  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
   const muscles = new Set(
     screen
       .getAllByRole('listitem')
@@ -1938,7 +2064,7 @@ test('M9 Browse exercises on upper-back opens the Exercises tab listing only lat
   )
   expect([...muscles].sort()).toEqual(['lats', 'middle back'])
   expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
-})
+}, 20000)
 
 // --- E5-T20: App wires the logged sessions into the Program tab's "This week" --------------
 //
