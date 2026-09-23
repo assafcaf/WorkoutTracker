@@ -87,7 +87,7 @@ function openSetFor(
  * the rule is E1-T2's, the message is this screen's.
  */
 export function SetScreen(props: SetScreenProps): JSX.Element {
-  const { exercise, plan, sessionId, onLogged, onAddSet, onOpenInfo } = props
+  const { exercise, plan, sessionId, onLogged, onAddSet, onOpenInfo, onOpenAlternatives } = props
 
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
@@ -166,11 +166,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   return (
     <div className="set-screen">
-      <h2>{exercise.name}</h2>
+      {/* The exercise's name is the shell's own header title (`AppShell`'s `<h1>`, set by every
+          caller to `exercise.name`); a second heading here would duplicate it verbatim, which
+          collides for a caller matching an exercise's set screen by its accessible name alone
+          (E5-T12's S7, opening a swapped-in exercise's set screen). */}
       <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
-      {/* STUB (E5-T12 test-designer): renders the button but does not yet call
-          onOpenAlternatives. */}
-      <button type="button" className="open-alternatives">
+      <button
+        type="button"
+        className="open-alternatives"
+        onClick={() => onOpenAlternatives?.(exercise.id)}
+      >
         Alternatives
       </button>
       <p className="set-counter">{`Set ${open.setIndex} of ${plan.sets}`}</p>

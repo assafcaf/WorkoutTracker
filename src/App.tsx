@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Exercise, LibraryExercise, Muscle, Program, Session, SetEntry, Workout } from './types'
+import type {
+  Exercise,
+  LibraryExercise,
+  Muscle,
+  Program,
+  Session,
+  SetEntry,
+  Video,
+  Workout,
+} from './types'
 import { loadCatalog, loadPrograms } from './data/catalog'
-import { MUSCLES, loadLibrary } from './data/library'
+import { MUSCLES, loadLibrary, loadVideos } from './data/library'
 import { photoUrls } from './data/photos'
 import { resolveExercise } from './data/resolve'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
@@ -19,6 +28,7 @@ import { db, isStorageAvailable } from './storage/db'
 import {
   ACTIVE_PROGRAM_ID_KEY,
   getActiveProgramId,
+  getGymEquipment,
   getLastExportedAt,
   setActiveProgramId,
 } from './storage/settingsStore'
@@ -27,10 +37,12 @@ import {
   getActiveSession,
   getLastEntriesFor,
   listSessions,
+  setSwap,
   startOrResumeSession,
 } from './storage/sessionStore'
 import { ActionBarSlot, AppShell } from './ui/AppShell'
 import type { Tab } from './ui/AppShell'
+import { AlternativesList } from './ui/AlternativesList'
 import { BackupBadge, isBackupDue } from './ui/BackupBadge'
 import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ExerciseList } from './ui/ExerciseList'
@@ -72,8 +84,13 @@ type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[] }
  * unmounting it, so a set screen's dial state survives a trip through "Exercise info". `heading`
  * overrides the library entry's own name, since a catalog exercise's own name (e.g. "Deadlift")
  * can differ from the library entry it maps to ("Barbell Deadlift").
+ *
+ * The ranked alternatives overlay (E5-T12) is rendered the same way, over whatever view is
+ * current. `plannedId` is the workout plan's own `exerciseId` -- the swap `setSwap` is recorded
+ * against -- even when the set screen it was opened from is itself already showing a swapped-in
+ * exercise.
  */
-type Overlay = { kind: 'detail'; libraryId: string; heading?: string }
+type Overlay = { kind: 'detail'; libraryId: string; heading?: string } | { kind: 'alternatives'; plannedId: string }
 
 type LoadState =
   | { status: 'loading' }
@@ -104,6 +121,17 @@ function locateSession(
   const program = programs.find((candidate) => candidate.id === session.programId)
   const workout = program?.workouts.find((candidate) => candidate.id === session.workoutId)
   return program && workout ? { program, workout } : null
+}
+
+/**
+ * The workout plan's own `exerciseId` for `exerciseId` on screen: `exerciseId` itself when it
+ * is a plan's id (unswapped, or the plan id itself), or the plan whose recorded swap
+ * (`session.swaps`) is `exerciseId` (E5-T12) -- so a swapped-in exercise's set screen can still
+ * be matched back to the `ExercisePlan` (sets, rep range, rest) that prescribed it.
+ */
+function plannedExerciseIdFor(session: Session, exerciseId: string): string {
+  const swapped = Object.entries(session.swaps ?? {}).find(([, doneId]) => doneId === exerciseId)
+  return swapped ? swapped[0] : exerciseId
 }
 
 /**
@@ -175,6 +203,11 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // The in-app detail overlay (E5-T8). Looked up against `library` at render time, so it is
   // never stale once the library has loaded, and stays `null` until something opens it.
   const [overlay, setOverlay] = useState<Overlay | null>(null)
+  // The gym's saved equipment (E5-T12's Out of scope: passed through as-is, no settings UI).
+  const [gymEquipment, setGymEquipment] = useState<string[] | null>(null)
+  // The harvested exercise videos (E5-T7), keyed by library id; loaded once alongside the
+  // library so the detail overlay can show one when it has it.
+  const [videos, setVideos] = useState<Map<string, Video>>(new Map())
 
   useEffect(() => {
     let cancelled = false
@@ -192,15 +225,19 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           !programs.some((program) => program.id === storedProgramId)
         const inProgress = await activeSessionOrNull(storageAvailable)
         const lastExportedAt = storageAvailable ? await getLastExportedAt() : null
+        const gymEquipmentList = storageAvailable ? await getGymEquipment() : null
         // Loaded here rather than lazily on the Exercises tab (E5-T3's original scheme), so the
-        // in-app detail overlay (E5-T8) can open from a set screen too, without waiting on a
-        // fetch mid-session.
+        // in-app detail overlay (E5-T8) and the ranked alternatives overlay (E5-T12) can open
+        // from a set screen too, without waiting on a fetch mid-session.
         const loadedLibrary = await loadLibrary()
+        const loadedVideos = await loadVideos()
 
         if (cancelled) return
         setSession(inProgress)
         setView(inProgress ? 'list' : 'picker')
         setLibrary([...loadedLibrary.values()])
+        setGymEquipment(gymEquipmentList)
+        setVideos(loadedVideos)
         setState({
           status: 'ready',
           catalog,
@@ -245,6 +282,38 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   /** `ExerciseList.resolve`: a catalog id or a library id (a swap, E5-T12) to its `Exercise`. */
   function resolveListExercise(id: string): Exercise | undefined {
     return resolveExercise(id, catalog, libraryMap)
+  }
+
+  /**
+   * `SetScreen.onOpenAlternatives`: opens the ranked alternatives overlay (E5-T12) for the plan
+   * behind `exerciseId` on screen, matched back to its planned id through `session.swaps` when
+   * the screen already shows a swapped-in exercise.
+   */
+  function handleOpenAlternatives(exerciseId: string): void {
+    if (!session) return
+    setOverlay({ kind: 'alternatives', plannedId: plannedExerciseIdFor(session, exerciseId) })
+  }
+
+  /**
+   * `AlternativesList.onChoose`: records the swap for the session in progress, closes the
+   * overlay and returns to the exercise list, which is where the swapped-in exercise's own row
+   * now lives. `session` is updated in place with the swap `setSwap` just wrote, so the list
+   * reflects it without a re-fetch.
+   */
+  function handleChooseAlternative(plannedId: string, chosenId: string): void {
+    if (!session) return
+    setSwap(session.id, plannedId, chosenId)
+      .then(() => {
+        setSession((current) =>
+          current ? { ...current, swaps: { ...current.swaps, [plannedId]: chosenId } } : current,
+        )
+        setOverlay(null)
+        setOpenSet(null)
+        setView('list')
+      })
+      .catch(() => {
+        // Nothing was recorded; the overlay stays open so the trainee can try again.
+      })
   }
 
   function handleActiveProgramChange(id: string): void {
@@ -428,10 +497,14 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   const located = session ? locateSession(programs, session) : null
 
   if (content === null && view === 'set' && session && located && openSet) {
-    const plan = located.workout.exercises.find(
-      (candidate) => candidate.exerciseId === openSet.exerciseId,
-    )
-    const exercise = catalog.get(openSet.exerciseId)
+    // A swapped-in exercise's set screen (E5-T12): `openSet.exerciseId` is the *done* id, which
+    // is not in `workout.exercises` (that still lists the planned id) -- matched back to its
+    // `ExercisePlan` through `session.swaps`, so the swapped-in exercise still opens with the
+    // plan's own sets, rep range and rest. `resolveListExercise` answers the done id's own
+    // `Exercise` either way, catalog or library (E5-T6).
+    const plannedId = plannedExerciseIdFor(session, openSet.exerciseId)
+    const plan = located.workout.exercises.find((candidate) => candidate.exerciseId === plannedId)
+    const exercise = resolveListExercise(openSet.exerciseId)
     if (plan && exercise) {
       content = (
         // No tab prop: a set being logged is inside the session, and the way out of it is the
@@ -455,8 +528,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             onLogged={(logged) => setSession(logged)}
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
-            // STUB (E5-T12 test-designer): the ranked alternatives overlay is not wired up yet.
-            onOpenAlternatives={() => {}}
+            onOpenAlternatives={handleOpenAlternatives}
           />
         </AppShell>
       )
@@ -642,20 +714,42 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // overlay was opened with; `null` while the entry cannot be found (the library has not
   // finished loading yet, or, in principle, a stale/bad id), in which case the overlay simply
   // does not render rather than showing a broken screen.
-  const overlayEntry = overlay ? library.find((entry) => entry.id === overlay.libraryId) : null
+  const overlayEntry =
+    overlay?.kind === 'detail' ? library.find((entry) => entry.id === overlay.libraryId) ?? null : null
   const catalogLibraryIds = new Set(
     Array.from(catalog.values(), (exercise) => exercise.libraryId),
   )
 
+  // The alternatives overlay's target (E5-T12): the planned exercise's own library entry, so
+  // `alternativesFor` ranks against the same profile the plan actually prescribes -- `null`
+  // while it cannot be resolved (the library or catalog have not finished loading yet).
+  const alternativesTarget: LibraryExercise | null =
+    overlay?.kind === 'alternatives'
+      ? (() => {
+          const plannedExercise = resolveListExercise(overlay.plannedId)
+          return plannedExercise ? libraryMap.get(plannedExercise.libraryId) ?? null : null
+        })()
+      : null
+
   return (
     <>
       {content}
-      {overlay && overlayEntry ? (
+      {overlay?.kind === 'detail' && overlayEntry ? (
         <ExerciseDetail
           entry={overlayEntry}
+          video={videos.get(overlayEntry.id)}
           heading={overlay.heading}
           photos={photoUrls(overlayEntry, catalogLibraryIds, import.meta.env.BASE_URL)}
           onBack={() => setOverlay(null)}
+        />
+      ) : null}
+      {overlay?.kind === 'alternatives' && alternativesTarget ? (
+        <AlternativesList
+          target={alternativesTarget}
+          library={libraryMap}
+          gymEquipment={gymEquipment}
+          onChoose={(chosenId) => handleChooseAlternative(overlay.plannedId, chosenId)}
+          onOpenDetail={handleOpenInfo}
         />
       ) : null}
     </>
