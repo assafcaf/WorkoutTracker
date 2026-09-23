@@ -17,6 +17,12 @@ export default defineConfig({
       // E2-T2's job, which is also why nothing is injected into index.html here.
       registerType: 'prompt',
       injectRegister: null,
+      workbox: {
+        // Workbox's default glob is '**/*.{js,wasm,css,html}' (the icons and the manifest are
+        // added by the plugin itself). The bundled exercise photos in public/library-photos/
+        // are .jpg, so they are named here too, or they would not work offline.
+        globPatterns: ['**/*.{js,wasm,css,html,jpg}'],
+      },
       manifest: {
         name: 'Workout Tracker',
         short_name: 'Workout',
