@@ -218,8 +218,25 @@ test('O4 with the network down the program picker offers the workouts to start',
   expect(await screenText()).toContain('Start Workout A')
 })
 
-test('O4 with the network down the picker names exercises out of the cached catalog', async () => {
-  expect(await screenText()).toContain('Back squat 8-10 x 4')
+// E5-T18 (M13) moves this exercise-plan text off the Workout tab and onto the Program tab
+// (M12 leaves only the start buttons on the Workout tab), so reaching it now means clicking
+// the Program tab's button in the cached window and waiting for its re-render -- there is no
+// testing-library wired up in this file (raw JSDOM), so the click and the wait are done with
+// native DOM calls, the same polling pattern `runLaunch` already uses.
+test('O4 with the network down the Program tab names exercises out of the cached catalog', async () => {
+  const { window } = await launchFromCache()
+
+  const programTab = window.document.querySelector('[aria-label="Program"]')
+  if (!programTab) throw new Error('no Program tab button in the cached app')
+  programTab.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+
+  const expected = 'Back squat 8-10 x 4, rest 180s'
+  const deadline = Date.now() + 5_000
+  while (Date.now() < deadline && !(window.document.body.textContent ?? '').includes(expected)) {
+    await new Promise((resolve) => setTimeout(resolve, 25))
+  }
+
+  expect(window.document.body.textContent ?? '').toContain(expected)
 })
 
 test('O4 launching the cached app asks the network for nothing', async () => {
