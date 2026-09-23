@@ -771,3 +771,197 @@ test('O9 the Settings tab carries no free-standing Settings, History or Back but
 
   expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
 })
+
+// --- E3-T4: the workout in progress inside the shell ([O10], [O11]) -----------------------
+//
+// Both outcomes are about what wraps an in-session screen, and it is App that wraps it: the
+// header that names the workout or the exercise, the back control, the sticky action bar the
+// one action that matters is pinned to, and the tab bar an in-session screen must not have.
+// AppShell's own contract is proven in src/ui/AppShell.test.tsx; what is proven here is what
+// the exercise list and the set screen are actually given.
+//
+// These O10 and O11 are E3's, not the O10 and O12 of E1 that src/ui/SetScreen.test.tsx names.
+
+/** The shell around whatever screen is showing, or null when a screen renders bare. */
+function shell(): HTMLElement | null {
+  return document.body.querySelector('.app-shell')
+}
+
+/** The shell's header, or null when there is none. */
+function shellHeader(): HTMLElement | null {
+  return document.body.querySelector('header.app-header')
+}
+
+/** The shell's main region: the screen itself, without the chrome around it. */
+function shellMain(): HTMLElement | null {
+  return document.body.querySelector('main.app-main')
+}
+
+/** The shell's sticky action bar, or null when the screen has none. */
+function actionBar(): HTMLElement | null {
+  return document.body.querySelector('.action-bar')
+}
+
+/** Text with its whitespace collapsed, so a header reads as the one line it is. */
+function textOf(element: Element): string {
+  return (element.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/** Starts Workout A and waits for its exercise list to be the screen showing. */
+async function startWorkoutA(user: UserEvent): Promise<void> {
+  await startWorkout(user, 'Workout A')
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+}
+
+/** Starts Workout A, opens back squat, and waits for its dials to be the screen showing. */
+async function openBackSquat(user: UserEvent): Promise<void> {
+  await startWorkoutA(user)
+  await openExercise(user, 'Back squat')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+}
+
+// --- O10: the exercise list ----------------------------------------------------------------
+
+test('O10 the exercise list renders inside a shell whose header names the workout', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await startWorkoutA(user)
+
+  const header = shellHeader()
+  expect(header, 'the exercise list is not inside the shell at all').not.toBeNull()
+  // "Workout" alone would be the picker's title: the trainee has to see which workout is on.
+  expect(textOf(header as HTMLElement)).toContain('Workout A')
+})
+
+test('O10 the exercise list is inside the shell and no tab bar is rendered with it', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await startWorkoutA(user)
+
+  const inShell = shell()
+  expect(inShell, 'the exercise list is not inside the shell at all').not.toBeNull()
+  expect(
+    within(inShell as HTMLElement).getByRole('button', { name: /^Back squat/ }),
+  ).toBeVisible()
+  // A workout in progress is not a tab: the way out of it is the back control and finishing,
+  // never a tab that would strand a half-logged session behind it.
+  expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
+})
+
+test('O10 the exercise list shell offers a back control in its header', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await startWorkoutA(user)
+
+  const header = shellHeader()
+  expect(header, 'the exercise list is not inside the shell at all').not.toBeNull()
+  const back = (header as HTMLElement).querySelector('button.app-header-back')
+  expect(back, 'the shell around the exercise list offers no way back out of it').not.toBeNull()
+  expect(accessibleNameOf(back as Element)).toMatch(/back/i)
+})
+
+test('O10 the exercise list back control lands on the picker with the session still in progress', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await startWorkoutA(user)
+
+  const back = screen.queryByRole('button', { name: 'Back' })
+  expect(back, 'the exercise list offers no back control').not.toBeNull()
+  await user.click(back as HTMLElement)
+
+  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+  // Backing out is not finishing: the session is still there to come back to, which is what
+  // E3-T5's resume card hangs off.
+  expect(await getActiveSession()).not.toBeNull()
+})
+
+test('O10 Finish workout sits in the sticky action bar rather than after the exercise list', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await startWorkoutA(user)
+
+  const bar = actionBar()
+  expect(bar, 'the exercise list has no sticky action bar').not.toBeNull()
+  const finish = screen.getByRole('button', { name: 'Finish workout' })
+  expect((bar as HTMLElement).contains(finish)).toBe(true)
+  const main = shellMain()
+  expect(main, 'the exercise list is not inside the shell at all').not.toBeNull()
+  // The list scrolls; the action does not. A Finish button still trailing the rows would be
+  // off the bottom of a long workout however the bar is styled.
+  expect((main as HTMLElement).contains(finish)).toBe(false)
+  expect((main as HTMLElement).querySelector('.exercise-list')).not.toBeNull()
+})
+
+// --- O11: the set screen -------------------------------------------------------------------
+
+test('O11 the set screen renders inside a shell whose header names the exercise', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await openBackSquat(user)
+
+  const header = shellHeader()
+  expect(header, 'the set screen is not inside the shell at all').not.toBeNull()
+  expect(textOf(header as HTMLElement)).toContain('Back squat')
+})
+
+test('O11 the set screen is inside the shell and no tab bar is rendered with it', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await openBackSquat(user)
+
+  const inShell = shell()
+  expect(inShell, 'the set screen is not inside the shell at all').not.toBeNull()
+  expect(within(inShell as HTMLElement).getByRole('button', { name: 'Weight' })).toBeVisible()
+  expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
+})
+
+test('O11 the set screen back control returns to the exercise list', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await openBackSquat(user)
+
+  const back = screen.queryByRole('button', { name: 'Back' })
+  expect(back, 'the set screen offers no back control').not.toBeNull()
+  await user.click(back as HTMLElement)
+
+  expect(await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Weight' })).toBeNull()
+})
+
+test('O11 Log set sits in the sticky action bar rather than in the set screen body', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+
+  await openBackSquat(user)
+
+  const bar = actionBar()
+  expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
+  const logSetButton = screen.getByRole('button', { name: 'Log set' })
+  expect((bar as HTMLElement).contains(logSetButton)).toBe(true)
+  const main = shellMain()
+  expect(main, 'the set screen is not inside the shell at all').not.toBeNull()
+  // The dials stay in the body; only the action that ends the set is pinned to the bottom.
+  expect((main as HTMLElement).contains(logSetButton)).toBe(false)
+  expect((main as HTMLElement).contains(weightReadout())).toBe(true)
+})
+
+test('O11 Add set sits in the action bar beside Log set once every planned set is logged', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await logFourSetsOfBackSquat(user)
+
+  const addSet = await screen.findByRole('button', { name: 'Add set' }, SETTLE)
+
+  const bar = actionBar()
+  expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
+  expect((bar as HTMLElement).contains(addSet)).toBe(true)
+  expect((bar as HTMLElement).contains(screen.getByRole('button', { name: 'Log set' }))).toBe(
+    true,
+  )
+})
