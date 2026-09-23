@@ -712,12 +712,19 @@ async function pressTab(user: UserEvent, name: string): Promise<void> {
  * Every button with one of `names` that is not part of the tab bar -- the loose controls [O9]
  * is about. The tab bar has its own Settings and History buttons, so "gone from the document"
  * can only mean gone from outside the nav.
+ *
+ * RULING (E4-T4, ticket owner): the History tab's History | Stats switch holds a button named
+ * exactly "History". It never leaves the History tab -- it only flips the switch back from Stats
+ * -- so it is not the duplicate navigation [O9] forbids. Buttons inside that one group
+ * (`role="group"`, `aria-label="History view"`) are exempt; a "History" button anywhere else
+ * outside the nav still counts as loose.
  */
 function looseButtons(names: string[]): string[] {
   const nav = mainNav()
   return names
     .flatMap((name) => screen.queryAllByRole('button', { name }))
     .filter((button) => !nav.contains(button))
+    .filter((button) => button.closest('[role="group"][aria-label="History view"]') === null)
     .map((button) => accessibleNameOf(button))
 }
 
