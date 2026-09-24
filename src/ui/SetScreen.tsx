@@ -203,14 +203,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           caller to `exercise.name`); a second heading here would duplicate it verbatim, which
           collides for a caller matching an exercise's set screen by its accessible name alone
           (E5-T12's S7, opening a swapped-in exercise's set screen). */}
-      <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
-      <button
-        type="button"
-        className="open-alternatives"
-        onClick={() => onOpenAlternatives?.(exercise.id)}
-      >
-        Alternatives
-      </button>
+      <div className="set-screen-links">
+        <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
+        <button
+          type="button"
+          className="open-alternatives"
+          onClick={() => onOpenAlternatives?.(exercise.id)}
+        >
+          Alternatives
+        </button>
+      </div>
       <p className="set-counter">{setCounterText(open.setIndex, plan.sets, loggedCount, done)}</p>
 
       <WeightDial

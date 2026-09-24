@@ -754,7 +754,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         title={located.workout.name}
         onBack={() => setView('picker')}
         action={
-          <button type="button" onClick={handleFinish}>
+          <button type="button" className="finish-workout" onClick={handleFinish}>
             Finish workout
           </button>
         }
@@ -853,36 +853,41 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         trailing={trailing}
         settingsBadge={settingsBadge}
       >
-        <input
-          type="search"
-          aria-label="Search exercises"
-          value={librarySearch}
-          onChange={(event) => setLibrarySearch(event.target.value)}
-        />
-        <select
-          aria-label="Muscle"
-          value={libraryMuscle}
-          onChange={(event) => setLibraryMuscle(event.target.value)}
-        >
-          <option value="">All muscles</option>
-          {MUSCLES.map((muscle) => (
-            <option key={muscle} value={muscle}>
-              {muscle}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Equipment"
-          value={libraryEquipment}
-          onChange={(event) => setLibraryEquipment(event.target.value)}
-        >
-          <option value="">All equipment</option>
-          {libraryEquipmentOptions.map((equipment) => (
-            <option key={equipment} value={equipment}>
-              {equipment}
-            </option>
-          ))}
-        </select>
+        <div className="library-filters">
+          <input
+            type="search"
+            aria-label="Search exercises"
+            className="library-search"
+            value={librarySearch}
+            onChange={(event) => setLibrarySearch(event.target.value)}
+          />
+          <select
+            aria-label="Muscle"
+            className="library-filter"
+            value={libraryMuscle}
+            onChange={(event) => setLibraryMuscle(event.target.value)}
+          >
+            <option value="">All muscles</option>
+            {MUSCLES.map((muscle) => (
+              <option key={muscle} value={muscle}>
+                {muscle}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Equipment"
+            className="library-filter"
+            value={libraryEquipment}
+            onChange={(event) => setLibraryEquipment(event.target.value)}
+          >
+            <option value="">All equipment</option>
+            {libraryEquipmentOptions.map((equipment) => (
+              <option key={equipment} value={equipment}>
+                {equipment}
+              </option>
+            ))}
+          </select>
+        </div>
         <LibraryList
           library={filteredLibrary}
           onOpen={handleOpenInfo}
@@ -920,7 +925,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             onResume={() => handleChoose(session.programId, session.workoutId)}
           />
         ) : null}
-        <fieldset disabled={!storageAvailable}>
+        <fieldset className="workout-picker" disabled={!storageAvailable}>
           <WorkoutStartButtons
             program={activeProgram}
             onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}

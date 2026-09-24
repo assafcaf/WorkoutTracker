@@ -133,6 +133,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
             >
               <input
                 type="radio"
+                className="settings-radio"
                 name="program-page-active-program"
                 value={program.id}
                 checked={checked}

@@ -90,12 +90,20 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
               {label}
             </button>
             {doneId !== undefined && logged === 0 ? (
-              <button type="button" onClick={() => onUndoSwap(plan.exerciseId)}>
+              <button
+                type="button"
+                className="exercise-undo-swap"
+                onClick={() => onUndoSwap(plan.exerciseId)}
+              >
                 Undo swap
               </button>
             ) : null}
             {doneId === undefined && lastDoneId !== undefined ? (
-              <button type="button" onClick={() => onApplySwap(plan.exerciseId, lastDoneId)}>
+              <button
+                type="button"
+                className="exercise-last-time"
+                onClick={() => onApplySwap(plan.exerciseId, lastDoneId)}
+              >
                 {`Last time: ${resolve(lastDoneId)?.name ?? lastDoneId}`}
               </button>
             ) : null}
