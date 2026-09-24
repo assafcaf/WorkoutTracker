@@ -46,6 +46,7 @@ import {
 import { ActionBarSlot, AppShell } from './ui/AppShell'
 import type { Tab } from './ui/AppShell'
 import { AlternativesList } from './ui/AlternativesList'
+import './ui/AlternativesOverlay.css'
 import { BackupBadge, isBackupDue } from './ui/BackupBadge'
 import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ExerciseList } from './ui/ExerciseList'
@@ -950,6 +951,13 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         })()
       : null
 
+  // The Alternatives overlay's heading names the Plan's current Exercise (E6-T4/O10) -- the
+  // swapped-in one if `overlay.plannedId` already carries a swap -- which is `resolveListExercise`
+  // own name, not `alternativesTarget`'s library entry name (the two can differ, e.g. "Seated
+  // biceps curls" the Plan vs. "Seated Dumbbell Curl" the library's own name for it).
+  const alternativesName: string | undefined =
+    overlay?.kind === 'alternatives' ? resolveListExercise(overlay.plannedId)?.name : undefined
+
   return (
     <>
       {content}
@@ -979,8 +987,16 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           onBrowse={handleBrowseMuscles}
         />
       ) : null}
-      {overlay?.kind === 'alternatives' && alternativesTarget ? (
-        <div role="dialog" aria-modal="true" aria-label="Alternatives" className="overlay-panel alternatives-overlay">
+      {overlay?.kind === 'alternatives' && alternativesTarget && alternativesName ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="alternatives-heading"
+          className="overlay-panel alternatives-overlay"
+        >
+          <h2 id="alternatives-heading" className="alternatives-overlay-heading">
+            Alternatives to {alternativesName}
+          </h2>
           <button type="button" className="alternatives-overlay-close" onClick={() => setOverlay(null)}>
             Close
           </button>

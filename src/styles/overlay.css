@@ -2,8 +2,9 @@
  *
  * ExerciseDetail, the App-level Alternatives overlay, SessionSummary and RegionPanel each carry
  * `.overlay-panel` on their own root instead of repeating their own copy of the fixed,
- * full-viewport, scrolling, above-the-tab-bar shape. Each component keeps only its own look
- * (padding, background, gap) in its own stylesheet.
+ * full-viewport, scrolling, above-the-tab-bar, opaque shape -- `background` lives here too
+ * (E6-T4/O9), so an overlay always covers the screen beneath it. Each component keeps only its
+ * own layout (padding, gap) in its own stylesheet.
  *
  * The z-index here only has to beat `.tab-bar`'s -- src/styles/overlay.test.ts checks the two
  * numbers directly and makes no assumption about where the tab bar sits on screen, because a
@@ -14,6 +15,7 @@
   inset: 0;
   z-index: 20;
   overflow-y: auto;
+  background: var(--color-bg);
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
 }

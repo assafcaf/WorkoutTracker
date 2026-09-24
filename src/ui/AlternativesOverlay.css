@@ -1,0 +1,24 @@
+/* The App-level Alternatives overlay (E6-T4): the heading naming what the popup lists, and its
+ * close control.
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
+ * one definition site.
+ */
+
+.alternatives-overlay-heading {
+  margin: 0;
+  padding: var(--space-4) var(--space-4) 0;
+  font-size: var(--text-xl);
+  color: var(--color-text);
+}
+
+.alternatives-overlay-close {
+  min-height: var(--tap-min);
+  margin: var(--space-3) var(--space-4) 0;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
