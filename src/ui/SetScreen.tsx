@@ -40,6 +40,30 @@ export type SetScreenProps = {
    * STUB (E5-T12 test-designer): accepted but not yet wired to the "Alternatives" button.
    */
   onOpenAlternatives?(exerciseId: string): void
+  /**
+   * Whether the set on the dials was opened by "Add set" as an extra set past the plan (E6-T1).
+   * A screen opened past the plan with `extra` false is in the done state. Optional, read as
+   * `false`, so the callers predating it (E1's and the wake lock's tests) need not pass it.
+   */
+  extra?: boolean
+}
+
+/**
+ * The set counter's text (E6-T1): "Set 2 of 3" | "Set 4 · extra" | "All 3 sets logged" |
+ * "4 sets logged · 3 planned". `loggedCount` is this Session's Sets for the Exercise.
+ */
+export function setCounterText(
+  setIndex: number,
+  plannedSets: number,
+  loggedCount: number,
+  done: boolean,
+): string {
+  if (done) {
+    return loggedCount > plannedSets
+      ? `${loggedCount} sets logged · ${plannedSets} planned`
+      : `All ${plannedSets} sets logged`
+  }
+  return setIndex > plannedSets ? `Set ${setIndex} · extra` : `Set ${setIndex} of ${plannedSets}`
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -93,6 +117,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const [open, setOpen] = useState<OpenSet>(() =>
     openSetFor(exercise, plan, props.setIndex, props.lastEntries),
   )
+  // An extra set opened by "Add set" stays open until it is logged; past the plan, anything
+  // else is the done state, which offers only "Add set".
+  const [extraOpen, setExtraOpen] = useState<boolean>(props.extra ?? false)
+  // Sets are opened in order, so the ones before the opened set are this session's so far;
+  // every log then recounts from the session it was written to.
+  const [loggedCount, setLoggedCount] = useState<number>(props.setIndex - 1)
   const [error, setError] = useState<string | null>(null)
   const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(null)
   const [now, setNow] = useState<number>(() => Date.now())
@@ -113,6 +143,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   }, [lastLoggedAt])
 
   const rest = restState(lastLoggedAt, plan.restSeconds, now)
+  const done = open.setIndex > plan.sets && !extraOpen
 
   async function log(): Promise<void> {
     const validation = validateEntry(open.weightKg, open.reps)
@@ -138,31 +169,33 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setHistory(merged)
       setLastLoggedAt(loggedAt)
       setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
+      setExtraOpen(false)
+      setLoggedCount(
+        session.entries.filter((logged) => logged.exerciseId === exercise.id).length,
+      )
       onLogged(session, nextSetIndex)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
   }
 
-  const actions = (
-    <>
-      <button type="button" className="log-set" onClick={() => void log()}>
-        Log set
-      </button>
+  /** Opens one extra set here, and tells the caller, which may reopen it as an extra set. */
+  function addSet(add: NonNullable<SetScreenProps['onAddSet']>): void {
+    setExtraOpen(true)
+    add(exercise.id, open.setIndex)
+  }
 
-      {/* Every planned set is logged once the set on the dials is past the plan; only then is
-          an extra one offered, and only to a caller that knows what to do with it. */}
-      {onAddSet !== undefined && open.setIndex > plan.sets ? (
-        <button
-          type="button"
-          className="add-set"
-          onClick={() => onAddSet(exercise.id, open.setIndex)}
-        >
-          Add set
-        </button>
-      ) : null}
-    </>
-  )
+  // Past the plan the screen is done: every planned set is logged, so "Log set" is withheld and
+  // only an extra set is offered -- and only to a caller that knows what to do with it.
+  const actions = !done ? (
+    <button type="button" className="log-set" onClick={() => void log()}>
+      Log set
+    </button>
+  ) : onAddSet !== undefined ? (
+    <button type="button" className="add-set" onClick={() => addSet(onAddSet)}>
+      Add set
+    </button>
+  ) : null
 
   return (
     <div className="set-screen">
@@ -178,7 +211,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       >
         Alternatives
       </button>
-      <p className="set-counter">{`Set ${open.setIndex} of ${plan.sets}`}</p>
+      <p className="set-counter">{setCounterText(open.setIndex, plan.sets, loggedCount, done)}</p>
 
       <WeightDial
         exercise={exercise}

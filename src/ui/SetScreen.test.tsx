@@ -4,7 +4,7 @@ import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { loadCatalog } from '../data/catalog'
 import { db } from '../storage/db'
-import { SetScreen } from './SetScreen'
+import { SetScreen, setCounterText } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
@@ -339,4 +339,87 @@ test('O12 the rest timer formats the remaining rest as minutes and seconds', asy
   await waitFor(() => {
     expect(readoutValue(screen.getByRole('timer'))).toBe('1:20')
   })
+})
+
+// --- E6-T1: the done state past the Plan ---------------------------------------------------
+//
+// Past the Plan the screen offers only "Add set"; an extra set opened by it offers only
+// "Log set", and logging it returns the screen to the done state.
+
+/** Back squat planned for 3 sets, so the set after the last planned one is set 4. */
+const threeSetSquatPlan: ExercisePlan = { ...squatPlan, sets: 3 }
+
+function addSetButton(): HTMLElement | null {
+  return screen.queryByRole('button', { name: 'Add set' })
+}
+
+function logSetButton(): HTMLElement | null {
+  return screen.queryByRole('button', { name: 'Log set' })
+}
+
+test('O1 a set screen opened at the set after a 3-set Plan, not as an extra, offers Add set and no Log set', () => {
+  renderSetScreen({
+    plan: threeSetSquatPlan,
+    setIndex: 4,
+    extra: false,
+    onAddSet: vi.fn(),
+    lastEntries: [historyEntry(3, 60, 10)],
+  })
+
+  expect(addSetButton()).not.toBeNull()
+  expect(logSetButton()).toBeNull()
+})
+
+test('O2 a set screen opened as an extra set past a 3-set Plan offers Log set and no Add set', () => {
+  renderSetScreen({
+    plan: threeSetSquatPlan,
+    setIndex: 4,
+    extra: true,
+    onAddSet: vi.fn(),
+    lastEntries: [historyEntry(3, 60, 10)],
+  })
+
+  expect(logSetButton()).not.toBeNull()
+  expect(addSetButton()).toBeNull()
+})
+
+test('O2 logging an extra set returns the set screen to the done state, offering Add set and no Log set', async () => {
+  const { user } = renderSetScreen({
+    plan: threeSetSquatPlan,
+    setIndex: 4,
+    extra: true,
+    onAddSet: vi.fn(),
+    lastEntries: [historyEntry(3, 60, 10)],
+  })
+
+  await user.click(logButton())
+
+  await waitFor(async () => {
+    expect(await storedEntries()).toHaveLength(1)
+  })
+  expect((await storedEntries())[0].setIndex).toBe(4)
+  await waitFor(() => {
+    expect(addSetButton()).not.toBeNull()
+  })
+  expect(logSetButton()).toBeNull()
+})
+
+test('O1 setCounterText reads Set 2 of 3 for a planned set that is not the last', () => {
+  expect(setCounterText(2, 3, 1, false)).toBe('Set 2 of 3')
+})
+
+test('O1 setCounterText reads Set 3 of 3 for the last planned set', () => {
+  expect(setCounterText(3, 3, 2, false)).toBe('Set 3 of 3')
+})
+
+test('O1 setCounterText reads All 3 sets logged when done with exactly the 3 planned sets logged', () => {
+  expect(setCounterText(4, 3, 3, true)).toBe('All 3 sets logged')
+})
+
+test('O2 setCounterText reads Set 4 · extra for an extra set past a 3-set Plan', () => {
+  expect(setCounterText(4, 3, 3, false)).toBe('Set 4 · extra')
+})
+
+test('O2 setCounterText reads 4 sets logged · 3 planned when done with one extra set logged', () => {
+  expect(setCounterText(5, 3, 4, true)).toBe('4 sets logged · 3 planned')
 })

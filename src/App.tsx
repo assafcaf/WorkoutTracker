@@ -82,8 +82,11 @@ function tabFor(view: View): Tab | undefined {
   return TAB_OF[view] ?? undefined
 }
 
-/** The set the set screen is on, with the history it was opened against. */
-type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[] }
+/**
+ * The set the set screen is on, with the history it was opened against, and whether "Add set"
+ * opened it as an extra set past the plan (E6-T1).
+ */
+type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[]; extra: boolean }
 
 /**
  * The in-app exercise detail overlay (E5-T8): rendered over whatever view is current without
@@ -447,7 +450,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   function handleOpenSet(exerciseId: string, setIndex: number): void {
     getLastEntriesFor(exerciseId)
       .then((history) => {
-        setOpenSet({ exerciseId, setIndex, history })
+        setOpenSet({ exerciseId, setIndex, history, extra: false })
         setView('set')
       })
       .catch(() => {
@@ -459,7 +462,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   function handleAddSet(exerciseId: string, nextSetIndex: number): void {
     setOpenSet((current) =>
       current && current.exerciseId === exerciseId
-        ? { ...current, setIndex: nextSetIndex }
+        ? { ...current, setIndex: nextSetIndex, extra: true }
         : current,
     )
   }
@@ -685,7 +688,11 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             setIndex={openSet.setIndex}
             sessionId={session.id}
             lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
-            onLogged={(logged) => setSession(logged)}
+            extra={openSet.extra}
+            onLogged={(logged) => {
+              setSession(logged)
+              setOpenSet((current) => (current ? { ...current, extra: false } : current))
+            }}
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}

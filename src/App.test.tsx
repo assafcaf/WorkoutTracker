@@ -975,7 +975,9 @@ test('O11 Log set sits in the sticky action bar rather than in the set screen bo
   expect((main as HTMLElement).contains(weightReadout())).toBe(true)
 })
 
-test('O11 Add set sits in the action bar beside Log set once every planned set is logged', async () => {
+// Replaced by E6-T1: this test asserted Log set beside Add set past the Plan; E6-T1's done state
+// offers Add set alone, which the E6-T1 block at the end of this file proves.
+test('O11 Add set sits in the action bar once every planned set is logged', async () => {
   const user = userEvent.setup()
   render(<App />)
   await logFourSetsOfBackSquat(user)
@@ -985,9 +987,6 @@ test('O11 Add set sits in the action bar beside Log set once every planned set i
   const bar = actionBar()
   expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
   expect((bar as HTMLElement).contains(addSet)).toBe(true)
-  expect((bar as HTMLElement).contains(screen.getByRole('button', { name: 'Log set' }))).toBe(
-    true,
-  )
 })
 
 // --- E3-T5: the resume card on the picker ([O12]) ------------------------------------------
@@ -2136,5 +2135,149 @@ test('with nothing logged in the last 7 days the Program tab’s This week still
   expect(
     within(thisWeekSection()).getByText('No sets logged in the last 7 days'),
   ).toBeVisible()
+})
+
+// --- E6-T1: the set screen's done state past the Plan ---------------------------------------
+//
+// Full body starter plans back squat for 3 sets. Set 3 is logged one rung heavier and at 7
+// reps, so a set preset "from Set 3" is told apart from every earlier one: 52.5 kg x 7.
+
+/**
+ * Logs all 3 planned back squat sets under Full body starter and waits for the third to be
+ * stored, leaving the set screen on the set after the last planned one.
+ */
+async function logAllThreePlannedBackSquatSets(user: UserEvent): Promise<void> {
+  await setActiveProgramId('full-body-starter')
+  render(<App />)
+  await startWorkout(user, 'Full body')
+  await openExercise(user, 'Back squat')
+  await logSetAndOpen(user, 2, 3)
+  await logSetAndOpen(user, 3, 3)
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  await enterOnKeypad(user, repsReadout(), ['7'])
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await waitFor(async () => {
+    expect(await activeSessionEntries()).toHaveLength(3)
+  }, SETTLE)
+}
+
+/** Presses Add set in the done state. */
+async function pressAddSet(user: UserEvent): Promise<void> {
+  await user.click(await screen.findByRole('button', { name: 'Add set' }, SETTLE))
+}
+
+/** From the done state, adds set 4 and logs it, waiting for it to be stored. */
+async function addAndLogSetFour(user: UserEvent): Promise<void> {
+  await pressAddSet(user)
+  await screen.findByText('Set 4 · extra', undefined, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await waitFor(async () => {
+    expect(await activeSessionEntries()).toHaveLength(4)
+  }, SETTLE)
+}
+
+// Each test logs 3 to 5 sets through the whole app; under a loaded full-suite run that outlasts
+// vitest's 5 s default, which is a timeout, not a red.
+describe('E6-T1', { timeout: 15_000 }, () => {
+  test('O1 with all 3 planned sets logged, the action bar holds Add set and no Log set', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    const addSet = await screen.findByRole('button', { name: 'Add set' }, SETTLE)
+
+    const bar = actionBar()
+    expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
+    expect((bar as HTMLElement).contains(addSet)).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+  })
+
+  test('O1 with all 3 planned sets logged, the counter reads All 3 sets logged', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    expect(await screen.findByText('All 3 sets logged', undefined, SETTLE)).toBeVisible()
+  })
+
+  test('O2 pressing Add set in the done state opens set 4 with the counter reading Set 4 · extra', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await pressAddSet(user)
+
+    expect(await screen.findByText('Set 4 · extra', undefined, SETTLE)).toBeVisible()
+  })
+
+  test('O2 set 4 opened by Add set is preset from set 3', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await pressAddSet(user)
+
+    await screen.findByText('Set 4 · extra', undefined, SETTLE)
+    expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['52.5', '7'])
+  })
+
+  test('O2 pressing Add set puts Log set in the action bar and no Add set', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await pressAddSet(user)
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Add set' })).toBeNull()
+    }, SETTLE)
+    const bar = actionBar()
+    expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
+    expect((bar as HTMLElement).contains(screen.getByRole('button', { name: 'Log set' }))).toBe(
+      true,
+    )
+  })
+
+  test('O2 logging the extra set stores it as set 4 of back squat, preset from set 3', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await addAndLogSetFour(user)
+
+    const entries = await activeSessionEntries()
+    expect(
+      entries.map((entry) => [entry.exerciseId, entry.setIndex, entry.weightKg, entry.reps]),
+    ).toEqual([
+      ['back-squat', 1, 50, 8],
+      ['back-squat', 2, 50, 8],
+      ['back-squat', 3, 52.5, 7],
+      ['back-squat', 4, 52.5, 7],
+    ])
+  })
+
+  test('O2 logging the extra set returns to the done state with the counter reading 4 sets logged · 3 planned', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await addAndLogSetFour(user)
+
+    expect(await screen.findByText('4 sets logged · 3 planned', undefined, SETTLE)).toBeVisible()
+  })
+
+  test('O2 logging the extra set returns the action bar to Add set with no Log set', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await addAndLogSetFour(user)
+
+    await screen.findByRole('button', { name: 'Add set' }, SETTLE)
+    expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+  })
+
+  test('O2 pressing Add set again after the extra set is logged opens set 5 as an extra set', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+    await addAndLogSetFour(user)
+    await screen.findByText('4 sets logged · 3 planned', undefined, SETTLE)
+
+    await pressAddSet(user)
+
+    expect(await screen.findByText('Set 5 · extra', undefined, SETTLE)).toBeVisible()
+  })
 })
 
