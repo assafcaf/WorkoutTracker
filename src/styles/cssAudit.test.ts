@@ -144,6 +144,10 @@ test('O4 declarationsFor returns a selector rule declarations, merged across rul
 // than one stylesheet only by accident, so declarations are merged across every stylesheet
 // under src, later files (in the sorted order `stylesheets()` already uses) winning -- the same
 // rule `declarationsFor` applies within a single file.
+//
+// [O13] E6-T12 widens this list with the new and newly styled controls from E6: the Alternatives
+// overlay's Close button, the exercise info link and its "Swap" trigger, and the library's search
+// input, filter control and "Show more" pager button.
 const TAP_TARGET_SELECTORS = [
   '.tab-bar-tab',
   '.app-header-back',
@@ -157,6 +161,12 @@ const TAP_TARGET_SELECTORS = [
   '.keypad-actions button',
   '.update-pill',
   '.settings-action',
+  '.alternatives-overlay-close',
+  '.exercise-info',
+  '.open-alternatives',
+  '.library-search',
+  '.library-filter',
+  '.library-pager-button',
 ]
 
 /** `selector`'s declarations, merged across every stylesheet under src that mentions it. */
