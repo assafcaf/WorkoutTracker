@@ -1235,6 +1235,9 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
   await pressTab(user, 'Exercises')
 
   expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toBeVisible()
+  // O15: the search box also carries a placeholder saying what it's for, without losing its
+  // accessible name (asserted above via the `name` matcher).
+  expect(screen.getByPlaceholderText('Search exercises')).toBeVisible()
   // Hand-checked against the real library fixture's alphabetically (locale-aware) first name --
   // the first-10 default view F4 now requires.
   expect(await screen.findByText('3/4 Sit-Up', {}, SETTLE)).toBeVisible()

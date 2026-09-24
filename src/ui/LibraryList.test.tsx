@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { LibraryList } from './LibraryList'
 import { loadLibrary } from '../data/library'
 import type { LibraryExercise } from '../types'
@@ -355,4 +355,56 @@ test('O18 given the list on page 3, turning My gym only off (changing the result
     'Always Exercise 09',
   ])
   expect(within(nav()).getByText('Page 1 of 4')).toBeVisible()
+})
+
+// --- O19: no pager for 10 or fewer matches; "No exercises match" carries the empty class ------
+
+test('O19 given 10 or fewer matching exercises, no pager is rendered', () => {
+  const library = pagerFixtures(10, 'Page')
+
+  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
+
+  expect(screen.getAllByRole('listitem')).toHaveLength(10)
+  expect(screen.queryByRole('navigation', { name: 'Pages' })).toBeNull()
+})
+
+test('O19 given no matching exercises, "No exercises match" is shown with the library-empty class', () => {
+  render(<LibraryList library={[]} onOpen={() => {}} gymEquipment={null} />)
+
+  const message = screen.getByText('No exercises match')
+  expect(message).toBeVisible()
+  expect(message).toHaveClass('library-empty')
+  expect(screen.queryByRole('navigation', { name: 'Pages' })).toBeNull()
+})
+
+// --- O20: Previous/Next scrolls the list's top into view ---------------------------------------
+
+test('O20 pressing Next scrolls the list into view', async () => {
+  const user = userEvent.setup()
+  const library = pagerFixtures(25, 'Page')
+  const scrollIntoView = vi.fn()
+  Element.prototype.scrollIntoView = scrollIntoView
+
+  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
+
+  const nav = pagerNav()
+  await user.click(within(nav).getByRole('button', { name: 'Next' }))
+
+  expect(scrollIntoView).toHaveBeenCalled()
+})
+
+test('O20 pressing Previous scrolls the list into view', async () => {
+  const user = userEvent.setup()
+  const library = pagerFixtures(25, 'Page')
+  const scrollIntoView = vi.fn()
+  Element.prototype.scrollIntoView = scrollIntoView
+
+  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
+
+  const nav = pagerNav()
+  await user.click(within(nav).getByRole('button', { name: 'Next' }))
+  scrollIntoView.mockClear()
+  await user.click(within(nav).getByRole('button', { name: 'Previous' }))
+
+  expect(scrollIntoView).toHaveBeenCalled()
 })
