@@ -21,7 +21,7 @@ export function buildLadder(exercise: Exercise): number[] {
   if (exercise.startWeight === null) return []
 
   const ladder: number[] = []
-  for (let value = exercise.startWeight; value <= MAX_WEIGHT_KG; value = roundToStep(value + exercise.weightStep)) {
+  for (let value = exercise.weightStep; value <= MAX_WEIGHT_KG; value = roundToStep(value + exercise.weightStep)) {
     ladder.push(value)
   }
   return ladder
