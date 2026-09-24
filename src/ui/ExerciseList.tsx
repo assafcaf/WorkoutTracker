@@ -35,14 +35,12 @@ function loggedSets(entries: SetEntry[], exerciseId: string): number {
 }
 
 /**
- * The set a row opens: the one after the last logged, never past the plan -- an exercise
- * already at its planned count re-opens its last set, since a set past the plan is what the
- * set screen's "Add set" is for.
- *
- * STUB (E6-T10 red): exported so the tests can import it; still clamped pending the fix.
+ * The set a row opens: always the one after the last logged, even past the plan (E6-T10) -- an
+ * exercise already at its planned count must not overwrite its last stored Set, so the row opens
+ * one past it, landing on the set screen's done state (E6-T1) instead.
  */
-export function nextSetIndex(logged: number, plan: ExercisePlan): number {
-  return Math.min(logged + 1, plan.sets)
+export function nextSetIndex(logged: number, _plan: ExercisePlan): number {
+  return logged + 1
 }
 
 /**
