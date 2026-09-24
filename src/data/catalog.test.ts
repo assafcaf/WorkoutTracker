@@ -177,6 +177,19 @@ test('M7 assertProgramsHaveSessionsPerWeek throws naming a program missing sessi
   expect((thrown as Error).message).toContain('no-sessions-program')
 })
 
+test('O8 every non-Bodyweight catalog exercise has a start weight that is a multiple of its weight step', () => {
+  const catalog = loadCatalog()
+
+  const nonBodyweight = [...catalog.values()].filter((e) => !e.bodyweight)
+  const offMultiple = nonBodyweight.filter((e) => {
+    if (e.startWeight === null) return true
+    const ratio = e.startWeight / e.weightStep
+    return Math.abs(ratio - Math.round(ratio)) > 1e-9
+  })
+
+  expect(offMultiple.map((e) => e.id)).toEqual([])
+})
+
 test('O2 loadPrograms throws on an empty catalog instead of returning programs', () => {
   let thrown: unknown
   try {
