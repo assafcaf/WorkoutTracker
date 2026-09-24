@@ -187,9 +187,9 @@ test('O9 the weight ladder is rendered as a column of rungs with the current one
   const column = screen.getByRole('listbox', { name: 'Weight ladder' })
   const rungs = within(column).getAllByRole('option')
 
-  // 50 kg to 500 kg inclusive in steps of 2.5 kg is 181 rungs.
-  expect(rungs).toHaveLength(181)
-  expect([readoutValue(rungs[0]), readoutValue(rungs[180])]).toEqual(['50', '500'])
+  // 2.5 kg to 500 kg inclusive in steps of 2.5 kg is 200 rungs.
+  expect(rungs).toHaveLength(200)
+  expect([readoutValue(rungs[0]), readoutValue(rungs[199])]).toEqual(['2.5', '500'])
   expect(readoutValue(within(column).getByRole('option', { selected: true }))).toBe('60')
 })
 
