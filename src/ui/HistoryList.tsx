@@ -85,6 +85,14 @@ export function HistoryList(props: {
 }): JSX.Element {
   const { sessions, programs, resolve, onOpen } = props
 
+  if (sessions.length === 0) {
+    return (
+      <p className="history-empty">
+        No finished workouts yet. Finish one and it appears here.
+      </p>
+    )
+  }
+
   return (
     <ul className="history-list">
       {sessions.map((session) => {

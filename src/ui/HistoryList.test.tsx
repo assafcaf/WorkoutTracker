@@ -128,6 +128,17 @@ test('O17 HistoryList shows a finished session date, program name, workout name,
   expect(within(row).getByText('600 kg')).toBeVisible()
 })
 
+// --- O21: the empty state ------------------------------------------------------------------
+
+test('O21 HistoryList shows an empty-state message when there are no finished sessions', () => {
+  render(<HistoryList sessions={[]} programs={[assaf]} resolve={() => undefined} />)
+
+  expect(
+    screen.getByText('No finished workouts yet. Finish one and it appears here.'),
+  ).toBeVisible()
+  expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+})
+
 // --- S11: a swapped-in exercise's sets read under its own name --------------------------------
 
 /** Resolves `Hammer_Curls` (a library id swapped in for the planned catalog exercise) and
