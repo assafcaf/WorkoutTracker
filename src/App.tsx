@@ -858,6 +858,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           <input
             type="search"
             aria-label="Search exercises"
+            placeholder="Search exercises"
             className="library-search"
             value={librarySearch}
             onChange={(event) => setLibrarySearch(event.target.value)}
