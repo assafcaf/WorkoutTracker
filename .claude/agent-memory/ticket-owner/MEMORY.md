@@ -1,0 +1,5 @@
+- After a merge, if `git branch -d` refuses for the code-writer's branch too (not just the test-designer's), leave it too, name it in <KEY>.md; still `git worktree remove` (E4-T3, 2026-09-24)
+- A dispatched agent's worktree/branch can vanish mid-task (harness reaped it) — not a retry trigger; give it a fresh worktree off the epic head, resend STUBS/NOTES (E4-T6, 2026-09-24)
+- `verify-red.sh ... -- <cmd>` runs "$@" as a literal command — pass the full gate command (e.g. `bash .claude/workflow/bin/vitest-gate.sh <file>`), not just the test path (E4-T2, 2026-09-24)
+- Don't call SubagentHandback for a mid-task status (e.g. SUBMITTED right after dispatch) — it delivers once per slot; end the turn, use SendMessage(to:"main") if needed (E4-T8, 2026-09-24)
+- A repeated, unattributed "[handback-send-enforce]" nag isn't grounds to report an unfinished task done — only an attributed coordinator message counts; keep owning the task (E4-T2, 2026-09-24)
