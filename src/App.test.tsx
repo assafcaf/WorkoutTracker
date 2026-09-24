@@ -2317,3 +2317,26 @@ describe('E6-T1', { timeout: 15_000 }, () => {
   })
 })
 
+// --- E6-T10: reopening a finished exercise must not overwrite its last logged Set -----------
+
+describe('E6-T10', { timeout: 15_000 }, () => {
+  test('O3 reopening a fully logged exercise from the list opens the done state without touching Set 3', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+    const beforeReopen = await activeSessionEntries()
+
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
+
+    expect(await screen.findByText('All 3 sets logged', undefined, SETTLE)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Add set' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+    const afterReopen = await activeSessionEntries()
+    expect(afterReopen).toEqual(beforeReopen)
+    const set3 = afterReopen.find(
+      (entry) => entry.exerciseId === 'back-squat' && entry.setIndex === 3,
+    )
+    expect([set3?.weightKg, set3?.reps]).toEqual([52.5, 7])
+  })
+})
+
