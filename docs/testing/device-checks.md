@@ -492,19 +492,19 @@ with its exercise id.
 
 ```
 Device check: E4-T9 (O14, O15)
-Date:
-Commit / merged sha checked against:
-iOS version:
-Device model:
-Backup imported for history (file name + export date, or "none"):
+Date: not reported
+Commit / merged sha checked against: 909c05c (GitHub Pages workflow run 35966322595, success; live site confirmed serving a build matching 909c05c)
+iOS version: not reported
+Device model: not reported
+Backup imported for history (file name + export date, or "none"): not reported
 
-[O14] (E4-T9) Stats legible at arm's length for back-squat, push-ups, assisted-pull-ups; inverted chart rises; nothing clips: PASS / FAIL
-  Screenshots attached (3): Y / N
-  What actually happened:
+[O14] (E4-T9) Stats legible at arm's length for back-squat, push-ups, assisted-pull-ups; inverted chart rises; nothing clips: PASS
+  Screenshots attached (3): N (not provided)
+  What actually happened: "looks good to me we can open a PR"
 
-[O15] (E4-T9) exercise list progression bars readable at a glance; full bar's suggested next weight legible on the row: PASS / FAIL
-  Screenshot attached (1): Y / N
-  What actually happened:
+[O15] (E4-T9) exercise list progression bars readable at a glance; full bar's suggested next weight legible on the row: PASS
+  Screenshot attached (1): N (not provided)
+  What actually happened: "looks good to me we can open a PR"
 
 Notes:
 ```
