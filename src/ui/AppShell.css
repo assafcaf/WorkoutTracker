@@ -19,7 +19,7 @@
   display: flex;
   min-height: 100vh;
   flex-direction: column;
-  padding-top: calc(var(--tap-min) + var(--safe-top));
+  padding-top: calc(var(--tap-min) + var(--space-3) + var(--safe-top));
   background: var(--color-bg);
 }
 

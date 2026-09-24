@@ -29,7 +29,7 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from 'vitest'
-import { declarationsFor } from '../test/cssAudit'
+import { declarationsFor, readTokens } from '../test/cssAudit'
 
 // src/styles/tabBarPosition.test.ts -> the repository root.
 const repoRoot = resolve(fileURLToPath(import.meta.url), '..', '..', '..')
@@ -43,6 +43,15 @@ function tabBarDeclarations(): Map<string, string> {
 
 function appShellDeclarations(): Map<string, string> {
   return declarationsFor(readFileSync(appShellPath, 'utf-8'), '.app-shell')
+}
+
+function tabBarTabDeclarations(): Map<string, string> {
+  return declarationsFor(readFileSync(tabBarPath, 'utf-8'), '.tab-bar-tab')
+}
+
+/** Collapses whitespace so `calc( a  +  b )` and `calc(a + b)` compare equal. */
+function squash(value: string | undefined): string | undefined {
+  return value?.replace(/\s+/g, ' ').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').trim()
 }
 
 test('G3 .tab-bar is pinned to the top of the viewport with position: fixed; top: 0, and declares no bottom offset', () => {
@@ -102,4 +111,44 @@ test('G3b .app-shell top clearance accounts for --safe-top as well as --tap-min,
     paddingTop,
     '.app-shell padding-top must also reference --safe-top -- the bar itself pads its top by --safe-top (TabBar.css), so clearance that only accounts for --tap-min is too short on a notched device',
   ).toMatch(/var\(\s*--safe-top\s*\)/)
+})
+
+// [O11, fix-the-ui-audit] --tap-min alone is shorter than what a `.tab-bar-tab` renders once its
+// padding is counted, so a screen's header title could still sit partly under the fixed bar.
+// The tab gets an explicit `height`, and `.app-shell` clears that same expression plus
+// --safe-top, so the two can never drift apart. No new Token is added for it.
+const tokensPath = join(srcDir, 'styles', 'tokens.css')
+
+test('O11 .tab-bar-tab declares an explicit height of calc(var(--tap-min) + var(--space-3))', () => {
+  expect(squash(tabBarTabDeclarations().get('height')), '.tab-bar-tab must declare a height').toBe(
+    'calc(var(--tap-min) + var(--space-3))',
+  )
+})
+
+test('O11 .app-shell padding-top is the tab height plus --safe-top', () => {
+  expect(squash(appShellDeclarations().get('padding-top'))).toBe(
+    'calc(var(--tap-min) + var(--space-3) + var(--safe-top))',
+  )
+})
+
+test('O11 .app-shell padding-top reuses exactly the .tab-bar-tab height expression, so the header is never under the bar', () => {
+  const height = squash(tabBarTabDeclarations().get('height'))
+  expect(height, '.tab-bar-tab must declare a height').toBeDefined()
+  const inner = (height as string).replace(/^calc\((.*)\)$/, '$1')
+  expect(squash(appShellDeclarations().get('padding-top'))).toBe(
+    `calc(${inner} + var(--safe-top))`,
+  )
+})
+
+test('O11 the tab height names only existing Tokens, and the Token count stays 36', () => {
+  const tokens = readTokens(readFileSync(tokensPath, 'utf-8'))
+  expect(tokens.size, 'no new Token may be added for the tab bar clearance').toBe(36)
+
+  const height = tabBarTabDeclarations().get('height')
+  expect(height, '.tab-bar-tab must declare a height').toBeDefined()
+  const named = [...(height as string).matchAll(/var\(\s*(--[\w-]+)/g)].map((m) => m[1])
+  expect(named.length, 'the height must be built from Tokens').toBeGreaterThan(0)
+  for (const name of named) {
+    expect(tokens.has(name), `${name} must be an existing Token in tokens.css`).toBe(true)
+  }
 })
