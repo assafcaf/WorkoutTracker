@@ -17,15 +17,6 @@ export type SetScreenProps = {
   plan: ExercisePlan
   setIndex: number
   sessionId: string
-  /**
-   * When the session in progress was started, so the initial rest timer -- and the initial
-   * log-confirmation message -- only ever reflect a Set actually logged in this Session, never
-   * one carried over from `lastEntries`' history (E6-T2).
-   *
-   * STUB (E6-T2 test-designer): not yet read by this component; the code-writer wires it into
-   * the initial `lastLoggedAt`.
-   */
-  sessionStartedAt: number
   lastEntries: SetEntry[]
   onLogged(session: Session, nextSetIndex: number): void
   /**
@@ -61,19 +52,6 @@ type OpenSet = { setIndex: number; weightKg: number | null; reps: number }
 function formatRest(remainingSeconds: number): string {
   const total = Math.ceil(remainingSeconds)
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
-}
-
-/**
- * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
- * `reps`: "Set 2 logged · 50 kg × 8" for a loaded Exercise, "Set 2 logged · 12 reps" for a
- * Bodyweight one (`weightKg === null`) (E6-T2).
- *
- * STUB (E6-T2 test-designer): not yet implemented.
- */
-export function loggedText(setIndex: number, weightKg: number | null, reps: number): string {
-  throw new Error(
-    `loggedText: not implemented (setIndex=${setIndex}, weightKg=${weightKg}, reps=${reps})`,
-  )
 }
 
 /**
