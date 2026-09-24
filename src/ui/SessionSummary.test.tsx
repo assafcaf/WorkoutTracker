@@ -177,6 +177,15 @@ test('F3 SessionSummary\'s dialog carries the shared overlay-panel class', () =>
   expect(summaryDialog()).toHaveClass('overlay-panel')
 })
 
+// --- O23: SessionSummary's body map is session scale, so its legend names the session bands ---
+
+test('O23 SessionSummary shows exactly one session-scale body-map legend', () => {
+  renderSummary()
+
+  const dialog = summaryDialog()
+  expect(dialog.querySelectorAll('.body-map-legend[data-scale="session"]')).toHaveLength(1)
+})
+
 test('M16 Done on the session summary calls onClose', async () => {
   const user = userEvent.setup()
   const { onClose } = renderSummary()
