@@ -46,6 +46,16 @@ export type SetScreenProps = {
    * `false`, so the callers predating it (E1's and the wake lock's tests) need not pass it.
    */
   extra?: boolean
+  /**
+   * When the session in progress was started, so the initial rest timer -- and the initial
+   * log-confirmation message -- only ever reflect a Set actually logged in this Session, never
+   * one carried over from `lastEntries`' history (E6-T2).
+   *
+   * Optional so `src/ui/useWakeLock.test.ts`'s `renderSetScreen`, predating this prop, need not
+   * pass it; defaults to 0 so every history entry counts as logged in this Session, matching the
+   * behaviour before this prop existed.
+   */
+  sessionStartedAt?: number
 }
 
 /**
@@ -79,6 +89,16 @@ function formatRest(remainingSeconds: number): string {
 }
 
 /**
+ * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
+ * `reps`: "Set 2 logged · 50 kg × 8" for a loaded Exercise, "Set 2 logged · 12 reps" for a
+ * Bodyweight one (`weightKg === null`) (E6-T2).
+ */
+export function loggedText(setIndex: number, weightKg: number | null, reps: number): string {
+  const load = weightKg === null ? `${reps} reps` : `${weightKg} kg × ${reps}`
+  return `Set ${setIndex} logged · ${load}`
+}
+
+/**
  * The entries the next set presets from: the just-logged one laid over the history, so set 3
  * opens on what set 2 was actually lifted with rather than on last week's numbers.
  */
@@ -99,6 +119,22 @@ function openSetFor(
   lastEntries: SetEntry[],
 ): OpenSet {
   return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries }) }
+}
+
+/**
+ * The rest timer's seed on open: the latest `loggedAt` among `lastEntries` for this Exercise
+ * that falls within this Session, or `null` when none does -- an entry carried over from an
+ * earlier, already-finished session must not read as rest still owed (E6-T2, O6/O7).
+ */
+function initialLastLoggedAt(
+  exerciseId: string,
+  lastEntries: SetEntry[],
+  sessionStartedAt: number,
+): number | null {
+  const loggedThisSession = lastEntries
+    .filter((entry) => entry.exerciseId === exerciseId && entry.loggedAt >= sessionStartedAt)
+    .map((entry) => entry.loggedAt)
+  return loggedThisSession.length === 0 ? null : Math.max(...loggedThisSession)
 }
 
 /**
@@ -124,7 +160,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // every log then recounts from the session it was written to.
   const [loggedCount, setLoggedCount] = useState<number>(props.setIndex - 1)
   const [error, setError] = useState<string | null>(null)
-  const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(null)
+  const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(() =>
+    initialLastLoggedAt(exercise.id, props.lastEntries, props.sessionStartedAt ?? 0),
+  )
+  const [loggedMessage, setLoggedMessage] = useState<string>('')
   const [now, setNow] = useState<number>(() => Date.now())
 
   // The controls belong to the screen's bottom edge, which inside the shell is the sticky
@@ -168,6 +207,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setError(null)
       setHistory(merged)
       setLastLoggedAt(loggedAt)
+      setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
       setExtraOpen(false)
       setLoggedCount(
@@ -230,12 +270,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
       {actionBar === null ? actions : createPortal(actions, actionBar)}
 
-      <p className="rest-timer">
-        <span role="timer" aria-label="Rest remaining">
-          {formatRest(rest.remainingSeconds)}
-        </span>
-        {rest.isOver ? ' rest over' : ' rest'}
+      <p role="status" className="set-logged">
+        {loggedMessage}
       </p>
+
+      {lastLoggedAt === null ? null : (
+        <p className="rest-timer">
+          <span role="timer" aria-label="Rest remaining">
+            {formatRest(rest.remainingSeconds)}
+          </span>
+          {rest.isOver ? ' rest over' : ' rest'}
+        </p>
+      )}
     </div>
   )
 }
