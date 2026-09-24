@@ -1,0 +1,9 @@
+/* BodyMapLegend (E6-T9, O23): the four shade-band labels for a body map's scale, read left to
+ * right in band order.
+ */
+
+.body-map-legend {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}

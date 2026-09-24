@@ -25,8 +25,7 @@ export function band(count: number, scale: 'session' | 'week'): 0 | 1 | 2 | 3 {
  * joining a row with " / " reads "0 / 1-2 / 3-5 / 6+ sets" (session) or "0 / 1-9 / 10-20 / 21+
  * sets" (week) -- the exact wording the spec (O23) names.
  */
-// TODO(E6-T9): stub only -- fill in the real band-order labels for each scale.
 export const BAND_LABELS: Record<'session' | 'week', [string, string, string, string]> = {
-  session: ['', '', '', ''],
-  week: ['', '', '', ''],
+  session: ['0', '1–2', '3–5', '6+ sets'],
+  week: ['0', '1–9', '10–20', '21+ sets'],
 }

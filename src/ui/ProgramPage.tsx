@@ -3,6 +3,7 @@ import { assertPlansAreInCatalog } from '../data/catalog'
 import { toRegionCounts, weekSets } from '../domain/muscles'
 import { prescribedWeekly, programGaps } from '../domain/programVolume'
 import { BodyMap } from './body/BodyMap'
+import { BodyMapLegend } from './body/BodyMapLegend'
 import './Settings.css'
 import './ProgramPage.css'
 
@@ -86,6 +87,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         <div className="program-page-map">
           <BodyMap counts={counts} scale="session" />
         </div>
+        <BodyMapLegend scale="session" />
       </section>
     )
   }
@@ -100,6 +102,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         <div className="program-page-map">
           <BodyMap counts={prescribedRegionCounts} scale="week" />
         </div>
+        <BodyMapLegend scale="week" />
         {gaps.length > 0 && (
           <ul className="program-page-gaps">
             {gaps.map((muscle) => (
@@ -112,13 +115,16 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
       <section className="program-page-thisweek">
         <h3>This week</h3>
         <div className="program-page-thisweek-maps">
-          <div className="program-page-map">
+          <figure className="program-page-map">
             <BodyMap counts={prescribedRegionCounts} scale="week" />
-          </div>
-          <div className="program-page-map">
+            <figcaption>Planned</figcaption>
+          </figure>
+          <figure className="program-page-map">
             <BodyMap counts={doneRegionCounts} scale="week" />
-          </div>
+            <figcaption>Done</figcaption>
+          </figure>
         </div>
+        <BodyMapLegend scale="week" />
         {noSetsThisWeek && <p>No sets logged in the last 7 days</p>}
       </section>
 

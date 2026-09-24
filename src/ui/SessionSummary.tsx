@@ -3,6 +3,7 @@ import { contributors, muscleSets, toRegionCounts } from '../domain/muscles'
 import type { Region, Resolve } from '../domain/muscles'
 import type { LibraryExercise, Muscle, Session } from '../types'
 import { BodyMap } from './body/BodyMap'
+import { BodyMapLegend } from './body/BodyMapLegend'
 import { RegionPanel } from './RegionPanel'
 import { musclesForRegion } from './regionMuscles'
 import './SessionSummary.css'
@@ -62,6 +63,7 @@ export function SessionSummary({
     >
       <h2 className="session-summary-heading">Session summary</h2>
       <BodyMap counts={counts} scale="session" onRegionTap={setOpenRegion} />
+      <BodyMapLegend scale="session" />
       {openRegion !== null ? (
         <RegionPanel
           region={openRegion}
