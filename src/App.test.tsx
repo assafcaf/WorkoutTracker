@@ -1224,6 +1224,9 @@ describe('E3-T7', () => {
 // the very last of 876; Barbell Squat only surfaces after ~86-87 "Show more" taps, per
 // LibraryList.test.tsx's own F4 test). A sibling of the L10 and M9 rewrites below, missed on
 // the first pass and caught during the code-writer's own gate run -- same ruling, same reason.
+//
+// RULING (fix-the-ui-audit, O16): "Show more" is gone -- LibraryList.test.tsx's O16-O18 tests
+// replace it with a Previous/Next pager. 876 rows at 10 per page is 88 pages.
 test('L9 tapping the Exercises tab shows the library, with a search box, and makes Exercises the current tab', async () => {
   const user = userEvent.setup()
   render(<App />)
@@ -1233,10 +1236,13 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
 
   expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toBeVisible()
   // Hand-checked against the real library fixture's alphabetically (locale-aware) first name --
-  // the first-10 default view F4 now requires, plus its "Show more" control.
+  // the first-10 default view F4 now requires.
   expect(await screen.findByText('3/4 Sit-Up', {}, SETTLE)).toBeVisible()
   expect(screen.getAllByRole('listitem')).toHaveLength(10)
-  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+  const pager = screen.getByRole('navigation', { name: 'Pages' })
+  expect(within(pager).getByText('Page 1 of 88')).toBeVisible()
+  expect(within(pager).getByRole('button', { name: 'Previous' })).toBeDisabled()
+  expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
   expect(currentTabNames()).toEqual(['Exercises'])
 })
 
@@ -1244,9 +1250,14 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
 // (biceps + dumbbell) -- both above the 10-per-page cap LibraryList now applies, so it was
 // found by inspection (not named by the operator's ticket) to break under F4 the same way L9's
 // and M9's did. Rewritten to prove the filters still narrow across the whole library -- only
-// the first 10 of each result render, with "Show more" offered -- and a combination matching
-// nothing still shows "No exercises match" with no "Show more" (0 is unaffected by the cap).
-test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with "Show more" -- and a combination matching nothing shows "No exercises match"', async () => {
+// the first 10 of each result render, with more reachable -- and a combination matching nothing
+// still shows "No exercises match".
+//
+// RULING (fix-the-ui-audit, O16-O18): "Show more" is gone -- the pager's Next button reaches the
+// rest of a result a page at a time (a different 10 rows, not a cumulative list), and a new
+// filtered result returns the list to page 1 (O18), which is why page 2's "lat" rows are
+// re-fetched after the muscle/equipment filter is applied rather than expected to carry over.
+test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with more reachable via the pager -- and a combination matching nothing shows "No exercises match"', async () => {
   const user = userEvent.setup()
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
@@ -1254,7 +1265,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
 
   // Hand-checked against the real library fixture: 36 names contain "lat", case-insensitively --
-  // above the 10-per-page cap, so only the first 10 show until "Show more" is tapped.
+  // above the 10-per-page cap, so only the first 10 show until Next is tapped.
   const latMatches = LIBRARY.filter((exercise) => exercise.name.toLowerCase().includes('lat'))
   expect(latMatches.length).toBeGreaterThan(10)
   await user.type(search, 'lat')
@@ -1265,20 +1276,26 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
       expect(textOf(row).toLowerCase()).toContain('lat')
     })
   }, SETTLE)
-  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+  let pager = screen.getByRole('navigation', { name: 'Pages' })
+  expect(within(pager).getByText('Page 1 of 4')).toBeVisible()
+  expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
 
-  await user.click(screen.getByRole('button', { name: 'Show more' }))
+  await user.click(within(pager).getByRole('button', { name: 'Next' }))
   await waitFor(() => {
     const rows = screen.getAllByRole('listitem')
-    expect(rows).toHaveLength(20)
+    expect(rows).toHaveLength(10)
     rows.forEach((row) => {
       expect(textOf(row).toLowerCase()).toContain('lat')
     })
   }, SETTLE)
+  expect(
+    within(screen.getByRole('navigation', { name: 'Pages' })).getByText('Page 2 of 4'),
+  ).toBeVisible()
 
   // Clearing the search and setting muscle to biceps and equipment to dumbbell narrows to
   // exercises matching both (hand-checked: 24 in the real library fixture, by primaryMuscles),
-  // also above the cap -- and changing the filter resets back to the new result's own first 10.
+  // also above the cap -- and changing the filter resets back to the new result's own first 10
+  // (page 1), per O18.
   const bicepsDumbbellMatches = LIBRARY.filter(
     (exercise) => exercise.primaryMuscles.includes('biceps') && exercise.equipment === 'dumbbell',
   )
@@ -1289,14 +1306,15 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
   await waitFor(() => {
     expect(screen.getAllByRole('listitem')).toHaveLength(10)
   }, SETTLE)
-  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+  pager = screen.getByRole('navigation', { name: 'Pages' })
+  expect(within(pager).getByText('Page 1 of 3')).toBeVisible()
+  expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
 
   // Typing "lat" back in on top of those two filters matches nothing in the real library
   // fixture (hand-checked: 0), which is what "No exercises match" is for.
   await user.type(search, 'lat')
   expect(await screen.findByText('No exercises match', {}, SETTLE)).toBeVisible()
   expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
 })
 
 // --- E5-T8: the in-app detail overlay ([L14]) -----------------------------------------------
@@ -2066,7 +2084,10 @@ test('M9 tapping upper-back on a History session’s map opens a panel with its 
 // lats-or-middle-back exercise at once -- above the 10-per-page cap. Rewritten to the first 10
 // (still only lats/middle back), then "Show more" tapped through to all 72 and the button
 // disappearing -- named by the operator's ticket as one of F4's authorised rewrites.
-test('M9 Browse exercises on upper-back opens the Exercises tab listing only lats or middle back exercises, first 10 with Show more reaching all 72', async () => {
+//
+// RULING (fix-the-ui-audit, O16-O18): "Show more" is gone -- paged through with the pager's Next
+// button instead, one page (10 rows, the last page 2) at a time, to the last of 8 pages.
+test('M9 Browse exercises on upper-back opens the Exercises tab listing only lats or middle back exercises, first 10 with the pager reaching all 72', async () => {
   const user = userEvent.setup()
   await finishedUpperBackSession()
   render(<App />)
@@ -2092,22 +2113,36 @@ test('M9 Browse exercises on upper-back opens the Exercises tab listing only lat
   expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
   expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
 
-  // Tapping "Show more" repeatedly reaches all 72, then the button disappears: 6 taps of 10
-  // reach 70, a 7th reaches the remaining 2.
-  for (let shown = 10; shown < 72; shown += 10) {
-    await user.click(screen.getByRole('button', { name: 'Show more' }))
-    const expectedCount = Math.min(shown + 10, 72)
+  // Paging through with Next reaches all 72, 10 at a time, over 8 pages -- the 8th holding the
+  // remaining 2 -- then Next disables. Each page's rows are collected rather than re-read after
+  // the last page, since the pager (unlike "Show more") replaces the visible rows per page
+  // instead of accumulating them.
+  const seenNames: string[] = []
+  const seenMuscles = new Set<string>()
+  const recordCurrentPage = () => {
+    for (const row of screen.getAllByRole('listitem')) {
+      seenNames.push((row.querySelector('.library-row-name')?.textContent ?? '').trim())
+      seenMuscles.add((row.querySelector('.library-row-muscle')?.textContent ?? '').trim())
+    }
+  }
+  recordCurrentPage()
+  let pager = screen.getByRole('navigation', { name: 'Pages' })
+  expect(within(pager).getByText('Page 1 of 8')).toBeVisible()
+
+  for (let page = 2; page <= 8; page += 1) {
+    await user.click(within(pager).getByRole('button', { name: 'Next' }))
+    const expectedCount = page < 8 ? 10 : 2
     await waitFor(() => {
       expect(screen.getAllByRole('listitem')).toHaveLength(expectedCount)
     }, SETTLE)
+    pager = screen.getByRole('navigation', { name: 'Pages' })
+    expect(within(pager).getByText(`Page ${page} of 8`)).toBeVisible()
+    recordCurrentPage()
   }
-  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
-  const muscles = new Set(
-    screen
-      .getAllByRole('listitem')
-      .map((row) => (row.querySelector('.library-row-muscle')?.textContent ?? '').trim()),
-  )
-  expect([...muscles].sort()).toEqual(['lats', 'middle back'])
+  expect(within(pager).getByRole('button', { name: 'Next' })).toBeDisabled()
+
+  expect(seenNames).toHaveLength(72)
+  expect([...seenMuscles].sort()).toEqual(['lats', 'middle back'])
   expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
 }, 20000)
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test } from 'vitest'
 import { LibraryList } from './LibraryList'
@@ -32,22 +32,17 @@ function rowName(row: HTMLElement): string {
   return (row.querySelector('.library-row-name')?.textContent ?? '').trim()
 }
 
-/** The primary muscle a row shows, read from `.library-row-muscle`. */
-function rowMuscle(row: HTMLElement): string {
-  return (row.querySelector('.library-row-muscle')?.textContent ?? '').trim()
-}
-
-// --- L9/F4: the first 10 of the 876 library exercises, sorted by name, "Show more" reaches
-// the rest ------------------------------------------------------------------------------------
+// --- L9: the first 10 of the 876 library exercises, sorted by name ---------------------------
 //
 // RULING (fix-popups, F4): this test used to assert exactly 876 rows -- LibraryList rendered
 // every filtered exercise at once, which was the operator's second device-check defect ("show
-// 10, Show more"). Rewritten to the first 10, sorted, plus proof that "Show more" reaches every
-// one of the 876 -- see src/App.test.tsx's L10 and M9 sections for the equivalent, authorised
-// rewrites of the App-level tests that asserted exact counts above 10. One render of the real
-// 876-entry library (`loadLibrary()`, the same data `App` wires through the Exercises tab) per
-// the ticket's performance note, driven through the whole "Show more" progression in one test
-// rather than re-rendered per assertion.
+// 10, Show more"). Rewritten to the first 10, sorted -- see src/App.test.tsx's L10 and M9
+// sections for the equivalent, authorised rewrites of the App-level tests that asserted exact
+// counts above 10.
+//
+// RULING (fix-the-ui-audit, O16-O18): the "Show more" progression this test used to also check
+// (tapping through all 876, a synthetic 10-more-per-tap case, and the prop-reset case) is
+// replaced by a Previous/Next pager -- see the O16-O18 section below.
 
 test('L9 LibraryList shows only the first 10 of the 876 library exercises, sorted by name, each row showing its name and primary muscle', async () => {
   const library = [...(await loadLibrary()).values()]
@@ -63,102 +58,6 @@ test('L9 LibraryList shows only the first 10 of the 876 library exercises, sorte
   // Hand-checked against the real library fixture (src/data/library/exercises.json): the
   // alphabetically (locale-aware) first name -- the same fact the old, full-876 test pinned.
   expect(names[0]).toBe('3/4 Sit-Up')
-
-  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
-})
-
-test('F4 tapping Show more on the full library eventually reaches Barbell Squat and Zottman Preacher Curl, and the button disappears once all 876 show', async () => {
-  const user = userEvent.setup()
-  const library = [...(await loadLibrary()).values()]
-
-  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
-
-  // Queried once and reused, not re-queried per tap: `getByRole`'s accessible-name lookup
-  // scales with the number of `<button>` candidates in the DOM, so re-running it 87 times
-  // against a list growing toward 876 rows blew this test's budget. The button keeps its own
-  // identity across the re-renders each tap causes -- it does not unmount until the last one --
-  // so one reference taken up front is reused for every click, and only the final state (rows,
-  // names, the button's absence) is queried fresh.
-  const showMore = screen.getByRole('button', { name: 'Show more' })
-
-  // 876 rows, 10 shown at a time: 86 taps reach 870, one more reaches all 876.
-  for (let i = 0; i < 87; i += 1) {
-    await user.click(showMore)
-  }
-
-  const rows = screen.getAllByRole('listitem')
-  expect(rows).toHaveLength(876)
-  const names = rows.map(rowName)
-  expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
-
-  // Hand-checked against src/data/library.test.ts's own fixture fact: Barbell_Squat is named
-  // "Barbell Squat" with quadriceps as its only primary muscle.
-  const squatRow = rows.find((row) => rowName(row) === 'Barbell Squat')
-  expect(squatRow, 'no row named "Barbell Squat" was rendered').toBeDefined()
-  expect(rowMuscle(squatRow as HTMLElement)).toBe('quadriceps')
-  expect(names[names.length - 1]).toBe('Zottman Preacher Curl')
-
-  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
-}, 20000)
-
-// A small synthetic fixture, not the real 876-entry library, so the "reveals 10 more each tap"
-// mechanic itself is proven quickly and precisely rather than by counting through the real data.
-
-test('F4 tapping Show more reveals 10 more rows each time, and the button disappears once everything is shown', async () => {
-  const user = userEvent.setup()
-  const library: LibraryExercise[] = Array.from({ length: 25 }, (_, index) =>
-    fixture({
-      id: `show-more-${index}`,
-      name: `Show More Exercise ${String(index).padStart(2, '0')}`,
-      primaryMuscles: ['chest'],
-    }),
-  )
-
-  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
-
-  expect(screen.getAllByRole('listitem')).toHaveLength(10)
-
-  await user.click(screen.getByRole('button', { name: 'Show more' }))
-  expect(screen.getAllByRole('listitem')).toHaveLength(20)
-
-  await user.click(screen.getByRole('button', { name: 'Show more' }))
-  expect(screen.getAllByRole('listitem')).toHaveLength(25)
-  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
-})
-
-// App passes LibraryList an already-filtered `library` prop (search, muscle, equipment) that
-// changes as the trainee types or picks a filter -- per F4, "Search... still filter across all
-// 876, then the first 10 of the result show", so the page has to reset, not stay expanded past
-// however many the previous filter's result had.
-
-test('F4 a new filtered library prop resets Show more back to its own first 10', async () => {
-  const user = userEvent.setup()
-  const original: LibraryExercise[] = Array.from({ length: 15 }, (_, index) =>
-    fixture({
-      id: `orig-${index}`,
-      name: `Original Exercise ${String(index).padStart(2, '0')}`,
-      primaryMuscles: ['chest'],
-    }),
-  )
-  const narrowed: LibraryExercise[] = Array.from({ length: 12 }, (_, index) =>
-    fixture({
-      id: `narrowed-${index}`,
-      name: `Narrowed Exercise ${String(index).padStart(2, '0')}`,
-      primaryMuscles: ['chest'],
-    }),
-  )
-
-  const { rerender } = render(
-    <LibraryList library={original} onOpen={() => {}} gymEquipment={null} />,
-  )
-  await user.click(screen.getByRole('button', { name: 'Show more' }))
-  expect(screen.getAllByRole('listitem')).toHaveLength(15)
-  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
-
-  rerender(<LibraryList library={narrowed} onOpen={() => {}} gymEquipment={null} />)
-
-  expect(screen.getAllByRole('listitem')).toHaveLength(10)
-  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
 })
 
 // A small synthetic case pinning the sort as locale/case-insensitive rather than a naive
@@ -279,4 +178,181 @@ test('M9 LibraryList with initialMuscles matching nothing shows "No exercises ma
 
   expect(screen.getByText('No exercises match')).toBeVisible()
   expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+})
+
+// --- O16-O18: the Previous/Next pager replacing "Show more" ---------------------------------
+//
+// A synthetic 25-row fixture -- three pages of 10, 10 and 5 -- names padded so alphabetical
+// order matches fixture order.
+
+function pagerFixtures(count: number, prefix: string): LibraryExercise[] {
+  return Array.from({ length: count }, (_, index) =>
+    fixture({
+      id: `${prefix}-${index}`,
+      name: `${prefix} Exercise ${String(index).padStart(2, '0')}`,
+      primaryMuscles: ['chest'],
+    }),
+  )
+}
+
+/** The pager `<nav>` O16's Interfaces section commits to, scoped so button/text queries inside
+ * it cannot match some other part of the page. */
+function pagerNav(): HTMLElement {
+  return screen.getByRole('navigation', { name: 'Pages' })
+}
+
+test('O16 given 25 matching exercises, the Exercises tab shows rows 1-10, "Page 1 of 3", Previous disabled, Next enabled, and no Show more button', () => {
+  const library = pagerFixtures(25, 'Page')
+
+  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
+
+  const rows = screen.getAllByRole('listitem')
+  expect(rows.map(rowName)).toEqual([
+    'Page Exercise 00',
+    'Page Exercise 01',
+    'Page Exercise 02',
+    'Page Exercise 03',
+    'Page Exercise 04',
+    'Page Exercise 05',
+    'Page Exercise 06',
+    'Page Exercise 07',
+    'Page Exercise 08',
+    'Page Exercise 09',
+  ])
+
+  const nav = pagerNav()
+  expect(within(nav).getByText('Page 1 of 3')).toBeVisible()
+  expect(within(nav).getByRole('button', { name: 'Previous' })).toBeDisabled()
+  expect(within(nav).getByRole('button', { name: 'Next' })).toBeEnabled()
+
+  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
+})
+
+test('O17 given the page-1 list, pressing Next twice shows rows 21-25 and "Page 3 of 3" with Next disabled', async () => {
+  const user = userEvent.setup()
+  const library = pagerFixtures(25, 'Page')
+
+  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
+
+  const nav = pagerNav()
+  await user.click(within(nav).getByRole('button', { name: 'Next' }))
+  await user.click(within(nav).getByRole('button', { name: 'Next' }))
+
+  expect(screen.getAllByRole('listitem').map(rowName)).toEqual([
+    'Page Exercise 20',
+    'Page Exercise 21',
+    'Page Exercise 22',
+    'Page Exercise 23',
+    'Page Exercise 24',
+  ])
+  expect(within(nav).getByText('Page 3 of 3')).toBeVisible()
+  expect(within(nav).getByRole('button', { name: 'Next' })).toBeDisabled()
+})
+
+test('O17 given page 3, pressing Previous shows rows 11-20', async () => {
+  const user = userEvent.setup()
+  const library = pagerFixtures(25, 'Page')
+
+  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} />)
+
+  const nav = pagerNav()
+  await user.click(within(nav).getByRole('button', { name: 'Next' }))
+  await user.click(within(nav).getByRole('button', { name: 'Next' }))
+
+  await user.click(within(nav).getByRole('button', { name: 'Previous' }))
+
+  expect(screen.getAllByRole('listitem').map(rowName)).toEqual([
+    'Page Exercise 10',
+    'Page Exercise 11',
+    'Page Exercise 12',
+    'Page Exercise 13',
+    'Page Exercise 14',
+    'Page Exercise 15',
+    'Page Exercise 16',
+    'Page Exercise 17',
+    'Page Exercise 18',
+    'Page Exercise 19',
+  ])
+})
+
+// O18: on page 3, a result change (here, a new filtered `library` prop -- App's search/muscle/
+// equipment filters, per the ticket's Files note) returns the list to page 1.
+
+test('O18 given the list on page 3, a new filtered library prop returns the list to page 1', async () => {
+  const user = userEvent.setup()
+  const original = pagerFixtures(25, 'Page')
+  const narrowed = pagerFixtures(12, 'Narrowed')
+
+  const { rerender } = render(
+    <LibraryList library={original} onOpen={() => {}} gymEquipment={null} />,
+  )
+  const nav = pagerNav()
+  await user.click(within(nav).getByRole('button', { name: 'Next' }))
+  await user.click(within(nav).getByRole('button', { name: 'Next' }))
+  expect(within(nav).getByText('Page 3 of 3')).toBeVisible()
+
+  rerender(<LibraryList library={narrowed} onOpen={() => {}} gymEquipment={null} />)
+
+  expect(screen.getAllByRole('listitem').map(rowName)).toEqual([
+    'Narrowed Exercise 00',
+    'Narrowed Exercise 01',
+    'Narrowed Exercise 02',
+    'Narrowed Exercise 03',
+    'Narrowed Exercise 04',
+    'Narrowed Exercise 05',
+    'Narrowed Exercise 06',
+    'Narrowed Exercise 07',
+    'Narrowed Exercise 08',
+    'Narrowed Exercise 09',
+  ])
+  expect(within(pagerNav()).getByText('Page 1 of 2')).toBeVisible()
+})
+
+// O18: the same reset, triggered by toggling "My gym only" -- a component-owned state change
+// rather than a new `library` prop, so the reset must be driven off the filtered/sorted result
+// itself, not off prop identity.
+
+test('O18 given the list on page 3, turning My gym only off (changing the result) returns the list to page 1', async () => {
+  const user = userEvent.setup()
+  // 25 always-visible rows (equipment null passes the gym filter regardless), sorting before
+  // 15 machine rows that only appear once "My gym only" is off and `gymEquipment` (['barbell'])
+  // no longer excludes them -- so toggling changes the result from 25 rows (3 pages) to 40 (4
+  // pages) without touching the first 10 names.
+  const always = pagerFixtures(25, 'Always')
+  const machineOnly = Array.from({ length: 15 }, (_, index) =>
+    fixture({
+      id: `machine-${index}`,
+      name: `Zz Machine Exercise ${String(index).padStart(2, '0')}`,
+      equipment: 'machine',
+      primaryMuscles: ['chest'],
+    }),
+  )
+
+  const nav = pagerNav
+  render(
+    <LibraryList
+      library={[...always, ...machineOnly]}
+      onOpen={() => {}}
+      gymEquipment={['barbell']}
+    />,
+  )
+  await user.click(within(nav()).getByRole('button', { name: 'Next' }))
+  await user.click(within(nav()).getByRole('button', { name: 'Next' }))
+  expect(within(nav()).getByText('Page 3 of 3')).toBeVisible()
+
+  await user.click(screen.getByRole('button', { name: 'My gym only' }))
+
+  expect(screen.getAllByRole('listitem').map(rowName)).toEqual([
+    'Always Exercise 00',
+    'Always Exercise 01',
+    'Always Exercise 02',
+    'Always Exercise 03',
+    'Always Exercise 04',
+    'Always Exercise 05',
+    'Always Exercise 06',
+    'Always Exercise 07',
+    'Always Exercise 08',
+    'Always Exercise 09',
+  ])
+  expect(within(nav()).getByText('Page 1 of 4')).toBeVisible()
 })
