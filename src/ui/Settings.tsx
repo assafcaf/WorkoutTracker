@@ -88,6 +88,7 @@ export function Settings(props: SettingsProps): JSX.Element {
             >
               <input
                 type="radio"
+                className="settings-radio"
                 name="active-program"
                 value={program.id}
                 checked={checked}
@@ -108,6 +109,7 @@ export function Settings(props: SettingsProps): JSX.Element {
             <label key={type} className="settings-action">
               <input
                 type="checkbox"
+                className="settings-checkbox"
                 checked={checked}
                 onChange={() => handleEquipmentToggle(type)}
               />
@@ -122,7 +124,7 @@ export function Settings(props: SettingsProps): JSX.Element {
       <label className="settings-action">
         <span className="settings-action-label">Import backup</span>
         <input
-          className="settings-file-input"
+          className="import-file"
           type="file"
           accept="application/json,.json"
           onChange={handleFileChange}

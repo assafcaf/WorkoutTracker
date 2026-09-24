@@ -44,16 +44,16 @@ export function Keypad(props: KeypadProps): JSX.Element {
       <output className="keypad-entry">{shown}</output>
       <div className="keypad-keys">
         {KEYS.map((key) => (
-          <button key={key} type="button" onClick={() => append(key)}>
+          <button key={key} type="button" className="keypad-key" onClick={() => append(key)}>
             {key}
           </button>
         ))}
       </div>
       <div className="keypad-actions">
-        <button type="button" onClick={onCancel}>
+        <button type="button" className="keypad-cancel" onClick={onCancel}>
           Cancel
         </button>
-        <button type="button" onClick={commit}>
+        <button type="button" className="keypad-ok" onClick={commit}>
           OK
         </button>
       </div>

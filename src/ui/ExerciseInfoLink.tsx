@@ -12,7 +12,7 @@ export type ExerciseInfoLinkProps = {
  */
 export function ExerciseInfoLink({ onOpen }: ExerciseInfoLinkProps): JSX.Element {
   return (
-    <button type="button" onClick={onOpen}>
+    <button type="button" className="exercise-info" onClick={onOpen}>
       Exercise info
     </button>
   )
