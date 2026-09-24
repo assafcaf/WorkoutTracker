@@ -32,11 +32,6 @@ function rowName(row: HTMLElement): string {
   return (row.querySelector('.library-row-name')?.textContent ?? '').trim()
 }
 
-/** The primary muscle a row shows, read from `.library-row-muscle`. */
-function rowMuscle(row: HTMLElement): string {
-  return (row.querySelector('.library-row-muscle')?.textContent ?? '').trim()
-}
-
 // --- L9: the first 10 of the 876 library exercises, sorted by name ---------------------------
 //
 // RULING (fix-popups, F4): this test used to assert exactly 876 rows -- LibraryList rendered
