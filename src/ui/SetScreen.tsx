@@ -25,11 +25,7 @@ export type SetScreenProps = {
    * STUB (E6-T2 test-designer): not yet read by this component; the code-writer wires it into
    * the initial `lastLoggedAt`.
    */
-  /**
-   * Optional so `src/ui/useWakeLock.test.ts`'s `renderSetScreen`, predating this prop, need not
-   * pass it; defaults to 0 so every history entry counts as logged in this Session.
-   */
-  sessionStartedAt?: number
+  sessionStartedAt: number
   lastEntries: SetEntry[]
   onLogged(session: Session, nextSetIndex: number): void
   /**
@@ -68,6 +64,19 @@ function formatRest(remainingSeconds: number): string {
 }
 
 /**
+ * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
+ * `reps`: "Set 2 logged · 50 kg × 8" for a loaded Exercise, "Set 2 logged · 12 reps" for a
+ * Bodyweight one (`weightKg === null`) (E6-T2).
+ *
+ * STUB (E6-T2 test-designer): not yet implemented.
+ */
+export function loggedText(setIndex: number, weightKg: number | null, reps: number): string {
+  throw new Error(
+    `loggedText: not implemented (setIndex=${setIndex}, weightKg=${weightKg}, reps=${reps})`,
+  )
+}
+
+/**
  * The entries the next set presets from: the just-logged one laid over the history, so set 3
  * opens on what set 2 was actually lifted with rather than on last week's numbers.
  */
@@ -79,32 +88,6 @@ function mergeEntry(entries: SetEntry[], entry: SetEntry): SetEntry[] {
   if (at >= 0) merged[at] = entry
   else merged.push(entry)
   return merged
-}
-
-/**
- * The rest timer's seed on open: the latest `loggedAt` among `lastEntries` for this Exercise
- * that falls within this Session, or `null` when none does -- an entry from an earlier,
- * already-finished session must not read as rest still owed.
- */
-function initialLastLoggedAt(
-  exerciseId: string,
-  lastEntries: SetEntry[],
-  sessionStartedAt: number,
-): number | null {
-  const inSession = lastEntries.filter(
-    (entry) => entry.exerciseId === exerciseId && entry.loggedAt >= sessionStartedAt,
-  )
-  if (inSession.length === 0) return null
-  return Math.max(...inSession.map((entry) => entry.loggedAt))
-}
-
-/**
- * The log-confirmation message: "Set 2 logged · 50 kg × 8" for a loaded Exercise, "Set 2 logged
- * · 12 reps" for a Bodyweight Exercise, whose `weightKg` is `null`.
- */
-export function loggedText(setIndex: number, weightKg: number | null, reps: number): string {
-  const load = weightKg === null ? `${reps} reps` : `${weightKg} kg × ${reps}`
-  return `Set ${setIndex} logged · ${load}`
 }
 
 function openSetFor(
@@ -133,10 +116,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     openSetFor(exercise, plan, props.setIndex, props.lastEntries),
   )
   const [error, setError] = useState<string | null>(null)
-  const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(() =>
-    initialLastLoggedAt(exercise.id, props.lastEntries, props.sessionStartedAt ?? 0),
-  )
-  const [loggedMessage, setLoggedMessage] = useState<string>('')
+  const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(null)
   const [now, setNow] = useState<number>(() => Date.now())
 
   // The controls belong to the screen's bottom edge, which inside the shell is the sticky
@@ -179,7 +159,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setError(null)
       setHistory(merged)
       setLastLoggedAt(loggedAt)
-      setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
       onLogged(session, nextSetIndex)
     } catch (cause) {
@@ -238,18 +217,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
       {actionBar === null ? actions : createPortal(actions, actionBar)}
 
-      <p role="status" className="set-logged">
-        {loggedMessage}
+      <p className="rest-timer">
+        <span role="timer" aria-label="Rest remaining">
+          {formatRest(rest.remainingSeconds)}
+        </span>
+        {rest.isOver ? ' rest over' : ' rest'}
       </p>
-
-      {lastLoggedAt === null ? null : (
-        <p className="rest-timer">
-          <span role="timer" aria-label="Rest remaining">
-            {formatRest(rest.remainingSeconds)}
-          </span>
-          {rest.isOver ? ' rest over' : ' rest'}
-        </p>
-      )}
     </div>
   )
 }
