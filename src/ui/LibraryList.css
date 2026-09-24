@@ -59,6 +59,10 @@
   color: var(--color-accent);
 }
 
+.library-empty {
+  color: var(--color-muted);
+}
+
 .library-list {
   display: flex;
   flex-direction: column;

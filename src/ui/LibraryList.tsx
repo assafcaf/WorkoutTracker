@@ -88,7 +88,7 @@ export function LibraryList({
         My gym only
       </button>
       {sorted.length === 0 ? (
-        <p>No exercises match</p>
+        <p className="library-empty">No exercises match</p>
       ) : (
         <>
           <ul className="library-list" ref={listRef}>
@@ -105,27 +105,35 @@ export function LibraryList({
               </li>
             ))}
           </ul>
-          <nav aria-label="Pages" className="library-pager">
-            <button
-              type="button"
-              className="library-pager-button"
-              disabled={page === 0}
-              onClick={() => setPage((current) => current - 1)}
-            >
-              Previous
-            </button>
-            <span aria-live="polite">
-              Page {page + 1} of {totalPages}
-            </span>
-            <button
-              type="button"
-              className="library-pager-button"
-              disabled={page + 1 >= totalPages}
-              onClick={() => setPage((current) => current + 1)}
-            >
-              Next
-            </button>
-          </nav>
+          {totalPages > 1 && (
+            <nav aria-label="Pages" className="library-pager">
+              <button
+                type="button"
+                className="library-pager-button"
+                disabled={page === 0}
+                onClick={() => {
+                  setPage((current) => current - 1)
+                  listRef.current?.scrollIntoView?.()
+                }}
+              >
+                Previous
+              </button>
+              <span aria-live="polite">
+                Page {page + 1} of {totalPages}
+              </span>
+              <button
+                type="button"
+                className="library-pager-button"
+                disabled={page + 1 >= totalPages}
+                onClick={() => {
+                  setPage((current) => current + 1)
+                  listRef.current?.scrollIntoView?.()
+                }}
+              >
+                Next
+              </button>
+            </nav>
+          )}
         </>
       )}
     </div>
