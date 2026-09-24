@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { LibraryExercise, Muscle } from '../types'
 import './LibraryList.css'
 
-/** How many rows "Show more" reveals per tap, and the count shown before any tap (F4). */
+/** Rows per page of the Previous/Next pager (O16-O18). */
 const PAGE_SIZE = 10
 
 export type LibraryListProps = {
@@ -41,7 +41,8 @@ export function LibraryList({
   initialMuscles,
 }: LibraryListProps): JSX.Element {
   const [gymOnly, setGymOnly] = useState(true)
-  const [shown, setShown] = useState(PAGE_SIZE)
+  const [page, setPage] = useState(0)
+  const listRef = useRef<HTMLUListElement>(null)
 
   const passesEquipment = (exercise: LibraryExercise): boolean => {
     if (exercise.equipment === null || exercise.equipment === 'body only') return true
@@ -60,21 +61,21 @@ export function LibraryList({
   )
   const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
 
-  // "Show more" (F4): the filtered/sorted result shows only its first `shown` rows, growing by
-  // PAGE_SIZE per tap. Whenever the result itself changes -- a new `library` prop (App's search/
-  // muscle/equipment filters), `gymOnly`, or `initialMuscles` -- `shown` resets back to
-  // PAGE_SIZE, keyed on the sorted ids rather than array identity so a same-content re-filter
-  // (e.g. toggling gymOnly back) also resets.
+  // Whenever the filtered/sorted result itself changes -- a new `library` prop (App's search/
+  // muscle/equipment filters), `gymOnly`, or `initialMuscles` -- the pager resets back to page 1,
+  // keyed on the sorted ids rather than array identity so a same-content re-filter (e.g. toggling
+  // gymOnly back) also resets (O18).
   const sortedKey = sorted.map((exercise) => exercise.id).join(',')
   const previousKey = useRef(sortedKey)
   useEffect(() => {
     if (previousKey.current !== sortedKey) {
       previousKey.current = sortedKey
-      setShown(PAGE_SIZE)
+      setPage(0)
     }
   }, [sortedKey])
 
-  const visible = sorted.slice(0, shown)
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const visible = sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
 
   return (
     <div className="library-list-container">
@@ -90,7 +91,7 @@ export function LibraryList({
         <p>No exercises match</p>
       ) : (
         <>
-          <ul className="library-list">
+          <ul className="library-list" ref={listRef}>
             {visible.map((exercise) => (
               <li key={exercise.id} className="library-row">
                 <button
@@ -104,15 +105,27 @@ export function LibraryList({
               </li>
             ))}
           </ul>
-          {shown < sorted.length ? (
+          <nav aria-label="Pages" className="library-pager">
             <button
               type="button"
-              className="library-show-more"
-              onClick={() => setShown((current) => current + PAGE_SIZE)}
+              className="library-pager-button"
+              disabled={page === 0}
+              onClick={() => setPage((current) => current - 1)}
             >
-              Show more
+              Previous
             </button>
-          ) : null}
+            <span aria-live="polite">
+              Page {page + 1} of {totalPages}
+            </span>
+            <button
+              type="button"
+              className="library-pager-button"
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Next
+            </button>
+          </nav>
         </>
       )}
     </div>

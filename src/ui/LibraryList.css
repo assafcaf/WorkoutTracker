@@ -93,3 +93,19 @@
   font-size: var(--text-sm);
   text-transform: capitalize;
 }
+
+.library-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.library-pager-button {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
