@@ -4,6 +4,7 @@ import { json } from './index'
 import {
   MAX_BODY_BYTES,
   SYNCED_SETTING_KEYS,
+  type ReplaceRequest,
   type SyncResponse,
   type SyncedSession,
   type SyncedSetting,
@@ -31,6 +32,24 @@ export async function handleSync(request: Request, env: Env, email: string): Pro
 
     await storeNewer(env.DB, email, sessions, settings)
     return json((await changesSince(env.DB, email, body.since)) satisfies SyncResponse)
+  } catch (error) {
+    if (error instanceof HttpError) return json({ error: error.message }, error.status)
+    throw error
+  }
+}
+
+/** POST /api/replace: make the caller's stored rows exactly the pushed sessions and settings. */
+export async function handleReplace(request: Request, env: Env, email: string): Promise<Response> {
+  try {
+    const body = await readJsonBody(request)
+    if (!isRecord(body)) throw new HttpError(400, 'body must be a JSON object')
+    const sessions = parseSessions(body.sessions)
+    const settings = parseSettings(body.settings)
+    void (sessions satisfies ReplaceRequest['sessions'])
+    void (settings satisfies ReplaceRequest['settings'])
+    void env
+    void email
+    throw new Error('handleReplace: not implemented')
   } catch (error) {
     if (error instanceof HttpError) return json({ error: error.message }, error.status)
     throw error

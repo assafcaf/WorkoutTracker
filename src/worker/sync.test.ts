@@ -3,8 +3,14 @@ import { beforeAll, beforeEach, expect, test } from 'vitest'
 import { createHandler } from './index'
 import type { D1Database } from './d1'
 import type { Env } from './env'
-import { HttpError, handleSync, nextSeq, parseSessions, parseSettings, readJsonBody } from './sync'
-import { MAX_BODY_BYTES, type SyncResponse, type SyncedSession, type SyncedSetting } from '../sync/protocol'
+import { HttpError, handleReplace, handleSync, nextSeq, parseSessions, parseSettings, readJsonBody } from './sync'
+import {
+  MAX_BODY_BYTES,
+  type ReplaceResponse,
+  type SyncResponse,
+  type SyncedSession,
+  type SyncedSetting,
+} from '../sync/protocol'
 import { accessKeys, apiRequest, recordingAssets, type AccessKeys } from '../test/access'
 import { createFakeD1 } from '../test/fakeD1'
 
@@ -472,4 +478,115 @@ test('O6 parseSettings returns settings with synced keys whole', () => {
   expect(
     parseSettings([setting('activeProgramId', 'ppl', 1000), setting('gymEquipment', { barbell: true }, 2000)]),
   ).toEqual([setting('activeProgramId', 'ppl', 1000), setting('gymEquipment', { barbell: true }, 2000)])
+})
+
+// --- O7 POST /api/replace makes the caller's stored data exactly what was posted ---
+
+function replaceRequest(body: string): Request {
+  return new Request('https://workout.example.com/api/replace', {
+    method: 'POST',
+    body,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+async function storedSessions(email: string): Promise<SyncedSession[]> {
+  const { results } = await db
+    .prepare('SELECT doc FROM sessions WHERE user = ?1 ORDER BY id')
+    .bind(email)
+    .all<{ doc: string }>()
+  return results.map((row) => JSON.parse(row.doc) as SyncedSession)
+}
+
+async function storedSettings(email: string): Promise<SyncedSetting[]> {
+  const { results } = await db
+    .prepare('SELECT key, value, updated_at FROM settings WHERE user = ?1 ORDER BY key')
+    .bind(email)
+    .all<{ key: SyncedSetting['key']; value: string; updated_at: number }>()
+  return results.map((row) => ({ key: row.key, value: JSON.parse(row.value) as unknown, updatedAt: row.updated_at }))
+}
+
+test("O7 a replace makes the caller's stored sessions and settings exactly the posted ones, dropping what was there before", async () => {
+  await sync(X, {
+    sessions: [session('a', 1000), session('b', 1000)],
+    settings: [setting('activeProgramId', 'assaf-ab', 1000)],
+  })
+
+  const body = JSON.stringify({
+    sessions: [session('c', 2000)],
+    settings: [setting('gymEquipment', ['barbell'], 2000)],
+  })
+  const response = await handleReplace(replaceRequest(body), env, X)
+
+  expect(response.status).toBe(200)
+  expect(await storedSessions(X)).toEqual([session('c', 2000)])
+  expect(await storedSettings(X)).toEqual([setting('gymEquipment', ['barbell'], 2000)])
+})
+
+test('O7 a successful replace answers 200 with a numeric, positive cursor', async () => {
+  const body = JSON.stringify({ sessions: [session('c', 2000)], settings: [] })
+
+  const response = await handleReplace(replaceRequest(body), env, X)
+
+  expect(response.status).toBe(200)
+  const parsed = (await response.json()) as ReplaceResponse
+  expect(typeof parsed.cursor).toBe('number')
+  expect(parsed.cursor).toBeGreaterThan(0)
+})
+
+test("O7 a replace leaves another user's stored sessions and settings untouched", async () => {
+  await sync(Y, {
+    sessions: [session('y1', 1000)],
+    settings: [setting('activeProgramId', 'ppl', 1000)],
+  })
+
+  const body = JSON.stringify({ sessions: [session('c', 2000)], settings: [] })
+  await handleReplace(replaceRequest(body), env, X)
+
+  expect(await storedSessions(Y)).toEqual([session('y1', 1000)])
+  expect(await storedSettings(Y)).toEqual([setting('activeProgramId', 'ppl', 1000)])
+})
+
+test('O7 a later /api/sync with since 0 after a replace returns just the replaced session and settings', async () => {
+  await sync(X, { sessions: [session('a', 1000), session('b', 1000)] })
+
+  const body = JSON.stringify({
+    sessions: [session('c', 2000)],
+    settings: [setting('gymEquipment', ['barbell'], 2000)],
+  })
+  await handleReplace(replaceRequest(body), env, X)
+
+  const answer = await sync(X, { since: 0 })
+
+  expect(answer.sessions).toEqual([session('c', 2000)])
+  expect(answer.settings).toEqual([setting('gymEquipment', ['barbell'], 2000)])
+})
+
+test('O7 a malformed replace body is refused with 400 and nothing is deleted', async () => {
+  await sync(X, {
+    sessions: [session('a', 1000), session('b', 1000)],
+    settings: [setting('activeProgramId', 'assaf-ab', 1000)],
+  })
+  const body = JSON.stringify({ sessions: { c: session('c', 2000) }, settings: [] })
+
+  const response = await handleReplace(replaceRequest(body), env, X)
+
+  await expectRefused(response, 400)
+  expect(await storedSessions(X)).toEqual([session('a', 1000), session('b', 1000)])
+  expect(await storedSettings(X)).toEqual([setting('activeProgramId', 'assaf-ab', 1000)])
+})
+
+test('O7 a malformed replace body posted through the router is refused with 400', async () => {
+  const token = await access.sign({ email: X })
+
+  const response = await worker.fetch(
+    apiRequest('/api/replace', token, {
+      method: 'POST',
+      body: 'not json',
+      headers: { 'Content-Type': 'application/json' },
+    }),
+    env,
+  )
+
+  await expectRefused(response, 400)
 })
