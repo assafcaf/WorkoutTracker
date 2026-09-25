@@ -46,3 +46,37 @@ sets counter.
   background or lock-screen alert in this stack.
 
 ## Outcome
+Built across E8-T1..T11 on `epic/E8-set-screen-fixes`, plus one fix found on the deployed head.
+At the epic head, 70 test files and 1,038 tests pass (924 at the base), `tsc` is clean and
+`eslint` reports no errors. `finishStaleSession` finishes or deletes a forgotten Session at
+launch and on start. `weightSteps` and `volumeBaseline` are settings: backed up, synced as
+E7 keys, and chosen on the set screen and in Settings. `src/domain/exerciseVolume.ts` computes
+volume and the baseline, and `VolumeVsBaseline` replaces the row's progression bar. The set
+screen also names its Dials and offers `Type weight` / `Type reps` (T2), offers
+`Finish exercise` once every planned Set is logged (T4), and beeps three times when rest runs
+out (T5, `src/ui/restSound.ts`). The app lands on the Workout tab when reopened outside a
+workout (T7). `html` and `body` are no longer scroll containers (T1).
+
+Where it departed from the decision above, and why:
+
+- **The row follows sync, and returning to the app syncs.** On the deployed head a pulled
+  workout showed in History while its row read `No previous workout`. The post-sync reload
+  refreshed History only, and `useSync` never ran when the installed app came back from the
+  background, which is a `visibilitychange`, not a mount. Now the reload also refreshes the
+  rows' Sessions and `volumeBaseline`, and `useSync` syncs whenever the page becomes visible
+  (`E8-sync-refresh`).
+- **T6 moved existing fixtures' timestamps.** Tests that resumed a Session stamped at a fixed
+  2023 time would now find it stale, so the red commit moved those stamps inside the 4 h
+  window. No assertion changed.
+- **Two stylesheet rules outside the ticket lists** (`.finish-exercise`, the Dial's step
+  control). The control audit requires a rule for every control class.
+- **The orchestrator merged T5, T8, T11 and the fix itself.** The epic merger lost git in the
+  epic worktree twice, each time after a ticket owner's message resumed it inside that owner's
+  isolated worktree. That's a harness defect, fixed upstream in PAD by relaying `READY`
+  through the orchestrator.
+
+Not verified here: the three iPhone outcomes, `Log set` in view without scrolling (T1 O2), the
+beeps and the silent switch (T5 O11), and landing on Workout after switching apps (T7 O21).
+Desktop Chrome at 666×755 showed the page itself still scrolling (`html` scrollHeight 1035 in
+a 755 viewport), with `Log set` kept in view only by its sticky action bar. T1 O2 has to be
+judged on the phone.
