@@ -1,8 +1,6 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { beforeEach, expect, test } from 'vitest'
 import { db } from './db'
 import {
-  ACTIVE_PROGRAM_ID_KEY,
-  GYM_EQUIPMENT_KEY,
   getActiveProgramId,
   getGymEquipment,
   setActiveProgramId,
@@ -80,48 +78,4 @@ test('S16 the gym equipment list survives closing and reopening the database', a
   await db.open()
 
   expect(await getGymEquipment()).toEqual(['barbell', 'dumbbell'])
-})
-
-// --- updatedAt on every synced setting (E7-T2) ----------------------------------------------
-
-describe('O8 every synced setting write stamps updatedAt', () => {
-  // The device clock, pinned so the stamp is a literal.
-  const CLOCK = 1_700_000_000_000
-
-  beforeEach(() => {
-    vi.spyOn(Date, 'now').mockReturnValue(CLOCK)
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  test('O8 setActiveProgramId stores its row with updatedAt equal to the time of the write', async () => {
-    await setActiveProgramId('full-body-starter')
-
-    expect(await db.settings.get(ACTIVE_PROGRAM_ID_KEY)).toEqual({
-      key: ACTIVE_PROGRAM_ID_KEY,
-      value: 'full-body-starter',
-      updatedAt: CLOCK,
-    })
-  })
-
-  test('O8 setGymEquipment stores its row with updatedAt equal to the time of the write', async () => {
-    await setGymEquipment(['barbell', 'bench'])
-
-    expect(await db.settings.get(GYM_EQUIPMENT_KEY)).toEqual({
-      key: GYM_EQUIPMENT_KEY,
-      value: ['barbell', 'bench'],
-      updatedAt: CLOCK,
-    })
-  })
-
-  test('O8 overwriting a synced setting restamps updatedAt with the later write time', async () => {
-    await setGymEquipment(['barbell'])
-    vi.spyOn(Date, 'now').mockReturnValue(CLOCK + 60_000)
-
-    await setGymEquipment(['barbell', 'bench'])
-
-    expect((await db.settings.get(GYM_EQUIPMENT_KEY))?.updatedAt).toBe(CLOCK + 60_000)
-  })
 })

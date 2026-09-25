@@ -27,7 +27,7 @@ export async function getActiveProgramId(programs: Program[]): Promise<string> {
  * database is closed and reopened — returns it.
  */
 export async function setActiveProgramId(id: string): Promise<void> {
-  await db.settings.put({ key: ACTIVE_PROGRAM_ID_KEY, value: id, updatedAt: Date.now() })
+  await db.settings.put({ key: ACTIVE_PROGRAM_ID_KEY, value: id })
 }
 
 /**
@@ -71,5 +71,5 @@ export async function getGymEquipment(): Promise<string[] | null> {
  * database is closed and reopened — returns it.
  */
 export async function setGymEquipment(list: string[]): Promise<void> {
-  await db.settings.put({ key: GYM_EQUIPMENT_KEY, value: list, updatedAt: Date.now() })
+  await db.settings.put({ key: GYM_EQUIPMENT_KEY, value: list })
 }

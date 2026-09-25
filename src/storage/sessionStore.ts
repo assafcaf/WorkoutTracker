@@ -62,7 +62,6 @@ export async function startOrResumeSession(
       startedAt: now,
       finishedAt: null,
       entries: [],
-      updatedAt: now,
     }
     await db.sessions.put(session)
     return session
@@ -96,7 +95,7 @@ export async function logSet(sessionId: string, entry: SetEntry): Promise<Sessio
     if (at >= 0) entries[at] = entry
     else entries.push(entry)
 
-    const updated: Session = { ...session, entries, updatedAt: Date.now() }
+    const updated: Session = { ...session, entries }
     await db.sessions.put(updated)
     return updated
   })
@@ -108,7 +107,7 @@ export async function logSet(sessionId: string, entry: SetEntry): Promise<Sessio
 export async function finishSession(sessionId: string, now: number): Promise<Session> {
   return db.transaction('rw', db.sessions, async () => {
     const session = await requireSession(sessionId)
-    const finished: Session = { ...session, finishedAt: now, updatedAt: now }
+    const finished: Session = { ...session, finishedAt: now }
     await db.sessions.put(finished)
     return finished
   })
@@ -147,7 +146,7 @@ export async function setSwap(
   await db.transaction('rw', db.sessions, async () => {
     const session = await requireSession(sessionId)
     const swaps = { ...session.swaps, [plannedId]: doneId }
-    await db.sessions.put({ ...session, swaps, updatedAt: Date.now() })
+    await db.sessions.put({ ...session, swaps })
   })
 }
 
@@ -170,7 +169,7 @@ export async function clearSwap(sessionId: string, plannedId: string): Promise<v
 
     const swaps = { ...session.swaps }
     delete swaps[plannedId]
-    await db.sessions.put({ ...session, swaps, updatedAt: Date.now() })
+    await db.sessions.put({ ...session, swaps })
   })
 }
 
