@@ -48,15 +48,25 @@ export const STALE_SESSION_MS = 4 * 60 * 60 * 1000
  * more before `now`, or deletes it when it holds no Sets (E8-T6).
  */
 export async function finishStaleSession(now: number): Promise<void> {
-  void now
-  throw new Error('not implemented: finishStaleSession (E8-T6)')
+  await db.transaction('rw', db.sessions, async () => {
+    const active = await getActiveSession()
+    if (!active) return
+    const lastActivity = active.entries.reduce(
+      (latest, entry) => Math.max(latest, entry.loggedAt),
+      active.startedAt,
+    )
+    if (now - lastActivity < STALE_SESSION_MS) return
+    // An empty session has nothing for history or presets, so it goes rather than finishes.
+    if (active.entries.length === 0) await db.sessions.delete(active.id)
+    else await db.sessions.put({ ...active, finishedAt: lastActivity, updatedAt: now })
+  })
 }
 
 /**
  * The session in progress, or a new one when there is none.
  *
  * At most one session ever has `finishedAt === null`; when one exists it is returned as it
- * stands, whatever program or workout was asked for.
+ * stands, whatever program or workout was asked for, unless it has gone stale (E8-T6).
  */
 export async function startOrResumeSession(
   programId: string,
@@ -64,6 +74,7 @@ export async function startOrResumeSession(
   now: number,
 ): Promise<Session> {
   return db.transaction('rw', db.sessions, async () => {
+    await finishStaleSession(now)
     const active = await getActiveSession()
     if (active) return active
 

@@ -37,6 +37,7 @@ import {
 import {
   clearSwap,
   finishSession,
+  finishStaleSession,
   getActiveSession,
   getLastEntriesFor,
   getLastSwap,
@@ -182,6 +183,7 @@ function presetHistory(history: SetEntry[], session: Session, exerciseId: string
 async function activeSessionOrNull(storageAvailable: boolean): Promise<Session | null> {
   if (!storageAvailable) return null
   try {
+    await finishStaleSession(Date.now())
     return await getActiveSession()
   } catch {
     return null
