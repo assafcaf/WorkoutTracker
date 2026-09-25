@@ -8,11 +8,14 @@ import type { Session } from '../types'
 export type SettingRow = {
   key: string
   value: unknown
+  /** When this row was last written on this device (E7-T2). */
+  updatedAt?: number
 }
 
 /**
  * The local database. `sessions` is keyed by `id` and indexed by `startedAt` and `finishedAt`,
- * so the store can walk finished sessions newest-first.
+ * so the store can walk finished sessions newest-first, and by `updatedAt` (version 2, E7-T2),
+ * so a sync can find what changed since it last ran.
  */
 export class WorkoutDb extends Dexie {
   sessions!: Table<Session, string>
@@ -24,6 +27,20 @@ export class WorkoutDb extends Dexie {
       sessions: 'id, startedAt, finishedAt',
       settings: 'key',
     })
+    // Version 1 stays declared: it is the schema every pre-E7 install is upgraded from.
+    this.version(2)
+      .stores({
+        sessions: 'id, startedAt, finishedAt, updatedAt',
+        settings: 'key',
+      })
+      .upgrade((tx) =>
+        tx
+          .table<Session, string>('sessions')
+          .toCollection()
+          .modify((session) => {
+            session.updatedAt = session.finishedAt ?? session.startedAt
+          }),
+      )
   }
 }
 
