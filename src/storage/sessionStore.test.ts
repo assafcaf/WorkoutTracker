@@ -123,7 +123,8 @@ test('O3 a session left in the database by an earlier visit is resumed after a r
   db.close()
   await db.open()
 
-  const resumed = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE + DAY)
+  // Within E8-T6's 4 h of the last Set, so the Session is still resumable, not stale.
+  const resumed = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE + 3600 * SECOND)
 
   expect(resumed.id).toBe('left-behind')
   expect(resumed.startedAt).toBe(BASE)

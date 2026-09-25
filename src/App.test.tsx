@@ -1970,14 +1970,17 @@ function expectSummaryBand(summary: HTMLElement, region: string, band: string): 
 
 /** Leaves three back squat sets in a Workout A session still in progress. */
 async function threeBackSquatSetsInProgress(): Promise<void> {
-  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  // Stamped against the real clock, not BASE: App's launch finishes a Session whose last Set
+  // is 4 h or more old (E8-T6), and this one has to still be in progress.
+  const startedAt = Date.now() - 60_000
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', startedAt)
   for (const setIndex of [1, 2, 3]) {
     await logSet(started.id, {
       exerciseId: 'back-squat',
       setIndex,
       weightKg: 60,
       reps: 10,
-      loggedAt: BASE + setIndex,
+      loggedAt: startedAt + setIndex,
     })
   }
 }
@@ -2948,7 +2951,8 @@ describe('E4-T6', () => {
 
   test('O12 a resumed session with a swap shows the done Hammer_Curls bar against the planned 10-12, with Next: 13 kg', async () => {
     await lastWorkoutBWithHammerCurls()
-    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE + DAY_MS)
+    // Against the real clock: App's launch would finish a Session idle 4 h or more (E8-T6).
+    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', Date.now())
     await setSwap(today.id, 'seated-biceps-curls', 'Hammer_Curls')
 
     render(<App />)
@@ -2986,7 +2990,8 @@ describe('E4-T6', () => {
   })
 
   test('O12 a row swapped for an id nothing resolves keeps its fallback name and draws no bar', async () => {
-    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE)
+    // Against the real clock: App's launch would delete an empty Session idle 4 h (E8-T6).
+    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', Date.now())
     await setSwap(today.id, 'seated-biceps-curls', 'Retired_Curl')
 
     render(<App />)
