@@ -1,6 +1,6 @@
 # 0002. The workout tracker is a local-first installable PWA, built with React, TypeScript and Vitest
 
-Date: 2026-09-22 · Status: accepted · Tracker: E1 — Log a workout (ticket not yet created)
+Date: 2026-09-22 · Status: accepted; no-backend/no-sync superseded by 0006 · Tracker: E1 — Log a workout (ticket not yet created)
 
 ## Context
 The trainee follows a fixed A/B program and logs every set in an Excel sheet, in cells like

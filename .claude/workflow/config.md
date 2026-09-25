@@ -156,6 +156,7 @@ database. None are configured.
 | Tag | Meaning | How to run |
 |---|---|---|
 | `iphone` | The trainee's iPhone, with the app installed to the home screen. Needed for outcomes about installing, launching standalone, and cold-starting with no network — no emulator reproduces iOS's behaviour here | Not a command. The orchestrator posts the steps and the expected result, the operator performs them on the phone at the merged commit, and pastes what happened into the run log. The resource is free when the operator says so |
+| `cloudflare` | The operator's Cloudflare account: the deployed Worker, its D1 database and the Access application in front of it. Needed for outcomes about the real login, the real database and the deployed URL | The orchestrator runs `npx wrangler deploy` / `npx wrangler d1 ...` from the merged commit (wrangler is logged in on this host) and checks the deployed URL; steps that need a browser sign-in or the phone are posted to the operator, who pastes the result into the run log |
 
 ## Execution
 

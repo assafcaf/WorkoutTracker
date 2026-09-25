@@ -43,3 +43,4 @@ rewrite history.
 - [0003](0003-installable-offline-and-backups.md): installs from a project base path, precaches everything, and backs up as one file
 - [0004](0004-one-palette-one-shell-audited-as-data.md): one palette, one shell, and stylesheets audited as data
 - [0005](0005-bundled-exercise-library-swaps-and-muscle-maps.md): a bundled exercise library, certain-match videos, swaps and muscle maps
+- [0006](0006-cloudflare-hosting-access-login-and-sync.md): hosted on Cloudflare behind Access, each user's log synced to D1

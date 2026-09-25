@@ -1,6 +1,6 @@
 # 0003. The app installs from a project base path, precaches everything, and backs up as one file
 
-Date: 2026-09-22 · Status: accepted · Tracker: E2 — Install it, and keep the data
+Date: 2026-09-22 · Status: accepted; base path and Pages deploy superseded by 0006 · Tracker: E2 — Install it, and keep the data
 
 ## Context
 0002 chose a local-first PWA and named the debt it left: the log lived only in a Safari tab, in
