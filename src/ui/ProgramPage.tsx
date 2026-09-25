@@ -22,6 +22,18 @@ export type ProgramPageProps = {
   now?: number
   /** Resolves a set entry's exerciseId for `weekSets` (M15). Defaults to a catalog lookup. */
   resolve?: (id: string) => Exercise | undefined
+  /** Program tab actions (E9-T3). Optional here -- E9-T9 wires all of these from `App.tsx`. */
+  onNewProgram?(): void
+  onEditProgram?(id: string): void
+  onCopyProgram?(id: string): void
+  onDeleteProgram?(id: string): void
+  onResetProgram?(id: string): void
+  /** A Program's id is in this set when the trainee can Edit/Copy/Delete/Reset it (E9-T3). */
+  userProgramIds?: Set<string>
+  /** A Program's id is in this set when it ships with the app (E9-T3). */
+  bundledProgramIds?: Set<string>
+  /** An error line shown on the Program tab when set (E9-T3; E9-T10 wires it from `App.tsx`). */
+  programMessage?: string | null
 }
 
 /**
