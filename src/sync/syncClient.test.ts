@@ -671,6 +671,7 @@ test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides active
   expect([...SYNCED_SETTING_KEYS].sort()).toEqual([
     'activeProgramId',
     'gymEquipment',
+    'userPrograms',
     'volumeBaseline',
     'weightSteps',
   ])
