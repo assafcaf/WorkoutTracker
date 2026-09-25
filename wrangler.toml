@@ -15,6 +15,7 @@ database_id = "85c69e30-8c54-40a6-9c88-d895707358d2"
 migrations_dir = "migrations"
 
 [vars]
-# Empty means fail closed; the operator fills these in after enabling Access.
-ACCESS_TEAM_DOMAIN = ""
-ACCESS_AUD = ""
+# The Access application in front of this Worker (Zero Trust team patient-heart-afff). Neither is
+# a secret: the AUD only names the application. Empty values mean every /api/* request is refused.
+ACCESS_TEAM_DOMAIN = "patient-heart-afff.cloudflareaccess.com"
+ACCESS_AUD = "3b7904f40ade5aa3e6d23ead5f5c2e6bd77c487d37a23860076ff26b88581dd9"
