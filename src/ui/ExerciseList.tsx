@@ -1,7 +1,14 @@
 import './ExerciseList.css'
-import { progression } from '../domain/progression'
-import { ProgressionBar } from './ProgressionBar'
-import type { Exercise, ExercisePlan, Program, Session, SetEntry, Workout } from '../types'
+import { VolumeVsBaseline } from './VolumeVsBaseline'
+import type {
+  Exercise,
+  ExercisePlan,
+  Program,
+  Session,
+  SetEntry,
+  VolumeBaseline,
+  Workout,
+} from '../types'
 
 export type ExerciseListProps = {
   program: Program
@@ -34,6 +41,13 @@ export type ExerciseListProps = {
    * -- the swapped-in id when a plan is swapped. A missing key is no history: an empty bar.
    */
   lastEntries: Map<string, SetEntry[]>
+  /**
+   * Every finished Session (E8-T10), from which each row's `VolumeVsBaseline` resolves the
+   * chosen baseline's volume.
+   */
+  sessions: Session[]
+  /** The chosen baseline (E8-T10), same for every row until Settings offers a per-Exercise one. */
+  volumeBaseline: VolumeBaseline
 }
 
 /** How many sets of this exercise the session already holds. */
@@ -70,8 +84,17 @@ export function nextSetIndex(logged: number, _plan: ExercisePlan): number {
  * not resolve keeps its fallback name and has no bar.
  */
 export function ExerciseList(props: ExerciseListProps): JSX.Element {
-  const { workout, resolve, session, onOpenSet, lastSwaps, onUndoSwap, onApplySwap, lastEntries } =
-    props
+  const {
+    workout,
+    resolve,
+    session,
+    onOpenSet,
+    lastSwaps,
+    onUndoSwap,
+    onApplySwap,
+    sessions,
+    volumeBaseline,
+  } = props
 
   return (
     <ul className="exercise-list">
@@ -100,12 +123,16 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
               onClick={() => onOpenSet(effectiveId, nextSetIndex(logged, plan))}
             >
               {label}
+              {exercise !== undefined ? (
+                <VolumeVsBaseline
+                  exercise={exercise}
+                  entries={session.entries}
+                  sessions={sessions}
+                  baseline={volumeBaseline}
+                  now={Date.now()}
+                />
+              ) : null}
             </button>
-            {exercise !== undefined ? (
-              <ProgressionBar
-                progression={progression(exercise, plan, lastEntries.get(effectiveId) ?? [])}
-              />
-            ) : null}
             {doneId !== undefined && logged === 0 ? (
               <button
                 type="button"

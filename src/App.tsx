@@ -8,6 +8,7 @@ import type {
   Session,
   SetEntry,
   Video,
+  VolumeBaseline,
   Workout,
 } from './types'
 import { assertPlansAreInCatalog, loadCatalog, loadPrograms } from './data/catalog'
@@ -31,6 +32,7 @@ import {
   getActiveProgramId,
   getGymEquipment,
   getLastExportedAt,
+  getVolumeBaseline,
   setActiveProgramId,
   setGymEquipment as persistGymEquipment,
 } from './storage/settingsStore'
@@ -309,6 +311,13 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // The last finished session's entries of each exercise the list shows (E4-T6), keyed by the
   // id actually done, feeding each row's progression bar.
   const [lastEntries, setLastEntries] = useState<Map<string, SetEntry[]>>(new Map())
+  // Every finished Session (E8-T10), loaded whenever the exercise list opens, so each row's
+  // `VolumeVsBaseline` can resolve the chosen baseline's volume.
+  const [sessions, setSessions] = useState<Session[]>([])
+  // The chosen volume baseline (E8-T10), loaded alongside `sessions`. Named `...State` because
+  // `setVolumeBaseline` already names the store's write (`storage/settingsStore.ts`); E8-T11
+  // reads this state to offer changing it.
+  const [volumeBaseline, setVolumeBaselineState] = useState<VolumeBaseline>({ period: 'last' })
 
   useEffect(() => {
     let cancelled = false
@@ -327,6 +336,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         const inProgress = await activeSessionOrNull(storageAvailable)
         const inProgressLastSwaps = await lastSwapsFor(programs, inProgress)
         const inProgressLastEntries = await lastEntriesFor(programs, inProgress)
+        // Loaded here too, alongside the resumed session, so its list opens with a bar (E8-T10)
+        // rather than "No previous workout" until the next reload.
+        const inProgressSessions = inProgress && storageAvailable ? await listSessions() : []
+        const inProgressVolumeBaseline = storageAvailable
+          ? await getVolumeBaseline()
+          : { period: 'last' as const }
         const lastExportedAt = storageAvailable ? await getLastExportedAt() : null
         const gymEquipmentList = storageAvailable ? await getGymEquipment() : null
         // Loaded here rather than lazily on the Exercises tab (E5-T3's original scheme), so the
@@ -339,6 +354,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         setSession(inProgress)
         setLastSwaps(inProgressLastSwaps)
         setLastEntries(inProgressLastEntries)
+        setSessions(inProgressSessions)
+        setVolumeBaselineState(inProgressVolumeBaseline)
         setView(inProgress ? 'list' : 'picker')
         setLibrary([...loadedLibrary.values()])
         setGymEquipment(gymEquipmentList)
@@ -540,9 +557,15 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       .then(async (started) => {
         const startedLastSwaps = await lastSwapsFor(programs, started)
         const startedLastEntries = await lastEntriesFor(programs, started)
+        const [startedSessions, startedVolumeBaseline] = await Promise.all([
+          listSessions(),
+          getVolumeBaseline(),
+        ])
         setSession(started)
         setLastSwaps(startedLastSwaps)
         setLastEntries(startedLastEntries)
+        setSessions(startedSessions)
+        setVolumeBaselineState(startedVolumeBaseline)
         setOpenSet(null)
         setView('list')
       })
@@ -893,6 +916,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           lastEntries={lastEntries}
           onUndoSwap={handleUndoSwap}
           onApplySwap={handleApplySwap}
+          sessions={sessions}
+          volumeBaseline={volumeBaseline}
         />
       </AppShell>
     )

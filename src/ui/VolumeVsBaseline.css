@@ -1,0 +1,29 @@
+/* The volume-vs-baseline row (E8-T10): replaces the row's unlabelled progression bar with a
+ * labelled percentage of the chosen baseline. Every colour is a `var(--…)` from
+ * src/styles/tokens.css. */
+
+.volume-vs-baseline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-4);
+}
+
+.volume-vs-baseline-label {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.volume-vs-baseline-track {
+  height: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-raised);
+}
+
+.volume-vs-baseline-fill {
+  height: 100%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
