@@ -53,6 +53,7 @@ function renderList(entries: SetEntry[]) {
       lastSwaps={{}}
       onUndoSwap={vi.fn()}
       onApplySwap={vi.fn()}
+      lastEntries={new Map()}
     />,
   )
   return { user, onOpenSet, onFinish }
@@ -198,6 +199,7 @@ function renderWorkoutB(session: Session, lastSwaps: Record<string, string> = {}
     lastSwaps,
     onUndoSwap,
     onApplySwap,
+    lastEntries: new Map(),
   }
   const view = render(<ExerciseList {...props} session={session} />)
   const rerenderWith = (next: Session) => view.rerender(<ExerciseList {...props} session={next} />)

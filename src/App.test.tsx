@@ -8,6 +8,7 @@ import { getGymEquipment, setActiveProgramId, setGymEquipment } from './storage/
 import {
   finishSession,
   getActiveSession,
+  getLastEntriesFor,
   listSessions,
   logSet,
   setSwap,
@@ -31,6 +32,13 @@ const LIBRARY = libraryFixture as unknown as LibraryExercise[]
 vi.mock('./storage/db', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./storage/db')>()
   return { ...actual, isStorageAvailable: vi.fn(actual.isStorageAvailable) }
+})
+
+// E4-T6: `getLastEntriesFor` stays the real, Dexie-backed query unless a test forces one id's
+// load to reject, which is how the "a missing bar never takes the list down" rule is reached.
+vi.mock('./storage/sessionStore', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./storage/sessionStore')>()
+  return { ...actual, getLastEntriesFor: vi.fn(actual.getLastEntriesFor) }
 })
 
 vi.mock('./data/catalog', async (importOriginal) => {
@@ -712,12 +720,19 @@ async function pressTab(user: UserEvent, name: string): Promise<void> {
  * Every button with one of `names` that is not part of the tab bar -- the loose controls [O9]
  * is about. The tab bar has its own Settings and History buttons, so "gone from the document"
  * can only mean gone from outside the nav.
+ *
+ * RULING (E4-T4, ticket owner): the History tab's History | Stats switch holds a button named
+ * exactly "History". It never leaves the History tab -- it only flips the switch back from Stats
+ * -- so it is not the duplicate navigation [O9] forbids. Buttons inside that one group
+ * (`role="group"`, `aria-label="History view"`) are exempt; a "History" button anywhere else
+ * outside the nav still counts as loose.
  */
 function looseButtons(names: string[]): string[] {
   const nav = mainNav()
   return names
     .flatMap((name) => screen.queryAllByRole('button', { name }))
     .filter((button) => !nav.contains(button))
+    .filter((button) => button.closest('[role="group"][aria-label="History view"]') === null)
     .map((button) => accessibleNameOf(button))
 }
 
@@ -2136,5 +2151,336 @@ test('with nothing logged in the last 7 days the Program tab’s This week still
   expect(
     within(thisWeekSection()).getByText('No sets logged in the last 7 days'),
   ).toBeVisible()
+})
+
+// --- E4-T4: Stats inside History, and what it says with nothing logged ([O10]) -------------
+//
+// Stats is not a tab of its own: it is the second half of a History | Stats switch that sits
+// in the History tab. What is proven here is the path the trainee takes -- the History tab,
+// then the switch's Stats button -- and what that screen says with nothing logged. Stats' own
+// contract is proven in src/ui/Stats.test.tsx.
+
+/** The History | Stats switch. */
+function historyViewSwitch(): HTMLElement {
+  return screen.getByRole('group', { name: 'History view' })
+}
+
+/** From a fresh render, presses the History tab and then the switch's Stats button. */
+async function openStatsThroughHistory(user: UserEvent): Promise<void> {
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'History')
+  const group = await screen.findByRole('group', { name: 'History view' }, SETTLE)
+  await user.click(within(group).getByRole('button', { name: 'Stats' }))
+  await screen.findByRole('heading', { name: 'Stats', level: 1 }, SETTLE)
+}
+
+function statsSection(name: 'Exercise progress' | 'Volume'): HTMLElement {
+  return screen.getByRole('region', { name })
+}
+
+test('O10 with nothing logged, Stats reached through the History tab says a set has to be logged before an exercise can be chosen', async () => {
+  const user = userEvent.setup()
+  await openStatsThroughHistory(user)
+
+  const text = textOf(statsSection('Exercise progress'))
+  expect(text).toMatch(/\blog/i)
+  expect(text).toMatch(/\bset\b/i)
+  expect(text).toMatch(/\bexercise\b/i)
+})
+
+test('O10 with nothing logged, Stats reached through the History tab says a session has to be finished before a bar can be drawn', async () => {
+  const user = userEvent.setup()
+  await openStatsThroughHistory(user)
+
+  const text = textOf(statsSection('Volume'))
+  expect(text).toMatch(/\bsession\b/i)
+  expect(text).toMatch(/\bfinish/i)
+})
+
+test('O10 with nothing logged, Stats reached through the History tab draws no chart in either section', async () => {
+  const user = userEvent.setup()
+  await openStatsThroughHistory(user)
+
+  expect(statsSection('Exercise progress').querySelector('svg')).toBeNull()
+  expect(statsSection('Volume').querySelector('svg')).toBeNull()
+})
+
+test('O10 the History tab opens the History list with the switch on History, never Stats', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'History')
+
+  await screen.findByRole('listitem', {}, SETTLE)
+  expect(screen.getByRole('heading', { name: 'History', level: 1 })).toBeVisible()
+  const group = historyViewSwitch()
+  expect(within(group).getByRole('button', { name: 'History' })).toHaveAttribute('aria-pressed', 'true')
+  expect(within(group).getByRole('button', { name: 'Stats' })).not.toHaveAttribute('aria-pressed', 'true')
+  expect(screen.queryByRole('region', { name: 'Volume' })).toBeNull()
+})
+
+test('O10 Stats is titled Stats, keeps History the current tab and marks Stats as the pressed switch button', async () => {
+  const user = userEvent.setup()
+  await openStatsThroughHistory(user)
+
+  expect(currentTabNames()).toEqual(['History'])
+  const group = historyViewSwitch()
+  expect(within(group).getByRole('button', { name: 'Stats' })).toHaveAttribute('aria-pressed', 'true')
+  expect(within(group).getByRole('button', { name: 'History' })).not.toHaveAttribute('aria-pressed', 'true')
+  // The switch rides inside the shell with the content, like every other tab screen's body.
+  expect(shellMain()?.contains(group)).toBe(true)
+})
+
+test('O10 choosing History in the switch goes back from Stats to the History list', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  await openStatsThroughHistory(user)
+
+  await user.click(within(historyViewSwitch()).getByRole('button', { name: 'History' }))
+
+  // Hand-checked from the fixture: BASE is 2023-11-14 UTC.
+  const row = await screen.findByRole('listitem', {}, SETTLE)
+  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'History', level: 1 })).toBeVisible()
+  expect(screen.queryByRole('region', { name: 'Exercise progress' })).toBeNull()
+})
+
+test('O10 pressing the History tab from Stats opens the History list, not Stats', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
+  await openStatsThroughHistory(user)
+
+  await pressTab(user, 'History')
+
+  await screen.findByRole('listitem', {}, SETTLE)
+  expect(screen.getByRole('heading', { name: 'History', level: 1 })).toBeVisible()
+  expect(screen.queryByRole('region', { name: 'Volume' })).toBeNull()
+})
+
+// --- E4-T6: the progression bar on the in-session exercise list ([O12]) ----------------------
+//
+// Every expected reading below is worked out by hand from the shipped program and catalog
+// (src/data/programs/assaf-ab-2026.json, src/data/exercises.json):
+//   back-squat          Workout A, 4 sets of 8-10, step 2.5: 4 x 65 kg x 10 -> 40 of 40, Next: 67.5 kg
+//   lunges              Workout A, 3 sets of 10-12: 7 kg x 12, 12, 10     -> 34 of 36, not full
+//   push-ups            Workout A, 3 sets of 10-15, bodyweight: 3 x 15    -> 45 of 45, Add a set
+//   assisted-pull-ups   Workout B, 4 sets of 5-8, inverted, step 1: 4 x 27 kg x 8
+//                                                                       -> 32 of 32, Next: 26 kg assist
+//   seated-biceps-curls Workout B, 3 sets of 10-12: 3 x 10 kg x 10       -> 30 of 36, not full
+//   deadlift            Workout B, 3 sets of 8-10, nothing logged         -> 0 of 30
+//   Hammer_Curls        library, dumbbell (step 1), done instead of seated-biceps-curls, so it is
+//                       measured against that plan's 10-12: 3 x 12 kg x 12 -> 36 of 36, Next: 13 kg
+
+describe('E4-T6', () => {
+  async function restoreRealHistoryLoads(): Promise<void> {
+    const actualStore = await vi.importActual<typeof import('./storage/sessionStore')>(
+      './storage/sessionStore',
+    )
+    vi.mocked(getLastEntriesFor).mockImplementation(actualStore.getLastEntriesFor)
+  }
+
+  beforeEach(restoreRealHistoryLoads)
+  afterEach(restoreRealHistoryLoads)
+
+  type Logged = { exerciseId: string; weightKg: number | null; reps: number[] }
+
+  /** Stores one finished session of `workoutId` started at `startedAt`, holding `logged`. */
+  async function finishedSession(
+    workoutId: string,
+    startedAt: number,
+    logged: Logged[],
+    swaps: Record<string, string> = {},
+  ): Promise<void> {
+    const started = await startOrResumeSession('assaf-ab-2026', workoutId, startedAt)
+    for (const [plannedId, doneId] of Object.entries(swaps)) {
+      await setSwap(started.id, plannedId, doneId)
+    }
+    let at = startedAt
+    for (const { exerciseId, weightKg, reps } of logged) {
+      for (const [index, count] of reps.entries()) {
+        at += 1
+        await logSet(started.id, {
+          exerciseId,
+          setIndex: index + 1,
+          weightKg,
+          reps: count,
+          loggedAt: at,
+        })
+      }
+    }
+    await finishSession(started.id, startedAt + 3_600_000)
+  }
+
+  /** Last Workout A: back squat full, lunges two reps short on its last set, push-ups full. */
+  async function lastWorkoutA(): Promise<void> {
+    await finishedSession('workout-a', BASE, [
+      { exerciseId: 'back-squat', weightKg: 65, reps: [10, 10, 10, 10] },
+      { exerciseId: 'lunges', weightKg: 7, reps: [12, 12, 10] },
+      { exerciseId: 'push-ups', weightKg: null, reps: [15, 15, 15] },
+    ])
+  }
+
+  /** Last Workout B, with seated-biceps-curls swapped for 3 full sets of Hammer_Curls. */
+  async function lastWorkoutBWithHammerCurls(): Promise<void> {
+    await finishedSession(
+      'workout-b',
+      BASE,
+      [{ exerciseId: 'Hammer_Curls', weightKg: 12, reps: [12, 12, 12] }],
+      { 'seated-biceps-curls': 'Hammer_Curls' },
+    )
+  }
+
+  /** The list item holding the exercise row whose accessible name matches `name`. */
+  async function rowItem(name: RegExp): Promise<HTMLElement> {
+    const row = await screen.findByRole('button', { name }, SETTLE)
+    const item = row.closest('li')
+    if (!item) throw new Error(`the ${String(name)} row is not inside a list item`)
+    return item
+  }
+
+  /** Waits until the progression bar in the row named `name` reads `valuetext`. */
+  async function expectBar(name: RegExp, valuetext: string): Promise<HTMLElement> {
+    await waitFor(async () => {
+      const item = await rowItem(name)
+      expect(within(item).getByRole('progressbar')).toHaveAttribute('aria-valuetext', valuetext)
+    }, SETTLE)
+    return rowItem(name)
+  }
+
+  async function startFromPicker(user: UserEvent, workoutName: string): Promise<void> {
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+    await startWorkout(user, workoutName)
+  }
+
+  test('O12 with nothing logged anywhere, every one of Workout A’s 7 rows carries one progression bar', async () => {
+    const user = userEvent.setup()
+    await startFromPicker(user, 'Workout A')
+
+    await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+    await waitFor(() => expect(screen.getAllByRole('progressbar')).toHaveLength(7), SETTLE)
+    for (const name of [/^Back squat/, /^Lunges/, /^DB bench press/, /^Push-ups/, /^Cable push-down/]) {
+      expect(within(await rowItem(name)).getAllByRole('progressbar')).toHaveLength(1)
+    }
+  })
+
+  test('O12 with nothing logged anywhere, the back squat bar reads 0 of 40 reps and suggests nothing', async () => {
+    const user = userEvent.setup()
+    await startFromPicker(user, 'Workout A')
+
+    const item = await expectBar(/^Back squat/, '0 of 40 reps')
+    expect(item.textContent ?? '').not.toMatch(/Next:|Add a set/)
+  })
+
+  test('O12 back squat done 4 x 65 kg x 10 last time shows a full bar with Next: 67.5 kg beside it', async () => {
+    await lastWorkoutA()
+    const user = userEvent.setup()
+    await startFromPicker(user, 'Workout A')
+
+    const item = await expectBar(/^Back squat/, '40 of 40 reps')
+    expect(within(item).getByText('Next: 67.5 kg')).toBeVisible()
+  })
+
+  test('O12 lunges short of the top last time shows 34 of 36 reps and no suggestion', async () => {
+    await lastWorkoutA()
+    const user = userEvent.setup()
+    await startFromPicker(user, 'Workout A')
+
+    const item = await expectBar(/^Lunges/, '34 of 36 reps')
+    expect(item.textContent ?? '').not.toMatch(/Next:|Add a set/)
+  })
+
+  test('O12 push-ups at 3 x 15 last time shows a full bar with Add a set beside it', async () => {
+    await lastWorkoutA()
+    const user = userEvent.setup()
+    await startFromPicker(user, 'Workout A')
+
+    const item = await expectBar(/^Push-ups/, '45 of 45 reps')
+    expect(within(item).getByText('Add a set')).toBeVisible()
+  })
+
+  test('O12 assisted pull-ups at 4 x 27 kg x 8 last time shows a full bar with Next: 26 kg assist beside it', async () => {
+    await finishedSession('workout-b', BASE, [
+      { exerciseId: 'assisted-pull-ups', weightKg: 27, reps: [8, 8, 8, 8] },
+    ])
+    const user = userEvent.setup()
+    await startFromPicker(user, 'Workout B')
+
+    const item = await expectBar(/^Assisted pull-ups/, '32 of 32 reps')
+    expect(within(item).getByText('Next: 26 kg assist')).toBeVisible()
+  })
+
+  test('O12 a resumed session with a swap shows the done Hammer_Curls bar against the planned 10-12, with Next: 13 kg', async () => {
+    await lastWorkoutBWithHammerCurls()
+    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE + DAY_MS)
+    await setSwap(today.id, 'seated-biceps-curls', 'Hammer_Curls')
+
+    render(<App />)
+
+    const item = await expectBar(HAMMER_ROW, '36 of 36 reps')
+    expect(within(item).getByText('Next: 13 kg')).toBeVisible()
+  })
+
+  test('O12 applying last time’s Hammer_Curls swap mid-session loads its history into the swapped row’s bar', async () => {
+    await lastWorkoutBWithHammerCurls()
+    const user = userEvent.setup()
+    await startFromPicker(user, 'Workout B')
+
+    await user.click(await screen.findByRole('button', { name: 'Last time: Hammer Curls' }, SETTLE))
+
+    const item = await expectBar(HAMMER_ROW, '36 of 36 reps')
+    expect(within(item).getByText('Next: 13 kg')).toBeVisible()
+  })
+
+  test('O12 undoing the swap brings back the seated biceps curls bar from its own history', async () => {
+    await finishedSession('workout-b', BASE - DAY_MS, [
+      { exerciseId: 'seated-biceps-curls', weightKg: 10, reps: [10, 10, 10] },
+    ])
+    await lastWorkoutBWithHammerCurls()
+    const user = userEvent.setup()
+    await startFromPicker(user, 'Workout B')
+    await user.click(await screen.findByRole('button', { name: 'Last time: Hammer Curls' }, SETTLE))
+    await expectBar(HAMMER_ROW, '36 of 36 reps')
+
+    await user.click(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE))
+
+    const item = await expectBar(/^Seated biceps curls/, '30 of 36 reps')
+    expect(item.textContent ?? '').not.toMatch(/Next:|Add a set/)
+    expect(screen.queryByRole('button', { name: HAMMER_ROW })).toBeNull()
+  })
+
+  test('O12 a row swapped for an id nothing resolves keeps its fallback name and draws no bar', async () => {
+    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE)
+    await setSwap(today.id, 'seated-biceps-curls', 'Retired_Curl')
+
+    render(<App />)
+
+    await expectBar(/^Deadlift/, '0 of 30 reps')
+    const item = await rowItem(/^Retired_Curl, instead of Seated biceps curls/)
+    expect(within(item).queryByRole('progressbar')).toBeNull()
+    expect(screen.getAllByRole('progressbar')).toHaveLength(6)
+  })
+
+  test('O12 a rejected history load for lunges leaves its bar empty while back squat still shows Next: 67.5 kg', async () => {
+    await lastWorkoutA()
+    const actualStore = await vi.importActual<typeof import('./storage/sessionStore')>(
+      './storage/sessionStore',
+    )
+    vi.mocked(getLastEntriesFor).mockImplementation((exerciseId: string) =>
+      exerciseId === 'lunges'
+        ? Promise.reject(new Error('lunges history unreadable'))
+        : actualStore.getLastEntriesFor(exerciseId),
+    )
+    const user = userEvent.setup()
+    await startFromPicker(user, 'Workout A')
+
+    const squat = await expectBar(/^Back squat/, '40 of 40 reps')
+    expect(within(squat).getByText('Next: 67.5 kg')).toBeVisible()
+    await expectBar(/^Lunges/, '0 of 36 reps')
+    expect(screen.getAllByRole('progressbar')).toHaveLength(7)
+  })
 })
 
