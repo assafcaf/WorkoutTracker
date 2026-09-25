@@ -132,3 +132,58 @@ test('O6 a bodyweight exercise yields a null weight dial when no prior session e
 
   expect(result).toEqual({ weightKg: null, reps: 10 })
 })
+
+test('O4 a Plan startWeightKg presets set 1 when the Exercise itself starts at 0 and there is no history', () => {
+  const zeroStartExercise: Exercise = { ...squatExercise, startWeight: 0 }
+  const planWithStartWeight: ExercisePlan = { ...squatPlan, startWeightKg: 40 }
+
+  const result = presetForSet({
+    exercise: zeroStartExercise,
+    plan: planWithStartWeight,
+    setIndex: 1,
+    lastEntries: [],
+  })
+
+  expect(result).toEqual({ weightKg: 40, reps: squatPlan.repRange[0] })
+})
+
+test('O4 history still wins over a Plan startWeightKg', () => {
+  const zeroStartExercise: Exercise = { ...squatExercise, startWeight: 0 }
+  const planWithStartWeight: ExercisePlan = { ...squatPlan, startWeightKg: 40 }
+  const lastEntries: SetEntry[] = [
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 55, reps: 8, loggedAt: 1 },
+  ]
+
+  const result = presetForSet({
+    exercise: zeroStartExercise,
+    plan: planWithStartWeight,
+    setIndex: 1,
+    lastEntries,
+  })
+
+  expect(result).toEqual({ weightKg: 55, reps: 8 })
+})
+
+test('O4 without a Plan startWeightKg, the Exercise startWeight is used as today', () => {
+  const result = presetForSet({
+    exercise: squatExercise,
+    plan: squatPlan,
+    setIndex: 1,
+    lastEntries: [],
+  })
+
+  expect(result).toEqual({ weightKg: squatExercise.startWeight, reps: squatPlan.repRange[0] })
+})
+
+test('O4 a Bodyweight Exercise still presets a null weight dial even with a Plan startWeightKg', () => {
+  const planWithStartWeight: ExercisePlan = { ...pushUpsPlan, startWeightKg: 40 }
+
+  const result = presetForSet({
+    exercise: pushUpsExercise,
+    plan: planWithStartWeight,
+    setIndex: 1,
+    lastEntries: [],
+  })
+
+  expect(result).toEqual({ weightKg: null, reps: pushUpsPlan.repRange[0] })
+})
