@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
@@ -598,30 +598,25 @@ function pushUpEntry(setIndex: number, reps: number, loggedAt: number): SetEntry
 }
 
 test('O1 playRestOver is called exactly once when the clock passes the Plan rest after a Set is logged, not before and not again on later ticks', async () => {
-  // The set is logged under real timers, so the fake-indexeddb write actually completes; only
-  // the rest-timer tick itself is then driven by a fake clock, which is what O1 is about.
-  vi.spyOn(Date, 'now').mockReturnValue(BASE)
-  const user = userEvent.setup()
+  // Fake timers from the very start: the rest-tick effect's setInterval must be created under
+  // the same clock the test then advances, or the fake clock never reaches it (a real-timer
+  // interval is not adopted by a later vi.useFakeTimers() call). "A Set just logged" is this
+  // Session's own history -- pushUpEntry at BASE, matching sessionStartedAt -- rather than an
+  // actual button click, so no fake-indexeddb write has to complete under the fake clock either.
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
   render(
     <SetScreen
       exercise={pushUps}
       plan={pushUpPlan}
-      setIndex={1}
+      setIndex={2}
       sessionId={SESSION_ID}
       sessionStartedAt={BASE}
-      lastEntries={[]}
+      lastEntries={[pushUpEntry(1, 12, BASE)]}
       onLogged={vi.fn()}
     />,
   )
-
-  await user.click(logButton())
-  await waitFor(async () => {
-    expect(await storedEntries()).toHaveLength(1)
-  })
   expect(playRestOver).not.toHaveBeenCalled()
-
-  vi.useFakeTimers()
-  vi.setSystemTime(BASE)
 
   // pushUpPlan.restSeconds is 90; 89 s in, rest is not yet over.
   await vi.advanceTimersByTimeAsync(89_000)
