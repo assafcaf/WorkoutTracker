@@ -6,3 +6,4 @@
 - `git branch -d` compares to the checkout's current HEAD, not the epic branch — verify with `git merge-base --is-ancestor` before assuming refusal means unmerged; don't `-D` (E6-T2, 2026-09-24)
 - Dispatching `tracker` from an epic worktree can FAIL to edit `.work/tickets/` (isolated into the wrong worktree) — retrying won't fix it; stop BLOCKED, let orchestrator patch the ledger (E7-T3, 2026-09-25)
 - Don't call SubagentHandback for a mid-task status (e.g. SUBMITTED right after dispatch) — it delivers once per slot; end the turn, use SendMessage(to:"main") if needed (E4-T8, 2026-09-24)
+- Never call SubagentHandback as a placeholder/test action while waiting on a notification — it delivers immediately and uses the one slot; if that happens by mistake, SendMessage(to:"main") a correction plus the real final report right away (E8-T9, 2026-09-25)
