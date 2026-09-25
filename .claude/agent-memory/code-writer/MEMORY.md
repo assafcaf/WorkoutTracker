@@ -1,1 +1,2 @@
 - No "dataviz" skill exists here; for chart tickets citing it, read src/ui/body/BodyMap.tsx and src/styles/contrast.test.ts instead, flag the gap in NOTES rather than blocking (E4-T8, 2026-09-24)
+- [My worktree can vanish mid-task](worktree-recreation.md) — recreate via its surviving `worktree-agent-<id>` branch, then `npm ci` before trusting any gate (E8-T9, 2026-09-25)
