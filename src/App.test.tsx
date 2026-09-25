@@ -4,7 +4,13 @@ import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { db, isStorageAvailable } from './storage/db'
-import { getGymEquipment, setActiveProgramId, setGymEquipment } from './storage/settingsStore'
+import {
+  getGymEquipment,
+  getWeightStep,
+  setActiveProgramId,
+  setGymEquipment,
+  setWeightStep,
+} from './storage/settingsStore'
 import {
   finishSession,
   getActiveSession,
@@ -3041,5 +3047,44 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
 
   const row = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(within(row).getByText('Volume vs 3-month average: 50%')).toBeVisible()
+})
+
+describe('E8-T8', () => {
+  /** The step control: a native select named for the weight step it currently reads. */
+  function stepControl(step: number): HTMLElement {
+    return screen.getByRole('combobox', { name: `Step ${step} kg` })
+  }
+
+  test('O2 back squats set screen opens with Step 5 kg once setWeightStep has stored it', async () => {
+    await setWeightStep('back-squat', 5)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await startWorkout(user, 'Workout A')
+    await openExercise(user, 'Back squat')
+
+    expect(await screen.findByRole('combobox', { name: 'Step 5 kg' }, SETTLE)).toBeInTheDocument()
+  })
+
+  test('O2 choosing a new weight step on back squats set screen is stored for the next time it opens', async () => {
+    const user = userEvent.setup()
+    const firstRun = render(<App />)
+    await startWorkout(user, 'Workout A')
+    await openExercise(user, 'Back squat')
+
+    await user.selectOptions(stepControl(2.5), '5')
+    await waitFor(async () => {
+      expect(await getWeightStep('back-squat')).toBe(5)
+    }, SETTLE)
+    firstRun.unmount()
+
+    // The session started above is still in progress (never finished), so a fresh render lands
+    // straight back in it -- on the exercise list, not the picker -- per AppViews' own doc
+    // comment: "A session in progress wins on mount, so reopening the app lands back in it."
+    render(<App />)
+    await openExercise(user, 'Back squat')
+
+    expect(await screen.findByRole('combobox', { name: 'Step 5 kg' }, SETTLE)).toBeInTheDocument()
+  })
 })
 

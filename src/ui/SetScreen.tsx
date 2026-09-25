@@ -64,6 +64,17 @@ export type SetScreenProps = {
    * behaviour before this prop existed.
    */
   sessionStartedAt?: number
+  /**
+   * The stored weight step for this Exercise (E8-T8), or `null`/omitted to open on its catalog
+   * `weightStep`. Read once, on open -- the Dial and Ladder then follow whatever is chosen from
+   * the step control until the screen is reopened.
+   */
+  weightStep?: number | null
+  /**
+   * Told the weight step just chosen from the step control (E8-T8), so the caller can persist
+   * it for this Exercise. Optional; the screen keeps using the new step for itself either way.
+   */
+  onWeightStepChange?(step: number): void
 }
 
 /**
@@ -165,6 +176,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     onOpenAlternatives,
     onFinishExercise,
   } = props
+
+  // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
+  // and otherwise the catalog's own; the Dial and Ladder both follow it via `effectiveExercise`.
+  const [weightStep, setWeightStep] = useState<number>(
+    props.weightStep ?? exercise.weightStep,
+  )
+  const effectiveExercise: Exercise = { ...exercise, weightStep }
+
+  function handleStepChange(step: number): void {
+    setWeightStep(step)
+    props.onWeightStepChange?.(step)
+  }
 
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
@@ -307,9 +330,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       <p className="set-counter">{setCounterText(open.setIndex, plan.sets, loggedCount, done)}</p>
 
       <WeightDial
-        exercise={exercise}
+        exercise={effectiveExercise}
         value={open.weightKg}
         onChange={(weightKg) => setOpen({ ...open, weightKg })}
+        onStepChange={handleStepChange}
       />
       <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
 

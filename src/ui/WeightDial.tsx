@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { buildLadder, stepWeight } from '../domain/dial'
+import { WEIGHT_STEPS, buildLadder, stepWeight } from '../domain/dial'
 import { Keypad } from './Keypad'
 import { useCentredRung } from './useCentredRung'
 import type { Exercise } from '../types'
@@ -9,6 +9,12 @@ export type WeightDialProps = {
   exercise: Exercise
   value: number | null
   onChange(value: number | null): void
+  /**
+   * Told the weight step just chosen from the step control (E8-T8). Optional -- and, when
+   * given but the Exercise is Bodyweight, ignored -- so the step control itself only renders
+   * for a loaded Exercise when a caller offers somewhere to send it.
+   */
+  onStepChange?(step: number): void
 }
 
 /** What the readout shows: the weight in kg, or "BW" when the exercise carries no plate. */
@@ -24,12 +30,13 @@ function readWeight(value: number | null): string {
  * exercise has no ladder, so it reads "BW" and none of the three moves it.
  */
 export function WeightDial(props: WeightDialProps): JSX.Element {
-  const { exercise, value, onChange } = props
+  const { exercise, value, onChange, onStepChange } = props
   const [keypadOpen, setKeypadOpen] = useState(false)
   const columnRef = useCentredRung(value)
   const ladder = buildLadder(exercise)
   const adjustable = ladder.length > 0 && value !== null
   const groupLabel = ladder.length > 0 ? 'Weight (kg)' : 'Weight'
+  const stepLabel = `Step ${exercise.weightStep} kg`
 
   function step(dir: 1 | -1): void {
     if (value === null || ladder.length === 0) return
@@ -103,6 +110,23 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
           }}
           onCancel={() => setKeypadOpen(false)}
         />
+      ) : null}
+      {ladder.length > 0 && onStepChange !== undefined ? (
+        <label className="dial-step-control">
+          {stepLabel}
+          <select
+            aria-label={stepLabel}
+            className="dial-step-select"
+            value={exercise.weightStep}
+            onChange={(event) => onStepChange(Number(event.target.value))}
+          >
+            {WEIGHT_STEPS.map((step) => (
+              <option key={step} value={step}>
+                {step}
+              </option>
+            ))}
+          </select>
+        </label>
       ) : null}
     </div>
   )
