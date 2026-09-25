@@ -15,6 +15,7 @@ import { MUSCLES, loadLibrary, loadVideos } from './data/library'
 import { photoUrls } from './data/photos'
 import { resolveExercise } from './data/resolve'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
+import { useSync } from './sync/useSync'
 import {
   BackupFormatError,
   downloadOrShare,
@@ -259,6 +260,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // The swap each plan of the session's workout carried last time it was finished (E5-T14),
   // keyed plannedId -> doneId, so the exercise list can offer "Last time" as one tap.
   const [lastSwaps, setLastSwaps] = useState<Record<string, string>>({})
+  // The phone's cloud sync (E7-T8): runs on mount and on `online` by itself.
+  const { sync, syncNow, adoptAccount, replaceRemote } = useSync()
 
   useEffect(() => {
     let cancelled = false
@@ -314,6 +317,44 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       cancelled = true
     }
   }, [])
+
+  // A sync or an adopt may have pulled a different active program or gym equipment: re-read
+  // them once the app is ready and after every change of account or sync time, so pulled data
+  // shows without a restart. Also runs as the app turns ready, since a sync that finished while
+  // it was still loading would otherwise be overwritten by what the load read.
+  const ready = state.status === 'ready'
+  useEffect(() => {
+    if (!ready) return
+    let cancelled = false
+    async function reloadSynced(): Promise<void> {
+      try {
+        const storedRow = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
+        const storedProgramId = typeof storedRow?.value === 'string' ? storedRow.value : undefined
+        const gymEquipmentList = await getGymEquipment()
+        if (cancelled) return
+        setGymEquipment(gymEquipmentList)
+        setState((current) => {
+          if (current.status !== 'ready') return current
+          const known =
+            storedProgramId !== undefined &&
+            current.programs.some((program) => program.id === storedProgramId)
+          const activeProgramId = known ? storedProgramId : current.programs[0].id
+          if (activeProgramId === current.activeProgramId) return current
+          return {
+            ...current,
+            activeProgramId,
+            staleActiveProgramNotice: storedProgramId !== undefined && !known,
+          }
+        })
+      } catch {
+        // Storage cannot answer; what is on screen stays.
+      }
+    }
+    reloadSynced()
+    return () => {
+      cancelled = true
+    }
+  }, [ready, sync.accountEmail, sync.lastSyncedAt])
 
   if (state.status === 'loading') return <div />
 
@@ -514,9 +555,15 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     if (!pendingImport) return
     const { text } = pendingImport
     setPendingImport(null)
-    importBackup(text).catch(() => {
-      setImportError('the backup could not be imported')
-    })
+    importBackup(text)
+      .then(() => {
+        // The server now has to match the phone, or the next sync would bring the replaced
+        // sessions back.
+        void replaceRemote()
+      })
+      .catch(() => {
+        setImportError('the backup could not be imported')
+      })
   }
 
   /** Shows the Exercises tab; the library itself is loaded once, up front, on mount. */
@@ -636,6 +683,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           equipmentTypes={equipmentTypes}
           gymEquipment={gymEquipment}
           onGymEquipmentChange={handleGymEquipmentChange}
+          sync={sync}
+          onSyncNow={() => void syncNow()}
+          onAdoptAccount={() => void adoptAccount()}
         />
         <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
         {importError ? <div role="alert">{importError}</div> : null}
@@ -704,6 +754,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         setOpenSet(null)
         setView('picker')
         setSummarySession(finished)
+        // Not awaited: returning to the picker never waits on the network.
+        void syncNow()
       })
       .catch(() => {
         // The list stays up; nothing was cleared, so there is nothing to undo.
