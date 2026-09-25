@@ -508,6 +508,62 @@ test('O6 no rest timer renders when the only lastEntries for this Exercise preda
 
 // --- O7: the rest timer on opening reflects the real last Set of this Session --------------
 
+// --- O3: the Dials say what they are -------------------------------------------------------
+
+test('O3 the weight dial is a group named Weight (kg) with that text visible above it', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  const group = screen.getByRole('group', { name: 'Weight (kg)' })
+  expect(within(group).getByText('Weight (kg)')).toBeVisible()
+})
+
+test('O3 the reps dial is a group named Reps with that text visible above it', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  const group = screen.getByRole('group', { name: 'Reps' })
+  expect(within(group).getByText('Reps')).toBeVisible()
+})
+
+test('O3 a Bodyweight Exercise names the weight group Weight rather than Weight (kg)', () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  expect(screen.getByRole('group', { name: 'Weight' })).toBeInTheDocument()
+  expect(screen.queryByRole('group', { name: 'Weight (kg)' })).toBeNull()
+})
+
+// --- O4: an exact weight or rep count from a visible button --------------------------------
+
+test('O4 typing a weight on the Type weight keypad logs it as an off-ladder weight', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  await user.click(screen.getByRole('button', { name: 'Type weight' }))
+  await user.click(screen.getByRole('button', { name: '6' }))
+  await user.click(screen.getByRole('button', { name: '3' }))
+  await user.click(screen.getByRole('button', { name: 'OK' }))
+  await user.click(logButton())
+
+  await waitFor(async () => {
+    expect(await storedEntries()).toHaveLength(1)
+  })
+  const [entry] = await storedEntries()
+  expect(entry.weightKg).toBe(63)
+})
+
+test('O4 the Type reps button opens the reps keypad the same way the readout does', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+  expect(screen.queryByRole('button', { name: 'OK' })).toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Type reps' }))
+
+  expect(screen.getByRole('button', { name: 'OK' })).toBeVisible()
+})
+
+test('O4 a Bodyweight Exercise has no Type weight button', () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  expect(screen.queryByRole('button', { name: 'Type weight' })).toBeNull()
+})
+
 test('O7 opening back-squat whose latest Set in this Session was logged 100 s ago shows 1:20 remaining', () => {
   // back-squat's plan here carries a 180 s rest (squatPlan); the last Set in this session was
   // logged at BASE, and "now" is frozen 100 s later, so 80 s of the 180 s remain -- "1:20".
