@@ -77,6 +77,7 @@ Where it departed from the decision above, and why:
 
 Not verified here: the three iPhone outcomes, `Log set` in view without scrolling (T1 O2), the
 beeps and the silent switch (T5 O11), and landing on Workout after switching apps (T7 O21).
-Desktop Chrome at 666×755 showed the page itself still scrolling (`html` scrollHeight 1035 in
-a 755 viewport), with `Log set` kept in view only by its sticky action bar. T1 O2 has to be
-judged on the phone.
+In Chrome, in a 390×844 frame, `Log set` sat at the bottom (786–832 of 844) before and after
+the page and both Dials were scrolled. That is the design: the page scrolls, and `clip`
+instead of `hidden` lets the sticky action bar stick to the viewport rather than to `html`.
+Chrome also counted three tones scheduled at 0:00. Neither is an iOS Safari result.
