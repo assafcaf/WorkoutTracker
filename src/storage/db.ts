@@ -8,6 +8,8 @@ import type { Session } from '../types'
 export type SettingRow = {
   key: string
   value: unknown
+  /** When this row was last written on this device (E7-T2). */
+  updatedAt?: number
 }
 
 /**
