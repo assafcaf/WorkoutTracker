@@ -1,2 +1,4 @@
 - When a base-path constant becomes '/', `startsWith(BASE)` assertions go vacuous (always true) — assert resolved-file membership in build output instead (E7-T3, 2026-09-25)
 - A swHarness test against an unimplemented workbox denylist can fail via a thrown TypeError deep in workbox-precaching, not a clean assertion diff — that's still valid red (E7-T3, 2026-09-25)
+- The worktree guard refuses Bash heredoc appends and computed `sed -n` loops; append tests with Edit anchored on the file's last test instead (E8-T6, 2026-09-25)
+- Existing fixtures stamp Sessions at a fixed 2023 `BASE`; a clock-threshold rule at App launch (`Date.now()`) turns them stale — grep in-progress fixtures before red (E8-T6, 2026-09-25)

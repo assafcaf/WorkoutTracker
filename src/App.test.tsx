@@ -1970,14 +1970,17 @@ function expectSummaryBand(summary: HTMLElement, region: string, band: string): 
 
 /** Leaves three back squat sets in a Workout A session still in progress. */
 async function threeBackSquatSetsInProgress(): Promise<void> {
-  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  // Stamped against the real clock, not BASE: App's launch finishes a Session whose last Set
+  // is 4 h or more old (E8-T6), and this one has to still be in progress.
+  const startedAt = Date.now() - 60_000
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', startedAt)
   for (const setIndex of [1, 2, 3]) {
     await logSet(started.id, {
       exerciseId: 'back-squat',
       setIndex,
       weightKg: 60,
       reps: 10,
-      loggedAt: BASE + setIndex,
+      loggedAt: startedAt + setIndex,
     })
   }
 }
@@ -2948,7 +2951,8 @@ describe('E4-T6', () => {
 
   test('O12 a resumed session with a swap shows the done Hammer_Curls bar against the planned 10-12, with Next: 13 kg', async () => {
     await lastWorkoutBWithHammerCurls()
-    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE + DAY_MS)
+    // Against the real clock: App's launch would finish a Session idle 4 h or more (E8-T6).
+    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', Date.now())
     await setSwap(today.id, 'seated-biceps-curls', 'Hammer_Curls')
 
     render(<App />)
@@ -2986,7 +2990,8 @@ describe('E4-T6', () => {
   })
 
   test('O12 a row swapped for an id nothing resolves keeps its fallback name and draws no bar', async () => {
-    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE)
+    // Against the real clock: App's launch would delete an empty Session idle 4 h (E8-T6).
+    const today = await startOrResumeSession('assaf-ab-2026', 'workout-b', Date.now())
     await setSwap(today.id, 'seated-biceps-curls', 'Retired_Curl')
 
     render(<App />)
@@ -3014,6 +3019,79 @@ describe('E4-T6', () => {
     expect(within(squat).getByText('Next: 67.5 kg')).toBeVisible()
     await expectBar(/^Lunges/, '0 of 36 reps')
     expect(screen.getAllByRole('progressbar')).toHaveLength(7)
+  })
+})
+
+// --- E8-T6: a forgotten Session finishes itself at launch ----------------------------------
+
+describe('E8-T6', () => {
+  const HOUR_MS = 60 * 60 * 1000
+
+  /**
+   * Stores a Workout A Session still in progress whose four back squat Sets -- 40x10, 50x10,
+   * 60x8, 60x8 -- ended five hours before the real clock, and returns the last Set's time.
+   * App's launch reads `Date.now()`, so these stamps are relative to it, not to BASE.
+   */
+  async function staleBackSquatSession(): Promise<number> {
+    const lastSetAt = Date.now() - 5 * HOUR_MS
+    const startedAt = lastSetAt - 30 * 60 * 1000
+    const sets: [number, number][] = [
+      [40, 10],
+      [50, 10],
+      [60, 8],
+      [60, 8],
+    ]
+    await db.sessions.put({
+      id: 'forgotten',
+      programId: 'assaf-ab-2026',
+      workoutId: 'workout-a',
+      startedAt,
+      finishedAt: null,
+      entries: sets.map(([weightKg, reps], index) => ({
+        exerciseId: 'back-squat',
+        setIndex: index + 1,
+        weightKg,
+        reps,
+        loggedAt: lastSetAt - (3 - index) * 5 * 60 * 1000,
+      })),
+      updatedAt: lastSetAt,
+    })
+    return lastSetAt
+  }
+
+  test('O3 launching with a stale Session in progress shows the picker with no resume card', async () => {
+    await staleBackSquatSession()
+
+    render(<App />)
+
+    expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+    expect(resumeControl()).toBeNull()
+  })
+
+  test('O3 launching with a stale Session in progress stores it finished at its last Set', async () => {
+    const lastSetAt = await staleBackSquatSession()
+
+    render(<App />)
+    await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
+
+    expect(await getActiveSession()).toBeNull()
+    const finished = await listSessions()
+    expect(finished.map((session) => [session.id, session.finishedAt])).toEqual([
+      ['forgotten', lastSetAt],
+    ])
+  })
+
+  test('O3 after a stale Session finishes itself, Back squat Set 2 opens preset at 50 kg x 10', async () => {
+    await staleBackSquatSession()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await startWorkout(user, 'Workout A')
+    await openExercise(user, 'Back squat')
+    expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['40', '10'])
+    await logSetAndOpen(user, 2, 4)
+
+    expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['50', '10'])
   })
 })
 
