@@ -270,6 +270,33 @@ test('O5 with nothing logged anywhere, a lift opens on its start weight and the 
   expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['50', '8'])
 })
 
+// --- O6: the rest timer is scoped to the session in progress (E6-T2) ---------------------
+
+test('O6 opening a lift last logged in an earlier, finished session shows no rest timer', async () => {
+  const user = userEvent.setup()
+  const firstRun = render(<App />)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await waitFor(async () => {
+    expect(await activeSessionEntries()).toHaveLength(1)
+  }, SETTLE)
+  const first = await getActiveSession()
+  if (!first) throw new Error('the first session was never started')
+  await finishSession(first.id, Date.now())
+  firstRun.unmount()
+
+  // A fresh session: back-squat's only lastEntries now come from the session just finished,
+  // not from this one -- App must thread sessionStartedAt through so that history does not
+  // read as "logged in this session".
+  render(<App />)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+
+  expect(screen.queryByRole('timer')).toBeNull()
+})
+
 // --- O13: the session survives the app being closed --------------------------------------
 
 /**
@@ -990,7 +1017,9 @@ test('O11 Log set sits in the sticky action bar rather than in the set screen bo
   expect((main as HTMLElement).contains(weightReadout())).toBe(true)
 })
 
-test('O11 Add set sits in the action bar beside Log set once every planned set is logged', async () => {
+// Replaced by E6-T1: this test asserted Log set beside Add set past the Plan; E6-T1's done state
+// offers Add set alone, which the E6-T1 block at the end of this file proves.
+test('O11 Add set sits in the action bar once every planned set is logged', async () => {
   const user = userEvent.setup()
   render(<App />)
   await logFourSetsOfBackSquat(user)
@@ -1000,9 +1029,6 @@ test('O11 Add set sits in the action bar beside Log set once every planned set i
   const bar = actionBar()
   expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
   expect((bar as HTMLElement).contains(addSet)).toBe(true)
-  expect((bar as HTMLElement).contains(screen.getByRole('button', { name: 'Log set' }))).toBe(
-    true,
-  )
 })
 
 // --- E3-T5: the resume card on the picker ([O12]) ------------------------------------------
@@ -1213,6 +1239,9 @@ describe('E3-T7', () => {
 // the very last of 876; Barbell Squat only surfaces after ~86-87 "Show more" taps, per
 // LibraryList.test.tsx's own F4 test). A sibling of the L10 and M9 rewrites below, missed on
 // the first pass and caught during the code-writer's own gate run -- same ruling, same reason.
+//
+// RULING (fix-the-ui-audit, O16): "Show more" is gone -- LibraryList.test.tsx's O16-O18 tests
+// replace it with a Previous/Next pager. 876 rows at 10 per page is 88 pages.
 test('L9 tapping the Exercises tab shows the library, with a search box, and makes Exercises the current tab', async () => {
   const user = userEvent.setup()
   render(<App />)
@@ -1221,11 +1250,17 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
   await pressTab(user, 'Exercises')
 
   expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toBeVisible()
+  // O15: the search box also carries a placeholder saying what it's for, without losing its
+  // accessible name (asserted above via the `name` matcher).
+  expect(screen.getByPlaceholderText('Search exercises')).toBeVisible()
   // Hand-checked against the real library fixture's alphabetically (locale-aware) first name --
-  // the first-10 default view F4 now requires, plus its "Show more" control.
+  // the first-10 default view F4 now requires.
   expect(await screen.findByText('3/4 Sit-Up', {}, SETTLE)).toBeVisible()
   expect(screen.getAllByRole('listitem')).toHaveLength(10)
-  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+  const pager = screen.getByRole('navigation', { name: 'Pages' })
+  expect(within(pager).getByText('Page 1 of 88')).toBeVisible()
+  expect(within(pager).getByRole('button', { name: 'Previous' })).toBeDisabled()
+  expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
   expect(currentTabNames()).toEqual(['Exercises'])
 })
 
@@ -1233,9 +1268,14 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
 // (biceps + dumbbell) -- both above the 10-per-page cap LibraryList now applies, so it was
 // found by inspection (not named by the operator's ticket) to break under F4 the same way L9's
 // and M9's did. Rewritten to prove the filters still narrow across the whole library -- only
-// the first 10 of each result render, with "Show more" offered -- and a combination matching
-// nothing still shows "No exercises match" with no "Show more" (0 is unaffected by the cap).
-test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with "Show more" -- and a combination matching nothing shows "No exercises match"', async () => {
+// the first 10 of each result render, with more reachable -- and a combination matching nothing
+// still shows "No exercises match".
+//
+// RULING (fix-the-ui-audit, O16-O18): "Show more" is gone -- the pager's Next button reaches the
+// rest of a result a page at a time (a different 10 rows, not a cumulative list), and a new
+// filtered result returns the list to page 1 (O18), which is why page 2's "lat" rows are
+// re-fetched after the muscle/equipment filter is applied rather than expected to carry over.
+test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with more reachable via the pager -- and a combination matching nothing shows "No exercises match"', async () => {
   const user = userEvent.setup()
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
@@ -1243,7 +1283,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
 
   // Hand-checked against the real library fixture: 36 names contain "lat", case-insensitively --
-  // above the 10-per-page cap, so only the first 10 show until "Show more" is tapped.
+  // above the 10-per-page cap, so only the first 10 show until Next is tapped.
   const latMatches = LIBRARY.filter((exercise) => exercise.name.toLowerCase().includes('lat'))
   expect(latMatches.length).toBeGreaterThan(10)
   await user.type(search, 'lat')
@@ -1254,20 +1294,26 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
       expect(textOf(row).toLowerCase()).toContain('lat')
     })
   }, SETTLE)
-  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+  let pager = screen.getByRole('navigation', { name: 'Pages' })
+  expect(within(pager).getByText('Page 1 of 4')).toBeVisible()
+  expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
 
-  await user.click(screen.getByRole('button', { name: 'Show more' }))
+  await user.click(within(pager).getByRole('button', { name: 'Next' }))
   await waitFor(() => {
     const rows = screen.getAllByRole('listitem')
-    expect(rows).toHaveLength(20)
+    expect(rows).toHaveLength(10)
     rows.forEach((row) => {
       expect(textOf(row).toLowerCase()).toContain('lat')
     })
   }, SETTLE)
+  expect(
+    within(screen.getByRole('navigation', { name: 'Pages' })).getByText('Page 2 of 4'),
+  ).toBeVisible()
 
   // Clearing the search and setting muscle to biceps and equipment to dumbbell narrows to
   // exercises matching both (hand-checked: 24 in the real library fixture, by primaryMuscles),
-  // also above the cap -- and changing the filter resets back to the new result's own first 10.
+  // also above the cap -- and changing the filter resets back to the new result's own first 10
+  // (page 1), per O18.
   const bicepsDumbbellMatches = LIBRARY.filter(
     (exercise) => exercise.primaryMuscles.includes('biceps') && exercise.equipment === 'dumbbell',
   )
@@ -1278,14 +1324,15 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
   await waitFor(() => {
     expect(screen.getAllByRole('listitem')).toHaveLength(10)
   }, SETTLE)
-  expect(screen.getByRole('button', { name: 'Show more' })).toBeVisible()
+  pager = screen.getByRole('navigation', { name: 'Pages' })
+  expect(within(pager).getByText('Page 1 of 3')).toBeVisible()
+  expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
 
   // Typing "lat" back in on top of those two filters matches nothing in the real library
   // fixture (hand-checked: 0), which is what "No exercises match" is for.
   await user.type(search, 'lat')
   expect(await screen.findByText('No exercises match', {}, SETTLE)).toBeVisible()
   expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
 })
 
 // --- E5-T8: the in-app detail overlay ([L14]) -----------------------------------------------
@@ -1435,8 +1482,9 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
 //
 // AlternativesList itself is also composed inline, browse-only, inside ExerciseDetail's own
 // "Similar exercises" section (S13) -- not a popup there. It is App's own top-level overlay
-// (this SetScreen "Alternatives" flow) that must carry the popup treatment, named "Alternatives"
-// (this task's own naming choice; the ticket does not pin one), with its own "Close" control.
+// (this SetScreen "Alternatives" flow) that must carry the popup treatment, with its own "Close"
+// control. Its accessible name is "Alternatives to {name}" (E6-T4's O10), so these fixtures use
+// "Alternatives to Seated biceps curls", biceps curls' own plan name in Workout B.
 
 test('F2 tapping Alternatives on a live set opens the alternatives list as a modal dialog, closable without swapping', async () => {
   const user = userEvent.setup()
@@ -1448,14 +1496,18 @@ test('F2 tapping Alternatives on a live set opens the alternatives list as a mod
 
   await user.click(screen.getByRole('button', { name: 'Alternatives' }))
 
-  const dialog = await screen.findByRole('dialog', { name: 'Alternatives' }, SETTLE)
+  const dialog = await screen.findByRole(
+    'dialog',
+    { name: 'Alternatives to Seated biceps curls' },
+    SETTLE,
+  )
   expect(dialog).toHaveAttribute('aria-modal', 'true')
   expect(within(dialog).getByRole('searchbox', { name: /search/i })).toBeVisible()
 
   await user.click(within(dialog).getByRole('button', { name: 'Close' }))
 
   await waitFor(() => {
-    expect(screen.queryByRole('dialog', { name: 'Alternatives' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Alternatives to Seated biceps curls' })).toBeNull()
   }, SETTLE)
   // The set screen underneath stays mounted, and nothing was swapped.
   expect(screen.getByRole('button', { name: 'Weight' })).toBeInTheDocument()
@@ -1472,7 +1524,11 @@ test('F3 the Alternatives overlay carries the shared overlay-panel class', async
 
   await user.click(screen.getByRole('button', { name: 'Alternatives' }))
 
-  const dialog = await screen.findByRole('dialog', { name: 'Alternatives' }, SETTLE)
+  const dialog = await screen.findByRole(
+    'dialog',
+    { name: 'Alternatives to Seated biceps curls' },
+    SETTLE,
+  )
   expect(dialog).toHaveClass('overlay-panel')
 })
 
@@ -2046,7 +2102,10 @@ test('M9 tapping upper-back on a History session’s map opens a panel with its 
 // lats-or-middle-back exercise at once -- above the 10-per-page cap. Rewritten to the first 10
 // (still only lats/middle back), then "Show more" tapped through to all 72 and the button
 // disappearing -- named by the operator's ticket as one of F4's authorised rewrites.
-test('M9 Browse exercises on upper-back opens the Exercises tab listing only lats or middle back exercises, first 10 with Show more reaching all 72', async () => {
+//
+// RULING (fix-the-ui-audit, O16-O18): "Show more" is gone -- paged through with the pager's Next
+// button instead, one page (10 rows, the last page 2) at a time, to the last of 8 pages.
+test('M9 Browse exercises on upper-back opens the Exercises tab listing only lats or middle back exercises, first 10 with the pager reaching all 72', async () => {
   const user = userEvent.setup()
   await finishedUpperBackSession()
   render(<App />)
@@ -2072,22 +2131,36 @@ test('M9 Browse exercises on upper-back opens the Exercises tab listing only lat
   expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
   expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
 
-  // Tapping "Show more" repeatedly reaches all 72, then the button disappears: 6 taps of 10
-  // reach 70, a 7th reaches the remaining 2.
-  for (let shown = 10; shown < 72; shown += 10) {
-    await user.click(screen.getByRole('button', { name: 'Show more' }))
-    const expectedCount = Math.min(shown + 10, 72)
+  // Paging through with Next reaches all 72, 10 at a time, over 8 pages -- the 8th holding the
+  // remaining 2 -- then Next disables. Each page's rows are collected rather than re-read after
+  // the last page, since the pager (unlike "Show more") replaces the visible rows per page
+  // instead of accumulating them.
+  const seenNames: string[] = []
+  const seenMuscles = new Set<string>()
+  const recordCurrentPage = () => {
+    for (const row of screen.getAllByRole('listitem')) {
+      seenNames.push((row.querySelector('.library-row-name')?.textContent ?? '').trim())
+      seenMuscles.add((row.querySelector('.library-row-muscle')?.textContent ?? '').trim())
+    }
+  }
+  recordCurrentPage()
+  let pager = screen.getByRole('navigation', { name: 'Pages' })
+  expect(within(pager).getByText('Page 1 of 8')).toBeVisible()
+
+  for (let page = 2; page <= 8; page += 1) {
+    await user.click(within(pager).getByRole('button', { name: 'Next' }))
+    const expectedCount = page < 8 ? 10 : 2
     await waitFor(() => {
       expect(screen.getAllByRole('listitem')).toHaveLength(expectedCount)
     }, SETTLE)
+    pager = screen.getByRole('navigation', { name: 'Pages' })
+    expect(within(pager).getByText(`Page ${page} of 8`)).toBeVisible()
+    recordCurrentPage()
   }
-  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
-  const muscles = new Set(
-    screen
-      .getAllByRole('listitem')
-      .map((row) => (row.querySelector('.library-row-muscle')?.textContent ?? '').trim()),
-  )
-  expect([...muscles].sort()).toEqual(['lats', 'middle back'])
+  expect(within(pager).getByRole('button', { name: 'Next' })).toBeDisabled()
+
+  expect(seenNames).toHaveLength(72)
+  expect([...seenMuscles].sort()).toEqual(['lats', 'middle back'])
   expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
 }, 20000)
 
@@ -2151,6 +2224,173 @@ test('with nothing logged in the last 7 days the Program tab’s This week still
   expect(
     within(thisWeekSection()).getByText('No sets logged in the last 7 days'),
   ).toBeVisible()
+})
+
+// --- E6-T1: the set screen's done state past the Plan ---------------------------------------
+//
+// Full body starter plans back squat for 3 sets. Set 3 is logged one rung heavier and at 7
+// reps, so a set preset "from Set 3" is told apart from every earlier one: 52.5 kg x 7.
+
+/**
+ * Logs all 3 planned back squat sets under Full body starter and waits for the third to be
+ * stored, leaving the set screen on the set after the last planned one.
+ */
+async function logAllThreePlannedBackSquatSets(user: UserEvent): Promise<void> {
+  await setActiveProgramId('full-body-starter')
+  render(<App />)
+  await startWorkout(user, 'Full body')
+  await openExercise(user, 'Back squat')
+  await logSetAndOpen(user, 2, 3)
+  await logSetAndOpen(user, 3, 3)
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  await enterOnKeypad(user, repsReadout(), ['7'])
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await waitFor(async () => {
+    expect(await activeSessionEntries()).toHaveLength(3)
+  }, SETTLE)
+}
+
+/** Presses Add set in the done state. */
+async function pressAddSet(user: UserEvent): Promise<void> {
+  await user.click(await screen.findByRole('button', { name: 'Add set' }, SETTLE))
+}
+
+/** From the done state, adds set 4 and logs it, waiting for it to be stored. */
+async function addAndLogSetFour(user: UserEvent): Promise<void> {
+  await pressAddSet(user)
+  await screen.findByText('Set 4 · extra', undefined, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await waitFor(async () => {
+    expect(await activeSessionEntries()).toHaveLength(4)
+  }, SETTLE)
+}
+
+// Each test logs 3 to 5 sets through the whole app; under a loaded full-suite run that outlasts
+// vitest's 5 s default, which is a timeout, not a red.
+describe('E6-T1', { timeout: 15_000 }, () => {
+  test('O1 with all 3 planned sets logged, the action bar holds Add set and no Log set', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    const addSet = await screen.findByRole('button', { name: 'Add set' }, SETTLE)
+
+    const bar = actionBar()
+    expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
+    expect((bar as HTMLElement).contains(addSet)).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+  })
+
+  test('O1 with all 3 planned sets logged, the counter reads All 3 sets logged', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    expect(await screen.findByText('All 3 sets logged', undefined, SETTLE)).toBeVisible()
+  })
+
+  test('O2 pressing Add set in the done state opens set 4 with the counter reading Set 4 · extra', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await pressAddSet(user)
+
+    expect(await screen.findByText('Set 4 · extra', undefined, SETTLE)).toBeVisible()
+  })
+
+  test('O2 set 4 opened by Add set is preset from set 3', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await pressAddSet(user)
+
+    await screen.findByText('Set 4 · extra', undefined, SETTLE)
+    expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['52.5', '7'])
+  })
+
+  test('O2 pressing Add set puts Log set in the action bar and no Add set', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await pressAddSet(user)
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Add set' })).toBeNull()
+    }, SETTLE)
+    const bar = actionBar()
+    expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
+    expect((bar as HTMLElement).contains(screen.getByRole('button', { name: 'Log set' }))).toBe(
+      true,
+    )
+  })
+
+  test('O2 logging the extra set stores it as set 4 of back squat, preset from set 3', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await addAndLogSetFour(user)
+
+    const entries = await activeSessionEntries()
+    expect(
+      entries.map((entry) => [entry.exerciseId, entry.setIndex, entry.weightKg, entry.reps]),
+    ).toEqual([
+      ['back-squat', 1, 50, 8],
+      ['back-squat', 2, 50, 8],
+      ['back-squat', 3, 52.5, 7],
+      ['back-squat', 4, 52.5, 7],
+    ])
+  })
+
+  test('O2 logging the extra set returns to the done state with the counter reading 4 sets logged · 3 planned', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await addAndLogSetFour(user)
+
+    expect(await screen.findByText('4 sets logged · 3 planned', undefined, SETTLE)).toBeVisible()
+  })
+
+  test('O2 logging the extra set returns the action bar to Add set with no Log set', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await addAndLogSetFour(user)
+
+    await screen.findByRole('button', { name: 'Add set' }, SETTLE)
+    expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+  })
+
+  test('O2 pressing Add set again after the extra set is logged opens set 5 as an extra set', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+    await addAndLogSetFour(user)
+    await screen.findByText('4 sets logged · 3 planned', undefined, SETTLE)
+
+    await pressAddSet(user)
+
+    expect(await screen.findByText('Set 5 · extra', undefined, SETTLE)).toBeVisible()
+  })
+})
+
+// --- E6-T10: reopening a finished exercise must not overwrite its last logged Set -----------
+
+describe('E6-T10', { timeout: 15_000 }, () => {
+  test('O3 reopening a fully logged exercise from the list opens the done state without touching Set 3', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+    const beforeReopen = await activeSessionEntries()
+
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
+
+    expect(await screen.findByText('All 3 sets logged', undefined, SETTLE)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Add set' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+    const afterReopen = await activeSessionEntries()
+    expect(afterReopen).toEqual(beforeReopen)
+    const set3 = afterReopen.find(
+      (entry) => entry.exerciseId === 'back-squat' && entry.setIndex === 3,
+    )
+    expect([set3?.weightKg, set3?.reps]).toEqual([52.5, 7])
+  })
 })
 
 // --- E4-T4: Stats inside History, and what it says with nothing logged ([O10]) -------------

@@ -42,12 +42,12 @@ function loggedSets(entries: SetEntry[], exerciseId: string): number {
 }
 
 /**
- * The set a row opens: the one after the last logged, never past the plan -- an exercise
- * already at its planned count re-opens its last set, since a set past the plan is what the
- * set screen's "Add set" is for.
+ * The set a row opens: always the one after the last logged, even past the plan (E6-T10) -- an
+ * exercise already at its planned count must not overwrite its last stored Set, so the row opens
+ * one past it, landing on the set screen's done state (E6-T1) instead.
  */
-function nextSetIndex(logged: number, plan: ExercisePlan): number {
-  return Math.min(logged + 1, plan.sets)
+export function nextSetIndex(logged: number, _plan: ExercisePlan): number {
+  return logged + 1
 }
 
 /**
@@ -107,12 +107,20 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
               />
             ) : null}
             {doneId !== undefined && logged === 0 ? (
-              <button type="button" onClick={() => onUndoSwap(plan.exerciseId)}>
+              <button
+                type="button"
+                className="exercise-undo-swap"
+                onClick={() => onUndoSwap(plan.exerciseId)}
+              >
                 Undo swap
               </button>
             ) : null}
             {doneId === undefined && lastDoneId !== undefined ? (
-              <button type="button" onClick={() => onApplySwap(plan.exerciseId, lastDoneId)}>
+              <button
+                type="button"
+                className="exercise-last-time"
+                onClick={() => onApplySwap(plan.exerciseId, lastDoneId)}
+              >
                 {`Last time: ${resolve(lastDoneId)?.name ?? lastDoneId}`}
               </button>
             ) : null}

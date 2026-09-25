@@ -84,7 +84,7 @@
     "id": "narrow-grip-pull-down",
     "name": "Narrow-grip pull-down",
     "weightStep": 1.25,
-    "startWeight": 41,
+    "startWeight": 41.25,
     "bodyweight": false,
     "invertProgress": false,
     "libraryId": "Close-Grip_Front_Lat_Pulldown"

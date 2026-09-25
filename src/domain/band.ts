@@ -17,3 +17,15 @@ export function band(count: number, scale: 'session' | 'week'): 0 | 1 | 2 | 3 {
   if (count <= 20) return 2
   return 3
 }
+
+/**
+ * The four shade bands' human-readable labels, one scale's worth per row, in band order
+ * (0, 1, 2, 3) matching `band()`'s thresholds above -- so `BodyMapLegend` (E6-T9, O23) can't
+ * drift from the banding it names. Only the last entry of each row carries "sets", so a legend
+ * joining a row with " / " reads "0 / 1-2 / 3-5 / 6+ sets" (session) or "0 / 1-9 / 10-20 / 21+
+ * sets" (week) -- the exact wording the spec (O23) names.
+ */
+export const BAND_LABELS: Record<'session' | 'week', [string, string, string, string]> = {
+  session: ['0', '1–2', '3–5', '6+ sets'],
+  week: ['0', '1–9', '10–20', '21+ sets'],
+}

@@ -30,6 +30,13 @@
   font-size: var(--text-sm);
 }
 
+/* The log-confirmation message, above the rest timer: empty until the first set is logged on
+ * this screen. */
+.set-logged {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
 /* The rest left, read off the clock. Tabular figures so the seconds do not shift the line as
  * they count down. */
 .rest-timer {
@@ -43,4 +50,20 @@
 .log-set,
 .add-set {
   min-height: var(--tap-min);
+}
+
+/* The row "Exercise info" and "Alternatives" sit in, above the set counter. */
+.set-screen-links {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.exercise-info,
+.open-alternatives {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-accent);
 }

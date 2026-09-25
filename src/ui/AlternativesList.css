@@ -64,3 +64,15 @@
   background: var(--color-accent);
   color: var(--color-on-accent);
 }
+
+/* Offered once the equipment filter leaves nothing ranked (S12); a plain link back to the
+ * unfiltered list. */
+.alternatives-show-all {
+  align-self: flex-start;
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-accent);
+}

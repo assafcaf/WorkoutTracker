@@ -46,6 +46,7 @@ import {
 import { ActionBarSlot, AppShell } from './ui/AppShell'
 import type { Tab } from './ui/AppShell'
 import { AlternativesList } from './ui/AlternativesList'
+import './ui/AlternativesOverlay.css'
 import { BackupBadge, isBackupDue } from './ui/BackupBadge'
 import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ExerciseList } from './ui/ExerciseList'
@@ -93,8 +94,11 @@ function tabFor(view: View): Tab | undefined {
   return TAB_OF[view] ?? undefined
 }
 
-/** The set the set screen is on, with the history it was opened against. */
-type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[] }
+/**
+ * The set the set screen is on, with the history it was opened against, and whether "Add set"
+ * opened it as an extra set past the plan (E6-T1).
+ */
+type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[]; extra: boolean }
 
 /**
  * The in-app exercise detail overlay (E5-T8): rendered over whatever view is current without
@@ -507,7 +511,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   function handleOpenSet(exerciseId: string, setIndex: number): void {
     getLastEntriesFor(exerciseId)
       .then((history) => {
-        setOpenSet({ exerciseId, setIndex, history })
+        setOpenSet({ exerciseId, setIndex, history, extra: false })
         setView('set')
       })
       .catch(() => {
@@ -519,7 +523,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   function handleAddSet(exerciseId: string, nextSetIndex: number): void {
     setOpenSet((current) =>
       current && current.exerciseId === exerciseId
-        ? { ...current, setIndex: nextSetIndex }
+        ? { ...current, setIndex: nextSetIndex, extra: true }
         : current,
     )
   }
@@ -746,7 +750,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             setIndex={openSet.setIndex}
             sessionId={session.id}
             lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
-            onLogged={(logged) => setSession(logged)}
+            sessionStartedAt={session.startedAt}
+            extra={openSet.extra}
+            onLogged={(logged) => {
+              setSession(logged)
+              setOpenSet((current) => (current ? { ...current, extra: false } : current))
+            }}
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}
@@ -807,7 +816,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         title={located.workout.name}
         onBack={() => setView('picker')}
         action={
-          <button type="button" onClick={handleFinish}>
+          <button type="button" className="finish-workout" onClick={handleFinish}>
             Finish workout
           </button>
         }
@@ -915,36 +924,42 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         trailing={trailing}
         settingsBadge={settingsBadge}
       >
-        <input
-          type="search"
-          aria-label="Search exercises"
-          value={librarySearch}
-          onChange={(event) => setLibrarySearch(event.target.value)}
-        />
-        <select
-          aria-label="Muscle"
-          value={libraryMuscle}
-          onChange={(event) => setLibraryMuscle(event.target.value)}
-        >
-          <option value="">All muscles</option>
-          {MUSCLES.map((muscle) => (
-            <option key={muscle} value={muscle}>
-              {muscle}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Equipment"
-          value={libraryEquipment}
-          onChange={(event) => setLibraryEquipment(event.target.value)}
-        >
-          <option value="">All equipment</option>
-          {libraryEquipmentOptions.map((equipment) => (
-            <option key={equipment} value={equipment}>
-              {equipment}
-            </option>
-          ))}
-        </select>
+        <div className="library-filters">
+          <input
+            type="search"
+            aria-label="Search exercises"
+            placeholder="Search exercises"
+            className="library-search"
+            value={librarySearch}
+            onChange={(event) => setLibrarySearch(event.target.value)}
+          />
+          <select
+            aria-label="Muscle"
+            className="library-filter"
+            value={libraryMuscle}
+            onChange={(event) => setLibraryMuscle(event.target.value)}
+          >
+            <option value="">All muscles</option>
+            {MUSCLES.map((muscle) => (
+              <option key={muscle} value={muscle}>
+                {muscle}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Equipment"
+            className="library-filter"
+            value={libraryEquipment}
+            onChange={(event) => setLibraryEquipment(event.target.value)}
+          >
+            <option value="">All equipment</option>
+            {libraryEquipmentOptions.map((equipment) => (
+              <option key={equipment} value={equipment}>
+                {equipment}
+              </option>
+            ))}
+          </select>
+        </div>
         <LibraryList
           library={filteredLibrary}
           onOpen={handleOpenInfo}
@@ -982,7 +997,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             onResume={() => handleChoose(session.programId, session.workoutId)}
           />
         ) : null}
-        <fieldset disabled={!storageAvailable}>
+        <fieldset className="workout-picker" disabled={!storageAvailable}>
           <WorkoutStartButtons
             program={activeProgram}
             onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}
@@ -1013,6 +1028,13 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         })()
       : null
 
+  // The Alternatives overlay's heading names the Plan's current Exercise (E6-T4/O10) -- the
+  // swapped-in one if `overlay.plannedId` already carries a swap -- which is `resolveListExercise`
+  // own name, not `alternativesTarget`'s library entry name (the two can differ, e.g. "Seated
+  // biceps curls" the Plan vs. "Seated Dumbbell Curl" the library's own name for it).
+  const alternativesName: string | undefined =
+    overlay?.kind === 'alternatives' ? resolveListExercise(overlay.plannedId)?.name : undefined
+
   return (
     <>
       {content}
@@ -1042,8 +1064,16 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           onBrowse={handleBrowseMuscles}
         />
       ) : null}
-      {overlay?.kind === 'alternatives' && alternativesTarget ? (
-        <div role="dialog" aria-modal="true" aria-label="Alternatives" className="overlay-panel alternatives-overlay">
+      {overlay?.kind === 'alternatives' && alternativesTarget && alternativesName ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="alternatives-heading"
+          className="overlay-panel alternatives-overlay"
+        >
+          <h2 id="alternatives-heading" className="alternatives-overlay-heading">
+            Alternatives to {alternativesName}
+          </h2>
           <button type="button" className="alternatives-overlay-close" onClick={() => setOverlay(null)}>
             Close
           </button>

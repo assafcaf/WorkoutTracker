@@ -37,10 +37,19 @@ test('O8 stepWeight steps down one notch on back-squat from 62.5kg to 60kg', () 
   expect(stepWeight(62.5, -1, backSquat)).toBe(60)
 })
 
-test('O8 buildLadder starts back-squats ladder at its start weight and steps by its weight step', () => {
+test('O8 buildLadder starts back-squats ladder at its weight step and steps by its weight step, with the start weight still a rung', () => {
   const ladder = buildLadder(backSquat)
 
-  expect(ladder.slice(0, 5)).toEqual([50, 52.5, 55, 57.5, 60])
+  expect(ladder.slice(0, 5)).toEqual([2.5, 5, 7.5, 10, 12.5])
+  expect(ladder).toContain(50)
+})
+
+test('O8 a first-ever Set still opens the weight Dial on the start weight', () => {
+  expect(backSquat.startWeight).toBe(50)
+})
+
+test('O8 stepWeight moves the Dial from the start weight down to one weightStep below it', () => {
+  expect(stepWeight(50, -1, backSquat)).toBe(47.5)
 })
 
 test('O8 buildLadder returns an empty ladder for a bodyweight exercise', () => {

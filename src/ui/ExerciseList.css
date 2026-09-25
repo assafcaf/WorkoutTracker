@@ -41,3 +41,14 @@
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
+
+/* "Undo swap" and "Last time: …", beside a row's own button. */
+.exercise-undo-swap,
+.exercise-last-time {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-accent);
+}
