@@ -185,8 +185,8 @@ test('L12 ExerciseDetail renders neither the "Watch video" link nor its credit w
 
 test('L13 ExerciseDetail renders each given photo url as an image', () => {
   const photos = [
-    '/WorkoutTracker/library-photos/Barbell_Squat/0.jpg',
-    '/WorkoutTracker/library-photos/Barbell_Squat/1.jpg',
+    '/library-photos/Barbell_Squat/0.jpg',
+    '/library-photos/Barbell_Squat/1.jpg',
   ]
 
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={photos} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
@@ -196,7 +196,7 @@ test('L13 ExerciseDetail renders each given photo url as an image', () => {
 })
 
 test('L13 ExerciseDetail replaces a photo that fails to load with a "Photos need a connection" placeholder', () => {
-  const photos = ['/WorkoutTracker/library-photos/Barbell_Squat/0.jpg']
+  const photos = ['/library-photos/Barbell_Squat/0.jpg']
 
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={photos} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 

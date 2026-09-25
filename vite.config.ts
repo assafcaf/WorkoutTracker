@@ -3,9 +3,10 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// The app is served from a GitHub Pages project site, so every URL it emits has to carry the
-// repository name. Get this wrong and the build works on localhost and 404s in production.
-const base = '/WorkoutTracker/'
+// The app is served from the root of the Cloudflare Worker behind Access (decision 0006
+// supersedes 0003's GitHub Pages base path). Get this wrong and the build works on localhost
+// and 404s in production.
+const base = '/'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -17,11 +18,18 @@ export default defineConfig({
       // E2-T2's job, which is also why nothing is injected into index.html here.
       registerType: 'prompt',
       injectRegister: null,
+      // The manifest fetch needs Access's cookie, or Access's own login page comes back
+      // instead of JSON and the browser refuses to install the app.
+      useCredentials: true,
       workbox: {
         // Workbox's default glob is '**/*.{js,wasm,css,html}' (the icons and the manifest are
         // added by the plugin itself). The bundled exercise photos in public/library-photos/
         // are .jpg, so they are named here too, or they would not work offline.
         globPatterns: ['**/*.{js,wasm,css,html,jpg}'],
+        // The Worker answers /api/ itself (E7-T1) and Access owns /cdn-cgi/; without this the
+        // navigation fallback would answer both from the cached SPA shell instead of letting
+        // them reach the Worker.
+        navigateFallbackDenylist: [/^\/api\//, /^\/cdn-cgi\//],
         // Non-catalog library exercise photos are never bundled (src/data/photos.ts fetches
         // them from raw.githubusercontent.com instead) — cache them at runtime the first time
         // they are fetched online, so they keep working offline afterwards.

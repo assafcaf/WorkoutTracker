@@ -1,0 +1,2 @@
+- [Weakened base-path assertions](weakened-base-path-assertions.md) — a `startsWith(BASE)` check goes vacuous once BASE becomes '/'; assert file membership instead.
+- [Workbox NavigationRoute + swHarness](workbox-navigateroute-swharness.md) — a denylist test throws (not asserts) until the denylist exists; that's still valid red.

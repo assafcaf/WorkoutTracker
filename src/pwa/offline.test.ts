@@ -96,7 +96,7 @@ async function runLaunch(): Promise<OfflineLaunch> {
 
   const cachedDir = mkdtempSync(join(tmpdir(), 'workout-offline-'))
   for (const url of sw.cachedUrls()) {
-    const relPath = new URL(url).pathname.replace('/WorkoutTracker/', '')
+    const relPath = new URL(url).pathname.replace(/^\//, '')
     if (!relPath.endsWith('.js')) continue
     const target = join(cachedDir, ...relPath.split('/'))
     mkdirSync(dirname(target), { recursive: true })
@@ -109,7 +109,7 @@ async function runLaunch(): Promise<OfflineLaunch> {
       `the cached shell loads ${sources.length} scripts; this harness links exactly one entry`,
     )
   }
-  const entryPath = new URL(sources[0], appUrl('')).pathname.replace('/WorkoutTracker/', '')
+  const entryPath = new URL(sources[0], appUrl('')).pathname.replace(/^\//, '')
   const linkedDir = join(cachedDir, '__linked')
   await build({
     root: cachedDir,
@@ -261,7 +261,23 @@ test('O4 a request for an asset the build never emitted is not answered with the
 
 test('O4 the app registers the built service worker under the base path when it starts', async () => {
   const { registeredWorkers } = await launchFromCache()
-  expect(registeredWorkers).toContain('/WorkoutTracker/sw.js')
+  expect(registeredWorkers).toContain('/sw.js')
+})
+
+// [O15] The Worker answers /api/ itself (E7-T1) and Access owns /cdn-cgi/; if the generated
+// service worker's navigation fallback caught either, a cold Access redirect or an API request
+// made as a navigation would get the cached SPA shell back instead of reaching the Worker.
+
+test('O15 a navigation to /api/ is not answered from the cached app shell', async () => {
+  const response = await sw.request(appUrl('api/workouts'), 'navigate')
+  const body = response ? await response.text() : ''
+  expect(body).not.toContain('<div id="root">')
+})
+
+test('O15 a navigation to /cdn-cgi/ is not answered from the cached app shell', async () => {
+  const response = await sw.request(appUrl('cdn-cgi/access/login'), 'navigate')
+  const body = response ? await response.text() : ''
+  expect(body).not.toContain('<div id="root">')
 })
 
 test('O4 registerServiceWorker does nothing in a browser with no service worker', () => {
