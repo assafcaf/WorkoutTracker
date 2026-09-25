@@ -1,4 +1,4 @@
-import type { Program, VolumeBaseline } from '../types'
+import type { Program, UserProgram, VolumeBaseline } from '../types'
 import { db } from './db'
 
 /**
@@ -128,4 +128,27 @@ export async function getVolumeBaseline(): Promise<VolumeBaseline> {
 /** Records `baseline` as the volume baseline. */
 export async function setVolumeBaseline(baseline: VolumeBaseline): Promise<void> {
   await db.settings.put({ key: VOLUME_BASELINE_KEY, value: baseline, updatedAt: Date.now() })
+}
+
+/** The `settings` table key every User Program is kept under, in one row (E9). */
+export const USER_PROGRAMS_KEY = 'userPrograms'
+
+/** Every stored User Program; `[]` when none has been stored. */
+export async function getUserPrograms(): Promise<UserProgram[]> {
+  throw new Error('not implemented')
+}
+
+/** Stores `p`, replacing the stored User Program with its id, else appending it. */
+export async function saveUserProgram(_p: UserProgram): Promise<void> {
+  throw new Error('not implemented')
+}
+
+/** Removes the User Program with `id`, so a bundled Program of that id shows again. */
+export async function resetProgram(_id: string): Promise<void> {
+  throw new Error('not implemented')
+}
+
+/** Marks the User Program with `id` hidden, keeping it. */
+export async function deleteProgram(_id: string): Promise<void> {
+  throw new Error('not implemented')
 }

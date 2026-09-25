@@ -1,8 +1,14 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { db, type SettingRow } from '../storage/db'
 import { logSet } from '../storage/sessionStore'
-import { getWeightStep, setVolumeBaseline, setWeightStep } from '../storage/settingsStore'
-import type { Session, SetEntry } from '../types'
+import {
+  getUserPrograms,
+  getWeightStep,
+  saveUserProgram,
+  setVolumeBaseline,
+  setWeightStep,
+} from '../storage/settingsStore'
+import type { Session, SetEntry, UserProgram } from '../types'
 import {
   SYNCED_SETTING_KEYS,
   type ReplaceRequest,
@@ -706,4 +712,97 @@ test('O3 a weight step another device synced is stored locally and read by getWe
   await syncNow({ fetch: server.fetch })
 
   expect(await getWeightStep('back-squat')).toBe(2.5)
+})
+
+// --- E9-T5 O6: User Programs are one synced setting --------------------------------------------
+
+function userProgram(id: string, overrides: Partial<UserProgram> = {}): UserProgram {
+  return {
+    id,
+    name: 'Push pull',
+    units: 'kg',
+    sessionsPerWeek: 2,
+    createdAt: T0,
+    workouts: [
+      {
+        id: 'push',
+        name: 'Push',
+        exercises: [{ exerciseId: 'bench', sets: 3, repRange: [8, 12], restSeconds: 90 }],
+      },
+    ],
+    ...overrides,
+  } as UserProgram
+}
+
+test('O6 SYNCED_SETTING_KEYS holds userPrograms', () => {
+  expect(SYNCED_SETTING_KEYS).toContain('userPrograms')
+})
+
+test('O6 User Programs stored with saveUserProgram are pushed by the next syncNow as one setting, stamped with the time of the write', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 500)
+  await saveUserProgram(userProgram('my-push-pull'))
+  await saveUserProgram(userProgram('my-legs', { name: 'Legs' }))
+  vi.restoreAllMocks()
+
+  await syncNow({ fetch: server.fetch })
+
+  const [request] = server.syncRequests()
+  expect(request.settings.filter((s) => s.key === 'userPrograms')).toEqual([
+    {
+      key: 'userPrograms',
+      value: [userProgram('my-push-pull'), userProgram('my-legs', { name: 'Legs' })],
+      updatedAt: T0 + 500,
+    },
+  ])
+})
+
+test('O6 a second device syncing from 0 reads the same User Programs from getUserPrograms', async () => {
+  await saveUserProgram(userProgram('my-push-pull'))
+  await saveUserProgram(userProgram('my-hidden', { hidden: true }))
+  await syncNow({ fetch: server.fetch })
+  // The second device: a fresh store, same account, never synced.
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(server.syncRequests()[1].since).toBe(0)
+  expect(await getUserPrograms()).toEqual([
+    userProgram('my-push-pull'),
+    userProgram('my-hidden', { hidden: true }),
+  ])
+})
+
+test('O6 a newer userPrograms from another device replaces the whole local list, last write wins', async () => {
+  await putLocalSetting({
+    key: 'userPrograms',
+    value: [userProgram('local-only')],
+    updatedAt: T0 + 100,
+  })
+  server.seedSetting('a@x', {
+    key: 'userPrograms',
+    value: [userProgram('from-other-phone')],
+    updatedAt: T0 + 900,
+  })
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(await getUserPrograms()).toEqual([userProgram('from-other-phone')])
+})
+
+test('O6 an older userPrograms from another device leaves the newer local list', async () => {
+  await putLocalSetting({
+    key: 'userPrograms',
+    value: [userProgram('local-newer')],
+    updatedAt: T0 + 900,
+  })
+  server.seedSetting('a@x', {
+    key: 'userPrograms',
+    value: [userProgram('from-other-phone')],
+    updatedAt: T0 + 100,
+  })
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(await getUserPrograms()).toEqual([userProgram('local-newer')])
 })

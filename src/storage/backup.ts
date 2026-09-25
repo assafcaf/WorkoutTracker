@@ -1,4 +1,4 @@
-import type { Session, VolumeBaseline } from '../types'
+import type { Session, UserProgram, VolumeBaseline } from '../types'
 import { db } from './db'
 import { listSessions } from './sessionStore'
 import {
@@ -41,6 +41,8 @@ export type BackupFile = {
     weightSteps?: Record<string, number>
     /** The volume baseline choice (E8). Absent on a backup made before E8. */
     volumeBaseline?: VolumeBaseline
+    /** The trainee's created and edited Programs (E9). Absent on a backup made before E9. */
+    userPrograms?: UserProgram[]
   }
 }
 
