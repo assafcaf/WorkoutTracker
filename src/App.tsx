@@ -33,9 +33,11 @@ import {
   getGymEquipment,
   getLastExportedAt,
   getVolumeBaseline,
+  getWeightStep,
   setActiveProgramId,
   setGymEquipment as persistGymEquipment,
   setVolumeBaseline as persistVolumeBaseline,
+  setWeightStep,
 } from './storage/settingsStore'
 import {
   clearSwap,
@@ -104,7 +106,13 @@ function tabFor(view: View): Tab | undefined {
  * The set the set screen is on, with the history it was opened against, and whether "Add set"
  * opened it as an extra set past the plan (E6-T1).
  */
-type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[]; extra: boolean }
+type OpenSet = {
+  exerciseId: string
+  setIndex: number
+  history: SetEntry[]
+  extra: boolean
+  weightStep: number | null
+}
 
 /**
  * The in-app exercise detail overlay (E5-T8): rendered over whatever view is current without
@@ -588,14 +596,25 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
 
   /** Opens a set of an exercise, against what that exercise was last lifted with. */
   function handleOpenSet(exerciseId: string, setIndex: number): void {
-    getLastEntriesFor(exerciseId)
-      .then((history) => {
-        setOpenSet({ exerciseId, setIndex, history, extra: false })
+    Promise.all([getLastEntriesFor(exerciseId), getWeightStep(exerciseId)])
+      .then(([history, weightStep]) => {
+        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep })
         setView('set')
       })
       .catch(() => {
         // Without the history the preset would be wrong; the list stays up instead.
       })
+  }
+
+  /**
+   * `SetScreen.onWeightStepChange`: persists the weight step chosen for `exerciseId` (E8-T8). A
+   * failed write keeps the step on this screen only -- `weightStep` in state stays whatever the
+   * screen already has -- and shows nothing, per the ticket.
+   */
+  function handleWeightStepChange(exerciseId: string, step: number): void {
+    setWeightStep(exerciseId, step).catch(() => {
+      // Nothing to recover to here; the screen keeps the step it already has.
+    })
   }
 
   /** Moves the open set past the plan; the history it was opened against still holds. */
@@ -846,6 +865,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}
+            weightStep={openSet.weightStep}
+            onWeightStepChange={(step) => handleWeightStepChange(openSet.exerciseId, step)}
             onLogged={(logged) => {
               setSession(logged)
               setOpenSet((current) => (current ? { ...current, extra: false } : current))
