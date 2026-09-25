@@ -5,15 +5,18 @@ import {
   ACTIVE_PROGRAM_ID_KEY,
   GYM_EQUIPMENT_KEY,
   LAST_EXPORTED_AT_KEY,
+  USER_PROGRAMS_KEY,
   VOLUME_BASELINE_KEY,
   WEIGHT_STEPS_KEY,
   getGymEquipment,
   getLastExportedAt,
+  getUserPrograms,
   getVolumeBaseline,
   getWeightSteps,
   setActiveProgramId,
   setGymEquipment,
   setLastExportedAt,
+  setUserPrograms,
   setVolumeBaseline,
   setWeightSteps,
 } from './settingsStore'
@@ -63,22 +66,37 @@ export function backupFileName(exportedAt: number): string {
  * Every logged session and the settings this app owns, as of `now`.
  */
 export async function exportBackup(now: number): Promise<BackupFile> {
-  const [sessions, activeProgramRow, lastExportedAt, gymEquipment, weightSteps, volumeBaseline] =
-    await Promise.all([
-      listSessions(),
-      db.settings.get(ACTIVE_PROGRAM_ID_KEY),
-      getLastExportedAt(),
-      getGymEquipment(),
-      getWeightSteps(),
-      getVolumeBaseline(),
-    ])
+  const [
+    sessions,
+    activeProgramRow,
+    lastExportedAt,
+    gymEquipment,
+    weightSteps,
+    volumeBaseline,
+    userPrograms,
+  ] = await Promise.all([
+    listSessions(),
+    db.settings.get(ACTIVE_PROGRAM_ID_KEY),
+    getLastExportedAt(),
+    getGymEquipment(),
+    getWeightSteps(),
+    getVolumeBaseline(),
+    getUserPrograms(),
+  ])
   const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
 
   return {
     schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: now,
     sessions,
-    settings: { activeProgramId, lastExportedAt, gymEquipment, weightSteps, volumeBaseline },
+    settings: {
+      activeProgramId,
+      lastExportedAt,
+      gymEquipment,
+      weightSteps,
+      volumeBaseline,
+      userPrograms,
+    },
   }
 }
 
@@ -222,6 +240,11 @@ export async function replaceAll(file: BackupFile): Promise<void> {
       await db.settings.delete(VOLUME_BASELINE_KEY)
     } else {
       await setVolumeBaseline(file.settings.volumeBaseline)
+    }
+    if (file.settings.userPrograms === undefined) {
+      await db.settings.delete(USER_PROGRAMS_KEY)
+    } else {
+      await setUserPrograms(file.settings.userPrograms)
     }
   })
 }

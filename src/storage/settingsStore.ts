@@ -135,20 +135,42 @@ export const USER_PROGRAMS_KEY = 'userPrograms'
 
 /** Every stored User Program; `[]` when none has been stored. */
 export async function getUserPrograms(): Promise<UserProgram[]> {
-  throw new Error('not implemented')
+  const row = await db.settings.get(USER_PROGRAMS_KEY)
+  return Array.isArray(row?.value) ? (row.value as UserProgram[]) : []
+}
+
+/**
+ * Replaces every stored User Program with `programs`, in the one `userPrograms` row. Used by the
+ * writers below and by a backup import, which restores the file's Programs as a whole.
+ */
+export async function setUserPrograms(programs: UserProgram[]): Promise<void> {
+  await db.settings.put({ key: USER_PROGRAMS_KEY, value: programs, updatedAt: Date.now() })
+}
+
+/** Reads the stored User Programs, and stores what `change` makes of them, in one transaction. */
+async function updateUserPrograms(change: (programs: UserProgram[]) => UserProgram[]): Promise<void> {
+  await db.transaction('rw', db.settings, async () => {
+    await setUserPrograms(change(await getUserPrograms()))
+  })
 }
 
 /** Stores `p`, replacing the stored User Program with its id, else appending it. */
-export async function saveUserProgram(_p: UserProgram): Promise<void> {
-  throw new Error('not implemented')
+export async function saveUserProgram(p: UserProgram): Promise<void> {
+  await updateUserPrograms((programs) =>
+    programs.some((stored) => stored.id === p.id)
+      ? programs.map((stored) => (stored.id === p.id ? p : stored))
+      : [...programs, p],
+  )
 }
 
 /** Removes the User Program with `id`, so a bundled Program of that id shows again. */
-export async function resetProgram(_id: string): Promise<void> {
-  throw new Error('not implemented')
+export async function resetProgram(id: string): Promise<void> {
+  await updateUserPrograms((programs) => programs.filter((stored) => stored.id !== id))
 }
 
 /** Marks the User Program with `id` hidden, keeping it. */
-export async function deleteProgram(_id: string): Promise<void> {
-  throw new Error('not implemented')
+export async function deleteProgram(id: string): Promise<void> {
+  await updateUserPrograms((programs) =>
+    programs.map((stored) => (stored.id === id ? { ...stored, hidden: true } : stored)),
+  )
 }
