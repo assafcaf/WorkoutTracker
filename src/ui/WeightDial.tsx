@@ -29,6 +29,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
   const columnRef = useCentredRung(value)
   const ladder = buildLadder(exercise)
   const adjustable = ladder.length > 0 && value !== null
+  const groupLabel = ladder.length > 0 ? 'Weight (kg)' : 'Weight'
 
   function step(dir: 1 | -1): void {
     if (value === null || ladder.length === 0) return
@@ -36,7 +37,8 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
   }
 
   return (
-    <div className="dial">
+    <div className="dial" role="group" aria-label={groupLabel}>
+      <h3 className="dial-heading">{groupLabel}</h3>
       <button
         type="button"
         aria-label="Decrease weight"
@@ -56,6 +58,17 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
           {readWeight(value)}
         </button>
         <span className="dial-unit">{value === null ? '' : 'kg'}</span>
+        {ladder.length > 0 ? (
+          <button
+            type="button"
+            aria-label="Type weight"
+            className="dial-type"
+            disabled={!adjustable}
+            onClick={() => setKeypadOpen(true)}
+          >
+            Type weight
+          </button>
+        ) : null}
         {ladder.length > 0 ? (
           <ul role="listbox" aria-label="Weight ladder" className="dial-column" ref={columnRef}>
             {ladder.map((rung) => (
