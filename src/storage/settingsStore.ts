@@ -9,17 +9,28 @@ import { db } from './db'
 export const ACTIVE_PROGRAM_ID_KEY = 'activeProgramId'
 
 /**
- * The id of the program the trainee has chosen as active, read from the `settings` table.
+ * The id of the program the trainee has chosen as active, read from the `settings` table, or
+ * null when there is none yet (E9-T2).
  *
- * Defaults to the only program when there is one and nothing is stored, and otherwise to the
- * first program in `programs` — both when nothing is stored and when the stored id names a
- * program no longer among `programs`, in which case the fallback is also shown on screen.
+ * A stored id among `programs` is returned as is; a stored id no longer among them falls back
+ * to the first program, and that fallback is shown on screen. With nothing stored, the program
+ * of the Session with the latest `startedAt` (finished or in progress) is adopted and stored —
+ * or the first program when that one is no longer offered. With nothing stored and no Session,
+ * the result is null: a new user has no Program until they choose one.
  */
-export async function getActiveProgramId(programs: Program[]): Promise<string> {
+export async function getActiveProgramId(programs: Program[]): Promise<string | null> {
   const row = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
   const stored = typeof row?.value === 'string' ? row.value : undefined
-  if (stored !== undefined && programs.some((program) => program.id === stored)) return stored
-  return programs[0].id
+  if (stored !== undefined) {
+    return programs.some((program) => program.id === stored) ? stored : programs[0].id
+  }
+  const latest = await db.sessions.orderBy('startedAt').last()
+  if (!latest) return null
+  const adopted = programs.some((program) => program.id === latest.programId)
+    ? latest.programId
+    : programs[0].id
+  await setActiveProgramId(adopted)
+  return adopted
 }
 
 /**

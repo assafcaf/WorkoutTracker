@@ -15,7 +15,7 @@ export type SyncView = {
 
 export type SettingsProps = {
   programs: Program[]
-  activeProgramId: string
+  activeProgramId: string | null
   onActiveProgramChange(id: string): void
   // Optional so E1-T6's existing calls, which predate E2-T4, still type-check unchanged;
   // E2-T5/T6 wire a real handler from `App`.
