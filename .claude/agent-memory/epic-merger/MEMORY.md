@@ -1,0 +1,2 @@
+- Gate red after reverting a merge? If it stays red, treat as pre-existing/environmental — hold and report FAIL with evidence, don't keep reverting (E4-T3, 2026-09-24)
+- `git merge --no-ff` abort on untracked .claude/agent-memory/<role>/MEMORY.md: mv it aside to a sibling name (don't delete), then merge; leave reconciling to the curator (E4-T8, 2026-09-24)
