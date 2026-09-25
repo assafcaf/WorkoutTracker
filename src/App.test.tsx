@@ -2253,7 +2253,12 @@ describe('E7-T8', () => {
     await user.click(await screen.findByRole('button', { name: 'Finish workout' }, SETTLE))
 
     expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
-    expect(server.pending).toBe(1)
+    // The held request cannot finish before release, so the picker showing alongside it is
+    // the proof that finishing did not wait on the sync.
+    await waitFor(() => {
+      expect(server.pending).toBe(1)
+    }, SETTLE)
+    expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
     release()
     await serverSettled(4)
   })
