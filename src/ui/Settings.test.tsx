@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import { Settings } from './Settings'
 import type { Program } from '../types'
+import type { SyncView } from './Settings'
 
 function program(id: string, name: string): Program {
   return { id, name, units: 'kg', workouts: [], sessionsPerWeek: 3 }
@@ -247,6 +248,130 @@ test('S14 unticking machine calls onGymEquipmentChange with every other equipmen
   await user.click(screen.getByRole('checkbox', { name: 'machine' }))
 
   expect(onGymEquipmentChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
+})
+
+// --- E7-T7: the Account section (device sync state) ----------------------------------------
+//
+// `sync` is optional so every render above, which never passes it, keeps compiling and
+// passing unchanged. Each test below adds only `sync` (and, where a control needs it,
+// `onSyncNow`/`onAdoptAccount`) to the same base props the rest of this file already renders.
+
+function renderWithSync(sync: SyncView, handlers: Partial<Pick<
+  Parameters<typeof Settings>[0],
+  'onSyncNow' | 'onAdoptAccount'
+>> = {}): void {
+  render(
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
+      sync={sync}
+      {...handlers}
+    />,
+  )
+}
+
+test('O12 Settings shows "Not signed in" when sync.accountEmail is null', () => {
+  renderWithSync({ accountEmail: null, lastSyncedAt: null, status: 'signed-out' })
+
+  expect(screen.getByText('Not signed in')).toBeInTheDocument()
+})
+
+test('O12 Settings shows the account email when signed in', () => {
+  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: null, status: 'ok' })
+
+  expect(screen.getByText('assaf@example.com')).toBeInTheDocument()
+})
+
+test('O12 Settings shows "Never synced" when sync.lastSyncedAt is null', () => {
+  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: null, status: 'ok' })
+
+  expect(screen.getByText('Never synced')).toBeInTheDocument()
+})
+
+test('O12 Settings shows the last synced time as a local date and time when lastSyncedAt is set', () => {
+  const lastSyncedAt = 1700000000000
+  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt, status: 'ok' })
+
+  expect(screen.getByText(new Date(lastSyncedAt).toLocaleString())).toBeInTheDocument()
+})
+
+test('O12 clicking "Sync now" calls onSyncNow', async () => {
+  const user = userEvent.setup()
+  const onSyncNow = vi.fn()
+  renderWithSync(
+    { accountEmail: 'assaf@example.com', lastSyncedAt: null, status: 'idle' },
+    { onSyncNow },
+  )
+
+  await user.click(screen.getByRole('button', { name: 'Sync now' }))
+
+  expect(onSyncNow).toHaveBeenCalledTimes(1)
+})
+
+test('O12 the "Sync now" button is disabled while status is syncing', () => {
+  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: null, status: 'syncing' })
+
+  expect(screen.getByRole('button', { name: 'Sync now' })).toBeDisabled()
+})
+
+test('O12 the "Sync now" button is not disabled when status is not syncing', () => {
+  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: null, status: 'idle' })
+
+  expect(screen.getByRole('button', { name: 'Sync now' })).not.toBeDisabled()
+})
+
+test('O12 status signed-out shows a "Sign in" link to /api/login', () => {
+  renderWithSync({ accountEmail: null, lastSyncedAt: null, status: 'signed-out' })
+
+  expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/api/login')
+})
+
+test('O12 status account-mismatch names both this phone\'s and the signed-in account\'s emails', () => {
+  renderWithSync({
+    accountEmail: 'phone@example.com',
+    lastSyncedAt: null,
+    status: 'account-mismatch',
+    signedInEmail: 'other@example.com',
+  })
+
+  const text = document.body.textContent ?? ''
+  expect(text).toMatch(/phone@example\.com/)
+  expect(text).toMatch(/other@example\.com/)
+})
+
+test('O12 status account-mismatch offers a button that calls onAdoptAccount with the signed-in account\'s data', async () => {
+  const user = userEvent.setup()
+  const onAdoptAccount = vi.fn()
+  renderWithSync(
+    {
+      accountEmail: 'phone@example.com',
+      lastSyncedAt: null,
+      status: 'account-mismatch',
+      signedInEmail: 'other@example.com',
+    },
+    { onAdoptAccount },
+  )
+
+  await user.click(
+    screen.getByRole('button', { name: "Use other@example.com's data on this phone" }),
+  )
+
+  expect(onAdoptAccount).toHaveBeenCalledTimes(1)
+})
+
+test('O12 status offline says the phone is offline and will sync later', () => {
+  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: null, status: 'offline' })
+
+  // The exact sentence is not the contract, only that it names both: check the whole
+  // rendered document rather than one element, so wording split across tags still counts.
+  const text = document.body.textContent ?? ''
+  expect(text).toMatch(/offline/i)
+  expect(text).toMatch(/sync/i)
+  expect(text).toMatch(/later/i)
 })
 
 test('S14 re-ticking a previously unticked equipment type adds it back to the saved list', async () => {

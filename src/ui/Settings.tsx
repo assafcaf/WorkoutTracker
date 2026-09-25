@@ -2,6 +2,17 @@ import type { ChangeEvent } from 'react'
 import type { Program } from '../types'
 import './Settings.css'
 
+/** The Account section's view of the phone's cloud sync (E7-T7). */
+export type SyncView = {
+  accountEmail: string | null
+  lastSyncedAt: number | null
+  status: 'idle' | 'syncing' | 'ok' | 'offline' | 'signed-out' | 'error' | 'account-mismatch'
+  // Present when status is 'account-mismatch'.
+  signedInEmail?: string
+  // Present when status is 'error'.
+  message?: string
+}
+
 export type SettingsProps = {
   programs: Program[]
   activeProgramId: string
@@ -24,6 +35,12 @@ export type SettingsProps = {
   gymEquipment: string[] | null
   /** Called with the next gym equipment list when a type in "My gym's equipment" is (un)ticked. */
   onGymEquipmentChange(list: string[]): void
+  /** The phone's cloud sync state (E7-T7). Omitted, the Account section does not render. */
+  sync?: SyncView
+  /** Called when the trainee taps "Sync now". */
+  onSyncNow?(): void
+  /** Called when the trainee taps "Use <signedInEmail>'s data on this phone". */
+  onAdoptAccount?(): void
 }
 
 /**
@@ -52,6 +69,9 @@ export function Settings(props: SettingsProps): JSX.Element {
     equipmentTypes,
     gymEquipment,
     onGymEquipmentChange,
+    sync,
+    onSyncNow,
+    onAdoptAccount,
   } = props
 
   /** Toggles `type` in the effective gym equipment list and reports the next full list. */
@@ -74,6 +94,10 @@ export function Settings(props: SettingsProps): JSX.Element {
         // The file could not be read at all; there is nothing to hand over and nothing to undo.
       })
   }
+
+  // Stub only: E7-T7 has not implemented the Account section's controls yet.
+  void onSyncNow
+  void onAdoptAccount
 
   return (
     <div className="settings">
@@ -128,6 +152,14 @@ export function Settings(props: SettingsProps): JSX.Element {
           onChange={handleFileChange}
         />
       </label>
+      {sync ? (
+        // Stub only: E7-T7's Account section (email, last synced, Sync now, sign-in and
+        // account-mismatch states) is not implemented yet. `onSyncNow` and `onAdoptAccount`
+        // are read here so they type-check as used; nothing calls them yet.
+        <fieldset className="settings-group" data-testid="settings-sync-stub">
+          <legend className="settings-legend">Account</legend>
+        </fieldset>
+      ) : null}
     </div>
   )
 }
