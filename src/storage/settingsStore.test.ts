@@ -33,8 +33,22 @@ beforeEach(async () => {
   await db.settings.clear()
 })
 
-// E9-T2 replaced the O18 "defaults to the first program when nothing is stored" rule: with no
-// stored id and no Session there is no active Program (O19, below).
+// E9-T2 O19 replaced O18's "defaults to a program when nothing is stored": with no stored id and
+// no Session there is no active Program, so the same two setups now resolve null.
+
+test('O18 O19 getActiveProgramId resolves null for the only program when nothing is stored and there is no Session', async () => {
+  await db.sessions.clear()
+  const solo = [program('only-program')]
+
+  expect(await getActiveProgramId(solo)).toBeNull()
+})
+
+test('O18 O19 getActiveProgramId resolves null, not the first program in the list, when nothing is stored and there is no Session', async () => {
+  await db.sessions.clear()
+  const programs = [program('assaf-ab-2026'), program('full-body-starter')]
+
+  expect(await getActiveProgramId(programs)).toBeNull()
+})
 
 test('O18 setActiveProgramId then getActiveProgramId returns the newly chosen program', async () => {
   const programs = [program('assaf-ab-2026'), program('full-body-starter')]
@@ -85,16 +99,6 @@ describe('E9-T2 getActiveProgramId with no stored choice', () => {
 
   beforeEach(async () => {
     await db.sessions.clear()
-  })
-
-  test('O19 getActiveProgramId resolves null for an empty database', async () => {
-    const programs = [program('assaf-ab-2026'), program('full-body-starter')]
-
-    expect(await getActiveProgramId(programs)).toBeNull()
-  })
-
-  test('O19 getActiveProgramId resolves null with no Session even when only one Program is offered', async () => {
-    expect(await getActiveProgramId([program('only-program')])).toBeNull()
   })
 
   test('O20 getActiveProgramId adopts the Program of the Session with the latest startedAt', async () => {
