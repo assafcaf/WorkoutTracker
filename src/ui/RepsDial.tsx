@@ -27,7 +27,8 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
   }
 
   return (
-    <div className="dial">
+    <div className="dial" role="group" aria-label="Reps">
+      <h3 className="dial-heading">Reps</h3>
       <button
         type="button"
         aria-label="Decrease reps"
@@ -46,6 +47,14 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
           {value}
         </button>
         <span className="dial-unit">reps</span>
+        <button
+          type="button"
+          aria-label="Type reps"
+          className="dial-type"
+          onClick={() => setKeypadOpen(true)}
+        >
+          Type reps
+        </button>
         <ul role="listbox" aria-label="Reps ladder" className="dial-column" ref={columnRef}>
           {REPS_COLUMN.map((rung) => (
             <li

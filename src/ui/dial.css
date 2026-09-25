@@ -27,6 +27,32 @@
   box-shadow: var(--shadow-card);
 }
 
+/* The group's name, visible above the minus/readout/plus row. */
+.dial-heading {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+/* The button that opens the keypad for an exact typed value, alongside the readout. */
+.dial-type {
+  flex-basis: 100%;
+  min-height: var(--tap-min);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.dial-type:disabled {
+  cursor: default;
+  color: var(--color-muted);
+}
+
 .dial-body {
   display: flex;
   flex-wrap: wrap;
