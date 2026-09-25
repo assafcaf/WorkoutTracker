@@ -5,11 +5,17 @@ import {
   ACTIVE_PROGRAM_ID_KEY,
   GYM_EQUIPMENT_KEY,
   LAST_EXPORTED_AT_KEY,
+  VOLUME_BASELINE_KEY,
+  WEIGHT_STEPS_KEY,
   getGymEquipment,
   getLastExportedAt,
+  getVolumeBaseline,
+  getWeightSteps,
   setActiveProgramId,
   setGymEquipment,
   setLastExportedAt,
+  setVolumeBaseline,
+  setWeightSteps,
 } from './settingsStore'
 
 /** Bumped whenever the shape below changes in a way `readBackup` cannot translate on its own. */
@@ -55,19 +61,22 @@ export function backupFileName(exportedAt: number): string {
  * Every logged session and the settings this app owns, as of `now`.
  */
 export async function exportBackup(now: number): Promise<BackupFile> {
-  const [sessions, activeProgramRow, lastExportedAt, gymEquipment] = await Promise.all([
-    listSessions(),
-    db.settings.get(ACTIVE_PROGRAM_ID_KEY),
-    getLastExportedAt(),
-    getGymEquipment(),
-  ])
+  const [sessions, activeProgramRow, lastExportedAt, gymEquipment, weightSteps, volumeBaseline] =
+    await Promise.all([
+      listSessions(),
+      db.settings.get(ACTIVE_PROGRAM_ID_KEY),
+      getLastExportedAt(),
+      getGymEquipment(),
+      getWeightSteps(),
+      getVolumeBaseline(),
+    ])
   const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
 
   return {
     schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: now,
     sessions,
-    settings: { activeProgramId, lastExportedAt, gymEquipment },
+    settings: { activeProgramId, lastExportedAt, gymEquipment, weightSteps, volumeBaseline },
   }
 }
 
@@ -201,6 +210,16 @@ export async function replaceAll(file: BackupFile): Promise<void> {
       await db.settings.delete(GYM_EQUIPMENT_KEY)
     } else {
       await setGymEquipment(file.settings.gymEquipment)
+    }
+    if (file.settings.weightSteps === undefined) {
+      await db.settings.delete(WEIGHT_STEPS_KEY)
+    } else {
+      await setWeightSteps(file.settings.weightSteps)
+    }
+    if (file.settings.volumeBaseline === undefined) {
+      await db.settings.delete(VOLUME_BASELINE_KEY)
+    } else {
+      await setVolumeBaseline(file.settings.volumeBaseline)
     }
   })
 }

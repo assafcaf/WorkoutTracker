@@ -79,32 +79,53 @@ export const WEIGHT_STEPS_KEY = 'weightSteps'
 
 /** The stored weight step for `exerciseId`, or null when none has been stored. */
 export async function getWeightStep(exerciseId: string): Promise<number | null> {
-  void exerciseId
-  throw new Error('not implemented')
+  const steps = await getWeightSteps()
+  return Object.prototype.hasOwnProperty.call(steps, exerciseId) ? steps[exerciseId] : null
 }
 
 /** Stores `step` as `exerciseId`'s weight step, keeping every other Exercise's step. */
 export async function setWeightStep(exerciseId: string, step: number): Promise<void> {
-  void exerciseId
-  void step
-  throw new Error('not implemented')
+  await db.transaction('rw', db.settings, async () => {
+    const steps = await getWeightSteps()
+    await setWeightSteps({ ...steps, [exerciseId]: step })
+  })
 }
 
 /** Every stored weight step, by Exercise id; `{}` when none has been stored. */
 export async function getWeightSteps(): Promise<Record<string, number>> {
-  throw new Error('not implemented')
+  const row = await db.settings.get(WEIGHT_STEPS_KEY)
+  const value = row?.value
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+  const steps: Record<string, number> = {}
+  for (const [id, step] of Object.entries(value)) {
+    if (typeof step === 'number') steps[id] = step
+  }
+  return steps
+}
+
+/**
+ * Replaces every stored weight step with `steps`, in the one `weightSteps` row. Used by
+ * `setWeightStep` and by a backup import, which restores the file's steps as a whole.
+ */
+export async function setWeightSteps(steps: Record<string, number>): Promise<void> {
+  await db.settings.put({ key: WEIGHT_STEPS_KEY, value: steps, updatedAt: Date.now() })
 }
 
 /** The `settings` table key the volume baseline choice is stored under (E8). */
 export const VOLUME_BASELINE_KEY = 'volumeBaseline'
 
+const DEFAULT_VOLUME_BASELINE: VolumeBaseline = { period: 'last' }
+
 /** The stored volume baseline, or `{ period: 'last' }` when none has been chosen. */
 export async function getVolumeBaseline(): Promise<VolumeBaseline> {
-  throw new Error('not implemented')
+  const row = await db.settings.get(VOLUME_BASELINE_KEY)
+  const value = row?.value as { period?: unknown } | undefined
+  return typeof value === 'object' && value !== null && typeof value.period === 'string'
+    ? (value as VolumeBaseline)
+    : DEFAULT_VOLUME_BASELINE
 }
 
 /** Records `baseline` as the volume baseline. */
 export async function setVolumeBaseline(baseline: VolumeBaseline): Promise<void> {
-  void baseline
-  throw new Error('not implemented')
+  await db.settings.put({ key: VOLUME_BASELINE_KEY, value: baseline, updatedAt: Date.now() })
 }
