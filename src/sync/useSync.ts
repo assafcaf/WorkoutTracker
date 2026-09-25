@@ -46,8 +46,8 @@ function toView(result: SyncResult, state: SyncState): SyncView {
 }
 
 /**
- * Keeps the phone synced without being asked: syncs on mount and whenever the browser fires
- * `online`, and hands out "Sync now", adopt and replace for the screens that need them. Every
+ * Keeps the phone synced without being asked: syncs on mount, whenever the browser fires
+ * `online`, and whenever the page becomes visible again, and hands out "Sync now", adopt and replace for the screens that need them. Every
  * call resolves once the view shows its result, and none of them ever rejects.
  */
 export function useSync(deps?: SyncDeps): UseSync {
@@ -123,11 +123,18 @@ export function useSync(deps?: SyncDeps): UseSync {
     const onOnline = (): void => {
       void syncNow()
     }
+    // An installed app coming back from the background is not a new mount: only the page's
+    // visibility changes. Without this, work from another device waits for "Sync now".
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') void syncNow()
+    }
     window.addEventListener('online', onOnline)
+    document.addEventListener('visibilitychange', onVisible)
     void syncNow()
     return () => {
       mounted.current = false
       window.removeEventListener('online', onOnline)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [syncNow])
 

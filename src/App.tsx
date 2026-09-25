@@ -407,12 +407,16 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         const activeProgramId = await getActiveProgramId(programs)
         const gymEquipmentList = await getGymEquipment()
         const sessions = await listSessions()
+        const pulledVolumeBaseline = await getVolumeBaseline()
         if (cancelled) return
         setState((current) =>
           current.status === 'ready' ? { ...current, activeProgramId } : current,
         )
         setGymEquipment(gymEquipmentList)
         setHistory(sessions)
+        // The exercise list's "Volume vs …" rows (E8-T10) read these two, not `history`.
+        setSessions(sessions)
+        setVolumeBaselineState(pulledVolumeBaseline)
       } catch {
         // The app keeps what it has; the next sync or restart reads it again.
       }
