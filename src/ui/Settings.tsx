@@ -95,10 +95,6 @@ export function Settings(props: SettingsProps): JSX.Element {
       })
   }
 
-  // Stub only: E7-T7 has not implemented the Account section's controls yet.
-  void onSyncNow
-  void onAdoptAccount
-
   return (
     <div className="settings">
       <fieldset className="settings-group">
@@ -153,11 +149,51 @@ export function Settings(props: SettingsProps): JSX.Element {
         />
       </label>
       {sync ? (
-        // Stub only: E7-T7's Account section (email, last synced, Sync now, sign-in and
-        // account-mismatch states) is not implemented yet. `onSyncNow` and `onAdoptAccount`
-        // are read here so they type-check as used; nothing calls them yet.
-        <fieldset className="settings-group" data-testid="settings-sync-stub">
+        <fieldset className="settings-group">
           <legend className="settings-legend">Account</legend>
+          <p className="settings-account-email">
+            {sync.accountEmail ?? 'Not signed in'}
+          </p>
+          <p className="settings-account-synced">
+            {sync.lastSyncedAt === null
+              ? 'Never synced'
+              : new Date(sync.lastSyncedAt).toLocaleString()}
+          </p>
+          <button
+            type="button"
+            className="settings-action"
+            onClick={() => onSyncNow?.()}
+            disabled={sync.status === 'syncing'}
+          >
+            <span className="settings-action-label">Sync now</span>
+          </button>
+          {sync.status === 'signed-out' ? (
+            <a className="settings-action" href="/api/login">
+              <span className="settings-action-label">Sign in</span>
+            </a>
+          ) : null}
+          {sync.status === 'account-mismatch' ? (
+            <>
+              <p className="settings-account-mismatch">
+                This phone is signed in as {sync.signedInEmail}, but last synced as{' '}
+                {sync.accountEmail}.
+              </p>
+              <button
+                type="button"
+                className="settings-action"
+                onClick={() => onAdoptAccount?.()}
+              >
+                <span className="settings-action-label">
+                  Use {sync.signedInEmail}&apos;s data on this phone
+                </span>
+              </button>
+            </>
+          ) : null}
+          {sync.status === 'offline' ? (
+            <p className="settings-account-offline">
+              This phone is offline; it will sync later.
+            </p>
+          ) : null}
         </fieldset>
       ) : null}
     </div>
