@@ -64,6 +64,7 @@ import { Stats } from './ui/Stats'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 import { UpdatePill } from './ui/UpdatePill'
+import { useLandOnWorkout } from './ui/useLandOnWorkout'
 import { WorkoutStartButtons } from './ui/WorkoutStartButtons'
 
 type View =
@@ -396,6 +397,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       cancelled = true
     }
   }, [loadedPrograms, lastSyncedAt])
+
+  // Returning to the app outside a workout lands on the Workout tab (E8-T7); mid-session the
+  // exercise list or set screen stays put.
+  useLandOnWorkout(() =>
+    setView((current) => (current === 'list' || current === 'set' ? current : 'picker')),
+  )
 
   if (state.status === 'loading') return <div />
 
