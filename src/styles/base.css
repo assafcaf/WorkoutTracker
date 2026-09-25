@@ -24,8 +24,11 @@ html {
   height: 100%;
   background: var(--color-bg);
   /* Nothing in this app is meant to be wider than the viewport, so anything that overflows
-   * horizontally is a bug, not a feature -- the phone should never rubber-band sideways. */
-  overflow-x: hidden;
+   * horizontally is a bug, not a feature -- the phone should never rubber-band sideways.
+   * `clip` (not `hidden`) so `html` stays out of the scroll-container business: `hidden` would
+   * make it one, and `.action-bar`'s `position: sticky` would stick to it instead of the
+   * viewport. */
+  overflow-x: clip;
 }
 
 body {
@@ -38,7 +41,7 @@ body {
   line-height: 1.4;
   /* The phone's own grey flash on tap would fight the controls' own pressed states. */
   -webkit-tap-highlight-color: transparent;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 h1,
