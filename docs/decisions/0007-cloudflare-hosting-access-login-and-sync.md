@@ -1,4 +1,4 @@
-# 0006. The app is hosted on Cloudflare, behind Access, and syncs each user's log to D1
+# 0007. The app is hosted on Cloudflare, behind Access, and syncs each user's log to D1
 
 Date: 2026-09-25 · Status: accepted · Tracker: E7 — Sign in, and keep the log in the cloud
 

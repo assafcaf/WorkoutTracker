@@ -5,8 +5,8 @@ import assafJson from '../data/programs/assaf-ab-2026.json'
 import exercisesJson from '../data/exercises.json'
 import libraryJson from '../data/library/exercises.json'
 import { resolveExercise } from '../data/resolve'
-import { ExerciseList } from './ExerciseList'
-import type { Exercise, LibraryExercise, Program, Session, SetEntry } from '../types'
+import { ExerciseList, nextSetIndex } from './ExerciseList'
+import type { Exercise, ExercisePlan, LibraryExercise, Program, Session, SetEntry } from '../types'
 
 // The list is pure presentation over a session it is handed, so these tests need no database:
 // they feed it the shipped program and catalog and a session built by hand. The end-to-end
@@ -53,6 +53,7 @@ function renderList(entries: SetEntry[]) {
       lastSwaps={{}}
       onUndoSwap={vi.fn()}
       onApplySwap={vi.fn()}
+      lastEntries={new Map()}
     />,
   )
   return { user, onOpenSet, onFinish }
@@ -140,6 +141,27 @@ test('O13 opening an exercise with nothing logged asks for its first set', async
   expect(onOpenSet.mock.calls).toEqual([['lunges', 1]])
 })
 
+// --- E6-T10: reopening a fully logged exercise must not overwrite its last Set --------------
+
+test('O3 opening an exercise with all 4 of its planned sets logged asks for set 5, past the plan', async () => {
+  const { user, onOpenSet } = renderList([
+    entry('back-squat', 1),
+    entry('back-squat', 2),
+    entry('back-squat', 3),
+    entry('back-squat', 4),
+  ])
+
+  await user.click(row('Back squat'))
+
+  expect(onOpenSet.mock.calls).toEqual([['back-squat', 5]])
+})
+
+test('O4 nextSetIndex is logged + 1, unclamped by the plan', () => {
+  const plan: ExercisePlan = { exerciseId: 'back-squat', sets: 3, repRange: [8, 10], restSeconds: 180 }
+
+  expect([0, 2, 3, 5].map((logged) => nextSetIndex(logged, plan))).toEqual([1, 3, 4, 6])
+})
+
 // --- E3-T4's [O10]: the list is rows, and nothing else ------------------------------------
 //
 // This O10 is E3's -- the exercise list inside the shell -- not E1's O10 in SetScreen.test.tsx.
@@ -198,6 +220,7 @@ function renderWorkoutB(session: Session, lastSwaps: Record<string, string> = {}
     lastSwaps,
     onUndoSwap,
     onApplySwap,
+    lastEntries: new Map(),
   }
   const view = render(<ExerciseList {...props} session={session} />)
   const rerenderWith = (next: Session) => view.rerender(<ExerciseList {...props} session={next} />)

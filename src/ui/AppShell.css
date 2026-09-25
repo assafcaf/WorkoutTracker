@@ -19,7 +19,7 @@
   display: flex;
   min-height: 100vh;
   flex-direction: column;
-  padding-top: calc(var(--tap-min) + var(--safe-top));
+  padding-top: calc(var(--tap-min) + var(--space-3) + var(--safe-top));
   background: var(--color-bg);
 }
 
@@ -100,4 +100,11 @@
   color: var(--color-on-accent);
   font-size: var(--text-md);
   font-weight: 600;
+}
+
+/* "Finish workout": one of the action bar's own buttons, given its own class so the audit
+ * (src/styles/controlAudit.test.ts) can find its rule -- `.action-bar > button` above is where
+ * its actual styling comes from. */
+.finish-workout {
+  min-height: var(--tap-min);
 }

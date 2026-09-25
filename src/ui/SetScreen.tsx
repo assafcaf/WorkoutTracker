@@ -40,6 +40,40 @@ export type SetScreenProps = {
    * STUB (E5-T12 test-designer): accepted but not yet wired to the "Alternatives" button.
    */
   onOpenAlternatives?(exerciseId: string): void
+  /**
+   * Whether the set on the dials was opened by "Add set" as an extra set past the plan (E6-T1).
+   * A screen opened past the plan with `extra` false is in the done state. Optional, read as
+   * `false`, so the callers predating it (E1's and the wake lock's tests) need not pass it.
+   */
+  extra?: boolean
+  /**
+   * When the session in progress was started, so the initial rest timer -- and the initial
+   * log-confirmation message -- only ever reflect a Set actually logged in this Session, never
+   * one carried over from `lastEntries`' history (E6-T2).
+   *
+   * Optional so `src/ui/useWakeLock.test.ts`'s `renderSetScreen`, predating this prop, need not
+   * pass it; defaults to 0 so every history entry counts as logged in this Session, matching the
+   * behaviour before this prop existed.
+   */
+  sessionStartedAt?: number
+}
+
+/**
+ * The set counter's text (E6-T1): "Set 2 of 3" | "Set 4 · extra" | "All 3 sets logged" |
+ * "4 sets logged · 3 planned". `loggedCount` is this Session's Sets for the Exercise.
+ */
+export function setCounterText(
+  setIndex: number,
+  plannedSets: number,
+  loggedCount: number,
+  done: boolean,
+): string {
+  if (done) {
+    return loggedCount > plannedSets
+      ? `${loggedCount} sets logged · ${plannedSets} planned`
+      : `All ${plannedSets} sets logged`
+  }
+  return setIndex > plannedSets ? `Set ${setIndex} · extra` : `Set ${setIndex} of ${plannedSets}`
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -52,6 +86,16 @@ type OpenSet = { setIndex: number; weightKg: number | null; reps: number }
 function formatRest(remainingSeconds: number): string {
   const total = Math.ceil(remainingSeconds)
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+/**
+ * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
+ * `reps`: "Set 2 logged · 50 kg × 8" for a loaded Exercise, "Set 2 logged · 12 reps" for a
+ * Bodyweight one (`weightKg === null`) (E6-T2).
+ */
+export function loggedText(setIndex: number, weightKg: number | null, reps: number): string {
+  const load = weightKg === null ? `${reps} reps` : `${weightKg} kg × ${reps}`
+  return `Set ${setIndex} logged · ${load}`
 }
 
 /**
@@ -78,6 +122,22 @@ function openSetFor(
 }
 
 /**
+ * The rest timer's seed on open: the latest `loggedAt` among `lastEntries` for this Exercise
+ * that falls within this Session, or `null` when none does -- an entry carried over from an
+ * earlier, already-finished session must not read as rest still owed (E6-T2, O6/O7).
+ */
+function initialLastLoggedAt(
+  exerciseId: string,
+  lastEntries: SetEntry[],
+  sessionStartedAt: number,
+): number | null {
+  const loggedThisSession = lastEntries
+    .filter((entry) => entry.exerciseId === exerciseId && entry.loggedAt >= sessionStartedAt)
+    .map((entry) => entry.loggedAt)
+  return loggedThisSession.length === 0 ? null : Math.max(...loggedThisSession)
+}
+
+/**
  * The screen one set is logged from: the two dials, the keypad behind each readout, the rest
  * timer and the log button.
  *
@@ -93,8 +153,17 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const [open, setOpen] = useState<OpenSet>(() =>
     openSetFor(exercise, plan, props.setIndex, props.lastEntries),
   )
+  // An extra set opened by "Add set" stays open until it is logged; past the plan, anything
+  // else is the done state, which offers only "Add set".
+  const [extraOpen, setExtraOpen] = useState<boolean>(props.extra ?? false)
+  // Sets are opened in order, so the ones before the opened set are this session's so far;
+  // every log then recounts from the session it was written to.
+  const [loggedCount, setLoggedCount] = useState<number>(props.setIndex - 1)
   const [error, setError] = useState<string | null>(null)
-  const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(null)
+  const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(() =>
+    initialLastLoggedAt(exercise.id, props.lastEntries, props.sessionStartedAt ?? 0),
+  )
+  const [loggedMessage, setLoggedMessage] = useState<string>('')
   const [now, setNow] = useState<number>(() => Date.now())
 
   // The controls belong to the screen's bottom edge, which inside the shell is the sticky
@@ -113,6 +182,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   }, [lastLoggedAt])
 
   const rest = restState(lastLoggedAt, plan.restSeconds, now)
+  const done = open.setIndex > plan.sets && !extraOpen
 
   async function log(): Promise<void> {
     const validation = validateEntry(open.weightKg, open.reps)
@@ -137,32 +207,35 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setError(null)
       setHistory(merged)
       setLastLoggedAt(loggedAt)
+      setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
+      setExtraOpen(false)
+      setLoggedCount(
+        session.entries.filter((logged) => logged.exerciseId === exercise.id).length,
+      )
       onLogged(session, nextSetIndex)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
   }
 
-  const actions = (
-    <>
-      <button type="button" className="log-set" onClick={() => void log()}>
-        Log set
-      </button>
+  /** Opens one extra set here, and tells the caller, which may reopen it as an extra set. */
+  function addSet(add: NonNullable<SetScreenProps['onAddSet']>): void {
+    setExtraOpen(true)
+    add(exercise.id, open.setIndex)
+  }
 
-      {/* Every planned set is logged once the set on the dials is past the plan; only then is
-          an extra one offered, and only to a caller that knows what to do with it. */}
-      {onAddSet !== undefined && open.setIndex > plan.sets ? (
-        <button
-          type="button"
-          className="add-set"
-          onClick={() => onAddSet(exercise.id, open.setIndex)}
-        >
-          Add set
-        </button>
-      ) : null}
-    </>
-  )
+  // Past the plan the screen is done: every planned set is logged, so "Log set" is withheld and
+  // only an extra set is offered -- and only to a caller that knows what to do with it.
+  const actions = !done ? (
+    <button type="button" className="log-set" onClick={() => void log()}>
+      Log set
+    </button>
+  ) : onAddSet !== undefined ? (
+    <button type="button" className="add-set" onClick={() => addSet(onAddSet)}>
+      Add set
+    </button>
+  ) : null
 
   return (
     <div className="set-screen">
@@ -170,15 +243,17 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           caller to `exercise.name`); a second heading here would duplicate it verbatim, which
           collides for a caller matching an exercise's set screen by its accessible name alone
           (E5-T12's S7, opening a swapped-in exercise's set screen). */}
-      <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
-      <button
-        type="button"
-        className="open-alternatives"
-        onClick={() => onOpenAlternatives?.(exercise.id)}
-      >
-        Alternatives
-      </button>
-      <p className="set-counter">{`Set ${open.setIndex} of ${plan.sets}`}</p>
+      <div className="set-screen-links">
+        <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
+        <button
+          type="button"
+          className="open-alternatives"
+          onClick={() => onOpenAlternatives?.(exercise.id)}
+        >
+          Alternatives
+        </button>
+      </div>
+      <p className="set-counter">{setCounterText(open.setIndex, plan.sets, loggedCount, done)}</p>
 
       <WeightDial
         exercise={exercise}
@@ -195,12 +270,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
       {actionBar === null ? actions : createPortal(actions, actionBar)}
 
-      <p className="rest-timer">
-        <span role="timer" aria-label="Rest remaining">
-          {formatRest(rest.remainingSeconds)}
-        </span>
-        {rest.isOver ? ' rest over' : ' rest'}
+      <p role="status" className="set-logged">
+        {loggedMessage}
       </p>
+
+      {lastLoggedAt === null ? null : (
+        <p className="rest-timer">
+          <span role="timer" aria-label="Rest remaining">
+            {formatRest(rest.remainingSeconds)}
+          </span>
+          {rest.isOver ? ' rest over' : ' rest'}
+        </p>
+      )}
     </div>
   )
 }

@@ -30,6 +30,7 @@
 }
 
 .settings-action {
+  position: relative;
   display: flex;
   width: 100%;
   min-height: var(--tap-min);
@@ -56,6 +57,24 @@
   flex: 1;
 }
 
-.settings-file-input {
-  max-width: 55%;
+/* The native file picker is unstyleable across browsers, so it hides behind the label it sits
+ * in (`.settings-action`, styled as a button) rather than rendering itself: absolutely
+ * positioned over its label and fully transparent, but not `display: none` -- a hidden input
+ * cannot be tapped or focused at all, which is what a screen reader and a keyboard both need. */
+.import-file {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.settings-radio,
+.settings-checkbox {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
 }

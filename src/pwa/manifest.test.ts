@@ -18,7 +18,7 @@ import { readTokens } from '../test/cssAudit'
 const repoRoot = resolve(fileURLToPath(import.meta.url), '..', '..', '..')
 const tokensPath = join(repoRoot, 'src', 'styles', 'tokens.css')
 
-// The path the app is served from at the root of the Cloudflare Worker (decision 0006). Written
+// The path the app is served from at the root of the Cloudflare Worker (decision 0007). Written
 // out here rather than read back from the config on purpose: a build that forgets the base path
 // works perfectly on localhost and 404s in production, so the expectation has to be independent
 // of the thing under test.
@@ -177,7 +177,7 @@ test('O5 the manifest background_color matches the --color-bg token, so the iOS 
   expect((manifest().background_color ?? '').toLowerCase()).toBe((colorBg ?? '').toLowerCase())
 })
 
-// [O15] Served from the root of the Cloudflare Worker behind Access (decision 0006 supersedes
+// [O15] Served from the root of the Cloudflare Worker behind Access (decision 0007 supersedes
 // 0003's GitHub Pages base path): the manifest's own start_url and scope must be exactly '/',
 // not merely rooted, and its <link> must ask for credentialed mode or Access's cookie never
 // reaches the manifest fetch and the browser refuses to install the app.

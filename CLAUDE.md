@@ -12,7 +12,7 @@ go in your own gitignored `CLAUDE.local.md`.
 
 The app is one Cloudflare Worker (`wrangler.toml`): static assets plus `/api/*`, a D1 database
 `workout-tracker`, behind a Cloudflare Access application that logs users in with an emailed
-one-time PIN. See `docs/decisions/0006-cloudflare-hosting-access-login-and-sync.md`.
+one-time PIN. See `docs/decisions/0007-cloudflare-hosting-access-login-and-sync.md`.
 
 - **Normal path: merge to `main`.** `.github/workflows/deploy.yml` builds, applies the D1
   migrations and deploys, using the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`

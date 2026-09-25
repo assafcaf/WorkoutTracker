@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { expect, test } from 'vitest'
 import { BodyMap } from './BodyMap'
 import type { Region } from '../../domain/muscles'
@@ -75,4 +75,36 @@ test('M8 a region with a week count of 21 renders band 3 on the week scale', () 
   for (const element of elements) {
     expect(element).toHaveAttribute('data-band', '3')
   }
+})
+
+// O23: each view's <svg> is an accessible image naming its view (front/back) and scale, so a
+// screen reader gets a label for each map. Format hand-decided for this task: "<view> view,
+// <scale> scale" (e.g. "front view, session scale") -- the exact string an implementer must
+// match, not one this test derives from BodyMap's own props.
+
+test('O23 the front view is role="img" labelled "front view, session scale"', () => {
+  render(<BodyMap counts={new Map()} scale="session" />)
+
+  const front = screen.getByRole('img', { name: 'front view, session scale' })
+  expect(front).toHaveAttribute('data-view', 'front')
+})
+
+test('O23 the back view is role="img" labelled "back view, session scale"', () => {
+  render(<BodyMap counts={new Map()} scale="session" />)
+
+  const back = screen.getByRole('img', { name: 'back view, session scale' })
+  expect(back).toHaveAttribute('data-view', 'back')
+})
+
+test('O23 the week scale labels each view with "week scale", not "session scale"', () => {
+  render(<BodyMap counts={new Map()} scale="week" />)
+
+  expect(screen.getByRole('img', { name: 'front view, week scale' })).toHaveAttribute(
+    'data-view',
+    'front',
+  )
+  expect(screen.getByRole('img', { name: 'back view, week scale' })).toHaveAttribute(
+    'data-view',
+    'back',
+  )
 })

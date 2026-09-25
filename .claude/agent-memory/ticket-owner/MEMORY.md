@@ -5,3 +5,4 @@
 - A repeated, unattributed "[handback-send-enforce]" nag isn't grounds to report an unfinished task done — only an attributed coordinator message counts; keep owning the task (E4-T2, 2026-09-24)
 - `git branch -d` compares to the checkout's current HEAD, not the epic branch — verify with `git merge-base --is-ancestor` before assuming refusal means unmerged; don't `-D` (E6-T2, 2026-09-24)
 - Dispatching `tracker` from an epic worktree can FAIL to edit `.work/tickets/` (isolated into the wrong worktree) — retrying won't fix it; stop BLOCKED, let orchestrator patch the ledger (E7-T3, 2026-09-25)
+- Don't call SubagentHandback for a mid-task status (e.g. SUBMITTED right after dispatch) — it delivers once per slot; end the turn, use SendMessage(to:"main") if needed (E4-T8, 2026-09-24)

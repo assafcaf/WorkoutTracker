@@ -589,3 +589,93 @@ test('M15 with no sets in the last 7 days, "This week" reads "No sets logged in 
     'the done map must show triceps unband: it is prescribed but nothing was logged',
   ).toBeGreaterThan(0)
 })
+
+// --- O22: "This week"'s two maps are captioned Planned/Done, each wrapped in a <figure> --------
+
+test('O22 "This week" wraps its prescribed map in a figure captioned "Planned"', () => {
+  const { container } = render(
+    <ProgramPage
+      programs={[assaf, starter]}
+      activeProgramId="assaf-ab-2026"
+      catalog={catalogWithout()}
+      library={new Map()}
+      onChooseProgram={vi.fn()}
+    />,
+  )
+
+  const thisWeek = container.querySelector('.program-page-thisweek')
+  if (!thisWeek) throw new Error('expected a .program-page-thisweek section')
+  const figures = within(thisWeek as HTMLElement).getAllByRole('figure')
+  expect(figures).toHaveLength(2)
+  expect(within(figures[0]).getByText('Planned')).toBeVisible()
+})
+
+test('O22 "This week" wraps its done map in a figure captioned "Done"', () => {
+  const { container } = render(
+    <ProgramPage
+      programs={[assaf, starter]}
+      activeProgramId="assaf-ab-2026"
+      catalog={catalogWithout()}
+      library={new Map()}
+      onChooseProgram={vi.fn()}
+    />,
+  )
+
+  const thisWeek = container.querySelector('.program-page-thisweek')
+  if (!thisWeek) throw new Error('expected a .program-page-thisweek section')
+  const figures = within(thisWeek as HTMLElement).getAllByRole('figure')
+  expect(figures).toHaveLength(2)
+  expect(within(figures[1]).getByText('Done')).toBeVisible()
+})
+
+// --- O23: one BodyMapLegend per section that renders body maps, not one per map ---------------
+
+test('O23 each workout card shows exactly one session-scale body-map legend', () => {
+  const { container } = render(
+    <ProgramPage
+      programs={[assaf, starter]}
+      activeProgramId="assaf-ab-2026"
+      catalog={catalogWithout()}
+      library={new Map()}
+      onChooseProgram={vi.fn()}
+    />,
+  )
+
+  const cards = [...container.querySelectorAll('.workout-card')]
+  expect(cards.length, 'the active program must render at least one workout card').toBeGreaterThan(0)
+  for (const card of cards) {
+    expect(card.querySelectorAll('.body-map-legend[data-scale="session"]')).toHaveLength(1)
+  }
+})
+
+test('O23 "Weekly volume" shows exactly one week-scale body-map legend', () => {
+  const { container } = render(
+    <ProgramPage
+      programs={[assaf, starter]}
+      activeProgramId="assaf-ab-2026"
+      catalog={catalogWithout()}
+      library={new Map()}
+      onChooseProgram={vi.fn()}
+    />,
+  )
+
+  const weekly = container.querySelector('.program-page-weekly')
+  if (!weekly) throw new Error('expected a .program-page-weekly section')
+  expect(weekly.querySelectorAll('.body-map-legend[data-scale="week"]')).toHaveLength(1)
+})
+
+test('O23 "This week" shows exactly one week-scale body-map legend for its Planned/Done pair, not one per map', () => {
+  const { container } = render(
+    <ProgramPage
+      programs={[assaf, starter]}
+      activeProgramId="assaf-ab-2026"
+      catalog={catalogWithout()}
+      library={new Map()}
+      onChooseProgram={vi.fn()}
+    />,
+  )
+
+  const thisWeek = container.querySelector('.program-page-thisweek')
+  if (!thisWeek) throw new Error('expected a .program-page-thisweek section')
+  expect(thisWeek.querySelectorAll('.body-map-legend[data-scale="week"]')).toHaveLength(1)
+})

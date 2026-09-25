@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// The app is served from the root of the Cloudflare Worker behind Access (decision 0006
+// The app is served from the root of the Cloudflare Worker behind Access (decision 0007
 // supersedes 0003's GitHub Pages base path). Get this wrong and the build works on localhost
 // and 404s in production.
 const base = '/'

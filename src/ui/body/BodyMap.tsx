@@ -36,10 +36,21 @@ function regionShade(
  * "secondary"|"empty"` ('exercise' scale, M10). Every shape of one region, on either view, gets
  * the same shade. Filler shapes (`region: null` in bodyPolygons.ts, e.g. head/knees) carry
  * neither, are painted the empty shade and are not interactive.
+ *
+ * On the 'session'/'week' scales each view's `<svg>` carries `role="img"` and an `aria-label`
+ * naming its view and scale (E6-T9, O23), so a screen reader gets a label for each map. The
+ * 'exercise' scale is left unlabelled: `ExerciseDetail` already names its own photos with
+ * `role="img"`, and a second, unnamed set of images there would break that screen's own tests.
  */
 export function BodyMap({ counts, scale, onRegionTap }: BodyMapProps): JSX.Element {
   const renderView = (view: 'front' | 'back', polygons: BodyPolygon[]) => (
-    <svg data-view={view} viewBox="0 0 100 220">
+    <svg
+      data-view={view}
+      viewBox="0 0 100 220"
+      {...(scale === 'exercise'
+        ? {}
+        : { role: 'img', 'aria-label': `${view} view, ${scale} scale` })}
+    >
       {polygons.map(({ region, points }, index) => {
         if (region === null) {
           return <polygon key={index} points={points} style={{ fill: 'var(--map-shade-0)' }} />

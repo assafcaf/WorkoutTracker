@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { band } from './band'
+import { band, BAND_LABELS } from './band'
 
 // M5: a set count bands to one of four shades, on two different scales (E5-T17). Boundaries are
 // hand-checked against the ticket's named ranges -- session: 0 / 1-2 / 3-5 / 6+; week: 0 / under
@@ -55,4 +55,16 @@ test('M5 a week count of 20 bands to 2', () => {
 
 test('M5 a week count of 21 bands to 3', () => {
   expect(band(21, 'week')).toBe(3)
+})
+
+// --- O23: BAND_LABELS names the same four bands the legend must show, hand-checked against ---
+// the spec's exact wording ("0 / 1-2 / 3-5 / 6+ sets", "0 / 1-9 / 10-20 / 21+ sets"), not derived
+// from band()'s thresholds.
+
+test('O23 BAND_LABELS names the session bands 0, 1–2, 3–5, 6+ sets in band order', () => {
+  expect(BAND_LABELS.session).toEqual(['0', '1–2', '3–5', '6+ sets'])
+})
+
+test('O23 BAND_LABELS names the week bands 0, 1–9, 10–20, 21+ sets in band order', () => {
+  expect(BAND_LABELS.week).toEqual(['0', '1–9', '10–20', '21+ sets'])
 })

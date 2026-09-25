@@ -1,4 +1,6 @@
 import './ExerciseList.css'
+import { progression } from '../domain/progression'
+import { ProgressionBar } from './ProgressionBar'
 import type { Exercise, ExercisePlan, Program, Session, SetEntry, Workout } from '../types'
 
 export type ExerciseListProps = {
@@ -27,6 +29,11 @@ export type ExerciseListProps = {
   onUndoSwap(plannedId: string): void
   /** Applies the "Last time" swap of `plannedId` for `doneId` to this session. */
   onApplySwap(plannedId: string, doneId: string): void
+  /**
+   * The last finished session's entries of each exercise (E4-T6), keyed by the id actually done
+   * -- the swapped-in id when a plan is swapped. A missing key is no history: an empty bar.
+   */
+  lastEntries: Map<string, SetEntry[]>
 }
 
 /** How many sets of this exercise the session already holds. */
@@ -35,12 +42,12 @@ function loggedSets(entries: SetEntry[], exerciseId: string): number {
 }
 
 /**
- * The set a row opens: the one after the last logged, never past the plan -- an exercise
- * already at its planned count re-opens its last set, since a set past the plan is what the
- * set screen's "Add set" is for.
+ * The set a row opens: always the one after the last logged, even past the plan (E6-T10) -- an
+ * exercise already at its planned count must not overwrite its last stored Set, so the row opens
+ * one past it, landing on the set screen's done state (E6-T1) instead.
  */
-function nextSetIndex(logged: number, plan: ExercisePlan): number {
-  return Math.min(logged + 1, plan.sets)
+export function nextSetIndex(logged: number, _plan: ExercisePlan): number {
+  return logged + 1
 }
 
 /**
@@ -57,9 +64,14 @@ function nextSetIndex(logged: number, plan: ExercisePlan): number {
  * Beside a swapped row, "Undo swap" is offered until the done exercise's first set is logged
  * (E5-T14). An unswapped row whose plan was swapped last time (`lastSwaps`) offers
  * "Last time: <done exercise's name>", which applies the same swap.
+ *
+ * Every row whose done exercise resolves carries its progression bar (E4-T6): the done
+ * exercise's last session, measured against the plan's own sets and rep range. A row that does
+ * not resolve keeps its fallback name and has no bar.
  */
 export function ExerciseList(props: ExerciseListProps): JSX.Element {
-  const { workout, resolve, session, onOpenSet, lastSwaps, onUndoSwap, onApplySwap } = props
+  const { workout, resolve, session, onOpenSet, lastSwaps, onUndoSwap, onApplySwap, lastEntries } =
+    props
 
   return (
     <ul className="exercise-list">
@@ -89,13 +101,26 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
             >
               {label}
             </button>
+            {exercise !== undefined ? (
+              <ProgressionBar
+                progression={progression(exercise, plan, lastEntries.get(effectiveId) ?? [])}
+              />
+            ) : null}
             {doneId !== undefined && logged === 0 ? (
-              <button type="button" onClick={() => onUndoSwap(plan.exerciseId)}>
+              <button
+                type="button"
+                className="exercise-undo-swap"
+                onClick={() => onUndoSwap(plan.exerciseId)}
+              >
                 Undo swap
               </button>
             ) : null}
             {doneId === undefined && lastDoneId !== undefined ? (
-              <button type="button" onClick={() => onApplySwap(plan.exerciseId, lastDoneId)}>
+              <button
+                type="button"
+                className="exercise-last-time"
+                onClick={() => onApplySwap(plan.exerciseId, lastDoneId)}
+              >
                 {`Last time: ${resolve(lastDoneId)?.name ?? lastDoneId}`}
               </button>
             ) : null}

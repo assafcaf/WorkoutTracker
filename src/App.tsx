@@ -47,22 +47,33 @@ import {
 import { ActionBarSlot, AppShell } from './ui/AppShell'
 import type { Tab } from './ui/AppShell'
 import { AlternativesList } from './ui/AlternativesList'
+import './ui/AlternativesOverlay.css'
 import { BackupBadge, isBackupDue } from './ui/BackupBadge'
 import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ExerciseList } from './ui/ExerciseList'
 import { HistoryList } from './ui/HistoryList'
+import { HistoryStatsSwitch } from './ui/HistoryStatsSwitch'
 import { ImportConfirm } from './ui/ImportConfirm'
 import { LibraryList } from './ui/LibraryList'
 import { ProgramPage } from './ui/ProgramPage'
 import { ResumeCard } from './ui/ResumeCard'
 import { SessionSummary } from './ui/SessionSummary'
 import { SetScreen } from './ui/SetScreen'
+import { Stats } from './ui/Stats'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 import { UpdatePill } from './ui/UpdatePill'
 import { WorkoutStartButtons } from './ui/WorkoutStartButtons'
 
-type View = 'picker' | 'program' | 'settings' | 'list' | 'set' | 'history' | 'exercises'
+type View =
+  | 'picker'
+  | 'program'
+  | 'settings'
+  | 'list'
+  | 'set'
+  | 'history'
+  | 'stats'
+  | 'exercises'
 
 /**
  * The tab each view sits under, and `null` for the views that are inside a session: a
@@ -73,6 +84,7 @@ const TAB_OF: Record<View, Tab | null> = {
   program: 'program',
   exercises: 'exercises',
   history: 'history',
+  stats: 'history',
   settings: 'settings',
   list: null,
   set: null,
@@ -83,8 +95,11 @@ function tabFor(view: View): Tab | undefined {
   return TAB_OF[view] ?? undefined
 }
 
-/** The set the set screen is on, with the history it was opened against. */
-type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[] }
+/**
+ * The set the set screen is on, with the history it was opened against, and whether "Add set"
+ * opened it as an extra set past the plan (E6-T1).
+ */
+type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[]; extra: boolean }
 
 /**
  * The in-app exercise detail overlay (E5-T8): rendered over whatever view is current without
@@ -199,6 +214,31 @@ async function lastSwapsFor(
 }
 
 /**
+ * The last finished session's entries of every exercise `session`'s list can show (E4-T6):
+ * each plan id of its workout, and each done id in `session.swaps`, keyed by that id. Loaded
+ * together; a load that rejects just leaves its id out, so that row's bar reads as no history
+ * rather than taking the list down.
+ */
+async function lastEntriesFor(
+  programs: Program[],
+  session: Session | null,
+): Promise<Map<string, SetEntry[]>> {
+  if (!session) return new Map()
+  const located = locateSession(programs, session)
+  const planIds = located ? located.workout.exercises.map((plan) => plan.exerciseId) : []
+  const ids = [...new Set([...planIds, ...Object.values(session.swaps ?? {})])]
+  const loaded = await Promise.all(
+    ids.map((id) =>
+      getLastEntriesFor(id).then(
+        (entries) => [id, entries] as const,
+        () => null,
+      ),
+    ),
+  )
+  return new Map(loaded.filter((pair) => pair !== null))
+}
+
+/**
  * The whole app: the views below, with the "Update ready" control over them.
  *
  * The control lives here rather than in a view because a new deployment must never interrupt
@@ -263,6 +303,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // Cloud sync (E7-T8): runs on mount, on `online` and after a finished session, by itself.
   const { sync, syncNow, adoptAccount, replaceRemote } = useSync()
   const loadedPrograms = state.status === 'ready' ? state.programs : null
+  // The last finished session's entries of each exercise the list shows (E4-T6), keyed by the
+  // id actually done, feeding each row's progression bar.
+  const [lastEntries, setLastEntries] = useState<Map<string, SetEntry[]>>(new Map())
 
   useEffect(() => {
     let cancelled = false
@@ -280,6 +323,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           !programs.some((program) => program.id === storedProgramId)
         const inProgress = await activeSessionOrNull(storageAvailable)
         const inProgressLastSwaps = await lastSwapsFor(programs, inProgress)
+        const inProgressLastEntries = await lastEntriesFor(programs, inProgress)
         const lastExportedAt = storageAvailable ? await getLastExportedAt() : null
         const gymEquipmentList = storageAvailable ? await getGymEquipment() : null
         // Loaded here rather than lazily on the Exercises tab (E5-T3's original scheme), so the
@@ -291,6 +335,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         if (cancelled) return
         setSession(inProgress)
         setLastSwaps(inProgressLastSwaps)
+        setLastEntries(inProgressLastEntries)
         setView(inProgress ? 'list' : 'picker')
         setLibrary([...loadedLibrary.values()])
         setGymEquipment(gymEquipmentList)
@@ -383,6 +428,21 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   }
 
   /**
+   * Adds the last entries of `doneId`, just swapped in, to the list's progression bars. Undoing a
+   * swap needs no load: the planned id was loaded with the session. A rejected load leaves the
+   * swapped row's bar empty.
+   */
+  function loadLastEntriesOf(doneId: string): void {
+    getLastEntriesFor(doneId)
+      .then((entries) => {
+        setLastEntries((current) => new Map(current).set(doneId, entries))
+      })
+      .catch(() => {
+        // No history for the bar; the row still shows and opens as before.
+      })
+  }
+
+  /**
    * `AlternativesList.onChoose`: records the swap for the session in progress, closes the
    * overlay and returns to the exercise list, which is where the swapped-in exercise's own row
    * now lives. `session` is updated in place with the swap `setSwap` just wrote, so the list
@@ -395,6 +455,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         setSession((current) =>
           current ? { ...current, swaps: { ...current.swaps, [plannedId]: chosenId } } : current,
         )
+        loadLastEntriesOf(chosenId)
         setOverlay(null)
         setOpenSet(null)
         setView('list')
@@ -412,6 +473,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         setSession((current) =>
           current ? { ...current, swaps: { ...current.swaps, [plannedId]: doneId } } : current,
         )
+        loadLastEntriesOf(doneId)
       })
       .catch(() => {
         // Nothing was recorded; the "Last time" offer stays so the trainee can try again.
@@ -468,8 +530,10 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     startOrResumeSession(programId, workoutId, Date.now())
       .then(async (started) => {
         const startedLastSwaps = await lastSwapsFor(programs, started)
+        const startedLastEntries = await lastEntriesFor(programs, started)
         setSession(started)
         setLastSwaps(startedLastSwaps)
+        setLastEntries(startedLastEntries)
         setOpenSet(null)
         setView('list')
       })
@@ -482,7 +546,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   function handleOpenSet(exerciseId: string, setIndex: number): void {
     getLastEntriesFor(exerciseId)
       .then((history) => {
-        setOpenSet({ exerciseId, setIndex, history })
+        setOpenSet({ exerciseId, setIndex, history, extra: false })
         setView('set')
       })
       .catch(() => {
@@ -494,7 +558,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   function handleAddSet(exerciseId: string, nextSetIndex: number): void {
     setOpenSet((current) =>
       current && current.exerciseId === exerciseId
-        ? { ...current, setIndex: nextSetIndex }
+        ? { ...current, setIndex: nextSetIndex, extra: true }
         : current,
     )
   }
@@ -617,6 +681,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         setSession((current) =>
           current ? { ...current, swaps: { ...current.swaps, [plannedId]: chosenId } } : current,
         )
+        loadLastEntriesOf(chosenId)
         setOverlay(null)
       })
       .catch(() => {
@@ -733,7 +798,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             setIndex={openSet.setIndex}
             sessionId={session.id}
             lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
-            onLogged={(logged) => setSession(logged)}
+            sessionStartedAt={session.startedAt}
+            extra={openSet.extra}
+            onLogged={(logged) => {
+              setSession(logged)
+              setOpenSet((current) => (current ? { ...current, extra: false } : current))
+            }}
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}
@@ -796,7 +866,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         title={located.workout.name}
         onBack={() => setView('picker')}
         action={
-          <button type="button" onClick={handleFinish}>
+          <button type="button" className="finish-workout" onClick={handleFinish}>
             Finish workout
           </button>
         }
@@ -810,6 +880,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           onOpenSet={handleOpenSet}
           onFinish={handleFinish}
           lastSwaps={lastSwaps}
+          lastEntries={lastEntries}
           onUndoSwap={handleUndoSwap}
           onApplySwap={handleApplySwap}
         />
@@ -840,21 +911,29 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     )
   }
 
-  if (content === null && view === 'history') {
+  // The History tab holds two views behind one switch (E4-T4): the list of finished sessions
+  // and the statistics drawn from them. Both read the `history` `handleShowHistory` loaded when
+  // the tab was pressed, so flipping the switch loads nothing.
+  if (content === null && (view === 'history' || view === 'stats')) {
     content = (
       <AppShell
-        title="History"
+        title={view === 'stats' ? 'Stats' : 'History'}
         tab={tabFor(view)}
         onTabChange={handleTabChange}
         trailing={trailing}
         settingsBadge={settingsBadge}
       >
-        <HistoryList
-          sessions={history}
-          programs={programs}
-          resolve={resolveListExercise}
-          onOpen={handleOpenHistorySession}
-        />
+        <HistoryStatsSwitch current={view} onChange={setView} />
+        {view === 'stats' ? (
+          <Stats sessions={history} resolve={resolveListExercise} programs={programs} />
+        ) : (
+          <HistoryList
+            sessions={history}
+            programs={programs}
+            resolve={resolveListExercise}
+            onOpen={handleOpenHistorySession}
+          />
+        )}
       </AppShell>
     )
   }
@@ -895,36 +974,42 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         trailing={trailing}
         settingsBadge={settingsBadge}
       >
-        <input
-          type="search"
-          aria-label="Search exercises"
-          value={librarySearch}
-          onChange={(event) => setLibrarySearch(event.target.value)}
-        />
-        <select
-          aria-label="Muscle"
-          value={libraryMuscle}
-          onChange={(event) => setLibraryMuscle(event.target.value)}
-        >
-          <option value="">All muscles</option>
-          {MUSCLES.map((muscle) => (
-            <option key={muscle} value={muscle}>
-              {muscle}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Equipment"
-          value={libraryEquipment}
-          onChange={(event) => setLibraryEquipment(event.target.value)}
-        >
-          <option value="">All equipment</option>
-          {libraryEquipmentOptions.map((equipment) => (
-            <option key={equipment} value={equipment}>
-              {equipment}
-            </option>
-          ))}
-        </select>
+        <div className="library-filters">
+          <input
+            type="search"
+            aria-label="Search exercises"
+            placeholder="Search exercises"
+            className="library-search"
+            value={librarySearch}
+            onChange={(event) => setLibrarySearch(event.target.value)}
+          />
+          <select
+            aria-label="Muscle"
+            className="library-filter"
+            value={libraryMuscle}
+            onChange={(event) => setLibraryMuscle(event.target.value)}
+          >
+            <option value="">All muscles</option>
+            {MUSCLES.map((muscle) => (
+              <option key={muscle} value={muscle}>
+                {muscle}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Equipment"
+            className="library-filter"
+            value={libraryEquipment}
+            onChange={(event) => setLibraryEquipment(event.target.value)}
+          >
+            <option value="">All equipment</option>
+            {libraryEquipmentOptions.map((equipment) => (
+              <option key={equipment} value={equipment}>
+                {equipment}
+              </option>
+            ))}
+          </select>
+        </div>
         <LibraryList
           library={filteredLibrary}
           onOpen={handleOpenInfo}
@@ -962,7 +1047,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             onResume={() => handleChoose(session.programId, session.workoutId)}
           />
         ) : null}
-        <fieldset disabled={!storageAvailable}>
+        <fieldset className="workout-picker" disabled={!storageAvailable}>
           <WorkoutStartButtons
             program={activeProgram}
             onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}
@@ -993,6 +1078,13 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         })()
       : null
 
+  // The Alternatives overlay's heading names the Plan's current Exercise (E6-T4/O10) -- the
+  // swapped-in one if `overlay.plannedId` already carries a swap -- which is `resolveListExercise`
+  // own name, not `alternativesTarget`'s library entry name (the two can differ, e.g. "Seated
+  // biceps curls" the Plan vs. "Seated Dumbbell Curl" the library's own name for it).
+  const alternativesName: string | undefined =
+    overlay?.kind === 'alternatives' ? resolveListExercise(overlay.plannedId)?.name : undefined
+
   return (
     <>
       {content}
@@ -1022,8 +1114,16 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           onBrowse={handleBrowseMuscles}
         />
       ) : null}
-      {overlay?.kind === 'alternatives' && alternativesTarget ? (
-        <div role="dialog" aria-modal="true" aria-label="Alternatives" className="overlay-panel alternatives-overlay">
+      {overlay?.kind === 'alternatives' && alternativesTarget && alternativesName ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="alternatives-heading"
+          className="overlay-panel alternatives-overlay"
+        >
+          <h2 id="alternatives-heading" className="alternatives-overlay-heading">
+            Alternatives to {alternativesName}
+          </h2>
           <button type="button" className="alternatives-overlay-close" onClick={() => setOverlay(null)}>
             Close
           </button>

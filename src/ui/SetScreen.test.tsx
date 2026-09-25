@@ -4,7 +4,7 @@ import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { loadCatalog } from '../data/catalog'
 import { db } from '../storage/db'
-import { SetScreen } from './SetScreen'
+import { SetScreen, loggedText, setCounterText } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
@@ -68,6 +68,10 @@ function renderSetScreen(over: Partial<SetScreenProps> = {}) {
     plan: squatPlan,
     setIndex: 1,
     sessionId: SESSION_ID,
+    // BASE, not 0: `historyEntry`'s fixed `loggedAt` of BASE must count as logged in this
+    // session by default, so the pre-existing rest-timer tests below -- written before
+    // `sessionStartedAt` existed -- keep meaning what they always meant.
+    sessionStartedAt: BASE,
     lastEntries: [],
     onLogged,
     onOpenInfo,
@@ -183,9 +187,9 @@ test('O9 the weight ladder is rendered as a column of rungs with the current one
   const column = screen.getByRole('listbox', { name: 'Weight ladder' })
   const rungs = within(column).getAllByRole('option')
 
-  // 50 kg to 500 kg inclusive in steps of 2.5 kg is 181 rungs.
-  expect(rungs).toHaveLength(181)
-  expect([readoutValue(rungs[0]), readoutValue(rungs[180])]).toEqual(['50', '500'])
+  // 2.5 kg to 500 kg inclusive in steps of 2.5 kg is 200 rungs.
+  expect(rungs).toHaveLength(200)
+  expect([readoutValue(rungs[0]), readoutValue(rungs[199])]).toEqual(['2.5', '500'])
   expect(readoutValue(within(column).getByRole('option', { selected: true }))).toBe('60')
 })
 
@@ -339,4 +343,181 @@ test('O12 the rest timer formats the remaining rest as minutes and seconds', asy
   await waitFor(() => {
     expect(readoutValue(screen.getByRole('timer'))).toBe('1:20')
   })
+})
+
+// --- E6-T1: the done state past the Plan ---------------------------------------------------
+//
+// Past the Plan the screen offers only "Add set"; an extra set opened by it offers only
+// "Log set", and logging it returns the screen to the done state.
+
+/** Back squat planned for 3 sets, so the set after the last planned one is set 4. */
+const threeSetSquatPlan: ExercisePlan = { ...squatPlan, sets: 3 }
+
+function addSetButton(): HTMLElement | null {
+  return screen.queryByRole('button', { name: 'Add set' })
+}
+
+function logSetButton(): HTMLElement | null {
+  return screen.queryByRole('button', { name: 'Log set' })
+}
+
+test('O1 a set screen opened at the set after a 3-set Plan, not as an extra, offers Add set and no Log set', () => {
+  renderSetScreen({
+    plan: threeSetSquatPlan,
+    setIndex: 4,
+    extra: false,
+    onAddSet: vi.fn(),
+    lastEntries: [historyEntry(3, 60, 10)],
+  })
+
+  expect(addSetButton()).not.toBeNull()
+  expect(logSetButton()).toBeNull()
+})
+
+test('O2 a set screen opened as an extra set past a 3-set Plan offers Log set and no Add set', () => {
+  renderSetScreen({
+    plan: threeSetSquatPlan,
+    setIndex: 4,
+    extra: true,
+    onAddSet: vi.fn(),
+    lastEntries: [historyEntry(3, 60, 10)],
+  })
+
+  expect(logSetButton()).not.toBeNull()
+  expect(addSetButton()).toBeNull()
+})
+
+test('O2 logging an extra set returns the set screen to the done state, offering Add set and no Log set', async () => {
+  const { user } = renderSetScreen({
+    plan: threeSetSquatPlan,
+    setIndex: 4,
+    extra: true,
+    onAddSet: vi.fn(),
+    lastEntries: [historyEntry(3, 60, 10)],
+  })
+
+  await user.click(logButton())
+
+  await waitFor(async () => {
+    expect(await storedEntries()).toHaveLength(1)
+  })
+  expect((await storedEntries())[0].setIndex).toBe(4)
+  await waitFor(() => {
+    expect(addSetButton()).not.toBeNull()
+  })
+  expect(logSetButton()).toBeNull()
+})
+
+test('O1 setCounterText reads Set 2 of 3 for a planned set that is not the last', () => {
+  expect(setCounterText(2, 3, 1, false)).toBe('Set 2 of 3')
+})
+
+test('O1 setCounterText reads Set 3 of 3 for the last planned set', () => {
+  expect(setCounterText(3, 3, 2, false)).toBe('Set 3 of 3')
+})
+
+test('O1 setCounterText reads All 3 sets logged when done with exactly the 3 planned sets logged', () => {
+  expect(setCounterText(4, 3, 3, true)).toBe('All 3 sets logged')
+})
+
+test('O2 setCounterText reads Set 4 · extra for an extra set past a 3-set Plan', () => {
+  expect(setCounterText(4, 3, 3, false)).toBe('Set 4 · extra')
+})
+
+test('O2 setCounterText reads 4 sets logged · 3 planned when done with one extra set logged', () => {
+  expect(setCounterText(5, 3, 4, true)).toBe('4 sets logged · 3 planned')
+})
+
+// --- O5: the log-confirmation message ------------------------------------------------------
+
+test('O5 loggedText names the weight and reps for a loaded Exercise', () => {
+  expect(loggedText(2, 50, 8)).toBe('Set 2 logged · 50 kg × 8')
+})
+
+test('O5 loggedText names only the reps for a Bodyweight Exercise', () => {
+  expect(loggedText(2, null, 12)).toBe('Set 2 logged · 12 reps')
+})
+
+test('O5 the log-confirmation message is empty before any Set is logged on this screen', () => {
+  renderSetScreen()
+
+  expect(screen.getByRole('status').textContent).toBe('')
+})
+
+test('O5 logging Set 2 of a loaded Exercise at 50 kg x 8 announces it in the confirmation message', async () => {
+  // No lastEntries: back-squat's own preset opens set 2 exactly on 50 kg x 8 (its start weight
+  // and squatPlan's low rep, proven independently by App.test.tsx's O5 "nothing logged
+  // anywhere" case), so logging it with no other interaction logs exactly that.
+  const { user } = renderSetScreen({ setIndex: 2, lastEntries: [] })
+
+  await user.click(logButton())
+
+  await waitFor(() => {
+    expect(screen.getByRole('status').textContent).toBe('Set 2 logged · 50 kg × 8')
+  })
+})
+
+test('O5 logging Set 2 of a loaded Exercise still renders the rest timer alongside the confirmation message', async () => {
+  const { user } = renderSetScreen({ setIndex: 2, lastEntries: [] })
+
+  await user.click(logButton())
+
+  await waitFor(() => {
+    expect(screen.getByRole('status').textContent).toBe('Set 2 logged · 50 kg × 8')
+  })
+  expect(screen.getByRole('timer')).toBeVisible()
+})
+
+test('O5 logging Set 2 of a Bodyweight Exercise at 12 reps announces it in the confirmation message', async () => {
+  const { user } = renderSetScreen({
+    exercise: pushUps,
+    plan: pushUpPlan,
+    setIndex: 2,
+    lastEntries: [],
+  })
+
+  await enterOnKeypad(user, repsReadout(), ['1', '2'])
+  await user.click(logButton())
+
+  await waitFor(() => {
+    expect(screen.getByRole('status').textContent).toBe('Set 2 logged · 12 reps')
+  })
+})
+
+// --- O6: no rest timer before any Set is logged in this Session -----------------------------
+
+test('O6 no rest timer renders when this Exercise has no Set logged in this Session', () => {
+  renderSetScreen({ setIndex: 1, lastEntries: [] })
+
+  expect(screen.queryByRole('timer')).toBeNull()
+  expect(document.querySelector('.rest-timer')).toBeNull()
+})
+
+test('O6 no rest timer renders when the only lastEntries for this Exercise predate this Session', () => {
+  // historyEntry's loggedAt is BASE; a sessionStartedAt after it means the entry is from an
+  // earlier, already-finished session, not one logged in this one.
+  renderSetScreen({
+    setIndex: 2,
+    sessionStartedAt: BASE + 1,
+    lastEntries: [historyEntry(2, 60, 10)],
+  })
+
+  expect(screen.queryByRole('timer')).toBeNull()
+  expect(document.querySelector('.rest-timer')).toBeNull()
+})
+
+// --- O7: the rest timer on opening reflects the real last Set of this Session --------------
+
+test('O7 opening back-squat whose latest Set in this Session was logged 100 s ago shows 1:20 remaining', () => {
+  // back-squat's plan here carries a 180 s rest (squatPlan); the last Set in this session was
+  // logged at BASE, and "now" is frozen 100 s later, so 80 s of the 180 s remain -- "1:20".
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({
+    setIndex: 2,
+    plan: squatPlan,
+    sessionStartedAt: BASE,
+    lastEntries: [historyEntry(2, 60, 10)],
+  })
+
+  expect(readoutValue(screen.getByRole('timer'))).toBe('1:20')
 })
