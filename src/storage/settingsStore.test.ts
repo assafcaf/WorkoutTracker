@@ -5,8 +5,13 @@ import {
   GYM_EQUIPMENT_KEY,
   getActiveProgramId,
   getGymEquipment,
+  getVolumeBaseline,
+  getWeightStep,
+  getWeightSteps,
   setActiveProgramId,
   setGymEquipment,
+  setVolumeBaseline,
+  setWeightStep,
 } from './settingsStore'
 import type { Program } from '../types'
 
@@ -123,5 +128,145 @@ describe('O8 every synced setting write stamps updatedAt', () => {
     await setGymEquipment(['barbell', 'bench'])
 
     expect((await db.settings.get(GYM_EQUIPMENT_KEY))?.updatedAt).toBe(CLOCK + 60_000)
+  })
+})
+
+// --- weight steps (E8-T3 O1) -----------------------------------------------------------------
+
+test('O1 getWeightStep returns null for an Exercise with no stored step', async () => {
+  expect(await getWeightStep('back-squat')).toBeNull()
+})
+
+test('O1 getWeightSteps returns an empty record when no step has been stored', async () => {
+  expect(await getWeightSteps()).toEqual({})
+})
+
+test('O1 setWeightStep then getWeightStep returns the stored step for that Exercise', async () => {
+  await setWeightStep('back-squat', 5)
+
+  expect(await getWeightStep('back-squat')).toBe(5)
+})
+
+test('O1 a step stored for one Exercise leaves another Exercise with no stored step', async () => {
+  await setWeightStep('back-squat', 5)
+
+  expect(await getWeightStep('bench-press')).toBeNull()
+})
+
+test('O1 steps stored for two Exercises are both kept and listed by getWeightSteps', async () => {
+  await setWeightStep('back-squat', 5)
+  await setWeightStep('bench-press', 1.25)
+
+  expect(await getWeightSteps()).toEqual({ 'back-squat': 5, 'bench-press': 1.25 })
+})
+
+test('O1 overwriting one Exercise step replaces it and keeps the others', async () => {
+  await setWeightStep('back-squat', 5)
+  await setWeightStep('bench-press', 1.25)
+
+  await setWeightStep('back-squat', 2.5)
+
+  expect(await getWeightSteps()).toEqual({ 'back-squat': 2.5, 'bench-press': 1.25 })
+})
+
+test('O1 every weight step is kept in the one weightSteps settings row', async () => {
+  await setWeightStep('back-squat', 5)
+  await setWeightStep('bench-press', 1.25)
+
+  expect((await db.settings.get('weightSteps'))?.value).toEqual({
+    'back-squat': 5,
+    'bench-press': 1.25,
+  })
+  expect(await db.settings.count()).toBe(1)
+})
+
+test('O1 a stored weight step survives closing and reopening the database', async () => {
+  await setWeightStep('back-squat', 5)
+
+  db.close()
+  await db.open()
+
+  expect(await getWeightStep('back-squat')).toBe(5)
+})
+
+// --- volume baseline (E8-T3 O2) --------------------------------------------------------------
+
+test('O2 getVolumeBaseline defaults to the last Session when no choice is stored', async () => {
+  expect(await getVolumeBaseline()).toEqual({ period: 'last' })
+})
+
+test('O2 setVolumeBaseline then getVolumeBaseline reads back a period with an aggregate', async () => {
+  await setVolumeBaseline({ period: '3m', aggregate: 'max' })
+
+  expect(await getVolumeBaseline()).toEqual({ period: '3m', aggregate: 'max' })
+})
+
+test('O2 setVolumeBaseline then getVolumeBaseline reads back a since date with an aggregate', async () => {
+  await setVolumeBaseline({ period: 'since', since: 1_700_000_000_000, aggregate: 'avg' })
+
+  expect(await getVolumeBaseline()).toEqual({
+    period: 'since',
+    since: 1_700_000_000_000,
+    aggregate: 'avg',
+  })
+})
+
+test('O2 choosing the last Session again after another baseline reads back the last Session', async () => {
+  await setVolumeBaseline({ period: '1w', aggregate: 'avg' })
+
+  await setVolumeBaseline({ period: 'last' })
+
+  expect(await getVolumeBaseline()).toEqual({ period: 'last' })
+})
+
+test('O2 the volume baseline survives closing and reopening the database', async () => {
+  await setVolumeBaseline({ period: '3m', aggregate: 'max' })
+
+  db.close()
+  await db.open()
+
+  expect(await getVolumeBaseline()).toEqual({ period: '3m', aggregate: 'max' })
+})
+
+// --- updatedAt on the E8 synced settings (E8-T3 O3) ------------------------------------------
+
+describe('O3 the weight step and volume baseline writes stamp updatedAt', () => {
+  const CLOCK = 1_700_000_000_000
+
+  beforeEach(() => {
+    vi.spyOn(Date, 'now').mockReturnValue(CLOCK)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  test('O3 setWeightStep stores the weightSteps row with updatedAt equal to the time of the write', async () => {
+    await setWeightStep('back-squat', 5)
+
+    expect(await db.settings.get('weightSteps')).toEqual({
+      key: 'weightSteps',
+      value: { 'back-squat': 5 },
+      updatedAt: CLOCK,
+    })
+  })
+
+  test('O3 setWeightStep for a second Exercise restamps updatedAt with the later write time', async () => {
+    await setWeightStep('back-squat', 5)
+    vi.spyOn(Date, 'now').mockReturnValue(CLOCK + 60_000)
+
+    await setWeightStep('bench-press', 1.25)
+
+    expect((await db.settings.get('weightSteps'))?.updatedAt).toBe(CLOCK + 60_000)
+  })
+
+  test('O3 setVolumeBaseline stores the volumeBaseline row with updatedAt equal to the time of the write', async () => {
+    await setVolumeBaseline({ period: '3m', aggregate: 'max' })
+
+    expect(await db.settings.get('volumeBaseline')).toEqual({
+      key: 'volumeBaseline',
+      value: { period: '3m', aggregate: 'max' },
+      updatedAt: CLOCK,
+    })
   })
 })

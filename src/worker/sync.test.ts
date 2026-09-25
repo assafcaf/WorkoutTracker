@@ -590,3 +590,15 @@ test('O7 a malformed replace body posted through the router is refused with 400'
 
   await expectRefused(response, 400)
 })
+
+test('O3 parseSettings accepts weightSteps and volumeBaseline and returns them whole', () => {
+  expect(
+    parseSettings([
+      setting('weightSteps', { 'back-squat': 5 }, 3000),
+      setting('volumeBaseline', { period: '3m', aggregate: 'max' }, 4000),
+    ]),
+  ).toEqual([
+    setting('weightSteps', { 'back-squat': 5 }, 3000),
+    setting('volumeBaseline', { period: '3m', aggregate: 'max' }, 4000),
+  ])
+})

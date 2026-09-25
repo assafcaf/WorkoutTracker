@@ -98,3 +98,12 @@ export type Session = {
    */
   updatedAt?: number
 }
+
+/**
+ * What a Session's volume is compared against (E8): the last Session, or an average or maximum
+ * over a period.
+ */
+export type VolumeBaseline =
+  | { period: 'last' }
+  | { period: '1w' | '1m' | '3m' | '6m'; aggregate: 'avg' | 'max' }
+  | { period: 'since'; since: number; aggregate: 'avg' | 'max' }
