@@ -8,7 +8,6 @@ import { getGymEquipment, setActiveProgramId, setGymEquipment } from './storage/
 import {
   finishSession,
   getActiveSession,
-  getLastEntriesFor,
   listSessions,
   logSet,
   setSwap,
