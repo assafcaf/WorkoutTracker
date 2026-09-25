@@ -3,6 +3,7 @@ import { db, isStorageAvailable } from './db'
 import {
   clearSwap,
   finishSession,
+  finishStaleSession,
   getActiveSession,
   getLastEntriesFor,
   getLastSwap,
@@ -667,5 +668,195 @@ describe('O8 every session write stamps updatedAt', () => {
     await clearSwap('in-progress', 'back-squat')
 
     expect((await db.sessions.get('in-progress'))?.updatedAt).toBe(CLOCK)
+  })
+})
+
+// --- a forgotten Session finishes itself (E8-T6) ---------------------------------------------
+
+describe('E8-T6 a Session left in progress for 4 hours finishes itself', () => {
+  const HOUR = 60 * 60 * SECOND
+  const FOUR_HOURS = 4 * HOUR
+
+  // The latest Set is logged at LAST_SET; it is deliberately not the last one in `entries`,
+  // so "last activity" has to be the latest `loggedAt`, not the last entry stored.
+  const STARTED = BASE
+  const LAST_SET = BASE + 50 * 60 * SECOND
+  const staleEntries: SetEntry[] = [
+    entry('back-squat', 1, 40, 10, BASE + 10 * 60 * SECOND),
+    entry('back-squat', 2, 50, 10, LAST_SET),
+    entry('lunges', 1, 20, 10, BASE + 30 * 60 * SECOND),
+  ]
+
+  function inProgressWithSets(): Session {
+    return storedSession({
+      id: 'forgotten',
+      startedAt: STARTED,
+      finishedAt: null,
+      entries: staleEntries,
+      updatedAt: LAST_SET,
+    })
+  }
+
+  function inProgressEmpty(): Session {
+    return storedSession({
+      id: 'forgotten-empty',
+      startedAt: STARTED,
+      finishedAt: null,
+      entries: [],
+      updatedAt: STARTED,
+    })
+  }
+
+  // --- O1 ---
+
+  test('O1 startOrResumeSession 4 h after the latest Set stores the old Session finished at that Set', async () => {
+    await db.sessions.put(inProgressWithSets())
+
+    await startOrResumeSession('assaf-ab-2026', 'workout-b', LAST_SET + FOUR_HOURS)
+
+    expect(await db.sessions.get('forgotten')).toEqual({
+      ...inProgressWithSets(),
+      finishedAt: LAST_SET,
+      updatedAt: LAST_SET + FOUR_HOURS,
+    })
+  })
+
+  test('O1 startOrResumeSession 4 h after the latest Set returns a new Session for the requested Workout', async () => {
+    await db.sessions.put(inProgressWithSets())
+    const now = LAST_SET + FOUR_HOURS
+
+    const session = await startOrResumeSession('full-body-starter', 'full-body', now)
+
+    expect(session.id).not.toBe('forgotten')
+    expect(session.programId).toBe('full-body-starter')
+    expect(session.workoutId).toBe('full-body')
+    expect(session.startedAt).toBe(now)
+    expect(session.finishedAt).toBeNull()
+    expect(session.entries).toEqual([])
+    expect(await db.sessions.count()).toBe(2)
+    expect(await getActiveSession()).toEqual(session)
+  })
+
+  test('O1 the finished forgotten Session is in history and presets its lifts', async () => {
+    await db.sessions.put(inProgressWithSets())
+
+    await startOrResumeSession('assaf-ab-2026', 'workout-a', LAST_SET + 5 * HOUR)
+
+    expect((await listSessions()).map((session) => session.id)).toEqual(['forgotten'])
+    expect(await getLastEntriesFor('back-squat')).toEqual([
+      entry('back-squat', 1, 40, 10, BASE + 10 * 60 * SECOND),
+      entry('back-squat', 2, 50, 10, LAST_SET),
+    ])
+  })
+
+  test('O1 startOrResumeSession 1 ms short of 4 h after the latest Set resumes the Session unchanged', async () => {
+    await db.sessions.put(inProgressWithSets())
+
+    const resumed = await startOrResumeSession(
+      'assaf-ab-2026',
+      'workout-b',
+      LAST_SET + FOUR_HOURS - 1,
+    )
+
+    expect(resumed).toEqual(inProgressWithSets())
+    expect(await db.sessions.get('forgotten')).toEqual(inProgressWithSets())
+    expect(await db.sessions.count()).toBe(1)
+  })
+
+  test('O1 a Session started over 4 h ago whose latest Set is recent is resumed, not finished', async () => {
+    // Started 4 h 50 min before now, but its latest Set was logged 1 h before now.
+    await db.sessions.put(inProgressWithSets())
+
+    const resumed = await startOrResumeSession('assaf-ab-2026', 'workout-a', LAST_SET + HOUR)
+
+    expect(resumed.id).toBe('forgotten')
+    expect((await db.sessions.get('forgotten'))?.finishedAt).toBeNull()
+  })
+
+  test('O1 finishStaleSession stores a stale Session finished at its latest Set with updatedAt now', async () => {
+    await db.sessions.put(inProgressWithSets())
+
+    await finishStaleSession(LAST_SET + 6 * HOUR)
+
+    expect(await db.sessions.get('forgotten')).toEqual({
+      ...inProgressWithSets(),
+      finishedAt: LAST_SET,
+      updatedAt: LAST_SET + 6 * HOUR,
+    })
+    expect(await getActiveSession()).toBeNull()
+  })
+
+  test('O1 finishStaleSession leaves a Session 1 ms short of stale untouched', async () => {
+    await db.sessions.put(inProgressWithSets())
+
+    await finishStaleSession(LAST_SET + FOUR_HOURS - 1)
+
+    expect(await db.sessions.get('forgotten')).toEqual(inProgressWithSets())
+  })
+
+  test('O1 finishStaleSession with nothing in progress leaves finished Sessions as they are', async () => {
+    const stored = history(2)
+    await db.sessions.bulkPut(stored)
+
+    await finishStaleSession(BASE + 30 * DAY)
+
+    expect(await db.sessions.count()).toBe(2)
+    expect(await db.sessions.get('session-0')).toEqual(stored[0])
+    expect(await db.sessions.get('session-1')).toEqual(stored[1])
+  })
+
+  test('O1 finishStaleSession on an empty database stores nothing', async () => {
+    await finishStaleSession(BASE)
+
+    expect(await db.sessions.count()).toBe(0)
+  })
+
+  // --- O2 ---
+
+  test('O2 startOrResumeSession 4 h after an empty Session started deletes it rather than finishing it', async () => {
+    await db.sessions.put(inProgressEmpty())
+
+    await startOrResumeSession('assaf-ab-2026', 'workout-a', STARTED + FOUR_HOURS)
+
+    expect(await db.sessions.get('forgotten-empty')).toBeUndefined()
+    expect(await listSessions()).toEqual([])
+  })
+
+  test('O2 startOrResumeSession 4 h after an empty Session started returns a new Session for the requested Workout', async () => {
+    await db.sessions.put(inProgressEmpty())
+    const now = STARTED + FOUR_HOURS
+
+    const session = await startOrResumeSession('assaf-ab-2026', 'workout-b', now)
+
+    expect(session.id).not.toBe('forgotten-empty')
+    expect(session.workoutId).toBe('workout-b')
+    expect(session.startedAt).toBe(now)
+    expect(session.finishedAt).toBeNull()
+    expect(await db.sessions.count()).toBe(1)
+    expect(await db.sessions.get(session.id)).toEqual(session)
+  })
+
+  test('O2 startOrResumeSession 1 ms short of 4 h after an empty Session started resumes it unchanged', async () => {
+    await db.sessions.put(inProgressEmpty())
+
+    const resumed = await startOrResumeSession(
+      'assaf-ab-2026',
+      'workout-b',
+      STARTED + FOUR_HOURS - 1,
+    )
+
+    expect(resumed).toEqual(inProgressEmpty())
+    expect(await db.sessions.count()).toBe(1)
+  })
+
+  test('O2 finishStaleSession deletes a stale empty Session and leaves finished ones alone', async () => {
+    const stored = history(1)
+    await db.sessions.bulkPut([...stored, inProgressEmpty()])
+
+    await finishStaleSession(STARTED + 5 * HOUR)
+
+    expect(await db.sessions.get('forgotten-empty')).toBeUndefined()
+    expect(await db.sessions.count()).toBe(1)
+    expect(await db.sessions.get('session-0')).toEqual(stored[0])
   })
 })

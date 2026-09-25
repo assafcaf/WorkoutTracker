@@ -40,6 +40,18 @@ async function requireSession(sessionId: string): Promise<Session> {
   return session
 }
 
+/** How long a Session in progress may sit untouched before it finishes itself (E8-T6). */
+export const STALE_SESSION_MS = 4 * 60 * 60 * 1000
+
+/**
+ * Finishes the Session in progress at its last activity when that was `STALE_SESSION_MS` or
+ * more before `now`, or deletes it when it holds no Sets (E8-T6).
+ */
+export async function finishStaleSession(now: number): Promise<void> {
+  void now
+  throw new Error('not implemented: finishStaleSession (E8-T6)')
+}
+
 /**
  * The session in progress, or a new one when there is none.
  *

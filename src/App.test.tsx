@@ -3017,3 +3017,76 @@ describe('E4-T6', () => {
   })
 })
 
+// --- E8-T6: a forgotten Session finishes itself at launch ----------------------------------
+
+describe('E8-T6', () => {
+  const HOUR_MS = 60 * 60 * 1000
+
+  /**
+   * Stores a Workout A Session still in progress whose four back squat Sets -- 40x10, 50x10,
+   * 60x8, 60x8 -- ended five hours before the real clock, and returns the last Set's time.
+   * App's launch reads `Date.now()`, so these stamps are relative to it, not to BASE.
+   */
+  async function staleBackSquatSession(): Promise<number> {
+    const lastSetAt = Date.now() - 5 * HOUR_MS
+    const startedAt = lastSetAt - 30 * 60 * 1000
+    const sets: [number, number][] = [
+      [40, 10],
+      [50, 10],
+      [60, 8],
+      [60, 8],
+    ]
+    await db.sessions.put({
+      id: 'forgotten',
+      programId: 'assaf-ab-2026',
+      workoutId: 'workout-a',
+      startedAt,
+      finishedAt: null,
+      entries: sets.map(([weightKg, reps], index) => ({
+        exerciseId: 'back-squat',
+        setIndex: index + 1,
+        weightKg,
+        reps,
+        loggedAt: lastSetAt - (3 - index) * 5 * 60 * 1000,
+      })),
+      updatedAt: lastSetAt,
+    })
+    return lastSetAt
+  }
+
+  test('O3 launching with a stale Session in progress shows the picker with no resume card', async () => {
+    await staleBackSquatSession()
+
+    render(<App />)
+
+    expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+    expect(resumeControl()).toBeNull()
+  })
+
+  test('O3 launching with a stale Session in progress stores it finished at its last Set', async () => {
+    const lastSetAt = await staleBackSquatSession()
+
+    render(<App />)
+    await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
+
+    expect(await getActiveSession()).toBeNull()
+    const finished = await listSessions()
+    expect(finished.map((session) => [session.id, session.finishedAt])).toEqual([
+      ['forgotten', lastSetAt],
+    ])
+  })
+
+  test('O3 after a stale Session finishes itself, Back squat Set 2 opens preset at 50 kg x 10', async () => {
+    await staleBackSquatSession()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await startWorkout(user, 'Workout A')
+    await openExercise(user, 'Back squat')
+    expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['40', '10'])
+    await logSetAndOpen(user, 2, 4)
+
+    expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['50', '10'])
+  })
+})
+
