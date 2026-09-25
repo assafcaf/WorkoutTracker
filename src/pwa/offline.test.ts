@@ -13,10 +13,14 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { JSDOM } from 'jsdom'
 import { build } from 'vite'
-import { beforeAll, expect, test } from 'vitest'
+import { beforeAll, expect, test, vi } from 'vitest'
 import { buildApp, type BuiltApp } from '../test/buildFixture'
 import { appUrl, startServiceWorker, type ServiceWorkerHarness } from '../test/swHarness'
 import { registerServiceWorker } from './registerSW'
+
+// The first test to reach the cached app pays for its cold launch in jsdom (see `launch` below),
+// which takes well over the default 5 s when other suites are building at the same time.
+vi.setConfig({ testTimeout: 60_000 })
 
 let app: BuiltApp
 let sw: ServiceWorkerHarness
