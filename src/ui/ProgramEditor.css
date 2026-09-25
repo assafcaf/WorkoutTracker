@@ -1,0 +1,137 @@
+/* The Program editor (E9-T7): the Program's own fields, a card per Workout with its Plans, and
+ * the exercise search overlay, which takes its fixed, opaque shape from `.overlay-panel`
+ * (src/styles/overlay.css). `Save` is styled by the Action bar (src/ui/AppShell.css).
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
+ * one definition site.
+ */
+
+.program-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.program-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.program-editor-label {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.program-editor-input {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.program-editor-workout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.program-editor-legend {
+  float: left;
+  padding: 0;
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.program-editor-plans {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.program-editor-plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.program-editor-plan-name {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.program-editor-plan-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.program-editor-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.program-editor-action,
+.program-editor-cancel,
+.program-editor-add {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.program-editor-action:disabled {
+  color: var(--color-muted);
+}
+
+.program-editor-cancel {
+  align-self: flex-start;
+}
+
+.program-editor-error {
+  margin: 0;
+  color: var(--color-danger);
+}
+
+/* `Save`: one of the Action bar's own buttons, given its own class so the control audit
+ * (src/styles/controlAudit.test.ts) finds a rule for it. */
+.program-editor-save {
+  font-weight: 600;
+}
+
+.program-editor-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+.program-editor-picker-heading {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text);
+  font-size: var(--text-xl);
+}

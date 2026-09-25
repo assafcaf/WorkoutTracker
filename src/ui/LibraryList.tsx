@@ -41,6 +41,7 @@ export function LibraryList({
   onOpen,
   gymEquipment,
   initialMuscles,
+  onPick,
 }: LibraryListProps): JSX.Element {
   const [gymOnly, setGymOnly] = useState(true)
   const [page, setPage] = useState(0)
@@ -104,6 +105,15 @@ export function LibraryList({
                   <span className="library-row-name">{exercise.name}</span>
                   <span className="library-row-muscle">{exercise.primaryMuscles[0]}</span>
                 </button>
+                {onPick === undefined ? null : (
+                  <button
+                    type="button"
+                    className="library-row-pick"
+                    onClick={() => onPick(exercise.id)}
+                  >
+                    Pick
+                  </button>
+                )}
               </li>
             ))}
           </ul>
