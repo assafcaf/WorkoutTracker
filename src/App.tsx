@@ -809,6 +809,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}
+            onFinishExercise={() => setView('list')}
           />
         </AppShell>
       )
