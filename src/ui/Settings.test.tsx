@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import { Settings } from './Settings'
-import type { Program } from '../types'
+import type { Program, VolumeBaseline } from '../types'
 import type { SyncView } from './Settings'
 
 function program(id: string, name: string): Program {
@@ -391,4 +391,114 @@ test('S14 re-ticking a previously unticked equipment type adds it back to the sa
   await user.click(screen.getByRole('checkbox', { name: 'dumbbell' }))
 
   expect(onGymEquipmentChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
+})
+
+// --- E8-T11: choosing the volume baseline in Settings --------------------------------------
+
+function renderWithBaseline(
+  volumeBaseline: VolumeBaseline,
+  onVolumeBaselineChange: (baseline: VolumeBaseline) => void = vi.fn(),
+): void {
+  render(
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
+      volumeBaseline={volumeBaseline}
+      onVolumeBaselineChange={onVolumeBaselineChange}
+    />,
+  )
+}
+
+test('O1 "Compare volume with" lists Last workout, Past week, Past month, Past 3 months, Past 6 months and Since a date', () => {
+  renderWithBaseline({ period: 'last' })
+
+  const select = screen.getByRole('combobox', { name: 'Compare volume with' })
+  const optionNames = within(select)
+    .getAllByRole('option')
+    .map((option) => option.textContent)
+
+  expect(optionNames).toEqual([
+    'Last workout',
+    'Past week',
+    'Past month',
+    'Past 3 months',
+    'Past 6 months',
+    'Since a date',
+  ])
+})
+
+test('O1 "Using" is not shown while "Compare volume with" is Last workout', () => {
+  renderWithBaseline({ period: 'last' })
+
+  expect(screen.queryByRole('combobox', { name: 'Using' })).toBeNull()
+})
+
+test('O1 "Using" lists Average and Best once a period other than Last workout is chosen', () => {
+  renderWithBaseline({ period: '3m', aggregate: 'avg' })
+
+  const select = screen.getByRole('combobox', { name: 'Using' })
+  const optionNames = within(select)
+    .getAllByRole('option')
+    .map((option) => option.textContent)
+
+  expect(optionNames).toEqual(['Average', 'Best'])
+})
+
+test('O1 choosing Past 3 months calls onVolumeBaselineChange with period 3m and aggregate avg', async () => {
+  const user = userEvent.setup()
+  const onVolumeBaselineChange = vi.fn()
+  renderWithBaseline({ period: 'last' }, onVolumeBaselineChange)
+
+  await user.selectOptions(
+    screen.getByRole('combobox', { name: 'Compare volume with' }),
+    'Past 3 months',
+  )
+
+  expect(onVolumeBaselineChange).toHaveBeenCalledWith({ period: '3m', aggregate: 'avg' })
+})
+
+test('O1 choosing Best in "Using" calls onVolumeBaselineChange with the same period and aggregate max', async () => {
+  const user = userEvent.setup()
+  const onVolumeBaselineChange = vi.fn()
+  renderWithBaseline({ period: '3m', aggregate: 'avg' }, onVolumeBaselineChange)
+
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Using' }), 'Best')
+
+  expect(onVolumeBaselineChange).toHaveBeenCalledWith({ period: '3m', aggregate: 'max' })
+})
+
+test('O1 choosing Last workout calls onVolumeBaselineChange with just period last', async () => {
+  const user = userEvent.setup()
+  const onVolumeBaselineChange = vi.fn()
+  renderWithBaseline({ period: '3m', aggregate: 'avg' }, onVolumeBaselineChange)
+
+  await user.selectOptions(
+    screen.getByRole('combobox', { name: 'Compare volume with' }),
+    'Last workout',
+  )
+
+  expect(onVolumeBaselineChange).toHaveBeenCalledWith({ period: 'last' })
+})
+
+test('O1 choosing Since a date shows a date input', () => {
+  renderWithBaseline({ period: 'since', since: Date.UTC(2026, 2, 1), aggregate: 'avg' })
+
+  expect(screen.getByLabelText('Since')).toHaveAttribute('type', 'date')
+})
+
+test('O1 entering a date in "Since" calls onVolumeBaselineChange with period since at that date (UTC midnight) and the current aggregate', () => {
+  const onVolumeBaselineChange = vi.fn()
+  renderWithBaseline({ period: 'since', since: Date.UTC(2026, 2, 1), aggregate: 'max' }, onVolumeBaselineChange)
+
+  fireEvent.change(screen.getByLabelText('Since'), { target: { value: '2026-04-15' } })
+
+  expect(onVolumeBaselineChange).toHaveBeenCalledWith({
+    period: 'since',
+    since: Date.UTC(2026, 3, 15),
+    aggregate: 'max',
+  })
 })

@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import type { Program } from '../types'
+import type { Program, VolumeBaseline } from '../types'
 import './Settings.css'
 
 /** The Account section's view of the phone's cloud sync (E7-T7). */
@@ -41,6 +41,13 @@ export type SettingsProps = {
   onSyncNow?(): void
   /** Called when the trainee taps "Use <signedInEmail>'s data on this phone". */
   onAdoptAccount?(): void
+  /** The chosen "Compare volume with" setting (E8-T3/T10), read by the exercise list's rows. */
+  volumeBaseline: VolumeBaseline
+  /**
+   * Called with the next `VolumeBaseline` whenever "Compare volume with", "Using" or the
+   * "Since a date" date input changes (E8-T11).
+   */
+  onVolumeBaselineChange(baseline: VolumeBaseline): void
 }
 
 /**
@@ -72,6 +79,10 @@ export function Settings(props: SettingsProps): JSX.Element {
     sync,
     onSyncNow,
     onAdoptAccount,
+    // E8-T11: not read yet. The "Compare volume with"/"Using" selects and the "Since a date"
+    // date input do not render until the code-writer adds them below.
+    volumeBaseline: _volumeBaseline,
+    onVolumeBaselineChange: _onVolumeBaselineChange,
   } = props
 
   /** Toggles `type` in the effective gym equipment list and reports the next full list. */
