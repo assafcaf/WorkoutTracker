@@ -19,6 +19,8 @@ export type LibraryListProps = {
    * and non-empty, only exercises with at least one of them among `primaryMuscles` are listed.
    */
   initialMuscles?: Muscle[]
+  /** When given, each row shows a `Pick` button calling it with the row's id (E9-T7). */
+  onPick?(id: string): void
 }
 
 /**

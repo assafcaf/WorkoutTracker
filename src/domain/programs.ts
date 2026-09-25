@@ -29,6 +29,11 @@ export function visiblePrograms(programs: Program[]): Program[] {
     )
 }
 
+/** A Plan for a freshly picked Exercise: 3 sets, 8-12 reps, 90 s rest, no starting weight (E9-T7). */
+export function newPlan(exerciseId: string): ExercisePlan {
+  throw new Error(`newPlan(${exerciseId}): not implemented`)
+}
+
 const isBlank = (text: string) => text.trim() === ''
 const inRange = (value: number, min: number, max: number) => value >= min && value <= max
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { mergePrograms, validateProgram, visiblePrograms } from './programs'
+import { mergePrograms, newPlan, validateProgram, visiblePrograms } from './programs'
 import type { ProgramFault } from './programs'
 import { loadCatalog, loadPrograms } from '../data/catalog'
 import type { Exercise, ExercisePlan, Program, UserProgram, Workout } from '../types'
@@ -343,5 +343,25 @@ describe('O3 validateProgram', () => {
         { path: 'workouts.2.exercises', message: 'Add an exercise' },
       ].sort(byPath),
     )
+  })
+})
+
+// --- E9-T7 O14: a new Plan's defaults ----------------------------------------------------------
+
+describe('newPlan (E9-T7 O14)', () => {
+  test('O14 a new Plan starts with 3 sets, 8-12 reps, 90 s rest and no starting weight', () => {
+    const made = newPlan('bench')
+
+    expect(made).toEqual({ exerciseId: 'bench', sets: 3, repRange: [8, 12], restSeconds: 90 })
+    expect('startWeightKg' in made).toBe(false)
+  })
+
+  test('O14 two new Plans do not share one rep range array', () => {
+    const first = newPlan('bench')
+    const second = newPlan('squat')
+
+    first.repRange[1] = 15
+
+    expect(second.repRange).toEqual([8, 12])
   })
 })
