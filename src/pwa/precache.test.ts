@@ -47,7 +47,7 @@ beforeAll(async () => {
 
 /** The build-output path of a URL the worker holds, e.g. `assets/index-Odz3.js`. */
 function distPathOfCached(url: string): string {
-  return new URL(url).pathname.replace('/WorkoutTracker/', '')
+  return new URL(url).pathname.replace(/^\//, '')
 }
 
 /** The bytes the worker serves for a precached URL with the network down. */

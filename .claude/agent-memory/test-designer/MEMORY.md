@@ -1,0 +1,2 @@
+- When a base-path constant becomes '/', `startsWith(BASE)` assertions go vacuous (always true) — assert resolved-file membership in build output instead (E7-T3, 2026-09-25)
+- A swHarness test against an unimplemented workbox denylist can fail via a thrown TypeError deep in workbox-precaching, not a clean assertion diff — that's still valid red (E7-T3, 2026-09-25)

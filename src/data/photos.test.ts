@@ -26,11 +26,11 @@ test('L13 photoUrls resolves a catalog exercise to the bundled local library-pho
   const entry = fixtureEntry('Barbell_Squat', ['Barbell_Squat/0.jpg', 'Barbell_Squat/1.jpg'])
   const catalogLibraryIds = new Set(['Barbell_Squat'])
 
-  const urls = photoUrls(entry, catalogLibraryIds, '/WorkoutTracker/')
+  const urls = photoUrls(entry, catalogLibraryIds, '/')
 
   expect(urls).toEqual([
-    '/WorkoutTracker/library-photos/Barbell_Squat/0.jpg',
-    '/WorkoutTracker/library-photos/Barbell_Squat/1.jpg',
+    '/library-photos/Barbell_Squat/0.jpg',
+    '/library-photos/Barbell_Squat/1.jpg',
   ])
 })
 
@@ -38,7 +38,7 @@ test('L13 photoUrls resolves a non-catalog exercise to the pinned free-exercise-
   const entry = fixtureEntry('Zottman_Curl', ['Zottman_Curl/0.jpg'])
   const catalogLibraryIds = new Set(['Barbell_Squat'])
 
-  const urls = photoUrls(entry, catalogLibraryIds, '/WorkoutTracker/')
+  const urls = photoUrls(entry, catalogLibraryIds, '/')
 
   expect(urls).toEqual([
     `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${LIBRARY_COMMIT}/exercises/Zottman_Curl/0.jpg`,
@@ -48,7 +48,7 @@ test('L13 photoUrls resolves a non-catalog exercise to the pinned free-exercise-
 test('L13 photoUrls returns an empty array for an entry with no images', () => {
   const entry = fixtureEntry('No_Photos', [])
 
-  const urls = photoUrls(entry, new Set(['No_Photos']), '/WorkoutTracker/')
+  const urls = photoUrls(entry, new Set(['No_Photos']), '/')
 
   expect(urls).toEqual([])
 })

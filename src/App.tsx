@@ -15,6 +15,7 @@ import { MUSCLES, loadLibrary, loadVideos } from './data/library'
 import { photoUrls } from './data/photos'
 import { resolveExercise } from './data/resolve'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
+import { useSync } from './sync/useSync'
 import {
   BackupFormatError,
   downloadOrShare,
@@ -299,6 +300,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // The swap each plan of the session's workout carried last time it was finished (E5-T14),
   // keyed plannedId -> doneId, so the exercise list can offer "Last time" as one tap.
   const [lastSwaps, setLastSwaps] = useState<Record<string, string>>({})
+  // Cloud sync (E7-T8): runs on mount, on `online` and after a finished session, by itself.
+  const { sync, syncNow, adoptAccount, replaceRemote } = useSync()
+  const loadedPrograms = state.status === 'ready' ? state.programs : null
   // The last finished session's entries of each exercise the list shows (E4-T6), keyed by the
   // id actually done, feeding each row's progression bar.
   const [lastEntries, setLastEntries] = useState<Map<string, SetEntry[]>>(new Map())
@@ -359,6 +363,37 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       cancelled = true
     }
   }, [])
+
+  // A sync or an adopt can change the sessions and synced settings under the app; reload what
+  // reads them once the app is ready and after each change of the last sync time, so pulled data
+  // shows without a restart.
+  const lastSyncedAt = sync.lastSyncedAt
+  useEffect(() => {
+    if (loadedPrograms === null || lastSyncedAt === null) return
+    const programs = loadedPrograms
+    let cancelled = false
+
+    async function reload(): Promise<void> {
+      try {
+        const activeProgramId = await getActiveProgramId(programs)
+        const gymEquipmentList = await getGymEquipment()
+        const sessions = await listSessions()
+        if (cancelled) return
+        setState((current) =>
+          current.status === 'ready' ? { ...current, activeProgramId } : current,
+        )
+        setGymEquipment(gymEquipmentList)
+        setHistory(sessions)
+      } catch {
+        // The app keeps what it has; the next sync or restart reads it again.
+      }
+    }
+
+    reload()
+    return () => {
+      cancelled = true
+    }
+  }, [loadedPrograms, lastSyncedAt])
 
   if (state.status === 'loading') return <div />
 
@@ -578,9 +613,15 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     if (!pendingImport) return
     const { text } = pendingImport
     setPendingImport(null)
-    importBackup(text).catch(() => {
-      setImportError('the backup could not be imported')
-    })
+    importBackup(text)
+      .then(() => {
+        // The server is made to match the phone, so the next sync cannot bring back what the
+        // import replaced.
+        void replaceRemote()
+      })
+      .catch(() => {
+        setImportError('the backup could not be imported')
+      })
   }
 
   /** Shows the Exercises tab; the library itself is loaded once, up front, on mount. */
@@ -701,6 +742,13 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           equipmentTypes={equipmentTypes}
           gymEquipment={gymEquipment}
           onGymEquipmentChange={handleGymEquipmentChange}
+          sync={sync}
+          onSyncNow={() => {
+            void syncNow()
+          }}
+          onAdoptAccount={() => {
+            void adoptAccount()
+          }}
         />
         <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
         {importError ? <div role="alert">{importError}</div> : null}
@@ -774,6 +822,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         setOpenSet(null)
         setView('picker')
         setSummarySession(finished)
+        // Not awaited: finishing never waits on the sync it starts.
+        void syncNow()
       })
       .catch(() => {
         // The list stays up; nothing was cleared, so there is nothing to undo.

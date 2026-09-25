@@ -9,3 +9,5 @@ dist/
 coverage/
 *.local
 .vite/
+.dev.vars
+.wrangler/

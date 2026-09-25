@@ -18,10 +18,11 @@ import { readTokens } from '../test/cssAudit'
 const repoRoot = resolve(fileURLToPath(import.meta.url), '..', '..', '..')
 const tokensPath = join(repoRoot, 'src', 'styles', 'tokens.css')
 
-// The path the app is served from on GitHub Pages. Written out here rather than read back from
-// the config on purpose: a build that forgets the base path works perfectly on localhost and
-// 404s in production, so the expectation has to be independent of the thing under test.
-const BASE = '/WorkoutTracker/'
+// The path the app is served from at the root of the Cloudflare Worker (decision 0007). Written
+// out here rather than read back from the config on purpose: a build that forgets the base path
+// works perfectly on localhost and 404s in production, so the expectation has to be independent
+// of the thing under test.
+const BASE = '/'
 
 type ManifestIcon = {
   src: string
@@ -135,27 +136,28 @@ test('O1 the built index.html links the manifest', () => {
   expect(link).toMatch(/href="[^"]*manifest\.webmanifest"/)
 })
 
-test('O2 every asset reference in the built index.html carries the base path', () => {
+// With BASE now '/', a reference merely starting with '/' proves nothing -- every rooted URL
+// does. What has to hold is that the reference actually resolves to a file this build serves at
+// its root, so a leftover base segment (e.g. '/WorkoutTracker/assets/…') fails this instead of
+// passing it vacuously.
+test('O2 every asset reference in the built index.html resolves to a file this build serves at the root', () => {
   const refs = localReferences(app.read('index.html'))
   expect(refs.length, 'index.html references nothing this build serves').toBeGreaterThan(0)
-  const rooted = refs.filter((ref) => !ref.startsWith(BASE))
-  expect(rooted, 'these index.html references do not carry the base path').toEqual([])
+  const missing = refs
+    .map((ref) => distPathOf(ref))
+    .filter((path): path is string => path !== null)
+    .filter((path) => !app.files.includes(path))
+  expect(missing, 'these index.html references do not resolve to a file this build serves').toEqual(
+    [],
+  )
 })
 
 test('O2 the manifest start_url is under the configured base path', () => {
-  expect(manifest().start_url ?? '').toMatch(/^\/WorkoutTracker\//)
+  expect(manifest().start_url ?? '').toMatch(/^\//)
 })
 
 test('O2 the service worker is emitted at the root of dist, so its scope is the base path', () => {
   expect(app.files).toContain('sw.js')
-})
-
-test('O2 no URL in the service worker resolves to the domain root', () => {
-  const sw = app.read('sw.js')
-  const urls = [...sw.matchAll(/(?:"url"|'url'|url)\s*:\s*["']([^"']+)["']/g)].map((m) => m[1])
-  expect(urls.length, 'the service worker lists no precached URL at all').toBeGreaterThan(0)
-  const rooted = urls.filter((url) => url.startsWith('/') && !url.startsWith(BASE))
-  expect(rooted, 'these service worker URLs resolve to the domain root').toEqual([])
 })
 
 // [O5] The installed app's splash screen and status bar have to match the app's own
@@ -173,4 +175,26 @@ test('O5 the manifest background_color matches the --color-bg token, so the iOS 
   const colorBg = readTokens(readFileSync(tokensPath, 'utf-8')).get('--color-bg')
   expect(colorBg, 'tokens.css has no --color-bg token').toBeDefined()
   expect((manifest().background_color ?? '').toLowerCase()).toBe((colorBg ?? '').toLowerCase())
+})
+
+// [O15] Served from the root of the Cloudflare Worker behind Access (decision 0007 supersedes
+// 0003's GitHub Pages base path): the manifest's own start_url and scope must be exactly '/',
+// not merely rooted, and its <link> must ask for credentialed mode or Access's cookie never
+// reaches the manifest fetch and the browser refuses to install the app.
+
+test('O15 the manifest start_url is exactly the root path "/"', () => {
+  expect(manifest().start_url).toBe('/')
+})
+
+test('O15 the manifest scope is exactly the root path "/"', () => {
+  expect(manifest().scope).toBe('/')
+})
+
+test('O15 the built index.html\'s manifest <link> carries crossorigin="use-credentials", so Access lets the fetch through', () => {
+  const html = app.read('index.html')
+  const link = [...html.matchAll(/<link\b[^>]*>/g)]
+    .map((m) => m[0])
+    .find((tag) => /rel="manifest"/.test(tag))
+  expect(link, 'index.html has no <link rel="manifest">').toBeDefined()
+  expect(link).toMatch(/crossorigin="use-credentials"/)
 })

@@ -2,6 +2,17 @@ import type { ChangeEvent } from 'react'
 import type { Program } from '../types'
 import './Settings.css'
 
+/** The Account section's view of the phone's cloud sync (E7-T7). */
+export type SyncView = {
+  accountEmail: string | null
+  lastSyncedAt: number | null
+  status: 'idle' | 'syncing' | 'ok' | 'offline' | 'signed-out' | 'error' | 'account-mismatch'
+  // Present when status is 'account-mismatch'.
+  signedInEmail?: string
+  // Present when status is 'error'.
+  message?: string
+}
+
 export type SettingsProps = {
   programs: Program[]
   activeProgramId: string
@@ -24,6 +35,12 @@ export type SettingsProps = {
   gymEquipment: string[] | null
   /** Called with the next gym equipment list when a type in "My gym's equipment" is (un)ticked. */
   onGymEquipmentChange(list: string[]): void
+  /** The phone's cloud sync state (E7-T7). Omitted, the Account section does not render. */
+  sync?: SyncView
+  /** Called when the trainee taps "Sync now". */
+  onSyncNow?(): void
+  /** Called when the trainee taps "Use <signedInEmail>'s data on this phone". */
+  onAdoptAccount?(): void
 }
 
 /**
@@ -52,6 +69,9 @@ export function Settings(props: SettingsProps): JSX.Element {
     equipmentTypes,
     gymEquipment,
     onGymEquipmentChange,
+    sync,
+    onSyncNow,
+    onAdoptAccount,
   } = props
 
   /** Toggles `type` in the effective gym equipment list and reports the next full list. */
@@ -130,6 +150,54 @@ export function Settings(props: SettingsProps): JSX.Element {
           onChange={handleFileChange}
         />
       </label>
+      {sync ? (
+        <fieldset className="settings-group">
+          <legend className="settings-legend">Account</legend>
+          <p className="settings-account-email">
+            {sync.accountEmail ?? 'Not signed in'}
+          </p>
+          <p className="settings-account-synced">
+            {sync.lastSyncedAt === null
+              ? 'Never synced'
+              : new Date(sync.lastSyncedAt).toLocaleString()}
+          </p>
+          <button
+            type="button"
+            className="settings-action"
+            onClick={() => onSyncNow?.()}
+            disabled={sync.status === 'syncing'}
+          >
+            <span className="settings-action-label">Sync now</span>
+          </button>
+          {sync.status === 'signed-out' ? (
+            <a className="settings-action" href="/api/login">
+              <span className="settings-action-label">Sign in</span>
+            </a>
+          ) : null}
+          {sync.status === 'account-mismatch' ? (
+            <>
+              <p className="settings-account-mismatch">
+                This phone is signed in as {sync.signedInEmail}, but last synced as{' '}
+                {sync.accountEmail}.
+              </p>
+              <button
+                type="button"
+                className="settings-action"
+                onClick={() => onAdoptAccount?.()}
+              >
+                <span className="settings-action-label">
+                  Use {sync.signedInEmail}&apos;s data on this phone
+                </span>
+              </button>
+            </>
+          ) : null}
+          {sync.status === 'offline' ? (
+            <p className="settings-account-offline">
+              This phone is offline; it will sync later.
+            </p>
+          ) : null}
+        </fieldset>
+      ) : null}
     </div>
   )
 }

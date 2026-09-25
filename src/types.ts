@@ -92,4 +92,9 @@ export type Session = {
    * Absent on a session with no swap, and on every session recorded before this epic.
    */
   swaps?: Record<string, string>
+  /**
+   * When this session was last written on this device (E7-T2). Always present on records
+   * written by this build; absent on sessions imported from an older backup.
+   */
+  updatedAt?: number
 }

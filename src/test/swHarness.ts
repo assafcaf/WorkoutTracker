@@ -19,8 +19,8 @@ import type { BuiltApp } from './buildFixture'
 /** The origin the harness pretends the app was deployed to. */
 export const ORIGIN = 'https://example.test'
 
-/** The GitHub Pages project path the app is served from. */
-export const BASE = '/WorkoutTracker/'
+/** The path the app is served from at the root of the Cloudflare Worker. */
+export const BASE = '/'
 
 /** The absolute URL of `relPath` inside the deployed app. */
 export function appUrl(relPath: string): string {

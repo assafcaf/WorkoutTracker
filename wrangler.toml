@@ -1,0 +1,21 @@
+name = "workout-tracker"
+main = "src/worker/index.ts"
+compatibility_date = "2024-11-01"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "workout-tracker"
+database_id = "85c69e30-8c54-40a6-9c88-d895707358d2"
+migrations_dir = "migrations"
+
+[vars]
+# The Access application in front of this Worker (Zero Trust team patient-heart-afff). Neither is
+# a secret: the AUD only names the application. Empty values mean every /api/* request is refused.
+ACCESS_TEAM_DOMAIN = "patient-heart-afff.cloudflareaccess.com"
+ACCESS_AUD = "3b7904f40ade5aa3e6d23ead5f5c2e6bd77c487d37a23860076ff26b88581dd9"
