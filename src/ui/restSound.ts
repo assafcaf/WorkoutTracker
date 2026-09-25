@@ -7,10 +7,42 @@
  * `AudioContext` does not exist on this host, both functions are silent no-ops.
  */
 
+/** Each beep's duration in seconds and pitch in Hz. */
+const TONE_SECONDS = 0.12
+const TONE_GAP_SECONDS = 0.08
+const TONE_HZ = 880
+
+let audioContext: AudioContext | null = null
+
+function getAudioContextCtor(): typeof AudioContext | undefined {
+  return (globalThis as { AudioContext?: typeof AudioContext }).AudioContext
+}
+
 export function unlockRestSound(): void {
-  throw new Error('not implemented')
+  const AudioContextCtor = getAudioContextCtor()
+  if (AudioContextCtor === undefined) return
+
+  if (audioContext === null) {
+    audioContext = new AudioContextCtor()
+    return
+  }
+  if (audioContext.state !== 'running') {
+    void audioContext.resume()
+  }
 }
 
 export function playRestOver(): void {
-  throw new Error('not implemented')
+  if (audioContext === null) return
+
+  for (let i = 0; i < 3; i += 1) {
+    const startAt = audioContext.currentTime + i * (TONE_SECONDS + TONE_GAP_SECONDS)
+    const oscillator = audioContext.createOscillator()
+    const gain = audioContext.createGain()
+    oscillator.type = 'sine'
+    oscillator.frequency.value = TONE_HZ
+    oscillator.connect(gain)
+    gain.connect(audioContext.destination)
+    oscillator.start(startAt)
+    oscillator.stop(startAt + TONE_SECONDS)
+  }
 }
