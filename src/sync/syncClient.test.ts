@@ -1,13 +1,15 @@
-import { beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { db, type SettingRow } from '../storage/db'
 import { logSet } from '../storage/sessionStore'
+import { getWeightStep, setVolumeBaseline, setWeightStep } from '../storage/settingsStore'
 import type { Session, SetEntry } from '../types'
-import type {
-  ReplaceRequest,
-  SyncedSession,
-  SyncedSetting,
-  SyncRequest,
-  SyncResponse,
+import {
+  SYNCED_SETTING_KEYS,
+  type ReplaceRequest,
+  type SyncedSession,
+  type SyncedSetting,
+  type SyncRequest,
+  type SyncResponse,
 } from './protocol'
 import { adoptSignedInAccount, getSyncState, replaceRemote, syncNow } from './syncClient'
 
@@ -655,4 +657,53 @@ test('O11 the sync after adopting b@x pulls all of b@x data from since 0 and pus
     { key: 'activeProgramId', value: 'full-body-starter', updatedAt: T0 + 200 },
   ])
   expect(server.sessionsOf('b@x').map((s) => s.id)).toEqual(['b-1'])
+})
+
+// --- E8-T3 O3: weight steps and the volume baseline are synced settings ----------------------
+
+test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides activeProgramId and gymEquipment', () => {
+  expect([...SYNCED_SETTING_KEYS].sort()).toEqual([
+    'activeProgramId',
+    'gymEquipment',
+    'volumeBaseline',
+    'weightSteps',
+  ])
+})
+
+test('O3 a weight step stored with setWeightStep is pushed by the next syncNow, stamped with the time of the write', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 500)
+  await setWeightStep('back-squat', 5)
+  vi.restoreAllMocks()
+
+  await syncNow({ fetch: server.fetch })
+
+  const [request] = server.syncRequests()
+  expect(request.settings).toContainEqual({
+    key: 'weightSteps',
+    value: { 'back-squat': 5 },
+    updatedAt: T0 + 500,
+  })
+})
+
+test('O3 a volume baseline stored with setVolumeBaseline is pushed by the next syncNow, stamped with the time of the write', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 700)
+  await setVolumeBaseline({ period: '3m', aggregate: 'max' })
+  vi.restoreAllMocks()
+
+  await syncNow({ fetch: server.fetch })
+
+  const [request] = server.syncRequests()
+  expect(request.settings).toContainEqual({
+    key: 'volumeBaseline',
+    value: { period: '3m', aggregate: 'max' },
+    updatedAt: T0 + 700,
+  })
+})
+
+test('O3 a weight step another device synced is stored locally and read by getWeightStep', async () => {
+  server.seedSetting('a@x', { key: 'weightSteps', value: { 'back-squat': 2.5 }, updatedAt: T0 + 900 })
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(await getWeightStep('back-squat')).toBe(2.5)
 })

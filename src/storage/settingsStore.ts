@@ -1,4 +1,4 @@
-import type { Program } from '../types'
+import type { Program, VolumeBaseline } from '../types'
 import { db } from './db'
 
 /**
@@ -72,4 +72,39 @@ export async function getGymEquipment(): Promise<string[] | null> {
  */
 export async function setGymEquipment(list: string[]): Promise<void> {
   await db.settings.put({ key: GYM_EQUIPMENT_KEY, value: list, updatedAt: Date.now() })
+}
+
+/** The `settings` table key every Exercise's stored weight step is kept under, in one row (E8). */
+export const WEIGHT_STEPS_KEY = 'weightSteps'
+
+/** The stored weight step for `exerciseId`, or null when none has been stored. */
+export async function getWeightStep(exerciseId: string): Promise<number | null> {
+  void exerciseId
+  throw new Error('not implemented')
+}
+
+/** Stores `step` as `exerciseId`'s weight step, keeping every other Exercise's step. */
+export async function setWeightStep(exerciseId: string, step: number): Promise<void> {
+  void exerciseId
+  void step
+  throw new Error('not implemented')
+}
+
+/** Every stored weight step, by Exercise id; `{}` when none has been stored. */
+export async function getWeightSteps(): Promise<Record<string, number>> {
+  throw new Error('not implemented')
+}
+
+/** The `settings` table key the volume baseline choice is stored under (E8). */
+export const VOLUME_BASELINE_KEY = 'volumeBaseline'
+
+/** The stored volume baseline, or `{ period: 'last' }` when none has been chosen. */
+export async function getVolumeBaseline(): Promise<VolumeBaseline> {
+  throw new Error('not implemented')
+}
+
+/** Records `baseline` as the volume baseline. */
+export async function setVolumeBaseline(baseline: VolumeBaseline): Promise<void> {
+  void baseline
+  throw new Error('not implemented')
 }

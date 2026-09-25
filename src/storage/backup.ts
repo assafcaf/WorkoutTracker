@@ -1,4 +1,4 @@
-import type { Session } from '../types'
+import type { Session, VolumeBaseline } from '../types'
 import { db } from './db'
 import { listSessions } from './sessionStore'
 import {
@@ -31,6 +31,10 @@ export type BackupFile = {
      * before this epic; `undefined` and `null` both mean "never set" on import.
      */
     gymEquipment?: string[] | null
+    /** Every Exercise's stored weight step (E8). Absent on a backup made before E8. */
+    weightSteps?: Record<string, number>
+    /** The volume baseline choice (E8). Absent on a backup made before E8. */
+    volumeBaseline?: VolumeBaseline
   }
 }
 

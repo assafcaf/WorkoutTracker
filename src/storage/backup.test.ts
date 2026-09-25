@@ -5,8 +5,13 @@ import {
   ACTIVE_PROGRAM_ID_KEY,
   getGymEquipment,
   getLastExportedAt,
+  getVolumeBaseline,
+  getWeightStep,
+  getWeightSteps,
   setActiveProgramId,
   setGymEquipment,
+  setVolumeBaseline,
+  setWeightStep,
 } from './settingsStore'
 import {
   BACKUP_SCHEMA_VERSION,
@@ -393,4 +398,107 @@ test('O10 importBackup refuses a file with an unknown schemaVersion, naming the 
   )
 
   expect(await listSessions()).toEqual(current)
+})
+
+// --- weight steps and volume baseline in the backup file (E8-T3 O1, O2) ----------------------
+
+/** A backup file as written before E8: no `weightSteps`, no `volumeBaseline`. */
+function preE8Backup(extraSettings: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schemaVersion: 1,
+    exportedAt: BASE,
+    sessions: [],
+    settings: {
+      activeProgramId: 'assaf-ab-2026',
+      lastExportedAt: null,
+      gymEquipment: null,
+      ...extraSettings,
+    },
+  }
+}
+
+test('O1 given a stored step of 5 for back-squat, the exported backup carries settings.weightSteps of exactly that step', async () => {
+  await setActiveProgramId('assaf-ab-2026')
+  await setWeightStep('back-squat', 5)
+
+  const file = await exportBackup(BASE)
+
+  expect(JSON.parse(JSON.stringify(file)).settings.weightSteps).toEqual({ 'back-squat': 5 })
+})
+
+test('O1 importing a backup whose settings.weightSteps holds back-squat 5 restores that step', async () => {
+  const backup = preE8Backup({ weightSteps: { 'back-squat': 5 } })
+
+  await replaceAll(readBackup(JSON.stringify(backup)))
+
+  expect(await getWeightStep('back-squat')).toBe(5)
+})
+
+test('O1 stored weight steps survive exporting and importing into an empty store', async () => {
+  await setActiveProgramId('assaf-ab-2026')
+  await setWeightStep('back-squat', 5)
+  await setWeightStep('bench-press', 1.25)
+  const parsed = readBackup(JSON.stringify(await exportBackup(BASE)))
+  await db.settings.clear()
+
+  await replaceAll(parsed)
+
+  expect(await getWeightSteps()).toEqual({ 'back-squat': 5, 'bench-press': 1.25 })
+})
+
+test('O1 a backup made before E8, without settings.weightSteps, imports and leaves no stored weight step', async () => {
+  // A step on the device before the import: the backup has none, so none is left after it.
+  await setWeightStep('back-squat', 5)
+
+  await expect(replaceAll(readBackup(JSON.stringify(preE8Backup())))).resolves.toBeUndefined()
+
+  expect(await getWeightSteps()).toEqual({})
+  const activeProgramRow = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
+  expect(activeProgramRow?.value).toBe('assaf-ab-2026')
+})
+
+test('O2 given a chosen volume baseline, the exported backup carries it as settings.volumeBaseline', async () => {
+  await setActiveProgramId('assaf-ab-2026')
+  await setVolumeBaseline({ period: '3m', aggregate: 'max' })
+
+  const file = await exportBackup(BASE)
+
+  expect(JSON.parse(JSON.stringify(file)).settings.volumeBaseline).toEqual({
+    period: '3m',
+    aggregate: 'max',
+  })
+})
+
+test('O2 importing a backup whose settings.volumeBaseline is a since date restores that baseline', async () => {
+  const backup = preE8Backup({
+    volumeBaseline: { period: 'since', since: BASE - 30 * DAY, aggregate: 'avg' },
+  })
+
+  await replaceAll(readBackup(JSON.stringify(backup)))
+
+  expect(await getVolumeBaseline()).toEqual({
+    period: 'since',
+    since: BASE - 30 * DAY,
+    aggregate: 'avg',
+  })
+})
+
+test('O2 a chosen volume baseline survives exporting and importing into an empty store', async () => {
+  await setActiveProgramId('assaf-ab-2026')
+  await setVolumeBaseline({ period: '6m', aggregate: 'avg' })
+  const parsed = readBackup(JSON.stringify(await exportBackup(BASE)))
+  await db.settings.clear()
+
+  await replaceAll(parsed)
+
+  expect(await getVolumeBaseline()).toEqual({ period: '6m', aggregate: 'avg' })
+})
+
+test('O2 a backup made before E8, without settings.volumeBaseline, imports with the default last-Session baseline', async () => {
+  // A different choice on the device before the import: the backup has none, so the default wins.
+  await setVolumeBaseline({ period: '3m', aggregate: 'max' })
+
+  await expect(replaceAll(readBackup(JSON.stringify(preE8Backup())))).resolves.toBeUndefined()
+
+  expect(await getVolumeBaseline()).toEqual({ period: 'last' })
 })
