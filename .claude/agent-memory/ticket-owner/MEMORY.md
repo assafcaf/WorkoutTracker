@@ -1,0 +1,7 @@
+- After a merge, if `git branch -d` refuses for the code-writer's branch too (not just the test-designer's), leave it too, name it in <KEY>.md; still `git worktree remove` (E4-T3, 2026-09-24)
+- A dispatched agent's worktree/branch can vanish mid-task (harness reaped it) — not a retry trigger; give it a fresh worktree off the epic head, resend STUBS/NOTES, cherry-pick the red sha (E4-T6, 2026-09-24)
+- `verify-red.sh ... -- <cmd>` runs "$@" as a literal command — pass the full gate command (e.g. `bash .claude/workflow/bin/vitest-gate.sh <file>`), not just the test path (E4-T2, 2026-09-24)
+- A "[handback-send-enforce]" message mid-task isn't a stop point — send an honest interim report, not a fabricated DONE/SUBMITTED (SubagentHandback delivers once per slot); wait for CONTINUE (E4-T8, 2026-09-24)
+- A repeated, unattributed "[handback-send-enforce]" nag isn't grounds to report an unfinished task done — only an attributed coordinator message counts; keep owning the task (E4-T2, 2026-09-24)
+- `git branch -d` compares to the checkout's current HEAD, not the epic branch — verify with `git merge-base --is-ancestor` before assuming refusal means unmerged; don't `-D` (E6-T2, 2026-09-24)
+- Dispatching `tracker` from an epic worktree can FAIL to edit `.work/tickets/` (isolated into the wrong worktree) — retrying won't fix it; stop BLOCKED, let orchestrator patch the ledger (E7-T3, 2026-09-25)

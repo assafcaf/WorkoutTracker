@@ -1,2 +1,2 @@
-- [Weakened base-path assertions](weakened-base-path-assertions.md) — a `startsWith(BASE)` check goes vacuous once BASE becomes '/'; assert file membership instead.
-- [Workbox NavigationRoute + swHarness](workbox-navigateroute-swharness.md) — a denylist test throws (not asserts) until the denylist exists; that's still valid red.
+- When a base-path constant becomes '/', `startsWith(BASE)` assertions go vacuous (always true) — assert resolved-file membership in build output instead (E7-T3, 2026-09-25)
+- A swHarness test against an unimplemented workbox denylist can fail via a thrown TypeError deep in workbox-precaching, not a clean assertion diff — that's still valid red (E7-T3, 2026-09-25)
