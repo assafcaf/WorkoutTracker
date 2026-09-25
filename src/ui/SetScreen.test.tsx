@@ -6,7 +6,15 @@ import { loadCatalog } from '../data/catalog'
 import { db } from '../storage/db'
 import { SetScreen, loggedText, setCounterText } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
+import { playRestOver, unlockRestSound } from './restSound'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
+
+// E8-T5's beep: the set screen tells the rest sound module, which this file replaces with a
+// spy so no test here touches a real AudioContext (jsdom has none anyway).
+vi.mock('./restSound', () => ({
+  unlockRestSound: vi.fn(),
+  playRestOver: vi.fn(),
+}))
 
 // `fake-indexeddb/auto` is installed globally in src/test/setup.ts, because Dexie binds the
 // global `indexedDB` when db.ts is evaluated. Do not import it here.
@@ -24,11 +32,14 @@ beforeEach(async () => {
     finishedAt: null,
     entries: [],
   })
+  vi.mocked(unlockRestSound).mockClear()
+  vi.mocked(playRestOver).mockClear()
 })
 
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 /** A fixed wall-clock base, so every timestamp below is a literal derived by hand. */
@@ -576,4 +587,69 @@ test('O7 opening back-squat whose latest Set in this Session was logged 100 s ag
   })
 
   expect(readoutValue(screen.getByRole('timer'))).toBe('1:20')
+})
+
+// --- E8-T5's O1: playRestOver fires once, exactly when the rest period this Session's Set
+// started actually runs out --------------------------------------------------------------
+
+/** A push-ups Set logged at `loggedAt`, matching pushUpPlan's exerciseId. */
+function pushUpEntry(setIndex: number, reps: number, loggedAt: number): SetEntry {
+  return { exerciseId: 'push-ups', setIndex, weightKg: null, reps, loggedAt }
+}
+
+test('O1 playRestOver is called exactly once when the clock passes the Plan rest after a Set is logged, not before and not again on later ticks', async () => {
+  // Fake timers from the very start: the rest-tick effect's setInterval must be created under
+  // the same clock the test then advances, or the fake clock never reaches it (a real-timer
+  // interval is not adopted by a later vi.useFakeTimers() call). "A Set just logged" is this
+  // Session's own history -- pushUpEntry at BASE, matching sessionStartedAt -- rather than an
+  // actual button click, so no fake-indexeddb write has to complete under the fake clock either.
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  render(
+    <SetScreen
+      exercise={pushUps}
+      plan={pushUpPlan}
+      setIndex={2}
+      sessionId={SESSION_ID}
+      sessionStartedAt={BASE}
+      lastEntries={[pushUpEntry(1, 12, BASE)]}
+      onLogged={vi.fn()}
+    />,
+  )
+  expect(playRestOver).not.toHaveBeenCalled()
+
+  // pushUpPlan.restSeconds is 90; 89 s in, rest is not yet over.
+  await vi.advanceTimersByTimeAsync(89_000)
+  expect(playRestOver).not.toHaveBeenCalled()
+
+  // Past 90 s, the next tick sees rest.isOver turn true for the first time this mount.
+  await vi.advanceTimersByTimeAsync(1_500)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+
+  // Later ticks, still on the same rest period, must not call it again.
+  await vi.advanceTimersByTimeAsync(10_000)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+})
+
+test('O1 playRestOver is not called when a set screen opens with this Session rest already over', async () => {
+  vi.useFakeTimers()
+  // pushUpPlan.restSeconds is 90; the last Set of this Session was logged at BASE, and "now" is
+  // frozen 100 s later -- rest is already over the moment the screen opens, so it must never
+  // have "turned true" during this mount's own ticks.
+  vi.setSystemTime(BASE + 100_000)
+  render(
+    <SetScreen
+      exercise={pushUps}
+      plan={pushUpPlan}
+      setIndex={2}
+      sessionId={SESSION_ID}
+      sessionStartedAt={BASE}
+      lastEntries={[pushUpEntry(1, 12, BASE)]}
+      onLogged={vi.fn()}
+    />,
+  )
+
+  await vi.advanceTimersByTimeAsync(2_000)
+
+  expect(playRestOver).not.toHaveBeenCalled()
 })

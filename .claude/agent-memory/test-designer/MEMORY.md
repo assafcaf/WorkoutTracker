@@ -2,3 +2,5 @@
 - A swHarness test against an unimplemented workbox denylist can fail via a thrown TypeError deep in workbox-precaching, not a clean assertion diff — that's still valid red (E7-T3, 2026-09-25)
 - The worktree guard refuses Bash heredoc appends and computed `sed -n` loops; append tests with Edit anchored on the file's last test instead (E8-T6, 2026-09-25)
 - Existing fixtures stamp Sessions at a fixed 2023 `BASE`; a clock-threshold rule at App launch (`Date.now()`) turns them stale — grep in-progress fixtures before red (E8-T6, 2026-09-25)
+- A setInterval created under real timers is never adopted by a later vi.useFakeTimers() call (advanceTimersByTimeAsync never fires it — real timeout, not red): call vi.useFakeTimers() before the render/state-change that arms the interval, not mid-test; represent "already happened" state via props/lastEntries at mount rather than a click that arms it under a different clock (E8-T5, 2026-09-25)
+- A serial-resource (iphone) outcome's test-designer artifact is a new section + result block appended to docs/testing/device-checks.md, following its existing per-ticket section pattern — not a `.skip`ped test (E8-T5, 2026-09-25)

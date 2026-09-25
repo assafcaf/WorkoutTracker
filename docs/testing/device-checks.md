@@ -508,3 +508,65 @@ Backup imported for history (file name + export date, or "none"): not reported
 
 Notes:
 ```
+
+## E8-T5: rest ends with a sound ([O11])
+
+This section proves [O11] from ticket `E8-T5` (spec numbering; the ticket's own outcome is
+`O3`). Its goal is the audible beep at the end of a rest period, and the ring/silent hardware
+switch's effect on it, neither of which jsdom can exercise. It is its own sitting, against E8's
+head, so it has its own deploy step and result block below.
+
+### Deploying and confirming the commit under test (E8-T5)
+
+1. In the GitHub repository, open **Actions > Deploy to GitHub Pages > Run workflow**, and pick
+   the branch `epic/E8-set-screen-fixes`.
+2. Wait for the run to finish with a green check, then open its details and read the exact
+   commit SHA the `actions/checkout` step resolved. Write that SHA down now — it is what goes
+   in this section's result block's "Commit / merged sha checked against" field.
+3. Launch the installed app from its home-screen icon, online, and let it fully load so the
+   service worker picks up the new build; then force a cold start (as in [O13]) and launch it
+   again, still online.
+
+### [O11]: three beeps sound once when a rest period runs out, silenced by the ring switch
+
+1. **With the ring/silent switch on the side of the phone set to ring** (switch pushed toward
+   the screen, no orange showing), open any exercise's set screen and tap **Log set**.
+   **Expected:** the rest timer starts counting down, same as always.
+2. Stay on the set screen (do not background the app or lock the phone) until the rest timer
+   reaches **0:00**.
+   **Expected:** at the moment it reaches 0:00, **three short beeps** sound once, back to back,
+   through the phone's speaker. They do not repeat again while you keep watching the same
+   0:00 screen.
+3. **Flip the ring/silent switch to silent** (orange showing). Tap **Log set** again to open a
+   new rest period, and again stay on screen until it reaches 0:00.
+   **Expected:** the rest timer counts down and reaches 0:00 exactly as in steps 1-2, but **no
+   sound plays at all** — the phone's silent switch is respected, not overridden.
+4. Leave the ring/silent switch on ring for the rest of this sitting (so later sections'
+   Airplane Mode steps are not confused with a silenced phone).
+
+**What failure looks like:**
+- **No sound in step 2, ring switch on ring.** Either the `AudioContext` was never unlocked by a
+  real tap (`unlockRestSound` must run inside the `Log set` click handler itself, not later, or
+  iOS blocks it), or the tones were never scheduled when `rest.isOver` turned true. Check that
+  `Log set` was actually tapped (not just watched) before this rest period started.
+- **Sound still plays in step 3, switch on silent.** iOS's silent switch mutes `<audio>`/media
+  elements and some Web Audio configurations but not others depending on how the audio session
+  is categorised; see the ticket's "Out of scope" note on `navigator.audioSession` for the
+  follow-up this implies.
+- **Beeps repeat on later ticks of the same 0:00 screen.** `playRestOver` fired more than once
+  for the same rest period instead of exactly once.
+
+### Result block (E8-T5) — paste this back into the run log, filled in
+
+```
+Device check: E8-T5 (O11 / ticket O3)
+Date:
+Commit / merged sha checked against:
+iOS version:
+Device model:
+
+[O11] (E8-T5) three beeps once at rest end with ring switch on ring; silent with switch on silent: PASS / FAIL
+  What actually happened:
+
+Notes:
+```

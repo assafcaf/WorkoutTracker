@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { presetForSet } from '../domain/prefill'
@@ -6,6 +6,7 @@ import { restState } from '../domain/rest'
 import { logSet } from '../storage/sessionStore'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
+import { playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
@@ -200,7 +201,32 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const rest = restState(lastLoggedAt, plan.restSeconds, now)
   const done = open.setIndex > plan.sets && !extraOpen
 
+  // Fires playRestOver once per rest period: only after this mount has actually seen the rest
+  // running (isOver false) for the current lastLoggedAt, so a screen opened with rest already
+  // over -- e.g. from history -- never sounds, and a later tick on the same finished rest
+  // period does not sound again.
+  const restOverTrackingRef = useRef<{
+    lastLoggedAt: number | null
+    seenRunning: boolean
+    fired: boolean
+  }>({ lastLoggedAt: null, seenRunning: false, fired: false })
+
+  useEffect(() => {
+    const tracking = restOverTrackingRef.current
+    if (tracking.lastLoggedAt !== lastLoggedAt) {
+      restOverTrackingRef.current = { lastLoggedAt, seenRunning: false, fired: false }
+    }
+    const current = restOverTrackingRef.current
+    if (!rest.isOver) {
+      current.seenRunning = true
+    } else if (current.seenRunning && !current.fired) {
+      current.fired = true
+      playRestOver()
+    }
+  }, [lastLoggedAt, rest.isOver])
+
   async function log(): Promise<void> {
+    unlockRestSound()
     const validation = validateEntry(open.weightKg, open.reps)
     if (!validation.ok) {
       setError(validation.error)
