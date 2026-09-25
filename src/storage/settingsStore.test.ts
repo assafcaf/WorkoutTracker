@@ -20,7 +20,7 @@ import {
 } from './settingsStore'
 import { mergePrograms } from '../domain/programs'
 import { loadPrograms } from '../data/catalog'
-import type { Program, UserProgram } from '../types'
+import type { Program, Session, UserProgram } from '../types'
 
 // settingsStore only needs a program's id, so the fixtures below are the minimal shape rather
 // than the full bundled catalog/program fixtures other test files use.
@@ -71,6 +71,107 @@ test('O18 getActiveProgramId falls back to the first program when the stored id 
   await setActiveProgramId('retired-program')
 
   expect(await getActiveProgramId(programs)).toBe('assaf-ab-2026')
+})
+
+// --- a new user starts with no Program (E9-T2 O19, O20) --------------------------------------
+
+describe('E9-T2 getActiveProgramId with no stored choice', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000
+  const BASE = 1_700_000_000_000
+
+  /** A Session on `programId`, started `startedAt`; finished an hour later unless `inProgress`. */
+  function session(id: string, programId: string, startedAt: number, inProgress = false): Session {
+    return {
+      id,
+      programId,
+      workoutId: 'workout-a',
+      startedAt,
+      finishedAt: inProgress ? null : startedAt + 3_600_000,
+      entries: [],
+      updatedAt: startedAt,
+    }
+  }
+
+  beforeEach(async () => {
+    await db.sessions.clear()
+  })
+
+  test('O19 getActiveProgramId resolves null for an empty database', async () => {
+    const programs = [program('assaf-ab-2026'), program('full-body-starter')]
+
+    expect(await getActiveProgramId(programs)).toBeNull()
+  })
+
+  test('O19 getActiveProgramId resolves null with no Session even when only one Program is offered', async () => {
+    expect(await getActiveProgramId([program('only-program')])).toBeNull()
+  })
+
+  test('O20 getActiveProgramId adopts the Program of the Session with the latest startedAt', async () => {
+    const programs = [program('assaf-ab-2026'), program('full-body-starter')]
+    await db.sessions.bulkPut([
+      session('s-old', 'assaf-ab-2026', BASE),
+      session('s-new', 'full-body-starter', BASE + 3 * DAY_MS),
+      session('s-mid', 'assaf-ab-2026', BASE + DAY_MS),
+    ])
+
+    expect(await getActiveProgramId(programs)).toBe('full-body-starter')
+  })
+
+  test('O20 getActiveProgramId stores the adopted Program as activeProgramId', async () => {
+    const programs = [program('assaf-ab-2026'), program('full-body-starter')]
+    await db.sessions.bulkPut([
+      session('s-old', 'assaf-ab-2026', BASE),
+      session('s-new', 'full-body-starter', BASE + DAY_MS),
+    ])
+
+    await getActiveProgramId(programs)
+
+    expect((await db.settings.get(ACTIVE_PROGRAM_ID_KEY))?.value).toBe('full-body-starter')
+  })
+
+  test('O20 a Session still in progress counts as the latest Session', async () => {
+    const programs = [program('assaf-ab-2026'), program('full-body-starter')]
+    await db.sessions.bulkPut([
+      session('s-done', 'assaf-ab-2026', BASE),
+      session('s-open', 'full-body-starter', BASE + DAY_MS, true),
+    ])
+
+    expect(await getActiveProgramId(programs)).toBe('full-body-starter')
+  })
+
+  test('O20 a lone Session in progress is enough to adopt its Program', async () => {
+    const programs = [program('assaf-ab-2026'), program('full-body-starter')]
+    await db.sessions.put(session('s-open', 'full-body-starter', BASE, true))
+
+    expect(await getActiveProgramId(programs)).toBe('full-body-starter')
+  })
+
+  test('O20 the latest Session on a Program no longer offered falls back to the first Program and stores it', async () => {
+    const programs = [program('assaf-ab-2026'), program('full-body-starter')]
+    await db.sessions.bulkPut([
+      session('s-old', 'full-body-starter', BASE),
+      session('s-new', 'retired-program', BASE + DAY_MS),
+    ])
+
+    expect(await getActiveProgramId(programs)).toBe('assaf-ab-2026')
+    expect((await db.settings.get(ACTIVE_PROGRAM_ID_KEY))?.value).toBe('assaf-ab-2026')
+  })
+
+  test('O20 a stored id among the Programs wins over the latest Session', async () => {
+    const programs = [program('assaf-ab-2026'), program('full-body-starter')]
+    await setActiveProgramId('assaf-ab-2026')
+    await db.sessions.put(session('s-new', 'full-body-starter', BASE + DAY_MS))
+
+    expect(await getActiveProgramId(programs)).toBe('assaf-ab-2026')
+  })
+
+  test('O20 a stored id no longer among the Programs falls back to the first Program, not the latest Session', async () => {
+    const programs = [program('assaf-ab-2026'), program('full-body-starter')]
+    await setActiveProgramId('retired-program')
+    await db.sessions.put(session('s-new', 'full-body-starter', BASE + DAY_MS))
+
+    expect(await getActiveProgramId(programs)).toBe('assaf-ab-2026')
+  })
 })
 
 // --- getGymEquipment / setGymEquipment (E5-T11) --------------------------------------------
