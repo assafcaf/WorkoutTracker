@@ -4,6 +4,8 @@ import { json } from './index'
 import {
   MAX_BODY_BYTES,
   SYNCED_SETTING_KEYS,
+  type ReplaceRequest,
+  type ReplaceResponse,
   type SyncResponse,
   type SyncedSession,
   type SyncedSetting,
@@ -31,6 +33,24 @@ export async function handleSync(request: Request, env: Env, email: string): Pro
 
     await storeNewer(env.DB, email, sessions, settings)
     return json((await changesSince(env.DB, email, body.since)) satisfies SyncResponse)
+  } catch (error) {
+    if (error instanceof HttpError) return json({ error: error.message }, error.status)
+    throw error
+  }
+}
+
+/** POST /api/replace: make the caller's stored rows exactly the pushed sessions and settings. */
+export async function handleReplace(request: Request, env: Env, email: string): Promise<Response> {
+  try {
+    const body = await readJsonBody(request)
+    if (!isRecord(body)) throw new HttpError(400, 'body must be a JSON object')
+    const sessions = parseSessions(body.sessions)
+    const settings = parseSettings(body.settings)
+    void (sessions satisfies ReplaceRequest['sessions'])
+    void (settings satisfies ReplaceRequest['settings'])
+
+    const cursor = await replaceAll(env.DB, email, sessions, settings)
+    return json({ cursor } satisfies ReplaceResponse)
   } catch (error) {
     if (error instanceof HttpError) return json({ error: error.message }, error.status)
     throw error
@@ -143,6 +163,49 @@ async function storeNewer(
     )
   }
   await db.batch(statements)
+}
+
+/**
+ * Deletes every row `email` has and inserts exactly the pushed sessions and settings, all in
+ * one batch. Returns the cursor (the user's counter value) a following sync can pass as `since`.
+ */
+async function replaceAll(
+  db: D1Database,
+  email: string,
+  sessions: SyncedSession[],
+  settings: SyncedSetting[],
+): Promise<number> {
+  const count = sessions.length + settings.length
+  const statements: D1PreparedStatement[] = [
+    reserveSeqs(db, email, Math.max(count, 1)),
+    db.prepare('DELETE FROM sessions WHERE user = ?1').bind(email),
+    db.prepare('DELETE FROM settings WHERE user = ?1').bind(email),
+  ]
+
+  let offset = count
+  for (const session of sessions) {
+    statements.push(
+      db
+        .prepare(
+          `INSERT INTO sessions (user, id, doc, updated_at, seq)
+           VALUES (?1, ?2, ?3, ?4, (SELECT seq FROM counters WHERE user = ?1) - ?5)`,
+        )
+        .bind(email, session.id, JSON.stringify(session), session.updatedAt, --offset),
+    )
+  }
+  for (const setting of settings) {
+    statements.push(
+      db
+        .prepare(
+          `INSERT INTO settings (user, key, value, updated_at, seq)
+           VALUES (?1, ?2, ?3, ?4, (SELECT seq FROM counters WHERE user = ?1) - ?5)`,
+        )
+        .bind(email, setting.key, JSON.stringify(setting.value), setting.updatedAt, --offset),
+    )
+  }
+  const results = await db.batch(statements)
+  const counter = results[0] as { results: Array<{ seq: number }> }
+  return counter.results[0]?.seq ?? 0
 }
 
 /**
