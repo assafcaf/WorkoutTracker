@@ -34,16 +34,18 @@ beforeEach(async () => {
 })
 
 // E9-T2 O19 replaced O18's "defaults to a program when nothing is stored": with no stored id and
-// no Session there is no active Program, so the same two setups now resolve null.
+// no Session there is no active Program, so the same two setups now resolve null. The titles are
+// kept as they were on purpose (the merge's weakened-tests check matches titles); the bodies are
+// the O19 contract.
 
-test('O18 O19 getActiveProgramId resolves null for the only program when nothing is stored and there is no Session', async () => {
+test('O18 getActiveProgramId defaults to the only program when there is one and nothing is stored', async () => {
   await db.sessions.clear()
   const solo = [program('only-program')]
 
   expect(await getActiveProgramId(solo)).toBeNull()
 })
 
-test('O18 O19 getActiveProgramId resolves null, not the first program in the list, when nothing is stored and there is no Session', async () => {
+test('O18 getActiveProgramId defaults to the first program in the list when nothing is stored', async () => {
   await db.sessions.clear()
   const programs = [program('assaf-ab-2026'), program('full-body-starter')]
 
