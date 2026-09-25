@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { presetForSet } from '../domain/prefill'
@@ -6,6 +6,7 @@ import { restState } from '../domain/rest'
 import { logSet } from '../storage/sessionStore'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
+import { playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
@@ -41,6 +42,13 @@ export type SetScreenProps = {
    */
   onOpenAlternatives?(exerciseId: string): void
   /**
+   * Told that "Finish exercise" was tapped from the done state, so the caller can return to the
+   * Workout's exercise list (E8-T4). Optional so a caller with nothing to return to -- every
+   * test predating it -- need not pass it; when absent, the done state's action bar holds only
+   * "Add set".
+   */
+  onFinishExercise?(): void
+  /**
    * Whether the set on the dials was opened by "Add set" as an extra set past the plan (E6-T1).
    * A screen opened past the plan with `extra` false is in the done state. Optional, read as
    * `false`, so the callers predating it (E1's and the wake lock's tests) need not pass it.
@@ -56,6 +64,17 @@ export type SetScreenProps = {
    * behaviour before this prop existed.
    */
   sessionStartedAt?: number
+  /**
+   * The stored weight step for this Exercise (E8-T8), or `null`/omitted to open on its catalog
+   * `weightStep`. Read once, on open -- the Dial and Ladder then follow whatever is chosen from
+   * the step control until the screen is reopened.
+   */
+  weightStep?: number | null
+  /**
+   * Told the weight step just chosen from the step control (E8-T8), so the caller can persist
+   * it for this Exercise. Optional; the screen keeps using the new step for itself either way.
+   */
+  onWeightStepChange?(step: number): void
 }
 
 /**
@@ -147,7 +166,28 @@ function initialLastLoggedAt(
  * the rule is E1-T2's, the message is this screen's.
  */
 export function SetScreen(props: SetScreenProps): JSX.Element {
-  const { exercise, plan, sessionId, onLogged, onAddSet, onOpenInfo, onOpenAlternatives } = props
+  const {
+    exercise,
+    plan,
+    sessionId,
+    onLogged,
+    onAddSet,
+    onOpenInfo,
+    onOpenAlternatives,
+    onFinishExercise,
+  } = props
+
+  // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
+  // and otherwise the catalog's own; the Dial and Ladder both follow it via `effectiveExercise`.
+  const [weightStep, setWeightStep] = useState<number>(
+    props.weightStep ?? exercise.weightStep,
+  )
+  const effectiveExercise: Exercise = { ...exercise, weightStep }
+
+  function handleStepChange(step: number): void {
+    setWeightStep(step)
+    props.onWeightStepChange?.(step)
+  }
 
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
@@ -184,7 +224,32 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const rest = restState(lastLoggedAt, plan.restSeconds, now)
   const done = open.setIndex > plan.sets && !extraOpen
 
+  // Fires playRestOver once per rest period: only after this mount has actually seen the rest
+  // running (isOver false) for the current lastLoggedAt, so a screen opened with rest already
+  // over -- e.g. from history -- never sounds, and a later tick on the same finished rest
+  // period does not sound again.
+  const restOverTrackingRef = useRef<{
+    lastLoggedAt: number | null
+    seenRunning: boolean
+    fired: boolean
+  }>({ lastLoggedAt: null, seenRunning: false, fired: false })
+
+  useEffect(() => {
+    const tracking = restOverTrackingRef.current
+    if (tracking.lastLoggedAt !== lastLoggedAt) {
+      restOverTrackingRef.current = { lastLoggedAt, seenRunning: false, fired: false }
+    }
+    const current = restOverTrackingRef.current
+    if (!rest.isOver) {
+      current.seenRunning = true
+    } else if (current.seenRunning && !current.fired) {
+      current.fired = true
+      playRestOver()
+    }
+  }, [lastLoggedAt, rest.isOver])
+
   async function log(): Promise<void> {
+    unlockRestSound()
     const validation = validateEntry(open.weightKg, open.reps)
     if (!validation.ok) {
       setError(validation.error)
@@ -231,11 +296,20 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     <button type="button" className="log-set" onClick={() => void log()}>
       Log set
     </button>
-  ) : onAddSet !== undefined ? (
-    <button type="button" className="add-set" onClick={() => addSet(onAddSet)}>
-      Add set
-    </button>
-  ) : null
+  ) : (
+    <>
+      {onFinishExercise === undefined ? null : (
+        <button type="button" className="finish-exercise" onClick={onFinishExercise}>
+          Finish exercise
+        </button>
+      )}
+      {onAddSet === undefined ? null : (
+        <button type="button" className="add-set" onClick={() => addSet(onAddSet)}>
+          Add set
+        </button>
+      )}
+    </>
+  )
 
   return (
     <div className="set-screen">
@@ -256,9 +330,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       <p className="set-counter">{setCounterText(open.setIndex, plan.sets, loggedCount, done)}</p>
 
       <WeightDial
-        exercise={exercise}
+        exercise={effectiveExercise}
         value={open.weightKg}
         onChange={(weightKg) => setOpen({ ...open, weightKg })}
+        onStepChange={handleStepChange}
       />
       <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
 

@@ -1,5 +1,8 @@
 import type { Exercise } from '../types'
 
+/** The weight-step choices offered by the set screen's step control (E8-T8). */
+export const WEIGHT_STEPS = [0.5, 1, 1.25, 2.5, 5, 10]
+
 const MIN_WEIGHT_KG = 0
 const MAX_WEIGHT_KG = 500
 const MIN_REPS = 0.5

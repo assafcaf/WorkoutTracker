@@ -78,3 +78,11 @@
   min-height: var(--tap-min);
   min-width: var(--tap-min);
 }
+
+/* The "Compare volume with"/"Using" selects and the "Since a date" input (E8-T11) sit inside
+ * a `.settings-action` row, so they only need their own tap target and typography. */
+.settings-select,
+.settings-date {
+  min-height: var(--tap-min);
+  font-size: var(--text-md);
+}

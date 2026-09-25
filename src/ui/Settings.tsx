@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import type { Program } from '../types'
+import type { Program, VolumeBaseline } from '../types'
 import './Settings.css'
 
 /** The Account section's view of the phone's cloud sync (E7-T7). */
@@ -41,6 +41,18 @@ export type SettingsProps = {
   onSyncNow?(): void
   /** Called when the trainee taps "Use <signedInEmail>'s data on this phone". */
   onAdoptAccount?(): void
+  /**
+   * The chosen "Compare volume with" setting (E8-T3/T10), read by the exercise list's rows.
+   * Optional so pre-E8-T11 renders (this file's earlier tests) keep compiling; defaults to
+   * `{ period: 'last' }`, matching `App`'s own initial state.
+   */
+  volumeBaseline?: VolumeBaseline
+  /**
+   * Called with the next `VolumeBaseline` whenever "Compare volume with", "Using" or the
+   * "Since a date" date input changes (E8-T11). Optional for the same reason as
+   * `volumeBaseline`.
+   */
+  onVolumeBaselineChange?(baseline: VolumeBaseline): void
 }
 
 /**
@@ -72,7 +84,44 @@ export function Settings(props: SettingsProps): JSX.Element {
     sync,
     onSyncNow,
     onAdoptAccount,
+    volumeBaseline = { period: 'last' },
+    onVolumeBaselineChange = () => {},
   } = props
+
+  const currentAggregate = 'aggregate' in volumeBaseline ? volumeBaseline.aggregate : 'avg'
+
+  /** "Compare volume with": switches the period, keeping (or defaulting) the aggregate. */
+  function handleCompareChange(event: ChangeEvent<HTMLSelectElement>): void {
+    const period = event.target.value
+    if (period === 'last') {
+      onVolumeBaselineChange({ period: 'last' })
+    } else if (period === 'since') {
+      const since = volumeBaseline.period === 'since' ? volumeBaseline.since : Date.now()
+      onVolumeBaselineChange({ period: 'since', since, aggregate: currentAggregate })
+    } else {
+      onVolumeBaselineChange({
+        period: period as '1w' | '1m' | '3m' | '6m',
+        aggregate: currentAggregate,
+      })
+    }
+  }
+
+  /** "Using": switches the aggregate, keeping the current period (and since date, if any). */
+  function handleAggregateChange(event: ChangeEvent<HTMLSelectElement>): void {
+    const aggregate = event.target.value as 'avg' | 'max'
+    if (volumeBaseline.period === 'since') {
+      onVolumeBaselineChange({ period: 'since', since: volumeBaseline.since, aggregate })
+    } else if (volumeBaseline.period !== 'last') {
+      onVolumeBaselineChange({ period: volumeBaseline.period, aggregate })
+    }
+  }
+
+  /** "Since": reports the chosen date as UTC midnight, keeping the current aggregate. */
+  function handleSinceChange(event: ChangeEvent<HTMLInputElement>): void {
+    const [year, month, day] = event.target.value.split('-').map(Number)
+    const since = Date.UTC(year, month - 1, day)
+    onVolumeBaselineChange({ period: 'since', since, aggregate: currentAggregate })
+  }
 
   /** Toggles `type` in the effective gym equipment list and reports the next full list. */
   function handleEquipmentToggle(type: string): void {
@@ -137,6 +186,48 @@ export function Settings(props: SettingsProps): JSX.Element {
             </label>
           )
         })}
+      </fieldset>
+      <fieldset className="settings-group">
+        <legend className="settings-legend">Compare volume</legend>
+        <label className="settings-action">
+          <span className="settings-action-label">Compare volume with</span>
+          <select
+            className="settings-select"
+            value={volumeBaseline.period}
+            onChange={handleCompareChange}
+          >
+            <option value="last">Last workout</option>
+            <option value="1w">Past week</option>
+            <option value="1m">Past month</option>
+            <option value="3m">Past 3 months</option>
+            <option value="6m">Past 6 months</option>
+            <option value="since">Since a date</option>
+          </select>
+        </label>
+        {volumeBaseline.period !== 'last' ? (
+          <label className="settings-action">
+            <span className="settings-action-label">Using</span>
+            <select
+              className="settings-select"
+              value={volumeBaseline.aggregate}
+              onChange={handleAggregateChange}
+            >
+              <option value="avg">Average</option>
+              <option value="max">Best</option>
+            </select>
+          </label>
+        ) : null}
+        {volumeBaseline.period === 'since' ? (
+          <label className="settings-action">
+            <span className="settings-action-label">Since</span>
+            <input
+              className="settings-date"
+              type="date"
+              value={new Date(volumeBaseline.since).toISOString().slice(0, 10)}
+              onChange={handleSinceChange}
+            />
+          </label>
+        ) : null}
       </fieldset>
       <button type="button" className="settings-action" onClick={() => onExport?.()}>
         <span className="settings-action-label">Export</span>

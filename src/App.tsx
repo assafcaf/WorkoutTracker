@@ -8,6 +8,7 @@ import type {
   Session,
   SetEntry,
   Video,
+  VolumeBaseline,
   Workout,
 } from './types'
 import { assertPlansAreInCatalog, loadCatalog, loadPrograms } from './data/catalog'
@@ -31,12 +32,17 @@ import {
   getActiveProgramId,
   getGymEquipment,
   getLastExportedAt,
+  getVolumeBaseline,
+  getWeightStep,
   setActiveProgramId,
   setGymEquipment as persistGymEquipment,
+  setVolumeBaseline as persistVolumeBaseline,
+  setWeightStep,
 } from './storage/settingsStore'
 import {
   clearSwap,
   finishSession,
+  finishStaleSession,
   getActiveSession,
   getLastEntriesFor,
   getLastSwap,
@@ -63,6 +69,7 @@ import { Stats } from './ui/Stats'
 import { Settings } from './ui/Settings'
 import { StorageUnavailableBanner } from './ui/StorageUnavailableBanner'
 import { UpdatePill } from './ui/UpdatePill'
+import { useLandOnWorkout } from './ui/useLandOnWorkout'
 import { WorkoutStartButtons } from './ui/WorkoutStartButtons'
 
 type View =
@@ -99,7 +106,13 @@ function tabFor(view: View): Tab | undefined {
  * The set the set screen is on, with the history it was opened against, and whether "Add set"
  * opened it as an extra set past the plan (E6-T1).
  */
-type OpenSet = { exerciseId: string; setIndex: number; history: SetEntry[]; extra: boolean }
+type OpenSet = {
+  exerciseId: string
+  setIndex: number
+  history: SetEntry[]
+  extra: boolean
+  weightStep: number | null
+}
 
 /**
  * The in-app exercise detail overlay (E5-T8): rendered over whatever view is current without
@@ -182,6 +195,7 @@ function presetHistory(history: SetEntry[], session: Session, exerciseId: string
 async function activeSessionOrNull(storageAvailable: boolean): Promise<Session | null> {
   if (!storageAvailable) return null
   try {
+    await finishStaleSession(Date.now())
     return await getActiveSession()
   } catch {
     return null
@@ -306,6 +320,13 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // The last finished session's entries of each exercise the list shows (E4-T6), keyed by the
   // id actually done, feeding each row's progression bar.
   const [lastEntries, setLastEntries] = useState<Map<string, SetEntry[]>>(new Map())
+  // Every finished Session (E8-T10), loaded whenever the exercise list opens, so each row's
+  // `VolumeVsBaseline` can resolve the chosen baseline's volume.
+  const [sessions, setSessions] = useState<Session[]>([])
+  // The chosen volume baseline (E8-T10), loaded alongside `sessions`. Named `...State` because
+  // `setVolumeBaseline` already names the store's write (`storage/settingsStore.ts`); E8-T11
+  // reads this state to offer changing it.
+  const [volumeBaseline, setVolumeBaselineState] = useState<VolumeBaseline>({ period: 'last' })
 
   useEffect(() => {
     let cancelled = false
@@ -324,6 +345,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         const inProgress = await activeSessionOrNull(storageAvailable)
         const inProgressLastSwaps = await lastSwapsFor(programs, inProgress)
         const inProgressLastEntries = await lastEntriesFor(programs, inProgress)
+        // Loaded here too, alongside the resumed session, so its list opens with a bar (E8-T10)
+        // rather than "No previous workout" until the next reload.
+        const inProgressSessions = inProgress && storageAvailable ? await listSessions() : []
+        const inProgressVolumeBaseline = storageAvailable
+          ? await getVolumeBaseline()
+          : { period: 'last' as const }
         const lastExportedAt = storageAvailable ? await getLastExportedAt() : null
         const gymEquipmentList = storageAvailable ? await getGymEquipment() : null
         // Loaded here rather than lazily on the Exercises tab (E5-T3's original scheme), so the
@@ -336,6 +363,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         setSession(inProgress)
         setLastSwaps(inProgressLastSwaps)
         setLastEntries(inProgressLastEntries)
+        setSessions(inProgressSessions)
+        setVolumeBaselineState(inProgressVolumeBaseline)
         setView(inProgress ? 'list' : 'picker')
         setLibrary([...loadedLibrary.values()])
         setGymEquipment(gymEquipmentList)
@@ -378,12 +407,16 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         const activeProgramId = await getActiveProgramId(programs)
         const gymEquipmentList = await getGymEquipment()
         const sessions = await listSessions()
+        const pulledVolumeBaseline = await getVolumeBaseline()
         if (cancelled) return
         setState((current) =>
           current.status === 'ready' ? { ...current, activeProgramId } : current,
         )
         setGymEquipment(gymEquipmentList)
         setHistory(sessions)
+        // The exercise list's "Volume vs …" rows (E8-T10) read these two, not `history`.
+        setSessions(sessions)
+        setVolumeBaselineState(pulledVolumeBaseline)
       } catch {
         // The app keeps what it has; the next sync or restart reads it again.
       }
@@ -394,6 +427,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       cancelled = true
     }
   }, [loadedPrograms, lastSyncedAt])
+
+  // Returning to the app outside a workout lands on the Workout tab (E8-T7); mid-session the
+  // exercise list or set screen stays put.
+  useLandOnWorkout(() =>
+    setView((current) => (current === 'list' || current === 'set' ? current : 'picker')),
+  )
 
   if (state.status === 'loading') return <div />
 
@@ -525,15 +564,32 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       })
   }
 
+  /** `Settings.onVolumeBaselineChange`: saves the next baseline and reflects it (E8-T11). */
+  function handleVolumeBaselineChange(baseline: VolumeBaseline): void {
+    persistVolumeBaseline(baseline)
+      .then(() => {
+        setVolumeBaselineState(baseline)
+      })
+      .catch(() => {
+        // Nothing to recover to here; a later read will surface the same failure.
+      })
+  }
+
   /** Starts the chosen workout, or resumes the session already in progress, and lists it. */
   function handleChoose(programId: string, workoutId: string): void {
     startOrResumeSession(programId, workoutId, Date.now())
       .then(async (started) => {
         const startedLastSwaps = await lastSwapsFor(programs, started)
         const startedLastEntries = await lastEntriesFor(programs, started)
+        const [startedSessions, startedVolumeBaseline] = await Promise.all([
+          listSessions(),
+          getVolumeBaseline(),
+        ])
         setSession(started)
         setLastSwaps(startedLastSwaps)
         setLastEntries(startedLastEntries)
+        setSessions(startedSessions)
+        setVolumeBaselineState(startedVolumeBaseline)
         setOpenSet(null)
         setView('list')
       })
@@ -544,14 +600,25 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
 
   /** Opens a set of an exercise, against what that exercise was last lifted with. */
   function handleOpenSet(exerciseId: string, setIndex: number): void {
-    getLastEntriesFor(exerciseId)
-      .then((history) => {
-        setOpenSet({ exerciseId, setIndex, history, extra: false })
+    Promise.all([getLastEntriesFor(exerciseId), getWeightStep(exerciseId)])
+      .then(([history, weightStep]) => {
+        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep })
         setView('set')
       })
       .catch(() => {
         // Without the history the preset would be wrong; the list stays up instead.
       })
+  }
+
+  /**
+   * `SetScreen.onWeightStepChange`: persists the weight step chosen for `exerciseId` (E8-T8). A
+   * failed write keeps the step on this screen only -- `weightStep` in state stays whatever the
+   * screen already has -- and shows nothing, per the ticket.
+   */
+  function handleWeightStepChange(exerciseId: string, step: number): void {
+    setWeightStep(exerciseId, step).catch(() => {
+      // Nothing to recover to here; the screen keeps the step it already has.
+    })
   }
 
   /** Moves the open set past the plan; the history it was opened against still holds. */
@@ -742,6 +809,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           equipmentTypes={equipmentTypes}
           gymEquipment={gymEquipment}
           onGymEquipmentChange={handleGymEquipmentChange}
+          volumeBaseline={volumeBaseline}
+          onVolumeBaselineChange={handleVolumeBaselineChange}
           sync={sync}
           onSyncNow={() => {
             void syncNow()
@@ -800,6 +869,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             lastEntries={presetHistory(openSet.history, session, openSet.exerciseId)}
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}
+            weightStep={openSet.weightStep}
+            onWeightStepChange={(step) => handleWeightStepChange(openSet.exerciseId, step)}
             onLogged={(logged) => {
               setSession(logged)
               setOpenSet((current) => (current ? { ...current, extra: false } : current))
@@ -807,6 +878,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}
+            onFinishExercise={() => setView('list')}
           />
         </AppShell>
       )
@@ -883,6 +955,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           lastEntries={lastEntries}
           onUndoSwap={handleUndoSwap}
           onApplySwap={handleApplySwap}
+          sessions={sessions}
+          volumeBaseline={volumeBaseline}
         />
       </AppShell>
     )

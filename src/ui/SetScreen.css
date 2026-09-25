@@ -48,7 +48,8 @@
 /* The two controls reach the tap-target floor wherever they are rendered -- the action bar
  * sets the same floor on its own children, so this is what holds outside a shell. */
 .log-set,
-.add-set {
+.add-set,
+.finish-exercise {
   min-height: var(--tap-min);
 }
 

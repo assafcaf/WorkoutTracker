@@ -6,7 +6,15 @@ import exercisesJson from '../data/exercises.json'
 import libraryJson from '../data/library/exercises.json'
 import { resolveExercise } from '../data/resolve'
 import { ExerciseList, nextSetIndex } from './ExerciseList'
-import type { Exercise, ExercisePlan, LibraryExercise, Program, Session, SetEntry } from '../types'
+import type {
+  Exercise,
+  ExercisePlan,
+  LibraryExercise,
+  Program,
+  Session,
+  SetEntry,
+  VolumeBaseline,
+} from '../types'
 
 // The list is pure presentation over a session it is handed, so these tests need no database:
 // they feed it the shipped program and catalog and a session built by hand. The end-to-end
@@ -27,6 +35,23 @@ function entry(exerciseId: string, setIndex: number): SetEntry {
   return { exerciseId, setIndex, weightKg: 60, reps: 10, loggedAt: BASE + setIndex }
 }
 
+/** A SetEntry with a chosen weight and reps, for volume fixtures worked out by hand. */
+function weightedEntry(exerciseId: string, setIndex: number, weightKg: number, reps: number): SetEntry {
+  return { exerciseId, setIndex, weightKg, reps, loggedAt: BASE + setIndex }
+}
+
+/** A finished Session of `workoutId`, holding `entries`, for baseline fixtures. */
+function finishedSession(workoutId: string, startedAt: number, entries: SetEntry[]): Session {
+  return {
+    id: `finished-${startedAt}`,
+    programId: assaf.id,
+    workoutId,
+    startedAt,
+    finishedAt: startedAt,
+    entries,
+  }
+}
+
 function sessionWith(entries: SetEntry[]): Session {
   return {
     id: 'session-under-test',
@@ -38,7 +63,12 @@ function sessionWith(entries: SetEntry[]): Session {
   }
 }
 
-function renderList(entries: SetEntry[]) {
+function renderList(
+  entries: SetEntry[],
+  sessions: Session[] = [],
+  volumeBaseline: VolumeBaseline = { period: 'last' },
+  lastEntries: Map<string, SetEntry[]> = new Map(),
+) {
   const user = userEvent.setup()
   const onOpenSet = vi.fn()
   const onFinish = vi.fn()
@@ -53,7 +83,9 @@ function renderList(entries: SetEntry[]) {
       lastSwaps={{}}
       onUndoSwap={vi.fn()}
       onApplySwap={vi.fn()}
-      lastEntries={new Map()}
+      lastEntries={lastEntries}
+      sessions={sessions}
+      volumeBaseline={volumeBaseline}
     />,
   )
   return { user, onOpenSet, onFinish }
@@ -221,6 +253,8 @@ function renderWorkoutB(session: Session, lastSwaps: Record<string, string> = {}
     onUndoSwap,
     onApplySwap,
     lastEntries: new Map(),
+    sessions: [],
+    volumeBaseline: { period: 'last' } as VolumeBaseline,
   }
   const view = render(<ExerciseList {...props} session={session} />)
   const rerenderWith = (next: Session) => view.rerender(<ExerciseList {...props} session={next} />)
@@ -281,4 +315,78 @@ test('S10 a plan already swapped today offers no Last time button', () => {
 
   expect(screen.getByRole('button', { name: 'Undo swap' })).toBeVisible()
   expect(screen.queryByRole('button', { name: /^Last time/ })).toBeNull()
+})
+
+// --- E8-T10: the row bar compares volume with the baseline ----------------------------------
+//
+// Back squat's plan is Workout A's, 4 sets (see the O13 fixtures above). Its last finished
+// Session's volume (1,860 kg) and today's (900 kg, then 2,046 kg) are hand-summed from the
+// weights and reps below, exactly as the ticket's O1 states them.
+
+const backSquatLastSession = finishedSession(workoutA.id, BASE - 86_400_000, [
+  weightedEntry('back-squat', 1, 40, 10), // 400
+  weightedEntry('back-squat', 2, 50, 10), // 500
+  weightedEntry('back-squat', 3, 60, 8), // 480
+  weightedEntry('back-squat', 4, 60, 8), // 480
+]) // 1,860 kg total
+
+test('O1 back squat at 48% of its last session shows Volume vs last workout: 48% with a progressbar at 48', () => {
+  renderList(
+    [weightedEntry('back-squat', 1, 40, 10), weightedEntry('back-squat', 2, 50, 10)], // 900 kg
+    [backSquatLastSession],
+    { period: 'last' },
+  )
+
+  const item = row('Back squat')
+  expect(within(item).getByText('Volume vs last workout: 48%')).toBeVisible()
+  expect(within(item).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '48')
+})
+
+test('O1 back squat past its last session’s volume shows Volume vs last workout: 110% with a full bar', () => {
+  renderList(
+    [weightedEntry('back-squat', 1, 100, 10), weightedEntry('back-squat', 2, 104.6, 10)], // 2,046 kg
+    [backSquatLastSession],
+    { period: 'last' },
+  )
+
+  const item = row('Back squat')
+  expect(within(item).getByText('Volume vs last workout: 110%')).toBeVisible()
+  expect(within(item).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
+})
+
+test('O2 an Exercise with no finished Session in the default baseline shows No previous workout and no progressbar', () => {
+  renderList([])
+
+  const item = row('Back squat')
+  expect(within(item).getByText('No previous workout')).toBeVisible()
+  expect(within(item).queryByRole('progressbar')).toBeNull()
+})
+
+test('O2 an Exercise with no finished Session inside a chosen period shows No workout in this period', () => {
+  renderList([], [], { period: '1w', aggregate: 'avg' })
+
+  const item = row('Back squat')
+  expect(within(item).getByText('No workout in this period')).toBeVisible()
+  expect(within(item).queryByRole('progressbar')).toBeNull()
+})
+
+test('O2 no row shows E4’s Next: … kg suggestion any more', () => {
+  // Back squat logged in full at the top of its plan's rep range last time -- exactly the
+  // App.test.tsx (E4-T6) fixture that used to draw a full ProgressionBar with "Next: 67.5 kg"
+  // beside it. The row bar is volume-vs-baseline now, so that suggestion is gone from every row.
+  const lastEntries = new Map<string, SetEntry[]>([
+    [
+      'back-squat',
+      [
+        weightedEntry('back-squat', 1, 65, 10),
+        weightedEntry('back-squat', 2, 65, 10),
+        weightedEntry('back-squat', 3, 65, 10),
+        weightedEntry('back-squat', 4, 65, 10),
+      ],
+    ],
+  ])
+
+  renderList([], [], { period: 'last' }, lastEntries)
+
+  expect(screen.queryByText(/Next:|Add a set/)).toBeNull()
 })

@@ -1,3 +1,4 @@
 - Gate red after reverting a merge? Verify `git diff --stat <old-head> <revert-sha>` is empty, then treat as pre-existing/environmental — hold, report FAIL, don't keep reverting (E4-T3, 2026-09-24)
 - `git merge --no-ff` abort on untracked .claude/agent-memory/<role>/MEMORY.md: mv it aside to a sibling name (don't delete), then merge; leave reconciling to the curator (E4-T8, 2026-09-24)
 - `git merge` failing with "Unable to create index.lock: File exists", no live git process and a clean `git status` (no MERGE_HEAD) is a stale lock — `rm -f` it and retry once (E7-T2, 2026-09-25)
+- A READY's TASK_HEAD that `git rev-parse`/`cat-file -e` can't resolve is a mistyped sha, not a merge problem — hold, report FAIL immediately; orchestrator gets the owner's correct sha (E8-T8, 2026-09-25)
