@@ -33,17 +33,8 @@ beforeEach(async () => {
   await db.settings.clear()
 })
 
-test('O18 getActiveProgramId defaults to the only program when there is one and nothing is stored', async () => {
-  const solo = [program('only-program')]
-
-  expect(await getActiveProgramId(solo)).toBe('only-program')
-})
-
-test('O18 getActiveProgramId defaults to the first program in the list when nothing is stored', async () => {
-  const programs = [program('assaf-ab-2026'), program('full-body-starter')]
-
-  expect(await getActiveProgramId(programs)).toBe('assaf-ab-2026')
-})
+// E9-T2 replaced the O18 "defaults to the first program when nothing is stored" rule: with no
+// stored id and no Session there is no active Program (O19, below).
 
 test('O18 setActiveProgramId then getActiveProgramId returns the newly chosen program', async () => {
   const programs = [program('assaf-ab-2026'), program('full-body-starter')]

@@ -78,6 +78,8 @@ beforeEach(async () => {
 
   await db.open()
   await db.settings.clear()
+  // Since E9-T2 an empty database has no active Program; these tests start where the trainee is.
+  await setActiveProgramId('assaf-ab-2026')
 })
 
 const FAST = { timeout: 300 }
@@ -2248,6 +2250,9 @@ describe('E7-T8', () => {
   beforeEach(async () => {
     await db.sessions.clear()
     await db.settings.clear()
+    // The trainee's Program (E9-T2), stamped older than any server-seeded setting (BASE), so a
+    // pulled activeProgramId still wins over it.
+    await db.settings.put({ key: 'activeProgramId', value: 'assaf-ab-2026', updatedAt: BASE - 1 })
     server = new FakeSyncServer()
     vi.stubGlobal('fetch', server.fetch)
   })
