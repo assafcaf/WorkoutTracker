@@ -653,3 +653,61 @@ test('O1 playRestOver is not called when a set screen opens with this Session re
 
   expect(playRestOver).not.toHaveBeenCalled()
 })
+
+// --- E8-T8 O1: the weight step control, per Exercise ----------------------------------------
+
+/** The step control: a native select named for the weight step it currently reads. */
+function stepControl(step: number): HTMLElement {
+  return screen.getByRole('combobox', { name: `Step ${step} kg` })
+}
+
+test('O1 back-squats set screen shows a Step 2.5 kg control by default', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  expect(stepControl(2.5)).toBeInTheDocument()
+})
+
+test('O1 choosing 5 from the step options updates the control to read Step 5 kg', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  await user.selectOptions(stepControl(2.5), '5')
+
+  expect(stepControl(5)).toBeInTheDocument()
+})
+
+test('O1 choosing 5 from the step options moves Increase weight from 60 to 65', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  await user.selectOptions(stepControl(2.5), '5')
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+
+  expect(readoutValue(weightReadout())).toBe('65')
+})
+
+test('O1 choosing 5 from the step options rebuilds the Ladder with rungs 5, 10, 15', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  await user.selectOptions(stepControl(2.5), '5')
+
+  const column = screen.getByRole('listbox', { name: 'Weight ladder' })
+  const rungs = within(column).getAllByRole('option')
+  expect(rungs.slice(0, 3).map((rung) => readoutValue(rung))).toEqual(['5', '10', '15'])
+})
+
+test('O1 choosing 5 from the step options tells the caller onWeightStepChange with 5', async () => {
+  const onWeightStepChange = vi.fn()
+  const { user } = renderSetScreen({
+    lastEntries: [historyEntry(1, 60, 10)],
+    onWeightStepChange,
+  })
+
+  await user.selectOptions(stepControl(2.5), '5')
+
+  expect(onWeightStepChange).toHaveBeenCalledWith(5)
+})
+
+test('O1 a weightStep prop of 5 opens the control already reading Step 5 kg', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
+
+  expect(stepControl(5)).toBeInTheDocument()
+})
