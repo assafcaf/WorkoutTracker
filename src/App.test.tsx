@@ -3136,3 +3136,66 @@ describe('E8-T4', { timeout: 15_000 }, () => {
   })
 })
 
+// --- E8-T7: always land on Workout when the document becomes visible again ([O1], [O2]) ---
+//
+// These go through App, not `useLandOnWorkout` directly: the outcomes are about which tab or
+// screen is showing afterwards, and App is what owns `view`/`setView` and the in-session
+// exception. `useLandOnWorkout` itself is only the `visibilitychange` plumbing App consumes.
+
+/** Fires `visibilitychange` with `document.visibilityState` forced to `state`. */
+function setDocumentVisibility(state: 'visible' | 'hidden'): void {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+}
+
+test('O1 returning from another tab with no Session in progress lands back on Workout', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+
+  await pressTab(user, 'History')
+  expect(currentTabNames()).toEqual(['History'])
+
+  setDocumentVisibility('hidden')
+  setDocumentVisibility('visible')
+
+  await waitFor(() => {
+    expect(currentTabNames()).toEqual(['Workout'])
+  }, SETTLE)
+})
+
+test('O2 a Session in progress on its exercise list stays on the exercise list when the document becomes visible again', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await startWorkoutA(user)
+
+  setDocumentVisibility('hidden')
+  setDocumentVisibility('visible')
+
+  // Still the exercise list, not back at the picker.
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: /^Back squat/ })).toBeVisible()
+  }, SETTLE)
+  expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
+})
+
+test('O2 a Session in progress on a set screen stays on the same set when the document becomes visible again', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await openBackSquat(user)
+  await enterOnKeypad(user, weightReadout(), ['6', '0'])
+  await enterOnKeypad(user, repsReadout(), ['1', '0'])
+  await logSetAndOpen(user, 2, 4)
+
+  setDocumentVisibility('hidden')
+  setDocumentVisibility('visible')
+
+  // Still set 2 of 4 on back squat's dials, not swept back to the picker or set 1.
+  await waitFor(() => {
+    expect(screen.getByText('Set 2 of 4')).toBeVisible()
+  }, SETTLE)
+  expect(screen.getByRole('button', { name: 'Weight' })).toBeVisible()
+})
+
