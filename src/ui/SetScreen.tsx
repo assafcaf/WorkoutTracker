@@ -41,6 +41,13 @@ export type SetScreenProps = {
    */
   onOpenAlternatives?(exerciseId: string): void
   /**
+   * Told that "Finish exercise" was tapped from the done state, so the caller can return to the
+   * Workout's exercise list (E8-T4). Optional so a caller with nothing to return to -- every
+   * test predating it -- need not pass it; when absent, the done state's action bar holds only
+   * "Add set".
+   */
+  onFinishExercise?(): void
+  /**
    * Whether the set on the dials was opened by "Add set" as an extra set past the plan (E6-T1).
    * A screen opened past the plan with `extra` false is in the done state. Optional, read as
    * `false`, so the callers predating it (E1's and the wake lock's tests) need not pass it.
@@ -147,7 +154,16 @@ function initialLastLoggedAt(
  * the rule is E1-T2's, the message is this screen's.
  */
 export function SetScreen(props: SetScreenProps): JSX.Element {
-  const { exercise, plan, sessionId, onLogged, onAddSet, onOpenInfo, onOpenAlternatives } = props
+  const {
+    exercise,
+    plan,
+    sessionId,
+    onLogged,
+    onAddSet,
+    onOpenInfo,
+    onOpenAlternatives,
+    onFinishExercise,
+  } = props
 
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
@@ -231,11 +247,20 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     <button type="button" className="log-set" onClick={() => void log()}>
       Log set
     </button>
-  ) : onAddSet !== undefined ? (
-    <button type="button" className="add-set" onClick={() => addSet(onAddSet)}>
-      Add set
-    </button>
-  ) : null
+  ) : (
+    <>
+      {onFinishExercise === undefined ? null : (
+        <button type="button" className="finish-exercise" onClick={onFinishExercise}>
+          Finish exercise
+        </button>
+      )}
+      {onAddSet === undefined ? null : (
+        <button type="button" className="add-set" onClick={() => addSet(onAddSet)}>
+          Add set
+        </button>
+      )}
+    </>
+  )
 
   return (
     <div className="set-screen">

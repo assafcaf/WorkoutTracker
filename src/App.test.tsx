@@ -3095,3 +3095,44 @@ describe('E8-T6', () => {
   })
 })
 
+// --- E8-T4: Finish exercise offers a way back to the Workout's exercise list -----------------
+
+describe('E8-T4', { timeout: 15_000 }, () => {
+  test('O1 the done state offers Finish exercise before Add set in the action bar', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    const finish = await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE)
+    const addSet = screen.getByRole('button', { name: 'Add set' })
+
+    const bar = actionBar()
+    expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
+    expect((bar as HTMLElement).contains(finish)).toBe(true)
+    expect((bar as HTMLElement).contains(addSet)).toBe(true)
+    // Finish exercise is the primary action: it comes first in the action bar.
+    const buttons = within(bar as HTMLElement).getAllByRole('button')
+    expect(buttons.map((button) => button.textContent)).toEqual(['Finish exercise', 'Add set'])
+  })
+
+  test('O1 pressing Finish exercise returns to the Workout’s exercise list', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
+
+    expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
+    const header = shellHeader()
+    expect(header).not.toBeNull()
+    expect(textOf(header as HTMLElement)).toContain('Full body')
+  })
+
+  test('O1 after an extra set is added and logged, the done state again offers Finish exercise', async () => {
+    const user = userEvent.setup()
+    await logAllThreePlannedBackSquatSets(user)
+
+    await addAndLogSetFour(user)
+
+    expect(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE)).toBeVisible()
+  })
+})
+
