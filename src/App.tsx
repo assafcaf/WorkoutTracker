@@ -35,6 +35,7 @@ import {
   getVolumeBaseline,
   setActiveProgramId,
   setGymEquipment as persistGymEquipment,
+  setVolumeBaseline as persistVolumeBaseline,
 } from './storage/settingsStore'
 import {
   clearSwap,
@@ -551,6 +552,17 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       })
   }
 
+  /** `Settings.onVolumeBaselineChange`: saves the next baseline and reflects it (E8-T11). */
+  function handleVolumeBaselineChange(baseline: VolumeBaseline): void {
+    persistVolumeBaseline(baseline)
+      .then(() => {
+        setVolumeBaselineState(baseline)
+      })
+      .catch(() => {
+        // Nothing to recover to here; a later read will surface the same failure.
+      })
+  }
+
   /** Starts the chosen workout, or resumes the session already in progress, and lists it. */
   function handleChoose(programId: string, workoutId: string): void {
     startOrResumeSession(programId, workoutId, Date.now())
@@ -774,6 +786,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           equipmentTypes={equipmentTypes}
           gymEquipment={gymEquipment}
           onGymEquipmentChange={handleGymEquipmentChange}
+          volumeBaseline={volumeBaseline}
+          onVolumeBaselineChange={handleVolumeBaselineChange}
           sync={sync}
           onSyncNow={() => {
             void syncNow()
