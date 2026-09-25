@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Exercise, ExercisePlan, LibraryExercise, Program, Session, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { toRegionCounts, weekSets } from '../domain/muscles'
@@ -63,7 +64,16 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     sessions = [],
     now = Date.now(),
     resolve = (id: string) => catalog.get(id),
+    onNewProgram,
+    onEditProgram,
+    onCopyProgram,
+    onDeleteProgram,
+    onResetProgram,
+    userProgramIds = new Set<string>(),
+    bundledProgramIds = new Set<string>(),
+    programMessage = null,
   } = props
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
   // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
   // half-built page behind -- the same rule `ProgramPicker` enforced.
@@ -164,6 +174,73 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
           )
         })}
       </fieldset>
+
+      {programMessage && <p className="program-page-message">{programMessage}</p>}
+
+      <section className="program-page-actions">
+        <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
+          New program
+        </button>
+        {programs.map((program) => {
+          const isUser = userProgramIds.has(program.id)
+          const isBundled = bundledProgramIds.has(program.id)
+          const confirming = confirmingId === program.id
+          return (
+            <div
+              key={program.id}
+              data-program-id={program.id}
+              className="program-page-actions-row"
+            >
+              <span className="program-page-actions-name">{program.name}</span>
+              <button
+                type="button"
+                className="program-page-edit"
+                onClick={() => onEditProgram?.(program.id)}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="program-page-copy"
+                onClick={() => onCopyProgram?.(program.id)}
+              >
+                Copy
+              </button>
+              {isUser && !isBundled && !confirming && (
+                <button
+                  type="button"
+                  className="program-page-delete"
+                  onClick={() => setConfirmingId(program.id)}
+                >
+                  Delete
+                </button>
+              )}
+              {isUser && isBundled && !confirming && (
+                <button
+                  type="button"
+                  className="program-page-reset"
+                  onClick={() => setConfirmingId(program.id)}
+                >
+                  Reset to original
+                </button>
+              )}
+              {confirming && (
+                <button
+                  type="button"
+                  className="program-page-confirm"
+                  onClick={() => {
+                    setConfirmingId(null)
+                    if (isBundled) onResetProgram?.(program.id)
+                    else onDeleteProgram?.(program.id)
+                  }}
+                >
+                  Confirm
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </section>
     </div>
   )
 }
