@@ -11,7 +11,7 @@ import type { Exercise, ExercisePlan, SetEntry } from '../types'
  * Rules, in order:
  * - an exact match on `setIndex` wins;
  * - no exact match but entries exist -> the entry with the highest `setIndex`;
- * - no entries -> `exercise.startWeight` and `plan.repRange[0]`.
+ * - no entries -> `plan.startWeightKg ?? exercise.startWeight` and `plan.repRange[0]`.
  *
  * A bodyweight exercise always yields `weightKg: null`.
  */
@@ -36,7 +36,7 @@ export function presetForSet(args: {
   }
 
   return {
-    weightKg: exercise.bodyweight ? null : exercise.startWeight,
+    weightKg: exercise.bodyweight ? null : (plan.startWeightKg ?? exercise.startWeight),
     reps: plan.repRange[0],
   }
 }
