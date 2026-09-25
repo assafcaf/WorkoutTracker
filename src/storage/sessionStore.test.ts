@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { db, isStorageAvailable } from './db'
 import {
   clearSwap,
@@ -599,4 +599,73 @@ test('O19 isStorageAvailable leaves the stored sessions alone', async () => {
 
   expect(await db.sessions.count()).toBe(2)
   expect(await db.sessions.get(stored[0].id)).toEqual(stored[0])
+})
+
+// --- updatedAt on every write (E7-T2) --------------------------------------------------------
+
+describe('O8 every session write stamps updatedAt', () => {
+  // The device clock, pinned so the stamp a write should carry is a literal. It is far from
+  // BASE on purpose: a write that takes a `now` must stamp that, not the clock.
+  const CLOCK = BASE + 10 * DAY
+
+  beforeEach(() => {
+    vi.spyOn(Date, 'now').mockReturnValue(CLOCK)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  test('O8 a session startOrResumeSession creates is stored with updatedAt equal to its now', async () => {
+    const session = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+
+    expect((await db.sessions.get(session.id))?.updatedAt).toBe(BASE)
+  })
+
+  test('O8 logSet stores the session with updatedAt equal to the time of the write', async () => {
+    await db.sessions.put(storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }))
+
+    await logSet('in-progress', entry('back-squat', 0, 60, 8, BASE + 120 * SECOND))
+
+    expect((await db.sessions.get('in-progress'))?.updatedAt).toBe(CLOCK)
+  })
+
+  test('O8 logSet stamps updatedAt on a session stored before this epic without one', async () => {
+    await db.sessions.put(storedSession({ id: 'legacy', finishedAt: null }))
+
+    await logSet('legacy', entry('back-squat', 0, 60, 8, BASE + 120 * SECOND))
+
+    expect((await db.sessions.get('legacy'))?.updatedAt).toBe(CLOCK)
+  })
+
+  test('O8 finishSession stores the session with updatedAt equal to its now', async () => {
+    await db.sessions.put(storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }))
+
+    await finishSession('in-progress', BASE + 3600 * SECOND)
+
+    expect((await db.sessions.get('in-progress'))?.updatedAt).toBe(BASE + 3600 * SECOND)
+  })
+
+  test('O8 setSwap stores the session with updatedAt equal to the time of the write', async () => {
+    await db.sessions.put(storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }))
+
+    await setSwap('in-progress', 'back-squat', 'leg-press')
+
+    expect((await db.sessions.get('in-progress'))?.updatedAt).toBe(CLOCK)
+  })
+
+  test('O8 clearSwap stores the session with updatedAt equal to the time of the write', async () => {
+    await db.sessions.put(
+      storedSession({
+        id: 'in-progress',
+        finishedAt: null,
+        updatedAt: BASE,
+        swaps: { 'back-squat': 'leg-press' },
+      }),
+    )
+
+    await clearSwap('in-progress', 'back-squat')
+
+    expect((await db.sessions.get('in-progress'))?.updatedAt).toBe(CLOCK)
+  })
 })
