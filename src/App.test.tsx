@@ -2981,3 +2981,65 @@ test('O2 a Session in progress on a set screen stays on the same set when the do
   expect(screen.getByRole('button', { name: 'Weight' })).toBeVisible()
 })
 
+// --- E8-T11: choosing the volume baseline in Settings wires through to the row -------------
+
+test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row read Volume vs 3-month average: 50%', async () => {
+  const user = userEvent.setup()
+  const now = Date.now()
+
+  // Two finished Sessions inside the 3-month window: the older one, 60 days ago, at 800 kg·reps,
+  // and the most recent one, 5 days ago, at 1200 -- so "Last workout" (1200) and "3-month
+  // average" ((800 + 1200) / 2 = 1000) resolve to different baselines, proving the setting
+  // chosen in Settings is what the row actually used, not a default that happens to agree.
+  const older = await startOrResumeSession('assaf-ab-2026', 'workout-a', now - 60 * DAY_MS)
+  await logSet(older.id, {
+    exerciseId: 'back-squat',
+    setIndex: 1,
+    weightKg: 80,
+    reps: 10,
+    loggedAt: now - 60 * DAY_MS,
+  })
+  await finishSession(older.id, now - 60 * DAY_MS)
+
+  const recent = await startOrResumeSession('assaf-ab-2026', 'workout-a', now - 5 * DAY_MS)
+  await logSet(recent.id, {
+    exerciseId: 'back-squat',
+    setIndex: 1,
+    weightKg: 120,
+    reps: 10,
+    loggedAt: now - 5 * DAY_MS,
+  })
+  await finishSession(recent.id, now - 5 * DAY_MS)
+
+  // Today's own Session in progress: back squat at 50 kg x 10 = 500, half of the 3-month
+  // average (1000).
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', now)
+  await logSet(started.id, {
+    exerciseId: 'back-squat',
+    setIndex: 1,
+    weightKg: 50,
+    reps: 10,
+    loggedAt: now,
+  })
+
+  render(<App />)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+
+  // Back out to the picker, which is the only view with a tab bar while a Session is in
+  // progress (E3-T3/T4), reach Settings from there, and resume the Session again after.
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(await screen.findByRole('button', { name: 'Settings' }, SETTLE))
+
+  await user.selectOptions(
+    await screen.findByRole('combobox', { name: 'Compare volume with' }, SETTLE),
+    'Past 3 months',
+  )
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Using' }), 'Average')
+
+  await user.click(screen.getByRole('button', { name: 'Workout' }))
+  await user.click(await screen.findByRole('button', { name: /^Resume Workout A/ }, SETTLE))
+
+  const row = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  expect(within(row).getByText('Volume vs 3-month average: 50%')).toBeVisible()
+})
+
