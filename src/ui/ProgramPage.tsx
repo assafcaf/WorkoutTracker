@@ -256,20 +256,25 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
       {activeProgramId === null && (
         <section className="program-page-newuser">
           <h2>Choose a program</h2>
-          <ul className="program-page-newuser-list">
+          <div className="program-page-newuser-list">
             {visiblePrograms(programs).map((program) => (
-              <li key={program.id}>
+              <div key={program.id} className="program-page-newuser-card">
+                <span className="program-page-newuser-name">{program.name}</span>
                 <button
                   type="button"
-                  className="program-page-use"
+                  className="program-page-use program-page-use-primary"
                   onClick={() => onChooseProgram(program.id)}
                 >
                   {`Use this ${program.name}`}
                 </button>
-              </li>
+              </div>
             ))}
-          </ul>
-          <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
+          </div>
+          <button
+            type="button"
+            className="program-page-new program-page-new-secondary"
+            onClick={() => onNewProgram?.()}
+          >
             New program
           </button>
         </section>

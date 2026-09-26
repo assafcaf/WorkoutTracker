@@ -119,3 +119,60 @@
 .program-page-switcher-row .settings-action {
   flex: 1;
 }
+
+/* fix-newuser-chooser: the no-active-Program chooser, styled like the active-program radio
+ * cards above and the Workout tab's lime `.start-workout` primary button.
+ */
+.program-page-newuser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.program-page-newuser-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.program-page-newuser-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.program-page-newuser-name {
+  font-weight: 600;
+}
+
+.program-page-use-primary,
+.program-page-new-secondary {
+  display: flex;
+  width: 100%;
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.program-page-use-primary {
+  border: 0;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.program-page-new-secondary {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
