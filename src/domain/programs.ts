@@ -39,9 +39,30 @@ export function newPlan(exerciseId: string): ExercisePlan {
  * `workout-<uuid>` Workout ids, name `<name> (copy)`, `createdAt: now` (E9-T9).
  */
 export function copyProgram(program: Program, now: number): UserProgram {
-  void program
-  void now
-  throw new Error('NotImplemented: copyProgram (E9-T9)')
+  return {
+    ...program,
+    id: `user-${uuid()}`,
+    name: `${program.name} (copy)`,
+    createdAt: now,
+    workouts: program.workouts.map((workout) => ({
+      ...workout,
+      id: `workout-${uuid()}`,
+      exercises: workout.exercises.map((plan) => ({
+        ...plan,
+        repRange: [plan.repRange[0], plan.repRange[1]],
+      })),
+    })),
+  }
+}
+
+let uuidSerial = 0
+
+/** A random uuid; a time-and-counter id where `crypto.randomUUID` is missing (Node 18). */
+export function uuid(): string {
+  const webCrypto = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+  if (typeof webCrypto?.randomUUID === 'function') return webCrypto.randomUUID()
+  uuidSerial += 1
+  return `${Date.now().toString(36)}-${uuidSerial}`
 }
 
 const isBlank = (text: string) => text.trim() === ''
