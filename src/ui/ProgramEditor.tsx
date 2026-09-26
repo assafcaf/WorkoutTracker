@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Exercise, ExercisePlan, LibraryExercise, Program, Workout } from '../types'
-import { newPlan } from '../domain/programs'
+import { newPlan, validateProgram } from '../domain/programs'
+import type { ProgramFault } from '../domain/programs'
 import { useActionBarSlot } from './actionBarSlot'
 import { LibraryList } from './LibraryList'
 import './ProgramEditor.css'
@@ -79,6 +80,16 @@ function swap<T>(list: T[], a: number, b: number): T[] {
   return next
 }
 
+/** A stable DOM id for the message describing the fault at `path` (E9-T8). */
+function faultId(path: string): string {
+  return `program-editor-fault-${path.replace(/\./g, '-')}`
+}
+
+/** The message an accessible description shows for a field, or `undefined` for none (E9-T8). */
+function faultMessage(faults: ProgramFault[], path: string): string | undefined {
+  return faults.find((f) => f.path === path)?.message
+}
+
 /**
  * Builds and rearranges a Program's name, Workouts and Plans on one screen (E9-T7).
  *
@@ -118,6 +129,26 @@ export function ProgramEditor({
 
   const visible = workouts.filter((w) => !w.hidden)
   const sessionsShown = sessionsText ?? String(visible.length)
+  // Each visible Workout keeps the index it holds in `workouts` (its `validateProgram` path),
+  // alongside the position among visible ones only, used for its "Workout N" label and its
+  // Move up/down disabling (E9-T8).
+  const visibleWithIndex = workouts.reduce<
+    { workout: DraftWorkout; fullIndex: number; displayIndex: number }[]
+  >((acc, workout, fullIndex) => {
+    if (workout.hidden) return acc
+    acc.push({ workout, fullIndex, displayIndex: acc.length })
+    return acc
+  }, [])
+
+  const draftProgram: Program = {
+    ...initial,
+    name,
+    sessionsPerWeek: Number(sessionsShown),
+    workouts: workouts.map(toWorkout),
+  }
+  const faults = validateProgram(draftProgram, resolve)
+  const canSave = faults.length === 0
+  const workoutsFault = faultMessage(faults, 'workouts')
 
   const updateWorkout = (id: string, change: (w: DraftWorkout) => DraftWorkout) =>
     setWorkouts((all) => all.map((w) => (w.id === id ? change(w) : w)))
@@ -172,7 +203,7 @@ export function ProgramEditor({
     query === '' ? library : library.filter((e) => e.name.toLowerCase().includes(query))
 
   const actions = (
-    <button type="button" className="program-editor-save" onClick={save}>
+    <button type="button" className="program-editor-save" onClick={save} disabled={!canSave}>
       Save
     </button>
   )
@@ -189,9 +220,15 @@ export function ProgramEditor({
           type="text"
           className="program-editor-input"
           value={name}
+          aria-describedby={faultMessage(faults, 'name') ? faultId('name') : undefined}
           onChange={(event) => setName(event.target.value)}
         />
       </label>
+      {faultMessage(faults, 'name') && (
+        <p id={faultId('name')} className="program-editor-fault">
+          {faultMessage(faults, 'name')}
+        </p>
+      )}
       <label className="program-editor-field">
         <span className="program-editor-label">Sessions per week</span>
         <input
@@ -199,29 +236,50 @@ export function ProgramEditor({
           inputMode="decimal"
           className="program-editor-input"
           value={sessionsShown}
+          aria-describedby={
+            faultMessage(faults, 'sessionsPerWeek') ? faultId('sessionsPerWeek') : undefined
+          }
           onChange={(event) => setSessionsText(event.target.value)}
         />
       </label>
+      {faultMessage(faults, 'sessionsPerWeek') && (
+        <p id={faultId('sessionsPerWeek')} className="program-editor-fault">
+          {faultMessage(faults, 'sessionsPerWeek')}
+        </p>
+      )}
 
-      {visible.map((workout, i) => (
+      <h2 className="program-editor-heading">Workouts</h2>
+      {workoutsFault && <p className="program-editor-fault">{workoutsFault}</p>}
+
+      {visibleWithIndex.map(({ workout, fullIndex, displayIndex }) => {
+        const workoutPath = `workouts.${fullIndex}`
+        const nameFault = faultMessage(faults, `${workoutPath}.name`)
+        const exercisesFault = faultMessage(faults, `${workoutPath}.exercises`)
+        return (
         <fieldset key={workout.id} className="program-editor-workout">
-          <legend className="program-editor-legend">Workout {i + 1}</legend>
+          <legend className="program-editor-legend">Workout {displayIndex + 1}</legend>
           <label className="program-editor-field">
             <span className="program-editor-label">Workout name</span>
             <input
               type="text"
               className="program-editor-input"
               value={workout.name}
+              aria-describedby={nameFault ? faultId(`${workoutPath}.name`) : undefined}
               onChange={(event) =>
                 updateWorkout(workout.id, (w) => ({ ...w, name: event.target.value }))
               }
             />
           </label>
+          {nameFault && (
+            <p id={faultId(`${workoutPath}.name`)} className="program-editor-fault">
+              {nameFault}
+            </p>
+          )}
           <div className="program-editor-row-actions">
             <button
               type="button"
               className="program-editor-action"
-              disabled={i === 0}
+              disabled={displayIndex === 0}
               onClick={() => moveWorkout(workout.id, -1)}
             >
               Move up
@@ -229,7 +287,7 @@ export function ProgramEditor({
             <button
               type="button"
               className="program-editor-action"
-              disabled={i === visible.length - 1}
+              disabled={displayIndex === visible.length - 1}
               onClick={() => moveWorkout(workout.id, 1)}
             >
               Move down
@@ -246,7 +304,10 @@ export function ProgramEditor({
           <ol className="program-editor-plans">
             {workout.plans.map((plan, j) => {
               const exercise = resolve(plan.exerciseId)
-              const numberField = (label: string, key: keyof DraftPlan) => (
+              const planPath = `${workoutPath}.exercises.${j}`
+              const numberField = (label: string, key: keyof DraftPlan, faultPath: string) => {
+                const message = faultMessage(faults, faultPath)
+                return (
                 <label className="program-editor-field">
                   <span className="program-editor-label">{label}</span>
                   <input
@@ -254,20 +315,23 @@ export function ProgramEditor({
                     inputMode="decimal"
                     className="program-editor-input"
                     value={plan[key]}
+                    aria-describedby={message ? faultId(faultPath) : undefined}
                     onChange={(event) =>
                       updatePlan(workout.id, j, { [key]: event.target.value })
                     }
                   />
                 </label>
-              )
+                )
+              }
+              const repRangeMessage = faultMessage(faults, `${planPath}.repRange`)
               return (
                 <li key={`${plan.exerciseId}-${j}`} className="program-editor-plan">
                   <p className="program-editor-plan-name">{exercise?.name ?? plan.exerciseId}</p>
                   <div className="program-editor-plan-fields">
-                    {numberField('Sets', 'sets')}
-                    {numberField('Min reps', 'minReps')}
-                    {numberField('Max reps', 'maxReps')}
-                    {numberField('Rest (s)', 'rest')}
+                    {numberField('Sets', 'sets', `${planPath}.sets`)}
+                    {numberField('Min reps', 'minReps', `${planPath}.repRange`)}
+                    {numberField('Max reps', 'maxReps', `${planPath}.repRange`)}
+                    {numberField('Rest (s)', 'rest', `${planPath}.restSeconds`)}
                     {exercise?.bodyweight ? null : (
                       <label className="program-editor-field">
                         <span className="program-editor-label">Starting weight (kg)</span>
@@ -279,6 +343,11 @@ export function ProgramEditor({
                           placeholder={
                             exercise?.startWeight == null ? undefined : String(exercise.startWeight)
                           }
+                          aria-describedby={
+                            faultMessage(faults, `${planPath}.startWeightKg`)
+                              ? faultId(`${planPath}.startWeightKg`)
+                              : undefined
+                          }
                           onChange={(event) =>
                             updatePlan(workout.id, j, { startWeight: event.target.value })
                           }
@@ -286,6 +355,29 @@ export function ProgramEditor({
                       </label>
                     )}
                   </div>
+                  {repRangeMessage && (
+                    <p id={faultId(`${planPath}.repRange`)} className="program-editor-fault">
+                      {repRangeMessage}
+                    </p>
+                  )}
+                  {faultMessage(faults, `${planPath}.sets`) && (
+                    <p id={faultId(`${planPath}.sets`)} className="program-editor-fault">
+                      {faultMessage(faults, `${planPath}.sets`)}
+                    </p>
+                  )}
+                  {faultMessage(faults, `${planPath}.restSeconds`) && (
+                    <p id={faultId(`${planPath}.restSeconds`)} className="program-editor-fault">
+                      {faultMessage(faults, `${planPath}.restSeconds`)}
+                    </p>
+                  )}
+                  {faultMessage(faults, `${planPath}.startWeightKg`) && (
+                    <p
+                      id={faultId(`${planPath}.startWeightKg`)}
+                      className="program-editor-fault"
+                    >
+                      {faultMessage(faults, `${planPath}.startWeightKg`)}
+                    </p>
+                  )}
                   <div className="program-editor-row-actions">
                     <button
                       type="button"
@@ -325,6 +417,8 @@ export function ProgramEditor({
             })}
           </ol>
 
+          {exercisesFault && <p className="program-editor-fault">{exercisesFault}</p>}
+
           <button
             type="button"
             className="program-editor-add"
@@ -333,7 +427,8 @@ export function ProgramEditor({
             Add exercise
           </button>
         </fieldset>
-      ))}
+        )
+      })}
 
       <button type="button" className="program-editor-add" onClick={addWorkout}>
         Add workout
