@@ -153,6 +153,14 @@
   padding-right: var(--space-4);
 }
 
+/* `.library-search` (src/ui/LibraryList.css) is `flex: 1`, sized for the Exercises page's row
+ * layout. Inside the picker's flex column that same rule grows it to fill the overlay's height
+ * instead of staying a single line, so it is overridden here rather than on the shared class --
+ * the Exercises page keeps its own layout untouched. */
+.program-editor-picker .library-search {
+  flex: none;
+}
+
 .program-editor-picker-heading {
   margin: var(--space-4) 0 0;
   color: var(--color-text);
