@@ -62,6 +62,7 @@ import { HistoryStatsSwitch } from './ui/HistoryStatsSwitch'
 import { ImportConfirm } from './ui/ImportConfirm'
 import { LibraryList } from './ui/LibraryList'
 import { ProgramPage } from './ui/ProgramPage'
+import { NoProgram } from './ui/NoProgram'
 import { ResumeCard } from './ui/ResumeCard'
 import { SessionSummary } from './ui/SessionSummary'
 import { SetScreen } from './ui/SetScreen'
@@ -145,7 +146,7 @@ type LoadState =
       catalog: Map<string, Exercise>
       programs: Program[]
       storageAvailable: boolean
-      activeProgramId: string
+      activeProgramId: string | null
       staleActiveProgramNotice: boolean
       lastExportedAt: number | null
     }
@@ -1098,8 +1099,12 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
     // half-built Workout tab behind.
     for (const program of programs) assertPlansAreInCatalog(program, catalog)
-    const activeProgram = programs.find((program) => program.id === activeProgramId)
-    if (!activeProgram) throw new Error(`no program ${activeProgramId} among the loaded programs`)
+    // With no active Program (a new user, E9-T2) the Workout tab offers choosing one instead.
+    const activeProgram =
+      activeProgramId === null ? null : programs.find((program) => program.id === activeProgramId)
+    if (activeProgram === undefined) {
+      throw new Error(`no program ${activeProgramId} among the loaded programs`)
+    }
 
     content = (
       <AppShell
@@ -1121,12 +1126,16 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             onResume={() => handleChoose(session.programId, session.workoutId)}
           />
         ) : null}
-        <fieldset className="workout-picker" disabled={!storageAvailable}>
-          <WorkoutStartButtons
-            program={activeProgram}
-            onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}
-          />
-        </fieldset>
+        {activeProgram === null ? (
+          <NoProgram onChooseProgram={() => handleTabChange('program')} />
+        ) : (
+          <fieldset className="workout-picker" disabled={!storageAvailable}>
+            <WorkoutStartButtons
+              program={activeProgram}
+              onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}
+            />
+          </fieldset>
+        )}
       </AppShell>
     )
   }

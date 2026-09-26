@@ -17,6 +17,7 @@ import { beforeAll, expect, test } from 'vitest'
 import { buildApp, type BuiltApp } from '../test/buildFixture'
 import { appUrl, startServiceWorker, type ServiceWorkerHarness } from '../test/swHarness'
 import { registerServiceWorker } from './registerSW'
+import { setActiveProgramId } from '../storage/settingsStore'
 
 let app: BuiltApp
 let sw: ServiceWorkerHarness
@@ -175,6 +176,10 @@ async function runLaunch(): Promise<OfflineLaunch> {
       },
     },
   })
+
+  // Since E9-T2 an empty database has no active Program; the cold launch is the trainee's, who
+  // has one. Written through the same fake IndexedDB the cached app is about to open.
+  await setActiveProgramId('assaf-ab-2026')
 
   dom.window.eval(code)
   // Registering once the page has finished loading is as valid as registering straight away,

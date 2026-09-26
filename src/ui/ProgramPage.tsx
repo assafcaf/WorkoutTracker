@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import type { Exercise, ExercisePlan, LibraryExercise, Program, Session, Workout } from '../types'
+import type {
+  Exercise,
+  ExercisePlan,
+  LibraryExercise,
+  Muscle,
+  Program,
+  Session,
+  Workout,
+} from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { toRegionCounts, weekSets } from '../domain/muscles'
 import { prescribedWeekly, programGaps } from '../domain/programVolume'
@@ -10,7 +18,8 @@ import './ProgramPage.css'
 
 export type ProgramPageProps = {
   programs: Program[]
-  activeProgramId: string
+  /** Null when no Program is active yet (E9-T2); E9-T6 owns what this page shows then. */
+  activeProgramId: string | null
   catalog: Map<string, Exercise>
   library: Map<string, LibraryExercise>
   onChooseProgram(id: string): void
@@ -79,13 +88,19 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   // half-built page behind -- the same rule `ProgramPicker` enforced.
   for (const program of programs) assertPlansAreInCatalog(program, catalog)
 
-  const active = programs.find((program) => program.id === activeProgramId)
-  if (!active) throw new Error(`no program ${activeProgramId} among the loaded programs`)
+  // No active Program (a new user, E9-T2) skips the active Program's own sections below.
+  const active =
+    activeProgramId === null ? null : programs.find((program) => program.id === activeProgramId)
+  if (active === undefined) {
+    throw new Error(`no program ${activeProgramId} among the loaded programs`)
+  }
 
   // The whole active program's prescribed weekly volume (M14/M15's prescribed side) -- distinct
   // from a single workout card's session-scale map (`renderWorkout` below), which is why the
   // fixtures band the same muscle differently at the two scales.
-  const prescribedMuscleCounts = prescribedWeekly(active, catalog, library)
+  const prescribedMuscleCounts = active
+    ? prescribedWeekly(active, catalog, library)
+    : new Map<Muscle, number>()
   const prescribedRegionCounts = toRegionCounts(prescribedMuscleCounts)
   const gaps = programGaps(prescribedMuscleCounts)
 
@@ -116,39 +131,43 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 
   return (
     <div className="program-page">
-      <h2>{active.name}</h2>
-      {active.workouts.map((workout) => renderWorkout(active, workout))}
+      {active && (
+        <>
+          <h2>{active.name}</h2>
+          {active.workouts.map((workout) => renderWorkout(active, workout))}
 
-      <section className="program-page-weekly">
-        <h3>Weekly volume</h3>
-        <div className="program-page-map">
-          <BodyMap counts={prescribedRegionCounts} scale="week" />
-        </div>
-        <BodyMapLegend scale="week" />
-        {gaps.length > 0 && (
-          <ul className="program-page-gaps">
-            {gaps.map((muscle) => (
-              <li key={muscle}>{`No direct ${muscle} work`}</li>
-            ))}
-          </ul>
-        )}
-      </section>
+          <section className="program-page-weekly">
+            <h3>Weekly volume</h3>
+            <div className="program-page-map">
+              <BodyMap counts={prescribedRegionCounts} scale="week" />
+            </div>
+            <BodyMapLegend scale="week" />
+            {gaps.length > 0 && (
+              <ul className="program-page-gaps">
+                {gaps.map((muscle) => (
+                  <li key={muscle}>{`No direct ${muscle} work`}</li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-      <section className="program-page-thisweek">
-        <h3>This week</h3>
-        <div className="program-page-thisweek-maps">
-          <figure className="program-page-map">
-            <BodyMap counts={prescribedRegionCounts} scale="week" />
-            <figcaption>Planned</figcaption>
-          </figure>
-          <figure className="program-page-map">
-            <BodyMap counts={doneRegionCounts} scale="week" />
-            <figcaption>Done</figcaption>
-          </figure>
-        </div>
-        <BodyMapLegend scale="week" />
-        {noSetsThisWeek && <p>No sets logged in the last 7 days</p>}
-      </section>
+          <section className="program-page-thisweek">
+            <h3>This week</h3>
+            <div className="program-page-thisweek-maps">
+              <figure className="program-page-map">
+                <BodyMap counts={prescribedRegionCounts} scale="week" />
+                <figcaption>Planned</figcaption>
+              </figure>
+              <figure className="program-page-map">
+                <BodyMap counts={doneRegionCounts} scale="week" />
+                <figcaption>Done</figcaption>
+              </figure>
+            </div>
+            <BodyMapLegend scale="week" />
+            {noSetsThisWeek && <p>No sets logged in the last 7 days</p>}
+          </section>
+        </>
+      )}
 
       <fieldset className="settings-group">
         <legend className="settings-legend">Active program</legend>
