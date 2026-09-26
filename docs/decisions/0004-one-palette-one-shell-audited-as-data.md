@@ -1,6 +1,6 @@
 # 0004. The app has one palette, one shell, and stylesheets audited as data
 
-Date: 2026-09-23 · Status: accepted · Tracker: E3 — Style it
+Date: 2026-09-23 · Status: superseded by 0009 (palette, dark-only, fonts, motion; the shell and the audits stand) · Tracker: E3 — Style it
 
 ## Context
 0002 chose a local-first PWA and 0003 made it installable and offline-capable. Neither gave it a

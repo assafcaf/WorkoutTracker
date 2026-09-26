@@ -45,4 +45,5 @@ rewrite history.
 - [0005](0005-bundled-exercise-library-swaps-and-muscle-maps.md): a bundled exercise library, certain-match videos, swaps and muscle maps
 - [0006](0006-progress-by-exercise-kind-with-a-working-weight-rule.md): progress per exercise kind against the last session's heaviest weight, suggested and never applied
 - [0007](0007-cloudflare-hosting-access-login-and-sync.md): hosted on Cloudflare behind Access, each user's log synced to D1
+- [0009](0009-court-a-light-mellow-sport-design-language.md): one light "Court" palette — ivory, court green, clay, four muscle-family tints and a display face for numbers
 - [0010](0010-user-programs-are-one-synced-setting.md): user Programs are one synced setting, and a new user starts with no Program
