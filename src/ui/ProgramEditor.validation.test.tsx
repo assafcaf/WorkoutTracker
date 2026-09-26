@@ -157,7 +157,7 @@ function planByName(workout: HTMLElement, name: string): HTMLElement {
   const item = within(workout)
     .queryAllByText(name)
     .map((el) => el.closest('li'))
-    .find((el): el is HTMLElement => el !== null)
+    .find((el): el is HTMLLIElement => el !== null)
   if (item === undefined) throw new Error(`no Plan for ${name}`)
   return item
 }
