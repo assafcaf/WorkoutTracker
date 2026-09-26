@@ -309,6 +309,13 @@ test('O14 Sessions per week follows the number of Workouts as they are added and
   await user.click(within(workoutAt(2)).getByRole('button', { name: 'Remove workout' }))
   expect(sessionsPerWeek().value).toBe('2')
 
+  // Named, with a Plan each, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
+  await user.type(screen.getByLabelText('Program name'), 'New Program')
+  await user.type(workoutNameInputs()[0], 'First')
+  await user.type(workoutNameInputs()[1], 'Second')
+  await pickInto(user, workoutAt(0), 'push', 'Pushups')
+  await pickInto(user, workoutAt(1), 'fly', 'Dumbbell Incline Fly')
+
   const program = await save(user, onSave)
   expect(program.sessionsPerWeek).toBe(2)
 })
@@ -325,6 +332,13 @@ test('O14 Sessions per week stops following the Workouts once it is changed by h
   await user.click(within(workoutAt(0)).getByRole('button', { name: 'Remove workout' }))
   expect(sessionsPerWeek().value).toBe('4')
 
+  // Named, with a Plan each, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
+  await user.type(screen.getByLabelText('Program name'), 'New Program')
+  await user.type(workoutNameInputs()[0], 'First')
+  await user.type(workoutNameInputs()[1], 'Second')
+  await pickInto(user, workoutAt(0), 'push', 'Pushups')
+  await pickInto(user, workoutAt(1), 'fly', 'Dumbbell Incline Fly')
+
   const program = await save(user, onSave)
   expect(program.sessionsPerWeek).toBe(4)
 })
@@ -337,6 +351,10 @@ test('O14 Sessions per week counts only the visible Workouts, not hidden ones', 
   expect(sessionsPerWeek().value).toBe('2')
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
   expect(sessionsPerWeek().value).toBe('3')
+
+  // Named, with a Plan, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
+  await user.type(workoutNameInputs()[2], 'Extra')
+  await pickInto(user, workoutAt(2), 'push', 'Pushups')
 
   const program = await save(user, onSave)
   expect(program.sessionsPerWeek).toBe(3)
@@ -450,6 +468,9 @@ test('O15 an added Workout gets a workout- id and its typed name, and the Progra
   await user.type(workoutNameInputs()[0], 'Push')
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
   await user.type(workoutNameInputs()[1], 'Pull')
+  // A Plan each, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
+  await pickInto(user, workoutAt(0), 'push', 'Pushups')
+  await pickInto(user, workoutAt(1), 'fly', 'Dumbbell Incline Fly')
 
   const program = await save(user, onSave)
   expect(program.id).toBe('user-new')
@@ -459,7 +480,10 @@ test('O15 an added Workout gets a workout- id and its typed name, and the Progra
   expect(program.workouts[0].id).toMatch(/^workout-\S+$/)
   expect(program.workouts[1].id).toMatch(/^workout-\S+$/)
   expect(program.workouts[0].id).not.toBe(program.workouts[1].id)
-  expect(program.workouts.map((w) => w.exercises)).toEqual([[], []])
+  expect(program.workouts.map((w) => w.exercises)).toEqual([
+    [{ exerciseId: 'Pushups', sets: 3, repRange: [8, 12], restSeconds: 90 }],
+    [{ exerciseId: 'Dumbbell_Incline_Fly', sets: 3, repRange: [8, 12], restSeconds: 90 }],
+  ])
 })
 
 test('O15 Move up on the first Workout and Move down on the last are disabled, the others enabled', async () => {

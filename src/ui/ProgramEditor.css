@@ -116,6 +116,20 @@
   color: var(--color-danger);
 }
 
+/* A `validateProgram` fault's message, beside the field its path names (E9-T8). */
+.program-editor-fault {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+.program-editor-heading {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
 /* `Save`: one of the Action bar's own buttons, given its own class so the control audit
  * (src/styles/controlAudit.test.ts) finds a rule for it. */
 .program-editor-save {
