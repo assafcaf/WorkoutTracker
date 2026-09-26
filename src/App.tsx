@@ -31,6 +31,7 @@ import type { ImportPlan } from './storage/backup'
 import { db, isStorageAvailable } from './storage/db'
 import {
   ACTIVE_PROGRAM_ID_KEY,
+  deleteProgram,
   getActiveProgramId,
   getGymEquipment,
   getLastExportedAt,
@@ -40,6 +41,7 @@ import {
   setActiveProgramId,
   setGymEquipment as persistGymEquipment,
   setVolumeBaseline as persistVolumeBaseline,
+  resetProgram,
   saveUserProgram,
   setWeightStep,
 } from './storage/settingsStore'
@@ -110,6 +112,9 @@ type EditorTarget = { initial: Program; isNew: boolean }
 
 /** The line the editor shows when a save rejects (E9-T9 O9). */
 const SAVE_ERROR = 'Couldn’t save — try again'
+
+/** What a delete, or a save hiding a Workout, shows when it would strand the Session in progress (E9-T10 O11). */
+const IN_PROGRESS_GUARD = 'Finish the workout in progress first'
 
 /** The tab a view's shell is on, as `AppShell` takes it: no tab bar for the in-session views. */
 function tabFor(view: View): Tab | undefined {
@@ -381,6 +386,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // The Program the editor view is open on, and the line it shows when a save rejects (E9-T9).
   const [editor, setEditor] = useState<EditorTarget | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // The Program tab's line when a Delete was refused (E9-T10 O11).
+  const [programMessage, setProgramMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -565,16 +572,68 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
    */
   function handleSaveProgram(program: Program): void {
     const stored = userPrograms.find((candidate) => candidate.id === program.id)
-    saveUserProgram({ ...program, createdAt: stored?.createdAt ?? Date.now() })
-      .then(() => getUserPrograms())
-      .then((saved) => {
-        setUserPrograms(saved)
+    getActiveSession()
+      .then(async (inProgress) => {
+        // A save that hides or drops the Workout in progress would strand it (E9-T10 O11).
+        const strands =
+          inProgress !== null &&
+          inProgress.programId === program.id &&
+          !program.workouts.some((w) => w.id === inProgress.workoutId && !w.hidden)
+        if (strands) {
+          setSaveError(IN_PROGRESS_GUARD)
+          return
+        }
+        await saveUserProgram({ ...program, createdAt: stored?.createdAt ?? Date.now() })
+        setUserPrograms(await getUserPrograms())
         setEditor(null)
         setSaveError(null)
         handleShowProgram()
       })
       .catch(() => {
         setSaveError(SAVE_ERROR)
+      })
+  }
+
+  /**
+   * `ProgramPage.onDeleteProgram`: hides the User Program, unless the Session in progress runs on
+   * it (E9-T10 O11). A deleted active Program hands over to the first visible one, stored, so a
+   * relaunch does not bring it back (O10).
+   */
+  function handleDeleteProgram(id: string): void {
+    getActiveSession()
+      .then(async (inProgress) => {
+        if (inProgress !== null && inProgress.programId === id) {
+          setProgramMessage(IN_PROGRESS_GUARD)
+          return
+        }
+        await deleteProgram(id)
+        const saved = await getUserPrograms()
+        const fallback = visiblePrograms(mergePrograms(bundledPrograms, saved))[0]
+        const nextActiveId = activeProgramId === id && fallback ? fallback.id : activeProgramId
+        if (nextActiveId !== null && nextActiveId !== activeProgramId) {
+          await setActiveProgramId(nextActiveId)
+        }
+        setUserPrograms(saved)
+        setProgramMessage(null)
+        setState((current) =>
+          current.status === 'ready' ? { ...current, activeProgramId: nextActiveId } : current,
+        )
+      })
+      .catch(() => {
+        // Nothing was hidden; the Program tab keeps showing it as it is stored.
+      })
+  }
+
+  /** `ProgramPage.onResetProgram`: drops the stored edit, so the bundled Program shows again (O12). */
+  function handleResetProgram(id: string): void {
+    resetProgram(id)
+      .then(() => getUserPrograms())
+      .then((saved) => {
+        setUserPrograms(saved)
+        setProgramMessage(null)
+      })
+      .catch(() => {
+        // The stored edit stands; the Program tab keeps showing it.
       })
   }
 
@@ -1029,6 +1088,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
    * shows the Program tab -- with whatever was loaded before, if they cannot be read.
    */
   function handleShowProgram(): void {
+    // A refused Delete's line belongs to that visit of the tab, not the next one.
+    setProgramMessage(null)
     listSessions()
       .then((sessions) => {
         setHistory(sessions)
@@ -1105,6 +1166,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
           onNewProgram={handleNewProgram}
           onEditProgram={handleEditProgram}
           onCopyProgram={handleCopyProgram}
+          onDeleteProgram={handleDeleteProgram}
+          onResetProgram={handleResetProgram}
+          programMessage={programMessage}
           userProgramIds={new Set(userPrograms.map((program) => program.id))}
           bundledProgramIds={new Set(bundledPrograms.map((program) => program.id))}
         />
