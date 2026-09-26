@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { mergePrograms, newPlan, validateProgram, visiblePrograms } from './programs'
+import { copyProgram, mergePrograms, newPlan, validateProgram, visiblePrograms } from './programs'
 import type { ProgramFault } from './programs'
 import { loadCatalog, loadPrograms } from '../data/catalog'
 import type { Exercise, ExercisePlan, Program, UserProgram, Workout } from '../types'
@@ -363,5 +363,104 @@ describe('newPlan (E9-T7 O14)', () => {
     first.repRange[1] = 15
 
     expect(second.repRange).toEqual([8, 12])
+  })
+})
+
+// --- E9-T9 O9: copying a Program ----------------------------------------------------------------
+
+describe('copyProgram (E9-T9 O9)', () => {
+  function source(): Program {
+    return {
+      id: 'assaf-ab-2026',
+      name: 'A/B Split',
+      units: 'kg',
+      sessionsPerWeek: 3,
+      workouts: [
+        {
+          id: 'workout-a',
+          name: 'Workout A',
+          exercises: [
+            { exerciseId: 'squat', sets: 4, repRange: [8, 10], restSeconds: 180 },
+            { exerciseId: 'bench', sets: 3, repRange: [6, 8], restSeconds: 120, startWeightKg: 60 },
+          ],
+        },
+        {
+          id: 'workout-b',
+          name: 'Workout B',
+          exercises: [{ exerciseId: 'push-ups', sets: 3, repRange: [10, 15], restSeconds: 90 }],
+        },
+      ],
+    }
+  }
+
+  test('O9 a copy is named "<name> (copy)"', () => {
+    expect(copyProgram(source(), 1_000).name).toBe('A/B Split (copy)')
+  })
+
+  test('O9 a copy gets a new user- id, different on every copy', () => {
+    const first = copyProgram(source(), 1_000)
+    const second = copyProgram(source(), 1_000)
+
+    expect(first.id).toMatch(/^user-.+/)
+    expect(first.id).not.toBe('assaf-ab-2026')
+    expect(second.id).not.toBe(first.id)
+  })
+
+  test('O9 a copy is stamped createdAt with the given now', () => {
+    expect(copyProgram(source(), 1_234_567).createdAt).toBe(1_234_567)
+  })
+
+  test('O9 a copy keeps units and sessions per week', () => {
+    const copy = copyProgram(source(), 1_000)
+
+    expect(copy.units).toBe('kg')
+    expect(copy.sessionsPerWeek).toBe(3)
+  })
+
+  test('O9 a copy holds every Workout, by name and in order, with its Plans', () => {
+    const copy = copyProgram(source(), 1_000)
+
+    expect(copy.workouts.map((w) => ({ name: w.name, exercises: w.exercises }))).toEqual([
+      {
+        name: 'Workout A',
+        exercises: [
+          { exerciseId: 'squat', sets: 4, repRange: [8, 10], restSeconds: 180 },
+          { exerciseId: 'bench', sets: 3, repRange: [6, 8], restSeconds: 120, startWeightKg: 60 },
+        ],
+      },
+      {
+        name: 'Workout B',
+        exercises: [{ exerciseId: 'push-ups', sets: 3, repRange: [10, 15], restSeconds: 90 }],
+      },
+    ])
+  })
+
+  test('O9 every Workout of a copy gets a fresh workout- id', () => {
+    const ids = copyProgram(source(), 1_000).workouts.map((w) => w.id)
+
+    for (const id of ids) {
+      expect(id).toMatch(/^workout-.+/)
+      expect(['workout-a', 'workout-b']).not.toContain(id)
+    }
+    expect(new Set(ids).size).toBe(2)
+  })
+
+  test('O9 changing a copy’s Plans leaves the original unchanged', () => {
+    const original = source()
+    const copy = copyProgram(original, 1_000)
+
+    copy.workouts[0].exercises[0].sets = 9
+    copy.workouts[0].exercises[0].repRange[1] = 20
+    copy.workouts[0].exercises.push({ exerciseId: 'bench', sets: 1, repRange: [1, 1], restSeconds: 0 })
+
+    expect(original).toEqual(source())
+  })
+
+  test('O9 copying does not mutate the Program it copies', () => {
+    const original = source()
+
+    copyProgram(original, 1_000)
+
+    expect(original).toEqual(source())
   })
 })

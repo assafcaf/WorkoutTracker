@@ -34,6 +34,16 @@ export function newPlan(exerciseId: string): ExercisePlan {
   return { exerciseId, sets: 3, repRange: [8, 12], restSeconds: 90 }
 }
 
+/**
+ * A new User Program holding every Workout and Plan of `program`: id `user-<uuid>`, fresh
+ * `workout-<uuid>` Workout ids, name `<name> (copy)`, `createdAt: now` (E9-T9).
+ */
+export function copyProgram(program: Program, now: number): UserProgram {
+  void program
+  void now
+  throw new Error('NotImplemented: copyProgram (E9-T9)')
+}
+
 const isBlank = (text: string) => text.trim() === ''
 const inRange = (value: number, min: number, max: number) => value >= min && value <= max
 
