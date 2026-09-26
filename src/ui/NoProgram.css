@@ -12,7 +12,6 @@
   margin-bottom: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--color-raised);
-  box-shadow: var(--shadow-card);
 }
 
 .no-program-title {
@@ -29,8 +28,8 @@
   justify-content: center;
   border: 0;
   border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
   font-size: var(--text-md);
   font-weight: 600;
 }

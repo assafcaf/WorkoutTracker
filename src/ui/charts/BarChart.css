@@ -15,5 +15,5 @@
 
 .bar-chart-bar {
   fill: var(--color-accent);
-  color: var(--color-on-accent);
+  color: var(--color-on-primary);
 }

@@ -1,41 +1,55 @@
-/* The design system's one definition site.
+/* The design system's one definition site (Court, decision 0009).
  *
- * Every colour, space, radius, size and shadow the app draws with is declared here and used
- * through `var(--…)` everywhere else, so the palette can only change in one place. The set is
- * closed: src/styles/tokens.test.ts holds this file to exactly these thirty-five tokens, and
- * to the values the spec's token table (plus this file's own body-map comment, for the six
- * `--map-…` tokens E5-T17 added) documents.
+ * Every colour, space, radius, size, font and motion value the app draws with is declared here
+ * and used through `var(--…)` everywhere else, so the palette can only change in one place. The
+ * set is closed: src/styles/tokens.test.ts holds this file to exactly these forty-nine tokens,
+ * with the values of the spec's token table.
  *
- * The palette is dark-only by design — there is no `prefers-color-scheme` block and no second
- * palette — and the contrast of every foreground/background pair the UI uses is asserted at
- * 4.5:1 or better.
+ * The palette is light-only: an ivory field, white cards that separate from it by tint rather
+ * than by a hairline, warm ink, court green for the primary action and clay for data. Every
+ * documented text/background pair is asserted at 4.5:1 or better.
  */
 :root {
-  /* Palette. Surfaces go from the page background up through cards to raised controls. */
-  --color-bg: #0B0B0F;
-  --color-surface: #16161C;
-  --color-raised: #1F1F27;
-  --color-border: #2A2A33;
-  --color-text: #FFFFFF;
-  --color-muted: #8A8A94;
-  --color-accent: #C6F84E;
-  --color-on-accent: #0B0B0F;
-  --color-warn: #FFB020;
-  --color-danger: #FF6B6B;
+  /* Palette. Surfaces go from the ivory field up through white cards to raised controls. */
+  --color-bg: #F5F1E8;
+  --color-surface: #FFFFFF;
+  --color-raised: #ECE6DA;
+  --color-text: #24211D;
+  --color-muted: #5F5A52;
+  /* Court green: the primary action and the active state, and nothing else. */
+  --color-primary: #1F4D3A;
+  --color-on-primary: #F5F1E8;
+  /* Clay: chart lines and bars, progress fills and highlighted numbers. */
+  --color-accent: #9E5231;
+  --color-warn: #8A5A12;
+  --color-danger: #A33B32;
 
-  /* BodyMap's four shade bands (E5-T17, M5/M8), a ramp from --color-surface's near-black toward
-   * --color-accent's lime, so an unstressed region reads close to the page and a heavily-trained
-   * one reads in the accent hue. --map-shade-0 is also the "nothing counted" empty token. Plus
-   * the exercise-scale pair (M10): --map-primary for a count >= 1 (a primary muscle),
-   * --map-secondary for 0 < count < 1 (a secondary muscle) -- picked distinguishable from each
-   * other and from the four-step ramp; neither is a text/background pair, so O2's contrast audit
-   * does not cover them. */
-  --map-shade-0: #23232B;
-  --map-shade-1: #3E4A22;
-  --map-shade-2: #7C9A2E;
-  --map-shade-3: #C6F84E;
-  --map-primary: #C6F84E;
-  --map-secondary: #6B8F3D;
+  /* The four muscle families: a pastel tint and an ink in the same hue that reads on it. */
+  --family-push-tint: #F3DDD0;
+  --family-push-ink: #7A3A20;
+  --family-pull-tint: #DCE5F0;
+  --family-pull-ink: #2E4A6B;
+  --family-legs-tint: #DDE7DA;
+  --family-legs-ink: #34503A;
+  --family-core-tint: #E6DFEE;
+  --family-core-ink: #4F3D68;
+
+  /* The personal-record medallion. */
+  --pr-tint: #F2E3B8;
+  --pr-ink: #6B4E0E;
+  --pr-ring: #B08A2E;
+
+  /* BodyMap's four shade bands, a single-hue ramp from --color-raised to clay, so the steps
+   * survive every colour-vision deficiency. --map-shade-0 is the "nothing counted" shade. Plus
+   * the exercise-scale pair: --map-primary for a primary muscle, --map-secondary for a
+   * secondary one. None is a text/background pair; the map strokes every region in
+   * --color-muted instead, because the light steps sit close to the surface. */
+  --map-shade-0: #ECE6DA;
+  --map-shade-1: #EBC7B0;
+  --map-shade-2: #D0906C;
+  --map-shade-3: #9E5231;
+  --map-primary: #9E5231;
+  --map-secondary: #D0906C;
 
   /* Spacing scale, in 4px steps that widen as they grow. */
   --space-1: 4px;
@@ -46,15 +60,19 @@
   --space-6: 32px;
 
   /* Corner radii. `--radius-pill` is any value past half the tallest control. */
-  --radius-sm: 8px;
-  --radius-lg: 16px;
+  --radius-sm: 12px;
+  --radius-lg: 20px;
   --radius-pill: 999px;
 
   /* The tap-target floor every interactive control has to reach. */
   --tap-min: 44px;
 
-  /* The system stack: no web font is downloaded, so text paints on the first frame. */
+  /* The system stack for body text: it paints on the first frame. */
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* The display face for numbers and headings, falling back to the system stack until it
+   * loads. The font file is declared outside this file. */
+  --font-display: 'Barlow Semi-Condensed', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   /* Type scale. */
   --text-xs: 12px;
@@ -62,10 +80,11 @@
   --text-md: 16px;
   --text-lg: 20px;
   --text-xl: 28px;
-  --text-display: 56px;
+  --text-display: 64px;
 
-  /* One inset hairline instead of a drop shadow, so a card reads as an edge, not a lift. */
-  --shadow-card: inset 0 0 0 1px var(--color-border);
+  /* Motion: how long a press takes, and how far it shrinks the control. */
+  --motion-fast: 150ms;
+  --press-scale: 0.97;
 
   /* The home-indicator inset, 0px anywhere that reports no safe area. */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
