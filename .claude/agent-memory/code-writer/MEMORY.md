@@ -1,5 +1,6 @@
 - No "dataviz" skill exists here; for chart tickets citing it, read src/ui/body/BodyMap.tsx and src/styles/contrast.test.ts instead, flag the gap in NOTES rather than blocking (E4-T8, 2026-09-24)
 - My worktree can vanish mid-task (harness repoints working dir to the epic worktree) — recreate via my surviving `worktree-agent-<id>` branch, then `npm ci` before trusting any gate (E8-T9, 2026-09-25)
 - Adding a `<select>` to src/ui needs its own className with a CSS rule (src/styles/controlAudit.test.ts, O12): a wrapping `<label>`'s className is not enough (E8-T8, 2026-09-25)
-- Moving a fresh worktree onto the epic head: `git reset --hard` is denied and chained git commands are refused; run `git -C <worktree> merge --ff-only <epic>` then cherry-pick as separate calls. No prettier config: never run prettier (it adds semicolons) (E9-T2, 2026-09-26)
-- A test fixture object literal with array fields (e.g. `repRange: [8,10]`) can fail `tsc --noEmit` by inferring `number[]` instead of a tuple type; adding a type annotation (`: Program`) to the fixture is a type-only fix, not a test-content edit — fine to make directly rather than treating as BLOCKED (E9-T6, 2026-09-26)
+- Moving a fresh worktree onto epic head: git reset --hard is denied, chained git commands refused; use git -C <worktree> merge --ff-only <epic>, then cherry-pick as separate calls (E9-T2, 2026-09-26)
+- No prettier config in this repo; never run prettier on edited files, it adds semicolons the project does not use (E9-T2, 2026-09-26)
+- A fixture with array fields (e.g. repRange: [8,10]) can fail tsc --noEmit, inferring number[] not a tuple; add a type annotation to the fixture, not a test-content edit (E9-T6, 2026-09-26)
