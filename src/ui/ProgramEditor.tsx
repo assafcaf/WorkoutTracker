@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Exercise, ExercisePlan, LibraryExercise, Program, Workout } from '../types'
 import { newPlan, validateProgram } from '../domain/programs'
@@ -126,6 +126,12 @@ export function ProgramEditor({
   )
   const [pickingFor, setPickingFor] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+
+  // The Program tab that opened this editor may be scrolled well past the top; land on the
+  // Program name instead of wherever that tab's scroll happened to be (fix-editor-scroll).
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
 
   const visible = workouts.filter((w) => !w.hidden)
   const sessionsShown = sessionsText ?? String(visible.length)
