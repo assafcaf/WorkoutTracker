@@ -1,6 +1,7 @@
 {
   "id": "full-body-starter",
   "name": "Full body starter",
+  "hidden": true,
   "units": "kg",
   "sessionsPerWeek": 3,
   "workouts": [

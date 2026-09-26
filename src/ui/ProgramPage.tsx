@@ -10,6 +10,7 @@ import type {
 } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { toRegionCounts, weekSets } from '../domain/muscles'
+import { visiblePrograms } from '../domain/programs'
 import { prescribedWeekly, programGaps } from '../domain/programVolume'
 import { BodyMap } from './body/BodyMap'
 import { BodyMapLegend } from './body/BodyMapLegend'
@@ -169,97 +170,123 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         </>
       )}
 
-      <fieldset className="settings-group">
-        <legend className="settings-legend">Active program</legend>
-        {programs.map((program) => {
-          const checked = program.id === activeProgramId
-          return (
-            <label
-              key={program.id}
-              className={`settings-action${checked ? ' settings-action-active' : ''}`}
-            >
-              <input
-                type="radio"
-                className="settings-radio"
-                name="program-page-active-program"
-                value={program.id}
-                checked={checked}
-                onChange={() => {
-                  if (!checked) onChooseProgram(program.id)
-                }}
-              />
-              <span className="settings-action-label">{program.name}</span>
-            </label>
-          )
-        })}
-      </fieldset>
-
-      {programMessage && <p className="program-page-message">{programMessage}</p>}
-
-      <section className="program-page-actions">
-        <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
-          New program
-        </button>
-        {programs.map((program) => {
-          const isUser = userProgramIds.has(program.id)
-          const isBundled = bundledProgramIds.has(program.id)
-          const confirming = confirmingId === program.id
-          return (
-            <div
-              key={program.id}
-              data-program-id={program.id}
-              className="program-page-actions-row"
-            >
-              <span className="program-page-actions-name">{program.name}</span>
-              <button
-                type="button"
-                className="program-page-edit"
-                onClick={() => onEditProgram?.(program.id)}
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                className="program-page-copy"
-                onClick={() => onCopyProgram?.(program.id)}
-              >
-                Copy
-              </button>
-              {isUser && !isBundled && !confirming && (
+      {activeProgramId === null && (
+        <section className="program-page-newuser">
+          <h2>Choose a program</h2>
+          <ul className="program-page-newuser-list">
+            {visiblePrograms(programs).map((program) => (
+              <li key={program.id}>
                 <button
                   type="button"
-                  className="program-page-delete"
-                  onClick={() => setConfirmingId(program.id)}
+                  className="program-page-use"
+                  onClick={() => onChooseProgram(program.id)}
                 >
-                  Delete
+                  {`Use this ${program.name}`}
                 </button>
-              )}
-              {isUser && isBundled && !confirming && (
-                <button
-                  type="button"
-                  className="program-page-reset"
-                  onClick={() => setConfirmingId(program.id)}
-                >
-                  Reset to original
-                </button>
-              )}
-              {confirming && (
-                <button
-                  type="button"
-                  className="program-page-confirm"
-                  onClick={() => {
-                    setConfirmingId(null)
-                    if (isBundled) onResetProgram?.(program.id)
-                    else onDeleteProgram?.(program.id)
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
+            New program
+          </button>
+        </section>
+      )}
+
+      {activeProgramId !== null && (
+        <>
+        <fieldset className="settings-group">
+          <legend className="settings-legend">Active program</legend>
+          {programs.map((program) => {
+            const checked = program.id === activeProgramId
+            return (
+              <label
+                key={program.id}
+                className={`settings-action${checked ? ' settings-action-active' : ''}`}
+              >
+                <input
+                  type="radio"
+                  className="settings-radio"
+                  name="program-page-active-program"
+                  value={program.id}
+                  checked={checked}
+                  onChange={() => {
+                    if (!checked) onChooseProgram(program.id)
                   }}
+                />
+                <span className="settings-action-label">{program.name}</span>
+              </label>
+            )
+          })}
+        </fieldset>
+
+        {programMessage && <p className="program-page-message">{programMessage}</p>}
+
+        <section className="program-page-actions">
+          <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
+            New program
+          </button>
+          {programs.map((program) => {
+            const isUser = userProgramIds.has(program.id)
+            const isBundled = bundledProgramIds.has(program.id)
+            const confirming = confirmingId === program.id
+            return (
+              <div
+                key={program.id}
+                data-program-id={program.id}
+                className="program-page-actions-row"
+              >
+                <span className="program-page-actions-name">{program.name}</span>
+                <button
+                  type="button"
+                  className="program-page-edit"
+                  onClick={() => onEditProgram?.(program.id)}
                 >
-                  Confirm
+                  Edit
                 </button>
-              )}
-            </div>
-          )
-        })}
-      </section>
+                <button
+                  type="button"
+                  className="program-page-copy"
+                  onClick={() => onCopyProgram?.(program.id)}
+                >
+                  Copy
+                </button>
+                {isUser && !isBundled && !confirming && (
+                  <button
+                    type="button"
+                    className="program-page-delete"
+                    onClick={() => setConfirmingId(program.id)}
+                  >
+                    Delete
+                  </button>
+                )}
+                {isUser && isBundled && !confirming && (
+                  <button
+                    type="button"
+                    className="program-page-reset"
+                    onClick={() => setConfirmingId(program.id)}
+                  >
+                    Reset to original
+                  </button>
+                )}
+                {confirming && (
+                  <button
+                    type="button"
+                    className="program-page-confirm"
+                    onClick={() => {
+                      setConfirmingId(null)
+                      if (isBundled) onResetProgram?.(program.id)
+                      else onDeleteProgram?.(program.id)
+                    }}
+                  >
+                    Confirm
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </section>
+        </>
+      )}
     </div>
   )
 }

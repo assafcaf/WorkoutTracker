@@ -12,6 +12,7 @@ import type {
   Workout,
 } from './types'
 import { assertPlansAreInCatalog, loadCatalog, loadPrograms } from './data/catalog'
+import { visiblePrograms } from './domain/programs'
 import { MUSCLES, loadLibrary, loadVideos } from './data/library'
 import { photoUrls } from './data/photos'
 import { resolveExercise } from './data/resolve'
@@ -802,7 +803,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         settingsBadge={settingsBadge}
       >
         <Settings
-          programs={programs}
+          programs={visiblePrograms(programs)}
           activeProgramId={activeProgramId}
           onActiveProgramChange={handleActiveProgramChange}
           onExport={handleExport}
@@ -973,7 +974,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         settingsBadge={settingsBadge}
       >
         <ProgramPage
-          programs={programs}
+          programs={visiblePrograms(programs)}
           activeProgramId={activeProgramId}
           catalog={catalog}
           library={libraryMap}

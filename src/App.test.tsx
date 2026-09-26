@@ -23,7 +23,7 @@ import {
 // feature-detected `Blob.prototype.text` polyfill these tests read downloaded blobs through.
 import { BACKUP_SCHEMA_VERSION, type BackupFile } from './storage/backup'
 import { loadPrograms } from './data/catalog'
-import type { LibraryExercise, Session, SetEntry } from './types'
+import type { LibraryExercise, Program, Session, SetEntry } from './types'
 // The real 876-entry library fixture, imported directly (not through `loadLibrary()`) so the
 // E5-T3 tests below can compute their own expected counts independently of the app's code.
 import libraryFixture from './data/library/exercises.json'
@@ -36,10 +36,10 @@ const LIBRARY = libraryFixture as unknown as LibraryExercise[]
 // E9-T6: full-body-starter is hidden and never offered, so the O18/M13 "choosing another
 // program" tests below need a second *visible* program of their own rather than it. This
 // fixture reuses a real catalog exercise (back-squat) so `assertPlansAreInCatalog` still holds.
-const SECOND_VISIBLE_PROGRAM = {
+const SECOND_VISIBLE_PROGRAM: Program = {
   id: 'second-visible-program',
   name: 'Second Program',
-  units: 'kg' as const,
+  units: 'kg',
   sessionsPerWeek: 3,
   workouts: [
     {
