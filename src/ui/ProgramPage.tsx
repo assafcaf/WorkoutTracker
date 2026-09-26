@@ -10,6 +10,7 @@ import type {
 } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { toRegionCounts, weekSets } from '../domain/muscles'
+import { visiblePrograms } from '../domain/programs'
 import { prescribedWeekly, programGaps } from '../domain/programVolume'
 import { BodyMap } from './body/BodyMap'
 import { BodyMapLegend } from './body/BodyMapLegend'
@@ -169,6 +170,29 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         </>
       )}
 
+      {activeProgramId === null && (
+        <section className="program-page-newuser">
+          <h2>Choose a program</h2>
+          <ul className="program-page-newuser-list">
+            {visiblePrograms(programs).map((program) => (
+              <li key={program.id}>
+                <button
+                  type="button"
+                  className="program-page-use"
+                  onClick={() => onChooseProgram(program.id)}
+                >
+                  {`Use this ${program.name}`}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
+            New program
+          </button>
+        </section>
+      )}
+
+      {activeProgramId !== null && (
       <fieldset className="settings-group">
         <legend className="settings-legend">Active program</legend>
         {programs.map((program) => {
@@ -193,9 +217,13 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
           )
         })}
       </fieldset>
+      )}
 
-      {programMessage && <p className="program-page-message">{programMessage}</p>}
+      {activeProgramId !== null && programMessage && (
+        <p className="program-page-message">{programMessage}</p>
+      )}
 
+      {activeProgramId !== null && (
       <section className="program-page-actions">
         <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
           New program
@@ -260,6 +288,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
           )
         })}
       </section>
+      )}
     </div>
   )
 }

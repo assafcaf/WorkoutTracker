@@ -23,7 +23,7 @@ import {
 // feature-detected `Blob.prototype.text` polyfill these tests read downloaded blobs through.
 import { BACKUP_SCHEMA_VERSION, type BackupFile } from './storage/backup'
 import { loadPrograms } from './data/catalog'
-import type { LibraryExercise, Session, SetEntry } from './types'
+import type { LibraryExercise, Program, Session, SetEntry } from './types'
 // The real 876-entry library fixture, imported directly (not through `loadLibrary()`) so the
 // E5-T3 tests below can compute their own expected counts independently of the app's code.
 import libraryFixture from './data/library/exercises.json'
@@ -32,6 +32,23 @@ import { adoptSignedInAccount } from './sync/syncClient'
 import type { SyncedSession } from './sync/protocol'
 
 const LIBRARY = libraryFixture as unknown as LibraryExercise[]
+
+// E9-T6: full-body-starter is hidden and never offered, so the O18/M13 "choosing another
+// program" tests below need a second *visible* program of their own rather than it. This
+// fixture reuses a real catalog exercise (back-squat) so `assertPlansAreInCatalog` still holds.
+const SECOND_VISIBLE_PROGRAM: Program = {
+  id: 'second-visible-program',
+  name: 'Second Program',
+  units: 'kg',
+  sessionsPerWeek: 3,
+  workouts: [
+    {
+      id: 'second-workout',
+      name: 'Second Workout',
+      exercises: [{ exerciseId: 'back-squat', sets: 3, repRange: [8, 10], restSeconds: 90 }],
+    },
+  ],
+}
 
 // App composes real components (ProgramPicker, Settings, StorageUnavailableBanner) against the
 // real, fake-indexeddb-backed db. Only isStorageAvailable and loadPrograms are replaced with
@@ -93,17 +110,22 @@ test('O18 App leads the picker with the active program’s workouts', async () =
 })
 
 test('O18 choosing another program in Settings makes the picker lead with it', async () => {
+  const actualCatalog = await vi.importActual<typeof import('./data/catalog')>('./data/catalog')
+  vi.mocked(loadPrograms).mockImplementation((catalog) => [
+    ...actualCatalog.loadPrograms(catalog).filter((p) => p.id === 'assaf-ab-2026'),
+    SECOND_VISIBLE_PROGRAM,
+  ])
   const user = userEvent.setup()
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, FAST)
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
-  await user.click(await screen.findByRole('radio', { name: 'Full body starter' }, FAST))
+  await user.click(await screen.findByRole('radio', { name: 'Second Program' }, FAST))
   // E3-T3 took the free-standing Back button away: the Workout tab is the way back.
   await user.click(screen.getByRole('button', { name: 'Workout' }))
 
-  expect(await screen.findByRole('heading', { name: 'Full body starter' }, FAST)).toBeVisible()
-  expect(screen.queryByRole('heading', { name: 'Assaf A/B 2026' })).toBeNull()
+  expect(await screen.findByRole('heading', { name: 'Second Program' }, FAST)).toBeVisible()
+  expect(screen.queryByRole('heading', { name: 'A/B Split' })).toBeNull()
 })
 
 test('O18 App navigates to Settings, hiding the picker, and back again', async () => {
@@ -245,7 +267,7 @@ async function activeSessionEntries(): Promise<SetEntry[]> {
 test('O5 a lift logged under one program presets set 2 of that lift under another program', async () => {
   const user = userEvent.setup()
 
-  // One session under Assaf A/B 2026: back squat at 60 kg x 10.
+  // One session under A/B Split: back squat at 60 kg x 10.
   const firstRun = render(<App />)
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
@@ -482,7 +504,7 @@ test('O17 the finished session appears in the history list with its date, progra
 
   const row = await screen.findByRole('listitem', {}, SETTLE)
   expect(within(row).getByText('2023-11-14')).toBeVisible()
-  expect(within(row).getByText('Assaf A/B 2026')).toBeVisible()
+  expect(within(row).getByText('A/B Split')).toBeVisible()
   expect(within(row).getByText('Workout A')).toBeVisible()
   expect(within(row).getByText('2 sets')).toBeVisible()
   expect(within(row).getByText('600 kg')).toBeVisible()
@@ -843,7 +865,7 @@ test('O9 the Settings tab carries no free-standing Settings, History or Back but
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Settings')
-  await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+  await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
 
   expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
 })
@@ -1192,7 +1214,7 @@ describe('E3-T7', () => {
     expect((main as HTMLElement).contains(updateButton)).toBe(false)
 
     await pressTab(user, 'Settings')
-    await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+    await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
 
     expect(screen.getAllByRole('button', { name: 'Update ready' })).toHaveLength(1)
     const trailingAfterSettings = trailingSlot()
@@ -1223,7 +1245,7 @@ describe('E3-T7', () => {
     await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
     await pressTab(user, 'Settings')
-    await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+    await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
 
     expect(
       screen.getByText('Back up your data — it has been a while since the last export.'),
@@ -1913,25 +1935,30 @@ test('M13 tapping the Program tab shows the active program’s name and makes Pr
 
   await pressTab(user, 'Program')
 
-  expect(await screen.findByRole('heading', { name: 'Assaf A/B 2026' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)).toBeVisible()
   expect(currentTabNames()).toEqual(['Program'])
 })
 
 test('M13 choosing another program in the Program tab’s switcher makes it the active program', async () => {
+  const actualCatalog = await vi.importActual<typeof import('./data/catalog')>('./data/catalog')
+  vi.mocked(loadPrograms).mockImplementation((catalog) => [
+    ...actualCatalog.loadPrograms(catalog).filter((p) => p.id === 'assaf-ab-2026'),
+    SECOND_VISIBLE_PROGRAM,
+  ])
   const user = userEvent.setup()
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Program')
-  await user.click(await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE))
+  await user.click(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE))
 
   // The Program tab itself now leads with the chosen program...
-  expect(await screen.findByRole('heading', { name: 'Full body starter' }, SETTLE)).toBeVisible()
-  expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeChecked()
-  // ...and so does the Workout tab: hand-checked against full-body-starter.json, whose one
-  // workout is "Full body".
+  expect(await screen.findByRole('heading', { name: 'Second Program' }, SETTLE)).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'Second Program' })).toBeChecked()
+  // ...and so does the Workout tab: hand-checked against SECOND_VISIBLE_PROGRAM above, whose one
+  // workout is "Second Workout".
   await pressTab(user, 'Workout')
-  expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('button', { name: 'Start Second Workout' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 })
 

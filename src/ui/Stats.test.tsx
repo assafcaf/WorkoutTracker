@@ -13,7 +13,7 @@ const workoutA = { id: 'workout-a', name: 'Workout A', exercises: [] }
 
 const assaf: Program = {
   id: 'assaf-ab-2026',
-  name: 'Assaf A/B 2026',
+  name: 'A/B Split',
   units: 'kg',
   workouts: [workoutA],
   sessionsPerWeek: 3,
@@ -84,7 +84,7 @@ const workoutB = { id: 'workout-b', name: 'Workout B', exercises: [] }
 
 const twoWorkoutProgram: Program = {
   id: 'assaf-ab-2026',
-  name: 'Assaf A/B 2026',
+  name: 'A/B Split',
   units: 'kg',
   workouts: [workoutA, workoutB],
   sessionsPerWeek: 3,
@@ -221,7 +221,7 @@ function resolveO11(id: string): Exercise | undefined {
 
 const o11Program: Program = {
   id: 'assaf-ab-2026',
-  name: 'Assaf A/B 2026',
+  name: 'A/B Split',
   units: 'kg',
   workouts: [
     {

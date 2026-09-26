@@ -1,6 +1,6 @@
 {
   "id": "assaf-ab-2026",
-  "name": "Assaf A/B 2026",
+  "name": "A/B Split",
   "units": "kg",
   "sessionsPerWeek": 3,
   "workouts": [

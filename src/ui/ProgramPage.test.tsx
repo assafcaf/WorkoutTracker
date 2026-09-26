@@ -64,7 +64,7 @@ function lines(list: HTMLElement): string[] {
 test('O1 the active program leads with its name, then Workout A, then Workout B', () => {
   renderProgramPage()
 
-  const program = screen.getByRole('heading', { name: 'Assaf A/B 2026' })
+  const program = screen.getByRole('heading', { name: 'A/B Split' })
   const workoutA = screen.getByRole('heading', { name: 'Workout A' })
   const workoutB = screen.getByRole('heading', { name: 'Workout B' })
 
@@ -108,7 +108,7 @@ test('O1 the program switcher offers every loaded program as a choice, with no d
     'assaf-ab-2026',
     'full-body-starter',
   ])
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeVisible()
   expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeVisible()
   expect(screen.queryByRole('button', { name: /Other programs/ })).toBeNull()
 })
@@ -137,17 +137,17 @@ test('O1 with the other program active, the page leads with it and its radio is 
   expect(screen.getByRole('heading', { name: 'Full body' })).toBeVisible()
   expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
   expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeChecked()
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).not.toBeChecked()
 })
 
 test('O1 choosing the already-active program does not call onChooseProgram', async () => {
   const user = userEvent.setup()
   const { onChooseProgram } = renderProgramPage()
 
-  await user.click(screen.getByRole('radio', { name: 'Assaf A/B 2026' }))
+  await user.click(screen.getByRole('radio', { name: 'A/B Split' }))
 
   expect(onChooseProgram).not.toHaveBeenCalled()
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeChecked()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeChecked()
 })
 
 test('O2 a plan referencing an id absent from the catalog fails naming the program and the id', () => {
@@ -264,7 +264,7 @@ test('M13 the program switcher marks the active program checked and calls onChoo
   const user = userEvent.setup()
   const { onChooseProgram } = renderProgramPage()
 
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeChecked()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeChecked()
   expect(screen.getByRole('radio', { name: 'Full body starter' })).not.toBeChecked()
 
   await user.click(screen.getByRole('radio', { name: 'Full body starter' }))

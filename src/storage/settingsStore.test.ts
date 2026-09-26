@@ -38,14 +38,14 @@ beforeEach(async () => {
 // kept as they were on purpose (the merge's weakened-tests check matches titles); the bodies are
 // the O19 contract.
 
-test('O18 getActiveProgramId defaults to the only program when there is one and nothing is stored', async () => {
+test('O19 getActiveProgramId resolves null for the only program when nothing is stored and there is no Session', async () => {
   await db.sessions.clear()
   const solo = [program('only-program')]
 
   expect(await getActiveProgramId(solo)).toBeNull()
 })
 
-test('O18 getActiveProgramId defaults to the first program in the list when nothing is stored', async () => {
+test('O19 getActiveProgramId resolves null, not the first program in the list, when nothing is stored and there is no Session', async () => {
   await db.sessions.clear()
   const programs = [program('assaf-ab-2026'), program('full-body-starter')]
 
