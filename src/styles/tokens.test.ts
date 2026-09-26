@@ -182,7 +182,7 @@ test('O1 tokens.css no longer declares --color-border, --color-on-accent or --sh
   expect(REMOVED_TOKENS.filter((name) => declared.has(name))).toEqual([])
 })
 
-test('O1 the colour tokens carry the Court palette values', () => {
+test('O1 the colour tokens carry the documented palette values', () => {
   const { actual, expected } = compare(COLOUR_TOKENS)
   expect(actual).toEqual(expected)
 })
@@ -197,7 +197,7 @@ test('O1 the personal-record tint, ink and ring tokens carry the documented valu
   expect(actual).toEqual(expected)
 })
 
-test('O1 the body-map shade and primary/secondary tokens carry the clay ramp values', () => {
+test('O1 the body-map shade and primary/secondary tokens carry the documented values', () => {
   const { actual, expected } = compare(MAP_TOKENS)
   expect(actual).toEqual(expected)
 })
