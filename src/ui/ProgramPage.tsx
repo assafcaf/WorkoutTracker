@@ -212,7 +212,9 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
       )}
 
       {activeProgramId !== null && programMessage && (
-        <p className="program-page-message">{programMessage}</p>
+        <p className="program-page-message" role="status">
+          {programMessage}
+        </p>
       )}
 
       {active && (
