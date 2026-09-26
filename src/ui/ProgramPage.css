@@ -80,8 +80,11 @@
   flex: 1;
 }
 
-/* E9-T3: Program tab actions -- New program, plus per-Program Edit/Copy/Delete/Reset. */
-.program-page-actions {
+/* fix-actions-placement: the "Active program" switcher now carries New program plus each
+ * Program's Edit/Copy/Delete/Reset, in place at the top of the page (E9-T3's actions moved off
+ * the separate bottom list, `.program-page-actions`, onto each radio card below).
+ */
+.program-page-switcher {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -106,13 +109,13 @@
   cursor: pointer;
 }
 
-.program-page-actions-row {
+.program-page-switcher-row {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: var(--space-2);
 }
 
-.program-page-actions-name {
+.program-page-switcher-row .settings-action {
   flex: 1;
 }

@@ -834,3 +834,59 @@ test('O8 the Program tab shows programMessage when set', () => {
 
   expect(screen.getByText('Could not delete the active program')).toBeVisible()
 })
+
+// --- fix-actions-placement: the Active program list (with New program) moves up under the ----
+// page heading, above the active Program's Workout cards and muscle maps, and each Program's
+// actions live on its own radio card instead of a separate list at the bottom.
+
+test('fix-actions-placement the Active program list precedes the first Workout card in DOM order', () => {
+  const { container } = renderActionsPage({
+    programs: [assaf, starter],
+    activeProgramId: 'assaf-ab-2026',
+    catalog: catalogWithout(),
+  })
+
+  const activeProgramList = container.querySelector('.settings-group')
+  if (!activeProgramList) throw new Error('expected a .settings-group Active program fieldset')
+  const workoutA = screen.getByRole('heading', { name: 'Workout A' })
+
+  expect(precedes(activeProgramList, workoutA)).toBe(true)
+})
+
+test('fix-actions-placement New program precedes the first Workout card in DOM order', () => {
+  renderActionsPage({
+    programs: [assaf, starter],
+    activeProgramId: 'assaf-ab-2026',
+    catalog: catalogWithout(),
+  })
+
+  const newProgram = screen.getByRole('button', { name: 'New program' })
+  const workoutA = screen.getByRole('heading', { name: 'Workout A' })
+
+  expect(precedes(newProgram, workoutA)).toBe(true)
+})
+
+test('fix-actions-placement no separate actions list remains at the bottom', () => {
+  const { container } = renderActionsPage()
+
+  expect(container.querySelector('.program-page-actions')).toBeNull()
+})
+
+test("fix-actions-placement each Program's radio card carries its own action buttons, not a separate row", () => {
+  const { container } = renderActionsPage()
+
+  const row = programRow(container, 'bundled-and-user')
+  expect(within(row).getByRole('radio')).toBeInTheDocument()
+  expect(within(row).getByRole('button', { name: 'Edit' })).toBeVisible()
+  expect(within(row).getByRole('button', { name: 'Copy' })).toBeVisible()
+  expect(within(row).getByRole('button', { name: 'Reset to original' })).toBeVisible()
+})
+
+test("fix-actions-placement a user-only Program's radio card carries Delete, not Reset to original", () => {
+  const { container } = renderActionsPage()
+
+  const row = programRow(container, 'user-only')
+  expect(within(row).getByRole('radio')).toBeInTheDocument()
+  expect(within(row).getByRole('button', { name: 'Delete' })).toBeVisible()
+  expect(within(row).queryByRole('button', { name: 'Reset to original' })).toBeNull()
+})
