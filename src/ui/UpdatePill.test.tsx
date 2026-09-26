@@ -20,6 +20,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
 import { useServiceWorkerUpdate } from '../pwa/registerSW'
 import { db } from '../storage/db'
+import { setActiveProgramId } from '../storage/settingsStore'
 import { UpdatePill } from './UpdatePill'
 
 /** The options vite-plugin-pwa's `registerSW` accepts; the app uses the first two. */
@@ -73,6 +74,8 @@ beforeEach(async () => {
   await db.open()
   await db.sessions.clear()
   await db.settings.clear()
+  // Since E9-T2 an empty database has no active Program; these tests start where the trainee is.
+  await setActiveProgramId('assaf-ab-2026')
 })
 
 afterEach(() => {

@@ -1,0 +1,36 @@
+/* The Workout tab's card when there is no active Program (E9-T2).
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css. `.no-program-choose`
+ * carries `min-height: var(--tap-min)` on its bare selector, where the tap-target audit reads it.
+ */
+
+.no-program {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-card);
+}
+
+.no-program-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.no-program-choose {
+  display: flex;
+  width: 100%;
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: var(--text-md);
+  font-weight: 600;
+}

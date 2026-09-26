@@ -55,12 +55,16 @@ export type ExercisePlan = {
   sets: number
   repRange: [number, number]
   restSeconds: number
+  /** The weight this Plan's Exercise starts at in this Program, overriding the catalog's (E9). */
+  startWeightKg?: number
 }
 
 export type Workout = {
   id: string
   name: string
   exercises: ExercisePlan[]
+  /** Hidden from pickers but kept, so a Session pointing at it still resolves (E9). */
+  hidden?: boolean
 }
 
 export type Program = {
@@ -70,7 +74,12 @@ export type Program = {
   workouts: Workout[]
   /** How many sessions per week the program prescribes, averaged over its rotation (E5-T13). */
   sessionsPerWeek: number
+  /** Hidden from pickers but kept, so a Session pointing at it still resolves (E9). */
+  hidden?: boolean
 }
+
+/** A Program the trainee created or edited, stamped with when it was first stored (E9). */
+export type UserProgram = Program & { createdAt: number }
 
 export type SetEntry = {
   exerciseId: string

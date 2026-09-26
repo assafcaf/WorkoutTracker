@@ -1,4 +1,4 @@
-import type { Program, VolumeBaseline } from '../types'
+import type { Program, UserProgram, VolumeBaseline } from '../types'
 import { db } from './db'
 
 /**
@@ -9,17 +9,28 @@ import { db } from './db'
 export const ACTIVE_PROGRAM_ID_KEY = 'activeProgramId'
 
 /**
- * The id of the program the trainee has chosen as active, read from the `settings` table.
+ * The id of the program the trainee has chosen as active, read from the `settings` table, or
+ * null when there is none yet (E9-T2).
  *
- * Defaults to the only program when there is one and nothing is stored, and otherwise to the
- * first program in `programs` — both when nothing is stored and when the stored id names a
- * program no longer among `programs`, in which case the fallback is also shown on screen.
+ * A stored id among `programs` is returned as is; a stored id no longer among them falls back
+ * to the first program, and that fallback is shown on screen. With nothing stored, the program
+ * of the Session with the latest `startedAt` (finished or in progress) is adopted and stored —
+ * or the first program when that one is no longer offered. With nothing stored and no Session,
+ * the result is null: a new user has no Program until they choose one.
  */
-export async function getActiveProgramId(programs: Program[]): Promise<string> {
+export async function getActiveProgramId(programs: Program[]): Promise<string | null> {
   const row = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
   const stored = typeof row?.value === 'string' ? row.value : undefined
-  if (stored !== undefined && programs.some((program) => program.id === stored)) return stored
-  return programs[0].id
+  if (stored !== undefined) {
+    return programs.some((program) => program.id === stored) ? stored : programs[0].id
+  }
+  const latest = await db.sessions.orderBy('startedAt').last()
+  if (!latest) return null
+  const adopted = programs.some((program) => program.id === latest.programId)
+    ? latest.programId
+    : programs[0].id
+  await setActiveProgramId(adopted)
+  return adopted
 }
 
 /**
@@ -128,4 +139,49 @@ export async function getVolumeBaseline(): Promise<VolumeBaseline> {
 /** Records `baseline` as the volume baseline. */
 export async function setVolumeBaseline(baseline: VolumeBaseline): Promise<void> {
   await db.settings.put({ key: VOLUME_BASELINE_KEY, value: baseline, updatedAt: Date.now() })
+}
+
+/** The `settings` table key every User Program is kept under, in one row (E9). */
+export const USER_PROGRAMS_KEY = 'userPrograms'
+
+/** Every stored User Program; `[]` when none has been stored. */
+export async function getUserPrograms(): Promise<UserProgram[]> {
+  const row = await db.settings.get(USER_PROGRAMS_KEY)
+  return Array.isArray(row?.value) ? (row.value as UserProgram[]) : []
+}
+
+/**
+ * Replaces every stored User Program with `programs`, in the one `userPrograms` row. Used by the
+ * writers below and by a backup import, which restores the file's Programs as a whole.
+ */
+export async function setUserPrograms(programs: UserProgram[]): Promise<void> {
+  await db.settings.put({ key: USER_PROGRAMS_KEY, value: programs, updatedAt: Date.now() })
+}
+
+/** Reads the stored User Programs, and stores what `change` makes of them, in one transaction. */
+async function updateUserPrograms(change: (programs: UserProgram[]) => UserProgram[]): Promise<void> {
+  await db.transaction('rw', db.settings, async () => {
+    await setUserPrograms(change(await getUserPrograms()))
+  })
+}
+
+/** Stores `p`, replacing the stored User Program with its id, else appending it. */
+export async function saveUserProgram(p: UserProgram): Promise<void> {
+  await updateUserPrograms((programs) =>
+    programs.some((stored) => stored.id === p.id)
+      ? programs.map((stored) => (stored.id === p.id ? p : stored))
+      : [...programs, p],
+  )
+}
+
+/** Removes the User Program with `id`, so a bundled Program of that id shows again. */
+export async function resetProgram(id: string): Promise<void> {
+  await updateUserPrograms((programs) => programs.filter((stored) => stored.id !== id))
+}
+
+/** Marks the User Program with `id` hidden, keeping it. */
+export async function deleteProgram(id: string): Promise<void> {
+  await updateUserPrograms((programs) =>
+    programs.map((stored) => (stored.id === id ? { ...stored, hidden: true } : stored)),
+  )
 }

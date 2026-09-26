@@ -1,11 +1,17 @@
 import type { Session } from '../types'
 export type SyncedSession = Session & { updatedAt: number }
-export type SyncedSettingKey = 'activeProgramId' | 'gymEquipment' | 'weightSteps' | 'volumeBaseline'
+export type SyncedSettingKey =
+  | 'activeProgramId'
+  | 'gymEquipment'
+  | 'weightSteps'
+  | 'volumeBaseline'
+  | 'userPrograms'
 export const SYNCED_SETTING_KEYS: readonly SyncedSettingKey[] = [
   'activeProgramId',
   'gymEquipment',
   'weightSteps',
   'volumeBaseline',
+  'userPrograms',
 ]
 export type SyncedSetting = { key: SyncedSettingKey; value: unknown; updatedAt: number }
 export type SyncRequest = { since: number; sessions: SyncedSession[]; settings: SyncedSetting[] }

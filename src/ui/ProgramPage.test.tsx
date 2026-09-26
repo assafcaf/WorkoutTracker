@@ -64,7 +64,7 @@ function lines(list: HTMLElement): string[] {
 test('O1 the active program leads with its name, then Workout A, then Workout B', () => {
   renderProgramPage()
 
-  const program = screen.getByRole('heading', { name: 'Assaf A/B 2026' })
+  const program = screen.getByRole('heading', { name: 'A/B Split' })
   const workoutA = screen.getByRole('heading', { name: 'Workout A' })
   const workoutB = screen.getByRole('heading', { name: 'Workout B' })
 
@@ -108,7 +108,7 @@ test('O1 the program switcher offers every loaded program as a choice, with no d
     'assaf-ab-2026',
     'full-body-starter',
   ])
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeVisible()
   expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeVisible()
   expect(screen.queryByRole('button', { name: /Other programs/ })).toBeNull()
 })
@@ -137,17 +137,17 @@ test('O1 with the other program active, the page leads with it and its radio is 
   expect(screen.getByRole('heading', { name: 'Full body' })).toBeVisible()
   expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
   expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeChecked()
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).not.toBeChecked()
 })
 
 test('O1 choosing the already-active program does not call onChooseProgram', async () => {
   const user = userEvent.setup()
   const { onChooseProgram } = renderProgramPage()
 
-  await user.click(screen.getByRole('radio', { name: 'Assaf A/B 2026' }))
+  await user.click(screen.getByRole('radio', { name: 'A/B Split' }))
 
   expect(onChooseProgram).not.toHaveBeenCalled()
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeChecked()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeChecked()
 })
 
 test('O2 a plan referencing an id absent from the catalog fails naming the program and the id', () => {
@@ -264,7 +264,7 @@ test('M13 the program switcher marks the active program checked and calls onChoo
   const user = userEvent.setup()
   const { onChooseProgram } = renderProgramPage()
 
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeChecked()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeChecked()
   expect(screen.getByRole('radio', { name: 'Full body starter' })).not.toBeChecked()
 
   await user.click(screen.getByRole('radio', { name: 'Full body starter' }))
@@ -678,4 +678,215 @@ test('O23 "This week" shows exactly one week-scale body-map legend for its Plann
   const thisWeek = container.querySelector('.program-page-thisweek')
   if (!thisWeek) throw new Error('expected a .program-page-thisweek section')
   expect(thisWeek.querySelectorAll('.body-map-legend[data-scale="week"]')).toHaveLength(1)
+})
+
+// --- E9-T3 (O8): Program tab actions -- New program, Edit, Copy, Delete/Reset to original, ---
+// each with inline confirmation (no browser dialog). `userProgramIds`/`bundledProgramIds`
+// are independent of the rendered `programs` list, so a program's row is looked up by
+// `data-program-id` (same convention as BodyMap's `data-region`/`data-band`) rather than by
+// DOM order, which membership in the two sets does not otherwise affect.
+//
+// The three programs below carry no workouts, so `assertPlansAreInCatalog`, `prescribedWeekly`
+// and `weekSets` all no-op on them (nothing to validate or count) -- keeping these tests
+// independent of the catalog/library fixtures the earlier tests in this file use.
+
+const userOnlyProgram: Program = {
+  id: 'user-only',
+  name: 'User only program',
+  units: 'kg',
+  sessionsPerWeek: 1,
+  workouts: [],
+}
+
+const bundledAndUserProgram: Program = {
+  id: 'bundled-and-user',
+  name: 'Bundled and user program',
+  units: 'kg',
+  sessionsPerWeek: 1,
+  workouts: [],
+}
+
+const bundledOnlyProgram: Program = {
+  id: 'bundled-only',
+  name: 'Bundled only program',
+  units: 'kg',
+  sessionsPerWeek: 1,
+  workouts: [],
+}
+
+function renderActionsPage(overrides: Partial<import('./ProgramPage').ProgramPageProps> = {}) {
+  const onNewProgram = vi.fn()
+  const onEditProgram = vi.fn()
+  const onCopyProgram = vi.fn()
+  const onDeleteProgram = vi.fn()
+  const onResetProgram = vi.fn()
+  const { container } = render(
+    <ProgramPage
+      programs={[userOnlyProgram, bundledAndUserProgram, bundledOnlyProgram]}
+      activeProgramId="user-only"
+      catalog={new Map()}
+      library={new Map()}
+      onChooseProgram={vi.fn()}
+      userProgramIds={new Set(['user-only', 'bundled-and-user'])}
+      bundledProgramIds={new Set(['bundled-and-user', 'bundled-only'])}
+      onNewProgram={onNewProgram}
+      onEditProgram={onEditProgram}
+      onCopyProgram={onCopyProgram}
+      onDeleteProgram={onDeleteProgram}
+      onResetProgram={onResetProgram}
+      {...overrides}
+    />,
+  )
+  return { container, onNewProgram, onEditProgram, onCopyProgram, onDeleteProgram, onResetProgram }
+}
+
+function programRow(container: HTMLElement, id: string): HTMLElement {
+  const row = container.querySelector(`[data-program-id="${id}"]`)
+  if (!row) throw new Error(`expected a row for program ${id}`)
+  return row as HTMLElement
+}
+
+test('O8 the Program tab offers a New program control that calls onNewProgram', async () => {
+  const user = userEvent.setup()
+  const { onNewProgram } = renderActionsPage()
+
+  await user.click(screen.getByRole('button', { name: 'New program' }))
+
+  expect(onNewProgram).toHaveBeenCalledTimes(1)
+})
+
+test('O8 each Program offers Edit, which calls onEditProgram with its id', async () => {
+  const user = userEvent.setup()
+  const { container, onEditProgram } = renderActionsPage()
+
+  const row = programRow(container, 'bundled-and-user')
+  await user.click(within(row).getByRole('button', { name: 'Edit' }))
+
+  expect(onEditProgram).toHaveBeenCalledWith('bundled-and-user')
+})
+
+test('O8 each Program offers Copy, which calls onCopyProgram with its id', async () => {
+  const user = userEvent.setup()
+  const { container, onCopyProgram } = renderActionsPage()
+
+  const row = programRow(container, 'bundled-only')
+  await user.click(within(row).getByRole('button', { name: 'Copy' }))
+
+  expect(onCopyProgram).toHaveBeenCalledWith('bundled-only')
+})
+
+test('O8 a Program in userProgramIds and not bundledProgramIds offers Delete but not Reset to original', () => {
+  const { container } = renderActionsPage()
+
+  const row = programRow(container, 'user-only')
+  expect(within(row).getByRole('button', { name: 'Delete' })).toBeVisible()
+  expect(within(row).queryByRole('button', { name: 'Reset to original' })).toBeNull()
+})
+
+test('O8 a Program in both userProgramIds and bundledProgramIds offers Reset to original but not Delete', () => {
+  const { container } = renderActionsPage()
+
+  const row = programRow(container, 'bundled-and-user')
+  expect(within(row).getByRole('button', { name: 'Reset to original' })).toBeVisible()
+  expect(within(row).queryByRole('button', { name: 'Delete' })).toBeNull()
+})
+
+test('O8 a Program only in bundledProgramIds offers neither Delete nor Reset to original', () => {
+  const { container } = renderActionsPage()
+
+  const row = programRow(container, 'bundled-only')
+  expect(within(row).queryByRole('button', { name: 'Delete' })).toBeNull()
+  expect(within(row).queryByRole('button', { name: 'Reset to original' })).toBeNull()
+})
+
+test('O8 clicking Delete reveals a Confirm button and does not call onDeleteProgram until Confirm is clicked', async () => {
+  const user = userEvent.setup()
+  const { container, onDeleteProgram } = renderActionsPage()
+
+  const row = programRow(container, 'user-only')
+  expect(within(row).queryByRole('button', { name: 'Confirm' })).toBeNull()
+
+  await user.click(within(row).getByRole('button', { name: 'Delete' }))
+  expect(onDeleteProgram).not.toHaveBeenCalled()
+  const confirm = within(row).getByRole('button', { name: 'Confirm' })
+
+  await user.click(confirm)
+  expect(onDeleteProgram).toHaveBeenCalledWith('user-only')
+})
+
+test('O8 clicking Reset to original reveals a Confirm button and does not call onResetProgram until Confirm is clicked', async () => {
+  const user = userEvent.setup()
+  const { container, onResetProgram } = renderActionsPage()
+
+  const row = programRow(container, 'bundled-and-user')
+  expect(within(row).queryByRole('button', { name: 'Confirm' })).toBeNull()
+
+  await user.click(within(row).getByRole('button', { name: 'Reset to original' }))
+  expect(onResetProgram).not.toHaveBeenCalled()
+  const confirm = within(row).getByRole('button', { name: 'Confirm' })
+
+  await user.click(confirm)
+  expect(onResetProgram).toHaveBeenCalledWith('bundled-and-user')
+})
+
+test('O8 the Program tab shows programMessage when set', () => {
+  renderActionsPage({ programMessage: 'Could not delete the active program' })
+
+  expect(screen.getByText('Could not delete the active program')).toBeVisible()
+})
+
+// --- fix-actions-placement: the Active program list (with New program) moves up under the ----
+// page heading, above the active Program's Workout cards and muscle maps, and each Program's
+// actions live on its own radio card instead of a separate list at the bottom.
+
+test('fix-actions-placement the Active program list precedes the first Workout card in DOM order', () => {
+  const { container } = renderActionsPage({
+    programs: [assaf, starter],
+    activeProgramId: 'assaf-ab-2026',
+    catalog: catalogWithout(),
+  })
+
+  const activeProgramList = container.querySelector('.settings-group')
+  if (!activeProgramList) throw new Error('expected a .settings-group Active program fieldset')
+  const workoutA = screen.getByRole('heading', { name: 'Workout A' })
+
+  expect(precedes(activeProgramList, workoutA)).toBe(true)
+})
+
+test('fix-actions-placement New program precedes the first Workout card in DOM order', () => {
+  renderActionsPage({
+    programs: [assaf, starter],
+    activeProgramId: 'assaf-ab-2026',
+    catalog: catalogWithout(),
+  })
+
+  const newProgram = screen.getByRole('button', { name: 'New program' })
+  const workoutA = screen.getByRole('heading', { name: 'Workout A' })
+
+  expect(precedes(newProgram, workoutA)).toBe(true)
+})
+
+test('fix-actions-placement no separate actions list remains at the bottom', () => {
+  const { container } = renderActionsPage()
+
+  expect(container.querySelector('.program-page-actions')).toBeNull()
+})
+
+test("fix-actions-placement each Program's radio card carries its own action buttons, not a separate row", () => {
+  const { container } = renderActionsPage()
+
+  const row = programRow(container, 'bundled-and-user')
+  expect(within(row).getByRole('radio')).toBeInTheDocument()
+  expect(within(row).getByRole('button', { name: 'Edit' })).toBeVisible()
+  expect(within(row).getByRole('button', { name: 'Copy' })).toBeVisible()
+  expect(within(row).getByRole('button', { name: 'Reset to original' })).toBeVisible()
+})
+
+test("fix-actions-placement a user-only Program's radio card carries Delete, not Reset to original", () => {
+  const { container } = renderActionsPage()
+
+  const row = programRow(container, 'user-only')
+  expect(within(row).getByRole('radio')).toBeInTheDocument()
+  expect(within(row).getByRole('button', { name: 'Delete' })).toBeVisible()
+  expect(within(row).queryByRole('button', { name: 'Reset to original' })).toBeNull()
 })

@@ -5,9 +5,11 @@ import {
   ACTIVE_PROGRAM_ID_KEY,
   getGymEquipment,
   getLastExportedAt,
+  getUserPrograms,
   getVolumeBaseline,
   getWeightStep,
   getWeightSteps,
+  saveUserProgram,
   setActiveProgramId,
   setGymEquipment,
   setVolumeBaseline,
@@ -25,7 +27,7 @@ import {
   replaceAll,
   type BackupFile,
 } from './backup'
-import type { Session, SetEntry } from '../types'
+import type { Session, SetEntry, UserProgram } from '../types'
 
 // `fake-indexeddb/auto` is installed globally in src/test/setup.ts; see sessionStore.test.ts.
 beforeEach(async () => {
@@ -501,4 +503,70 @@ test('O2 a backup made before E8, without settings.volumeBaseline, imports with 
   await expect(replaceAll(readBackup(JSON.stringify(preE8Backup())))).resolves.toBeUndefined()
 
   expect(await getVolumeBaseline()).toEqual({ period: 'last' })
+})
+
+// --- User Programs in the backup file (E9-T5 O7) ---------------------------------------------
+
+/** A User Program with one Workout, written out by hand so the expectations are literals. */
+function myProgram(id: string, overrides: Partial<UserProgram> = {}): UserProgram {
+  return {
+    id,
+    name: 'Push pull',
+    units: 'kg',
+    sessionsPerWeek: 2,
+    createdAt: BASE - DAY,
+    workouts: [
+      {
+        id: 'push',
+        name: 'Push',
+        exercises: [{ exerciseId: 'lunges', sets: 3, repRange: [8, 12], restSeconds: 90 }],
+      },
+    ],
+    ...overrides,
+  } as UserProgram
+}
+
+test('O7 given stored User Programs, the exported backup carries them as settings.userPrograms', async () => {
+  await setActiveProgramId('assaf-ab-2026')
+  await saveUserProgram(myProgram('my-push-pull'))
+  await saveUserProgram(myProgram('my-hidden', { hidden: true }))
+
+  const file = await exportBackup(BASE)
+
+  expect(JSON.parse(JSON.stringify(file)).settings.userPrograms).toEqual([
+    myProgram('my-push-pull'),
+    myProgram('my-hidden', { hidden: true }),
+  ])
+})
+
+test('O7 importing a backup whose settings.userPrograms holds a Program restores it', async () => {
+  const backup = preE8Backup({ userPrograms: [myProgram('my-push-pull')] })
+
+  await replaceAll(readBackup(JSON.stringify(backup)))
+
+  expect(await getUserPrograms()).toEqual([myProgram('my-push-pull')])
+})
+
+test('O7 stored User Programs survive exporting and importing into an empty store', async () => {
+  await setActiveProgramId('assaf-ab-2026')
+  await saveUserProgram(myProgram('my-push-pull'))
+  await saveUserProgram(myProgram('my-hidden', { hidden: true }))
+  const parsed = readBackup(JSON.stringify(await exportBackup(BASE)))
+  await db.settings.clear()
+
+  await replaceAll(parsed)
+
+  expect(await getUserPrograms()).toEqual([
+    myProgram('my-push-pull'),
+    myProgram('my-hidden', { hidden: true }),
+  ])
+})
+
+test('O7 importing a backup without settings.userPrograms leaves no User Programs', async () => {
+  // A Program on the device before the import: the backup has none, so none is left after it.
+  await saveUserProgram(myProgram('my-push-pull'))
+
+  await expect(replaceAll(readBackup(JSON.stringify(preE8Backup())))).resolves.toBeUndefined()
+
+  expect(await getUserPrograms()).toEqual([])
 })

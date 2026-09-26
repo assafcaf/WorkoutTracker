@@ -1,0 +1,168 @@
+/* The Program editor (E9-T7): the Program's own fields, a card per Workout with its Plans, and
+ * the exercise search overlay, which takes its fixed, opaque shape from `.overlay-panel`
+ * (src/styles/overlay.css). `Save` is styled by the Action bar (src/ui/AppShell.css).
+ *
+ * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
+ * one definition site.
+ */
+
+.program-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.program-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.program-editor-label {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.program-editor-input {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.program-editor-workout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.program-editor-legend {
+  float: left;
+  padding: 0;
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.program-editor-plans {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.program-editor-plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.program-editor-plan-name {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.program-editor-plan-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.program-editor-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.program-editor-action,
+.program-editor-cancel,
+.program-editor-add {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.program-editor-action:disabled {
+  color: var(--color-muted);
+}
+
+.program-editor-cancel {
+  align-self: flex-start;
+}
+
+.program-editor-error {
+  margin: 0;
+  color: var(--color-danger);
+}
+
+/* A `validateProgram` fault's message, beside the field its path names (E9-T8). */
+.program-editor-fault {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+.program-editor-heading {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+/* `Save`: one of the Action bar's own buttons, given its own class so the control audit
+ * (src/styles/controlAudit.test.ts) finds a rule for it. */
+.program-editor-save {
+  font-weight: 600;
+}
+
+/* A disabled Save (O16: while `validateProgram` names a fault) must not read the same as an
+ * enabled one -- muted background, reduced opacity, and a `not-allowed` cursor, restoring the
+ * lime style the moment the fault is fixed and `disabled` drops off. */
+.program-editor-save:disabled {
+  opacity: 0.5;
+  background: var(--color-muted);
+  cursor: not-allowed;
+}
+
+.program-editor-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+/* `.library-search` (src/ui/LibraryList.css) is `flex: 1`, sized for the Exercises page's row
+ * layout. Inside the picker's flex column that same rule grows it to fill the overlay's height
+ * instead of staying a single line, so it is overridden here rather than on the shared class --
+ * the Exercises page keeps its own layout untouched. */
+.program-editor-picker .library-search {
+  flex: none;
+}
+
+.program-editor-picker-heading {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text);
+  font-size: var(--text-xl);
+}

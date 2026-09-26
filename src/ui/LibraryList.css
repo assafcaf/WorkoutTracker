@@ -72,6 +72,25 @@
   list-style: none;
 }
 
+/* A row with `Pick` (E9-T7, the Program editor's exercise search): the row's own button takes
+ * the width, `Pick` sits at its end. */
+.library-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.library-row-pick {
+  flex: none;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
 .library-row-button {
   display: flex;
   width: 100%;

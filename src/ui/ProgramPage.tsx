@@ -1,6 +1,16 @@
-import type { Exercise, ExercisePlan, LibraryExercise, Program, Session, Workout } from '../types'
+import { useState } from 'react'
+import type {
+  Exercise,
+  ExercisePlan,
+  LibraryExercise,
+  Muscle,
+  Program,
+  Session,
+  Workout,
+} from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { toRegionCounts, weekSets } from '../domain/muscles'
+import { visiblePrograms } from '../domain/programs'
 import { prescribedWeekly, programGaps } from '../domain/programVolume'
 import { BodyMap } from './body/BodyMap'
 import { BodyMapLegend } from './body/BodyMapLegend'
@@ -9,7 +19,8 @@ import './ProgramPage.css'
 
 export type ProgramPageProps = {
   programs: Program[]
-  activeProgramId: string
+  /** Null when no Program is active yet (E9-T2); E9-T6 owns what this page shows then. */
+  activeProgramId: string | null
   catalog: Map<string, Exercise>
   library: Map<string, LibraryExercise>
   onChooseProgram(id: string): void
@@ -22,6 +33,18 @@ export type ProgramPageProps = {
   now?: number
   /** Resolves a set entry's exerciseId for `weekSets` (M15). Defaults to a catalog lookup. */
   resolve?: (id: string) => Exercise | undefined
+  /** Program tab actions (E9-T3). Optional here -- E9-T9 wires all of these from `App.tsx`. */
+  onNewProgram?(): void
+  onEditProgram?(id: string): void
+  onCopyProgram?(id: string): void
+  onDeleteProgram?(id: string): void
+  onResetProgram?(id: string): void
+  /** A Program's id is in this set when the trainee can Edit/Copy/Delete/Reset it (E9-T3). */
+  userProgramIds?: Set<string>
+  /** A Program's id is in this set when it ships with the app (E9-T3). */
+  bundledProgramIds?: Set<string>
+  /** An error line shown on the Program tab when set (E9-T3; E9-T10 wires it from `App.tsx`). */
+  programMessage?: string | null
 }
 
 /**
@@ -51,19 +74,34 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     sessions = [],
     now = Date.now(),
     resolve = (id: string) => catalog.get(id),
+    onNewProgram,
+    onEditProgram,
+    onCopyProgram,
+    onDeleteProgram,
+    onResetProgram,
+    userProgramIds = new Set<string>(),
+    bundledProgramIds = new Set<string>(),
+    programMessage = null,
   } = props
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
   // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
   // half-built page behind -- the same rule `ProgramPicker` enforced.
   for (const program of programs) assertPlansAreInCatalog(program, catalog)
 
-  const active = programs.find((program) => program.id === activeProgramId)
-  if (!active) throw new Error(`no program ${activeProgramId} among the loaded programs`)
+  // No active Program (a new user, E9-T2) skips the active Program's own sections below.
+  const active =
+    activeProgramId === null ? null : programs.find((program) => program.id === activeProgramId)
+  if (active === undefined) {
+    throw new Error(`no program ${activeProgramId} among the loaded programs`)
+  }
 
   // The whole active program's prescribed weekly volume (M14/M15's prescribed side) -- distinct
   // from a single workout card's session-scale map (`renderWorkout` below), which is why the
   // fixtures band the same muscle differently at the two scales.
-  const prescribedMuscleCounts = prescribedWeekly(active, catalog, library)
+  const prescribedMuscleCounts = active
+    ? prescribedWeekly(active, catalog, library)
+    : new Map<Muscle, number>()
   const prescribedRegionCounts = toRegionCounts(prescribedMuscleCounts)
   const gaps = programGaps(prescribedMuscleCounts)
 
@@ -92,66 +130,158 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     )
   }
 
+  function renderProgramRow(program: Program): JSX.Element {
+    const checked = program.id === activeProgramId
+    const isUser = userProgramIds.has(program.id)
+    const isBundled = bundledProgramIds.has(program.id)
+    const confirming = confirmingId === program.id
+    return (
+      <div key={program.id} data-program-id={program.id} className="program-page-switcher-row">
+        <label className={`settings-action${checked ? ' settings-action-active' : ''}`}>
+          <input
+            type="radio"
+            className="settings-radio"
+            name="program-page-active-program"
+            value={program.id}
+            checked={checked}
+            onChange={() => {
+              if (!checked) onChooseProgram(program.id)
+            }}
+          />
+          <span className="settings-action-label">{program.name}</span>
+        </label>
+        <button
+          type="button"
+          className="program-page-edit"
+          onClick={() => onEditProgram?.(program.id)}
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          className="program-page-copy"
+          onClick={() => onCopyProgram?.(program.id)}
+        >
+          Copy
+        </button>
+        {isUser && !isBundled && !confirming && (
+          <button
+            type="button"
+            className="program-page-delete"
+            onClick={() => setConfirmingId(program.id)}
+          >
+            Delete
+          </button>
+        )}
+        {isUser && isBundled && !confirming && (
+          <button
+            type="button"
+            className="program-page-reset"
+            onClick={() => setConfirmingId(program.id)}
+          >
+            Reset to original
+          </button>
+        )}
+        {confirming && (
+          <button
+            type="button"
+            className="program-page-confirm"
+            onClick={() => {
+              setConfirmingId(null)
+              if (isBundled) onResetProgram?.(program.id)
+              else onDeleteProgram?.(program.id)
+            }}
+          >
+            Confirm
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="program-page">
-      <h2>{active.name}</h2>
-      {active.workouts.map((workout) => renderWorkout(active, workout))}
+      {activeProgramId !== null && (
+        <fieldset className="settings-group program-page-switcher">
+          <legend className="settings-legend">Active program</legend>
+          <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
+            New program
+          </button>
+          {programs.map((program) => renderProgramRow(program))}
+        </fieldset>
+      )}
 
-      <section className="program-page-weekly">
-        <h3>Weekly volume</h3>
-        <div className="program-page-map">
-          <BodyMap counts={prescribedRegionCounts} scale="week" />
-        </div>
-        <BodyMapLegend scale="week" />
-        {gaps.length > 0 && (
-          <ul className="program-page-gaps">
-            {gaps.map((muscle) => (
-              <li key={muscle}>{`No direct ${muscle} work`}</li>
+      {activeProgramId !== null && programMessage && (
+        <p className="program-page-message" role="status">
+          {programMessage}
+        </p>
+      )}
+
+      {active && (
+        <>
+          <h2>{active.name}</h2>
+          {active.workouts.map((workout) => renderWorkout(active, workout))}
+
+          <section className="program-page-weekly">
+            <h3>Weekly volume</h3>
+            <div className="program-page-map">
+              <BodyMap counts={prescribedRegionCounts} scale="week" />
+            </div>
+            <BodyMapLegend scale="week" />
+            {gaps.length > 0 && (
+              <ul className="program-page-gaps">
+                {gaps.map((muscle) => (
+                  <li key={muscle}>{`No direct ${muscle} work`}</li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="program-page-thisweek">
+            <h3>This week</h3>
+            <div className="program-page-thisweek-maps">
+              <figure className="program-page-map">
+                <BodyMap counts={prescribedRegionCounts} scale="week" />
+                <figcaption>Planned</figcaption>
+              </figure>
+              <figure className="program-page-map">
+                <BodyMap counts={doneRegionCounts} scale="week" />
+                <figcaption>Done</figcaption>
+              </figure>
+            </div>
+            <BodyMapLegend scale="week" />
+            {noSetsThisWeek && <p>No sets logged in the last 7 days</p>}
+          </section>
+        </>
+      )}
+
+      {activeProgramId === null && (
+        <section className="program-page-newuser">
+          <h2>Choose a program</h2>
+          <div className="program-page-newuser-list">
+            {visiblePrograms(programs).map((program) => (
+              <div key={program.id} className="program-page-newuser-card">
+                <span className="program-page-newuser-name">{program.name}</span>
+                <button
+                  type="button"
+                  className="program-page-use program-page-use-primary"
+                  onClick={() => onChooseProgram(program.id)}
+                >
+                  {`Use this ${program.name}`}
+                </button>
+              </div>
             ))}
-          </ul>
-        )}
-      </section>
+          </div>
+          <button
+            type="button"
+            className="program-page-new program-page-new-secondary"
+            onClick={() => onNewProgram?.()}
+          >
+            New program
+          </button>
+        </section>
+      )}
 
-      <section className="program-page-thisweek">
-        <h3>This week</h3>
-        <div className="program-page-thisweek-maps">
-          <figure className="program-page-map">
-            <BodyMap counts={prescribedRegionCounts} scale="week" />
-            <figcaption>Planned</figcaption>
-          </figure>
-          <figure className="program-page-map">
-            <BodyMap counts={doneRegionCounts} scale="week" />
-            <figcaption>Done</figcaption>
-          </figure>
-        </div>
-        <BodyMapLegend scale="week" />
-        {noSetsThisWeek && <p>No sets logged in the last 7 days</p>}
-      </section>
-
-      <fieldset className="settings-group">
-        <legend className="settings-legend">Active program</legend>
-        {programs.map((program) => {
-          const checked = program.id === activeProgramId
-          return (
-            <label
-              key={program.id}
-              className={`settings-action${checked ? ' settings-action-active' : ''}`}
-            >
-              <input
-                type="radio"
-                className="settings-radio"
-                name="program-page-active-program"
-                value={program.id}
-                checked={checked}
-                onChange={() => {
-                  if (!checked) onChooseProgram(program.id)
-                }}
-              />
-              <span className="settings-action-label">{program.name}</span>
-            </label>
-          )
-        })}
-      </fieldset>
     </div>
   )
 }

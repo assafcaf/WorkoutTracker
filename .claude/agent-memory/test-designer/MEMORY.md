@@ -7,3 +7,5 @@
 - `git rebase` can turn one conflict into a whole-file duplicate hunk; taking a side wholesale reintroduces upstream-deleted content. Diff vs `git show <sha>:<path>` before committing (E8-T8, 2026-09-25)
 - test-designer and code-writer can share one worktree/branch (not always separate per config.md) — check git log/reflog for the other's commits before rebasing and carry them along (E8-T8, 2026-09-25)
 - On Windows, io.open(path,'w',encoding='utf-8') with no newline= writes CRLF (even with autocrlf false), causing whole-file rebase conflicts; pass newline='\n' writing repo files (E8-T8, 2026-09-25)
+- git reset --hard <epic> is denied by settings.json even in a clean worktree; when HEAD is an ancestor, git merge --ff-only <epic> (allowed) reaches the same commit (E9-T6, 2026-09-26)
+- Before red, grep App.test.tsx for the bundled program being hidden: if its the switch target in choose-another-program tests, visiblePrograms wiring breaks them; flag it in NOTES (E9-T6, 2026-09-26)

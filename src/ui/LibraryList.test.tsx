@@ -408,3 +408,39 @@ test('O20 pressing Previous scrolls the list into view', async () => {
 
   expect(scrollIntoView).toHaveBeenCalled()
 })
+
+// --- E9-T7 O14: `Pick`, for the Program editor's exercise search --------------------------
+
+test('O14 with onPick, pressing a row\'s Pick calls it with that row\'s id and does not open the exercise', async () => {
+  const user = userEvent.setup()
+  const onPick = vi.fn()
+  const onOpen = vi.fn()
+  const library: LibraryExercise[] = [
+    fixture({ id: 'Barbell_Squat', name: 'Barbell Squat' }),
+    fixture({ id: 'Pushups', name: 'Pushups' }),
+  ]
+
+  render(<LibraryList library={library} onOpen={onOpen} gymEquipment={null} onPick={onPick} />)
+
+  const pushupsRow = screen
+    .getAllByRole('listitem')
+    .find((row) => rowName(row) === 'Pushups')
+  if (pushupsRow === undefined) throw new Error('no Pushups row')
+  await user.click(within(pushupsRow).getByRole('button', { name: 'Pick' }))
+
+  expect(onPick).toHaveBeenCalledTimes(1)
+  expect(onPick).toHaveBeenCalledWith('Pushups')
+  expect(onOpen).not.toHaveBeenCalled()
+})
+
+test('O14 with onPick, every row shows a Pick button', () => {
+  const library: LibraryExercise[] = [
+    fixture({ id: 'a', name: 'Alpha' }),
+    fixture({ id: 'b', name: 'Bravo' }),
+    fixture({ id: 'c', name: 'Charlie' }),
+  ]
+
+  render(<LibraryList library={library} onOpen={() => {}} gymEquipment={null} onPick={() => {}} />)
+
+  expect(screen.getAllByRole('button', { name: 'Pick' })).toHaveLength(3)
+})

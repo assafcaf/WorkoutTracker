@@ -7,11 +7,13 @@ import type {
   Program,
   Session,
   SetEntry,
+  UserProgram,
   Video,
   VolumeBaseline,
   Workout,
 } from './types'
 import { assertPlansAreInCatalog, loadCatalog, loadPrograms } from './data/catalog'
+import { copyProgram, mergePrograms, uuid, visiblePrograms } from './domain/programs'
 import { MUSCLES, loadLibrary, loadVideos } from './data/library'
 import { photoUrls } from './data/photos'
 import { resolveExercise } from './data/resolve'
@@ -29,14 +31,18 @@ import type { ImportPlan } from './storage/backup'
 import { db, isStorageAvailable } from './storage/db'
 import {
   ACTIVE_PROGRAM_ID_KEY,
+  deleteProgram,
   getActiveProgramId,
   getGymEquipment,
   getLastExportedAt,
+  getUserPrograms,
   getVolumeBaseline,
   getWeightStep,
   setActiveProgramId,
   setGymEquipment as persistGymEquipment,
   setVolumeBaseline as persistVolumeBaseline,
+  resetProgram,
+  saveUserProgram,
   setWeightStep,
 } from './storage/settingsStore'
 import {
@@ -61,7 +67,9 @@ import { HistoryList } from './ui/HistoryList'
 import { HistoryStatsSwitch } from './ui/HistoryStatsSwitch'
 import { ImportConfirm } from './ui/ImportConfirm'
 import { LibraryList } from './ui/LibraryList'
+import { ProgramEditor } from './ui/ProgramEditor'
 import { ProgramPage } from './ui/ProgramPage'
+import { NoProgram } from './ui/NoProgram'
 import { ResumeCard } from './ui/ResumeCard'
 import { SessionSummary } from './ui/SessionSummary'
 import { SetScreen } from './ui/SetScreen'
@@ -81,6 +89,7 @@ type View =
   | 'history'
   | 'stats'
   | 'exercises'
+  | 'program-editor'
 
 /**
  * The tab each view sits under, and `null` for the views that are inside a session: a
@@ -95,7 +104,17 @@ const TAB_OF: Record<View, Tab | null> = {
   settings: 'settings',
   list: null,
   set: null,
+  'program-editor': null,
 }
+
+/** What the Program editor was opened on (E9-T9): the Program it starts from, and whether it is new. */
+type EditorTarget = { initial: Program; isNew: boolean; mode: 'new' | 'edit' | 'copy' }
+
+/** The line the editor shows when a save rejects (E9-T9 O9). */
+const SAVE_ERROR = 'Couldn’t save — try again'
+
+/** What a delete, or a save hiding a Workout, shows when it would strand the Session in progress (E9-T10 O11). */
+const IN_PROGRESS_GUARD = 'Finish the workout in progress first'
 
 /** The tab a view's shell is on, as `AppShell` takes it: no tab bar for the in-session views. */
 function tabFor(view: View): Tab | undefined {
@@ -143,9 +162,10 @@ type LoadState =
   | {
       status: 'ready'
       catalog: Map<string, Exercise>
+      /** The bundled Programs only; the trainee's own are `userPrograms`, merged at render. */
       programs: Program[]
       storageAvailable: boolean
-      activeProgramId: string
+      activeProgramId: string | null
       staleActiveProgramNotice: boolean
       lastExportedAt: number | null
     }
@@ -156,6 +176,39 @@ type PendingImport = {
   currentCount: number
   incomingCount: number
   plan: ImportPlan
+}
+
+/** The User Programs in storage, or none when storage cannot be read. */
+async function userProgramsOrNone(storageAvailable: boolean): Promise<UserProgram[]> {
+  if (!storageAvailable) return []
+  try {
+    return await getUserPrograms()
+  } catch {
+    return []
+  }
+}
+
+/**
+ * `catalog` plus every library Exercise a Program's Plan points at (E9-T9), resolved the way the
+ * set screen resolves it, so a Program built from the library passes `assertPlansAreInCatalog`
+ * and the Program tab names and maps its Plans.
+ */
+function withProgramExercises(
+  catalog: Map<string, Exercise>,
+  programs: Program[],
+  library: Map<string, LibraryExercise>,
+): Map<string, Exercise> {
+  const extended = new Map(catalog)
+  for (const program of programs) {
+    for (const workout of program.workouts) {
+      for (const plan of workout.exercises) {
+        if (extended.has(plan.exerciseId)) continue
+        const exercise = resolveExercise(plan.exerciseId, catalog, library)
+        if (exercise) extended.set(plan.exerciseId, exercise)
+      }
+    }
+  }
+  return extended
 }
 
 /** The program and workout a session was started from, or null when the program is gone. */
@@ -327,6 +380,14 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // `setVolumeBaseline` already names the store's write (`storage/settingsStore.ts`); E8-T11
   // reads this state to offer changing it.
   const [volumeBaseline, setVolumeBaselineState] = useState<VolumeBaseline>({ period: 'last' })
+  // The trainee's own and edited Programs (E9-T9): read at launch, after every save and after
+  // every sync, and merged over the bundled ones at render.
+  const [userPrograms, setUserPrograms] = useState<UserProgram[]>([])
+  // The Program the editor view is open on, and the line it shows when a save rejects (E9-T9).
+  const [editor, setEditor] = useState<EditorTarget | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  // The Program tab's line when a Delete was refused (E9-T10 O11).
+  const [programMessage, setProgramMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -334,10 +395,14 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     async function load(): Promise<void> {
       try {
         const catalog = loadCatalog()
-        const programs = loadPrograms(catalog)
+        const bundled = loadPrograms(catalog)
         const storageAvailable = await isStorageAvailable()
+        const storedUserPrograms = await userProgramsOrNone(storageAvailable)
+        const programs = mergePrograms(bundled, storedUserPrograms)
         const storedRow = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
         const storedProgramId = typeof storedRow?.value === 'string' ? storedRow.value : undefined
+        // Read against every Program, hidden ones included: an active Program that has since
+        // been hidden stays active until the trainee chooses another.
         const activeProgramId = await getActiveProgramId(programs)
         const staleActiveProgramNotice =
           storedProgramId !== undefined &&
@@ -369,10 +434,11 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         setLibrary([...loadedLibrary.values()])
         setGymEquipment(gymEquipmentList)
         setVideos(loadedVideos)
+        setUserPrograms(storedUserPrograms)
         setState({
           status: 'ready',
           catalog,
-          programs,
+          programs: bundled,
           storageAvailable,
           activeProgramId,
           staleActiveProgramNotice,
@@ -399,16 +465,18 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   const lastSyncedAt = sync.lastSyncedAt
   useEffect(() => {
     if (loadedPrograms === null || lastSyncedAt === null) return
-    const programs = loadedPrograms
+    const bundled = loadedPrograms
     let cancelled = false
 
     async function reload(): Promise<void> {
       try {
-        const activeProgramId = await getActiveProgramId(programs)
+        const pulledUserPrograms = await getUserPrograms()
+        const activeProgramId = await getActiveProgramId(mergePrograms(bundled, pulledUserPrograms))
         const gymEquipmentList = await getGymEquipment()
         const sessions = await listSessions()
         const pulledVolumeBaseline = await getVolumeBaseline()
         if (cancelled) return
+        setUserPrograms(pulledUserPrograms)
         setState((current) =>
           current.status === 'ready' ? { ...current, activeProgramId } : current,
         )
@@ -440,8 +508,19 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     return <div role="alert">Could not load the workout programs: {state.message}</div>
   }
 
-  const { catalog, programs, storageAvailable, activeProgramId, staleActiveProgramNotice, lastExportedAt } =
-    state
+  const {
+    catalog,
+    programs: bundledPrograms,
+    storageAvailable,
+    activeProgramId,
+    staleActiveProgramNotice,
+    lastExportedAt,
+  } = state
+
+  // Every Program a Session, History or Stats may point at, hidden ones included; and the ones a
+  // picker, the Program tab or Settings may offer (E9-T9).
+  const programs = mergePrograms(bundledPrograms, userPrograms)
+  const offeredPrograms = visiblePrograms(programs)
 
   // The backup-due marker the Settings tab carries in the nav, computed once here so the tab
   // bar and the Settings screen's own `BackupBadge` never disagree about whether one is due.
@@ -454,6 +533,109 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   /** `ExerciseList.resolve`: a catalog id or a library id (a swap, E5-T12) to its `Exercise`. */
   function resolveListExercise(id: string): Exercise | undefined {
     return resolveExercise(id, catalog, libraryMap)
+  }
+
+  // The catalog the Program tab and the Workout tab's check read: widened by the library
+  // Exercises the trainee's Programs prescribe.
+  const programCatalog = withProgramExercises(catalog, programs, libraryMap)
+
+  /** Opens the editor on `target`, with no save error left from an earlier one. */
+  function openEditor(target: EditorTarget): void {
+    setSaveError(null)
+    setEditor(target)
+    setView('program-editor')
+  }
+
+  /** `ProgramPage.onNewProgram`: the editor on an empty Program. */
+  function handleNewProgram(): void {
+    openEditor({
+      initial: { id: `user-${uuid()}`, name: '', units: 'kg', workouts: [], sessionsPerWeek: 1 },
+      isNew: true,
+      mode: 'new',
+    })
+  }
+
+  /** `ProgramPage.onEditProgram`: the editor on the Program itself, saved under its own id. */
+  function handleEditProgram(id: string): void {
+    const program = programs.find((candidate) => candidate.id === id)
+    if (program) openEditor({ initial: program, isNew: false, mode: 'edit' })
+  }
+
+  /** `ProgramPage.onCopyProgram`: the editor on a copy, saved as a new Program. */
+  function handleCopyProgram(id: string): void {
+    const program = programs.find((candidate) => candidate.id === id)
+    if (program) openEditor({ initial: copyProgram(program, Date.now()), isNew: false, mode: 'copy' })
+  }
+
+  /**
+   * `ProgramEditor.onSave`: stores the Program, keeping the stored copy's `createdAt`, reloads the
+   * User Programs and returns to the Program tab; a rejected save keeps the editor and its draft.
+   */
+  function handleSaveProgram(program: Program): void {
+    const stored = userPrograms.find((candidate) => candidate.id === program.id)
+    getActiveSession()
+      .then(async (inProgress) => {
+        // A save that hides or drops the Workout in progress would strand it (E9-T10 O11).
+        const strands =
+          inProgress !== null &&
+          inProgress.programId === program.id &&
+          !program.workouts.some((w) => w.id === inProgress.workoutId && !w.hidden)
+        if (strands) {
+          setSaveError(IN_PROGRESS_GUARD)
+          return
+        }
+        await saveUserProgram({ ...program, createdAt: stored?.createdAt ?? Date.now() })
+        setUserPrograms(await getUserPrograms())
+        setEditor(null)
+        setSaveError(null)
+        handleShowProgram()
+      })
+      .catch(() => {
+        setSaveError(SAVE_ERROR)
+      })
+  }
+
+  /**
+   * `ProgramPage.onDeleteProgram`: hides the User Program, unless the Session in progress runs on
+   * it (E9-T10 O11). A deleted active Program hands over to the first visible one, stored, so a
+   * relaunch does not bring it back (O10).
+   */
+  function handleDeleteProgram(id: string): void {
+    getActiveSession()
+      .then(async (inProgress) => {
+        if (inProgress !== null && inProgress.programId === id) {
+          setProgramMessage(IN_PROGRESS_GUARD)
+          return
+        }
+        await deleteProgram(id)
+        const saved = await getUserPrograms()
+        const fallback = visiblePrograms(mergePrograms(bundledPrograms, saved))[0]
+        const nextActiveId = activeProgramId === id && fallback ? fallback.id : activeProgramId
+        if (nextActiveId !== null && nextActiveId !== activeProgramId) {
+          await setActiveProgramId(nextActiveId)
+        }
+        setUserPrograms(saved)
+        setProgramMessage(null)
+        setState((current) =>
+          current.status === 'ready' ? { ...current, activeProgramId: nextActiveId } : current,
+        )
+      })
+      .catch(() => {
+        // Nothing was hidden; the Program tab keeps showing it as it is stored.
+      })
+  }
+
+  /** `ProgramPage.onResetProgram`: drops the stored edit, so the bundled Program shows again (O12). */
+  function handleResetProgram(id: string): void {
+    resetProgram(id)
+      .then(() => getUserPrograms())
+      .then((saved) => {
+        setUserPrograms(saved)
+        setProgramMessage(null)
+      })
+      .catch(() => {
+        // The stored edit stands; the Program tab keeps showing it.
+      })
   }
 
   /**
@@ -801,7 +983,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         settingsBadge={settingsBadge}
       >
         <Settings
-          programs={programs}
+          programs={offeredPrograms}
           activeProgramId={activeProgramId}
           onActiveProgramChange={handleActiveProgramChange}
           onExport={handleExport}
@@ -907,6 +1089,8 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
    * shows the Program tab -- with whatever was loaded before, if they cannot be read.
    */
   function handleShowProgram(): void {
+    // A refused Delete's line belongs to that visit of the tab, not the next one.
+    setProgramMessage(null)
     listSessions()
       .then((sessions) => {
         setHistory(sessions)
@@ -972,14 +1156,52 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
         settingsBadge={settingsBadge}
       >
         <ProgramPage
-          programs={programs}
+          programs={offeredPrograms}
           activeProgramId={activeProgramId}
-          catalog={catalog}
+          catalog={programCatalog}
           library={libraryMap}
           onChooseProgram={handleActiveProgramChange}
           sessions={session ? [...history, session] : history}
           now={Date.now()}
           resolve={resolveListExercise}
+          onNewProgram={handleNewProgram}
+          onEditProgram={handleEditProgram}
+          onCopyProgram={handleCopyProgram}
+          onDeleteProgram={handleDeleteProgram}
+          onResetProgram={handleResetProgram}
+          programMessage={programMessage}
+          userProgramIds={new Set(userPrograms.map((program) => program.id))}
+          bundledProgramIds={new Set(bundledPrograms.map((program) => program.id))}
+        />
+      </AppShell>
+    )
+  }
+
+  if (content === null && view === 'program-editor' && editor) {
+    content = (
+      // No tab bar: the way out of the editor is its own Cancel or Save. The editor portals
+      // `Save` into the action bar, gated by its own draft's validity.
+      <AppShell
+        title={
+          editor.mode === 'new' ? 'New program' : editor.mode === 'copy' ? 'Copy program' : 'Edit program'
+        }
+        action={<ActionBarSlot />}
+        trailing={trailing}
+      >
+        <ProgramEditor
+          key={editor.initial.id}
+          initial={editor.initial}
+          isNew={editor.isNew}
+          resolve={resolveListExercise}
+          library={library}
+          gymEquipment={gymEquipment}
+          onSave={handleSaveProgram}
+          onCancel={() => {
+            setEditor(null)
+            setSaveError(null)
+            setView('program')
+          }}
+          saveError={saveError}
         />
       </AppShell>
     )
@@ -1097,9 +1319,13 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   if (content === null) {
     // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
     // half-built Workout tab behind.
-    for (const program of programs) assertPlansAreInCatalog(program, catalog)
-    const activeProgram = programs.find((program) => program.id === activeProgramId)
-    if (!activeProgram) throw new Error(`no program ${activeProgramId} among the loaded programs`)
+    for (const program of programs) assertPlansAreInCatalog(program, programCatalog)
+    // With no active Program (a new user, E9-T2) the Workout tab offers choosing one instead.
+    const activeProgram =
+      activeProgramId === null ? null : programs.find((program) => program.id === activeProgramId)
+    if (activeProgram === undefined) {
+      throw new Error(`no program ${activeProgramId} among the loaded programs`)
+    }
 
     content = (
       <AppShell
@@ -1121,12 +1347,16 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             onResume={() => handleChoose(session.programId, session.workoutId)}
           />
         ) : null}
-        <fieldset className="workout-picker" disabled={!storageAvailable}>
-          <WorkoutStartButtons
-            program={activeProgram}
-            onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}
-          />
-        </fieldset>
+        {activeProgram === null ? (
+          <NoProgram onChooseProgram={() => handleTabChange('program')} />
+        ) : (
+          <fieldset className="workout-picker" disabled={!storageAvailable}>
+            <WorkoutStartButtons
+              program={activeProgram}
+              onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}
+            />
+          </fieldset>
+        )}
       </AppShell>
     )
   }
