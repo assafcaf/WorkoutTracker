@@ -103,7 +103,7 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
   await user.click(screen.getByRole('button', { name: 'Workout' }))
 
   expect(await screen.findByRole('heading', { name: 'Full body starter' }, FAST)).toBeVisible()
-  expect(screen.queryByRole('heading', { name: 'Assaf A/B 2026' })).toBeNull()
+  expect(screen.queryByRole('heading', { name: 'A/B Split' })).toBeNull()
 })
 
 test('O18 App navigates to Settings, hiding the picker, and back again', async () => {
@@ -245,7 +245,7 @@ async function activeSessionEntries(): Promise<SetEntry[]> {
 test('O5 a lift logged under one program presets set 2 of that lift under another program', async () => {
   const user = userEvent.setup()
 
-  // One session under Assaf A/B 2026: back squat at 60 kg x 10.
+  // One session under A/B Split: back squat at 60 kg x 10.
   const firstRun = render(<App />)
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
@@ -482,7 +482,7 @@ test('O17 the finished session appears in the history list with its date, progra
 
   const row = await screen.findByRole('listitem', {}, SETTLE)
   expect(within(row).getByText('2023-11-14')).toBeVisible()
-  expect(within(row).getByText('Assaf A/B 2026')).toBeVisible()
+  expect(within(row).getByText('A/B Split')).toBeVisible()
   expect(within(row).getByText('Workout A')).toBeVisible()
   expect(within(row).getByText('2 sets')).toBeVisible()
   expect(within(row).getByText('600 kg')).toBeVisible()
@@ -1913,7 +1913,7 @@ test('M13 tapping the Program tab shows the active program’s name and makes Pr
 
   await pressTab(user, 'Program')
 
-  expect(await screen.findByRole('heading', { name: 'Assaf A/B 2026' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)).toBeVisible()
   expect(currentTabNames()).toEqual(['Program'])
 })
 

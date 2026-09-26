@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest'
 import exercisesJson from './exercises.json'
 import { loadCatalog, loadPrograms, assertProgramsHaveSessionsPerWeek } from './catalog'
+import { visiblePrograms } from '../domain/programs'
 import type { Exercise, Program, Workout } from '../types'
 
 // The JSON files are hand-authored fixtures. Building the fixture catalog here — rather than
@@ -188,6 +189,37 @@ test('O8 every non-Bodyweight catalog exercise has a start weight that is a mult
   })
 
   expect(offMultiple.map((e) => e.id)).toEqual([])
+})
+
+test('O23 loadPrograms names assaf-ab-2026 A/B Split', () => {
+  const programs = loadPrograms(fixtureCatalog())
+
+  const abSplit = programs.find((p) => p.id === 'assaf-ab-2026')
+  expect(abSplit?.name).toBe('A/B Split')
+})
+
+test('O23 loadPrograms marks full-body-starter hidden', () => {
+  const programs = loadPrograms(fixtureCatalog())
+
+  const fullBody = programs.find((p) => p.id === 'full-body-starter')
+  expect(fullBody?.hidden).toBe(true)
+})
+
+test('O23 visiblePrograms omits full-body-starter from the bundled Programs', () => {
+  const programs = loadPrograms(fixtureCatalog())
+
+  const visible = visiblePrograms(programs)
+  expect(visible.map((p) => p.id)).not.toContain('full-body-starter')
+  expect(visible.map((p) => p.id)).toContain('assaf-ab-2026')
+})
+
+test('O23 a hidden full-body-starter still resolves its Workout through the full loaded list', () => {
+  const programs = loadPrograms(fixtureCatalog())
+
+  const fullBody = programs.find((p) => p.id === 'full-body-starter')
+  expect(fullBody?.hidden).toBe(true)
+  expect(workoutOf(programs, 'full-body-starter', 'full-body').exercises.map((p) => p.exerciseId))
+    .toContain('back-squat')
 })
 
 test('O2 loadPrograms throws on an empty catalog instead of returning programs', () => {

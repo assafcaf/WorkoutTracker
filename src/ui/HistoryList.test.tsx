@@ -26,7 +26,7 @@ const workoutA = {
 
 const assaf: Program = {
   id: 'assaf-ab-2026',
-  name: 'Assaf A/B 2026',
+  name: 'A/B Split',
   units: 'kg',
   workouts: [workoutA],
   sessionsPerWeek: 3,
@@ -84,7 +84,7 @@ test('O17 summarise resolves the programName and workoutName from the given prog
 
   const summary = summarise(session, [assaf])
 
-  expect([summary.programName, summary.workoutName]).toEqual(['Assaf A/B 2026', 'Workout A'])
+  expect([summary.programName, summary.workoutName]).toEqual(['A/B Split', 'Workout A'])
 })
 
 test('O17 summarise uses the session startedAt as its date', () => {
@@ -122,7 +122,7 @@ test('O17 HistoryList shows a finished session date, program name, workout name,
 
   const [row] = screen.getAllByRole('listitem')
   expect(within(row).getByText('2023-11-14')).toBeVisible()
-  expect(within(row).getByText('Assaf A/B 2026')).toBeVisible()
+  expect(within(row).getByText('A/B Split')).toBeVisible()
   expect(within(row).getByText('Workout A')).toBeVisible()
   expect(within(row).getByText('2 sets')).toBeVisible()
   expect(within(row).getByText('600 kg')).toBeVisible()

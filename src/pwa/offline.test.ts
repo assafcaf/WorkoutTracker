@@ -223,7 +223,7 @@ test('O4 with the network down every asset the shell references is served from t
 })
 
 test('O4 with the network down the program picker renders the active program', async () => {
-  expect(await screenText()).toContain('Assaf A/B 2026')
+  expect(await screenText()).toContain('A/B Split')
 }, LAUNCH_TIMEOUT)
 
 test('O4 with the network down the program picker offers the workouts to start', async () => {

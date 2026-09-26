@@ -10,7 +10,7 @@ function program(id: string, name: string): Program {
 }
 
 const programs: Program[] = [
-  program('assaf-ab-2026', 'Assaf A/B 2026'),
+  program('assaf-ab-2026', 'A/B Split'),
   program('full-body-starter', 'Full body starter'),
 ]
 
@@ -31,7 +31,7 @@ test('O18 Settings lists every program by name', () => {
     />,
   )
 
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeInTheDocument()
 })
 
@@ -48,7 +48,7 @@ test('O18 Settings marks the active program as selected and the rest as not sele
   )
 
   expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeChecked()
-  expect(screen.getByRole('radio', { name: 'Assaf A/B 2026' })).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: 'A/B Split' })).not.toBeChecked()
 })
 
 test('O18 choosing a different program calls onActiveProgramChange with its id', async () => {
@@ -84,7 +84,7 @@ test('O18 choosing the already active program does not call onActiveProgramChang
     />,
   )
 
-  await user.click(screen.getByRole('radio', { name: 'Assaf A/B 2026' }))
+  await user.click(screen.getByRole('radio', { name: 'A/B Split' }))
 
   expect(onActiveProgramChange).not.toHaveBeenCalled()
 })
