@@ -74,12 +74,12 @@ what goes there and when it is enabled.
 _Avoid_: Footer, toolbar, CTA bar, bottom bar
 
 **Token**:
-One of the 29 custom properties that are the only place a colour, space, radius or type size is
-defined. A closed set — adding a thirtieth is a decision, not a detail.
-See `docs/decisions/0004-one-palette-one-shell-audited-as-data.md`.
+One of the 49 custom properties that are the only place a colour, space, radius or type size is
+defined. A closed set — adding a fiftieth is a decision, not a detail.
+See `docs/decisions/0009-court-a-light-mellow-sport-design-language.md`.
 _Avoid_: Variable, custom property, theme value
 
 **Palette**:
-The colour Tokens specifically. There is one, and it is dark-only — there is no light mode to
-keep in step.
+The colour Tokens specifically. There is one, the light "Court" palette — ivory, court green,
+clay and four muscle-family tints — and no dark mode to keep in step.
 _Avoid_: Theme, colour scheme, skin

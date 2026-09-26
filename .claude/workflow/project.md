@@ -34,7 +34,7 @@ non-goals in full.
 | `src/ui/AppShell.tsx` | Header, tab bar, and the sticky action-bar slot screens portal into |
 | `src/ui/actionBarSlot.ts` | That portal, so a screen owns its own state-gated control |
 | `src/pwa/registerSW.ts` | Service-worker registration and the update handle the app drives |
-| `src/styles/tokens.css` | The one definition site: exactly 29 custom properties, dark-only |
+| `src/styles/tokens.css` | The one definition site: exactly 49 custom properties, light-only |
 | `src/test/setup.ts` | Vitest global setup — see Commands |
 | `src/types.ts` | `Exercise`, `ExercisePlan`, `Workout`, `Program`, `SetEntry`, `Session` |
 
