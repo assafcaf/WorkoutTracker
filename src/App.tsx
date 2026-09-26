@@ -108,7 +108,7 @@ const TAB_OF: Record<View, Tab | null> = {
 }
 
 /** What the Program editor was opened on (E9-T9): the Program it starts from, and whether it is new. */
-type EditorTarget = { initial: Program; isNew: boolean }
+type EditorTarget = { initial: Program; isNew: boolean; mode: 'new' | 'edit' | 'copy' }
 
 /** The line the editor shows when a save rejects (E9-T9 O9). */
 const SAVE_ERROR = 'Couldn’t save — try again'
@@ -551,19 +551,20 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     openEditor({
       initial: { id: `user-${uuid()}`, name: '', units: 'kg', workouts: [], sessionsPerWeek: 1 },
       isNew: true,
+      mode: 'new',
     })
   }
 
   /** `ProgramPage.onEditProgram`: the editor on the Program itself, saved under its own id. */
   function handleEditProgram(id: string): void {
     const program = programs.find((candidate) => candidate.id === id)
-    if (program) openEditor({ initial: program, isNew: false })
+    if (program) openEditor({ initial: program, isNew: false, mode: 'edit' })
   }
 
   /** `ProgramPage.onCopyProgram`: the editor on a copy, saved as a new Program. */
   function handleCopyProgram(id: string): void {
     const program = programs.find((candidate) => candidate.id === id)
-    if (program) openEditor({ initial: copyProgram(program, Date.now()), isNew: false })
+    if (program) openEditor({ initial: copyProgram(program, Date.now()), isNew: false, mode: 'copy' })
   }
 
   /**
@@ -1181,7 +1182,9 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
       // No tab bar: the way out of the editor is its own Cancel or Save. The editor portals
       // `Save` into the action bar, gated by its own draft's validity.
       <AppShell
-        title={editor.isNew ? 'New program' : 'Edit program'}
+        title={
+          editor.mode === 'new' ? 'New program' : editor.mode === 'copy' ? 'Copy program' : 'Edit program'
+        }
         action={<ActionBarSlot />}
         trailing={trailing}
       >
