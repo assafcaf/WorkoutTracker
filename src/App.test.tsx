@@ -865,7 +865,7 @@ test('O9 the Settings tab carries no free-standing Settings, History or Back but
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Settings')
-  await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+  await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
 
   expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
 })
@@ -1214,7 +1214,7 @@ describe('E3-T7', () => {
     expect((main as HTMLElement).contains(updateButton)).toBe(false)
 
     await pressTab(user, 'Settings')
-    await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+    await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
 
     expect(screen.getAllByRole('button', { name: 'Update ready' })).toHaveLength(1)
     const trailingAfterSettings = trailingSlot()
@@ -1245,7 +1245,7 @@ describe('E3-T7', () => {
     await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
     await pressTab(user, 'Settings')
-    await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE)
+    await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
 
     expect(
       screen.getByText('Back up your data — it has been a while since the last export.'),
