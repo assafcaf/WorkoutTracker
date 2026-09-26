@@ -33,6 +33,23 @@ import type { SyncedSession } from './sync/protocol'
 
 const LIBRARY = libraryFixture as unknown as LibraryExercise[]
 
+// E9-T6: full-body-starter is hidden and never offered, so the O18/M13 "choosing another
+// program" tests below need a second *visible* program of their own rather than it. This
+// fixture reuses a real catalog exercise (back-squat) so `assertPlansAreInCatalog` still holds.
+const SECOND_VISIBLE_PROGRAM = {
+  id: 'second-visible-program',
+  name: 'Second Program',
+  units: 'kg' as const,
+  sessionsPerWeek: 3,
+  workouts: [
+    {
+      id: 'second-workout',
+      name: 'Second Workout',
+      exercises: [{ exerciseId: 'back-squat', sets: 3, repRange: [8, 10], restSeconds: 90 }],
+    },
+  ],
+}
+
 // App composes real components (ProgramPicker, Settings, StorageUnavailableBanner) against the
 // real, fake-indexeddb-backed db. Only isStorageAvailable and loadPrograms are replaced with
 // controllable spies, so individual tests can force the storage-unavailable and hard-error
@@ -93,16 +110,21 @@ test('O18 App leads the picker with the active program’s workouts', async () =
 })
 
 test('O18 choosing another program in Settings makes the picker lead with it', async () => {
+  const actualCatalog = await vi.importActual<typeof import('./data/catalog')>('./data/catalog')
+  vi.mocked(loadPrograms).mockImplementation((catalog) => [
+    ...actualCatalog.loadPrograms(catalog).filter((p) => p.id === 'assaf-ab-2026'),
+    SECOND_VISIBLE_PROGRAM,
+  ])
   const user = userEvent.setup()
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, FAST)
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
-  await user.click(await screen.findByRole('radio', { name: 'Full body starter' }, FAST))
+  await user.click(await screen.findByRole('radio', { name: 'Second Program' }, FAST))
   // E3-T3 took the free-standing Back button away: the Workout tab is the way back.
   await user.click(screen.getByRole('button', { name: 'Workout' }))
 
-  expect(await screen.findByRole('heading', { name: 'Full body starter' }, FAST)).toBeVisible()
+  expect(await screen.findByRole('heading', { name: 'Second Program' }, FAST)).toBeVisible()
   expect(screen.queryByRole('heading', { name: 'A/B Split' })).toBeNull()
 })
 
@@ -1918,20 +1940,25 @@ test('M13 tapping the Program tab shows the active program’s name and makes Pr
 })
 
 test('M13 choosing another program in the Program tab’s switcher makes it the active program', async () => {
+  const actualCatalog = await vi.importActual<typeof import('./data/catalog')>('./data/catalog')
+  vi.mocked(loadPrograms).mockImplementation((catalog) => [
+    ...actualCatalog.loadPrograms(catalog).filter((p) => p.id === 'assaf-ab-2026'),
+    SECOND_VISIBLE_PROGRAM,
+  ])
   const user = userEvent.setup()
   render(<App />)
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Program')
-  await user.click(await screen.findByRole('radio', { name: 'Full body starter' }, SETTLE))
+  await user.click(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE))
 
   // The Program tab itself now leads with the chosen program...
-  expect(await screen.findByRole('heading', { name: 'Full body starter' }, SETTLE)).toBeVisible()
-  expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeChecked()
-  // ...and so does the Workout tab: hand-checked against full-body-starter.json, whose one
-  // workout is "Full body".
+  expect(await screen.findByRole('heading', { name: 'Second Program' }, SETTLE)).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'Second Program' })).toBeChecked()
+  // ...and so does the Workout tab: hand-checked against SECOND_VISIBLE_PROGRAM above, whose one
+  // workout is "Second Workout".
   await pressTab(user, 'Workout')
-  expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('button', { name: 'Start Second Workout' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 })
 
