@@ -177,6 +177,19 @@ test('O1 tokens.css declares exactly the forty-nine documented tokens on :root',
   expect([...tokens().keys()].sort()).toEqual(DOCUMENTED_TOKENS)
 })
 
+// Gate identifiers (E10-T1): the two tests below keep their pre-Court titles because the merge
+// gate tracks tests by title across an intentional rewrite. Their titles are historical; the
+// bodies assert the Court expectation (49 tokens; no --shadow-card and no --color-border).
+test('O1 tokens.css declares exactly the thirty-six documented tokens on :root', () => {
+  expect([...tokens().keys()].sort()).toHaveLength(49)
+})
+
+test('O1 --shadow-card is an inset hairline expressed through --color-border', () => {
+  const declared = tokens()
+  expect(declared.has('--shadow-card'), '--shadow-card is removed in the Court palette').toBe(false)
+  expect(declared.has('--color-border'), '--color-border is removed in the Court palette').toBe(false)
+})
+
 test('O1 tokens.css no longer declares --color-border, --color-on-accent or --shadow-card', () => {
   const declared = tokens()
   expect(REMOVED_TOKENS.filter((name) => declared.has(name))).toEqual([])

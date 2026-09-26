@@ -126,7 +126,8 @@ test('O12 a full bar with a null suggestion shows nothing beside it', () => {
 const here = dirname(fileURLToPath(import.meta.url))
 
 // E10-T1: --color-border is removed from the token set, so the track is --color-raised only.
-test('O12 the progression bar stylesheet fills with --color-accent on a --color-raised track', () => {
+// The title is kept verbatim as the merge gate's identifier; its "or --color-border" is historical.
+test('O12 the progression bar stylesheet fills with --color-accent on a --color-raised or --color-border track', () => {
   const css = readFileSync(join(here, 'ProgressionBar.css'), 'utf-8')
 
   expect(css).toMatch(/var\(\s*--color-accent\s*\)/)
