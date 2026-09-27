@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ActionBarHostContext } from './actionBarSlot'
-import { CourtStripe } from './CourtStripe'
 import { TabBar } from './TabBar'
 import './AppShell.css'
 
@@ -106,10 +105,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
               <BackGlyph />
             </button>
           ) : null}
-          <div className="app-header-title-group">
-            <h1 className="app-header-title">{title}</h1>
-            <CourtStripe />
-          </div>
+          <h1 className="app-header-title">{title}</h1>
           {trailing ? <div className="app-header-trailing">{trailing}</div> : null}
         </header>
         <main className="app-main">{children}</main>

@@ -1,11 +1,7 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test } from 'vitest'
 import { Stats } from './Stats'
-import { declarationsFor } from '../test/cssAudit'
 import type { Exercise, Program, Session, SetEntry } from '../types'
 
 // Stats loads nothing itself: it is handed the finished sessions, newest first, the way
@@ -418,42 +414,4 @@ test('O11 an exercise with no plan shows its series chart but no progression bar
   expect(progressionBar()).toBeNull()
   expect(recordItem('Heaviest set')).toBeUndefined()
   expect(within(exerciseProgressSection()).queryAllByRole('listitem')).toEqual([])
-})
-
-// --- E10-T5 (O12, O13): the PR medallion on every record, its own court stripe --------------
-
-test('O12 every stats-record contains one aria-hidden pr-medallion', () => {
-  renderO11Stats()
-
-  const records = within(exerciseProgressSection()).queryAllByRole('listitem')
-  expect(records.length).toBeGreaterThan(0)
-  for (const record of records) {
-    expect(record.querySelectorAll('.pr-medallion[aria-hidden="true"]')).toHaveLength(1)
-  }
-})
-
-const here = dirname(fileURLToPath(import.meta.url))
-
-test('O12 the pr-medallion rule paints with --pr-tint, --pr-ink and a --pr-ring border', () => {
-  const css = readFileSync(join(here, 'Stats.css'), 'utf-8')
-
-  const declarations = declarationsFor(css, '.pr-medallion')
-  const values = [...declarations.values()].join(' ')
-  expect(values).toMatch(/var\(\s*--pr-tint\s*\)/)
-  expect(values).toMatch(/var\(\s*--pr-ink\s*\)/)
-  expect(values).toMatch(/var\(\s*--pr-ring\s*\)/)
-})
-
-test('O13 each pr-medallion contains one decorative court-stripe', () => {
-  renderO11Stats()
-
-  const records = within(exerciseProgressSection()).queryAllByRole('listitem')
-  expect(records.length).toBeGreaterThan(0)
-  for (const record of records) {
-    const medallion = record.querySelector('.pr-medallion')
-    expect(medallion).not.toBeNull()
-    const stripe = medallion?.querySelector('.court-stripe')
-    expect(stripe).not.toBeNull()
-    expect(stripe).toHaveAttribute('aria-hidden', 'true')
-  }
 })

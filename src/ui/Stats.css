@@ -82,18 +82,3 @@
   margin-left: auto;
   font-variant-numeric: tabular-nums;
 }
-
-/* The PR medallion (E10-T5): a small gold-toned badge marking every record, holding the one
- * court-stripe cue. */
-.pr-medallion {
-  display: inline-flex;
-  width: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 1px solid var(--pr-ring);
-  border-radius: var(--radius-pill);
-  background: var(--pr-tint);
-  color: var(--pr-ink);
-}

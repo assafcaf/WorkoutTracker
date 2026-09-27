@@ -261,15 +261,3 @@ test('M9 Close on the region panel closes the panel and leaves the summary up', 
   expect(summaryDialog()).toBeVisible()
   expect(onClose).not.toHaveBeenCalled()
 })
-
-// --- E10-T5 (O13): the court stripe at the top of the summary -------------------------------
-
-test('O13 SessionSummary renders a decorative court-stripe at the top', () => {
-  renderSummary()
-
-  const dialog = summaryDialog()
-  const stripe = dialog.querySelector('.court-stripe')
-  expect(stripe).not.toBeNull()
-  expect(stripe).toHaveAttribute('aria-hidden', 'true')
-  expect(dialog.firstElementChild).toBe(stripe)
-})
