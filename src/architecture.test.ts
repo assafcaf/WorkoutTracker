@@ -61,7 +61,11 @@ export async function lintFixture(filePath: string, code: string): Promise<strin
   const results = await eslint.lintText(code, { filePath: resolve(root, filePath) })
   return results
     .flatMap((result) => result.messages)
-    .filter((message) => message.ruleId === 'no-restricted-imports')
+    .filter(
+      (message) =>
+        message.ruleId === 'no-restricted-imports' ||
+        message.ruleId === '@typescript-eslint/no-restricted-imports',
+    )
     .map((message) => message.message)
 }
 
@@ -125,6 +129,58 @@ describe('layers point downward (O2)', () => {
   })
 })
 
+// --- E11-T16: ui/features reach only services (O1), only storage touches Dexie (O3) --------
+
+/** src/main.tsx is the composition root; it is not scanned by O1 or O3. */
+const UI_AND_FEATURE_FILES = (): string[] => [
+  ...productionFiles('src/ui/**'),
+  ...productionFiles('src/features/**'),
+  'src/App.tsx',
+]
+
+const O3_SCANNED_FILES = (): string[] => [
+  ...productionFiles('src/domain/**'),
+  ...productionFiles('src/services/**'),
+  ...productionFiles('src/sync/**'),
+  ...productionFiles('src/worker/**'),
+  ...UI_AND_FEATURE_FILES(),
+]
+
+describe('ui and features reach only services (O1)', () => {
+  test('src/ui/**, src/features/** and src/App.tsx import nothing from storage, sync (except import type), dexie or the worker', () => {
+    const files = UI_AND_FEATURE_FILES()
+    expect(files.length).toBeGreaterThan(0)
+    const forbiddenDirs = ['src/storage', 'src/sync', 'src/worker']
+
+    const offenders = files.flatMap((file) =>
+      importsOf(file)
+        .filter((imp) => !imp.typeOnly)
+        .filter(
+          (imp) => imp.source === 'dexie' || pointsInto(resolveImport(file, imp.source), forbiddenDirs),
+        )
+        .map((imp) => `${file} -> ${imp.source}`),
+    )
+
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('only storage touches Dexie (O3)', () => {
+  test('every reader of db.sessions lives in src/storage: no file outside src/storage imports src/storage/db or dexie except as a type', () => {
+    const files = O3_SCANNED_FILES().filter((file) => !file.startsWith('src/storage/'))
+    expect(files.length).toBeGreaterThan(0)
+
+    const offenders = files.flatMap((file) =>
+      importsOf(file)
+        .filter((imp) => !imp.typeOnly)
+        .filter((imp) => imp.source === 'dexie' || resolveImport(file, imp.source) === 'src/storage/db')
+        .map((imp) => `${file} -> ${imp.source}`),
+    )
+
+    expect(offenders).toEqual([])
+  })
+})
+
 describe('lint refuses each layer-breaking import (O4)', () => {
   test('domain importing storage is refused as "[layers] domain is pure"', async () => {
     const messages = await lintFixture(
@@ -162,6 +218,97 @@ describe('lint refuses each layer-breaking import (O4)', () => {
     expect(
       messages.some((message) => message.includes('[layers] services and sync point down')),
     ).toBe(true)
+  })
+
+  test('ui importing storage is refused as "[layers] ui reaches services only"', async () => {
+    const messages = await lintFixture(
+      'src/ui/fixture.ts',
+      "import { db } from '../storage/db'\nexport const usesDb = db\n",
+    )
+    expect(messages.some((message) => message.includes('[layers] ui reaches services only'))).toBe(
+      true,
+    )
+  })
+
+  test('a feature nested two levels deep importing storage is refused as "[layers] ui reaches services only"', async () => {
+    const messages = await lintFixture(
+      'src/features/program/fixture.ts',
+      "import { db } from '../../storage/db'\nexport const usesDb = db\n",
+    )
+    expect(messages.some((message) => message.includes('[layers] ui reaches services only'))).toBe(
+      true,
+    )
+  })
+
+  test('ui importing the worker is refused as "[layers] ui reaches services only"', async () => {
+    const messages = await lintFixture(
+      'src/ui/fixture.ts',
+      "import { sync } from '../worker/sync'\nexport const usesSync = sync\n",
+    )
+    expect(messages.some((message) => message.includes('[layers] ui reaches services only'))).toBe(
+      true,
+    )
+  })
+
+  test('ui importing dexie is refused as "[layers] ui reaches services only"', async () => {
+    const messages = await lintFixture(
+      'src/ui/fixture.ts',
+      "import Dexie from 'dexie'\nexport const usesDexie = Dexie\n",
+    )
+    expect(messages.some((message) => message.includes('[layers] ui reaches services only'))).toBe(
+      true,
+    )
+  })
+
+  test('ui importing a sync type only is allowed', async () => {
+    const messages = await lintFixture(
+      'src/ui/fixture.ts',
+      "import type { SyncedSession } from '../sync/protocol'\nexport type Reused = SyncedSession\n",
+    )
+    expect(messages.some((message) => message.includes('[layers] ui reaches services only'))).toBe(
+      false,
+    )
+  })
+
+  test('services importing storage/db is refused as "[layers] only storage touches Dexie"', async () => {
+    const messages = await lintFixture(
+      'src/services/fixture.ts',
+      "import { db } from '../storage/db'\nexport const usesDb = db\n",
+    )
+    expect(
+      messages.some((message) => message.includes('[layers] only storage touches Dexie')),
+    ).toBe(true)
+  })
+
+  test('services importing dexie directly is refused as "[layers] only storage touches Dexie"', async () => {
+    const messages = await lintFixture(
+      'src/services/fixture.ts',
+      "import Dexie from 'dexie'\nexport const usesDexie = Dexie\n",
+    )
+    expect(
+      messages.some((message) => message.includes('[layers] only storage touches Dexie')),
+    ).toBe(true)
+  })
+
+  test('services importing storage/db as a type only is allowed, mirroring src/services/backup.ts', async () => {
+    const messages = await lintFixture(
+      'src/services/fixture.ts',
+      "import type { SettingRow } from '../storage/db'\nexport type Reused = SettingRow\n",
+    )
+    expect(
+      messages.some((message) => message.includes('[layers] only storage touches Dexie')),
+    ).toBe(false)
+  })
+
+  test('npx eslint . is clean on the real tree: no [layers] message anywhere', async () => {
+    const eslint = new ESLint({ cwd: root })
+    const results = await eslint.lintFiles(['src/**/*.{ts,tsx}'])
+    const layerMessages = results
+      .flatMap((result) => result.messages)
+      .filter((message) => message.message.includes('[layers]'))
+      .map((message) => `${message.message}`)
+
+    expect(layerMessages).toEqual([])
   })
 })
 

@@ -89,4 +89,53 @@ export default tseslint.config(
       ],
     },
   },
+  // E11-T16 (O1): src/ui/**, src/features/** and src/App.tsx reach the app only through
+  // services — never storage, sync's runtime values (a type import is fine), dexie or the
+  // worker. This block's storage ban also covers O3 for this file set.
+  {
+    files: ['src/ui/**/*.{ts,tsx}', 'src/features/**/*.{ts,tsx}', 'src/App.tsx'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [{ name: 'dexie', message: '[layers] ui reaches services only' }],
+          patterns: [
+            {
+              group: ['**/storage/**', '**/sync/**', '**/worker/**'],
+              message: '[layers] ui reaches services only',
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // E11-T16 (O3): outside src/storage, only a type-only import of src/storage/db is allowed,
+  // and dexie itself is reachable from nowhere but src/storage — "every reader of
+  // `db.sessions` lives in `src/storage`".
+  {
+    files: [
+      'src/domain/**/*.{ts,tsx}',
+      'src/services/**/*.{ts,tsx}',
+      'src/sync/**/*.{ts,tsx}',
+      'src/worker/**/*.{ts,tsx}',
+    ],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [{ name: 'dexie', message: '[layers] only storage touches Dexie' }],
+          patterns: [
+            {
+              group: ['**/storage/db'],
+              message: '[layers] only storage touches Dexie',
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
+    },
+  },
 )
