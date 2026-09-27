@@ -1,5 +1,25 @@
 import type { Program, UserProgram, VolumeBaseline } from '../types'
-import { db } from './db'
+import { db, type SettingRow } from './db'
+
+// --- whole rows for sync and backup (E11-T2) ------------------------------------------------
+
+/** The stored row for `key`, as it stands, or undefined when there is none. */
+export async function readRow(key: string): Promise<SettingRow | undefined> {
+  void key
+  throw new Error('readRow is not implemented')
+}
+
+/** Writes each row as given, `updatedAt` included. */
+export async function putRows(rows: SettingRow[]): Promise<void> {
+  void rows
+  throw new Error('putRows is not implemented')
+}
+
+/** Deletes the rows stored under `keys`. */
+export async function deleteKeys(keys: string[]): Promise<void> {
+  void keys
+  throw new Error('deleteKeys is not implemented')
+}
 
 /**
  * The `settings` table key the active program id is stored under. Exported so `App` can read

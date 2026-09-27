@@ -157,6 +157,31 @@ export async function listSessions(): Promise<Session[]> {
   return finishedSessionsNewestFirst()
 }
 
+// --- whole-table reads and writes for sync and backup (E11-T2) ------------------------------
+
+/** Sessions stamped after `since`, plus every session never stamped. */
+export async function sessionsChangedSince(since: number): Promise<Session[]> {
+  void since
+  throw new Error('sessionsChangedSince is not implemented')
+}
+
+/** Every stored session, finished or in progress. */
+export async function allSessions(): Promise<Session[]> {
+  throw new Error('allSessions is not implemented')
+}
+
+/** Writes each session as given, replacing any stored one with the same id. */
+export async function putSessions(sessions: Session[]): Promise<void> {
+  void sessions
+  throw new Error('putSessions is not implemented')
+}
+
+/** Clears the sessions table and writes `sessions`, in one transaction. */
+export async function replaceAllSessions(sessions: Session[]): Promise<void> {
+  void sessions
+  throw new Error('replaceAllSessions is not implemented')
+}
+
 // --- swaps (E5-T11) -------------------------------------------------------------------------
 
 /**
