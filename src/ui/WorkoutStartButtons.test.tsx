@@ -43,7 +43,9 @@ function declarationsForSelectorContaining(css: string, ...needles: string[]): M
   postcss.parse(css).walkRules((rule) => {
     const selectors = rule.selector.split(',').map((selector) => selector.trim())
     if (!selectors.some((selector) => needles.every((needle) => selector.includes(needle)))) return
-    rule.walkDecls((decl) => declarations.set(decl.prop.trim(), decl.value.trim()))
+    rule.walkDecls((decl) => {
+      declarations.set(decl.prop.trim(), decl.value.trim())
+    })
   })
   return declarations
 }
