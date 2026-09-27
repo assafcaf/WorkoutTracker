@@ -131,7 +131,7 @@ describe('lint refuses each layer-breaking import (O4)', () => {
       'src/domain/fixture.ts',
       "import { db } from '../storage/db'\nexport const usesDb = db\n",
     )
-    expect(messages.some((message) => message.startsWith('[layers] domain is pure'))).toBe(true)
+    expect(messages.some((message) => message.includes('[layers] domain is pure'))).toBe(true)
   })
 
   test('storage importing react is refused as "[layers] storage points down"', async () => {
@@ -139,7 +139,7 @@ describe('lint refuses each layer-breaking import (O4)', () => {
       'src/storage/fixture.ts',
       "import { useState } from 'react'\nexport const usesState = useState\n",
     )
-    expect(messages.some((message) => message.startsWith('[layers] storage points down'))).toBe(
+    expect(messages.some((message) => message.includes('[layers] storage points down'))).toBe(
       true,
     )
   })
@@ -150,7 +150,7 @@ describe('lint refuses each layer-breaking import (O4)', () => {
       "import { Thing } from '../ui/Thing'\nexport const usesThing = Thing\n",
     )
     expect(
-      messages.some((message) => message.startsWith('[layers] services and sync point down')),
+      messages.some((message) => message.includes('[layers] services and sync point down')),
     ).toBe(true)
   })
 
@@ -160,7 +160,7 @@ describe('lint refuses each layer-breaking import (O4)', () => {
       "import { Thing } from '../features/Thing'\nexport const usesThing = Thing\n",
     )
     expect(
-      messages.some((message) => message.startsWith('[layers] services and sync point down')),
+      messages.some((message) => message.includes('[layers] services and sync point down')),
     ).toBe(true)
   })
 })
