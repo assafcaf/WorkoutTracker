@@ -24,6 +24,9 @@ beforeEach(async () => {
   await db.open()
   await db.settings.clear()
   await db.sessions.clear()
+  // E11-T15: the Program tab carries no default active Program of its own (with nothing stored
+  // and no Session there is none, E9-T2 O19), so every test starts on A/B Split by storing it.
+  await db.settings.put({ key: ACTIVE_PROGRAM_ID_KEY, value: 'assaf-ab-2026', updatedAt: NOW })
 })
 
 function inProgressSession(over: Partial<Session> & { id: string; programId: string; workoutId: string }): Session {
