@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { loadCatalog } from '../data/catalog'
-import { db } from '../storage/db'
 import { SetScreen, loggedText, setCounterText } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
 import { playRestOver, unlockRestSound } from './restSound'
@@ -16,22 +15,20 @@ vi.mock('./restSound', () => ({
   playRestOver: vi.fn(),
 }))
 
-// `fake-indexeddb/auto` is installed globally in src/test/setup.ts, because Dexie binds the
-// global `indexedDB` when db.ts is evaluated. Do not import it here.
-//
-// The screen writes through the real sessionStore into the fake database, so every test
-// starts from an empty `sessions` table holding one session in progress to log into.
-beforeEach(async () => {
-  await db.open()
-  await db.sessions.clear()
-  await db.sessions.put({
+// Since E11-T10 the screen persists nothing itself: every Set goes through the caller's `onLog`.
+// Each test hands it a double of the Session service's logSet -- one Session in progress,
+// held in memory, that stores an entry the way sessionStore does (same exercise and set index
+// replaced, otherwise appended) and answers the Session as stored. Nothing is put in the
+// database, so a screen still writing through `src/storage` finds no Session and fails.
+beforeEach(() => {
+  sessionUnderTest = {
     id: SESSION_ID,
     programId: 'assaf-ab-2026',
     workoutId: 'workout-a',
     startedAt: BASE,
     finishedAt: null,
     entries: [],
-  })
+  }
   vi.mocked(unlockRestSound).mockClear()
   vi.mocked(playRestOver).mockClear()
 })
@@ -45,6 +42,21 @@ afterEach(() => {
 /** A fixed wall-clock base, so every timestamp below is a literal derived by hand. */
 const BASE = 1_700_000_000_000
 const SESSION_ID = 'session-under-test'
+
+/** The one Session in progress the `onLog` double logs into; reset before every test. */
+let sessionUnderTest: Session
+
+/** A double of `services.sessions.logSet`: stores `entry` on the Session and answers it. */
+function sessionLogSet() {
+  return vi.fn(async (sessionId: string, entry: SetEntry): Promise<Session> => {
+    if (sessionId !== sessionUnderTest.id) throw new Error(`no session ${sessionId} is stored`)
+    const kept = sessionUnderTest.entries.filter(
+      (stored) => !(stored.exerciseId === entry.exerciseId && stored.setIndex === entry.setIndex),
+    )
+    sessionUnderTest = { ...sessionUnderTest, entries: [...kept, entry] }
+    return sessionUnderTest
+  })
+}
 
 // The real catalog, so the dials are driven by the weights the trainee actually lifts:
 // back-squat steps by 2.5 kg from 50 kg; push-ups are bodyweight with no ladder at all.
@@ -74,6 +86,7 @@ function renderSetScreen(over: Partial<SetScreenProps> = {}) {
   const user = userEvent.setup()
   const onLogged = vi.fn()
   const onOpenInfo = vi.fn()
+  const onLog = sessionLogSet()
   const props: SetScreenProps = {
     exercise: backSquat,
     plan: squatPlan,
@@ -84,12 +97,13 @@ function renderSetScreen(over: Partial<SetScreenProps> = {}) {
     // `sessionStartedAt` existed -- keep meaning what they always meant.
     sessionStartedAt: BASE,
     lastEntries: [],
+    onLog,
     onLogged,
     onOpenInfo,
     ...over,
   }
   const { unmount } = render(<SetScreen {...props} />)
-  return { user, onLogged, onOpenInfo, unmount }
+  return { user, onLog, onLogged, onOpenInfo, unmount }
 }
 
 /** The weight readout, which is also the button that opens the weight keypad. */
@@ -120,9 +134,9 @@ async function enterOnKeypad(user: UserEvent, readout: HTMLElement, keys: string
   await user.click(screen.getByRole('button', { name: 'OK' }))
 }
 
+/** The entries the `onLog` double has stored on the Session in progress so far. */
 async function storedEntries(): Promise<SetEntry[]> {
-  const session = await db.sessions.get(SESSION_ID)
-  return session?.entries ?? []
+  return sessionUnderTest.entries
 }
 
 test('O9 a weight entered on the keypad is displayed as entered though it is off the ladder', async () => {
@@ -613,6 +627,7 @@ test('O1 playRestOver is called exactly once when the clock passes the Plan rest
       sessionId={SESSION_ID}
       sessionStartedAt={BASE}
       lastEntries={[pushUpEntry(1, 12, BASE)]}
+      onLog={sessionLogSet()}
       onLogged={vi.fn()}
     />,
   )
@@ -645,6 +660,7 @@ test('O1 playRestOver is not called when a set screen opens with this Session re
       sessionId={SESSION_ID}
       sessionStartedAt={BASE}
       lastEntries={[pushUpEntry(1, 12, BASE)]}
+      onLog={sessionLogSet()}
       onLogged={vi.fn()}
     />,
   )
@@ -735,4 +751,41 @@ test('O19 the logged confirmation carries data-family for the family prop, and n
     expect(screen.getByRole('status').textContent).toBe('Set 2 logged · 50 kg × 8')
   })
   expect(screen.getByRole('status')).not.toHaveAttribute('data-family')
+})
+
+// --- E11-T10 O9: the screen logs through its caller's onLog, not through storage ------------
+
+test('O9 one tap on Log set hands onLog the session id and the Set on the dials', async () => {
+  const { user, onLog } = renderSetScreen({ setIndex: 2, lastEntries: [historyEntry(2, 60, 10)] })
+
+  await user.click(logButton())
+
+  await waitFor(() => {
+    expect(onLog).toHaveBeenCalledTimes(1)
+  })
+  const [sessionId, entry] = onLog.mock.calls[0] as [string, SetEntry]
+  expect(sessionId).toBe(SESSION_ID)
+  expect([entry.exerciseId, entry.setIndex, entry.weightKg, entry.reps]).toEqual([
+    'back-squat',
+    2,
+    60,
+    10,
+  ])
+})
+
+test('O9 an onLog that rejects shows its message inline and leaves the same set open', async () => {
+  const onLog = vi.fn(async (): Promise<Session> => {
+    throw new Error('the set could not be saved')
+  })
+  const { user, onLogged } = renderSetScreen({
+    setIndex: 2,
+    lastEntries: [historyEntry(2, 60, 10)],
+    onLog,
+  })
+
+  await user.click(logButton())
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('the set could not be saved')
+  expect(screen.getByText('Set 2 of 4')).toBeVisible()
+  expect(onLogged).not.toHaveBeenCalled()
 })
