@@ -1,22 +1,37 @@
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import type { Services } from '../services'
-import type { UseSync } from './useSync'
+import { useSync, type UseSync } from './useSync'
 
-/**
- * Hands `services` to every descendant, and runs `useSync(services.sync)` once for all of them.
- *
- * STUB (E11-T9 test-designer): not implemented yet.
- */
-export function ServicesProvider(_props: { services: Services; children: ReactNode }): JSX.Element {
-  throw new Error('not implemented: ServicesProvider')
+type ServicesContextValue = { services: Services; syncControls: UseSync }
+
+const ServicesContext = createContext<ServicesContextValue | null>(null)
+
+/** Hands `services` to every descendant, and runs `useSync(services.sync)` once for all of them. */
+export function ServicesProvider({
+  services,
+  children,
+}: {
+  services: Services
+  children: ReactNode
+}): JSX.Element {
+  const syncControls = useSync(services.sync)
+  return (
+    <ServicesContext.Provider value={{ services, syncControls }}>{children}</ServicesContext.Provider>
+  )
 }
 
-/** The services the nearest `ServicesProvider` holds. STUB (E11-T9 test-designer). */
+function useServicesContext(): ServicesContextValue {
+  const value = useContext(ServicesContext)
+  if (value === null) throw new Error('no ServicesProvider above this component')
+  return value
+}
+
+/** The services the nearest `ServicesProvider` holds. */
 export function useServices(): Services {
-  throw new Error('not implemented: useServices')
+  return useServicesContext().services
 }
 
-/** The provider's one `UseSync`. STUB (E11-T9 test-designer). */
+/** The provider's one `UseSync`. */
 export function useSyncControls(): UseSync {
-  throw new Error('not implemented: useSyncControls')
+  return useServicesContext().syncControls
 }

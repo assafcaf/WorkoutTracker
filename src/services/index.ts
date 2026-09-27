@@ -1,10 +1,10 @@
-import type { BackupService } from './backup'
-import type { CatalogService } from './catalog'
-import type { ChangeBus } from './changes'
-import type { PreferenceService } from './preferences'
-import type { ProgramService } from './programs'
-import type { SessionService } from './sessions'
-import type { SyncService } from './sync'
+import { createBackupService, type BackupService } from './backup'
+import { createCatalogService, type CatalogService } from './catalog'
+import { createChangeBus, type ChangeBus } from './changes'
+import { createPreferenceService, type PreferenceService } from './preferences'
+import { createProgramService, type ProgramService } from './programs'
+import { createSessionService, type SessionService } from './sessions'
+import { createSyncService, type SyncService } from './sync'
 
 export { ServiceError } from './errors'
 export type { ServiceErrorCode } from './errors'
@@ -29,14 +29,25 @@ export type Services = {
 }
 
 /**
- * Builds every service over one change bus, stamped with `deps.now`.
- *
- * STUB (E11-T9 test-designer): not implemented yet.
+ * Builds every service over one change bus, stamped with `deps.now`. Backup's `replaceRemote`
+ * is the sync service's own, so an import replaces the cloud copy through the same client.
  */
-export function createServices(_deps: {
+export function createServices(deps: {
   now: () => number
   storageAvailable: boolean
   fetch?: typeof fetch
 }): Services {
-  throw new Error('not implemented: createServices')
+  const bus = createChangeBus()
+  const serviceDeps = { now: deps.now, storageAvailable: deps.storageAvailable, bus }
+  const sync = createSyncService({ ...serviceDeps, fetch: deps.fetch })
+
+  return {
+    sessions: createSessionService(serviceDeps),
+    programs: createProgramService(serviceDeps),
+    preferences: createPreferenceService(serviceDeps),
+    catalog: createCatalogService(serviceDeps),
+    backup: createBackupService({ ...serviceDeps, replaceRemote: sync.replaceRemote }),
+    sync,
+    bus,
+  }
 }
