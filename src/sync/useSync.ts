@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SyncView } from '../ui/Settings'
+import type { SyncView } from '../services/syncView'
 import {
   adoptSignedInAccount,
   getSyncState,
