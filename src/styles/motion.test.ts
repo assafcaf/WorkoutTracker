@@ -30,7 +30,9 @@ function topLevelDeclarationsFor(css: string, selector: string): Map<string, str
     if (rule.parent?.type !== 'root') return
     const selectors = rule.selector.split(',').map((entry) => entry.trim())
     if (!selectors.includes(selector.trim())) return
-    rule.walkDecls((decl) => declarations.set(decl.prop.trim(), decl.value.trim()))
+    rule.walkDecls((decl) => {
+      declarations.set(decl.prop.trim(), decl.value.trim())
+    })
   })
   return declarations
 }
@@ -45,7 +47,9 @@ function declarationsForAttrSelector(css: string, prefix: string, value: string)
   postcss.parse(css).walkRules((rule) => {
     const selectors = rule.selector.split(',').map((entry) => entry.trim())
     if (!selectors.some((entry) => pattern.test(entry))) return
-    rule.walkDecls((decl) => declarations.set(decl.prop.trim(), decl.value.trim()))
+    rule.walkDecls((decl) => {
+      declarations.set(decl.prop.trim(), decl.value.trim())
+    })
   })
   return declarations
 }
@@ -57,7 +61,9 @@ function reducedMotionDeclarations(css: string): Map<string, string> {
   const declarations = new Map<string, string>()
   postcss.parse(css).walkAtRules('media', (atRule) => {
     if (!/prefers-reduced-motion:\s*reduce/.test(atRule.params)) return
-    atRule.walkDecls((decl) => declarations.set(decl.prop.trim(), decl.value.trim()))
+    atRule.walkDecls((decl) => {
+      declarations.set(decl.prop.trim(), decl.value.trim())
+    })
   })
   return declarations
 }
@@ -106,7 +112,9 @@ function keyframeSteps(css: string, name: string): Map<string, string>[] {
     if (atRule.params.trim() !== name) return
     atRule.walkRules((step) => {
       const decls = new Map<string, string>()
-      step.walkDecls((decl) => decls.set(decl.prop.trim(), decl.value.trim()))
+      step.walkDecls((decl) => {
+        decls.set(decl.prop.trim(), decl.value.trim())
+      })
       steps.push(decls)
     })
   })
