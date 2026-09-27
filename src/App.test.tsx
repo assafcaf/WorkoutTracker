@@ -1395,7 +1395,13 @@ test('L14 tapping Exercise info on the deadlift set screen opens the in-app deta
   expect(within(overlay as HTMLElement).getByRole('heading', { name: 'Deadlift' })).toBeVisible()
   // Hand-checked against src/data/library/exercises.json: Barbell_Deadlift's only primary
   // muscle is lower back -- proof this is really that library entry, not just any heading.
-  expect(within(overlay as HTMLElement).getByText('Primary muscle: lower back')).toBeVisible()
+  // E10-T4 rewrote this field as a `MuscleChip` (O8), so the muscle name is no longer in the
+  // paragraph's own text node -- `textContent` still carries the same string.
+  const primaryMuscleField = within(overlay as HTMLElement).getByText('Primary muscle:', {
+    exact: false,
+  })
+  expect(primaryMuscleField).toBeVisible()
+  expect(primaryMuscleField.textContent).toBe('Primary muscle: lower back')
 })
 
 test('L14 the set screen underneath the detail overlay is not unmounted, so its dials survive the round trip', async () => {
