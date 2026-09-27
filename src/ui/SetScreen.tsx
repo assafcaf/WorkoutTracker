@@ -11,6 +11,7 @@ import { RepsDial } from './RepsDial'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import './SetScreen.css'
+import type { MuscleFamily } from '../domain/muscles'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
 export type SetScreenProps = {
@@ -75,6 +76,16 @@ export type SetScreenProps = {
    * it for this Exercise. Optional; the screen keeps using the new step for itself either way.
    */
   onWeightStepChange?(step: number): void
+  /**
+   * The current Exercise's first primary muscle's family (E10-T8), already resolved by the
+   * caller (App.tsx, via the Library and `familyOf`) -- this component treats it as a plain
+   * input and does not look it up itself. Optional: an Exercise with no library link, or a
+   * caller predating this prop, passes nothing, and the "logged" confirmation then carries no
+   * `data-family`.
+   *
+   * STUB (E10-T8 test-designer): accepted but not yet wired onto `.set-logged`.
+   */
+  family?: MuscleFamily
 }
 
 /**
@@ -175,6 +186,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     onOpenInfo,
     onOpenAlternatives,
     onFinishExercise,
+    family,
   } = props
 
   // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
@@ -345,7 +357,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
       {actionBar === null ? actions : createPortal(actions, actionBar)}
 
-      <p role="status" className="set-logged">
+      <p role="status" className="set-logged" data-family={family}>
         {loggedMessage}
       </p>
 

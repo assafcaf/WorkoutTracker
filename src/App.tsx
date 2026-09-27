@@ -14,6 +14,7 @@ import type {
 } from './types'
 import { assertPlansAreInCatalog, loadCatalog, loadPrograms } from './data/catalog'
 import { copyProgram, mergePrograms, uuid, visiblePrograms } from './domain/programs'
+import { familyOf } from './domain/muscles'
 import { MUSCLES, loadLibrary, loadVideos } from './data/library'
 import { photoUrls } from './data/photos'
 import { resolveExercise } from './data/resolve'
@@ -1030,6 +1031,11 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
     const plan = located.workout.exercises.find((candidate) => candidate.exerciseId === plannedId)
     const exercise = resolveListExercise(openSet.exerciseId)
     if (plan && exercise) {
+      // The set-logged glow's family (E10-T8): the exercise's first primary muscle, resolved
+      // through the library -- undefined when it has no library link, so the glow is withheld.
+      const libraryExercise = libraryMap.get(exercise.libraryId)
+      const primaryMuscle = libraryExercise?.primaryMuscles[0]
+      const family = primaryMuscle === undefined ? undefined : familyOf(primaryMuscle)
       content = (
         // No tab prop: a set being logged is inside the session, and the way out of it is the
         // back control to the exercise list. The screen fills the action bar itself, because
@@ -1053,6 +1059,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             extra={openSet.extra}
             weightStep={openSet.weightStep}
             onWeightStepChange={(step) => handleWeightStepChange(openSet.exerciseId, step)}
+            family={family}
             onLogged={(logged) => {
               setSession(logged)
               setOpenSet((current) => (current ? { ...current, extra: false } : current))
