@@ -37,4 +37,56 @@ export default tseslint.config(
       globals: { ...globals.browser, ...globals.node },
     },
   },
+  {
+    files: ['src/domain/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../storage/*', '../services/*', '../sync/*', '../ui/*', '../features/*'],
+              message: '[layers] domain is pure',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/storage/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [{ name: 'react', message: '[layers] storage points down' }],
+          patterns: [
+            {
+              group: ['../services/*', '../sync/*', '../ui/*', '../features/*'],
+              message: '[layers] storage points down',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/services/**/*.{ts,tsx}', 'src/sync/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../ui/*', '../features/*'],
+              message: '[layers] services and sync point down',
+            },
+          ],
+        },
+      ],
+    },
+  },
 )
