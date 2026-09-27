@@ -1,12 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SyncView } from '../services/syncView'
-import {
-  adoptSignedInAccount,
-  getSyncState,
-  replaceRemote as replaceRemoteCall,
-  syncNow as syncNowCall,
-} from '../sync/syncClient'
-import type { SyncDeps, SyncResult, SyncState } from '../sync/syncClient'
+import type { SyncResult, SyncService, SyncState, SyncView } from '../services/sync'
 
 export type UseSync = {
   sync: SyncView
@@ -16,15 +9,6 @@ export type UseSync = {
 }
 
 const NOT_SYNCED: SyncView = { accountEmail: null, lastSyncedAt: null, status: 'idle' }
-
-/** The stored account and sync time, or none when storage cannot answer. */
-async function readState(): Promise<SyncState> {
-  try {
-    return await getSyncState()
-  } catch {
-    return { accountEmail: null, lastSyncedAt: null }
-  }
-}
 
 /** A finished call's result as Settings shows it, over the account and time now stored. */
 function toView(result: SyncResult, state: SyncState): SyncView {
@@ -50,23 +34,32 @@ function toView(result: SyncResult, state: SyncState): SyncView {
  * `online`, and whenever the page becomes visible again, and hands out "Sync now", adopt and replace for the screens that need them. Every
  * call resolves once the view shows its result, and none of them ever rejects.
  */
-export function useSync(deps?: SyncDeps): UseSync {
-  const [sync, setSync] = useState<SyncView>(NOT_SYNCED)
-  const depsRef = useRef<SyncDeps>(deps ?? {})
-  depsRef.current = deps ?? {}
-  const viewRef = useRef<SyncView>(sync)
-  viewRef.current = sync
+export function useSync(sync: SyncService): UseSync {
+  const [view, setView] = useState<SyncView>(NOT_SYNCED)
+  const serviceRef = useRef<SyncService>(sync)
+  serviceRef.current = sync
+  const viewRef = useRef<SyncView>(view)
+  viewRef.current = view
   const mounted = useRef(true)
 
-  const show = useCallback((view: SyncView): void => {
-    if (mounted.current) setSync(view)
+  const show = useCallback((next: SyncView): void => {
+    if (mounted.current) setView(next)
+  }, [])
+
+  /** The stored account and sync time, or none when storage cannot answer. */
+  const readState = useCallback(async (): Promise<SyncState> => {
+    try {
+      return await serviceRef.current.state()
+    } catch {
+      return { accountEmail: null, lastSyncedAt: null }
+    }
   }, [])
 
   /** Starts `call` first, so the request goes out at once, then shows it running and its result. */
   const run = useCallback(
-    async (call: (deps: SyncDeps) => Promise<SyncResult>): Promise<void> => {
+    async (call: (service: SyncService) => Promise<SyncResult>): Promise<void> => {
       try {
-        const pending = call(depsRef.current)
+        const pending = call(serviceRef.current)
         let done = false
         void pending.then(() => {
           done = true
@@ -83,17 +76,17 @@ export function useSync(deps?: SyncDeps): UseSync {
         })
       }
     },
-    [show],
+    [show, readState],
   )
 
-  // Calls run one after another: syncClient shares a call already running with any made while
+  // Calls run one after another: the service shares a call already running with any made while
   // it runs, so a sync asked for mid-sync (a finished session, `online`) or a replace would
   // otherwise be answered by the older call and never happen. Syncs waiting to start coalesce.
   const tail = useRef<Promise<void>>(Promise.resolve())
   const waitingSync = useRef<Promise<void> | null>(null)
 
   const enqueue = useCallback(
-    (call: (deps: SyncDeps) => Promise<SyncResult>, coalesce: boolean): Promise<void> => {
+    (call: (service: SyncService) => Promise<SyncResult>, coalesce: boolean): Promise<void> => {
       if (coalesce && waitingSync.current) return waitingSync.current
       const next: Promise<void> = tail.current.then(() => {
         if (waitingSync.current === next) waitingSync.current = null
@@ -106,14 +99,17 @@ export function useSync(deps?: SyncDeps): UseSync {
     [run],
   )
 
-  const syncNow = useCallback(() => enqueue(syncNowCall, true), [enqueue])
-  const replaceRemote = useCallback(() => enqueue(replaceRemoteCall, false), [enqueue])
+  const syncNow = useCallback(() => enqueue((service) => service.syncNow(), true), [enqueue])
+  const replaceRemote = useCallback(
+    () => enqueue((service) => service.replaceRemote(), false),
+    [enqueue],
+  )
   const adoptAccount = useCallback(
     () =>
-      enqueue(async (callDeps) => {
+      enqueue(async (service) => {
         const { signedInEmail } = viewRef.current
-        if (signedInEmail !== undefined) await adoptSignedInAccount(signedInEmail)
-        return syncNowCall(callDeps)
+        if (signedInEmail !== undefined) await service.adoptAccount(signedInEmail)
+        return service.syncNow()
       }, false),
     [enqueue],
   )
@@ -138,5 +134,5 @@ export function useSync(deps?: SyncDeps): UseSync {
     }
   }, [syncNow])
 
-  return { sync, syncNow, adoptAccount, replaceRemote }
+  return { sync: view, syncNow, adoptAccount, replaceRemote }
 }
