@@ -444,3 +444,34 @@ test('O14 with onPick, every row shows a Pick button', () => {
 
   expect(screen.getAllByRole('button', { name: 'Pick' })).toHaveLength(3)
 })
+
+// --- O7 (E10-T3): a row's primary muscle is a family-tinted .muscle-chip --------------------
+
+test('O7 a row primary in chest shows its muscle as a .muscle-chip with data-family push', () => {
+  render(
+    <LibraryList
+      library={[fixture({ id: 'bench', name: 'Bench Press', primaryMuscles: ['chest'] })]}
+      onOpen={() => {}}
+      gymEquipment={null}
+    />,
+  )
+
+  const row = screen.getByRole('listitem')
+  const chip = row.querySelector('.muscle-chip')
+  expect(chip, 'the row must render a .muscle-chip for its primary muscle').not.toBeNull()
+  expect(chip).toHaveAttribute('data-family', 'push')
+  expect(chip).toHaveTextContent('chest')
+})
+
+test('O7 a row primary in quadriceps shows its .muscle-chip with data-family legs', () => {
+  render(
+    <LibraryList
+      library={[fixture({ id: 'squat', name: 'Back Squat', primaryMuscles: ['quadriceps'] })]}
+      onOpen={() => {}}
+      gymEquipment={null}
+    />,
+  )
+
+  const chip = screen.getByRole('listitem').querySelector('.muscle-chip')
+  expect(chip).toHaveAttribute('data-family', 'legs')
+})

@@ -70,6 +70,19 @@ export type Region =
 /** Resolves an id to the `Exercise` a set entry belongs to, or `undefined` when it does not. */
 export type Resolve = (id: string) => Exercise | undefined
 
+/** The four body-area families a muscle belongs to (E10-T3, the Library's muscle chip). */
+export type MuscleFamily = 'push' | 'pull' | 'legs' | 'core'
+
+/**
+ * The family `muscle` belongs to, per the spec's family table:
+ * push (chest, shoulders, triceps), pull (lats, middle back, traps, biceps, forearms, neck),
+ * legs (quadriceps, hamstrings, glutes, calves, abductors, adductors), core (abdominals, lower
+ * back).
+ */
+export function familyOf(muscle: Muscle): MuscleFamily {
+  throw new Error(`not implemented: familyOf(${muscle})`)
+}
+
 /**
  * The body region(s) that `muscle` maps to for drawing. Every one of the library's 17 muscles
  * maps to at least one region; `lats` and `middle back` both map to `upper-back`, `shoulders`

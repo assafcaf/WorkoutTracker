@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest'
-import { muscleSets, weekSets, regionsFor, toRegionCounts } from './muscles'
-import type { Resolve } from './muscles'
+import { muscleSets, weekSets, regionsFor, toRegionCounts, familyOf } from './muscles'
+import type { Resolve, MuscleFamily, Region } from './muscles'
+import { musclesForRegion } from '../ui/regionMuscles'
 import type { Exercise, LibraryExercise, Muscle, Session, SetEntry } from '../types'
 
 // Hand-rolled free-exercise-db-shaped fixtures, matching alternatives.test.ts's convention --
@@ -226,4 +227,65 @@ test('M6 toRegionCounts gives a muscle that maps to two regions its full count i
 
   expect(regionCounts.get('abs')).toBe(4)
   expect(regionCounts.get('obliques')).toBe(4)
+})
+
+// O6: familyOf / every Region's musclesForRegion sharing one family -------------------------
+
+// Hand-checked against the ticket's family table (E10-T3), not computed from familyOf itself.
+const EXPECTED_FAMILIES: Record<Muscle, MuscleFamily> = {
+  chest: 'push',
+  shoulders: 'push',
+  triceps: 'push',
+  lats: 'pull',
+  'middle back': 'pull',
+  traps: 'pull',
+  biceps: 'pull',
+  forearms: 'pull',
+  neck: 'pull',
+  quadriceps: 'legs',
+  hamstrings: 'legs',
+  glutes: 'legs',
+  calves: 'legs',
+  abductors: 'legs',
+  adductors: 'legs',
+  abdominals: 'core',
+  'lower back': 'core',
+}
+
+test('O6 familyOf returns the spec family for each of the 17 Muscle values', () => {
+  for (const muscle of SEVENTEEN_MUSCLES) {
+    expect(familyOf(muscle)).toBe(EXPECTED_FAMILIES[muscle])
+  }
+})
+
+// Every Region regionsFor names (M6's SEVENTEEN_MUSCLES cover all 18 -- see muscles.ts's Region
+// union), so musclesForRegion(region) is never empty for a real region.
+const EIGHTEEN_REGIONS: readonly Region[] = [
+  'trapezius',
+  'upper-back',
+  'lower-back',
+  'chest',
+  'biceps',
+  'triceps',
+  'forearm',
+  'back-deltoids',
+  'front-deltoids',
+  'abs',
+  'obliques',
+  'adductor',
+  'abductors',
+  'hamstring',
+  'quadriceps',
+  'calves',
+  'gluteal',
+  'neck',
+]
+
+test('O6 every Region musclesForRegion returns muscles that all share one family', () => {
+  for (const region of EIGHTEEN_REGIONS) {
+    const muscles = musclesForRegion(region)
+    expect(muscles.length, `${region} must map back to at least one muscle`).toBeGreaterThan(0)
+    const families = new Set(muscles.map((muscle) => familyOf(muscle)))
+    expect(families.size, `${region}'s muscles must all share one family, got ${[...families]}`).toBe(1)
+  }
 })

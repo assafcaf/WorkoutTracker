@@ -1,0 +1,6 @@
+/* The muscle chip (E10-T3): a family-tinted pill showing one muscle's name.
+ *
+ * Stub -- `.muscle-chip[data-family='<f>']` rules (background: var(--family-<f>-tint), color:
+ * var(--family-<f>-ink), one per family) land with the implementation. Proven by
+ * src/ui/MuscleChip.test.tsx's O10.
+ */
