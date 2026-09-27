@@ -4,6 +4,5 @@
 - Moving a fresh worktree onto epic head: git reset --hard is denied, chained git commands refused; use git -C <worktree> merge --ff-only <epic>, then cherry-pick as separate calls (E9-T2, 2026-09-26)
 - No prettier config in this repo; never run prettier on edited files, it adds semicolons the project does not use (E9-T2, 2026-09-26)
 - A fixture with array fields (e.g. repRange: [8,10]) can fail tsc --noEmit, inferring number[] not a tuple; add a type annotation to the fixture, not a test-content edit (E9-T6, 2026-09-26)
-- Mid-task isolation can repoint me into the test-designer's own worktree (not just the epic worktree) with its red commit already HEAD; just implement and commit there, no cherry-pick needed, report that branch as BRANCH (E11-T3, 2026-09-27)
-- storage/settingsStore's deleteProgram/resetProgram only touch an existing userPrograms row (frozen by their own tests); a service that must hide/reset a bundled program never yet saved needs to synthesize the UserProgram (spread the bundled Program + hidden/createdAt) and saveUserProgram it itself (E11-T5, 2026-09-27)
-- After `git merge --ff-only` onto a new epic head, worker tests (jose import) fail with "Failed to load url jose" until `npm ci` reruns in the worktree — not a code regression (E11-T5, 2026-09-27)
+- Mid-task isolation can repoint me into the test-designer's own worktree, red commit already HEAD; just implement and commit there, no cherry-pick, report that branch as BRANCH (E11-T3, 2026-09-27)
+- After `git merge --ff-only` onto a new epic head, worker tests fail ("Failed to load url jose") until `npm ci` reruns in the worktree — not a code regression (E11-T5, 2026-09-27)
