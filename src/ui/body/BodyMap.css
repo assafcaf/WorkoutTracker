@@ -23,3 +23,10 @@
   width: 100%;
   height: auto;
 }
+
+/* Every region polygon is outlined, so the light first steps of the clay ramp (E10-T1's
+ * --map-shade-0, equal to --color-raised) stay readable against the page rather than
+ * disappearing into a fill-only shape (E10-T6, O14). */
+.body-map svg polygon {
+  stroke: var(--color-muted);
+}
