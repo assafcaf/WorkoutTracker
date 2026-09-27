@@ -3128,3 +3128,31 @@ describe('E8-T8', () => {
   })
 })
 
+// --- E11-T15: a screen group keeps what the trainee left in it (O14, no visible change) ------
+//
+// Before E11-T15, App held the Exercises search and filters, and tapping away and back never
+// reset them. Moving each tab into its own screen group must not lose that.
+
+test('O14 the Exercises search and filters survive leaving and returning to the tab', async () => {
+  const user = userEvent.setup()
+  await renderApp()
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)
+  await user.type(search, 'curl')
+  await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
+  await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
+
+  await pressTab(user, 'Workout')
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+
+  expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toHaveValue(
+    'curl',
+  )
+  expect(screen.getByRole('combobox', { name: /muscle/i })).toHaveValue('biceps')
+  expect(screen.getByRole('combobox', { name: /equipment/i })).toHaveValue('dumbbell')
+  // The list is still narrowed by them: the unfiltered first row is not shown.
+  expect(screen.queryByText('3/4 Sit-Up')).toBeNull()
+})
+
