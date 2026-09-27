@@ -1,4 +1,4 @@
-import type { ImportPlan } from '../storage/backup'
+import type { ImportPlan } from '../services/backup'
 import './ImportConfirm.css'
 
 export type ImportConfirmProps = {
