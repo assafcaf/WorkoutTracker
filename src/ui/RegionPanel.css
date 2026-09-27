@@ -11,7 +11,6 @@
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--color-raised);
-  box-shadow: var(--shadow-card);
   color: var(--color-text);
 }
 

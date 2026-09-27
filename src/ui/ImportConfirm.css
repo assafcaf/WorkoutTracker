@@ -24,7 +24,6 @@
   padding: var(--space-5);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
 }
 
 .import-confirm-text {
@@ -62,6 +61,6 @@
 }
 
 .import-confirm-confirm {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }

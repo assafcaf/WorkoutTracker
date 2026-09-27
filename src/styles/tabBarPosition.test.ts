@@ -140,9 +140,11 @@ test('O11 .app-shell padding-top reuses exactly the .tab-bar-tab height expressi
   )
 })
 
+// E10-T1: the Token count moved to 49 with the Court palette; tokens.test.ts's O1 pins the whole
+// closed set, so this test no longer repeats the count. The title is kept verbatim as the merge
+// gate's identifier for this check; the "stays 36" half is historical.
 test('O11 the tab height names only existing Tokens, and the Token count stays 36', () => {
   const tokens = readTokens(readFileSync(tokensPath, 'utf-8'))
-  expect(tokens.size, 'no new Token may be added for the tab bar clearance').toBe(36)
 
   const height = tabBarTabDeclarations().get('height')
   expect(height, '.tab-bar-tab must declare a height').toBeDefined()

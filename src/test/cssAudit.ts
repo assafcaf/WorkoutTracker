@@ -30,7 +30,7 @@ function selectorsOf(rule: Rule): string[] {
  * The custom properties declared on `:root`, keyed by the full property name as written —
  * `--color-bg`, not `color-bg` — so callers name a token the way the CSS does. Values are
  * returned verbatim (trimmed), including ones that are not plain hex: `--font-sans`,
- * `--shadow-card` and `--safe-bottom`.
+ * `--font-display` and `--safe-bottom`.
  */
 export function readTokens(css: string): Map<string, string> {
   const tokens = new Map<string, string>()
