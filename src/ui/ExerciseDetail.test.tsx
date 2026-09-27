@@ -44,16 +44,24 @@ test('L11 ExerciseDetail shows the exercise name as its heading', () => {
   expect(screen.getByRole('heading', { name: 'Barbell Squat' })).toBeVisible()
 })
 
+// E10-T4 rewrote these two fields as `MuscleChip`s (O8), so the muscle names no longer sit in
+// the paragraph's own text node -- `textContent` still carries the same string, so these match
+// on that instead of `getByText`'s single-text-node default.
+
 test('L11 ExerciseDetail shows the primary muscle quadriceps', () => {
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
-  expect(screen.getByText('Primary muscle: quadriceps')).toBeVisible()
+  const field = screen.getByText('Primary muscle:', { exact: false })
+  expect(field).toBeVisible()
+  expect(field.textContent).toBe('Primary muscle: quadriceps')
 })
 
 test('L11 ExerciseDetail shows the secondary muscles in dataset order', () => {
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
-  expect(screen.getByText('Secondary muscles: calves, glutes, hamstrings, lower back')).toBeVisible()
+  const field = screen.getByText('Secondary muscles:', { exact: false })
+  expect(field).toBeVisible()
+  expect(field.textContent).toBe('Secondary muscles: calves, glutes, hamstrings, lower back')
 })
 
 test('L11 ExerciseDetail shows equipment, mechanic, force and level', () => {
@@ -70,6 +78,29 @@ test('L11 ExerciseDetail shows the instructions as a numbered list in dataset or
 
   const steps = screen.getAllByRole('listitem').map((item) => item.textContent)
   expect(steps).toEqual(BARBELL_SQUAT.instructions)
+})
+
+// --- O8: primary/secondary muscles wear their family chip (E10-T4) -------------------------
+
+test('O8 ExerciseDetail renders the primary muscle as a muscle-chip with its family', () => {
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
+
+  const field = screen.getByText('Primary muscle:', { exact: false })
+  const chip = within(field).getByText('quadriceps')
+  expect(chip).toHaveClass('muscle-chip')
+  expect(chip).toHaveAttribute('data-family', 'legs')
+})
+
+test('O8 ExerciseDetail renders each secondary muscle as its own muscle-chip with its family', () => {
+  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
+
+  const field = screen.getByText('Secondary muscles:', { exact: false })
+  const calves = within(field).getByText('calves')
+  expect(calves).toHaveClass('muscle-chip')
+  expect(calves).toHaveAttribute('data-family', 'legs')
+  const lowerBack = within(field).getByText('lower back')
+  expect(lowerBack).toHaveClass('muscle-chip')
+  expect(lowerBack).toHaveAttribute('data-family', 'core')
 })
 
 // --- F1: the detail screen renders as a modal popup (fix-popups) ---------------------------

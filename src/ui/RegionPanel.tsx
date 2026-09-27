@@ -1,5 +1,6 @@
 import type { Region } from '../domain/muscles'
 import type { Muscle } from '../types'
+import { MuscleChip } from './MuscleChip'
 import { musclesForRegion } from './regionMuscles'
 import './RegionPanel.css'
 
@@ -29,7 +30,9 @@ export function RegionPanel({
       aria-label={region}
       className="region-panel overlay-panel"
     >
-      <h3 className="region-panel-heading">{region}</h3>
+      <h3 className="region-panel-heading">
+        {region} <MuscleChip muscle={musclesForRegion(region)[0]} />
+      </h3>
       <p className="region-panel-count">{`${count} sets`}</p>
       {contributors.length > 0 ? (
         <ul className="region-panel-contributors">

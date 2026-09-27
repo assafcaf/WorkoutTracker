@@ -74,6 +74,7 @@
 .stats-record-value {
   color: var(--color-text);
   font-weight: 600;
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
 }
 
