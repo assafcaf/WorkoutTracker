@@ -199,3 +199,18 @@ test('O4 --tap-min is at least 44px', () => {
   expect(match, `--tap-min (${tapMin}) is not a plain pixel length`).not.toBeNull()
   expect(Number(match?.[1])).toBeGreaterThanOrEqual(44)
 })
+
+// E10-T2 [O4]: the app declares itself light-only (decision 0009), so no stylesheet under src
+// may carry a `prefers-color-scheme` block that would repaint it for a dark system preference.
+
+test('O4 no stylesheet under src contains a prefers-color-scheme block', () => {
+  const offenders = stylesheets().filter((path) => /prefers-color-scheme/.test(readFileSync(path, 'utf-8')))
+
+  expect(offenders.map(rel), 'these stylesheets still branch on prefers-color-scheme').toEqual([])
+})
+
+test('O4 base.css declares color-scheme: light on html', () => {
+  const declared = declarationsFor(readFileSync(join(srcDir, 'styles', 'base.css'), 'utf-8'), 'html')
+
+  expect(declared.get('color-scheme')).toBe('light')
+})
