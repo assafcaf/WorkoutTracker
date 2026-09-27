@@ -1,5 +1,22 @@
 import type { Program, UserProgram, VolumeBaseline } from '../types'
-import { db } from './db'
+import { db, type SettingRow } from './db'
+
+// --- whole rows for sync and backup (E11-T2) ------------------------------------------------
+
+/** The stored row for `key`, as it stands, or undefined when there is none. */
+export async function readRow(key: string): Promise<SettingRow | undefined> {
+  return db.settings.get(key)
+}
+
+/** Writes each row as given, `updatedAt` included. */
+export async function putRows(rows: SettingRow[]): Promise<void> {
+  await db.settings.bulkPut(rows)
+}
+
+/** Deletes the rows stored under `keys`. */
+export async function deleteKeys(keys: string[]): Promise<void> {
+  await db.settings.bulkDelete(keys)
+}
 
 /**
  * The `settings` table key the active program id is stored under. Exported so `App` can read
@@ -37,8 +54,8 @@ export async function getActiveProgramId(programs: Program[]): Promise<string | 
  * Records `id` as the active program, so a later `getActiveProgramId` call — even after the
  * database is closed and reopened — returns it.
  */
-export async function setActiveProgramId(id: string): Promise<void> {
-  await db.settings.put({ key: ACTIVE_PROGRAM_ID_KEY, value: id, updatedAt: Date.now() })
+export async function setActiveProgramId(id: string, now: number = Date.now()): Promise<void> {
+  await db.settings.put({ key: ACTIVE_PROGRAM_ID_KEY, value: id, updatedAt: now })
 }
 
 /**
@@ -59,8 +76,13 @@ export async function getLastExportedAt(): Promise<number | null> {
  * Records `at` as the time of the most recent successful export, so a later
  * `getLastExportedAt` call — even after the database is closed and reopened — returns it.
  */
-export async function setLastExportedAt(at: number): Promise<void> {
-  await db.settings.put({ key: LAST_EXPORTED_AT_KEY, value: at })
+export async function setLastExportedAt(at: number, now?: number): Promise<void> {
+  // Unstamped when no `now` is given, as it always was: the row is device-local, never synced.
+  await db.settings.put(
+    now === undefined
+      ? { key: LAST_EXPORTED_AT_KEY, value: at }
+      : { key: LAST_EXPORTED_AT_KEY, value: at, updatedAt: now },
+  )
 }
 
 /**
@@ -81,8 +103,8 @@ export async function getGymEquipment(): Promise<string[] | null> {
  * Records `list` as the gym's equipment, so a later `getGymEquipment` call — even after the
  * database is closed and reopened — returns it.
  */
-export async function setGymEquipment(list: string[]): Promise<void> {
-  await db.settings.put({ key: GYM_EQUIPMENT_KEY, value: list, updatedAt: Date.now() })
+export async function setGymEquipment(list: string[], now: number = Date.now()): Promise<void> {
+  await db.settings.put({ key: GYM_EQUIPMENT_KEY, value: list, updatedAt: now })
 }
 
 /** The `settings` table key every Exercise's stored weight step is kept under, in one row (E8). */
@@ -95,10 +117,14 @@ export async function getWeightStep(exerciseId: string): Promise<number | null> 
 }
 
 /** Stores `step` as `exerciseId`'s weight step, keeping every other Exercise's step. */
-export async function setWeightStep(exerciseId: string, step: number): Promise<void> {
+export async function setWeightStep(
+  exerciseId: string,
+  step: number,
+  now: number = Date.now(),
+): Promise<void> {
   await db.transaction('rw', db.settings, async () => {
     const steps = await getWeightSteps()
-    await setWeightSteps({ ...steps, [exerciseId]: step })
+    await setWeightSteps({ ...steps, [exerciseId]: step }, now)
   })
 }
 
@@ -118,8 +144,11 @@ export async function getWeightSteps(): Promise<Record<string, number>> {
  * Replaces every stored weight step with `steps`, in the one `weightSteps` row. Used by
  * `setWeightStep` and by a backup import, which restores the file's steps as a whole.
  */
-export async function setWeightSteps(steps: Record<string, number>): Promise<void> {
-  await db.settings.put({ key: WEIGHT_STEPS_KEY, value: steps, updatedAt: Date.now() })
+export async function setWeightSteps(
+  steps: Record<string, number>,
+  now: number = Date.now(),
+): Promise<void> {
+  await db.settings.put({ key: WEIGHT_STEPS_KEY, value: steps, updatedAt: now })
 }
 
 /** The `settings` table key the volume baseline choice is stored under (E8). */
@@ -137,8 +166,11 @@ export async function getVolumeBaseline(): Promise<VolumeBaseline> {
 }
 
 /** Records `baseline` as the volume baseline. */
-export async function setVolumeBaseline(baseline: VolumeBaseline): Promise<void> {
-  await db.settings.put({ key: VOLUME_BASELINE_KEY, value: baseline, updatedAt: Date.now() })
+export async function setVolumeBaseline(
+  baseline: VolumeBaseline,
+  now: number = Date.now(),
+): Promise<void> {
+  await db.settings.put({ key: VOLUME_BASELINE_KEY, value: baseline, updatedAt: now })
 }
 
 /** The `settings` table key every User Program is kept under, in one row (E9). */
@@ -154,34 +186,43 @@ export async function getUserPrograms(): Promise<UserProgram[]> {
  * Replaces every stored User Program with `programs`, in the one `userPrograms` row. Used by the
  * writers below and by a backup import, which restores the file's Programs as a whole.
  */
-export async function setUserPrograms(programs: UserProgram[]): Promise<void> {
-  await db.settings.put({ key: USER_PROGRAMS_KEY, value: programs, updatedAt: Date.now() })
+export async function setUserPrograms(
+  programs: UserProgram[],
+  now: number = Date.now(),
+): Promise<void> {
+  await db.settings.put({ key: USER_PROGRAMS_KEY, value: programs, updatedAt: now })
 }
 
 /** Reads the stored User Programs, and stores what `change` makes of them, in one transaction. */
-async function updateUserPrograms(change: (programs: UserProgram[]) => UserProgram[]): Promise<void> {
+async function updateUserPrograms(
+  change: (programs: UserProgram[]) => UserProgram[],
+  now: number,
+): Promise<void> {
   await db.transaction('rw', db.settings, async () => {
-    await setUserPrograms(change(await getUserPrograms()))
+    await setUserPrograms(change(await getUserPrograms()), now)
   })
 }
 
 /** Stores `p`, replacing the stored User Program with its id, else appending it. */
-export async function saveUserProgram(p: UserProgram): Promise<void> {
-  await updateUserPrograms((programs) =>
-    programs.some((stored) => stored.id === p.id)
-      ? programs.map((stored) => (stored.id === p.id ? p : stored))
-      : [...programs, p],
+export async function saveUserProgram(p: UserProgram, now: number = Date.now()): Promise<void> {
+  await updateUserPrograms(
+    (programs) =>
+      programs.some((stored) => stored.id === p.id)
+        ? programs.map((stored) => (stored.id === p.id ? p : stored))
+        : [...programs, p],
+    now,
   )
 }
 
 /** Removes the User Program with `id`, so a bundled Program of that id shows again. */
-export async function resetProgram(id: string): Promise<void> {
-  await updateUserPrograms((programs) => programs.filter((stored) => stored.id !== id))
+export async function resetProgram(id: string, now: number = Date.now()): Promise<void> {
+  await updateUserPrograms((programs) => programs.filter((stored) => stored.id !== id), now)
 }
 
 /** Marks the User Program with `id` hidden, keeping it. */
-export async function deleteProgram(id: string): Promise<void> {
-  await updateUserPrograms((programs) =>
-    programs.map((stored) => (stored.id === id ? { ...stored, hidden: true } : stored)),
+export async function deleteProgram(id: string, now: number = Date.now()): Promise<void> {
+  await updateUserPrograms(
+    (programs) => programs.map((stored) => (stored.id === id ? { ...stored, hidden: true } : stored)),
+    now,
   )
 }

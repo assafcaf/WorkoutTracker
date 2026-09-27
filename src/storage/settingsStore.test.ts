@@ -4,6 +4,7 @@ import {
   ACTIVE_PROGRAM_ID_KEY,
   GYM_EQUIPMENT_KEY,
   USER_PROGRAMS_KEY,
+  deleteKeys,
   deleteProgram,
   getActiveProgramId,
   getUserPrograms,
@@ -11,12 +12,17 @@ import {
   getVolumeBaseline,
   getWeightStep,
   getWeightSteps,
+  putRows,
+  readRow,
   resetProgram,
   saveUserProgram,
   setActiveProgramId,
   setGymEquipment,
+  setLastExportedAt,
+  setUserPrograms,
   setVolumeBaseline,
   setWeightStep,
+  setWeightSteps,
 } from './settingsStore'
 import { mergePrograms } from '../domain/programs'
 import { loadPrograms } from '../data/catalog'
@@ -541,5 +547,238 @@ describe('O5 every User Program write stamps updatedAt', () => {
     await deleteProgram('my-push-pull')
 
     expect((await db.settings.get('userPrograms'))?.updatedAt).toBe(CLOCK + 60_000)
+  })
+})
+
+// --- whole rows for sync and backup (E11-T2) -------------------------------------------------
+
+describe('D3 sync and backup read, write and delete whole setting rows', () => {
+  // The device clock, pinned far from every stamp below: a whole-row write keeps the stamp given.
+  const CLOCK = 1_800_000_000_000
+
+  beforeEach(() => {
+    vi.spyOn(Date, 'now').mockReturnValue(CLOCK)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  test('D3 readRow returns the stored row whole, updatedAt included', async () => {
+    await db.settings.put({ key: 'gymEquipment', value: ['barbell'], updatedAt: 1_700_000_000_000 })
+
+    expect(await readRow('gymEquipment')).toEqual({
+      key: 'gymEquipment',
+      value: ['barbell'],
+      updatedAt: 1_700_000_000_000,
+    })
+  })
+
+  test('D3 readRow returns a device-local row that has no updatedAt', async () => {
+    await db.settings.put({ key: 'syncCursor', value: 42 })
+
+    expect(await readRow('syncCursor')).toEqual({ key: 'syncCursor', value: 42 })
+  })
+
+  test('D3 readRow of a key with nothing stored returns undefined', async () => {
+    expect(await readRow('volumeBaseline')).toBeUndefined()
+  })
+
+  test('D3 putRows stores each row with the updatedAt it is given, not the clock', async () => {
+    await putRows([
+      { key: 'gymEquipment', value: ['barbell'], updatedAt: 1_700_000_000_005 },
+      { key: 'weightSteps', value: { 'back-squat': 2.5 }, updatedAt: 1_700_000_000_007 },
+    ])
+
+    expect(await db.settings.get('gymEquipment')).toEqual({
+      key: 'gymEquipment',
+      value: ['barbell'],
+      updatedAt: 1_700_000_000_005,
+    })
+    expect(await db.settings.get('weightSteps')).toEqual({
+      key: 'weightSteps',
+      value: { 'back-squat': 2.5 },
+      updatedAt: 1_700_000_000_007,
+    })
+  })
+
+  test('D3 putRows stores a row given without updatedAt without one', async () => {
+    await putRows([{ key: 'lastSyncedAt', value: 1_700_000_000_009 }])
+
+    expect(await db.settings.get('lastSyncedAt')).toEqual({ key: 'lastSyncedAt', value: 1_700_000_000_009 })
+  })
+
+  test('D3 putRows replaces a stored row whole and leaves other rows alone', async () => {
+    await db.settings.bulkPut([
+      { key: 'gymEquipment', value: ['barbell', 'rack'], updatedAt: 1_700_000_000_000 },
+      { key: 'activeProgramId', value: 'assaf-ab-2026', updatedAt: 1_700_000_000_000 },
+    ])
+
+    await putRows([{ key: 'gymEquipment', value: ['dumbbell'], updatedAt: 1_700_000_000_001 }])
+
+    expect(await db.settings.toArray()).toEqual([
+      { key: 'activeProgramId', value: 'assaf-ab-2026', updatedAt: 1_700_000_000_000 },
+      { key: 'gymEquipment', value: ['dumbbell'], updatedAt: 1_700_000_000_001 },
+    ])
+  })
+
+  test('D3 putRows with no rows leaves the settings as they were', async () => {
+    await db.settings.put({ key: 'gymEquipment', value: ['barbell'], updatedAt: 1_700_000_000_000 })
+
+    await putRows([])
+
+    expect(await db.settings.toArray()).toEqual([
+      { key: 'gymEquipment', value: ['barbell'], updatedAt: 1_700_000_000_000 },
+    ])
+  })
+
+  test('D3 deleteKeys deletes the named rows and keeps every other row', async () => {
+    await db.settings.bulkPut([
+      { key: 'activeProgramId', value: 'assaf-ab-2026', updatedAt: 1_700_000_000_000 },
+      { key: 'gymEquipment', value: ['barbell'], updatedAt: 1_700_000_000_000 },
+      { key: 'syncCursor', value: 42 },
+      { key: 'accountEmail', value: 'lifter@example.com' },
+    ])
+
+    await deleteKeys(['activeProgramId', 'syncCursor'])
+
+    expect(await db.settings.toArray()).toEqual([
+      { key: 'accountEmail', value: 'lifter@example.com' },
+      { key: 'gymEquipment', value: ['barbell'], updatedAt: 1_700_000_000_000 },
+    ])
+  })
+
+  test('D3 deleteKeys naming a key with nothing stored deletes the others and does not fail', async () => {
+    await db.settings.put({ key: 'gymEquipment', value: ['barbell'], updatedAt: 1_700_000_000_000 })
+
+    await deleteKeys(['volumeBaseline', 'gymEquipment'])
+
+    expect(await db.settings.count()).toBe(0)
+  })
+})
+
+describe('D4 every settings setter given now stamps updatedAt with it', () => {
+  // The device clock, pinned far from NOW: a setter given a `now` must stamp that, not the clock.
+  const CLOCK = 1_800_000_000_000
+  const NOW = 1_750_000_000_000
+
+  beforeEach(() => {
+    vi.spyOn(Date, 'now').mockReturnValue(CLOCK)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  test('D4 setActiveProgramId given now stamps the activeProgramId row with it', async () => {
+    await setActiveProgramId('assaf-ab-2026', NOW)
+
+    expect(await db.settings.get('activeProgramId')).toEqual({
+      key: 'activeProgramId',
+      value: 'assaf-ab-2026',
+      updatedAt: NOW,
+    })
+  })
+
+  test('D4 setLastExportedAt given now stamps the lastExportedAt row with it', async () => {
+    await setLastExportedAt(1_740_000_000_000, NOW)
+
+    expect(await db.settings.get('lastExportedAt')).toEqual({
+      key: 'lastExportedAt',
+      value: 1_740_000_000_000,
+      updatedAt: NOW,
+    })
+  })
+
+  test('D4 setGymEquipment given now stamps the gymEquipment row with it', async () => {
+    await setGymEquipment(['barbell'], NOW)
+
+    expect(await db.settings.get('gymEquipment')).toEqual({
+      key: 'gymEquipment',
+      value: ['barbell'],
+      updatedAt: NOW,
+    })
+  })
+
+  test('D4 setWeightStep given now stamps the weightSteps row with it', async () => {
+    await setWeightStep('back-squat', 2.5, NOW)
+
+    expect(await db.settings.get('weightSteps')).toEqual({
+      key: 'weightSteps',
+      value: { 'back-squat': 2.5 },
+      updatedAt: NOW,
+    })
+  })
+
+  test('D4 setWeightSteps given now stamps the weightSteps row with it', async () => {
+    await setWeightSteps({ 'back-squat': 2.5, 'bench-press': 1.25 }, NOW)
+
+    expect(await db.settings.get('weightSteps')).toEqual({
+      key: 'weightSteps',
+      value: { 'back-squat': 2.5, 'bench-press': 1.25 },
+      updatedAt: NOW,
+    })
+  })
+
+  test('D4 setVolumeBaseline given now stamps the volumeBaseline row with it', async () => {
+    await setVolumeBaseline({ period: '1m', aggregate: 'max' }, NOW)
+
+    expect(await db.settings.get('volumeBaseline')).toEqual({
+      key: 'volumeBaseline',
+      value: { period: '1m', aggregate: 'max' },
+      updatedAt: NOW,
+    })
+  })
+
+  test('D4 setUserPrograms given now stamps the userPrograms row with it', async () => {
+    await setUserPrograms([userProgram('my-push-pull')], NOW)
+
+    expect(await db.settings.get('userPrograms')).toEqual({
+      key: 'userPrograms',
+      value: [userProgram('my-push-pull')],
+      updatedAt: NOW,
+    })
+  })
+
+  test('D4 saveUserProgram given now stamps the userPrograms row with it', async () => {
+    await saveUserProgram(userProgram('my-push-pull'), NOW)
+
+    expect(await db.settings.get('userPrograms')).toEqual({
+      key: 'userPrograms',
+      value: [userProgram('my-push-pull')],
+      updatedAt: NOW,
+    })
+  })
+
+  test('D4 resetProgram given now stamps the userPrograms row with it', async () => {
+    await db.settings.put({
+      key: 'userPrograms',
+      value: [userProgram('assaf-ab-2026'), userProgram('my-push-pull')],
+      updatedAt: 1_700_000_000_000,
+    })
+
+    await resetProgram('assaf-ab-2026', NOW)
+
+    expect(await db.settings.get('userPrograms')).toEqual({
+      key: 'userPrograms',
+      value: [userProgram('my-push-pull')],
+      updatedAt: NOW,
+    })
+  })
+
+  test('D4 deleteProgram given now stamps the userPrograms row with it', async () => {
+    await db.settings.put({
+      key: 'userPrograms',
+      value: [userProgram('my-push-pull')],
+      updatedAt: 1_700_000_000_000,
+    })
+
+    await deleteProgram('my-push-pull', NOW)
+
+    expect(await db.settings.get('userPrograms')).toEqual({
+      key: 'userPrograms',
+      value: [userProgram('my-push-pull', { hidden: true })],
+      updatedAt: NOW,
+    })
   })
 })
