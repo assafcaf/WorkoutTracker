@@ -93,3 +93,31 @@ _Avoid_: Variable, custom property, theme value
 The colour Tokens specifically. There is one, the light "Court" palette — ivory, court green,
 clay and four muscle-family tints — and no dark mode to keep in step.
 _Avoid_: Theme, colour scheme, skin
+
+**Service**:
+An object built by `createXService(deps)` in `src/services/*.ts` — the only thing outside
+`src/storage` allowed to read or write state — composed into `Services` by `createServices()`
+and handed down through `ServicesProvider`.
+See `docs/decisions/0011-layered-client-services.md`.
+_Avoid_: Store, manager, controller
+
+**Repository**:
+A module in `src/storage/*.ts` reading and writing one Dexie table or settings key and nothing
+else. Every reader of `db.sessions` lives here.
+See `docs/decisions/0011-layered-client-services.md`.
+_Avoid_: DAO, data access layer, model
+
+**Screen group (feature)**:
+One directory under `src/features/*` holding one tab's or overlay's component plus the hook
+that reads its slice of the services — `ExercisesFeature`, `WorkoutFeature`, `ProgramFeature`,
+`SettingsFeature`, `HistoryFeature`, `AlternativesOverlay`, `DetailOverlay`. It renders inside
+`src/App.tsx`'s Shell and never imports storage or sync directly.
+See `docs/decisions/0011-layered-client-services.md`.
+_Avoid_: Module, page, container
+
+**Change topic**:
+One of `ChangeTopic` (`'sessions' | 'programs' | 'preferences'`, `src/services/changes.ts`) — the
+unit a `ChangeBus` subscribes to and emits so a screen group re-reads only the service data a
+mutation actually touched.
+See `docs/decisions/0011-layered-client-services.md`.
+_Avoid_: Event, channel, subscription
