@@ -73,10 +73,25 @@ Departures from the ticket/spec's literal wording, found while building the laye
   props rather than reading a service directly, since an overlay is opened from more than one
   screen group.
 - The Exercises tab's search text and filters are held as `App.tsx` UI state and passed into
-  `ExercisesFeature`, since they are shell-level (which tab/route), not service data.
+  `ExercisesFeature`, so they survive leaving the tab and coming back, as they did when
+  `App.tsx` held `librarySearch`. Each screen group otherwise remounts on every tab visit.
 - `WorkoutFeature` takes an optional `landInSession` prop rather than resolving it itself.
 - The Shell component lives at `ShellChrome` in `src/ui/AppShell.tsx`.
 - O4's lint-message tests check with `message.includes(...)` rather than an exact match, since
   ESLint's own rule prefixes the configured message.
 - O3's one sanctioned exception is `src/services/backup.ts`'s `import type { SettingRow } from
   '../storage/db'` — a type-only reuse of storage's row shape, no runtime Dexie reach.
+
+Also from the run (2026-09-27, `/batch-implement E11`):
+- `App.tsx` went from 1452 lines to 131; the suite from 1299 tests to 1590, with every title
+  that existed at the epic base still present and passing (`weakened-tests.sh` clean from
+  `5c92f18`).
+- History and Exercises now refresh after local writes as well as after a pull (O12, intended).
+- Session-service failures other than `not-found` carry new message text; the UI showed
+  nothing for them before and still doesn't.
+- `ProgramFeature` wires Delete and Reset exactly as `App.tsx` did (stored user Programs vs.
+  bundled ids). A first cut widened them to untouched bundled Programs to satisfy a test; the
+  test was reseeded instead. Its tests seed `activeProgramId`, since a new user has no default
+  Program (the `App.newUser` baseline).
+- `SetScreen.onLog` is required; `src/ui/useWakeLock.test.ts`'s helper passes it, with its
+  titles and assertions unchanged.
