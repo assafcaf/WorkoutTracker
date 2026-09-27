@@ -89,4 +89,10 @@ export default tseslint.config(
       ],
     },
   },
+  // E11-T16 (O1, O3): not yet implemented. ui/features/App.tsx must reach the app only
+  // through services, never storage, sync (except `import type`), dexie or the worker
+  // (`[layers] ui reaches services only`); outside src/storage, only a type-only import of
+  // src/storage/db is allowed, and dexie is reachable from nowhere but src/storage
+  // (`[layers] only storage touches Dexie`). See src/architecture.test.ts's O1/O3/O4
+  // describe blocks and E11-T16's ticket for the exact scope and messages.
 )
