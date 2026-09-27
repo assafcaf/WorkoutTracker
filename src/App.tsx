@@ -56,6 +56,7 @@ import {
   getLastEntriesFor,
   getLastSwap,
   listSessions,
+  logSet,
   setSwap,
   startOrResumeSession,
 } from './storage/sessionStore'
@@ -1066,6 +1067,7 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
             weightStep={openSet.weightStep}
             onWeightStepChange={(step) => handleWeightStepChange(openSet.exerciseId, step)}
             family={family}
+            onLog={(id, entry) => logSet(id, entry)}
             onLogged={(logged) => {
               setSession(logged)
               setOpenSet((current) => (current ? { ...current, extra: false } : current))
