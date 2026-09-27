@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { presetForSet } from '../domain/prefill'
 import { restState } from '../domain/rest'
-import { logSet } from '../storage/sessionStore'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
@@ -20,6 +19,11 @@ export type SetScreenProps = {
   setIndex: number
   sessionId: string
   lastEntries: SetEntry[]
+  /**
+   * Persists one Set to the Session `sessionId` and answers the Session as stored (E11-T10); a
+   * rejection's message is shown under the set as it stands. The screen persists nothing itself.
+   */
+  onLog(sessionId: string, entry: SetEntry): Promise<Session>
   onLogged(session: Session, nextSetIndex: number): void
   /**
    * Told that an extra set past the plan was opened, with the set index it opened at. Optional
@@ -171,7 +175,7 @@ function initialLastLoggedAt(
  * The screen one set is logged from: the two dials, the keypad behind each readout, the rest
  * timer and the log button.
  *
- * The screen owns which set is open. Logging persists the set through the session store, then
+ * The screen owns which set is open. Logging persists the set through `onLog`, then
  * opens the next one preset from the entry just logged; `onLogged` tells the caller, which
  * owns the navigation. An entry `validateEntry` rejects is shown inline and written nowhere --
  * the rule is E1-T2's, the message is this screen's.
@@ -181,6 +185,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     exercise,
     plan,
     sessionId,
+    onLog,
     onLogged,
     onAddSet,
     onOpenInfo,
@@ -278,7 +283,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     }
 
     try {
-      const session = await logSet(sessionId, entry)
+      const session = await onLog(sessionId, entry)
       const merged = mergeEntry(history, entry)
       const nextSetIndex = open.setIndex + 1
       setError(null)
