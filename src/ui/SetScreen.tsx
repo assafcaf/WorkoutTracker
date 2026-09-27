@@ -186,6 +186,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     onOpenInfo,
     onOpenAlternatives,
     onFinishExercise,
+    family,
   } = props
 
   // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
@@ -356,7 +357,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
       {actionBar === null ? actions : createPortal(actions, actionBar)}
 
-      <p role="status" className="set-logged">
+      <p role="status" className="set-logged" data-family={family}>
         {loggedMessage}
       </p>
 

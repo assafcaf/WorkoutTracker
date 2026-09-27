@@ -61,7 +61,85 @@ textarea {
   color: inherit;
 }
 
+/* A press briefly shrinks the control (E10-T8, O18); the transition is on `button` itself so
+ * it also eases the release, not only the press. */
+button {
+  transition: transform var(--motion-fast);
+}
+
+button:active {
+  transform: scale(var(--press-scale));
+}
+
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* A logged set briefly glows in its muscle family's tint (E10-T8, O18/O19); `family` is
+ * resolved by the caller (App.tsx) and carried as `.set-logged[data-family]`. */
+@keyframes set-logged-glow-push {
+  0% {
+    background: var(--family-push-tint);
+    color: var(--family-push-ink);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes set-logged-glow-pull {
+  0% {
+    background: var(--family-pull-tint);
+    color: var(--family-pull-ink);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes set-logged-glow-legs {
+  0% {
+    background: var(--family-legs-tint);
+    color: var(--family-legs-ink);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes set-logged-glow-core {
+  0% {
+    background: var(--family-core-tint);
+    color: var(--family-core-ink);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.set-logged[data-family='push'] {
+  animation: set-logged-glow-push var(--motion-fast) ease-out;
+}
+
+.set-logged[data-family='pull'] {
+  animation: set-logged-glow-pull var(--motion-fast) ease-out;
+}
+
+.set-logged[data-family='legs'] {
+  animation: set-logged-glow-legs var(--motion-fast) ease-out;
+}
+
+.set-logged[data-family='core'] {
+  animation: set-logged-glow-core var(--motion-fast) ease-out;
+}
+
+/* Reduced motion turns both the press and the logged-set glow off entirely (E10-T8, O18). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none;
+    animation: none;
+  }
 }
