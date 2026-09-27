@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LibraryExercise, Muscle } from '../types'
+import { MuscleChip } from './MuscleChip'
 import './LibraryList.css'
 
 /** Rows per page of the Previous/Next pager (O16-O18). */
@@ -103,7 +104,7 @@ export function LibraryList({
                   onClick={() => onOpen(exercise.id)}
                 >
                   <span className="library-row-name">{exercise.name}</span>
-                  <span className="library-row-muscle">{exercise.primaryMuscles[0]}</span>
+                  <MuscleChip muscle={exercise.primaryMuscles[0]} />
                 </button>
                 {onPick === undefined ? null : (
                   <button

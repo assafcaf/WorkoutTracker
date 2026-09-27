@@ -2180,7 +2180,9 @@ test('M9 Browse exercises on upper-back opens the Exercises tab listing only lat
   const recordCurrentPage = () => {
     for (const row of screen.getAllByRole('listitem')) {
       seenNames.push((row.querySelector('.library-row-name')?.textContent ?? '').trim())
-      seenMuscles.add((row.querySelector('.library-row-muscle')?.textContent ?? '').trim())
+      // E10-T3: the row's primary muscle moved from a bare .library-row-muscle span to a
+      // family-tinted .muscle-chip; the text content read here is unchanged.
+      seenMuscles.add((row.querySelector('.muscle-chip')?.textContent ?? '').trim())
     }
   }
   recordCurrentPage()

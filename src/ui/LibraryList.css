@@ -109,12 +109,6 @@
   font-weight: 600;
 }
 
-.library-row-muscle {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  text-transform: capitalize;
-}
-
 .library-pager {
   display: flex;
   align-items: center;
