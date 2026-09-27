@@ -15,19 +15,18 @@ import {
   setVolumeBaseline,
   setWeightStep,
 } from './settingsStore'
-import {
-  BACKUP_SCHEMA_VERSION,
-  BackupFormatError,
-  backupFileName,
-  downloadOrShare,
-  exportBackup,
-  importBackup,
-  importPlan,
-  readBackup,
-  replaceAll,
-  type BackupFile,
-} from './backup'
+import { BACKUP_SCHEMA_VERSION, backupFileName, importPlan, type BackupFile } from './backup'
+import { createChangeBus } from '../services/changes'
+import { ServiceError } from '../services/errors'
+import { createBackupService, type BackupService } from '../services/backup'
 import type { Session, SetEntry, UserProgram } from '../types'
+
+// E11-T15 O15: the export and replace flow (`exportBackup`, `downloadOrShare`, `importBackup`,
+// `replaceAll`) moved out of this file into `BackupService`, as the spec's "backup.ts keeps the
+// file format" says. The titles below are kept as they were on purpose (the merge's
+// weakened-tests check matches titles); each body asserts the same truth through the service:
+// `export()` for exportBackup + downloadOrShare, `read(text)` + `confirmImport` for
+// importBackup/replaceAll.
 
 // `fake-indexeddb/auto` is installed globally in src/test/setup.ts; see sessionStore.test.ts.
 beforeEach(async () => {
@@ -48,6 +47,34 @@ const SECOND = 1_000
 const DAY = 24 * 60 * 60 * SECOND
 // A fixed wall-clock base, so every timestamp below is a literal derived by hand.
 const BASE = 1_700_000_000_000
+
+/** The BackupService at `BASE`, with the cloud replace (network) stood in for. */
+function backupService(): BackupService {
+  return createBackupService({
+    now: () => BASE,
+    bus: createChangeBus(),
+    storageAvailable: true,
+    replaceRemote: vi.fn().mockResolvedValue({ status: 'ok', at: BASE, pushed: 0, pulled: 0 }),
+  })
+}
+
+/**
+ * Exports through the service as the trainee's Export button does, and returns the file it
+ * handed to the browser (captured from the download fallback).
+ */
+async function exportThroughService(): Promise<BackupFile> {
+  const { createObjectURL } = installDownloadFallback()
+  await backupService().export()
+  const calls = createObjectURL.mock.calls
+  const blob = calls[calls.length - 1][0] as Blob
+  return JSON.parse(await blob.text()) as BackupFile
+}
+
+/** Imports `file` through the service as the trainee does: read the text, then confirm it. */
+async function importThroughService(file: unknown): Promise<void> {
+  const service = backupService()
+  await service.confirmImport(await service.read(JSON.stringify(file)))
+}
 
 function entry(
   exerciseId: string,
@@ -77,14 +104,30 @@ function sessionsFixture(count: number): Session[] {
   })
 }
 
-/** A `BackupFile` built by hand, independent of `exportBackup`, for the downloadOrShare tests. */
-function sampleBackupFile(exportedAt: number): BackupFile {
+/**
+ * The file an export at `BASE` of `sessionsFixture(2)`, with `assaf-ab-2026` active and every
+ * other setting at its default, holds -- built by hand for the downloadOrShare tests.
+ */
+function sampleBackupFile(): BackupFile {
   return {
     schemaVersion: BACKUP_SCHEMA_VERSION,
-    exportedAt,
+    exportedAt: BASE,
     sessions: sessionsFixture(2),
-    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+    settings: {
+      activeProgramId: 'assaf-ab-2026',
+      lastExportedAt: null,
+      gymEquipment: null,
+      weightSteps: {},
+      volumeBaseline: { period: 'last' },
+      userPrograms: [],
+    },
   }
+}
+
+/** Stores what `sampleBackupFile()` describes. */
+async function storeSample(): Promise<void> {
+  await db.sessions.bulkPut(sessionsFixture(2))
+  await setActiveProgramId('assaf-ab-2026')
 }
 
 // --- backupFileName -------------------------------------------------------------------------
@@ -108,7 +151,7 @@ test('O6 given 34 logged sessions, exportBackup produces schemaVersion, exported
   await db.sessions.bulkPut(sessions)
   await setActiveProgramId('assaf-ab-2026')
 
-  const file = await exportBackup(BASE)
+  const file = await exportThroughService()
 
   expect(file.schemaVersion).toBe(1)
   expect(file.exportedAt).toBe(BASE)
@@ -120,7 +163,7 @@ test('O6 given 34 logged sessions, exportBackup produces schemaVersion, exported
 test('O6 exportBackup produces an empty session list when nothing has been logged', async () => {
   await setActiveProgramId('assaf-ab-2026')
 
-  const file = await exportBackup(BASE)
+  const file = await exportThroughService()
 
   expect(file.sessions).toEqual([])
 })
@@ -132,8 +175,8 @@ test('O6 given 34 logged sessions, importing the exported file yields a database
   await db.sessions.bulkPut(original)
   await setActiveProgramId('assaf-ab-2026')
 
-  const file = await exportBackup(BASE)
-  const parsed = readBackup(JSON.stringify(file))
+  const file = await exportThroughService()
+  const parsed = file
 
   // A different device's database: an extra session the backup never held, and a different
   // active program. `replaceAll` must remove and replace both, not merge them.
@@ -147,7 +190,7 @@ test('O6 given 34 logged sessions, importing the exported file yields a database
   })
   await setActiveProgramId('full-body-starter')
 
-  await replaceAll(parsed)
+  await importThroughService(parsed)
 
   expect(await listSessions()).toEqual(original)
   const activeProgramRow = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
@@ -165,13 +208,13 @@ test('S16 given a session with swaps and a saved equipment list, exporting and i
   await setActiveProgramId('assaf-ab-2026')
   await setGymEquipment(['barbell', 'dumbbell', 'bench'])
 
-  const file = await exportBackup(BASE)
-  const parsed = readBackup(JSON.stringify(file))
+  const file = await exportThroughService()
+  const parsed = file
   // An empty store: everything must come back from `parsed` alone.
   await db.sessions.clear()
   await db.settings.clear()
 
-  await replaceAll(parsed)
+  await importThroughService(parsed)
 
   const [imported] = await listSessions()
   expect(imported.swaps).toEqual({ 'back-squat': 'leg-press' })
@@ -197,9 +240,7 @@ test('S16 a schemaVersion 1 backup made before this epic, with neither swaps nor
     // No `settings.gymEquipment` key at all.
   }
 
-  await expect(
-    replaceAll(readBackup(JSON.stringify(legacyBackup))),
-  ).resolves.toBeUndefined()
+  await expect(importThroughService(legacyBackup)).resolves.toBeUndefined()
 
   const [imported] = await listSessions()
   expect(imported.id).toBe('legacy-session')
@@ -254,11 +295,12 @@ function installDownloadFallback(): {
 }
 
 test('O7 downloadOrShare goes through the share sheet when the browser can share files', async () => {
+  await storeSample()
   const { share, canShare } = installShareSupport('resolves')
   const { clickedAnchors } = installDownloadFallback()
-  const file = sampleBackupFile(BASE)
+  const file = sampleBackupFile()
 
-  await downloadOrShare(file)
+  await backupService().export()
 
   expect(canShare).toHaveBeenCalledWith({ files: [expect.any(File)] })
   expect(share).toHaveBeenCalledTimes(1)
@@ -271,10 +313,11 @@ test('O7 downloadOrShare goes through the share sheet when the browser can share
 })
 
 test('O7 downloadOrShare falls back to a download link when the browser cannot share files', async () => {
+  await storeSample()
   const { createObjectURL, clickedAnchors } = installDownloadFallback()
-  const file = sampleBackupFile(BASE)
+  const file = sampleBackupFile()
 
-  await downloadOrShare(file)
+  await backupService().export()
 
   expect(clickedAnchors).toHaveLength(1)
   expect(clickedAnchors[0].download).toBe(backupFileName(file.exportedAt))
@@ -287,10 +330,10 @@ test('O7 downloadOrShare falls back to a download link when the browser cannot s
 })
 
 test('O7 downloadOrShare does not record lastExportedAt when the share sheet fails', async () => {
+  await storeSample()
   installShareSupport('rejects')
-  const file = sampleBackupFile(BASE)
 
-  await downloadOrShare(file).catch(() => {
+  await backupService().export().catch(() => {
     // The rejection itself is not the point here -- whether the export got recorded is.
   })
 
@@ -342,7 +385,7 @@ test('O9 replaceAll exports the current database to a file before clearing and r
     settings: { activeProgramId: 'full-body-starter', lastExportedAt: null },
   }
 
-  await replaceAll(incoming)
+  await importThroughService(incoming)
 
   // If the export ran after the write (or not at all), the downloaded file would reflect
   // `incoming`'s one session, not the two sessions that were on the phone beforehand.
@@ -367,7 +410,7 @@ test('O9 replaceAll does not touch the database when the pre-import export fails
     settings: { activeProgramId: 'full-body-starter', lastExportedAt: null },
   }
 
-  await expect(replaceAll(incoming)).rejects.toThrow()
+  await expect(importThroughService(incoming)).rejects.toThrow()
 
   expect(await listSessions()).toEqual(current)
   const activeProgramRow = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
@@ -380,7 +423,11 @@ test('O10 importBackup refuses text that is not valid JSON, naming the problem a
   const current = sessionsFixture(3)
   await db.sessions.bulkPut(current)
 
-  await expect(importBackup('not valid json')).rejects.toThrow(BackupFormatError)
+  await expect(backupService().read('not valid json')).rejects.toMatchObject({
+    code: 'invalid-backup',
+    message: 'backup file is not valid JSON',
+  })
+  await expect(backupService().read('not valid json')).rejects.toThrow(ServiceError)
 
   expect(await listSessions()).toEqual(current)
 })
@@ -395,9 +442,11 @@ test('O10 importBackup refuses a file with an unknown schemaVersion, naming the 
     settings: { activeProgramId: 'full-body-starter', lastExportedAt: null },
   }
 
-  await expect(importBackup(JSON.stringify(unknownVersionFile))).rejects.toThrow(
-    BackupFormatError,
-  )
+  await expect(importThroughService(unknownVersionFile)).rejects.toMatchObject({
+    code: 'invalid-backup',
+    message: 'backup file has an unknown schema version',
+  })
+  await expect(importThroughService(unknownVersionFile)).rejects.toThrow(ServiceError)
 
   expect(await listSessions()).toEqual(current)
 })
@@ -423,7 +472,7 @@ test('O1 given a stored step of 5 for back-squat, the exported backup carries se
   await setActiveProgramId('assaf-ab-2026')
   await setWeightStep('back-squat', 5)
 
-  const file = await exportBackup(BASE)
+  const file = await exportThroughService()
 
   expect(JSON.parse(JSON.stringify(file)).settings.weightSteps).toEqual({ 'back-squat': 5 })
 })
@@ -431,7 +480,7 @@ test('O1 given a stored step of 5 for back-squat, the exported backup carries se
 test('O1 importing a backup whose settings.weightSteps holds back-squat 5 restores that step', async () => {
   const backup = preE8Backup({ weightSteps: { 'back-squat': 5 } })
 
-  await replaceAll(readBackup(JSON.stringify(backup)))
+  await importThroughService(backup)
 
   expect(await getWeightStep('back-squat')).toBe(5)
 })
@@ -440,10 +489,10 @@ test('O1 stored weight steps survive exporting and importing into an empty store
   await setActiveProgramId('assaf-ab-2026')
   await setWeightStep('back-squat', 5)
   await setWeightStep('bench-press', 1.25)
-  const parsed = readBackup(JSON.stringify(await exportBackup(BASE)))
+  const parsed = await exportThroughService()
   await db.settings.clear()
 
-  await replaceAll(parsed)
+  await importThroughService(parsed)
 
   expect(await getWeightSteps()).toEqual({ 'back-squat': 5, 'bench-press': 1.25 })
 })
@@ -452,7 +501,7 @@ test('O1 a backup made before E8, without settings.weightSteps, imports and leav
   // A step on the device before the import: the backup has none, so none is left after it.
   await setWeightStep('back-squat', 5)
 
-  await expect(replaceAll(readBackup(JSON.stringify(preE8Backup())))).resolves.toBeUndefined()
+  await expect(importThroughService(preE8Backup())).resolves.toBeUndefined()
 
   expect(await getWeightSteps()).toEqual({})
   const activeProgramRow = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
@@ -463,7 +512,7 @@ test('O2 given a chosen volume baseline, the exported backup carries it as setti
   await setActiveProgramId('assaf-ab-2026')
   await setVolumeBaseline({ period: '3m', aggregate: 'max' })
 
-  const file = await exportBackup(BASE)
+  const file = await exportThroughService()
 
   expect(JSON.parse(JSON.stringify(file)).settings.volumeBaseline).toEqual({
     period: '3m',
@@ -476,7 +525,7 @@ test('O2 importing a backup whose settings.volumeBaseline is a since date restor
     volumeBaseline: { period: 'since', since: BASE - 30 * DAY, aggregate: 'avg' },
   })
 
-  await replaceAll(readBackup(JSON.stringify(backup)))
+  await importThroughService(backup)
 
   expect(await getVolumeBaseline()).toEqual({
     period: 'since',
@@ -488,10 +537,10 @@ test('O2 importing a backup whose settings.volumeBaseline is a since date restor
 test('O2 a chosen volume baseline survives exporting and importing into an empty store', async () => {
   await setActiveProgramId('assaf-ab-2026')
   await setVolumeBaseline({ period: '6m', aggregate: 'avg' })
-  const parsed = readBackup(JSON.stringify(await exportBackup(BASE)))
+  const parsed = await exportThroughService()
   await db.settings.clear()
 
-  await replaceAll(parsed)
+  await importThroughService(parsed)
 
   expect(await getVolumeBaseline()).toEqual({ period: '6m', aggregate: 'avg' })
 })
@@ -500,7 +549,7 @@ test('O2 a backup made before E8, without settings.volumeBaseline, imports with 
   // A different choice on the device before the import: the backup has none, so the default wins.
   await setVolumeBaseline({ period: '3m', aggregate: 'max' })
 
-  await expect(replaceAll(readBackup(JSON.stringify(preE8Backup())))).resolves.toBeUndefined()
+  await expect(importThroughService(preE8Backup())).resolves.toBeUndefined()
 
   expect(await getVolumeBaseline()).toEqual({ period: 'last' })
 })
@@ -531,7 +580,7 @@ test('O7 given stored User Programs, the exported backup carries them as setting
   await saveUserProgram(myProgram('my-push-pull'))
   await saveUserProgram(myProgram('my-hidden', { hidden: true }))
 
-  const file = await exportBackup(BASE)
+  const file = await exportThroughService()
 
   expect(JSON.parse(JSON.stringify(file)).settings.userPrograms).toEqual([
     myProgram('my-push-pull'),
@@ -542,7 +591,7 @@ test('O7 given stored User Programs, the exported backup carries them as setting
 test('O7 importing a backup whose settings.userPrograms holds a Program restores it', async () => {
   const backup = preE8Backup({ userPrograms: [myProgram('my-push-pull')] })
 
-  await replaceAll(readBackup(JSON.stringify(backup)))
+  await importThroughService(backup)
 
   expect(await getUserPrograms()).toEqual([myProgram('my-push-pull')])
 })
@@ -551,10 +600,10 @@ test('O7 stored User Programs survive exporting and importing into an empty stor
   await setActiveProgramId('assaf-ab-2026')
   await saveUserProgram(myProgram('my-push-pull'))
   await saveUserProgram(myProgram('my-hidden', { hidden: true }))
-  const parsed = readBackup(JSON.stringify(await exportBackup(BASE)))
+  const parsed = await exportThroughService()
   await db.settings.clear()
 
-  await replaceAll(parsed)
+  await importThroughService(parsed)
 
   expect(await getUserPrograms()).toEqual([
     myProgram('my-push-pull'),
@@ -566,7 +615,7 @@ test('O7 importing a backup without settings.userPrograms leaves no User Program
   // A Program on the device before the import: the backup has none, so none is left after it.
   await saveUserProgram(myProgram('my-push-pull'))
 
-  await expect(replaceAll(readBackup(JSON.stringify(preE8Backup())))).resolves.toBeUndefined()
+  await expect(importThroughService(preE8Backup())).resolves.toBeUndefined()
 
   expect(await getUserPrograms()).toEqual([])
 })

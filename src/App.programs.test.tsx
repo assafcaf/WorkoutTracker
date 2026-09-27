@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { App } from './App'
+import { renderApp } from './test/renderApp'
 import abSplitJson from './data/programs/assaf-ab-2026.json'
 import { db } from './storage/db'
 import { USER_PROGRAMS_KEY } from './storage/settingsStore'
@@ -184,7 +184,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
     const before = Date.now()
 
     await buildPushPullLegs(user)
@@ -210,7 +210,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await buildPushPullLegs(user)
     await openProgramTab(user)
@@ -226,7 +226,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await buildPushPullLegs(user)
     await openProgramTab(user)
@@ -249,7 +249,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await buildPushPullLegs(user)
     await openProgramTab(user)
@@ -270,7 +270,7 @@ test('O13 a stored User Program is listed on the Program tab at launch', async (
   const user = userEvent.setup()
   await withActiveAbSplit()
   await db.settings.put({ key: USER_PROGRAMS_KEY, value: [pushPullLegsStored()], updatedAt: Date.now() })
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
 
@@ -280,7 +280,7 @@ test('O13 a stored User Program is listed on the Program tab at launch', async (
 test('O13 a stored active User Program’s Workouts are offered on the Workout tab at launch', async () => {
   await db.settings.put({ key: USER_PROGRAMS_KEY, value: [pushPullLegsStored()], updatedAt: Date.now() })
   await db.settings.put({ key: 'activeProgramId', value: 'user-stored-ppl', updatedAt: Date.now() })
-  render(<App />)
+  await renderApp()
 
   expect(await screen.findByRole('button', { name: 'Start Push' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
@@ -297,7 +297,7 @@ test('O13 a User Program pulled by a sync is listed on the Program tab without a
   // The pull is held until the Program tab has shown what this device had, so the test proves
   // the tab follows the sync rather than a launch read winning a race with it.
   const release = server.hold('/api/sync')
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull()
@@ -314,7 +314,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await openProgramTab(user)
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
@@ -333,7 +333,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await openProgramTab(user)
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
@@ -357,7 +357,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await openProgramTab(user)
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
@@ -382,7 +382,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await openProgramTab(user)
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
@@ -404,7 +404,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
     const before = Date.now()
 
     await openProgramTab(user)
@@ -429,7 +429,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await openProgramTab(user)
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
@@ -455,7 +455,7 @@ test(
       value: [{ ...AB_SPLIT, createdAt: 1_234 }],
       updatedAt: Date.now(),
     })
-    render(<App />)
+    await renderApp()
 
     await openProgramTab(user)
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
@@ -489,7 +489,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await openProgramTab(user)
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
@@ -508,7 +508,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
 
     await openProgramTab(user)
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))

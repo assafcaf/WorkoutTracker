@@ -164,3 +164,169 @@ describe('lint refuses each layer-breaking import (O4)', () => {
     ).toBe(true)
   })
 })
+
+// --- E11-T15: App.tsx is a thin shell (O14) and the moved code is gone (O15) -----------------
+
+/** The domain types whose values belong to the services and screen groups, never App's state. */
+const DOMAIN_TYPES = [
+  'Session',
+  'SetEntry',
+  'Program',
+  'UserProgram',
+  'Exercise',
+  'LibraryExercise',
+  'Video',
+  'VolumeBaseline',
+  'ImportPlan',
+  'PendingImport',
+  'BackupFile',
+  'Services',
+]
+
+/**
+ * Each `useState(...)`/`useReducer(...)` call in `code`, from the hook name through its closing
+ * parenthesis, generic type argument included.
+ */
+export function stateHookCalls(code: string): string[] {
+  const calls: string[] = []
+  const start = /\buse(State|Reducer)\b/g
+  let match: RegExpExecArray | null
+  while ((match = start.exec(code))) {
+    let index = match.index + match[0].length
+    // Skip a generic type argument, which may itself nest `<...>`.
+    if (code[index] === '<') {
+      let depth = 0
+      for (; index < code.length; index += 1) {
+        if (code[index] === '<') depth += 1
+        else if (code[index] === '>' && code[index - 1] !== '=') depth -= 1
+        if (depth === 0) break
+      }
+      index += 1
+    }
+    if (code[index] !== '(') continue
+    let depth = 0
+    let end = index
+    for (; end < code.length; end += 1) {
+      if (code[end] === '(') depth += 1
+      else if (code[end] === ')') depth -= 1
+      if (depth === 0) break
+    }
+    calls.push(code.slice(match.index, end + 1))
+  }
+  return calls
+}
+
+/** Why `call` holds domain data, or null when it holds only UI state. */
+function domainStateReason(call: string): string | null {
+  const named = DOMAIN_TYPES.find((name) => new RegExp(`\\b${name}\\b`).test(call))
+  if (named) return `names ${named}`
+  if (/\(\s*\[/.test(call) || /\(\s*\(\)\s*=>\s*\[/.test(call)) return 'starts from a list'
+  if (/\bnew (Map|Set)\b/.test(call)) return 'starts from a Map or Set'
+  return null
+}
+
+describe('App.tsx is a thin shell (O14)', () => {
+  const appCode = (): string => readFileSync(resolve(root, 'src/App.tsx'), 'utf-8')
+
+  test('O14 src/App.tsx has at most 300 lines', () => {
+    const lines = appCode().replace(/\r?\n$/, '').split(/\r?\n/).length
+
+    expect(lines).toBeLessThanOrEqual(300)
+  })
+
+  test('O14 src/App.tsx holds no domain data in state, only which tab and route are shown', () => {
+    const offenders = stateHookCalls(appCode())
+      .map((call) => ({ call, reason: domainStateReason(call) }))
+      .filter(({ reason }) => reason !== null)
+      .map(({ call, reason }) => `${reason}: ${call.split('\n')[0]}`)
+
+    expect(offenders).toEqual([])
+  })
+
+  test('O14 src/App.tsx reads no data itself: no runtime import from storage, data, domain, services or sync', () => {
+    const dataDirs = ['src/storage', 'src/data', 'src/domain', 'src/services', 'src/sync']
+
+    const offenders = importsOf('src/App.tsx')
+      .filter((imp) => !imp.typeOnly)
+      .filter((imp) => pointsInto(resolveImport('src/App.tsx', imp.source), dataDirs))
+      .map((imp) => imp.source)
+
+    expect(offenders).toEqual([])
+  })
+
+  test('O14 src/App.tsx builds no services and starts no sync of its own', () => {
+    const code = appCode()
+
+    expect(
+      ['createServices(', 'createSyncService(', 'useSync('].filter((call) => code.includes(call)),
+    ).toEqual([])
+  })
+
+  test('O14 src/App.tsx renders the ServicesProvider around its screen groups', () => {
+    const provider = importsOf('src/App.tsx').find(
+      (imp) => resolveImport('src/App.tsx', imp.source) === 'src/features/ServicesProvider',
+    )
+
+    expect(provider?.typeOnly).toBe(false)
+    expect(appCode()).toMatch(/<ServicesProvider\b[^>]*\bservices=\{/)
+  })
+
+  test('O14 src/main.tsx builds the real services exactly once', () => {
+    const code = readFileSync(resolve(root, 'src/main.tsx'), 'utf-8')
+    const fromServices = importsOf('src/main.tsx').some(
+      (imp) =>
+        !imp.typeOnly &&
+        ['src/services', 'src/services/index'].includes(
+          resolveImport('src/main.tsx', imp.source) ?? '',
+        ),
+    )
+
+    expect(fromServices).toBe(true)
+    expect(code.match(/\bcreateServices\(/g) ?? []).toHaveLength(1)
+    expect(code).toMatch(/<App\b[^>]*\bservices=\{/)
+  })
+})
+
+describe('code moved out of App.tsx is deleted (O15)', () => {
+  test('O15 src/storage/backup.ts no longer exports the export and replace flow the BackupService owns', async () => {
+    const backup: Record<string, unknown> = await import('./storage/backup')
+
+    expect(
+      ['exportBackup', 'downloadOrShare', 'importBackup', 'replaceAll'].filter(
+        (name) => name in backup,
+      ),
+    ).toEqual([])
+  })
+
+  test('O15 src/storage/backup.ts keeps the file format: readBackup, BACKUP_SCHEMA_VERSION, backupFileName and importPlan', async () => {
+    const backup: Record<string, unknown> = await import('./storage/backup')
+
+    expect(typeof backup.readBackup).toBe('function')
+    expect(backup.BACKUP_SCHEMA_VERSION).toBe(1)
+    expect(typeof backup.backupFileName).toBe('function')
+    expect(typeof backup.importPlan).toBe('function')
+  })
+
+  test('O15 getActiveProgramId no longer adopts the latest Session\'s Program when nothing is stored', async () => {
+    const { db } = await import('./storage/db')
+    const { getActiveProgramId } = await import('./storage/settingsStore')
+    await db.open()
+    await db.settings.clear()
+    await db.sessions.clear()
+    await db.sessions.put({
+      id: 's-latest',
+      programId: 'full-body-starter',
+      workoutId: 'full-body',
+      startedAt: 1_700_000_000_000,
+      finishedAt: 1_700_003_600_000,
+      entries: [],
+    })
+    const programs = [
+      { id: 'assaf-ab-2026', name: 'A/B', units: 'kg' as const, workouts: [], sessionsPerWeek: 3 },
+      { id: 'full-body-starter', name: 'Full body', units: 'kg' as const, workouts: [], sessionsPerWeek: 3 },
+    ]
+
+    expect(await getActiveProgramId(programs)).toBeNull()
+    expect(await db.settings.get('activeProgramId')).toBeUndefined()
+  })
+})

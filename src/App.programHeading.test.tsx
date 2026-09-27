@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { App } from './App'
+import { renderApp } from './test/renderApp'
 import { db } from './storage/db'
 import { FakeSyncServer } from './test/fakeSyncServer'
 
@@ -57,7 +57,7 @@ test(
   'New program opens the editor under `New program`',
   async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await renderApp()
     await openProgramTab(user)
 
     await user.click(screen.getByRole('button', { name: 'New program' }))
@@ -72,7 +72,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
     await openProgramTab(user)
 
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
@@ -87,7 +87,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await withActiveAbSplit()
-    render(<App />)
+    await renderApp()
     await openProgramTab(user)
 
     await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
