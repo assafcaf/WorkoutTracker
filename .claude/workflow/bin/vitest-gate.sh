@@ -3,6 +3,11 @@
 # test failure (red) from a suite that never ran (not red). vitest exits 1 for both cases;
 # the whole red gate depends on telling them apart.
 #
+# A worked example for /setup-workflow's stack step: a project on vitest can use this as-is;
+# a project on another runner that doesn't split "failed" from "didn't run" across exit codes
+# (jest, go test, cargo test, …) should copy this file and adapt the two `grep` patterns below
+# to that runner's own wording for "no tests found" and "failed to load a file".
+#
 #   vitest-gate.sh [<vitest args...>]
 #   vitest-gate.sh src/domain/prefill.test.ts src/domain/dial.test.ts
 #

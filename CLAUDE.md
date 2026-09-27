@@ -8,6 +8,22 @@ definition of done is `.claude/workflow/definition-of-done.md`; per-repo setting
 Keep committed files machine-neutral: no absolute paths, no one OS's shell. Host-specific facts
 go in your own gitignored `CLAUDE.local.md`.
 
+## A local app during a batch run
+
+While `/batch-implement` runs, the orchestrator keeps the app running locally in dev mode, so
+the operator can see and debug each merge without waiting for a deployment:
+
+- Start it from the **epic worktree** (the merger's checkout) once the baseline is green:
+  `npx vite --port 5173 --strictPort --host 127.0.0.1`. Every merge the merger lands there then
+  reaches the page through Vite's hot reload.
+- **If a merge does not show up** — the page is stale, the server crashed, or the merge changed
+  `package.json`, `package-lock.json` or `vite.config.ts`, which hot reload does not pick up —
+  the orchestrator stops the server, frees the port, and starts it again. After a lockfile
+  change, run `npm ci` in the epic worktree first.
+- Dev mode serves the app only. `/api/*` (sign-in and cloud sync) needs the Worker, so debug
+  those with `npm run worker:dev` or on the deployed app.
+- Stop the server when the run ends.
+
 ## Deploying
 
 The app is one Cloudflare Worker (`wrangler.toml`): static assets plus `/api/*`, a D1 database
