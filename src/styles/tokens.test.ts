@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { expect, test } from 'vitest'
 import {
   contrastRatio,
+  declarationsFor,
   readTokens,
   referencedVars,
   relativeLuminance,
@@ -47,30 +48,52 @@ function normalise(value: string | undefined): string {
   return (value ?? '(not declared)').trim().toLowerCase()
 }
 
-// The documented set: exactly these thirty-five custom properties, and no more. Later tasks
-// use these names and add none.
+// The documented set (E10, Court design language): exactly these forty-nine custom
+// properties, and no more -- 10 colour + 8 family + 3 PR + 6 map + 16 scale + 6 others (the two
+// fonts, the two motion tokens and the two safe areas). Written out by hand from the spec's
+// token table. `--color-border`, `--color-on-accent` and `--shadow-card` are gone: cards
+// separate by tint, not by a hairline.
 const COLOUR_TOKENS: Record<string, string> = {
-  '--color-bg': '#0B0B0F',
-  '--color-surface': '#16161C',
-  '--color-raised': '#1F1F27',
-  '--color-border': '#2A2A33',
-  '--color-text': '#FFFFFF',
-  '--color-muted': '#8A8A94',
-  '--color-accent': '#C6F84E',
-  '--color-on-accent': '#0B0B0F',
-  '--color-warn': '#FFB020',
-  '--color-danger': '#FF6B6B',
+  '--color-bg': '#F5F1E8',
+  '--color-surface': '#FFFFFF',
+  '--color-raised': '#ECE6DA',
+  '--color-text': '#24211D',
+  '--color-muted': '#5F5A52',
+  '--color-primary': '#1F4D3A',
+  '--color-on-primary': '#F5F1E8',
+  '--color-accent': '#9E5231',
+  '--color-warn': '#8A5A12',
+  '--color-danger': '#A33B32',
 }
 
-// BodyMap's four-step shade ramp plus its exercise-scale primary/secondary pair (E5-T17, M5/M8/
-// M10). Not part of CONTRAST_PAIRS: these are map fill colours, not a text/background pair.
+// The four muscle families' pastel tint and the ink that reads on it.
+const FAMILY_TOKENS: Record<string, string> = {
+  '--family-push-tint': '#F3DDD0',
+  '--family-push-ink': '#7A3A20',
+  '--family-pull-tint': '#DCE5F0',
+  '--family-pull-ink': '#2E4A6B',
+  '--family-legs-tint': '#DDE7DA',
+  '--family-legs-ink': '#34503A',
+  '--family-core-tint': '#E6DFEE',
+  '--family-core-ink': '#4F3D68',
+}
+
+// The personal-record medallion.
+const PR_TOKENS: Record<string, string> = {
+  '--pr-tint': '#F2E3B8',
+  '--pr-ink': '#6B4E0E',
+  '--pr-ring': '#B08A2E',
+}
+
+// BodyMap's four-step shade ramp, raised-to-clay, plus its exercise-scale primary/secondary
+// pair. Not part of CONTRAST_PAIRS: these are map fill colours, not a text/background pair.
 const MAP_TOKENS: Record<string, string> = {
-  '--map-shade-0': '#23232B',
-  '--map-shade-1': '#3E4A22',
-  '--map-shade-2': '#7C9A2E',
-  '--map-shade-3': '#C6F84E',
-  '--map-primary': '#C6F84E',
-  '--map-secondary': '#6B8F3D',
+  '--map-shade-0': '#ECE6DA',
+  '--map-shade-1': '#EBC7B0',
+  '--map-shade-2': '#D0906C',
+  '--map-shade-3': '#9E5231',
+  '--map-primary': '#9E5231',
+  '--map-secondary': '#D0906C',
 }
 
 const SCALE_TOKENS: Record<string, string> = {
@@ -80,8 +103,8 @@ const SCALE_TOKENS: Record<string, string> = {
   '--space-4': '16px',
   '--space-5': '24px',
   '--space-6': '32px',
-  '--radius-sm': '8px',
-  '--radius-lg': '16px',
+  '--radius-sm': '12px',
+  '--radius-lg': '20px',
   '--radius-pill': '999px',
   '--tap-min': '44px',
   '--text-xs': '12px',
@@ -89,95 +112,139 @@ const SCALE_TOKENS: Record<string, string> = {
   '--text-md': '16px',
   '--text-lg': '20px',
   '--text-xl': '28px',
-  '--text-display': '56px',
+  '--text-display': '64px',
 }
 
-// `--font-sans`, `--shadow-card`, `--safe-bottom` and `--safe-top` carry values that are not a
+const MOTION_TOKENS: Record<string, string> = {
+  '--motion-fast': '150ms',
+  '--press-scale': '0.97',
+}
+
+// `--font-sans`, `--font-display`, `--safe-bottom` and `--safe-top` carry values that are not a
 // plain literal, so they are named here and asserted on their own below.
-//
-// RULING (fix-popups, F3): `--safe-top` was added here to match the popup layer's overlay,
-// which has to clear the top safe-area inset as well as the bottom one -- the tab bar is moving
-// to the top of the screen in a later, separate fix task, but the popup covering the whole
-// viewport needs both insets regardless of where the tab bar ends up. This makes the documented
-// set thirty-six rather than thirty-five; the test name and count below are updated to match,
-// and a new test mirroring the existing `--safe-bottom` one is added for it. This is an
-// authorised rewrite of this file, not a weakening -- see the fix-popups ticket's addendum.
 const DOCUMENTED_TOKENS = [
   ...Object.keys(COLOUR_TOKENS),
+  ...Object.keys(FAMILY_TOKENS),
+  ...Object.keys(PR_TOKENS),
   ...Object.keys(MAP_TOKENS),
   ...Object.keys(SCALE_TOKENS),
+  ...Object.keys(MOTION_TOKENS),
   '--font-sans',
-  '--shadow-card',
+  '--font-display',
   '--safe-bottom',
   '--safe-top',
 ].sort()
 
-// The pairs [O2] iterates, from the spec's contrast table. `--color-border`, `--color-raised`
-// and `--shadow-card` are non-text tokens and are excluded by name: WCAG's 4.5:1 rule is about
-// text, and a hairline that met it would not be a hairline.
+const REMOVED_TOKENS = ['--color-border', '--color-on-accent', '--shadow-card']
+
+// The pairs [O2] iterates, from the spec's contrast table: every text colour on each of the
+// three surfaces, the primary action's label on it, each family ink on its tint, and the PR ink
+// on its tint. `--pr-ring` and the map shades are non-text fills and are excluded by name.
+const SURFACES = ['--color-bg', '--color-surface', '--color-raised']
+const TEXT_COLOURS = [
+  '--color-text',
+  '--color-muted',
+  '--color-primary',
+  '--color-accent',
+  '--color-warn',
+  '--color-danger',
+]
 const CONTRAST_PAIRS: ReadonlyArray<readonly [string, string]> = [
-  ['--color-text', '--color-bg'],
-  ['--color-text', '--color-surface'],
-  ['--color-muted', '--color-bg'],
-  ['--color-muted', '--color-surface'],
-  ['--color-accent', '--color-bg'],
-  ['--color-accent', '--color-surface'],
-  ['--color-on-accent', '--color-accent'],
-  ['--color-warn', '--color-bg'],
-  ['--color-danger', '--color-bg'],
+  ...TEXT_COLOURS.flatMap((fg) => SURFACES.map((bg) => [fg, bg] as const)),
+  ['--color-on-primary', '--color-primary'],
+  ['--family-push-ink', '--family-push-tint'],
+  ['--family-pull-ink', '--family-pull-tint'],
+  ['--family-legs-ink', '--family-legs-tint'],
+  ['--family-core-ink', '--family-core-tint'],
+  ['--pr-ink', '--pr-tint'],
 ]
 
-test('O1 tokens.css declares exactly the thirty-six documented tokens on :root', () => {
+/** `map`'s names read back from tokens.css beside its documented values, both normalised. */
+function compare(map: Record<string, string>): { actual: object; expected: object } {
+  const declared = tokens()
+  return {
+    actual: Object.fromEntries(
+      Object.keys(map).map((name) => [name, normalise(declared.get(name))]),
+    ),
+    expected: Object.fromEntries(
+      Object.entries(map).map(([name, value]) => [name, normalise(value)]),
+    ),
+  }
+}
+
+test('O1 tokens.css declares exactly the forty-nine documented tokens on :root', () => {
+  expect(DOCUMENTED_TOKENS).toHaveLength(49)
   expect([...tokens().keys()].sort()).toEqual(DOCUMENTED_TOKENS)
 })
 
-test('O1 the colour tokens carry the documented palette values', () => {
+// Gate identifiers (E10-T1): the two tests below keep their pre-Court titles because the merge
+// gate tracks tests by title across an intentional rewrite. Their titles are historical; the
+// bodies assert the Court expectation (49 tokens; no --shadow-card and no --color-border).
+test('O1 tokens.css declares exactly the thirty-six documented tokens on :root', () => {
+  expect([...tokens().keys()].sort()).toHaveLength(49)
+})
+
+test('O1 --shadow-card is an inset hairline expressed through --color-border', () => {
   const declared = tokens()
-  const actual = Object.fromEntries(
-    Object.keys(COLOUR_TOKENS).map((name) => [name, normalise(declared.get(name))]),
-  )
-  const expected = Object.fromEntries(
-    Object.entries(COLOUR_TOKENS).map(([name, value]) => [name, normalise(value)]),
-  )
+  expect(declared.has('--shadow-card'), '--shadow-card is removed in the Court palette').toBe(false)
+  expect(declared.has('--color-border'), '--color-border is removed in the Court palette').toBe(false)
+})
+
+test('O1 tokens.css no longer declares --color-border, --color-on-accent or --shadow-card', () => {
+  const declared = tokens()
+  expect(REMOVED_TOKENS.filter((name) => declared.has(name))).toEqual([])
+})
+
+test('O1 the colour tokens carry the documented palette values', () => {
+  const { actual, expected } = compare(COLOUR_TOKENS)
+  expect(actual).toEqual(expected)
+})
+
+test('O1 the four muscle-family tint and ink tokens carry the documented values', () => {
+  const { actual, expected } = compare(FAMILY_TOKENS)
+  expect(actual).toEqual(expected)
+})
+
+test('O1 the personal-record tint, ink and ring tokens carry the documented values', () => {
+  const { actual, expected } = compare(PR_TOKENS)
   expect(actual).toEqual(expected)
 })
 
 test('O1 the body-map shade and primary/secondary tokens carry the documented values', () => {
-  const declared = tokens()
-  const actual = Object.fromEntries(
-    Object.keys(MAP_TOKENS).map((name) => [name, normalise(declared.get(name))]),
-  )
-  const expected = Object.fromEntries(
-    Object.entries(MAP_TOKENS).map(([name, value]) => [name, normalise(value)]),
-  )
+  const { actual, expected } = compare(MAP_TOKENS)
   expect(actual).toEqual(expected)
 })
 
 test('O1 the spacing, radius, tap and type scales carry the documented values', () => {
-  const declared = tokens()
-  const actual = Object.fromEntries(
-    Object.keys(SCALE_TOKENS).map((name) => [name, normalise(declared.get(name))]),
-  )
-  const expected = Object.fromEntries(
-    Object.entries(SCALE_TOKENS).map(([name, value]) => [name, normalise(value)]),
-  )
+  const { actual, expected } = compare(SCALE_TOKENS)
+  expect(actual).toEqual(expected)
+})
+
+test('O1 the motion tokens carry a 150ms fast duration and a 0.97 press scale', () => {
+  const { actual, expected } = compare(MOTION_TOKENS)
   expect(actual).toEqual(expected)
 })
 
 test('O1 --font-sans is a system stack, so no web font has to reach the phone', () => {
-  const css = readFileSync(tokensPath, 'utf-8')
   const fontSans = normalise(tokens().get('--font-sans'))
 
   expect(fontSans).toMatch(/system-ui|-apple-system/)
   expect(fontSans, '--font-sans must not load a font file').not.toMatch(/url\(/)
-  expect(css, 'tokens.css must declare no @font-face').not.toMatch(/@font-face/)
 })
 
-test('O1 --shadow-card is an inset hairline expressed through --color-border', () => {
-  const shadowCard = normalise(tokens().get('--shadow-card'))
+test('O1 --font-display names Barlow Semi-Condensed first, then the system stack', () => {
+  // Quote style and spacing are not the decision; the families and their order are.
+  const fontDisplay = normalise(tokens().get('--font-display'))
+    .replace(/"/g, "'")
+    .replace(/\s*,\s*/g, ', ')
 
-  expect(shadowCard).toMatch(/\binset\b/)
-  expect(shadowCard).toMatch(/var\(\s*--color-border/)
+  expect(fontDisplay).toBe(
+    "'barlow semi-condensed', system-ui, -apple-system, 'segoe ui', roboto, sans-serif",
+  )
+})
+
+test('O1 tokens.css declares no @font-face, so the display font is loaded elsewhere', () => {
+  expect(readFileSync(tokensPath, 'utf-8')).not.toMatch(/@font-face/)
 })
 
 test('O1 --safe-bottom reads the bottom safe-area inset and falls back to 0px', () => {
@@ -214,7 +281,35 @@ test('O1 every var(--…) under src names a token tokens.css declares', () => {
   expect(undeclared, 'these var() references name no declared token').toEqual([])
 })
 
+// The ticket's styling rule, consuming O1's new pair: every primary action paints court green
+// with its on-primary label; clay (--color-accent) is for data, not for buttons. Keyed by the
+// stylesheet and the selector that paints each action today.
+const PRIMARY_ACTIONS: ReadonlyArray<readonly [string, string]> = [
+  ['src/ui/AppShell.css', '.action-bar-slot > button'], // Log set
+  ['src/ui/WorkoutStartButtons.css', '.start-workout'], // Start
+  ['src/ui/ResumeCard.css', '.resume-workout'], // Resume
+  ['src/ui/SessionSummary.css', '.session-summary-done'], // Done
+  ['src/ui/ImportConfirm.css', '.import-confirm-confirm'],
+  ['src/ui/UpdatePill.css', '.update-pill'],
+  ['src/ui/AlternativesList.css', '.alternatives-row-choose'],
+  ['src/ui/NoProgram.css', '.no-program-choose'],
+]
+
+test('O1 every primary action paints --color-primary with a --color-on-primary label', () => {
+  const wrong = PRIMARY_ACTIONS.map(([file, selector]) => {
+    const decls = declarationsFor(read(file), selector)
+    const background = decls.get('background') ?? decls.get('background-color')
+    const color = decls.get('color')
+    return background === 'var(--color-primary)' && color === 'var(--color-on-primary)'
+      ? null
+      : `${file} ${selector}: background ${background ?? '(none)'}, color ${color ?? '(none)'}`
+  }).filter((failure): failure is string => failure !== null)
+
+  expect(wrong, 'these primary actions do not paint court green').toEqual([])
+})
+
 test('O2 every documented foreground/background pair clears 4.5:1', () => {
+  expect(CONTRAST_PAIRS, 'six text colours on three surfaces, on-primary, four families, PR').toHaveLength(24)
   const declared = tokens()
   const tooLow = CONTRAST_PAIRS.map(([foreground, background]) => {
     const fg = declared.get(foreground)

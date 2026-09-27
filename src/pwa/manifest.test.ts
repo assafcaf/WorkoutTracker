@@ -177,6 +177,16 @@ test('O5 the manifest background_color matches the --color-bg token, so the iOS 
   expect((manifest().background_color ?? '').toLowerCase()).toBe((colorBg ?? '').toLowerCase())
 })
 
+// [E10 O5] The two tests above pass whenever both sides drift together; these pin the Court
+// ivory the spec names, so the splash and status bar are the light field, not the old black.
+test('O5 the manifest theme_color is the Court ivory #F5F1E8', () => {
+  expect((manifest().theme_color ?? '').toLowerCase()).toBe('#f5f1e8')
+})
+
+test('O5 the manifest background_color is the Court ivory #F5F1E8', () => {
+  expect((manifest().background_color ?? '').toLowerCase()).toBe('#f5f1e8')
+})
+
 // [O15] Served from the root of the Cloudflare Worker behind Access (decision 0007 supersedes
 // 0003's GitHub Pages base path): the manifest's own start_url and scope must be exactly '/',
 // not merely rooted, and its <link> must ask for credentialed mode or Access's cookie never

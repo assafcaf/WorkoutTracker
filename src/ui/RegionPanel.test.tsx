@@ -111,6 +111,18 @@ test('M9 Browse exercises on a one-muscle region browses exactly that muscle', a
   expect(onBrowse.mock.calls[0][0]).toEqual(['quadriceps'])
 })
 
+// --- O9: the region heading carries the region's family chip (E10-T4) ----------------------
+
+test('O9 RegionPanel heading carries a muscle-chip for the region\'s family', () => {
+  renderUpperBack()
+
+  const panel = screen.getByRole('dialog', { name: 'upper-back' })
+  const heading = within(panel).getByRole('heading')
+  const chip = within(heading).getByText('lats')
+  expect(chip).toHaveClass('muscle-chip')
+  expect(chip).toHaveAttribute('data-family', 'pull')
+})
+
 test('M9 Close on the region panel calls onClose and does not browse', async () => {
   const user = userEvent.setup()
   const { onBrowse, onClose } = renderUpperBack()

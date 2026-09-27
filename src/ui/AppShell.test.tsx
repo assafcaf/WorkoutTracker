@@ -318,3 +318,23 @@ test('O7 TabBar reports the tab that was pressed to its onChange', async () => {
 
   expect(onChange.mock.calls).toEqual([['settings']])
 })
+
+// --- E10-T5 (O13): the court stripe under the header title ---------------------------------
+
+test('O13 AppShell renders a decorative court-stripe under the header title', () => {
+  const { container } = render(
+    <AppShell title="Workout">
+      <p>the program picker</p>
+    </AppShell>,
+  )
+
+  const header = container.querySelector('header.app-header') as HTMLElement
+  const title = header.querySelector('.app-header-title') as HTMLElement
+  const stripe = header.querySelector('.court-stripe')
+  expect(stripe).not.toBeNull()
+  expect(stripe).toHaveAttribute('aria-hidden', 'true')
+  // "under" the title: it comes after the title in the header's document order.
+  expect(
+    title.compareDocumentPosition(stripe as Element) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy()
+})

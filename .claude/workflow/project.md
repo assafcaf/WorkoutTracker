@@ -1,6 +1,6 @@
 # WorkoutTracker: working notes
 
-Mode: on   ·   Last scanned: 2026-09-23
+Mode: on   ·   Last scanned: 2026-09-27
 
 Every line below is transcribed from a committed decision record or carries a path a scanner
 checked. Nothing here is a model's opinion about how the project should work. Where a line
@@ -26,17 +26,27 @@ non-goals in full.
 | `src/domain/prefill.ts` | The values a set opens with, from the last finished session |
 | `src/data/catalog.ts` | Loads the bundled catalog and validates programs' `exerciseId`s against it |
 | `src/data/exercises.json` | The catalog: what each lift is (weight step, start weight, bodyweight, info link) |
-| `src/data/programs` | Prescriptions referencing catalog ids — sets, rep ranges, order, rest |
-| `src/storage/db.ts` | The Dexie database, its `sessions` and `settings` tables, and `isStorageAvailable()` |
+| `src/data/programs` | Bundled Programs referencing catalog ids — sets, rep ranges, order, rest |
+| `src/data/library.ts`, `src/data/library/` | The bundled free-exercise-db library (pinned commit, the 17 `MUSCLES`) and its video links |
+| `src/data/resolve.ts` | `resolveExercise`: a catalog id as-is, else an Exercise built from the library entry |
+| `src/domain/muscles.ts` | `Muscle` → `Region`, `MuscleFamily` and `familyOf`, and the `Resolve` type |
+| `src/domain/programs.ts` | `mergePrograms` (bundled plus the user's own) and `ProgramFault` validation |
+| `src/storage/db.ts` | The Dexie database, its `sessions` and `settings` tables (v2 adds `updatedAt` for sync), and `isStorageAvailable()` |
 | `src/storage/sessionStore.ts` | Start/resume, log a set, finish, active session, history (capped at 200 sessions) |
-| `src/storage/settingsStore.ts` | Typed get/set over the `settings` table: `activeProgramId`, `lastExportedAt` |
+| `src/storage/settingsStore.ts` | Typed get/set over the `settings` table: `activeProgramId`, `lastExportedAt`, `gymEquipment`, `weightSteps`, `volumeBaseline`, `userPrograms` |
 | `src/storage/backup.ts` | Whole-database export/import as one versioned JSON file |
+| `src/sync/` | The client side of sync: `syncClient.ts` (push/pull by cursor), `useSync.ts`, and `protocol.ts`, the wire types the Worker shares |
+| `src/worker/` | The Cloudflare Worker: `/api/*` routes, Access JWT check (`auth.ts`), D1 sync and replace (`sync.ts`) |
+| `migrations/` | The D1 schema: `sessions`, `settings`, `counters` |
 | `src/ui/AppShell.tsx` | Header, tab bar, and the sticky action-bar slot screens portal into |
 | `src/ui/actionBarSlot.ts` | That portal, so a screen owns its own state-gated control |
+| `src/ui/body/` | `BodyMap` (Regions shaded by band) and its legend and polygon data |
+| `src/ui/MuscleChip.tsx` | A muscle name tinted by its family (`data-family`) |
 | `src/pwa/registerSW.ts` | Service-worker registration and the update handle the app drives |
-| `src/styles/tokens.css` | The one definition site: exactly 29 custom properties, dark-only |
+| `src/styles/tokens.css` | The one definition site: exactly 49 custom properties, light-only |
+| `src/styles/fonts.css`, `src/assets/fonts/` | The vendored Barlow Semi-Condensed 600 display face (OFL) |
 | `src/test/setup.ts` | Vitest global setup — see Commands |
-| `src/types.ts` | `Exercise`, `ExercisePlan`, `Workout`, `Program`, `SetEntry`, `Session` |
+| `src/types.ts` | `Exercise`, `LibraryExercise`, `Muscle`, `ExercisePlan`, `Workout`, `Program`, `UserProgram`, `SetEntry`, `Session`, `VolumeBaseline` |
 
 ## Commands
 
@@ -47,7 +57,8 @@ The gates live in `config.md`'s Commands table. Only what that table cannot say 
 - `node scripts/generate-icons.mjs` regenerates the three PWA icons. It is not a
   `package.json` script.
 - Deployment is `.github/workflows/deploy.yml` on push to `main`: `npm ci`, `npm run build`,
-  publish `dist` to GitHub Pages.
+  `wrangler d1 migrations apply`, `wrangler deploy`. By hand: `CLAUDE.md`, "Deploying".
+- `npx tsx scripts/build-videos.ts` rebuilds `src/data/library/videos.json`. Not a script.
 
 ## Invariants
 
@@ -69,9 +80,12 @@ The gates live in `config.md`'s Commands table. Only what that table cannot say 
 
 ## Standing overlaps
 
-None yet. Across the whole history no file is touched by more than 2 commits, so nothing here
-forces two tasks into different waves. Re-check once more history accrues — the
-`batch-implement` knowledge-gaps report is the loop that fills this in.
+Of the last 40 non-merge commits touching `src/` (epics land on `main` squashed, so these are
+E10's and the few before):
+
+- `src/App.test.tsx` 12, `src/App.tsx` 10
+- `vite.config.ts` 8, `src/styles/base.css` 8, `src/ui/AppShell.css` 8, `src/ui/Settings.tsx` 8
+- `src/ui/SetScreen.tsx` 7
 
 ## Pitfalls
 
@@ -89,11 +103,13 @@ forces two tasks into different waves. Re-check once more history accrues — th
 
 ## Unsettled
 
-Found by the 2026-09-23 scan, not yet ruled on. Each is a fact with a path, not a
-recommendation.
+Found by the 2026-09-23 and 2026-09-27 scans, not yet ruled on. Each is a fact with a path,
+not a recommendation.
 
-- **`invertProgress` has no consumer.** Declared in `src/types.ts`, seeded `true` for
-  assisted-pull-ups in `src/data/exercises.json`, tested in `src/data/catalog.test.ts` — and
-  read by nothing in `src/domain` or `src/ui`.
+- **"Replace" runs both ways.** `src/storage/backup.ts` `replaceAll` overwrites the local
+  database from a file; `src/sync/syncClient.ts` `replaceRemote` overwrites the server.
+- **Two resolvers.** The `Resolve` type in `src/domain/muscles.ts` and `resolveExercise` in
+  `src/data/resolve.ts` both look an id up as an Exercise.
+- **`npm run deploy` skips the D1 migrations** that `.github/workflows/deploy.yml` applies.
 - **Settings are reached two ways.** `src/storage/backup.ts` reads the active-program key
   straight off the table at line 45 rather than through `src/storage/settingsStore.ts`.

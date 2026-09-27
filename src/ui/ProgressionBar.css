@@ -21,7 +21,7 @@
   background: var(--color-accent);
   /* The fill holds no text, but the contrast audit wants every accent background to name its
    * own foreground. */
-  color: var(--color-on-accent);
+  color: var(--color-on-primary);
 }
 
 .progression-next {

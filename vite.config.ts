@@ -25,7 +25,7 @@ export default defineConfig({
         // Workbox's default glob is '**/*.{js,wasm,css,html}' (the icons and the manifest are
         // added by the plugin itself). The bundled exercise photos in public/library-photos/
         // are .jpg, so they are named here too, or they would not work offline.
-        globPatterns: ['**/*.{js,wasm,css,html,jpg}'],
+        globPatterns: ['**/*.{js,wasm,css,html,jpg,woff2}'],
         // The Worker answers /api/ itself (E7-T1) and Access owns /cdn-cgi/; without this the
         // navigation fallback would answer both from the cached SPA shell instead of letting
         // them reach the Worker.
@@ -55,8 +55,8 @@ export default defineConfig({
         // Matches --color-bg in src/styles/tokens.css, so the iOS splash screen and status
         // bar do not seam against the app's own background on launch. Kept in sync by
         // src/pwa/manifest.test.ts's O5 tests rather than by reading tokens.css at config time.
-        theme_color: '#0B0B0F',
-        background_color: '#0B0B0F',
+        theme_color: '#F5F1E8',
+        background_color: '#F5F1E8',
         // Relative to the manifest, which the browser fetches from under `base`.
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -76,5 +76,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // Form tests that user.type() several fields run past vitest's 5s default when the full
+    // suite shares the machine with other agents' runs; the time is load, not a hang.
+    testTimeout: 15000,
   },
 })

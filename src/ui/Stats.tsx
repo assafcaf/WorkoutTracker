@@ -7,6 +7,7 @@ import type { Resolve } from '../domain/muscles'
 import type { Exercise, ExercisePlan, Program, Session } from '../types'
 import { BarChart } from './charts/BarChart'
 import { LineChart } from './charts/LineChart'
+import { CourtStripe } from './CourtStripe'
 import { ProgressionBar } from './ProgressionBar'
 import './Stats.css'
 
@@ -117,6 +118,9 @@ function ExerciseProgress({ sessions, resolve, programs }: StatsProps): JSX.Elem
         <ul className="stats-records">
           {records.map((record) => (
             <li key={record.kind} className="stats-record">
+              <span className="pr-medallion" aria-hidden="true">
+                <CourtStripe />
+              </span>{' '}
               <span className="stats-record-label">{record.label}</span>{' '}
               <span className="stats-record-value">{`${Math.round(record.value * 10) / 10} ${recordUnit(record)}`}</span>{' '}
               <span className="stats-record-date">{calendarDate(record.at)}</span>

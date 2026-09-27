@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { AlternativesList } from './AlternativesList'
 import { BodyMap } from './body/BodyMap'
+import { MuscleChip } from './MuscleChip'
 import { toRegionCounts, type Region } from '../domain/muscles'
 import type { LibraryExercise, Muscle, Video } from '../types'
 import './ExerciseDetail.css'
@@ -35,6 +36,20 @@ function exerciseRegionCounts(entry: LibraryExercise): Map<Region, number> {
     muscleCounts.set(muscle, (muscleCounts.get(muscle) ?? 0) + 0.5)
   }
   return toRegionCounts(muscleCounts)
+}
+
+/** `muscles`, each as its family-tinted `MuscleChip` (E10-T4), comma-separated. */
+function muscleChips(muscles: Muscle[]): JSX.Element {
+  return (
+    <>
+      {muscles.map((muscle, index) => (
+        <Fragment key={muscle}>
+          {index > 0 && ', '}
+          <MuscleChip muscle={muscle} />
+        </Fragment>
+      ))}
+    </>
+  )
 }
 
 /**
@@ -78,8 +93,8 @@ export function ExerciseDetail({
       <h1 className="exercise-detail-heading">{heading ?? entry.name}</h1>
 
       <div className="exercise-detail-profile">
-        <p className="exercise-detail-field">Primary muscle: {entry.primaryMuscles.join(', ')}</p>
-        <p className="exercise-detail-field">Secondary muscles: {entry.secondaryMuscles.join(', ')}</p>
+        <p className="exercise-detail-field">Primary muscle: {muscleChips(entry.primaryMuscles)}</p>
+        <p className="exercise-detail-field">Secondary muscles: {muscleChips(entry.secondaryMuscles)}</p>
         <p className="exercise-detail-field">Equipment: {entry.equipment}</p>
         <p className="exercise-detail-field">Mechanic: {entry.mechanic}</p>
         <p className="exercise-detail-field">Force: {entry.force}</p>

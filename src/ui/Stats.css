@@ -16,7 +16,6 @@
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
 }
 
 .stats-heading {
@@ -47,7 +46,8 @@
   flex: 1;
   min-height: 44px;
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-border);
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--color-muted);
   border-radius: var(--radius-sm);
   background: var(--color-raised);
   color: var(--color-text);
@@ -74,10 +74,26 @@
 .stats-record-value {
   color: var(--color-text);
   font-weight: 600;
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
 }
 
 .stats-record-date {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
+}
+
+/* The PR medallion (E10-T5): a small gold-toned badge marking every record, holding the one
+ * court-stripe cue. */
+.pr-medallion {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--pr-ring);
+  border-radius: var(--radius-pill);
+  background: var(--pr-tint);
+  color: var(--pr-ink);
 }

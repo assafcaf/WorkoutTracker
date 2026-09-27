@@ -19,7 +19,16 @@
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+}
+
+/* The sport cue on every workout card (E10-T5): a 4px leading edge, alternating primary and
+ * accent by position. */
+.workout-start-buttons .workout-card[data-stripe='primary'] {
+  border-left: 4px solid var(--color-primary);
+}
+
+.workout-start-buttons .workout-card[data-stripe='accent'] {
+  border-left: 4px solid var(--color-accent);
 }
 
 .start-workout {
@@ -30,8 +39,8 @@
   justify-content: center;
   border: 0;
   border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
   font-size: var(--text-md);
   font-weight: 600;
 }

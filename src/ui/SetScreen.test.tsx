@@ -88,8 +88,8 @@ function renderSetScreen(over: Partial<SetScreenProps> = {}) {
     onOpenInfo,
     ...over,
   }
-  render(<SetScreen {...props} />)
-  return { user, onLogged, onOpenInfo }
+  const { unmount } = render(<SetScreen {...props} />)
+  return { user, onLogged, onOpenInfo, unmount }
 }
 
 /** The weight readout, which is also the button that opens the weight keypad. */
@@ -710,4 +710,29 @@ test('O1 a weightStep prop of 5 opens the control already reading Step 5 kg', ()
   renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
 
   expect(stepControl(5)).toBeInTheDocument()
+})
+
+// --- O19: the logged confirmation carries the family it glows in (E10-T8) -------------------
+
+test('O19 the logged confirmation carries data-family for the family prop, and none when it is undefined', async () => {
+  // With a family: the resolved MuscleFamily App.tsx hands in for the Exercise on screen.
+  const { user, unmount } = renderSetScreen({ family: 'legs', setIndex: 2, lastEntries: [] })
+
+  await user.click(logButton())
+
+  await waitFor(() => {
+    expect(screen.getByRole('status').textContent).toBe('Set 2 logged · 50 kg × 8')
+  })
+  expect(screen.getByRole('status')).toHaveAttribute('data-family', 'legs')
+
+  // Without one: an Exercise with no library link, so App.tsx has nothing to resolve.
+  unmount()
+  const { user: user2 } = renderSetScreen({ family: undefined, setIndex: 2, lastEntries: [] })
+
+  await user2.click(logButton())
+
+  await waitFor(() => {
+    expect(screen.getByRole('status').textContent).toBe('Set 2 logged · 50 kg × 8')
+  })
+  expect(screen.getByRole('status')).not.toHaveAttribute('data-family')
 })

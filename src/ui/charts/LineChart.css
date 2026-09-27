@@ -1,6 +1,6 @@
 /* LineChart (E4-T7): every colour comes through a `var(--…)` from src/styles/tokens.css. No
- * literal colour and no token added here. The series is the accent; gridlines are hairlines one
- * step off the surface; all text uses the text tokens, never the series colour.
+ * literal colour and no token added here. The series is clay (the accent); gridlines are the
+ * raised tone, one step off the surface; all text uses the text tokens, never the series colour.
  */
 
 .line-chart {
@@ -16,7 +16,7 @@
 }
 
 .line-chart-grid {
-  stroke: var(--color-border);
+  stroke: var(--color-raised);
   stroke-width: 1px;
   shape-rendering: crispEdges;
 }
@@ -33,7 +33,7 @@
   fill: var(--color-accent);
   /* The marker holds no text, but the contrast audit wants every accent fill to name its own
    * foreground. */
-  color: var(--color-on-accent);
+  color: var(--color-on-primary);
   stroke: var(--color-surface);
   stroke-width: 2px;
 }

@@ -62,6 +62,16 @@ An Exercise carrying no weight at all, as opposed to one loaded with zero. Its w
 rather than `0`.
 _Avoid_: Unweighted, freeweight, no-load
 
+**Region**:
+A zone of the body map, shaded by how many sets reached it and tapped to see what trained it.
+Each of the 17 muscles maps to at least one Region (`shoulders` to two).
+_Avoid_: Area, zone, body part
+
+**Muscle family**:
+One of four body-area groups — push, pull, legs, core — that every muscle and Region belongs
+to, and the tint a muscle's chip wears.
+_Avoid_: Muscle group, category, colour group
+
 **Shell**:
 The frame around whatever screen is showing: the header, the tab bar, and the sticky action bar
 a screen puts its own control into. Not the precached bundle — call that the **precache**.
@@ -74,12 +84,12 @@ what goes there and when it is enabled.
 _Avoid_: Footer, toolbar, CTA bar, bottom bar
 
 **Token**:
-One of the 29 custom properties that are the only place a colour, space, radius or type size is
-defined. A closed set — adding a thirtieth is a decision, not a detail.
-See `docs/decisions/0004-one-palette-one-shell-audited-as-data.md`.
+One of the 49 custom properties that are the only place a colour, space, radius or type size is
+defined. A closed set — adding a fiftieth is a decision, not a detail.
+See `docs/decisions/0009-court-a-light-mellow-sport-design-language.md`.
 _Avoid_: Variable, custom property, theme value
 
 **Palette**:
-The colour Tokens specifically. There is one, and it is dark-only — there is no light mode to
-keep in step.
+The colour Tokens specifically. There is one, the light "Court" palette — ivory, court green,
+clay and four muscle-family tints — and no dark mode to keep in step.
 _Avoid_: Theme, colour scheme, skin

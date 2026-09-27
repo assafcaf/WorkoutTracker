@@ -16,7 +16,6 @@
   z-index: 10;
   display: flex;
   padding-top: var(--safe-top);
-  border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
 }
 
@@ -37,9 +36,9 @@
   font-size: var(--text-xs);
 }
 
-/* The current tab is the one thing in the bar that carries the accent. */
+/* The current tab is the one thing in the bar that carries court green. */
 .tab-bar-tab[aria-current='page'] {
-  color: var(--color-accent);
+  color: var(--color-primary);
 }
 
 .tab-bar-glyph {

@@ -24,7 +24,6 @@
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
 }
 
 /* The group's name, visible above the minus/readout/plus row. */
@@ -76,7 +75,6 @@
   list-style: none;
   border-radius: var(--radius-sm);
   background: var(--color-bg);
-  box-shadow: var(--shadow-card);
   scrollbar-width: none;
   overscroll-behavior: contain;
 }
@@ -100,7 +98,7 @@
 }
 
 .dial-rung[aria-selected='true'] {
-  color: var(--color-accent);
+  color: var(--color-primary);
   font-weight: 700;
   font-size: var(--text-xl);
 }
@@ -114,7 +112,6 @@
   border: none;
   border-radius: var(--radius-pill);
   background: var(--color-raised);
-  box-shadow: var(--shadow-card);
   color: var(--color-text);
   font-size: var(--text-xl);
   line-height: 1;
@@ -122,13 +119,14 @@
 }
 
 .dial-step:active {
-  background: var(--color-border);
+  background: var(--color-bg);
 }
 
 /* The readout that opens the keypad. */
 .dial-readout {
   min-height: var(--tap-min);
   font-size: var(--text-display);
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
 
   padding: 0;
