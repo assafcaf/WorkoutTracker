@@ -86,4 +86,34 @@ single definition site and audit-as-data machinery stand.
   - The display font has no Hebrew; any Hebrew UI string falls back to the system font.
 
 ## Outcome
-Added when the epic lands.
+Built in E10 on `epic/E10-court-design-language`: ten tasks, all done.
+
+- **Palette and tokens (T1, T9):** the Court palette in `src/styles/tokens.css`, 49 tokens, and the
+  manifest colours set to `#F5F1E8`. The glossary and the decision index follow it.
+- **Light-only and the fill audit (T2):** `color-scheme: light`. The coloured-fill audit now guards
+  every coloured token, not only the old greens.
+- **Muscle families (T3, T4):** `familyOf` and `MuscleChip` appear in the Library, exercise detail
+  and region panel.
+- **Sport cues (T5):** `CourtStripe` in the header, session summary and PR medallion. Workout cards
+  get coloured leading edges.
+- **Body map (T6):** every region is outlined.
+- **Display font (T7):** vendored Barlow Semi-Condensed 600 with tabular figures, precached.
+- **Motion (T8):** press scaling, and a family glow on a logged set. Both are off under reduced
+  motion.
+
+Departures from the spec, and why:
+
+- **The iPhone check (T10) ran on the local dev app in Chrome**, on the operator's ruling, not
+  on the installed app. The Barlow numerals, the press and the ivory page passed. The iOS status
+  bar and splash, and the offline cold launch, were not verified: they need the deployed,
+  installed app.
+- **The court stripe declares `color: var(--color-on-primary)`.** It paints primary green, and
+  the widened fill audit (T2) requires a text colour on every coloured fill, even a decorative
+  one.
+- **`SetScreen` takes a resolved `family` prop** that `App.tsx` computes, so the set screen
+  stays free of library lookups.
+- **Two test-harness changes** kept load flakes from reverting real work:
+  - `src/App.test.tsx` awaits its `Log set` lookups.
+  - vitest's per-test timeout is 15s.
+- **Barlow's default digits are proportional.** Its `tnum` feature makes them equal width, so
+  every selector using `--font-display` also declares `tabular-nums`.
