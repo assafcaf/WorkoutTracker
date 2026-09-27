@@ -1,0 +1,14 @@
+/* Barlow Semi-Condensed, weight 600, vendored under OFL for the display face (E10-T7). See
+ * src/assets/fonts/OFL.txt for the licence text.
+ *
+ * Its digits are not uniform width by default, but it carries a `tnum` GSUB feature giving
+ * every digit the same advance width — the selectors that use this face also declare
+ * `font-variant-numeric: tabular-nums`, which invokes it.
+ */
+@font-face {
+  font-family: 'Barlow Semi-Condensed';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('../assets/fonts/barlow-semi-condensed-600-latin.woff2') format('woff2');
+}
