@@ -8,5 +8,22 @@ export type ChangeBus = {
 }
 
 export function createChangeBus(): ChangeBus {
-  throw new Error('not implemented')
+  const subscribers = new Map<ChangeTopic, Set<() => void>>()
+
+  return {
+    subscribe(topic, fn) {
+      let topicSubscribers = subscribers.get(topic)
+      if (!topicSubscribers) {
+        topicSubscribers = new Set()
+        subscribers.set(topic, topicSubscribers)
+      }
+      topicSubscribers.add(fn)
+      return () => {
+        topicSubscribers?.delete(fn)
+      }
+    },
+    emit(topic) {
+      subscribers.get(topic)?.forEach((fn) => fn())
+    },
+  }
 }

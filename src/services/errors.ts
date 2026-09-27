@@ -20,5 +20,16 @@ export async function callStorage<T>(
   op: () => Promise<T>,
   message: string,
 ): Promise<T> {
-  throw new Error('not implemented')
+  if (!deps.storageAvailable) {
+    throw new ServiceError('storage-unavailable', message)
+  }
+
+  try {
+    return await op()
+  } catch (err) {
+    if (err instanceof ServiceError) {
+      throw err
+    }
+    throw new ServiceError('storage-failed', message)
+  }
 }
