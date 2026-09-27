@@ -16,8 +16,12 @@ export function WorkoutStartButtons(props: WorkoutStartButtonsProps): JSX.Elemen
   return (
     <div className="workout-start-buttons">
       <h2>{program.name}</h2>
-      {program.workouts.map((workout) => (
-        <section key={workout.id} className="workout-card">
+      {program.workouts.map((workout, index) => (
+        <section
+          key={workout.id}
+          className="workout-card"
+          data-stripe={index % 2 === 0 ? 'primary' : 'accent'}
+        >
           <h3>{workout.name}</h3>
           <button type="button" className="start-workout" onClick={() => onStart(workout.id)}>
             Start {workout.name}
