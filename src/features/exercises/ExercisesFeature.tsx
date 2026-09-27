@@ -1,5 +1,10 @@
+import { useState } from 'react'
 import type { Muscle } from '../../types'
+import { MUSCLES } from '../../data/library'
+import { LibraryList } from '../../ui/LibraryList'
 import type { AppRoute } from '../routes'
+import { DetailOverlay } from '../overlays/DetailOverlay'
+import { useServiceData } from '../useServiceData'
 
 export type ExercisesFeatureProps = {
   /**
@@ -14,10 +19,98 @@ export type ExercisesFeatureProps = {
  * The Exercises tab as its own container over services (E11-T12): search, filter and open an
  * exercise's detail, as today (formerly `App.tsx`'s `'exercises'` view branch), optionally
  * opened filtered to `initialMuscles`.
- *
- * STUB (E11-T12 test-designer): not implemented yet -- renders a placeholder only, so the tests
- * below fail on missing content rather than a thrown error.
  */
-export function ExercisesFeature(_props: ExercisesFeatureProps): JSX.Element {
-  return <div data-testid="exercises-feature-stub" />
+export function ExercisesFeature({ initialMuscles }: ExercisesFeatureProps): JSX.Element | null {
+  const [search, setSearch] = useState('')
+  const [muscle, setMuscle] = useState('')
+  const [equipment, setEquipment] = useState('')
+  const [openLibraryId, setOpenLibraryId] = useState<string | null>(null)
+
+  const catalogData = useServiceData((s) => s.catalog.load(), [])
+  const gymEquipment = useServiceData((s) => s.preferences.gymEquipment(), ['preferences'])
+
+  if (catalogData.status !== 'ready' || gymEquipment.status !== 'ready') return null
+
+  const { catalog, library, videos } = catalogData.data
+
+  const equipmentOptions = Array.from(new Set(library.map((exercise) => exercise.equipment)))
+    .sort((a, b) => {
+      if (a === null) return 1
+      if (b === null) return -1
+      return a.localeCompare(b)
+    })
+    .map((option) => option ?? 'none')
+
+  const trimmedSearch = search.trim().toLowerCase()
+  const filteredLibrary = library.filter((exercise) => {
+    const matchesSearch =
+      trimmedSearch === '' || exercise.name.toLowerCase().includes(trimmedSearch)
+    const matchesMuscle = muscle === '' || exercise.primaryMuscles.includes(muscle as Muscle)
+    const matchesEquipment =
+      equipment === ''
+        ? true
+        : equipment === 'none'
+          ? exercise.equipment === null
+          : exercise.equipment === equipment
+
+    return matchesSearch && matchesMuscle && matchesEquipment
+  })
+
+  return (
+    <>
+      <div className="library-filters">
+        <input
+          type="search"
+          aria-label="Search exercises"
+          placeholder="Search exercises"
+          className="library-search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <select
+          aria-label="Muscle"
+          className="library-filter"
+          value={muscle}
+          onChange={(event) => setMuscle(event.target.value)}
+        >
+          <option value="">All muscles</option>
+          {MUSCLES.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Equipment"
+          className="library-filter"
+          value={equipment}
+          onChange={(event) => setEquipment(event.target.value)}
+        >
+          <option value="">All equipment</option>
+          {equipmentOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+      <LibraryList
+        library={filteredLibrary}
+        onOpen={setOpenLibraryId}
+        gymEquipment={gymEquipment.data}
+        initialMuscles={initialMuscles ?? undefined}
+      />
+      {openLibraryId === null ? null : (
+        <DetailOverlay
+          libraryId={openLibraryId}
+          catalog={catalog}
+          library={library}
+          videos={videos}
+          gymEquipment={gymEquipment.data}
+          onBack={() => setOpenLibraryId(null)}
+          onOpenDetail={setOpenLibraryId}
+        />
+      )}
+    </>
+  )
 }
