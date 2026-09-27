@@ -6,6 +6,11 @@ import type { AppRoute } from '../routes'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import { useServiceData } from '../useServiceData'
 
+/** The Exercises tab's search text and its muscle and equipment filters; `''` means none. */
+export type LibraryFilters = { search: string; muscle: string; equipment: string }
+
+const NO_LIBRARY_FILTERS: LibraryFilters = { search: '', muscle: '', equipment: '' }
+
 export type ExercisesFeatureProps = {
   /**
    * The muscles a region panel's "Browse exercises" opened the tab on (E5-T20, M9), or `null`
@@ -13,6 +18,12 @@ export type ExercisesFeatureProps = {
    */
   initialMuscles: Muscle[] | null
   navigate(to: AppRoute): void
+  /**
+   * The search and filters, when the app keeps them across visits to the tab (as `App.tsx` always
+   * has); omitted, the tab keeps its own for as long as it is mounted.
+   */
+  filters?: LibraryFilters
+  onFiltersChange?(filters: LibraryFilters): void
 }
 
 /**
@@ -20,10 +31,19 @@ export type ExercisesFeatureProps = {
  * exercise's detail, as today (formerly `App.tsx`'s `'exercises'` view branch), optionally
  * opened filtered to `initialMuscles`.
  */
-export function ExercisesFeature({ initialMuscles }: ExercisesFeatureProps): JSX.Element | null {
-  const [search, setSearch] = useState('')
-  const [muscle, setMuscle] = useState('')
-  const [equipment, setEquipment] = useState('')
+export function ExercisesFeature({
+  initialMuscles,
+  filters: heldFilters,
+  onFiltersChange,
+}: ExercisesFeatureProps): JSX.Element | null {
+  const [ownFilters, setOwnFilters] = useState<LibraryFilters>(NO_LIBRARY_FILTERS)
+  const filters = heldFilters ?? ownFilters
+  const { search, muscle, equipment } = filters
+  function setFilter(change: Partial<LibraryFilters>): void {
+    const next = { ...filters, ...change }
+    setOwnFilters(next)
+    onFiltersChange?.(next)
+  }
   const [openLibraryId, setOpenLibraryId] = useState<string | null>(null)
 
   const catalogData = useServiceData((s) => s.catalog.load(), [])
@@ -65,13 +85,13 @@ export function ExercisesFeature({ initialMuscles }: ExercisesFeatureProps): JSX
           placeholder="Search exercises"
           className="library-search"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => setFilter({ search: event.target.value })}
         />
         <select
           aria-label="Muscle"
           className="library-filter"
           value={muscle}
-          onChange={(event) => setMuscle(event.target.value)}
+          onChange={(event) => setFilter({ muscle: event.target.value })}
         >
           <option value="">All muscles</option>
           {MUSCLES.map((option) => (
@@ -84,7 +104,7 @@ export function ExercisesFeature({ initialMuscles }: ExercisesFeatureProps): JSX
           aria-label="Equipment"
           className="library-filter"
           value={equipment}
-          onChange={(event) => setEquipment(event.target.value)}
+          onChange={(event) => setFilter({ equipment: event.target.value })}
         >
           <option value="">All equipment</option>
           {equipmentOptions.map((option) => (

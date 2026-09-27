@@ -1,7 +1,7 @@
 import {
+  BACKUP_SCHEMA_VERSION,
   BackupFormatError,
-  downloadOrShare,
-  exportBackup,
+  backupFileName,
   importPlan,
   readBackup,
   type BackupFile,
@@ -16,7 +16,13 @@ import {
   VOLUME_BASELINE_KEY,
   WEIGHT_STEPS_KEY,
   deleteKeys,
+  getGymEquipment,
+  getLastExportedAt,
+  getUserPrograms,
+  getVolumeBaseline,
+  getWeightSteps,
   putRows,
+  readRow,
   setLastExportedAt,
 } from '../storage/settingsStore'
 import { inTransaction } from '../storage/transaction'
@@ -37,6 +43,74 @@ export type BackupService = {
   confirmImport(pending: PendingImport): Promise<SyncResult>
 }
 
+/** Every logged session and the settings this app owns, as of `now` (moved from storage, E11-T15). */
+async function buildBackupFile(now: number): Promise<BackupFile> {
+  const [
+    sessions,
+    activeProgramRow,
+    lastExportedAt,
+    gymEquipment,
+    weightSteps,
+    volumeBaseline,
+    userPrograms,
+  ] = await Promise.all([
+    listSessions(),
+    readRow(ACTIVE_PROGRAM_ID_KEY),
+    getLastExportedAt(),
+    getGymEquipment(),
+    getWeightSteps(),
+    getVolumeBaseline(),
+    getUserPrograms(),
+  ])
+  const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
+
+  return {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: now,
+    sessions,
+    settings: {
+      activeProgramId,
+      lastExportedAt,
+      gymEquipment,
+      weightSteps,
+      volumeBaseline,
+      userPrograms,
+    },
+  }
+}
+
+/**
+ * Hands `file` to the browser's share sheet when `navigator.canShare({ files })` says it can,
+ * otherwise downloads it through an object-URL anchor, then records `lastExportedAt` as the
+ * file's `exportedAt`, stamped at `now`.
+ */
+async function shareBackupFile(file: BackupFile, now: number): Promise<void> {
+  const name = backupFileName(file.exportedAt)
+  const blob = new Blob([JSON.stringify(file)], { type: 'application/json' })
+  const shareFile = new File([blob], name, { type: 'application/json' })
+
+  const canShare =
+    typeof navigator.canShare === 'function' &&
+    typeof navigator.share === 'function' &&
+    navigator.canShare({ files: [shareFile] })
+
+  if (canShare) {
+    await navigator.share({ files: [shareFile] })
+  } else if (typeof URL.createObjectURL === 'function') {
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = name
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+  // Else: neither the share sheet nor object URLs are available. Every real browser supports at
+  // least one of them; this only happens in test environments that exercise the pre-import
+  // safety copy without standing in for one -- not a failure worth rejecting the import for.
+
+  await setLastExportedAt(file.exportedAt, now)
+}
+
 /**
  * Exports, reads and confirms a backup import through E11-T2's repository operations, stamping
  * `lastExportedAt` and announcing every change topic an import touches (E11-T8).
@@ -50,9 +124,7 @@ export function createBackupService(
         deps,
         async () => {
           const now = deps.now()
-          const file = await exportBackup(now)
-          await downloadOrShare(file)
-          await setLastExportedAt(file.exportedAt, now)
+          await shareBackupFile(await buildBackupFile(now), now)
           deps.bus.emit('preferences')
         },
         'the backup could not be exported',
@@ -87,8 +159,8 @@ export function createBackupService(
           const { file } = pending
           const now = deps.now()
 
-          // A safety copy of what is about to be overwritten, as `replaceAll` makes.
-          await downloadOrShare(await exportBackup(now))
+          // A safety copy of what is about to be overwritten, before anything is written.
+          await shareBackupFile(await buildBackupFile(now), now)
 
           await inTransaction('rw', async () => {
             await replaceAllSessions(file.sessions)

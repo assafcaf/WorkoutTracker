@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { App } from './App'
+import { renderApp } from './test/renderApp'
 import { db } from './storage/db'
 import { FakeSyncServer } from './test/fakeSyncServer'
 
@@ -39,7 +39,7 @@ async function openProgramTab(user: ReturnType<typeof userEvent.setup>): Promise
 
 test('O21 a new user’s Program tab lists A/B Split with a Use this button', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
 
@@ -51,7 +51,7 @@ test('O21 a new user’s Program tab lists A/B Split with a Use this button', as
 
 test('O21 a new user’s Program tab does not list Full body starter', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE)
@@ -61,7 +61,7 @@ test('O21 a new user’s Program tab does not list Full body starter', async () 
 
 test('O21 pressing Use this on A/B Split makes it active and the Workout tab offers Workout A and B', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   await user.click(await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE))
@@ -74,7 +74,7 @@ test('O21 pressing Use this on A/B Split makes it active and the Workout tab off
 
 test('O21 pressing Use this on A/B Split stores it as the active program', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   await user.click(await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE))
@@ -89,7 +89,7 @@ test('O21 pressing Use this on A/B Split stores it as the active program', async
 test('O21 with an active program the Program tab still does not list Full body starter', async () => {
   const user = userEvent.setup()
   await db.settings.put({ key: 'activeProgramId', value: 'assaf-ab-2026', updatedAt: Date.now() })
-  render(<App />)
+  await renderApp()
 
   await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
   await openProgramTab(user)
@@ -100,7 +100,7 @@ test('O21 with an active program the Program tab still does not list Full body s
 test('O21 with an active program Settings still does not list Full body starter', async () => {
   const user = userEvent.setup()
   await db.settings.put({ key: 'activeProgramId', value: 'assaf-ab-2026', updatedAt: Date.now() })
-  render(<App />)
+  await renderApp()
 
   await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
   await user.click(await screen.findByRole('button', { name: 'Settings' }, SETTLE))

@@ -17,7 +17,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { App } from '../App'
+import { renderApp } from '../test/renderApp'
 import { useServiceWorkerUpdate } from '../pwa/registerSW'
 import { db } from '../storage/db'
 import { setActiveProgramId } from '../storage/settingsStore'
@@ -236,7 +236,7 @@ test('O5 useServiceWorkerUpdate needs no refresh when the browser has no service
 // --- the outcome: an update found while a workout is under way -------------------------------
 
 test('O5 App listens for an update from the moment it starts, without offering the control', async () => {
-  render(<App />)
+  await renderApp()
   await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
 
   // Without the registration the absent control below would be vacuous: an app that never
@@ -247,7 +247,7 @@ test('O5 App listens for an update from the moment it starts, without offering t
 
 test('O5 an update found mid-session leaves the session in progress on screen', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
   await user.click(screen.getByRole('button', { name: 'Log set' }))
@@ -263,7 +263,7 @@ test('O5 an update found mid-session leaves the session in progress on screen', 
 
 test('O5 an update found mid-session reloads nothing and activates no waiting worker', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
@@ -275,7 +275,7 @@ test('O5 an update found mid-session reloads nothing and activates no waiting wo
 
 test('O5 an update found mid-session offers the Update ready control', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
@@ -286,7 +286,7 @@ test('O5 an update found mid-session offers the Update ready control', async () 
 
 test('O5 the Update ready control stays up as the session carries on', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   deployNewVersion()
@@ -300,7 +300,7 @@ test('O5 the Update ready control stays up as the session carries on', async () 
 
 test('O5 using the Update ready control lets the new version take over', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   deployNewVersion()

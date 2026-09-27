@@ -1,7 +1,7 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { App } from './App'
+import { renderApp } from './test/renderApp'
 import abSplitJson from './data/programs/assaf-ab-2026.json'
 import { db } from './storage/db'
 import { USER_PROGRAMS_KEY } from './storage/settingsStore'
@@ -258,7 +258,7 @@ test('O10 Delete then Confirm on a user Program removes it from the Program tab'
   await storeUserPrograms([pushPullLegs()])
   await storeActive('assaf-ab-2026')
   for (const session of finishedPplSessions()) await db.sessions.put(session)
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
@@ -273,14 +273,14 @@ test('O10 a deleted user Program stays gone from the Program tab after a restart
   await storeUserPrograms([pushPullLegs()])
   await storeActive('assaf-ab-2026')
   for (const session of finishedPplSessions()) await db.sessions.put(session)
-  const first = render(<App />)
+  const first = await renderApp()
 
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
   await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
   first.unmount()
   cleanup()
-  render(<App />)
+  await renderApp()
   await openProgramTab(user)
 
   expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull()
@@ -292,7 +292,7 @@ test('O10 deleting a user Program keeps its finished Sessions, listed in History
   await storeUserPrograms([pushPullLegs()])
   await storeActive('assaf-ab-2026')
   for (const session of finishedPplSessions()) await db.sessions.put(session)
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
@@ -310,7 +310,7 @@ test('O10 deleting the active user Program falls back to the first visible Progr
   await storeUserPrograms([pushPullLegs()])
   await storeActive('user-stored-ppl')
   for (const session of finishedPplSessions()) await db.sessions.put(session)
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   expect(screen.getByRole('radio', { name: 'Push Pull Legs' })).toBeChecked()
@@ -326,7 +326,7 @@ test('O10 deleting the active user Program leaves the workout picker offering th
   await storeUserPrograms([pushPullLegs()])
   await storeActive('user-stored-ppl')
   for (const session of finishedPplSessions()) await db.sessions.put(session)
-  render(<App />)
+  await renderApp()
 
   expect(await screen.findByRole('button', { name: 'Start Push' }, SETTLE)).toBeVisible()
   await openProgramTab(user)
@@ -343,14 +343,14 @@ test('O10 after deleting the active user Program a restart still offers the firs
   await storeUserPrograms([pushPullLegs()])
   await storeActive('user-stored-ppl')
   for (const session of finishedPplSessions()) await db.sessions.put(session)
-  const first = render(<App />)
+  const first = await renderApp()
 
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
   await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
   first.unmount()
   cleanup()
-  render(<App />)
+  await renderApp()
 
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Push' })).toBeNull()
@@ -363,7 +363,7 @@ test('O11 Delete then Confirm on the Program of the Session in progress shows Fi
   await storeUserPrograms([pushPullLegs()])
   await storeActive('user-stored-ppl')
   await pushInProgress()
-  render(<App />)
+  await renderApp()
 
   await openProgramTabFromSession(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
@@ -376,7 +376,7 @@ test('O11 Delete then Confirm on the Program of the Session in progress deletes 
   await storeUserPrograms([pushPullLegs()])
   await storeActive('user-stored-ppl')
   await pushInProgress()
-  render(<App />)
+  await renderApp()
 
   await openProgramTabFromSession(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
@@ -392,7 +392,7 @@ test('O11 with a Session in progress, Delete on another user Program still delet
   await storeUserPrograms([pushPullLegs(), upperLower()])
   await storeActive('user-stored-ppl')
   await pushInProgress()
-  render(<App />)
+  await renderApp()
 
   await openProgramTabFromSession(user)
   // The guard first holds for the Program the Session runs on...
@@ -411,7 +411,7 @@ test('O11 removing the Workout in progress in the editor and saving shows Finish
   await storeUserPrograms([pushPullLegs()])
   await storeActive('user-stored-ppl')
   await pushInProgress()
-  render(<App />)
+  await renderApp()
 
   await openProgramTabFromSession(user)
   await editProgram(user, 'Push Pull Legs')
@@ -427,7 +427,7 @@ test('O11 removing the Workout in progress in the editor and saving stores nothi
   await storeUserPrograms([pushPullLegs()])
   await storeActive('user-stored-ppl')
   await pushInProgress()
-  render(<App />)
+  await renderApp()
 
   await openProgramTabFromSession(user)
   await editProgram(user, 'Push Pull Legs')
@@ -452,7 +452,7 @@ test('O11 removing a Workout of a bundled Program whose Session is in progress i
     entries: [],
     updatedAt: now,
   })
-  render(<App />)
+  await renderApp()
 
   await openProgramTabFromSession(user)
   await editProgram(user, 'A/B Split')
@@ -468,7 +468,7 @@ test('O11 with a Session in progress, removing another Workout of its Program an
   await storeUserPrograms([pushPullLegs()])
   await storeActive('user-stored-ppl')
   await pushInProgress()
-  render(<App />)
+  await renderApp()
 
   await openProgramTabFromSession(user)
   // Removing the Workout in progress is refused...
@@ -496,7 +496,7 @@ test('O11 with a Session in progress, editing its Workout’s Plans and saving i
   await storeUserPrograms([pushPullLegs()])
   await storeActive('user-stored-ppl')
   await pushInProgress()
-  render(<App />)
+  await renderApp()
 
   await openProgramTabFromSession(user)
   // The guard holds for removing the Workout in progress...
@@ -560,7 +560,7 @@ test('O12 Reset to original then Confirm on an edited A/B Split shows the bundle
   const user = userEvent.setup()
   await storeUserPrograms([editedAbSplit()])
   await storeActive('assaf-ab-2026')
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   expect(screen.getByText('Back squat 3-5 x 5, rest 240s')).toBeVisible()
@@ -574,7 +574,7 @@ test('O12 Reset to original then Confirm removes the stored copy and the Reset t
   const user = userEvent.setup()
   await storeUserPrograms([editedAbSplit(), pushPullLegs()])
   await storeActive('assaf-ab-2026')
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   await resetAndConfirm(user, 'A/B Split')
@@ -592,7 +592,7 @@ test('O12 after Reset to original a set screen on Workout A uses the bundled num
   const user = userEvent.setup()
   await storeUserPrograms([editedAbSplit()])
   await storeActive('assaf-ab-2026')
-  render(<App />)
+  await renderApp()
 
   await openProgramTab(user)
   await resetAndConfirm(user, 'A/B Split')

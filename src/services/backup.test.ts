@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../storage/db'
 import { readRow } from '../storage/settingsStore'
 import { LAST_EXPORTED_AT_KEY, setActiveProgramId } from '../storage/settingsStore'
-import { exportBackup, BACKUP_SCHEMA_VERSION, type BackupFile } from '../storage/backup'
+import { BACKUP_SCHEMA_VERSION, type BackupFile } from '../storage/backup'
 import type { Session, SetEntry } from '../types'
 import { createChangeBus } from './changes'
 import { ServiceError } from './errors'
@@ -101,7 +101,21 @@ test('O5 export shares the file exportBackup would build and stamps lastExported
   const sessions = sessionsFixture(3)
   await db.sessions.bulkPut(sessions)
   await setActiveProgramId('assaf-ab-2026')
-  const expected = await exportBackup(BASE)
+  // What exportBackup built for this store, written out by hand (E11-T15 O15 deleted
+  // storage/backup's exportBackup): every session, and every other setting at its default.
+  const expected: BackupFile = {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: BASE,
+    sessions,
+    settings: {
+      activeProgramId: 'assaf-ab-2026',
+      lastExportedAt: null,
+      gymEquipment: null,
+      weightSteps: {},
+      volumeBaseline: { period: 'last' },
+      userPrograms: [],
+    },
+  }
   const { clickedAnchors } = installDownloadFallback()
   const service = createBackupService(makeDeps())
 

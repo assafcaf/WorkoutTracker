@@ -32,6 +32,11 @@ export type WorkoutFeatureProps = {
   navigate(to: AppRoute): void
   /** Told `true` on the exercise list and set screen, `false` on the picker. */
   onInSession(inSession: boolean): void
+  /**
+   * Whether a Session in progress opens straight into its exercise list (the app's launch), or
+   * the picker offers resuming it (the tab reached again later). Defaults to `true`.
+   */
+  landInSession?: boolean
 }
 
 type View = 'picker' | 'list' | 'set'
@@ -119,7 +124,11 @@ function orElse<T>(read: Promise<T>, fallback: T): Promise<T> {
  * exercise list and set screen of the Session in progress, the swap overlays and the summary.
  * A Session in progress wins on mount, so reopening the tab lands back in it.
  */
-export function WorkoutFeature({ navigate, onInSession }: WorkoutFeatureProps): JSX.Element {
+export function WorkoutFeature({
+  navigate,
+  onInSession,
+  landInSession = true,
+}: WorkoutFeatureProps): JSX.Element {
   const services = useServices()
   const { syncNow } = useSyncControls()
 
@@ -196,13 +205,13 @@ export function WorkoutFeature({ navigate, onInSession }: WorkoutFeatureProps): 
         setSession(found.session)
         setLastSwaps(found.lastSwaps)
         setLastEntries(found.lastEntries)
-        setView(found.session ? 'list' : 'picker')
+        setView(found.session && landInSession ? 'list' : 'picker')
         setResumed(true)
       })
     return () => {
       cancelled = true
     }
-  }, [services, loadedPrograms, resumed])
+  }, [services, loadedPrograms, resumed, landInSession])
 
   const programs = loadedPrograms ?? []
   // A session whose program has since been retired has nowhere to be shown; the picker is

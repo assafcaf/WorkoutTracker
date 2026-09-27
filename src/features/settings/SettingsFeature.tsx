@@ -4,8 +4,10 @@ import { useServiceData } from '../useServiceData'
 import { useServices, useSyncControls } from '../ServicesProvider'
 import { visiblePrograms } from '../../domain/programs'
 import { Settings } from '../../ui/Settings'
+import { BackupBadge } from '../../ui/BackupBadge'
 import { ImportConfirm } from '../../ui/ImportConfirm'
 import { ServiceError, type PendingImport } from '../../services'
+import type { VolumeBaseline } from '../../types'
 
 export type SettingsFeatureProps = {
   navigate(to: AppRoute): void
@@ -33,12 +35,25 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
   const gymEquipmentData = useServiceData((s) => s.preferences.gymEquipment(), ['preferences'])
   const volumeBaselineData = useServiceData((s) => s.preferences.volumeBaseline(), ['preferences'])
   const catalogData = useServiceData((s) => s.catalog.load(), [])
+  const [savedBaseline, setSavedBaseline] = useState<VolumeBaseline | null>(null)
+  // Dropped once the stored baseline reads back as the one chosen.
+  useEffect(() => {
+    if (volumeBaselineData.status !== 'ready') return
+    const stored = JSON.stringify(volumeBaselineData.data)
+    setSavedBaseline((chosen) => (JSON.stringify(chosen) === stored ? null : chosen))
+  }, [volumeBaselineData])
+  const lastExportedAtData = useServiceData(
+    (s) => s.preferences.lastExportedAt().catch(() => null),
+    ['preferences'],
+  )
 
   const offeredPrograms =
     programsData.status === 'ready' ? visiblePrograms(programsData.data.programs) : []
   const activeProgramId = programsData.status === 'ready' ? programsData.data.activeProgramId : null
   const gymEquipment = gymEquipmentData.status === 'ready' ? gymEquipmentData.data : null
-  const volumeBaseline = volumeBaselineData.status === 'ready' ? volumeBaselineData.data : undefined
+  // The baseline just chosen shows at once, until the reread of the stored one catches up.
+  const volumeBaseline =
+    savedBaseline ?? (volumeBaselineData.status === 'ready' ? volumeBaselineData.data : undefined)
 
   const equipmentTypes =
     catalogData.status === 'ready'
@@ -66,9 +81,11 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     })
   }
 
-  function handleVolumeBaselineChange(baseline: NonNullable<typeof volumeBaseline>): void {
+  function handleVolumeBaselineChange(baseline: VolumeBaseline): void {
+    setSavedBaseline(baseline)
     services.preferences.setVolumeBaseline(baseline).catch(() => {
-      // Nothing to recover to here; a later read will surface the same failure.
+      // Not saved: the stored baseline shows again.
+      setSavedBaseline(null)
     })
   }
 
@@ -124,6 +141,9 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
           void syncControls.adoptAccount()
         }}
       />
+      {lastExportedAtData.status === 'ready' ? (
+        <BackupBadge lastExportedAt={lastExportedAtData.data} now={Date.now()} />
+      ) : null}
       {importError ? <div role="alert">{importError}</div> : null}
       {pendingImport ? (
         <ImportConfirm

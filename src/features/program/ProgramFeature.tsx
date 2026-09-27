@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import type { Exercise, LibraryExercise, Program, UserProgram } from '../../types'
+import type { Exercise, LibraryExercise, Program, Session, UserProgram } from '../../types'
 import { copyProgram, uuid, visiblePrograms } from '../../domain/programs'
 import { resolveExercise } from '../../data/resolve'
 import { ServiceError, type ProgramsLoad } from '../../services'
 import { IN_PROGRESS_MESSAGE } from '../../services/programs'
+import { ActionBarSlot, AppShell } from '../../ui/AppShell'
 import { ProgramEditor } from '../../ui/ProgramEditor'
 import { ProgramPage } from '../../ui/ProgramPage'
 import { useServiceData } from '../useServiceData'
@@ -54,27 +55,39 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   const services = useServices()
   const programsData = useServiceData<ProgramsLoad>((s) => s.programs.load(), ['programs'])
   const catalogData = useServiceData((s) => s.catalog.load(), [])
+  const gymEquipmentData = useServiceData(
+    (s) => s.preferences.gymEquipment().catch(() => null),
+    ['preferences'],
+  )
+  // Every finished Session and the one in progress, so "This week" (E5-T20) counts them all.
+  const sessionsData = useServiceData(
+    (s) =>
+      Promise.all([s.sessions.list(), s.sessions.resumeActive()])
+        .then(([done, active]): Session[] => (active ? [...done, active] : done))
+        .catch((): Session[] => []),
+    ['sessions'],
+  )
 
   const [editor, setEditor] = useState<EditorTarget | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [programMessage, setProgramMessage] = useState<string | null>(null)
 
-  if (programsData.status !== 'ready' || catalogData.status !== 'ready') return <></>
+  // The tab's shell shows at once, so the tab bar and heading do not wait on the Programs.
+  if (programsData.status !== 'ready' || catalogData.status !== 'ready') {
+    return <AppShell title="Program">{null}</AppShell>
+  }
 
   // `services.programs.load()`'s own `programs` is already the merged (bundled + user) list
   // (`services/programs.ts` calls `mergePrograms` itself); the bundled-only list -- which
   // `bundledProgramIds` below needs, the way `App.tsx` kept it distinct from its merged
   // `programs` -- comes from `services.catalog.load()` instead.
-  const { programs, userPrograms, activeProgramId: loadedActiveProgramId } = programsData.data
+  const { programs, userPrograms, activeProgramId } = programsData.data
   const { catalog, library, bundledPrograms } = catalogData.data
+  const gymEquipment = gymEquipmentData.status === 'ready' ? gymEquipmentData.data : null
+  const sessions = sessionsData.status === 'ready' ? sessionsData.data : []
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
   const offeredPrograms = visiblePrograms(programs)
   const programCatalog = withProgramExercises(catalog, programs, libraryMap)
-  // `services.programs.load` reports `activeProgramId: null` with nothing stored and no Session
-  // (E9-T2's own rule: a new trainee has no Program until they choose one) -- a render-time
-  // default only, so the Program tab still leads with one rather than the chooser; it writes
-  // nothing, unlike `handleActiveProgramChange`, which is the trainee's own choice.
-  const activeProgramId = loadedActiveProgramId ?? offeredPrograms[0]?.id ?? null
 
   /** Opens the editor on `target`, with no save error left from an earlier one. */
   function openEditor(target: EditorTarget): void {
@@ -163,36 +176,49 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
 
   if (editor) {
     return (
-      <ProgramEditor
-        key={editor.initial.id}
-        initial={editor.initial}
-        isNew={editor.isNew}
-        resolve={resolveListExercise}
-        library={library}
-        gymEquipment={null}
-        onSave={handleSaveProgram}
-        onCancel={closeEditor}
-        saveError={saveError}
-      />
+      // No tab bar: the way out of the editor is its own Cancel or Save. The editor portals
+      // `Save` into the action bar, gated by its own draft's validity.
+      <AppShell
+        title={
+          editor.mode === 'new' ? 'New program' : editor.mode === 'copy' ? 'Copy program' : 'Edit program'
+        }
+        action={<ActionBarSlot />}
+      >
+        <ProgramEditor
+          key={editor.initial.id}
+          initial={editor.initial}
+          isNew={editor.isNew}
+          resolve={resolveListExercise}
+          library={library}
+          gymEquipment={gymEquipment}
+          onSave={handleSaveProgram}
+          onCancel={closeEditor}
+          saveError={saveError}
+        />
+      </AppShell>
     )
   }
 
   return (
-    <ProgramPage
-      programs={offeredPrograms}
-      activeProgramId={activeProgramId}
-      catalog={programCatalog}
-      library={libraryMap}
-      onChooseProgram={handleActiveProgramChange}
-      resolve={resolveListExercise}
-      onNewProgram={handleNewProgram}
-      onEditProgram={handleEditProgram}
-      onCopyProgram={handleCopyProgram}
-      onDeleteProgram={handleDeleteProgram}
-      onResetProgram={handleResetProgram}
-      programMessage={programMessage}
-      userProgramIds={new Set(userPrograms.map((program) => program.id))}
-      bundledProgramIds={new Set(bundledPrograms.map((program) => program.id))}
-    />
+    <AppShell title="Program">
+      <ProgramPage
+        programs={offeredPrograms}
+        activeProgramId={activeProgramId}
+        catalog={programCatalog}
+        library={libraryMap}
+        onChooseProgram={handleActiveProgramChange}
+        sessions={sessions}
+        now={Date.now()}
+        resolve={resolveListExercise}
+        onNewProgram={handleNewProgram}
+        onEditProgram={handleEditProgram}
+        onCopyProgram={handleCopyProgram}
+        onDeleteProgram={handleDeleteProgram}
+        onResetProgram={handleResetProgram}
+        programMessage={programMessage}
+        userProgramIds={new Set(userPrograms.map((program) => program.id))}
+        bundledProgramIds={new Set(bundledPrograms.map((program) => program.id))}
+      />
+    </AppShell>
   )
 }

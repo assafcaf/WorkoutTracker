@@ -1,25 +1,4 @@
 import type { Session, UserProgram, VolumeBaseline } from '../types'
-import { db } from './db'
-import { listSessions } from './sessionStore'
-import {
-  ACTIVE_PROGRAM_ID_KEY,
-  GYM_EQUIPMENT_KEY,
-  LAST_EXPORTED_AT_KEY,
-  USER_PROGRAMS_KEY,
-  VOLUME_BASELINE_KEY,
-  WEIGHT_STEPS_KEY,
-  getGymEquipment,
-  getLastExportedAt,
-  getUserPrograms,
-  getVolumeBaseline,
-  getWeightSteps,
-  setActiveProgramId,
-  setGymEquipment,
-  setLastExportedAt,
-  setUserPrograms,
-  setVolumeBaseline,
-  setWeightSteps,
-} from './settingsStore'
 
 /** Bumped whenever the shape below changes in a way `readBackup` cannot translate on its own. */
 export const BACKUP_SCHEMA_VERSION = 1
@@ -62,44 +41,6 @@ export function backupFileName(exportedAt: number): string {
   return `workout-backup-${year}-${month}-${day}.json`
 }
 
-/**
- * Every logged session and the settings this app owns, as of `now`.
- */
-export async function exportBackup(now: number): Promise<BackupFile> {
-  const [
-    sessions,
-    activeProgramRow,
-    lastExportedAt,
-    gymEquipment,
-    weightSteps,
-    volumeBaseline,
-    userPrograms,
-  ] = await Promise.all([
-    listSessions(),
-    db.settings.get(ACTIVE_PROGRAM_ID_KEY),
-    getLastExportedAt(),
-    getGymEquipment(),
-    getWeightSteps(),
-    getVolumeBaseline(),
-    getUserPrograms(),
-  ])
-  const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
-
-  return {
-    schemaVersion: BACKUP_SCHEMA_VERSION,
-    exportedAt: now,
-    sessions,
-    settings: {
-      activeProgramId,
-      lastExportedAt,
-      gymEquipment,
-      weightSteps,
-      volumeBaseline,
-      userPrograms,
-    },
-  }
-}
-
 // `Blob.prototype.text` is missing in some runtimes that otherwise implement `Blob` and
 // `FileReader` fully — older Safari, and jsdom (the environment this file's tests run under).
 // Feature-detected so real, capable browsers are left untouched.
@@ -112,39 +53,6 @@ if (typeof Blob !== 'undefined' && typeof Blob.prototype.text !== 'function') {
       reader.readAsText(this)
     })
   }
-}
-
-/**
- * Hands `file` to the browser's share sheet when `navigator.canShare({ files })` says it can,
- * otherwise downloads it through an object-URL anchor. Records
- * `setLastExportedAt(file.exportedAt)` once that succeeds.
- */
-export async function downloadOrShare(file: BackupFile): Promise<void> {
-  const name = backupFileName(file.exportedAt)
-  const blob = new Blob([JSON.stringify(file)], { type: 'application/json' })
-  const shareFile = new File([blob], name, { type: 'application/json' })
-
-  const canShare =
-    typeof navigator.canShare === 'function' &&
-    typeof navigator.share === 'function' &&
-    navigator.canShare({ files: [shareFile] })
-
-  if (canShare) {
-    await navigator.share({ files: [shareFile] })
-  } else if (typeof URL.createObjectURL === 'function') {
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = name
-    anchor.click()
-    URL.revokeObjectURL(url)
-  }
-  // Else: neither the share sheet nor object URLs are available. Every real browser supports at
-  // least one of them; this only happens in test environments that exercise `replaceAll`'s
-  // pre-import export (see `importBackup`/`replaceAll`) without also standing in for one -- so
-  // there is nothing to hand a file to, but that is not a failure worth rejecting the import for.
-
-  await setLastExportedAt(file.exportedAt)
 }
 
 /** Raised by `readBackup` for text that is not valid JSON or names an unknown schema version. */
@@ -195,56 +103,4 @@ export function importPlan(current: Session[], incoming: Session[]): ImportPlan 
     removed: current.filter((session) => !incomingIds.has(session.id)).length,
     kept,
   }
-}
-
-/**
- * Reads and validates `text` (see `readBackup`), then replaces the whole database with it (see
- * `replaceAll`). Refuses -- without writing a single session -- when `text` is not valid JSON or
- * names a schema version this build does not understand.
- */
-export async function importBackup(text: string): Promise<void> {
-  await replaceAll(readBackup(text))
-}
-
-/**
- * Clears and rewrites `db.sessions` and the settings this file owns, in one transaction, so the
- * database afterward holds exactly what `file` describes and nothing it does not.
- *
- * First exports the current database and hands it to `downloadOrShare`, so nothing is
- * overwritten before a fresh copy exists elsewhere; if that export rejects, this does not write
- * at all.
- */
-export async function replaceAll(file: BackupFile): Promise<void> {
-  await downloadOrShare(await exportBackup(Date.now()))
-
-  await db.transaction('rw', db.sessions, db.settings, async () => {
-    await db.sessions.clear()
-    await db.sessions.bulkPut(file.sessions)
-    await setActiveProgramId(file.settings.activeProgramId)
-    if (file.settings.lastExportedAt === null) {
-      await db.settings.delete(LAST_EXPORTED_AT_KEY)
-    } else {
-      await setLastExportedAt(file.settings.lastExportedAt)
-    }
-    if (file.settings.gymEquipment === undefined || file.settings.gymEquipment === null) {
-      await db.settings.delete(GYM_EQUIPMENT_KEY)
-    } else {
-      await setGymEquipment(file.settings.gymEquipment)
-    }
-    if (file.settings.weightSteps === undefined) {
-      await db.settings.delete(WEIGHT_STEPS_KEY)
-    } else {
-      await setWeightSteps(file.settings.weightSteps)
-    }
-    if (file.settings.volumeBaseline === undefined) {
-      await db.settings.delete(VOLUME_BASELINE_KEY)
-    } else {
-      await setVolumeBaseline(file.settings.volumeBaseline)
-    }
-    if (file.settings.userPrograms === undefined) {
-      await db.settings.delete(USER_PROGRAMS_KEY)
-    } else {
-      await setUserPrograms(file.settings.userPrograms)
-    }
-  })
 }
