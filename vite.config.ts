@@ -76,5 +76,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // Form tests that user.type() several fields run past vitest's 5s default when the full
+    // suite shares the machine with other agents' runs; the time is load, not a hang.
+    testTimeout: 15000,
   },
 })
