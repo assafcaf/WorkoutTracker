@@ -15,8 +15,9 @@
 }
 
 html {
-  /* Dark-only, and said out loud so form controls and scrollbars paint dark too. */
-  color-scheme: dark;
+  /* Light-only (decision 0009), and said out loud so form controls and scrollbars paint light
+   * too instead of following the system's dark preference. */
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
   /* index.html's `viewport-fit=cover` lets the page paint under the notch and the home
    * indicator instead of behind letterboxing; without a background of its own here, that
