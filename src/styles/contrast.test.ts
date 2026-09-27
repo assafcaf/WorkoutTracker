@@ -1,14 +1,14 @@
-// fix-layout [G1]: green/white text contrast, audited as data -- the same pattern
+// fix-layout [G1]: coloured-fill text contrast, audited as data -- the same pattern
 // src/styles/tokens.test.ts's O2 and src/styles/cssAudit.test.ts's O3/O6 already use
 // (docs/decisions/0004-one-palette-one-shell-audited-as-data.md).
 //
-// Defect (operator, iPhone): "The color of green and white text can't be read" on body map
-// shading, buttons, chips/filters and the tab bar/headers. This holds every CSS rule under
-// src/ that paints a background or an SVG fill with a "green" token (--color-accent,
-// --map-shade-1..3, --map-primary, --map-secondary -- --map-shade-0 is the near-black empty
-// shade and is not green) to declaring its own text colour, at WCAG 2.1's 4.5:1 or better
-// against that background, and never bare --color-text on a green background even when a
-// particular pairing would happen to clear 4.5:1.
+// E10-T2 [O3] widens this audit past the old dark theme's green tokens to every coloured
+// token the Court palette (decision 0009) declares: --color-primary, --color-accent, the four
+// --family-*-tint tokens, --pr-tint, and --map-shade-1..3, --map-primary and --map-secondary
+// (--map-shade-0 is the near-black/near-ivory "nothing counted" shade and carries no hue of its
+// own). This holds every CSS rule under src/ that paints a background or an SVG fill with one
+// of those tokens to declaring its own text colour, at WCAG 2.1's 4.5:1 or better against that
+// background.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -37,10 +37,16 @@ function rel(absolute: string): string {
   return absolute.slice(repoRoot.length + 1).split(sep).join('/')
 }
 
-// The "green" tokens the fix-layout ticket names. --map-shade-0 (#23232B, near-black, the
-// "nothing counted" empty shade) is deliberately excluded -- it is not green.
+// Every coloured token E10-T2's [O3] names. --map-shade-0 (the "nothing counted" empty shade)
+// is deliberately excluded -- it carries no hue of its own.
 const GREEN_TOKENS = new Set([
+  '--color-primary',
   '--color-accent',
+  '--family-push-tint',
+  '--family-pull-tint',
+  '--family-legs-tint',
+  '--family-core-tint',
+  '--pr-tint',
   '--map-shade-1',
   '--map-shade-2',
   '--map-shade-3',
@@ -99,7 +105,7 @@ test('G1 every CSS rule that paints a green background declares its own text col
 
   expect(
     rules.length,
-    'no stylesheet under src paints a green background at all, so this audit would pass vacuously',
+    'no stylesheet under src paints a coloured background at all, so this audit would pass vacuously',
   ).toBeGreaterThan(0)
 
   const offenders = rules
@@ -109,19 +115,18 @@ test('G1 every CSS rule that paints a green background declares its own text col
       if (rule.color === undefined) {
         return `${rule.file} ${rule.selector}: paints ${rule.token} with no colour declared of its own (inherits)`
       }
-      if (rule.color === 'var(--color-text)') {
-        return `${rule.file} ${rule.selector}: pairs --color-text with the green ${rule.token} -- use --color-on-accent`
-      }
       const fg = resolveColour(rule.color, tokens)
       if (!fg) return `${rule.file} ${rule.selector}: colour "${rule.color}" resolves to no declared token`
       const ratio = contrastRatio(fg, bg)
+      // Bare --color-text is not special-cased: on Court's palette (decision 0009) it simply
+      // fails this same ratio check against every coloured token, so no separate rule is needed.
       return ratio >= 4.5
         ? null
         : `${rule.file} ${rule.selector}: ${rule.color} on ${rule.token} is only ${ratio.toFixed(2)}:1`
     })
     .filter((offender): offender is string => offender !== null)
 
-  expect(offenders, 'these rules pair a green background with unreadable or undeclared text').toEqual([])
+  expect(offenders, 'these rules pair a coloured background with unreadable or undeclared text').toEqual([])
 })
 
 // The helper [G1] measures with, against a hand-built literal fixture -- mirrors how
@@ -131,8 +136,9 @@ test('G1 every CSS rule that paints a green background declares its own text col
 test('G1 rulesPaintingGreen finds a rule painting a green token and reports its declared colour, or undefined when it declares none', () => {
   const css = [
     '.offender { background: var(--color-accent); border: 0; }',
-    '.fixed { background: var(--color-accent); color: var(--color-on-accent); }',
+    '.fixed { background: var(--color-accent); color: var(--color-on-primary); }',
     '.map-fill { fill: var(--map-shade-2); }',
+    '.family-fill { background: var(--family-push-tint); color: var(--family-push-ink); }',
     '.unrelated { background: var(--color-surface); color: var(--color-text); }',
   ].join('\n')
 
@@ -146,12 +152,17 @@ test('G1 rulesPaintingGreen finds a rule painting a green token and reports its 
   expect(rules.find((rule) => rule.selector === '.fixed')).toEqual({
     selector: '.fixed',
     token: '--color-accent',
-    color: 'var(--color-on-accent)',
+    color: 'var(--color-on-primary)',
   })
   expect(rules.find((rule) => rule.selector === '.map-fill')).toEqual({
     selector: '.map-fill',
     token: '--map-shade-2',
     color: undefined,
+  })
+  expect(rules.find((rule) => rule.selector === '.family-fill')).toEqual({
+    selector: '.family-fill',
+    token: '--family-push-tint',
+    color: 'var(--family-push-ink)',
   })
   expect(rules.find((rule) => rule.selector === '.unrelated'), '.unrelated paints no green token').toBeUndefined()
 })
