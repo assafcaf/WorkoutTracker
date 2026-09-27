@@ -49,8 +49,14 @@
   color: var(--color-text);
 }
 
-.app-header-title {
+.app-header-title-group {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-header-title {
   overflow: hidden;
   font-size: var(--text-lg);
   font-weight: 600;
