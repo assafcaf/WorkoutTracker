@@ -126,6 +126,7 @@
 .dial-readout {
   min-height: var(--tap-min);
   font-size: var(--text-display);
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
 
   padding: 0;

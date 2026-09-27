@@ -25,7 +25,7 @@ export default defineConfig({
         // Workbox's default glob is '**/*.{js,wasm,css,html}' (the icons and the manifest are
         // added by the plugin itself). The bundled exercise photos in public/library-photos/
         // are .jpg, so they are named here too, or they would not work offline.
-        globPatterns: ['**/*.{js,wasm,css,html,jpg}'],
+        globPatterns: ['**/*.{js,wasm,css,html,jpg,woff2}'],
         // The Worker answers /api/ itself (E7-T1) and Access owns /cdn-cgi/; without this the
         // navigation fallback would answer both from the cached SPA shell instead of letting
         // them reach the Worker.

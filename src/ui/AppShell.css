@@ -54,6 +54,8 @@
   overflow: hidden;
   font-size: var(--text-lg);
   font-weight: 600;
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
