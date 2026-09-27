@@ -24,13 +24,10 @@ export type SetScreenProps = {
    * Persists one Set to the Session `sessionId` and answers the Session as stored (E11-T10); a
    * rejection's message is shown under the set as it stands. The screen persists nothing itself.
    *
-   * Optional so a caller that never logs -- `src/ui/useWakeLock.test.ts`'s `renderSetScreen`,
-   * predating this prop -- need not pass it; without it there is nowhere to log to.
-   *
    * STUB (E11-T10 test-designer): accepted but not yet called -- `log` still writes through
    * `src/storage`.
    */
-  onLog?(sessionId: string, entry: SetEntry): Promise<Session>
+  onLog(sessionId: string, entry: SetEntry): Promise<Session>
   onLogged(session: Session, nextSetIndex: number): void
   /**
    * Told that an extra set past the plan was opened, with the set index it opened at. Optional
