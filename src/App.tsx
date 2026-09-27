@@ -19,7 +19,9 @@ import { MUSCLES, loadLibrary, loadVideos } from './data/library'
 import { photoUrls } from './data/photos'
 import { resolveExercise } from './data/resolve'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
-import { useSync } from './sync/useSync'
+import { useSync } from './features/useSync'
+import { createChangeBus } from './services/changes'
+import { createSyncService } from './services/sync'
 import {
   BackupFormatError,
   downloadOrShare,
@@ -369,7 +371,11 @@ function AppViews({ trailing }: AppViewsProps): JSX.Element {
   // keyed plannedId -> doneId, so the exercise list can offer "Last time" as one tap.
   const [lastSwaps, setLastSwaps] = useState<Record<string, string>>({})
   // Cloud sync (E7-T8): runs on mount, on `online` and after a finished session, by itself.
-  const { sync, syncNow, adoptAccount, replaceRemote } = useSync()
+  // A bridge until E11-T15 mounts the services: one sync service for the App's lifetime.
+  const [syncService] = useState(() =>
+    createSyncService({ now: () => Date.now(), bus: createChangeBus(), storageAvailable: true }),
+  )
+  const { sync, syncNow, adoptAccount, replaceRemote } = useSync(syncService)
   const loadedPrograms = state.status === 'ready' ? state.programs : null
   // The last finished session's entries of each exercise the list shows (E4-T6), keyed by the
   // id actually done, feeding each row's progression bar.
