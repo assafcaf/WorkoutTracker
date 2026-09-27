@@ -62,6 +62,16 @@ An Exercise carrying no weight at all, as opposed to one loaded with zero. Its w
 rather than `0`.
 _Avoid_: Unweighted, freeweight, no-load
 
+**Region**:
+A zone of the body map, shaded by how many sets reached it and tapped to see what trained it.
+Each of the 17 muscles maps to at least one Region (`shoulders` to two).
+_Avoid_: Area, zone, body part
+
+**Muscle family**:
+One of four body-area groups — push, pull, legs, core — that every muscle and Region belongs
+to, and the tint a muscle's chip wears.
+_Avoid_: Muscle group, category, colour group
+
 **Shell**:
 The frame around whatever screen is showing: the header, the tab bar, and the sticky action bar
 a screen puts its own control into. Not the precached bundle — call that the **precache**.
