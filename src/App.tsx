@@ -19,7 +19,7 @@ import { MUSCLES, loadLibrary, loadVideos } from './data/library'
 import { photoUrls } from './data/photos'
 import { resolveExercise } from './data/resolve'
 import { useServiceWorkerUpdate } from './pwa/registerSW'
-import { useSync } from './sync/useSync'
+import { useSync } from './features/useSync'
 import {
   BackupFormatError,
   downloadOrShare,

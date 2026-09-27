@@ -5,8 +5,8 @@ import {
   getSyncState,
   replaceRemote as replaceRemoteCall,
   syncNow as syncNowCall,
-} from './syncClient'
-import type { SyncDeps, SyncResult, SyncState } from './syncClient'
+} from '../sync/syncClient'
+import type { SyncDeps, SyncResult, SyncState } from '../sync/syncClient'
 
 export type UseSync = {
   sync: SyncView

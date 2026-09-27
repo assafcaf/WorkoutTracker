@@ -2,6 +2,8 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { db } from '../storage/db'
 import { FakeSyncServer } from '../test/fakeSyncServer'
+import { createChangeBus } from '../services/changes'
+import { createSyncService } from '../services/sync'
 import { useSync } from './useSync'
 
 // An installed iPhone app coming back from the background is not a new mount: the page only
@@ -36,7 +38,8 @@ function leaveAndReturn(): void {
 }
 
 function mount() {
-  return renderHook(() => useSync({ fetch: server.fetch, now: () => NOW }))
+  const sync = createSyncService({ now: () => NOW, bus: createChangeBus(), storageAvailable: true, fetch: server.fetch })
+  return renderHook(() => useSync(sync))
 }
 
 async function mountSyncDone(): Promise<ReturnType<typeof mount>> {
