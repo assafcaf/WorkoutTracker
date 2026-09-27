@@ -2,7 +2,7 @@ import type { Program, UserProgram } from '../types'
 import type { ServiceDeps } from './deps'
 import { ServiceError, callStorage } from './errors'
 import { loadCatalog, loadPrograms } from '../data/catalog'
-import { mergePrograms } from '../domain/programs'
+import { mergePrograms, visiblePrograms } from '../domain/programs'
 import {
   ACTIVE_PROGRAM_ID_KEY,
   deleteProgram,
@@ -133,6 +133,14 @@ export function createProgramService(deps: ServiceDeps): ProgramService {
             if (bundled) {
               await saveUserProgram({ ...bundled, hidden: true, createdAt: deps.now() }, deps.now())
             }
+          }
+          // A deleted active Program hands over to the first visible one, stored, so a relaunch
+          // does not bring it back (E9-T10 O10, as App.tsx did before E11-T15).
+          const active = await readRow(ACTIVE_PROGRAM_ID_KEY)
+          if (active?.value === id) {
+            const bundled = loadPrograms(loadCatalog())
+            const fallback = visiblePrograms(mergePrograms(bundled, await getUserPrograms()))[0]
+            if (fallback) await setActiveProgramId(fallback.id, deps.now())
           }
           deps.bus.emit('programs')
         },

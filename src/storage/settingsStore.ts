@@ -19,9 +19,9 @@ export async function deleteKeys(keys: string[]): Promise<void> {
 }
 
 /**
- * The `settings` table key the active program id is stored under. Exported so `App` can read
- * the raw stored value itself to tell a genuine default apart from a stale-id fallback —
- * `getActiveProgramId` collapses both to the same first-program id.
+ * The `settings` table key the active program id is stored under. Exported so the program
+ * service can read the raw stored value itself to tell a genuine choice apart from a stale-id
+ * fallback, which `getActiveProgramId` collapses to the same first-program id.
  */
 export const ACTIVE_PROGRAM_ID_KEY = 'activeProgramId'
 
@@ -30,24 +30,14 @@ export const ACTIVE_PROGRAM_ID_KEY = 'activeProgramId'
  * null when there is none yet (E9-T2).
  *
  * A stored id among `programs` is returned as is; a stored id no longer among them falls back
- * to the first program, and that fallback is shown on screen. With nothing stored, the program
- * of the Session with the latest `startedAt` (finished or in progress) is adopted and stored —
- * or the first program when that one is no longer offered. With nothing stored and no Session,
- * the result is null: a new user has no Program until they choose one.
+ * to the first program. With nothing stored the result is null: adopting the latest Session's
+ * Program is the program service's job (E11-T15).
  */
 export async function getActiveProgramId(programs: Program[]): Promise<string | null> {
   const row = await db.settings.get(ACTIVE_PROGRAM_ID_KEY)
   const stored = typeof row?.value === 'string' ? row.value : undefined
-  if (stored !== undefined) {
-    return programs.some((program) => program.id === stored) ? stored : programs[0].id
-  }
-  const latest = await db.sessions.orderBy('startedAt').last()
-  if (!latest) return null
-  const adopted = programs.some((program) => program.id === latest.programId)
-    ? latest.programId
-    : programs[0].id
-  await setActiveProgramId(adopted)
-  return adopted
+  if (stored === undefined) return null
+  return programs.some((program) => program.id === stored) ? stored : programs[0].id
 }
 
 /**

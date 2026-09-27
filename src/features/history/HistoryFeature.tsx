@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import type { Muscle } from '../../types'
+import { AppShell } from '../../ui/AppShell'
 import { HistoryList } from '../../ui/HistoryList'
 import { HistoryStatsSwitch, type HistoryStatsView } from '../../ui/HistoryStatsSwitch'
 import { SessionSummary } from '../../ui/SessionSummary'
@@ -45,9 +46,9 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
     navigate({ tab: 'exercises', muscles })
   }
 
+  // The shell's own header carries the tab's one heading; the summary sits over the shell.
   return (
-    <>
-      <h1>{view === 'stats' ? 'Stats' : 'History'}</h1>
+    <AppShell title={view === 'stats' ? 'Stats' : 'History'}>
       <HistoryStatsSwitch current={view} onChange={setView} />
       {ready
         ? (() => {
@@ -85,6 +86,6 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
             )
           })()
         : null}
-    </>
+    </AppShell>
   )
 }
