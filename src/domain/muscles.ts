@@ -73,6 +73,27 @@ export type Resolve = (id: string) => Exercise | undefined
 /** The four body-area families a muscle belongs to (E10-T3, the Library's muscle chip). */
 export type MuscleFamily = 'push' | 'pull' | 'legs' | 'core'
 
+/** `familyOf`'s mapping, per the spec's family table. */
+const MUSCLE_FAMILIES: Record<Muscle, MuscleFamily> = {
+  chest: 'push',
+  shoulders: 'push',
+  triceps: 'push',
+  lats: 'pull',
+  'middle back': 'pull',
+  traps: 'pull',
+  biceps: 'pull',
+  forearms: 'pull',
+  neck: 'pull',
+  quadriceps: 'legs',
+  hamstrings: 'legs',
+  glutes: 'legs',
+  calves: 'legs',
+  abductors: 'legs',
+  adductors: 'legs',
+  abdominals: 'core',
+  'lower back': 'core',
+}
+
 /**
  * The family `muscle` belongs to, per the spec's family table:
  * push (chest, shoulders, triceps), pull (lats, middle back, traps, biceps, forearms, neck),
@@ -80,7 +101,7 @@ export type MuscleFamily = 'push' | 'pull' | 'legs' | 'core'
  * back).
  */
 export function familyOf(muscle: Muscle): MuscleFamily {
-  throw new Error(`not implemented: familyOf(${muscle})`)
+  return MUSCLE_FAMILIES[muscle]
 }
 
 /**

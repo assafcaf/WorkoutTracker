@@ -1,3 +1,4 @@
+import { familyOf } from '../domain/muscles'
 import type { Muscle } from '../types'
 import './MuscleChip.css'
 
@@ -11,5 +12,9 @@ export type MuscleChipProps = {
  * muscle; the body map and any other consumer are out of scope for this task.
  */
 export function MuscleChip({ muscle }: MuscleChipProps): JSX.Element {
-  throw new Error(`not implemented: MuscleChip(${muscle})`)
+  return (
+    <span className="muscle-chip" data-family={familyOf(muscle)}>
+      {muscle}
+    </span>
+  )
 }
