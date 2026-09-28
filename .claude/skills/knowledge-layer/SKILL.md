@@ -1,6 +1,6 @@
 ---
 name: knowledge-layer
-description: Build or refresh this repo's knowledge layer - a glossary the whole workflow shares, and the working notes an agent cannot infer from the code. Scans for what can be cited, asks you for what cannot. Run as /knowledge-layer at any point in a project's life.
+description: Build or refresh this repo's knowledge layer - a compact map of the repo's structure, design and nuances, plus its glossary, so every agent starts oriented instead of scanning the code. Scans for what can be cited, asks you for what cannot. Run as /knowledge-layer at any point in a project's life.
 argument-hint: "[refresh]"
 disable-model-invocation: true
 ---
@@ -9,12 +9,24 @@ disable-model-invocation: true
 
 Input: `$ARGUMENTS`. Read `.claude/workflow/config.md`.
 
+## What it is for, and nothing else
+
+The knowledge layer describes the repo as it is: its structure, its design, and the nuances
+that take reading many files to piece together. Where each concern lives, how the layers
+connect, which rule is enforced where, what a name really means here. An agent that reads it
+knows where to look and what to respect, without scanning the codebase first.
+
+It is not a spec, a changelog, a record of what an epic did, a status report, a task list, a
+tutorial, or a decision record. It says nothing about work in progress or how the repo got
+this way. A line that would be false after the next commit to some other part of the repo, or
+that only matters to one task, does not belong.
+
 Two files, and nothing else:
 
 | File | Is | Format |
 |---|---|---|
-| `CONTEXT.md` | the glossary, at the repo root | [CONTEXT-FORMAT.md](CONTEXT-FORMAT.md) |
-| `.claude/workflow/project.md` | what an agent cannot infer by reading the repo | [PROJECT-FORMAT.md](PROJECT-FORMAT.md) |
+| `CONTEXT.md` | the glossary: what this repo's words mean, at the repo root | [CONTEXT-FORMAT.md](CONTEXT-FORMAT.md) |
+| `.claude/workflow/project.md` | the map: structure, design and nuances, compact enough to replace a full scan | [PROJECT-FORMAT.md](PROJECT-FORMAT.md) |
 
 The mode is optional and off by default. With it off, every skill and agent behaves exactly as
 it did before this skill existed. You can turn it on here at any time, and you do not have to
@@ -154,5 +166,6 @@ inferred from a scan is a record of a decision nobody made.
 | "The operator is busy, I'll draft the invariants and let them correct it" | Drafted-then-skimmed is the arm that measured -2%. Ask, or leave the section out |
 | "I'll read a few source files to check the scanner's work" | Then you have paid for the scan twice. Ask the scanner |
 | "More terms make the glossary more useful" | Every term is charged on every task. A term that fails the inference test costs and teaches nothing |
+| "I'll note what this epic changed, so the next one knows" | That's the PR and `docs/decisions/`. The layer describes the repo as it stands, not its history |
 | "This decision is obvious from the code, I'll record it" | `docs/decisions/` is not yours. `/spec` writes it when a decision is actually made |
 | "It's over the token ceiling but it's all good content" | The gate fails at ~2,500 tokens (project.md) and ~1,500 (CONTEXT.md). Past that, context files stop being read and start being skimmed |

@@ -85,8 +85,7 @@ The gates live in `config.md`'s Commands table. Only what that table cannot say 
 
 ## Standing overlaps
 
-Of the last 40 non-merge commits on `main` touching `src/`, counted before E11 lands. After it,
-`App.tsx` is a thin shell and the screen groups in `src/features/` take its place.
+Of the last 40 non-merge commits on `main` touching `src/` (one squashed commit per epic).
 
 - `src/App.tsx` 10, `src/App.test.tsx` 10
 - `src/ui/Settings.tsx` 8, `src/ui/SetScreen.tsx` 6, `src/ui/ExerciseList.tsx` 6

@@ -34,8 +34,9 @@ test name uses the same word.
 - **Project terms only.** Before adding a term, ask whether it is a concept unique to this
   project or a general programming concept. "Idempotent", "middleware", "worktree" and "retry"
   are general, however much this repo uses them. Only the former belongs.
-- **The inference test.** Cut any term the next agent could learn by reading the repo. A
-  glossary is not a tour of the codebase.
+- **The inference test.** Cut any term whose meaning is plain from its name or the one file
+  that defines it. Keep a term whose meaning here differs from the everyday one, or that two
+  parts of the code use differently. A glossary is not a tour of the codebase.
 - **No implementation detail.** Not a spec, not a scratch pad, not a design record. A term's
   entry says what the word means, never which module implements it or how. When you catch
   yourself writing a file path into a definition, the sentence belongs somewhere else.
