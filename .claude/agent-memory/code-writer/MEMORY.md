@@ -4,3 +4,5 @@
 - Moving a fresh worktree onto epic head: git reset --hard is denied, chained git commands refused; use git -C <worktree> merge --ff-only <epic>, then cherry-pick as separate calls (E9-T2, 2026-09-26)
 - No prettier config in this repo; never run prettier on edited files, it adds semicolons the project does not use (E9-T2, 2026-09-26)
 - A fixture with array fields (e.g. repRange: [8,10]) can fail tsc --noEmit, inferring number[] not a tuple; add a type annotation to the fixture, not a test-content edit (E9-T6, 2026-09-26)
+- Mid-task isolation can repoint me into the test-designer's own worktree, red commit already HEAD; just implement and commit there, no cherry-pick, report that branch as BRANCH (E11-T3, 2026-09-27)
+- After `git merge --ff-only` onto a new epic head, worker tests fail ("Failed to load url jose") until `npm ci` reruns in the worktree — not a code regression (E11-T5, 2026-09-27)

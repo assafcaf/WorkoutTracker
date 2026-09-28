@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { loadCatalog } from '../data/catalog'
 import { db } from '../storage/db'
+import { logSet } from '../storage/sessionStore'
 import { SetScreen } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
 import { useWakeLock } from './useWakeLock'
@@ -19,6 +20,7 @@ function renderSetScreen(over: Partial<SetScreenProps> = {}) {
     sessionId: SESSION_ID,
     lastEntries: [historyEntry(2, 60, 10)],
     onLogged: vi.fn(),
+    onLog: (id, entry) => logSet(id, entry),
     ...over,
   }
   return render(createElement(SetScreen, props))

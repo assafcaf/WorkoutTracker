@@ -109,7 +109,11 @@ export async function getActiveSession(): Promise<Session | null> {
  *
  * Writes the whole document, replacing any entry with the same `exerciseId` and `setIndex`.
  */
-export async function logSet(sessionId: string, entry: SetEntry): Promise<Session> {
+export async function logSet(
+  sessionId: string,
+  entry: SetEntry,
+  now: number = Date.now(),
+): Promise<Session> {
   return db.transaction('rw', db.sessions, async () => {
     const session = await requireSession(sessionId)
     const entries = [...session.entries]
@@ -119,7 +123,7 @@ export async function logSet(sessionId: string, entry: SetEntry): Promise<Sessio
     if (at >= 0) entries[at] = entry
     else entries.push(entry)
 
-    const updated: Session = { ...session, entries, updatedAt: Date.now() }
+    const updated: Session = { ...session, entries, updatedAt: now }
     await db.sessions.put(updated)
     return updated
   })
@@ -157,6 +161,36 @@ export async function listSessions(): Promise<Session[]> {
   return finishedSessionsNewestFirst()
 }
 
+// --- whole-table reads and writes for sync and backup (E11-T2) ------------------------------
+
+/** Sessions stamped after `since`, plus every session never stamped. */
+export async function sessionsChangedSince(since: number): Promise<Session[]> {
+  return db.transaction('r', db.sessions, async () => {
+    const changed = await db.sessions.where('updatedAt').above(since).toArray()
+    // A session from before E7 has no stamp, so the `updatedAt` index never lists it.
+    const unstamped = await db.sessions.filter((session) => session.updatedAt === undefined).toArray()
+    return [...changed, ...unstamped]
+  })
+}
+
+/** Every stored session, finished or in progress. */
+export async function allSessions(): Promise<Session[]> {
+  return db.sessions.toArray()
+}
+
+/** Writes each session as given, replacing any stored one with the same id. */
+export async function putSessions(sessions: Session[]): Promise<void> {
+  await db.sessions.bulkPut(sessions)
+}
+
+/** Clears the sessions table and writes `sessions`, in one transaction. */
+export async function replaceAllSessions(sessions: Session[]): Promise<void> {
+  await db.transaction('rw', db.sessions, async () => {
+    await db.sessions.clear()
+    await db.sessions.bulkPut(sessions)
+  })
+}
+
 // --- swaps (E5-T11) -------------------------------------------------------------------------
 
 /**
@@ -166,11 +200,12 @@ export async function setSwap(
   sessionId: string,
   plannedId: string,
   doneId: string,
+  now: number = Date.now(),
 ): Promise<void> {
   await db.transaction('rw', db.sessions, async () => {
     const session = await requireSession(sessionId)
     const swaps = { ...session.swaps, [plannedId]: doneId }
-    await db.sessions.put({ ...session, swaps, updatedAt: Date.now() })
+    await db.sessions.put({ ...session, swaps, updatedAt: now })
   })
 }
 
@@ -178,7 +213,11 @@ export async function setSwap(
  * Removes the swap for `plannedId` on `sessionId`. Rejects if the session already has a
  * logged entry for the done id.
  */
-export async function clearSwap(sessionId: string, plannedId: string): Promise<void> {
+export async function clearSwap(
+  sessionId: string,
+  plannedId: string,
+  now: number = Date.now(),
+): Promise<void> {
   await db.transaction('rw', db.sessions, async () => {
     const session = await requireSession(sessionId)
     const doneId = session.swaps?.[plannedId]
@@ -193,7 +232,7 @@ export async function clearSwap(sessionId: string, plannedId: string): Promise<v
 
     const swaps = { ...session.swaps }
     delete swaps[plannedId]
-    await db.sessions.put({ ...session, swaps, updatedAt: Date.now() })
+    await db.sessions.put({ ...session, swaps, updatedAt: now })
   })
 }
 

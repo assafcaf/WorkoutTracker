@@ -1,6 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { App } from './App'
+import { renderApp } from './test/renderApp'
 import { db } from './storage/db'
 import { finishSession, logSet, startOrResumeSession } from './storage/sessionStore'
 import { FakeSyncServer } from './test/fakeSyncServer'
@@ -88,7 +88,7 @@ test('a finished Session pulled by the start-up sync makes Back squat’s row co
   // proves the row follows the sync rather than winning a race with it.
   const release = server.hold('/api/sync')
 
-  render(<App />)
+  await renderApp()
   expect(within(await backSquatRow()).getByText('No previous workout')).toBeVisible()
 
   release()
@@ -109,7 +109,7 @@ test('a volume baseline setting pulled by sync makes Back squat’s row use it',
   })
   const release = server.hold('/api/sync')
 
-  render(<App />)
+  await renderApp()
   expect(within(await backSquatRow()).getByText('Volume vs last workout: 42%')).toBeVisible()
 
   release()
@@ -122,7 +122,7 @@ test('a volume baseline setting pulled by sync makes Back squat’s row use it',
 test('coming back to the app syncs by itself, and a Session finished elsewhere meanwhile reaches the row', async () => {
   await todayInProgress()
 
-  render(<App />)
+  await renderApp()
   await waitFor(() => {
     expect(server.requestsTo('/api/sync')).toHaveLength(1)
     expect(server.pending).toBe(0)

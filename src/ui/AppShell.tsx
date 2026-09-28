@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { createContext, useCallback, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ActionBarHostContext } from './actionBarSlot'
 import { CourtStripe } from './CourtStripe'
@@ -32,6 +32,15 @@ export type AppShellProps = {
   settingsBadge?: boolean
   children: ReactNode
 }
+
+/**
+ * What the app root hands every shell below it (E11-T15): the tab bar's current tab (unset while
+ * a screen group is inside a session or an editor), where a pressed tab goes, the header's
+ * trailing slot and the Settings tab's backup marker. A shell's own props win over these.
+ */
+export type ShellChrome = Pick<AppShellProps, 'tab' | 'onTabChange' | 'trailing' | 'settingsBadge'>
+
+export const ShellChromeContext = createContext<ShellChrome>({})
 
 /**
  * The action a screen that fills the action bar itself hands the shell: it draws nothing of
@@ -82,7 +91,13 @@ function BackGlyph(): JSX.Element {
  * logging state leaving it.
  */
 export function AppShell(props: AppShellProps): JSX.Element {
-  const { title, onBack, trailing, action, tab, onTabChange, settingsBadge, children } = props
+  const chrome = useContext(ShellChromeContext)
+  const { title, onBack, action, children } = props
+  // A screen with a back control or an action bar is inside a session or an editor: no tab bar.
+  const tab = props.tab ?? (onBack || action ? undefined : chrome.tab)
+  const onTabChange = props.onTabChange ?? chrome.onTabChange
+  const trailing = props.trailing ?? chrome.trailing
+  const settingsBadge = props.settingsBadge ?? chrome.settingsBadge
 
   // Created before the first render and kept for the shell's lifetime, so a screen inside the
   // shell can portal its controls into it while it is still rendering. The bar takes it in as

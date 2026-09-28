@@ -93,3 +93,22 @@ _Avoid_: Variable, custom property, theme value
 The colour Tokens specifically. There is one, the light "Court" palette — ivory, court green,
 clay and four muscle-family tints — and no dark mode to keep in step.
 _Avoid_: Theme, colour scheme, skin
+
+**Service**:
+The only way the UI reads or writes the trainee's data or reaches sync. Each stamps its writes
+and announces them on a Change topic. See `docs/decisions/0011-layered-client-services.md`.
+_Avoid_: Store, manager, controller
+
+**Repository**:
+A storage module: the only code that touches the device database.
+_Avoid_: DAO, data access layer, model
+
+**Screen group (feature)**:
+One tab's container, reading and writing only through Services; in code, a `*Feature`. The
+Workout, Program, Exercises, History and Settings tabs are one each.
+_Avoid_: Page, container, view
+
+**Change topic**:
+Sessions, programs or preferences: what a write announces, so only the screens reading it
+re-read.
+_Avoid_: Event, channel, subscription

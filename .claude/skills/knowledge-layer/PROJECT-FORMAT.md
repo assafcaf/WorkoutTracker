@@ -1,7 +1,8 @@
 # project.md format
 
-`.claude/workflow/project.md`, committed. What an agent needs to know about this repo that it
-cannot work out by reading it.
+`.claude/workflow/project.md`, committed. The map of the repo: its structure, its design, and
+the nuances that take reading many files to piece together. Compact enough that an agent reads
+it instead of scanning the code to orient itself. Not a changelog, a spec or a status report.
 
 `config.md` holds the settings a run executes. This file holds the things a run would otherwise
 get wrong.
@@ -63,8 +64,12 @@ resolves or fails the gate.
 
 ## Rules
 
-- **The inference test.** Before a line goes in: could an agent learn this by reading the repo?
-  If yes, cut it. "The tests are in `tests/`" is not knowledge.
+- **The inference test.** Before a line goes in: could an agent learn this from the path, or
+  from the one file it would open anyway? If yes, cut it. "The tests are in `tests/`" is not
+  knowledge. What takes several files to piece together — how parts connect, where a rule is
+  enforced, which of two similar things to use — is exactly what belongs.
+- **The repo as it is.** No history, no epic or task names, nothing in progress. A line should
+  stay true until the code it describes changes.
 - **Never duplicate `config.md`.** The Commands section cross-references it. Two copies of a
   test command drift, and the copy an agent happens to read is the one that breaks the run.
 - **No decisions.** `docs/decisions/` owns those. Link, do not restate.
@@ -72,11 +77,13 @@ resolves or fails the gate.
 
 ## Ceiling
 
-120 lines. `bin/knowledge-paths.sh` fails the file above it.
+About 2,500 tokens, estimated as bytes / 4. `bin/knowledge-paths.sh` fails the file above it.
+Tokens, not lines: the cost is what every task pays to read the file, however it wraps. A row
+says what the path owns in one clause; anything the path or the code already says is cut.
 
-Under 150 lines is the working consensus for a repository context file, and the cost of
-exceeding it is measured rather than aesthetic: context files add over 20% to inference cost per
-task (arXiv 2602.11988), charged on every task whether the file earned it or not.
+The cost of exceeding it is measured rather than aesthetic: context files add over 20% to
+inference cost per task (arXiv 2602.11988), charged on every task whether the file earned it or
+not.
 
 ## Growing it
 

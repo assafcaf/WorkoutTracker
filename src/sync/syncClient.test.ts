@@ -17,7 +17,43 @@ import {
   type SyncRequest,
   type SyncResponse,
 } from './protocol'
-import { adoptSignedInAccount, getSyncState, replaceRemote, syncNow } from './syncClient'
+import { createChangeBus } from '../services/changes'
+import { createSyncService, type SyncResult, type SyncService } from '../services/sync'
+
+// E11-T7: every call below goes through `services.sync`, the only way the UI reaches sync. One
+// service per test (built lazily over that test's fake server) so calls made while one runs share
+// it; a call passing its own clock gets a service over that clock.
+let service: SyncService | null = null
+type CallDeps = { fetch: typeof fetch; now?: () => number }
+
+function serviceFor(deps: CallDeps): SyncService {
+  if (deps.now) {
+    return createSyncService({ now: deps.now, bus: createChangeBus(), storageAvailable: true, fetch: deps.fetch })
+  }
+  service ??= createSyncService({
+    now: () => Date.now(),
+    bus: createChangeBus(),
+    storageAvailable: true,
+    fetch: deps.fetch,
+  })
+  return service
+}
+
+function syncNow(deps: CallDeps): Promise<SyncResult> {
+  return serviceFor(deps).syncNow()
+}
+
+function replaceRemote(deps: CallDeps): Promise<SyncResult> {
+  return serviceFor(deps).replaceRemote()
+}
+
+function adoptSignedInAccount(email: string): Promise<void> {
+  return serviceFor({ fetch: server.fetch }).adoptAccount(email)
+}
+
+function getSyncState() {
+  return serviceFor({ fetch: server.fetch }).state()
+}
 
 // fake-indexeddb is installed globally in src/test/setup.ts; the real Dexie `db` is used.
 beforeEach(async () => {
@@ -208,6 +244,7 @@ function laterTick(): Promise<void> {
 let server: FakeSyncServer
 beforeEach(() => {
   server = new FakeSyncServer()
+  service = null
 })
 
 // --- O9: push local changes, pull newer server rows, keep the cursor ------------------------

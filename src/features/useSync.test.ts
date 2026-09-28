@@ -3,8 +3,9 @@ import { beforeEach, expect, test } from 'vitest'
 import { db } from '../storage/db'
 import { FakeSyncServer } from '../test/fakeSyncServer'
 import type { Session } from '../types'
-import type { SyncedSession } from './protocol'
-import { adoptSignedInAccount } from './syncClient'
+import { createChangeBus } from '../services/changes'
+import { createSyncService, type SyncService } from '../services/sync'
+import type { SyncedSession } from '../sync/protocol'
 import { useSync } from './useSync'
 
 // fake-indexeddb is installed globally in src/test/setup.ts; the real Dexie `db` and the real
@@ -49,8 +50,18 @@ beforeEach(async () => {
   server = new FakeSyncServer()
 })
 
+/** The sync service over the fake server and a fixed clock (E11-T7). */
+function syncService(): SyncService {
+  return createSyncService({ now: () => NOW, bus: createChangeBus(), storageAvailable: true, fetch: server.fetch })
+}
+
+function adoptSignedInAccount(email: string): Promise<void> {
+  return syncService().adoptAccount(email)
+}
+
 function mount() {
-  return renderHook(() => useSync({ fetch: server.fetch, now: () => NOW }))
+  const sync = syncService()
+  return renderHook(() => useSync(sync))
 }
 
 // --- O13: runs by itself on start --------------------------------------------------------

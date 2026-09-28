@@ -34,8 +34,9 @@ test name uses the same word.
 - **Project terms only.** Before adding a term, ask whether it is a concept unique to this
   project or a general programming concept. "Idempotent", "middleware", "worktree" and "retry"
   are general, however much this repo uses them. Only the former belongs.
-- **The inference test.** Cut any term the next agent could learn by reading the repo. A
-  glossary is not a tour of the codebase.
+- **The inference test.** Cut any term whose meaning is plain from its name or the one file
+  that defines it. Keep a term whose meaning here differs from the everyday one, or that two
+  parts of the code use differently. A glossary is not a tour of the codebase.
 - **No implementation detail.** Not a spec, not a scratch pad, not a design record. A term's
   entry says what the word means, never which module implements it or how. When you catch
   yourself writing a file path into a definition, the sentence belongs somewhere else.
@@ -51,7 +52,9 @@ there, ever: a decision inferred from a scan is a record of a decision nobody ma
 
 ## Ceiling
 
-100 lines. `bin/knowledge-paths.sh` fails the file above it.
+About 1,500 tokens, estimated as bytes / 4. `bin/knowledge-paths.sh` fails the file above it.
+Tokens, not lines: a line count rewards wrapping and punishes nothing a reader actually pays
+for. Stay well under it — one or two plain sentences per term, no paths, no restating.
 
 The ceiling is not tidiness. Context files cost over 20% more tokens per task
 (arXiv 2602.11988) and that is paid on every task whether the file earns it or not. A glossary

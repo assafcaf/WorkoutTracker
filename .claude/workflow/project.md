@@ -1,6 +1,6 @@
 # WorkoutTracker: working notes
 
-Mode: on   ·   Last scanned: 2026-09-27
+Mode: on   ·   Last scanned: 2026-09-28
 
 Every line below is transcribed from a committed decision record or carries a path a scanner
 checked. Nothing here is a model's opinion about how the project should work. Where a line
@@ -32,13 +32,18 @@ non-goals in full.
 | `src/domain/muscles.ts` | `Muscle` → `Region`, `MuscleFamily` and `familyOf`, and the `Resolve` type |
 | `src/domain/programs.ts` | `mergePrograms` (bundled plus the user's own) and `ProgramFault` validation |
 | `src/storage/db.ts` | The Dexie database, its `sessions` and `settings` tables (v2 adds `updatedAt` for sync), and `isStorageAvailable()` |
-| `src/storage/sessionStore.ts` | Start/resume, log a set, finish, active session, history (capped at 200 sessions) |
-| `src/storage/settingsStore.ts` | Typed get/set over the `settings` table: `activeProgramId`, `lastExportedAt`, `gymEquipment`, `weightSteps`, `volumeBaseline`, `userPrograms` |
-| `src/storage/backup.ts` | Whole-database export/import as one versioned JSON file |
-| `src/sync/` | The client side of sync: `syncClient.ts` (push/pull by cursor), `useSync.ts`, and `protocol.ts`, the wire types the Worker shares |
+| `src/storage/sessionStore.ts` | Session writes and history (capped at 200), plus whole-table reads and writes for sync and backup |
+| `src/storage/settingsStore.ts` | Typed get/set per setting key, plus whole-row reads and writes for sync and backup |
+| `src/storage/settingKeys.ts` | Every setting key, once: whether it syncs, and its change topic |
+| `src/storage/backup.ts` | The backup file format only; the export/import flow is `src/services/backup.ts` |
+| `src/sync/` | `syncClient.ts` (push/pull by cursor, through storage) and `protocol.ts`, the wire types the Worker shares |
+| `src/services/` | The six services, built once by `createServices` on one change bus. The UI's only way to storage and sync |
+| `src/features/` | The five tab screen groups, `ServicesProvider` (runs sync once), `useServiceData`, shared overlays, `AppRoute` |
+| `src/App.tsx` | The shell only: tabs, cross-tab navigation, update pill, Exercises filters kept across tabs |
+| `src/architecture.test.ts` | The layer rules, as source scans and as lint fixtures for `eslint.config.js` |
 | `src/worker/` | The Cloudflare Worker: `/api/*` routes, Access JWT check (`auth.ts`), D1 sync and replace (`sync.ts`) |
 | `migrations/` | The D1 schema: `sessions`, `settings`, `counters` |
-| `src/ui/AppShell.tsx` | Header, tab bar, and the sticky action-bar slot screens portal into |
+| `src/ui/AppShell.tsx` | Header, tab bar, the action-bar slot, and the context screen groups read chrome props from |
 | `src/ui/actionBarSlot.ts` | That portal, so a screen owns its own state-gated control |
 | `src/ui/body/` | `BodyMap` (Regions shaded by band) and its legend and polygon data |
 | `src/ui/MuscleChip.tsx` | A muscle name tinted by its family (`data-family`) |
@@ -80,12 +85,11 @@ The gates live in `config.md`'s Commands table. Only what that table cannot say 
 
 ## Standing overlaps
 
-Of the last 40 non-merge commits touching `src/` (epics land on `main` squashed, so these are
-E10's and the few before):
+Of the last 40 non-merge commits on `main` touching `src/` (one squashed commit per epic).
 
-- `src/App.test.tsx` 12, `src/App.tsx` 10
-- `vite.config.ts` 8, `src/styles/base.css` 8, `src/ui/AppShell.css` 8, `src/ui/Settings.tsx` 8
-- `src/ui/SetScreen.tsx` 7
+- `src/App.tsx` 10, `src/App.test.tsx` 10
+- `src/ui/Settings.tsx` 8, `src/ui/SetScreen.tsx` 6, `src/ui/ExerciseList.tsx` 6
+- `src/storage/settingsStore.ts` 6, `src/types.ts` 5
 
 ## Pitfalls
 
@@ -103,13 +107,13 @@ E10's and the few before):
 
 ## Unsettled
 
-Found by the 2026-09-23 and 2026-09-27 scans, not yet ruled on. Each is a fact with a path,
-not a recommendation.
+Found by the scans of 2026-09-23 to 2026-09-28, not yet ruled on: facts with paths, not advice.
 
-- **"Replace" runs both ways.** `src/storage/backup.ts` `replaceAll` overwrites the local
-  database from a file; `src/sync/syncClient.ts` `replaceRemote` overwrites the server.
+- **"Replace" names three writes.** `src/sync/syncClient.ts` `replaceRemote` overwrites the
+  server; `src/storage/sessionStore.ts` `replaceAllSessions` overwrites the device;
+  `src/worker/sync.ts` `replaceAll` overwrites D1.
+- **Change topics are declared three times:** `src/services/changes.ts` `ChangeTopic`,
+  `src/storage/settingKeys.ts` `SettingKeyInfo.topic`, `src/sync/syncClient.ts` `PulledTopic`.
 - **Two resolvers.** The `Resolve` type in `src/domain/muscles.ts` and `resolveExercise` in
   `src/data/resolve.ts` both look an id up as an Exercise.
 - **`npm run deploy` skips the D1 migrations** that `.github/workflows/deploy.yml` applies.
-- **Settings are reached two ways.** `src/storage/backup.ts` reads the active-program key
-  straight off the table at line 45 rather than through `src/storage/settingsStore.ts`.

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { db, isStorageAvailable } from './db'
 import {
+  allSessions,
   clearSwap,
   finishSession,
   finishStaleSession,
@@ -9,9 +10,13 @@ import {
   getLastSwap,
   listSessions,
   logSet,
+  putSessions,
+  replaceAllSessions,
+  sessionsChangedSince,
   setSwap,
   startOrResumeSession,
 } from './sessionStore'
+import { inTransaction } from './transaction'
 import type { Session, SetEntry } from '../types'
 
 // `fake-indexeddb/auto` is installed globally in src/test/setup.ts, because Dexie binds the
@@ -859,5 +864,232 @@ describe('E8-T6 a Session left in progress for 4 hours finishes itself', () => {
     expect(await db.sessions.get('forgotten-empty')).toBeUndefined()
     expect(await db.sessions.count()).toBe(1)
     expect(await db.sessions.get('session-0')).toEqual(stored[0])
+  })
+})
+
+// --- whole-table reads and writes for sync and backup (E11-T2) -------------------------------
+
+function byId(sessions: Session[]): Session[] {
+  return [...sessions].sort((one, other) => one.id.localeCompare(other.id))
+}
+
+describe('D2 sync and backup read and write Sessions through the store', () => {
+  const SINCE = BASE + DAY
+
+  const older = storedSession({ id: 'older', updatedAt: SINCE - 1 })
+  const atSince = storedSession({ id: 'at-since', updatedAt: SINCE })
+  const newer = storedSession({ id: 'newer', updatedAt: SINCE + 1 })
+  const unstamped = storedSession({ id: 'unstamped' })
+  const inProgressNewer = storedSession({ id: 'in-progress', finishedAt: null, updatedAt: SINCE + 60 * SECOND })
+
+  test('D2 sessionsChangedSince returns Sessions stamped after since, finished or in progress', async () => {
+    await db.sessions.bulkPut([older, atSince, newer, inProgressNewer])
+
+    expect(byId(await sessionsChangedSince(SINCE))).toEqual([inProgressNewer, newer])
+  })
+
+  test('D2 sessionsChangedSince includes Sessions never stamped, as syncClient does', async () => {
+    await db.sessions.bulkPut([older, unstamped])
+
+    expect(await sessionsChangedSince(SINCE)).toEqual([unstamped])
+  })
+
+  test('D2 sessionsChangedSince leaves out a Session stamped exactly at since', async () => {
+    await db.sessions.bulkPut([atSince])
+
+    expect(await sessionsChangedSince(SINCE)).toEqual([])
+  })
+
+  test('D2 sessionsChangedSince(0) returns every stamped and unstamped Session', async () => {
+    await db.sessions.bulkPut([older, atSince, newer, unstamped])
+
+    expect(byId(await sessionsChangedSince(0))).toEqual([atSince, newer, older, unstamped])
+  })
+
+  test('D2 sessionsChangedSince on an empty database returns no Sessions', async () => {
+    expect(await sessionsChangedSince(SINCE)).toEqual([])
+  })
+
+  test('D2 allSessions returns every stored Session, finished, in progress and unstamped', async () => {
+    await db.sessions.bulkPut([older, newer, unstamped, inProgressNewer])
+
+    expect(byId(await allSessions())).toEqual([inProgressNewer, newer, older, unstamped])
+  })
+
+  test('D2 allSessions on an empty database returns no Sessions', async () => {
+    expect(await allSessions()).toEqual([])
+  })
+
+  test('D2 putSessions stores each Session exactly as given, updatedAt included', async () => {
+    await putSessions([newer, unstamped])
+
+    expect(await db.sessions.get('newer')).toEqual(newer)
+    expect(await db.sessions.get('unstamped')).toEqual(unstamped)
+  })
+
+  test('D2 putSessions replaces a stored Session with the same id and keeps the others', async () => {
+    await db.sessions.bulkPut([older, newer])
+    const rewritten = { ...older, workoutId: 'workout-b', updatedAt: SINCE + 5 }
+
+    await putSessions([rewritten])
+
+    expect(byId(await db.sessions.toArray())).toEqual([newer, rewritten])
+  })
+
+  test('D2 putSessions with no Sessions leaves the database as it was', async () => {
+    await db.sessions.bulkPut([older])
+
+    await putSessions([])
+
+    expect(await db.sessions.toArray()).toEqual([older])
+  })
+
+  test('D2 replaceAllSessions leaves exactly the given Sessions stored', async () => {
+    await db.sessions.bulkPut([older, atSince, inProgressNewer])
+
+    await replaceAllSessions([newer, unstamped])
+
+    expect(byId(await db.sessions.toArray())).toEqual([newer, unstamped])
+  })
+
+  test('D2 replaceAllSessions with no Sessions clears every stored Session', async () => {
+    await db.sessions.bulkPut([older, inProgressNewer])
+
+    await replaceAllSessions([])
+
+    expect(await db.sessions.count()).toBe(0)
+  })
+
+  test('D2 replaceAllSessions that fails part-way keeps every Session stored before it', async () => {
+    await db.sessions.bulkPut([older, atSince])
+    // A Session with no id cannot be stored under the `id` key, so the write fails after the clear.
+    const keyless = { ...newer, id: undefined } as unknown as Session
+
+    const failure = await replaceAllSessions([newer, keyless]).then(
+      () => null,
+      (error: unknown) => error as Error,
+    )
+
+    expect(failure).not.toBeNull()
+    expect(failure?.message).not.toMatch(/not implemented/)
+    expect(byId(await db.sessions.toArray())).toEqual([atSince, older])
+  })
+})
+
+describe('D4 a time-taking Session write stamps the now it is given', () => {
+  // The device clock, pinned far from NOW: a write given a `now` must stamp that, not the clock.
+  const CLOCK = BASE + 10 * DAY
+  const NOW = BASE + 2 * DAY
+
+  beforeEach(() => {
+    vi.spyOn(Date, 'now').mockReturnValue(CLOCK)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  test('D4 logSet given now stores the Session with updatedAt equal to it', async () => {
+    await db.sessions.put(storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }))
+
+    const returned = await logSet('in-progress', entry('back-squat', 0, 60, 8, BASE + 120 * SECOND), NOW)
+
+    expect(returned.updatedAt).toBe(NOW)
+    expect((await db.sessions.get('in-progress'))?.updatedAt).toBe(NOW)
+  })
+
+  test('D4 setSwap given now stores the Session with updatedAt equal to it', async () => {
+    await db.sessions.put(storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }))
+
+    await setSwap('in-progress', 'back-squat', 'leg-press', NOW)
+
+    const stored = await db.sessions.get('in-progress')
+    expect(stored?.swaps).toEqual({ 'back-squat': 'leg-press' })
+    expect(stored?.updatedAt).toBe(NOW)
+  })
+
+  test('D4 clearSwap given now stores the Session with updatedAt equal to it', async () => {
+    await db.sessions.put(
+      storedSession({
+        id: 'in-progress',
+        finishedAt: null,
+        updatedAt: BASE,
+        swaps: { 'back-squat': 'leg-press' },
+      }),
+    )
+
+    await clearSwap('in-progress', 'back-squat', NOW)
+
+    const stored = await db.sessions.get('in-progress')
+    expect(stored?.swaps).toEqual({})
+    expect(stored?.updatedAt).toBe(NOW)
+  })
+})
+
+describe('D4 inTransaction commits the writes inside it together or not at all', () => {
+  beforeEach(async () => {
+    await db.settings.clear()
+  })
+
+  test('D4 inTransaction rw commits a Session write and a setting write made inside it', async () => {
+    const session = storedSession({ id: 'kept', updatedAt: BASE })
+
+    await inTransaction('rw', async () => {
+      await db.sessions.put(session)
+      await db.settings.put({ key: 'gymEquipment', value: ['barbell'], updatedAt: BASE })
+    })
+
+    expect(await db.sessions.get('kept')).toEqual(session)
+    expect(await db.settings.get('gymEquipment')).toEqual({
+      key: 'gymEquipment',
+      value: ['barbell'],
+      updatedAt: BASE,
+    })
+  })
+
+  test('D4 inTransaction resolves to what its function returns', async () => {
+    await db.sessions.put(storedSession({ id: 'read-me', updatedAt: BASE }))
+
+    const count = await inTransaction('r', async () => db.sessions.count())
+
+    expect(count).toBe(1)
+  })
+
+  test('D4 inTransaction rw whose function throws rejects with that error and keeps no write from it', async () => {
+    const before = storedSession({ id: 'before', updatedAt: BASE })
+    await db.sessions.put(before)
+    await db.settings.put({ key: 'gymEquipment', value: ['barbell'], updatedAt: BASE })
+
+    await expect(
+      inTransaction('rw', async () => {
+        await db.sessions.put(storedSession({ id: 'rolled-back', updatedAt: BASE + 1 }))
+        await db.sessions.delete('before')
+        await db.settings.put({ key: 'gymEquipment', value: ['dumbbell'], updatedAt: BASE + 1 })
+        throw new Error('fails part-way')
+      }),
+    ).rejects.toThrow('fails part-way')
+
+    expect(await db.sessions.toArray()).toEqual([before])
+    expect(await db.settings.get('gymEquipment')).toEqual({
+      key: 'gymEquipment',
+      value: ['barbell'],
+      updatedAt: BASE,
+    })
+  })
+
+  test('D4 store writes called inside inTransaction roll back with it', async () => {
+    await db.sessions.put(storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }))
+
+    await expect(
+      inTransaction('rw', async () => {
+        await logSet('in-progress', entry('back-squat', 0, 60, 8, BASE + 120 * SECOND))
+        await putSessions([storedSession({ id: 'rolled-back', updatedAt: BASE + 1 })])
+        throw new Error('fails part-way')
+      }),
+    ).rejects.toThrow('fails part-way')
+
+    expect(await db.sessions.toArray()).toEqual([
+      storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }),
+    ])
   })
 })

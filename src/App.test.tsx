@@ -1,8 +1,8 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { App } from './App'
+import { renderApp } from './test/renderApp'
 import { db, isStorageAvailable } from './storage/db'
 import {
   getGymEquipment,
@@ -104,7 +104,7 @@ const FAST = { timeout: 300 }
 // --- the picker leads with the active program (the bulk of O18) --------------------------
 
 test('O18 App leads the picker with the active program’s workouts', async () => {
-  render(<App />)
+  await renderApp()
 
   expect(await screen.findByRole('heading', { name: 'Workout A' }, FAST)).toBeVisible()
 })
@@ -116,7 +116,7 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
     SECOND_VISIBLE_PROGRAM,
   ])
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, FAST)
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
@@ -130,7 +130,7 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
 
 test('O18 App navigates to Settings, hiding the picker, and back again', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, FAST)
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
@@ -145,7 +145,7 @@ test('O18 App navigates to Settings, hiding the picker, and back again', async (
 test('O18 App falls back to the first program and says so on screen when the stored active program no longer exists', async () => {
   await setActiveProgramId('retired-program')
 
-  render(<App />)
+  await renderApp()
 
   expect(await screen.findByRole('heading', { name: 'Workout A' }, FAST)).toBeVisible()
   const fallbackNotice = screen.getByText(/no longer/i)
@@ -159,7 +159,7 @@ test('O2 App shows a hard-error screen naming the problem and renders no picker 
     throw new Error('program ghost-program, workout ghost-workout: no exercise ghost-exercise in the catalog')
   })
 
-  render(<App />)
+  await renderApp()
 
   const alert = await screen.findByRole('alert', {}, FAST)
   expect(alert.textContent).toMatch(/ghost-exercise/)
@@ -171,7 +171,7 @@ test('O2 App shows a hard-error screen naming the problem and renders no picker 
 test('O19 App shows the storage-unavailable banner and disables the logging controls when storage is unavailable', async () => {
   vi.mocked(isStorageAvailable).mockResolvedValue(false)
 
-  render(<App />)
+  await renderApp()
 
   const alert = await screen.findByRole('alert', {}, FAST)
   expect(alert.textContent).toMatch(/cannot be saved/i)
@@ -180,7 +180,7 @@ test('O19 App shows the storage-unavailable banner and disables the logging cont
 })
 
 test('O19 App leaves the logging controls enabled and shows no banner when storage is available', async () => {
-  render(<App />)
+  await renderApp()
 
   const startButton = await screen.findByRole('button', { name: /Start Workout A/i }, FAST)
   expect(startButton).not.toBeDisabled()
@@ -268,7 +268,7 @@ test('O5 a lift logged under one program presets set 2 of that lift under anothe
   const user = userEvent.setup()
 
   // One session under A/B Split: back squat at 60 kg x 10.
-  const firstRun = render(<App />)
+  const firstRun = await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
   await enterOnKeypad(user, weightReadout(), ['6', '0'])
@@ -284,7 +284,7 @@ test('O5 a lift logged under one program presets set 2 of that lift under anothe
 
   // The trainee switches to Full body starter, which plans back squat for 3 sets.
   await setActiveProgramId('full-body-starter')
-  render(<App />)
+  await renderApp()
   await startWorkout(user, 'Full body')
   await openExercise(user, 'Back squat')
   await logSetAndOpen(user, 2, 3)
@@ -294,7 +294,7 @@ test('O5 a lift logged under one program presets set 2 of that lift under anothe
 
 test('O5 with nothing logged anywhere, a lift opens on its start weight and the low end of its rep range', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
@@ -306,7 +306,7 @@ test('O5 with nothing logged anywhere, a lift opens on its start weight and the 
 
 test('O6 opening a lift last logged in an earlier, finished session shows no rest timer', async () => {
   const user = userEvent.setup()
-  const firstRun = render(<App />)
+  const firstRun = await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
   await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
@@ -321,7 +321,7 @@ test('O6 opening a lift last logged in an earlier, finished session shows no res
   // A fresh session: back-squat's only lastEntries now come from the session just finished,
   // not from this one -- App must thread sessionStartedAt through so that history does not
   // read as "logged in this session".
-  render(<App />)
+  await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
   await screen.findByRole('button', { name: 'Weight' }, SETTLE)
@@ -337,7 +337,7 @@ test('O6 opening a lift last logged in an earlier, finished session shows no res
  * Returns the id the session had before the close.
  */
 async function logThreeSetsAndCloseTheApp(user: UserEvent): Promise<string> {
-  const run = render(<App />)
+  const run = await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
   await logSetAndOpen(user, 2, 4)
@@ -356,7 +356,7 @@ test('O13 reopening the app lands in the session in progress rather than in the 
   const user = userEvent.setup()
   await logThreeSetsAndCloseTheApp(user)
 
-  render(<App />)
+  await renderApp()
 
   expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
@@ -366,7 +366,7 @@ test('O13 the three sets logged before the app was closed are still in the sessi
   const user = userEvent.setup()
   const sessionId = await logThreeSetsAndCloseTheApp(user)
 
-  render(<App />)
+  await renderApp()
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   const session = await getActiveSession()
@@ -382,7 +382,7 @@ test('O13 the reopened exercise list shows the exercise at 3 of its 4 planned se
   const user = userEvent.setup()
   await logThreeSetsAndCloseTheApp(user)
 
-  render(<App />)
+  await renderApp()
 
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('3/4')
@@ -406,7 +406,7 @@ async function logFourSetsOfBackSquat(user: UserEvent): Promise<void> {
 
 test('O15 with all 4 planned sets logged, add set opens a fifth set preset from the fourth', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await logFourSetsOfBackSquat(user)
 
   await user.click(await screen.findByRole('button', { name: 'Add set' }, SETTLE))
@@ -416,7 +416,7 @@ test('O15 with all 4 planned sets logged, add set opens a fifth set preset from 
 
 test('O15 the added set is logged against the same exercise as set 5', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await logFourSetsOfBackSquat(user)
 
   await user.click(await screen.findByRole('button', { name: 'Add set' }, SETTLE))
@@ -439,7 +439,7 @@ test('O15 the added set is logged against the same exercise as set 5', async () 
 
 test('O15 no add-set control is offered while planned sets are still to come', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
   await logSetAndOpen(user, 2, 4)
@@ -454,7 +454,7 @@ test('O15 no add-set control is offered while planned sets are still to come', a
 
 /** Logs one set of back squat, then closes the app, leaving the session active in storage. */
 async function logOneSetAndCloseTheApp(user: UserEvent): Promise<void> {
-  const run = render(<App />)
+  const run = await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
   await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
@@ -471,7 +471,7 @@ test('O17 finishing the session from the exercise list clears the active session
   const user = userEvent.setup()
   await logOneSetAndCloseTheApp(user)
 
-  render(<App />)
+  await renderApp()
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   await user.click(screen.getByRole('button', { name: 'Finish workout' }))
@@ -499,7 +499,7 @@ test('O17 the finished session appears in the history list with its date, progra
   })
   await finishSession(started.id, BASE + 3_600_000)
 
-  render(<App />)
+  await renderApp()
   await user.click(await screen.findByRole('button', { name: 'History' }, SETTLE))
 
   const row = await screen.findByRole('listitem', {}, SETTLE)
@@ -616,7 +616,7 @@ test('O14 pressing Export on the settings screen hands the browser a backup hold
   await db.sessions.bulkPut(CURRENT)
   await setActiveProgramId('assaf-ab-2026')
   const downloads = captureDownloads()
-  render(<App />)
+  await renderApp()
   await openSettings(user)
 
   await user.click(await screen.findByRole('button', { name: 'Export' }, SETTLE))
@@ -634,7 +634,7 @@ test('O14 pressing Export with nothing logged still hands the browser a backup, 
   const user = userEvent.setup()
   await setActiveProgramId('assaf-ab-2026')
   const downloads = captureDownloads()
-  render(<App />)
+  await renderApp()
   await openSettings(user)
 
   await user.click(await screen.findByRole('button', { name: 'Export' }, SETTLE))
@@ -651,7 +651,7 @@ test('O14 pressing Export with nothing logged still hands the browser a backup, 
 test('O15 choosing a backup file shows a confirmation naming the current count, the incoming count and how many local sessions will be removed', async () => {
   const user = userEvent.setup()
   await db.sessions.bulkPut(CURRENT)
-  render(<App />)
+  await renderApp()
   await openSettings(user)
 
   await chooseBackupFile(user, importedBackupText())
@@ -666,7 +666,7 @@ test('O15 cancelling the import confirmation leaves every session in the databas
   const user = userEvent.setup()
   await db.sessions.bulkPut(CURRENT)
   const downloads = captureDownloads()
-  render(<App />)
+  await renderApp()
   await openSettings(user)
   await chooseBackupFile(user, importedBackupText())
   await screen.findByRole('alertdialog', {}, SETTLE)
@@ -685,7 +685,7 @@ test('O15 confirming the import replaces the database with the chosen file sessi
   const user = userEvent.setup()
   await db.sessions.bulkPut(CURRENT)
   captureDownloads()
-  render(<App />)
+  await renderApp()
   await openSettings(user)
   await chooseBackupFile(user, importedBackupText())
   await screen.findByRole('alertdialog', {}, SETTLE)
@@ -703,7 +703,7 @@ test('O16 choosing a file that is not valid JSON shows an error naming the probl
   const user = userEvent.setup()
   await db.sessions.bulkPut(CURRENT)
   const downloads = captureDownloads()
-  render(<App />)
+  await renderApp()
   await openSettings(user)
 
   await chooseBackupFile(user, 'this is not a backup at all')
@@ -725,7 +725,7 @@ test('O16 choosing a file with an unknown schemaVersion shows an error naming th
     sessions: IMPORTED,
     settings: { activeProgramId: 'full-body-starter', lastExportedAt: null },
   })
-  render(<App />)
+  await renderApp()
   await openSettings(user)
 
   await chooseBackupFile(user, fromALaterBuild)
@@ -796,7 +796,7 @@ function looseButtons(names: string[]): string[] {
 }
 
 test('O7 the app on load offers a Main nav holding exactly the Workout, Program, Exercises, History and Settings tabs', async () => {
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   // E5-T3 inserts Exercises between Workout and History. E5-T18 (M11) inserts Program between
@@ -805,7 +805,7 @@ test('O7 the app on load offers a Main nav holding exactly the Workout, Program,
 })
 
 test('O7 the app on load, with no session in progress, is on the Workout tab', async () => {
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   expect(currentTabNames()).toEqual(['Workout'])
@@ -814,7 +814,7 @@ test('O7 the app on load, with no session in progress, is on the Workout tab', a
 test('O8 pressing the History tab lists the finished sessions with the tab bar still on screen', async () => {
   const user = userEvent.setup()
   await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'History')
@@ -830,7 +830,7 @@ test('O8 pressing the History tab lists the finished sessions with the tab bar s
 test('O8 pressing the History tab makes History the current tab', async () => {
   const user = userEvent.setup()
   await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'History')
@@ -841,7 +841,7 @@ test('O8 pressing the History tab makes History the current tab', async () => {
 })
 
 test('O9 the Workout tab carries no free-standing Settings, History or Back button outside the tab bar', async () => {
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
@@ -850,7 +850,7 @@ test('O9 the Workout tab carries no free-standing Settings, History or Back butt
 test('O9 the History tab carries no free-standing Settings, History or Back button outside the tab bar', async () => {
   const user = userEvent.setup()
   await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'History')
@@ -861,7 +861,7 @@ test('O9 the History tab carries no free-standing Settings, History or Back butt
 
 test('O9 the Settings tab carries no free-standing Settings, History or Back button outside the tab bar', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Settings')
@@ -922,7 +922,7 @@ async function openBackSquat(user: UserEvent): Promise<void> {
 
 test('O10 the exercise list renders inside a shell whose header names the workout', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await startWorkoutA(user)
 
@@ -934,7 +934,7 @@ test('O10 the exercise list renders inside a shell whose header names the workou
 
 test('O10 the exercise list is inside the shell and no tab bar is rendered with it', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await startWorkoutA(user)
 
@@ -950,7 +950,7 @@ test('O10 the exercise list is inside the shell and no tab bar is rendered with 
 
 test('O10 the exercise list shell offers a back control in its header', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await startWorkoutA(user)
 
@@ -963,7 +963,7 @@ test('O10 the exercise list shell offers a back control in its header', async ()
 
 test('O10 the exercise list back control lands on the picker with the session still in progress', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startWorkoutA(user)
 
   const back = screen.queryByRole('button', { name: 'Back' })
@@ -978,7 +978,7 @@ test('O10 the exercise list back control lands on the picker with the session st
 
 test('O10 Finish workout sits in the sticky action bar rather than after the exercise list', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await startWorkoutA(user)
 
@@ -998,7 +998,7 @@ test('O10 Finish workout sits in the sticky action bar rather than after the exe
 
 test('O11 the set screen renders inside a shell whose header names the exercise', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await openBackSquat(user)
 
@@ -1009,7 +1009,7 @@ test('O11 the set screen renders inside a shell whose header names the exercise'
 
 test('O11 the set screen is inside the shell and no tab bar is rendered with it', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await openBackSquat(user)
 
@@ -1021,7 +1021,7 @@ test('O11 the set screen is inside the shell and no tab bar is rendered with it'
 
 test('O11 the set screen back control returns to the exercise list', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await openBackSquat(user)
 
   const back = screen.queryByRole('button', { name: 'Back' })
@@ -1034,7 +1034,7 @@ test('O11 the set screen back control returns to the exercise list', async () =>
 
 test('O11 Log set sits in the sticky action bar rather than in the set screen body', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await openBackSquat(user)
 
@@ -1053,7 +1053,7 @@ test('O11 Log set sits in the sticky action bar rather than in the set screen bo
 // offers Add set alone, which the E6-T1 block at the end of this file proves.
 test('O11 Add set sits in the action bar once every planned set is logged', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await logFourSetsOfBackSquat(user)
 
   const addSet = await screen.findByRole('button', { name: 'Add set' }, SETTLE)
@@ -1090,7 +1090,7 @@ async function startLogOneSetAndBackToPicker(user: UserEvent): Promise<void> {
 
 test('O12 backing out of a session in progress shows a resume control naming the workout in progress instead of the bare picker', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startLogOneSetAndBackToPicker(user)
 
   const resume = resumeControl()
@@ -1100,7 +1100,7 @@ test('O12 backing out of a session in progress shows a resume control naming the
 
 test('O12 pressing the resume control returns to the same session with its logged sets intact', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startLogOneSetAndBackToPicker(user)
   const before = await getActiveSession()
   if (!before) throw new Error('the session was never started')
@@ -1178,7 +1178,7 @@ describe('E3-T7', () => {
   // --- O13: "Update ready" lives in the shell, not re-parented into a screen --------------
 
   test('O13 the Update ready control renders inside the shell header trailing slot once an update is waiting', async () => {
-    render(<App />)
+    await renderApp()
     await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
     deployNewVersion()
@@ -1192,7 +1192,7 @@ describe('E3-T7', () => {
 
   test('O13 the Update ready control stays in the header trailing slot across a tab change, never moving into the screen body', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await renderApp()
     await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
     deployNewVersion()
     await screen.findByRole('button', { name: 'Update ready' }, SETTLE)
@@ -1227,7 +1227,7 @@ describe('E3-T7', () => {
   // --- O14: the backup-due marker lives in the nav, and never replaces BackupBadge --------
 
   test('O14 the Settings tab in the nav carries a marker whose accessible name says a backup is due, without changing the tab own name', async () => {
-    render(<App />)
+    await renderApp()
     await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
     // A fresh database has never been exported, so a backup is due from the start.
@@ -1241,7 +1241,7 @@ describe('E3-T7', () => {
 
   test('O14 the Settings screen still renders BackupBadge in full when a backup is due', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await renderApp()
     await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
     await pressTab(user, 'Settings')
@@ -1276,7 +1276,7 @@ describe('E3-T7', () => {
 // replace it with a Previous/Next pager. 876 rows at 10 per page is 88 pages.
 test('L9 tapping the Exercises tab shows the library, with a search box, and makes Exercises the current tab', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Exercises')
@@ -1309,7 +1309,7 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
 // re-fetched after the muscle/equipment filter is applied rather than expected to carry over.
 test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with more reachable via the pager -- and a combination matching nothing shows "No exercises match"', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await pressTab(user, 'Exercises')
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
@@ -1382,7 +1382,7 @@ function detailOverlay(): HTMLElement | null {
 
 test('L14 tapping Exercise info on the deadlift set screen opens the in-app detail overlay for Barbell_Deadlift headed "Deadlift"', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Deadlift')
@@ -1406,7 +1406,7 @@ test('L14 tapping Exercise info on the deadlift set screen opens the in-app deta
 
 test('L14 the set screen underneath the detail overlay is not unmounted, so its dials survive the round trip', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Deadlift')
@@ -1437,7 +1437,7 @@ test('L14 the set screen underneath the detail overlay is not unmounted, so its 
 
 test('L14 tapping a row on the Exercises tab opens the same in-app detail overlay', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await pressTab(user, 'Exercises')
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
@@ -1463,7 +1463,7 @@ test('L14 tapping a row on the Exercises tab opens the same in-app detail overla
 
 test('F1 tapping a row on the Exercises tab opens the detail overlay as a modal dialog, with the Exercises tab still mounted underneath', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await pressTab(user, 'Exercises')
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
@@ -1497,7 +1497,7 @@ test('F1 tapping a row on the Exercises tab opens the detail overlay as a modal 
 
 test('S6 tapping Alternatives on the seated biceps curls set screen opens the ranked alternatives list', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
@@ -1526,7 +1526,7 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
 
 test('F2 tapping Alternatives on a live set opens the alternatives list as a modal dialog, closable without swapping', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
@@ -1554,7 +1554,7 @@ test('F2 tapping Alternatives on a live set opens the alternatives list as a mod
 
 test('F3 the Alternatives overlay carries the shared overlay-panel class', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
@@ -1572,7 +1572,7 @@ test('F3 the Alternatives overlay carries the shared overlay-panel class', async
 
 test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates the exercise list row', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
@@ -1600,7 +1600,7 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
 
 test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled with no history as 0 kg and the bottom of the rep range', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
@@ -1681,7 +1681,7 @@ async function logFirstHammerCurlsSet(user: UserEvent): Promise<void> {
 
 test('S8 the exercise list offers Undo swap after the swap while no Hammer_Curls set is logged', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await logTwoSeatedCurlsThenSwap(user)
 
   expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
@@ -1689,7 +1689,7 @@ test('S8 the exercise list offers Undo swap after the swap while no Hammer_Curls
 
 test('S8 tapping Undo swap brings back the seated biceps curls row with its 2 logged sets', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await logTwoSeatedCurlsThenSwap(user)
 
   await user.click(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE))
@@ -1701,7 +1701,7 @@ test('S8 tapping Undo swap brings back the seated biceps curls row with its 2 lo
 
 test('S8 tapping Undo swap removes the swap from the stored session', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await logTwoSeatedCurlsThenSwap(user)
 
   await user.click(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE))
@@ -1715,7 +1715,7 @@ test('S8 tapping Undo swap removes the swap from the stored session', async () =
 
 test('S8 once the first Hammer_Curls set is logged under it, Undo swap is no longer offered', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await logTwoSeatedCurlsThenSwap(user)
   // Offered first, so its absence below is the withdrawal and not a control that never was.
   expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
@@ -1737,7 +1737,7 @@ test('S8 once the first Hammer_Curls set is logged under it, Undo swap is no lon
 
 /** Swaps seated-biceps-curls for Hammer_Curls in Workout B, then closes the app. */
 async function swapThenCloseTheApp(user: UserEvent): Promise<void> {
-  const run = render(<App />)
+  const run = await renderApp()
   await logTwoSeatedCurlsThenSwap(user)
   run.unmount()
   db.close()
@@ -1748,7 +1748,7 @@ test('S9 reopening the app resumes the session with the swap still applied and s
   const user = userEvent.setup()
   await swapThenCloseTheApp(user)
 
-  render(<App />)
+  await renderApp()
 
   // The swap itself is what E5-T11/E5-T12 already persist; what reopening must also keep is
   // the swap's standing as undoable, since no Hammer_Curls set has been logged yet.
@@ -1777,7 +1777,7 @@ async function finishWorkoutBWithHammerCurlsSwap(): Promise<void> {
 test('S10 starting Workout B again shows the seated biceps curls row with a Last time: Hammer Curls button', async () => {
   await finishWorkoutBWithHammerCurlsSwap()
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await startWorkout(user, 'Workout B')
@@ -1792,7 +1792,7 @@ test('S10 starting Workout B again shows the seated biceps curls row with a Last
 test('S10 tapping Last time: Hammer Curls applies the same swap to the exercise list row', async () => {
   await finishWorkoutBWithHammerCurlsSwap()
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await startWorkout(user, 'Workout B')
 
@@ -1805,7 +1805,7 @@ test('S10 tapping Last time: Hammer Curls applies the same swap to the exercise 
 test('S10 tapping Last time: Hammer Curls records the swap on the new session', async () => {
   await finishWorkoutBWithHammerCurlsSwap()
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await startWorkout(user, 'Workout B')
 
@@ -1835,7 +1835,7 @@ const MACHINE_EXERCISE_NAME = 'Ab Crunch Machine'
 
 test('S14 opening Settings with no saved gym equipment lists every library equipment type except body only, all ticked', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await openSettings(user)
@@ -1848,7 +1848,7 @@ test('S14 opening Settings with no saved gym equipment lists every library equip
 
 test('S14 unticking machine in Settings persists across a reload', async () => {
   const user = userEvent.setup()
-  const run = render(<App />)
+  const run = await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await openSettings(user)
 
@@ -1863,7 +1863,7 @@ test('S14 unticking machine in Settings persists across a reload', async () => {
   db.close()
   await db.open()
 
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await openSettings(user)
 
@@ -1874,7 +1874,7 @@ test('S14 unticking machine in Settings persists across a reload', async () => {
 test('S15 with machine unticked, the Exercises tab opens with the My gym only chip on and no machine exercises listed', async () => {
   await setGymEquipment(EQUIPMENT_TYPES.filter((equipment) => equipment !== 'machine'))
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Exercises')
@@ -1893,7 +1893,7 @@ test('S15 with machine unticked, the Exercises tab opens with the My gym only ch
 test('S15 turning the My gym only chip off lists machine exercises again', async () => {
   await setGymEquipment(EQUIPMENT_TYPES.filter((equipment) => equipment !== 'machine'))
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await pressTab(user, 'Exercises')
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
@@ -1916,7 +1916,7 @@ test('S15 turning the My gym only chip off lists machine exercises again', async
 // active program's start buttons.
 
 test('M12 the Workout tab shows none of its workouts’ exercise plan details, only the start buttons', async () => {
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
@@ -1927,7 +1927,7 @@ test('M12 the Workout tab shows none of its workouts’ exercise plan details, o
 })
 
 test('M12 the Workout tab offers no way to see or start another program’s workouts', async () => {
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   expect(screen.queryByRole('button', { name: /Other programs/ })).toBeNull()
@@ -1936,7 +1936,7 @@ test('M12 the Workout tab offers no way to see or start another program’s work
 
 test('M13 tapping the Program tab shows the active program’s name and makes Program the current tab', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Program')
@@ -1952,7 +1952,7 @@ test('M13 choosing another program in the Program tab’s switcher makes it the 
     SECOND_VISIBLE_PROGRAM,
   ])
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Program')
@@ -2062,7 +2062,7 @@ async function tapSummaryRegion(
 test('M16 tapping Finish workout shows the session summary with its body map on the session scale', async () => {
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   await user.click(screen.getByRole('button', { name: 'Finish workout' }))
@@ -2077,7 +2077,7 @@ test('M16 tapping Finish workout shows the session summary with its body map on 
 test('F2 the Finish workout session summary is an aria-modal dialog', async () => {
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   await user.click(screen.getByRole('button', { name: 'Finish workout' }))
@@ -2089,7 +2089,7 @@ test('F2 the Finish workout session summary is an aria-modal dialog', async () =
 test('M16 Done on the finish summary closes it onto the picker with the session finished', async () => {
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Finish workout' }))
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
@@ -2106,7 +2106,7 @@ test('M16 Done on the finish summary closes it onto the picker with the session 
 test('M16 opening the finished session from History shows the same body map the finish summary showed', async () => {
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Finish workout' }))
   const atFinish = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
@@ -2126,7 +2126,7 @@ test('M16 opening the finished session from History shows the same body map the 
 test('M9 tapping upper-back on a History session’s map opens a panel with its 5.5 sets and contributors', async () => {
   const user = userEvent.setup()
   await finishedUpperBackSession()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   const summary = await openOnlyHistorySession(user)
 
@@ -2154,7 +2154,7 @@ test('M9 tapping upper-back on a History session’s map opens a panel with its 
 test('M9 Browse exercises on upper-back opens the Exercises tab listing only lats or middle back exercises, first 10 with the pager reaching all 72', async () => {
   const user = userEvent.setup()
   await finishedUpperBackSession()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   const summary = await openOnlyHistorySession(user)
   const panel = await tapSummaryRegion(user, summary, 'upper-back')
@@ -2242,7 +2242,7 @@ function thisWeekSection(): HTMLElement {
 test('the Program tab’s This week reflects sets actually logged in the last 7 days', async () => {
   const user = userEvent.setup()
   await finishedBackSquatSessionAt(Date.now() - DAY_MS)
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Program')
@@ -2263,7 +2263,7 @@ test('with nothing logged in the last 7 days the Program tab’s This week still
   const user = userEvent.setup()
   // Logged, but eight days ago: outside the window, so it must not count as this week.
   await finishedBackSquatSessionAt(Date.now() - 8 * DAY_MS)
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'Program')
@@ -2333,7 +2333,7 @@ describe('E7-T8', () => {
   test('O13 starting the app runs a sync that pushes the logged sessions to the server', async () => {
     await db.sessions.bulkPut(CURRENT)
 
-    render(<App />)
+    await renderApp()
 
     await waitFor(() => {
       expect(server.sessionsOf('a@x').map((s) => s.id)).toEqual(CURRENT.map((s) => s.id).sort())
@@ -2343,7 +2343,7 @@ describe('E7-T8', () => {
 
   test('O13 after the start sync, Settings shows the account the phone syncs to and a sync time', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await renderApp()
     await serverSettled(2)
 
     await openSettings(user)
@@ -2355,7 +2355,7 @@ describe('E7-T8', () => {
   test('O13 a start sync that pulls the active program shows it on the picker without a restart', async () => {
     server.seedSetting('a@x', { key: 'activeProgramId', value: 'full-body-starter', updatedAt: BASE })
 
-    render(<App />)
+    await renderApp()
 
     expect(await screen.findByRole('heading', { name: 'Full body starter' }, SETTLE)).toBeVisible()
     await serverSettled(2)
@@ -2365,7 +2365,7 @@ describe('E7-T8', () => {
 
   test('O13 finishing a session runs a sync that pushes the finished session', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await renderApp()
     await serverSettled(2)
     await startWorkout(user, 'Workout A')
 
@@ -2381,7 +2381,7 @@ describe('E7-T8', () => {
 
   test('O13 finishing returns to the picker while the sync it started is still in flight', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await renderApp()
     await serverSettled(2)
     await startWorkout(user, 'Workout A')
     const release = server.hold('/api/me')
@@ -2402,7 +2402,7 @@ describe('E7-T8', () => {
   test('O13 logging a set is stored while the start sync is still in flight', async () => {
     const user = userEvent.setup()
     const release = server.hold('/api/me')
-    render(<App />)
+    await renderApp()
     await startWorkout(user, 'Workout A')
     await openExercise(user, 'Back squat')
 
@@ -2419,7 +2419,7 @@ describe('E7-T8', () => {
   // --- O13: when the browser comes back online ------------------------------------------------
 
   test('O13 the browser firing online runs another sync', async () => {
-    render(<App />)
+    await renderApp()
     await serverSettled(2)
 
     act(() => {
@@ -2436,7 +2436,7 @@ describe('E7-T8', () => {
 
   test('O13 pressing Sync now in Settings runs a sync', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await renderApp()
     await serverSettled(2)
     await openSettings(user)
 
@@ -2451,7 +2451,7 @@ describe('E7-T8', () => {
   test('O13 an offline start sync shows the offline notice in Settings', async () => {
     const user = userEvent.setup()
     server.failures.set('/api/me', 'network-down')
-    render(<App />)
+    await renderApp()
     await serverSettled(1)
 
     await openSettings(user)
@@ -2465,7 +2465,7 @@ describe('E7-T8', () => {
     await db.sessions.put(remoteSession('mine', BASE + 100))
     server.signedInEmail = 'b@x'
     server.seedSession('b@x', remoteSession('theirs', BASE + 200))
-    render(<App />)
+    await renderApp()
     await serverSettled(1)
     await openSettings(user)
 
@@ -2486,7 +2486,7 @@ describe('E7-T8', () => {
     await adoptSignedInAccount('a@x')
     server.signedInEmail = 'b@x'
     server.seedSetting('b@x', { key: 'activeProgramId', value: 'full-body-starter', updatedAt: BASE })
-    render(<App />)
+    await renderApp()
     await serverSettled(1)
     await openSettings(user)
     await user.click(
@@ -2505,7 +2505,7 @@ describe('E7-T8', () => {
     const user = userEvent.setup()
     await db.sessions.bulkPut(CURRENT)
     captureDownloads()
-    render(<App />)
+    await renderApp()
     await serverSettled(2)
 
     await importAndConfirm(user)
@@ -2525,7 +2525,7 @@ describe('E7-T8', () => {
     const user = userEvent.setup()
     await db.sessions.bulkPut(CURRENT)
     captureDownloads()
-    render(<App />)
+    await renderApp()
     await waitFor(() => {
       expect(server.sessionsOf('a@x')).toHaveLength(CURRENT.length)
     }, SETTLE)
@@ -2543,7 +2543,7 @@ describe('E7-T8', () => {
     const user = userEvent.setup()
     await db.sessions.bulkPut(CURRENT)
     captureDownloads()
-    render(<App />)
+    await renderApp()
     await waitFor(() => {
       expect(server.sessionsOf('a@x')).toHaveLength(CURRENT.length)
     }, SETTLE)
@@ -2578,7 +2578,7 @@ describe('E7-T8', () => {
  */
 async function logAllThreePlannedBackSquatSets(user: UserEvent): Promise<void> {
   await setActiveProgramId('full-body-starter')
-  render(<App />)
+  await renderApp()
   await startWorkout(user, 'Full body')
   await openExercise(user, 'Back squat')
   await logSetAndOpen(user, 2, 3)
@@ -2748,7 +2748,7 @@ function historyViewSwitch(): HTMLElement {
 
 /** From a fresh render, presses the History tab and then the switch's Stats button. */
 async function openStatsThroughHistory(user: UserEvent): Promise<void> {
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await pressTab(user, 'History')
   const group = await screen.findByRole('group', { name: 'History view' }, SETTLE)
@@ -2790,7 +2790,7 @@ test('O10 with nothing logged, Stats reached through the History tab draws no ch
 test('O10 the History tab opens the History list with the switch on History, never Stats', async () => {
   const user = userEvent.setup()
   await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'History')
@@ -2890,7 +2890,7 @@ describe('E8-T6', () => {
   test('O3 launching with a stale Session in progress shows the picker with no resume card', async () => {
     await staleBackSquatSession()
 
-    render(<App />)
+    await renderApp()
 
     expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
     expect(resumeControl()).toBeNull()
@@ -2899,7 +2899,7 @@ describe('E8-T6', () => {
   test('O3 launching with a stale Session in progress stores it finished at its last Set', async () => {
     const lastSetAt = await staleBackSquatSession()
 
-    render(<App />)
+    await renderApp()
     await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
 
     expect(await getActiveSession()).toBeNull()
@@ -2912,7 +2912,7 @@ describe('E8-T6', () => {
   test('O3 after a stale Session finishes itself, Back squat Set 2 opens preset at 50 kg x 10', async () => {
     await staleBackSquatSession()
     const user = userEvent.setup()
-    render(<App />)
+    await renderApp()
 
     await startWorkout(user, 'Workout A')
     await openExercise(user, 'Back squat')
@@ -2980,7 +2980,7 @@ function setDocumentVisibility(state: 'visible' | 'hidden'): void {
 
 test('O1 returning from another tab with no Session in progress lands back on Workout', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
 
   await pressTab(user, 'History')
@@ -2996,7 +2996,7 @@ test('O1 returning from another tab with no Session in progress lands back on Wo
 
 test('O2 a Session in progress on its exercise list stays on the exercise list when the document becomes visible again', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await startWorkoutA(user)
 
   setDocumentVisibility('hidden')
@@ -3011,7 +3011,7 @@ test('O2 a Session in progress on its exercise list stays on the exercise list w
 
 test('O2 a Session in progress on a set screen stays on the same set when the document becomes visible again', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
   await openBackSquat(user)
   await enterOnKeypad(user, weightReadout(), ['6', '0'])
   await enterOnKeypad(user, repsReadout(), ['1', '0'])
@@ -3068,7 +3068,7 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
     loggedAt: now,
   })
 
-  render(<App />)
+  await renderApp()
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   // Back out to the picker, which is the only view with a tab bar while a Session is in
@@ -3098,7 +3098,7 @@ describe('E8-T8', () => {
   test('O2 back squats set screen opens with Step 5 kg once setWeightStep has stored it', async () => {
     await setWeightStep('back-squat', 5)
     const user = userEvent.setup()
-    render(<App />)
+    await renderApp()
 
     await startWorkout(user, 'Workout A')
     await openExercise(user, 'Back squat')
@@ -3108,7 +3108,7 @@ describe('E8-T8', () => {
 
   test('O2 choosing a new weight step on back squats set screen is stored for the next time it opens', async () => {
     const user = userEvent.setup()
-    const firstRun = render(<App />)
+    const firstRun = await renderApp()
     await startWorkout(user, 'Workout A')
     await openExercise(user, 'Back squat')
 
@@ -3121,10 +3121,38 @@ describe('E8-T8', () => {
     // The session started above is still in progress (never finished), so a fresh render lands
     // straight back in it -- on the exercise list, not the picker -- per AppViews' own doc
     // comment: "A session in progress wins on mount, so reopening the app lands back in it."
-    render(<App />)
+    await renderApp()
     await openExercise(user, 'Back squat')
 
     expect(await screen.findByRole('combobox', { name: 'Step 5 kg' }, SETTLE)).toBeInTheDocument()
   })
+})
+
+// --- E11-T15: a screen group keeps what the trainee left in it (O14, no visible change) ------
+//
+// Before E11-T15, App held the Exercises search and filters, and tapping away and back never
+// reset them. Moving each tab into its own screen group must not lose that.
+
+test('O14 the Exercises search and filters survive leaving and returning to the tab', async () => {
+  const user = userEvent.setup()
+  await renderApp()
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+  const search = await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)
+  await user.type(search, 'curl')
+  await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
+  await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
+
+  await pressTab(user, 'Workout')
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  await pressTab(user, 'Exercises')
+
+  expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toHaveValue(
+    'curl',
+  )
+  expect(screen.getByRole('combobox', { name: /muscle/i })).toHaveValue('biceps')
+  expect(screen.getByRole('combobox', { name: /equipment/i })).toHaveValue('dumbbell')
+  // The list is still narrowed by them: the unfiltered first row is not shown.
+  expect(screen.queryByText('3/4 Sit-Up')).toBeNull()
 })
 

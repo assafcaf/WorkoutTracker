@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { App } from './App'
+import { renderApp } from './test/renderApp'
 import { db } from './storage/db'
 import { ACTIVE_PROGRAM_ID_KEY } from './storage/settingsStore'
 import { FakeSyncServer } from './test/fakeSyncServer'
@@ -65,13 +65,13 @@ async function syncSettled(): Promise<void> {
 // --- O19: an empty database has no Program --------------------------------------------------
 
 test('O19 with an empty database the Workout tab shows No program yet', async () => {
-  render(<App />)
+  await renderApp()
 
   expect(await screen.findByText('No program yet', undefined, SETTLE)).toBeVisible()
 })
 
 test('O19 with an empty database the Workout tab shows no Workout start buttons', async () => {
-  render(<App />)
+  await renderApp()
   await appReady()
   await syncSettled()
 
@@ -80,7 +80,7 @@ test('O19 with an empty database the Workout tab shows no Workout start buttons'
 
 test('O19 with an empty database Choose a program opens the Program tab', async () => {
   const user = userEvent.setup()
-  render(<App />)
+  await renderApp()
 
   await user.click(await screen.findByRole('button', { name: 'Choose a program' }, SETTLE))
 
@@ -96,7 +96,7 @@ test('O20 with no stored choice the Workout tab offers the Workouts of the lates
     finished('s-new', 'full-body-starter', 'full-body', 2),
   ])
 
-  render(<App />)
+  await renderApp()
 
   expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
@@ -109,7 +109,7 @@ test('O20 with no stored choice the latest Session’s Program is stored as acti
     finished('s-new', 'full-body-starter', 'full-body', 2),
   ])
 
-  render(<App />)
+  await renderApp()
   await appReady()
 
   await waitFor(async () => {
@@ -120,7 +120,7 @@ test('O20 with no stored choice the latest Session’s Program is stored as acti
 test('O20 a latest Session on a Program no longer offered falls back to the first Program and stores it', async () => {
   await db.sessions.put(finished('s-gone', 'retired-program', 'workout-a', 2))
 
-  render(<App />)
+  await renderApp()
 
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   await waitFor(async () => {
@@ -136,7 +136,7 @@ test('O22 a sync that pulls activeProgramId makes the Workout tab offer that Pro
   // proves the Workout tab follows the sync rather than winning a race with it.
   const release = server.hold('/api/sync')
 
-  render(<App />)
+  await renderApp()
   expect(await screen.findByText('No program yet', undefined, SETTLE)).toBeVisible()
 
   release()

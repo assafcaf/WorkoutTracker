@@ -185,7 +185,9 @@ test('O12 every class a control carries has a rule in some stylesheet under src'
 })
 
 test('O12 the picker\'s fieldset in App.tsx carries the workout-picker class', () => {
-  const appSource = readFileSync(join(srcDir, 'App.tsx'), 'utf-8')
+  // E11-T15 O14 moved the picker out of App.tsx into the Workout screen group; the title is
+  // kept as it was on purpose (the merge's weakened-tests check matches titles).
+  const appSource = readFileSync(join(srcDir, 'features', 'workout', 'WorkoutFeature.tsx'), 'utf-8')
   const fieldset = extractControls(appSource).find(
     (control) => control.tag === 'fieldset' && control.attrs.includes('storageAvailable'),
   )
