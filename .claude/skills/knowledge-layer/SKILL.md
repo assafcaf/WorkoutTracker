@@ -155,4 +155,4 @@ inferred from a scan is a record of a decision nobody made.
 | "I'll read a few source files to check the scanner's work" | Then you have paid for the scan twice. Ask the scanner |
 | "More terms make the glossary more useful" | Every term is charged on every task. A term that fails the inference test costs and teaches nothing |
 | "This decision is obvious from the code, I'll record it" | `docs/decisions/` is not yours. `/spec` writes it when a decision is actually made |
-| "The file is 140 lines but it's all good content" | The gate fails at 120. Under 150 lines is where context files stop being read and start being skimmed |
+| "It's over the token ceiling but it's all good content" | The gate fails at ~2,500 tokens (project.md) and ~1,500 (CONTEXT.md). Past that, context files stop being read and start being skimmed |

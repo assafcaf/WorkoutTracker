@@ -95,29 +95,20 @@ clay and four muscle-family tints — and no dark mode to keep in step.
 _Avoid_: Theme, colour scheme, skin
 
 **Service**:
-An object built by `createXService(deps)` in `src/services/*.ts` — the only thing outside
-`src/storage` allowed to read or write state — composed into `Services` by `createServices()`
-and handed down through `ServicesProvider`.
-See `docs/decisions/0011-layered-client-services.md`.
+The only way the UI reads or writes the trainee's data or reaches sync. Each stamps its writes
+and announces them on a Change topic. See `docs/decisions/0011-layered-client-services.md`.
 _Avoid_: Store, manager, controller
 
 **Repository**:
-A module in `src/storage/*.ts` reading and writing one Dexie table or settings key and nothing
-else. Every reader of `db.sessions` lives here.
-See `docs/decisions/0011-layered-client-services.md`.
+A storage module: the only code that touches the device database.
 _Avoid_: DAO, data access layer, model
 
 **Screen group (feature)**:
-One directory under `src/features/*` holding one tab's or overlay's component plus the hook
-that reads its slice of the services — `ExercisesFeature`, `WorkoutFeature`, `ProgramFeature`,
-`SettingsFeature`, `HistoryFeature`, `AlternativesOverlay`, `DetailOverlay`. It renders inside
-`src/App.tsx`'s Shell and never imports storage or sync directly.
-See `docs/decisions/0011-layered-client-services.md`.
-_Avoid_: Module, page, container
+One tab's container, reading and writing only through Services; in code, a `*Feature`. The
+Workout, Program, Exercises, History and Settings tabs are one each.
+_Avoid_: Page, container, view
 
 **Change topic**:
-One of `ChangeTopic` (`'sessions' | 'programs' | 'preferences'`, `src/services/changes.ts`) — the
-unit a `ChangeBus` subscribes to and emits so a screen group re-reads only the service data a
-mutation actually touched.
-See `docs/decisions/0011-layered-client-services.md`.
+Sessions, programs or preferences: what a write announces, so only the screens reading it
+re-read.
 _Avoid_: Event, channel, subscription

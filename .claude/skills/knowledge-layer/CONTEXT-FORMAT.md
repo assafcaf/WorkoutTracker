@@ -51,7 +51,9 @@ there, ever: a decision inferred from a scan is a record of a decision nobody ma
 
 ## Ceiling
 
-100 lines. `bin/knowledge-paths.sh` fails the file above it.
+About 1,500 tokens, estimated as bytes / 4. `bin/knowledge-paths.sh` fails the file above it.
+Tokens, not lines: a line count rewards wrapping and punishes nothing a reader actually pays
+for. Stay well under it — one or two plain sentences per term, no paths, no restating.
 
 The ceiling is not tidiness. Context files cost over 20% more tokens per task
 (arXiv 2602.11988) and that is paid on every task whether the file earns it or not. A glossary

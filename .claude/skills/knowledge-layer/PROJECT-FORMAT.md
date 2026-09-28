@@ -72,11 +72,13 @@ resolves or fails the gate.
 
 ## Ceiling
 
-120 lines. `bin/knowledge-paths.sh` fails the file above it.
+About 2,500 tokens, estimated as bytes / 4. `bin/knowledge-paths.sh` fails the file above it.
+Tokens, not lines: the cost is what every task pays to read the file, however it wraps. A row
+says what the path owns in one clause; anything the path or the code already says is cut.
 
-Under 150 lines is the working consensus for a repository context file, and the cost of
-exceeding it is measured rather than aesthetic: context files add over 20% to inference cost per
-task (arXiv 2602.11988), charged on every task whether the file earned it or not.
+The cost of exceeding it is measured rather than aesthetic: context files add over 20% to
+inference cost per task (arXiv 2602.11988), charged on every task whether the file earned it or
+not.
 
 ## Growing it
 

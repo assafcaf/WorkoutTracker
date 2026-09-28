@@ -14,8 +14,9 @@
 # whitespace and at least one `/`; URLs and globs are skipped. Bare filenames are skipped,
 # because prose says `config.md` far more often than it cites a file.
 #
-# Ceilings default to 100 lines for CONTEXT.md and 120 for project.md; override with
-# CONTEXT_MAX and PROJECT_MAX.
+# Ceilings are in tokens, estimated as bytes / 4 (no tokenizer needed; non-ASCII rounds up).
+# They default to 1500 for CONTEXT.md and 2500 for project.md; override with CONTEXT_MAX and
+# PROJECT_MAX. Tokens, not lines: what a context file costs is what every task pays to read it.
 #
 # Exit 0: clean, or the mode is off and there is nothing to check. Exit 1: problems printed.
 # Exit 64: usage.
@@ -26,7 +27,7 @@ root=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --root) root="${2-}"; shift 2 ;;
-    -h|--help) sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "usage: knowledge-paths.sh [--root <dir>]" >&2; exit 64 ;;
   esac
 done
@@ -71,12 +72,13 @@ for f in "$context" "$project"; do
   fi
 
   case "$rel" in
-    CONTEXT.md) max="${CONTEXT_MAX:-100}" ;;
-    *)          max="${PROJECT_MAX:-120}" ;;
+    CONTEXT.md) max="${CONTEXT_MAX:-1500}" ;;
+    *)          max="${PROJECT_MAX:-2500}" ;;
   esac
-  lines="$(wc -l <"$f" | tr -d '[:space:]')"
-  if [ "$lines" -gt "$max" ]; then
-    echo "knowledge-paths: $rel is $lines lines, ceiling is $max"
+  bytes="$(wc -c <"$f" | tr -d '[:space:]')"
+  tokens=$(( (bytes + 3) / 4 ))
+  if [ "$tokens" -gt "$max" ]; then
+    echo "knowledge-paths: $rel is ~$tokens tokens, ceiling is $max"
     rc=1
   fi
 
