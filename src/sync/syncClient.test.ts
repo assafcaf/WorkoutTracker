@@ -1,6 +1,6 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { db, type SettingRow } from '../storage/db'
-import { logSet } from '../storage/sessionStore'
+import { discardSession, getActiveSession, listSessions, logSet } from '../storage/sessionStore'
 import {
   getUserPrograms,
   getWeightStep,
@@ -843,4 +843,76 @@ test('O6 an older userPrograms from another device leaves the newer local list',
   await syncNow({ fetch: server.fetch })
 
   expect(await getUserPrograms()).toEqual([userProgram('local-newer')])
+})
+
+// --- E12-T1 O6: a Session discarded on one device disappears from the other ------------------
+
+/** One device's whole local store, so a test can play two phones over one fake IndexedDB. */
+type DeviceStore = { sessions: Session[]; settings: SettingRow[] }
+
+async function saveDevice(): Promise<DeviceStore> {
+  return { sessions: await db.sessions.toArray(), settings: await db.settings.toArray() }
+}
+
+async function loadDevice(store: DeviceStore): Promise<void> {
+  await db.sessions.clear()
+  await db.settings.clear()
+  await db.sessions.bulkPut(store.sessions)
+  await db.settings.bulkPut(store.settings)
+  service = null
+}
+
+/**
+ * Device B holds `shared` and has synced it; device A then syncs from nothing, so both hold it.
+ * Resolves with B's store, and leaves A loaded.
+ */
+async function bothDevicesHold(shared: Session): Promise<DeviceStore> {
+  await putLocalSession(shared)
+  await syncNow({ fetch: server.fetch })
+  const deviceB = await saveDevice()
+  await loadDevice({ sessions: [], settings: [] })
+  await syncNow({ fetch: server.fetch })
+  expect(await localSessions()).toEqual([shared])
+  return deviceB
+}
+
+const DISCARDED_AT = T0 + 10 * HOUR
+
+test('E12-T1 O6 a finished Session discarded on device A is no longer listed on device B after both sync', async () => {
+  const deviceB = await bothDevicesHold(session('shared', T0 + 100, [entry('squat', 0, 100, 5)]))
+
+  await discardSession('shared', DISCARDED_AT)
+  await syncNow({ fetch: server.fetch })
+  await loadDevice(deviceB)
+  expect((await listSessions()).map((stored) => stored.id)).toEqual(['shared'])
+  await syncNow({ fetch: server.fetch })
+
+  expect(await listSessions()).toEqual([])
+})
+
+test('E12-T1 O6 a Session in progress discarded on device A is no longer active on device B after both sync', async () => {
+  const inProgress: Session = { ...session('shared', T0 + 100), finishedAt: null }
+  const deviceB = await bothDevicesHold(inProgress)
+
+  await discardSession('shared', DISCARDED_AT)
+  await syncNow({ fetch: server.fetch })
+  await loadDevice(deviceB)
+  expect(await getActiveSession()).toEqual(inProgress)
+  await syncNow({ fetch: server.fetch })
+
+  expect(await getActiveSession()).toBeNull()
+})
+
+test('E12-T1 O6 the server stores the discarded Session unchanged and device B stores it as sent', async () => {
+  const shared = session('shared', T0 + 100, [entry('squat', 0, 100, 5)])
+  const deviceB = await bothDevicesHold(shared)
+  const discarded = { ...shared, deletedAt: DISCARDED_AT, updatedAt: DISCARDED_AT }
+
+  await discardSession('shared', DISCARDED_AT)
+  await syncNow({ fetch: server.fetch })
+  expect(server.sessionsOf('a@x')).toEqual([discarded])
+  await loadDevice(deviceB)
+  await syncNow({ fetch: server.fetch })
+
+  expect(await localSessions()).toEqual([discarded])
 })

@@ -73,6 +73,47 @@ test('O5 load falls back to the most recent Session’s program when nothing is 
   expect(activeProgramId).toBe('full-body-starter')
 })
 
+test('E12-T1 O4 load falls back past a newer deleted Session to the latest live Session’s program', async () => {
+  await db.sessions.bulkPut([
+    inProgressSession({
+      id: 'live',
+      programId: 'assaf-ab-2026',
+      workoutId: 'workout-a',
+      startedAt: NOW - 5000,
+      finishedAt: NOW - 4000,
+    }),
+    inProgressSession({
+      id: 'deleted',
+      programId: 'full-body-starter',
+      workoutId: 'full-body',
+      startedAt: NOW - 2000,
+      finishedAt: NOW - 1000,
+      deletedAt: NOW - 500,
+      updatedAt: NOW - 500,
+    }),
+  ])
+
+  const { activeProgramId } = await service().load()
+
+  expect(activeProgramId).toBe('assaf-ab-2026')
+})
+
+test('E12-T1 O4 load resolves a null active program id when the only Session is deleted', async () => {
+  await db.sessions.put(
+    inProgressSession({
+      id: 'deleted',
+      programId: 'full-body-starter',
+      workoutId: 'full-body',
+      deletedAt: NOW - 500,
+      updatedAt: NOW - 500,
+    }),
+  )
+
+  const { activeProgramId } = await service().load()
+
+  expect(activeProgramId).toBeNull()
+})
+
 test('O5 load resolves a null active program id when nothing is stored and there is no Session', async () => {
   const { activeProgramId, staleActiveProgramNotice } = await service().load()
 

@@ -223,7 +223,7 @@ const library = new Map(
 const resolveWithLibrary = (id: string): Exercise | undefined => resolveExercise(id, catalog, library)
 
 /** The accessible-name prefix of seated-biceps-curls' row once it is swapped for Hammer_Curls. */
-const SWAPPED_ROW = /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/
+const SWAPPED_ROW = /^Hammer Curls[ ]+instead of Seated biceps curls/
 
 const HAMMER_SWAP = { 'seated-biceps-curls': 'Hammer_Curls' }
 
@@ -389,4 +389,33 @@ test('O2 no row shows E4’s Next: … kg suggestion any more', () => {
   renderList([], [], { period: 'last' }, lastEntries)
 
   expect(screen.queryByText(/Next:|Add a set/)).toBeNull()
+})
+
+// --- E12-T8: a swapped row reads like any other row, in its own colour -------------------------
+
+test('O17 a swapped row shows the done name, its logged/planned counter and an instead-of line', () => {
+  renderWorkoutB(workoutBSession([entry('Hammer_Curls', 1)], HAMMER_SWAP))
+
+  const swapped = screen.getByRole('button', { name: SWAPPED_ROW })
+  expect(swapped).toHaveClass('swapped')
+  expect(swapped.querySelector('.exercise-name')).toHaveTextContent('Hammer Curls')
+  expect(swapped.querySelector('.set-progress')).toHaveTextContent('1/3')
+  expect(swapped.querySelector('.exercise-instead')).toHaveTextContent('instead of Seated biceps curls')
+})
+
+test('O17 only the swapped row carries the swapped class and an instead-of line', () => {
+  renderWorkoutB(workoutBSession([], HAMMER_SWAP))
+
+  expect(document.querySelectorAll('.exercise-row').length).toBeGreaterThan(1)
+  expect(document.querySelectorAll('.exercise-row.swapped')).toHaveLength(1)
+  expect(document.querySelectorAll('.exercise-instead')).toHaveLength(1)
+})
+
+test('O17 the swapped row counter advances as Sets of the done Exercise are logged', () => {
+  const { rerenderWith } = renderWorkoutB(workoutBSession([], HAMMER_SWAP))
+  expect(document.querySelector('.exercise-row.swapped .set-progress')).toHaveTextContent('0/3')
+
+  rerenderWith(workoutBSession([entry('Hammer_Curls', 1), entry('Hammer_Curls', 2)], HAMMER_SWAP))
+
+  expect(document.querySelector('.exercise-row.swapped .set-progress')).toHaveTextContent('2/3')
 })

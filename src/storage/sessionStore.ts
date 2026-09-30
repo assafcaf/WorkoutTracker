@@ -1,5 +1,6 @@
 import type { Session, SetEntry } from '../types'
 import { db } from './db'
+import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 
 /** How many finished sessions a history lookup walks before it gives up. */
 const HISTORY_SCAN_LIMIT = 200
@@ -22,12 +23,31 @@ function isFinished(session: Session): boolean {
   return session.finishedAt !== null
 }
 
+/** False when the Session has been discarded or deleted (`deletedAt` set) (E12-T1). */
+export function isLive(session: Session): boolean {
+  return session.deletedAt === undefined
+}
+
+/**
+ * Stores the Session marked deleted, `deletedAt` and `updatedAt` at `now`, entries kept (E12-T1).
+ * Rejects with `no session <id> is stored` for an unknown id.
+ */
+export async function discardSession(sessionId: string, now: number): Promise<void> {
+  await db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    await db.sessions.put({ ...session, deletedAt: now, updatedAt: now })
+  })
+}
+
 /**
  * Finished sessions, newest first, across every program, at most `limit` of them. The cap
  * keeps the newest end, so only sessions older than it fall out of reach.
  */
 async function finishedSessionsNewestFirst(limit?: number): Promise<Session[]> {
-  const finished = db.sessions.orderBy('startedAt').reverse().filter(isFinished)
+  const finished = db.sessions
+    .orderBy('startedAt')
+    .reverse()
+    .filter((session) => isFinished(session) && isLive(session))
   return limit === undefined ? finished.toArray() : finished.limit(limit).toArray()
 }
 
@@ -45,7 +65,7 @@ export const STALE_SESSION_MS = 4 * 60 * 60 * 1000
 
 /**
  * Finishes the Session in progress at its last activity when that was `STALE_SESSION_MS` or
- * more before `now`, or deletes it when it holds no Sets (E8-T6).
+ * more before `now`, or marks it deleted when it holds no Sets (E8-T6, E12-T1).
  */
 export async function finishStaleSession(now: number): Promise<void> {
   await db.transaction('rw', db.sessions, async () => {
@@ -56,9 +76,11 @@ export async function finishStaleSession(now: number): Promise<void> {
       active.startedAt,
     )
     if (now - lastActivity < STALE_SESSION_MS) return
-    // An empty session has nothing for history or presets, so it goes rather than finishes.
-    if (active.entries.length === 0) await db.sessions.delete(active.id)
-    else await db.sessions.put({ ...active, finishedAt: lastActivity, updatedAt: now })
+    // An empty session has nothing for history or presets, so it goes rather than finishes:
+    // marked deleted, not removed, so the deletion syncs to other devices (E12-T1).
+    if (active.entries.length === 0) {
+      await db.sessions.put({ ...active, deletedAt: now, updatedAt: now })
+    } else await db.sessions.put({ ...active, finishedAt: lastActivity, updatedAt: now })
   })
 }
 
@@ -93,13 +115,13 @@ export async function startOrResumeSession(
 }
 
 /**
- * The session with `finishedAt === null`, or null when there is none.
+ * The live session with `finishedAt === null`, or null when there is none.
  */
 export async function getActiveSession(): Promise<Session | null> {
   const active = await db.sessions
     .orderBy('startedAt')
     .reverse()
-    .filter((session) => !isFinished(session))
+    .filter((session) => !isFinished(session) && isLive(session))
     .first()
   return active ?? null
 }
@@ -124,6 +146,75 @@ export async function logSet(
     else entries.push(entry)
 
     const updated: Session = { ...session, entries, updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
+}
+
+/** Replaces the weight and reps of one logged Set, keeping its `setIndex` and `loggedAt`. */
+export async function updateSet(
+  sessionId: string,
+  exerciseId: string,
+  setIndex: number,
+  values: { weightKg: number | null; reps: number },
+  now: number = Date.now(),
+): Promise<Session> {
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const at = session.entries.findIndex(
+      (stored) => stored.exerciseId === exerciseId && stored.setIndex === setIndex,
+    )
+    if (at < 0) throw new Error(`no set ${setIndex} of ${exerciseId} is logged`)
+    const entries = [...session.entries]
+    entries[at] = { ...entries[at], weightKg: values.weightKg, reps: values.reps }
+    const updated: Session = { ...session, entries, updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
+}
+
+/** Removes one logged Set, renumbering the Exercise's later Sets down by one. */
+export async function deleteSet(
+  sessionId: string,
+  exerciseId: string,
+  setIndex: number,
+  now: number = Date.now(),
+): Promise<{ session: Session; removed: SetEntry }> {
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const { entries, removed } = removeSet(session.entries, exerciseId, setIndex)
+    const updated: Session = { ...session, entries, updatedAt: now }
+    await db.sessions.put(updated)
+    return { session: updated, removed }
+  })
+}
+
+/** Puts a removed Set back where it was, moving the Exercise's later Sets up by one. */
+export async function restoreSet(
+  sessionId: string,
+  entry: SetEntry,
+  now: number = Date.now(),
+): Promise<Session> {
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const updated: Session = { ...session, entries: insertSet(session.entries, entry), updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
+}
+
+/**
+ * The History editor's single write (E12-T6): checks `finishedAt >= startedAt` and that at
+ * least one Set remains, stamps `updatedAt`, and stores the whole Session in one `put`.
+ */
+export async function saveSession(session: Session, now: number = Date.now()): Promise<Session> {
+  if (session.finishedAt !== null && session.finishedAt < session.startedAt) {
+    throw new Error(END_BEFORE_START)
+  }
+  if (session.entries.length === 0) throw new Error(NO_SETS_LEFT)
+  return db.transaction('rw', db.sessions, async () => {
+    await requireSession(session.id)
+    const updated: Session = { ...session, updatedAt: now }
     await db.sessions.put(updated)
     return updated
   })

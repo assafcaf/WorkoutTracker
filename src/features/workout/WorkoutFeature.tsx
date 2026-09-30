@@ -381,6 +381,22 @@ export function WorkoutFeature({
       })
   }
 
+  /** `ExerciseList.onDiscard`: discards the Session in progress and returns to the picker. */
+  function handleDiscard(): void {
+    if (!session) return
+    services.sessions
+      .discard(session.id)
+      .then(() => {
+        setSession(null)
+        setOpenSet(null)
+        setView('picker')
+        void syncNow()
+      })
+      .catch(() => {
+        // The list stays up; nothing was discarded.
+      })
+  }
+
   /** `SetScreen.onOpenInfo`: the detail overlay for the catalog exercise on screen (E5-T15). */
   function handleOpenInfoForExercise(exerciseId: string): void {
     const exercise = catalog.get(exerciseId)
@@ -422,6 +438,7 @@ export function WorkoutFeature({
               session,
               openSet.exerciseId,
             )}
+            lastTime={openSet.history}
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}
             weightStep={openSet.weightStep}
@@ -431,6 +448,24 @@ export function WorkoutFeature({
               })
             }}
             family={family}
+            logged={session.entries.filter((entry) => entry.exerciseId === openSet.exerciseId)}
+            onEditSet={async (setIndex, values) => {
+              setSession(
+                await services.sessions.updateSet(session.id, openSet.exerciseId, setIndex, values),
+              )
+            }}
+            onDeleteSet={async (setIndex) => {
+              const { session: updated, removed } = await services.sessions.deleteSet(
+                session.id,
+                openSet.exerciseId,
+                setIndex,
+              )
+              setSession(updated)
+              return removed
+            }}
+            onRestoreSet={async (entry) => {
+              setSession(await services.sessions.restoreSet(session.id, entry))
+            }}
             onLog={(id, entry) => services.sessions.logSet(id, entry)}
             onLogged={(logged) => {
               setSession(logged)
@@ -470,6 +505,7 @@ export function WorkoutFeature({
           onApplySwap={handleApplySwap}
           sessions={sessions}
           volumeBaseline={volumeBaseline}
+          onDiscard={handleDiscard}
         />
       </AppShell>
     )

@@ -2,12 +2,17 @@ import { useEffect, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import type { Muscle } from '../../types'
 import { AppShell } from '../../ui/AppShell'
-import { HistoryList } from '../../ui/HistoryList'
+import { HistoryList, summarise } from '../../ui/HistoryList'
 import { HistoryStatsSwitch, type HistoryStatsView } from '../../ui/HistoryStatsSwitch'
+import { SessionEditor } from '../../ui/SessionEditor'
 import { SessionSummary } from '../../ui/SessionSummary'
 import { Stats } from '../../ui/Stats'
 import type { AppRoute } from '../routes'
+import { useServices } from '../ServicesProvider'
 import { useServiceData } from '../useServiceData'
+
+/** The History editor open over one finished Session (E12-T6), at an Exercise when given. */
+export type SessionEditView = { view: 'session-edit'; sessionId: string; exerciseId?: string }
 
 export type HistoryFeatureProps = {
   navigate(to: AppRoute): void
@@ -25,6 +30,8 @@ export type HistoryFeatureProps = {
 export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): JSX.Element {
   const [view, setView] = useState<HistoryStatsView>('history')
   const [summarySessionId, setSummarySessionId] = useState<string | null>(null)
+  const [editing, setEditing] = useState<SessionEditView | null>(null)
+  const services = useServices()
 
   useEffect(() => {
     onInSession(false)
@@ -46,6 +53,10 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
     navigate({ tab: 'exercises', muscles })
   }
 
+  function handleEdit(sessionId: string, exerciseId?: string): void {
+    setEditing({ view: 'session-edit', sessionId, exerciseId })
+  }
+
   // The shell's own header carries the tab's one heading; the summary sits over the shell.
   return (
     <AppShell title={view === 'stats' ? 'Stats' : 'History'}>
@@ -61,6 +72,29 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
               ? sessions.find((session) => session.id === summarySessionId) ?? null
               : null
 
+            const editSession = editing
+              ? sessions.find((session) => session.id === editing.sessionId) ?? null
+              : null
+            if (editing && editSession) {
+              return (
+                <SessionEditor
+                  key={editSession.id}
+                  session={editSession}
+                  workoutName={summarise(editSession, programs).workoutName}
+                  resolve={resolve}
+                  focusExerciseId={editing.exerciseId}
+                  onSave={async (draft) => {
+                    await services.sessions.save(draft)
+                    setEditing(null)
+                  }}
+                  onCancel={() => setEditing(null)}
+                  onDelete={() => {
+                    void services.sessions.discard(editSession.id).then(() => setEditing(null))
+                  }}
+                />
+              )
+            }
+
             return (
               <>
                 {view === 'stats' ? (
@@ -71,6 +105,7 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
                     programs={programs}
                     resolve={resolve}
                     onOpen={setSummarySessionId}
+                    onEdit={handleEdit}
                   />
                 )}
                 {summarySession ? (

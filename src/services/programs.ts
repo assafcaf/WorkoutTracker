@@ -12,7 +12,7 @@ import {
   saveUserProgram,
   setActiveProgramId,
 } from '../storage/settingsStore'
-import { allSessions, getActiveSession } from '../storage/sessionStore'
+import { allSessions, getActiveSession, isLive } from '../storage/sessionStore'
 
 /** Shown, and thrown as a `ServiceError('in-progress', ...)`, when a write would strand the
  * Session in progress (E9-T10's guard, moved here for E11-T5). */
@@ -52,7 +52,7 @@ export function createProgramService(deps: ServiceDeps): ProgramService {
       }
     }
 
-    const sessions = await allSessions()
+    const sessions = (await allSessions()).filter(isLive)
     const latest = sessions.reduce<(typeof sessions)[number] | null>(
       (best, session) => (best === null || session.startedAt > best.startedAt ? session : best),
       null,

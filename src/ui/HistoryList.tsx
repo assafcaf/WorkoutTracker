@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Exercise, Program, Session, SetEntry } from '../types'
 import './HistoryList.css'
 
@@ -71,19 +72,103 @@ function groupByExercise(
   }))
 }
 
-/**
- * The finished sessions given, each reduced through `summarise` and rendered as one row, with
- * its sets grouped by exercise under the name `resolve` gives that exercise's id -- a catalog
- * id, or a library id swapped in mid-session (E5-T15).
- */
-export function HistoryList(props: {
+/** A set as the card lists it: `80 × 8`, or `BW × 15` for a bodyweight set. */
+function setLabel(entry: SetEntry): string {
+  return `${entry.weightKg === null ? 'BW' : entry.weightKg} × ${entry.reps}`
+}
+
+/** A session's length in whole minutes, from `startedAt` to `finishedAt` (0 while unfinished). */
+function durationMinutes(session: Session): number {
+  if (session.finishedAt === null) return 0
+  return Math.max(0, Math.round((session.finishedAt - session.startedAt) / 60_000))
+}
+
+type HistoryListProps = {
   sessions: Session[]
   programs: Program[]
   resolve: (id: string) => Exercise | undefined
-  /** Opens a session's summary (E5-T20, M16) from its row's "Open session" button. */
+  /** Opens a session's summary (E5-T20, M16) from its card's "Open session" button. */
   onOpen?(sessionId: string): void
-}): JSX.Element {
-  const { sessions, programs, resolve, onOpen } = props
+  /** Opens the History editor (E12-T6) from a card's "Edit workout" or an Exercise's "Edit". */
+  onEdit?(sessionId: string, exerciseId?: string): void
+}
+
+/** One finished session as a card: collapsed to its header, expanded to its Exercises. */
+function HistoryCard(props: { session: Session } & Omit<HistoryListProps, 'sessions'>): JSX.Element {
+  const { session, programs, resolve, onOpen, onEdit } = props
+  const [open, setOpen] = useState(false)
+  const summary = summarise(session, programs)
+
+  return (
+    <li className="history-row">
+      <button
+        type="button"
+        className="history-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="history-date">{calendarDate(summary.date)}</span>{' '}
+        <span className="history-program">{summary.programName}</span>{' '}
+        <span className="history-workout">{summary.workoutName}</span>{' '}
+        <span className="history-duration">{`${durationMinutes(session)} min`}</span>{' '}
+        <span className="history-sets">{`${summary.totalSets} sets`}</span>{' '}
+        <span className="history-volume">{`${summary.totalVolumeKg} kg`}</span>
+      </button>
+      {open ? (
+        <>
+          {/* `role="presentation"` on the group `<li>`s below: `getByRole('listitem')` must
+              keep finding exactly the session card above (App.test.tsx's O8/O9/O17 pre-date
+              grouping and query it singular), while S11 still needs a real `<li>` ancestor to
+              scope each exercise's sets through `.closest('li')`. */}
+          <ul className="history-groups" role="presentation">
+            {groupByExercise(session.entries, resolve).map((group) => (
+              <li key={group.exerciseId} className="history-group" role="presentation">
+                <div className="history-group-head">
+                  <h4 className="history-group-heading">{group.name}</h4>
+                  {onEdit ? (
+                    <button
+                      type="button"
+                      className="history-group-edit"
+                      onClick={() => onEdit(session.id, group.exerciseId)}
+                    >
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+                <div className="history-group-sets">
+                  {group.entries.map((entry) => (
+                    <p key={entry.setIndex} className="history-group-set">
+                      {setLabel(entry)}
+                    </p>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {onOpen ? (
+            <button type="button" className="history-open" onClick={() => onOpen(session.id)}>
+              Open session
+            </button>
+          ) : null}
+          {onEdit ? (
+            <button type="button" className="history-edit" onClick={() => onEdit(session.id)}>
+              Edit workout
+            </button>
+          ) : null}
+        </>
+      ) : null}
+    </li>
+  )
+}
+
+/**
+ * The finished sessions given, each reduced through `summarise` and rendered as one collapsible
+ * card (E12-T9): a header until tapped, then its sets grouped by exercise under the name
+ * `resolve` gives that exercise's id -- a catalog id, or a library id swapped in mid-session
+ * (E5-T15).
+ */
+export function HistoryList(props: HistoryListProps): JSX.Element {
+  const { sessions, ...rest } = props
 
   if (sessions.length === 0) {
     return (
@@ -95,50 +180,9 @@ export function HistoryList(props: {
 
   return (
     <ul className="history-list">
-      {sessions.map((session) => {
-        const summary = summarise(session, programs)
-        const groups = groupByExercise(session.entries, resolve)
-        return (
-          <li key={summary.sessionId} className="history-row">
-            <div className="history-summary">
-              <span className="history-date">{calendarDate(summary.date)}</span>{' '}
-              <span className="history-program">{summary.programName}</span>{' '}
-              <span className="history-workout">{summary.workoutName}</span>{' '}
-              <span className="history-sets">{`${summary.totalSets} sets`}</span>{' '}
-              <span className="history-volume">{`${summary.totalVolumeKg} kg`}</span>
-            </div>
-            {onOpen ? (
-              <button
-                type="button"
-                className="history-open"
-                onClick={() => onOpen(session.id)}
-              >
-                Open session
-              </button>
-            ) : null}
-            {/* `role="presentation"` on the group `<li>`s below: `getByRole('listitem')` must
-                keep finding exactly the session row above (App.test.tsx's O8/O9/O17 pre-date
-                grouping and query it singular), while S11 still needs a real `<li>` ancestor to
-                scope each exercise's sets through `.closest('li')`. */}
-            <ul className="history-groups" role="presentation">
-              {groups.map((group) => (
-                <li key={group.exerciseId} className="history-group" role="presentation">
-                  <h4 className="history-group-heading">{group.name}</h4>
-                  <div className="history-group-sets">
-                    {group.entries.map((entry) => (
-                      <p key={entry.setIndex} className="history-group-set">
-                        {`Set ${entry.setIndex}: ${entry.weightKg ?? 'bodyweight'}${
-                          entry.weightKg === null ? '' : ' kg'
-                        } x ${entry.reps}`}
-                      </p>
-                    ))}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </li>
-        )
-      })}
+      {sessions.map((session) => (
+        <HistoryCard key={session.id} session={session} {...rest} />
+      ))}
     </ul>
   )
 }

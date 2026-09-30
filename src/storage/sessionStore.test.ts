@@ -3,15 +3,21 @@ import { db, isStorageAvailable } from './db'
 import {
   allSessions,
   clearSwap,
+  discardSession,
   finishSession,
   finishStaleSession,
   getActiveSession,
   getLastEntriesFor,
   getLastSwap,
+  isLive,
   listSessions,
   logSet,
+  deleteSet,
+  restoreSet,
+  updateSet,
   putSessions,
   replaceAllSessions,
+  saveSession,
   sessionsChangedSince,
   setSwap,
   startOrResumeSession,
@@ -824,7 +830,12 @@ describe('E8-T6 a Session left in progress for 4 hours finishes itself', () => {
 
     await startOrResumeSession('assaf-ab-2026', 'workout-a', STARTED + FOUR_HOURS)
 
-    expect(await db.sessions.get('forgotten-empty')).toBeUndefined()
+    // E12-T1 O5: "deletes" is now a mark, so sync can carry it; it is never finished.
+    expect(await db.sessions.get('forgotten-empty')).toEqual({
+      ...inProgressEmpty(),
+      deletedAt: STARTED + FOUR_HOURS,
+      updatedAt: STARTED + FOUR_HOURS,
+    })
     expect(await listSessions()).toEqual([])
   })
 
@@ -838,8 +849,10 @@ describe('E8-T6 a Session left in progress for 4 hours finishes itself', () => {
     expect(session.workoutId).toBe('workout-b')
     expect(session.startedAt).toBe(now)
     expect(session.finishedAt).toBeNull()
-    expect(await db.sessions.count()).toBe(1)
+    // E12-T1 O5: the stale empty Session stays stored, marked deleted, beside the new one.
+    expect(await db.sessions.count()).toBe(2)
     expect(await db.sessions.get(session.id)).toEqual(session)
+    expect(await getActiveSession()).toEqual(session)
   })
 
   test('O2 startOrResumeSession 1 ms short of 4 h after an empty Session started resumes it unchanged', async () => {
@@ -861,8 +874,13 @@ describe('E8-T6 a Session left in progress for 4 hours finishes itself', () => {
 
     await finishStaleSession(STARTED + 5 * HOUR)
 
-    expect(await db.sessions.get('forgotten-empty')).toBeUndefined()
-    expect(await db.sessions.count()).toBe(1)
+    // E12-T1 O5: marked deleted with the stamp at now, not removed and not finished.
+    expect(await db.sessions.get('forgotten-empty')).toEqual({
+      ...inProgressEmpty(),
+      deletedAt: STARTED + 5 * HOUR,
+      updatedAt: STARTED + 5 * HOUR,
+    })
+    expect(await db.sessions.count()).toBe(2)
     expect(await db.sessions.get('session-0')).toEqual(stored[0])
   })
 })
@@ -1091,5 +1109,462 @@ describe('D4 inTransaction commits the writes inside it together or not at all',
     expect(await db.sessions.toArray()).toEqual([
       storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }),
     ])
+  })
+})
+
+// --- E12-T2: updateSet, deleteSet, restoreSet ------------------------------------------------
+
+describe('E12-T2 editing a logged Set', () => {
+  const squat1 = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+  const squat2 = entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND)
+  const squat3 = entry('back-squat', 3, 65, 5, BASE + 300 * SECOND)
+  const press1 = entry('press', 1, 30, 10, BASE + 150 * SECOND)
+
+  async function seed(): Promise<string> {
+    await db.sessions.put(
+      storedSession({
+        id: 'editing',
+        finishedAt: null,
+        entries: [squat1, press1, squat2, squat3],
+        updatedAt: BASE + 400 * SECOND,
+      }),
+    )
+    return 'editing'
+  }
+
+  test('O1 updateSet stores the new weight and reps, keeping setIndex and loggedAt', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 2, { weightKg: 70, reps: 4 }, BASE + 900 * SECOND)
+
+    const expected = [squat1, press1, entry('back-squat', 2, 70, 4, BASE + 200 * SECOND), squat3]
+    expect(updated.entries).toEqual(expected)
+    expect((await db.sessions.get(id))?.entries).toEqual(expected)
+  })
+
+  test('O1 updateSet advances the Session updatedAt to now', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 2, { weightKg: 70, reps: 4 }, BASE + 900 * SECOND)
+
+    expect(updated.updatedAt).toBe(BASE + 900 * SECOND)
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 900 * SECOND)
+  })
+
+  test('O1 updateSet accepts a null weight', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 1, { weightKg: null, reps: 12 }, BASE + 900 * SECOND)
+
+    expect(updated.entries[0]).toEqual(entry('back-squat', 1, null, 12, BASE + 100 * SECOND))
+  })
+
+  test('O1 updateSet on a missing Session rejects naming the id', async () => {
+    await expect(updateSet('nope', 'back-squat', 1, { weightKg: 1, reps: 1 })).rejects.toThrow(
+      'no session nope is stored',
+    )
+  })
+
+  test('O1 updateSet on a Set that is not logged rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(
+      updateSet(id, 'back-squat', 9, { weightKg: 1, reps: 1 }, BASE + 900 * SECOND),
+    ).rejects.toThrow(/no set/i)
+
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
+  })
+
+  test('O2 deleteSet renumbers the later Sets down, keeps loggedAt and other Exercises untouched', async () => {
+    const id = await seed()
+
+    const { session, removed } = await deleteSet(id, 'back-squat', 2, BASE + 900 * SECOND)
+
+    expect(removed).toEqual(squat2)
+    const expected = [squat1, press1, entry('back-squat', 2, 65, 5, BASE + 300 * SECOND)]
+    expect(session.entries).toEqual(expected)
+    expect((await db.sessions.get(id))?.entries).toEqual(expected)
+  })
+
+  test('O2 deleteSet advances the Session updatedAt to now', async () => {
+    const id = await seed()
+
+    const { session } = await deleteSet(id, 'back-squat', 2, BASE + 900 * SECOND)
+
+    expect(session.updatedAt).toBe(BASE + 900 * SECOND)
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 900 * SECOND)
+  })
+
+  test('O2 deleteSet on a missing Session rejects naming the id', async () => {
+    await expect(deleteSet('nope', 'back-squat', 1)).rejects.toThrow('no session nope is stored')
+  })
+
+  test('O2 deleteSet on a Set that is not logged rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(deleteSet(id, 'press', 2, BASE + 900 * SECOND)).rejects.toThrow(/no set/i)
+
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
+    expect((await db.sessions.get(id))?.entries).toHaveLength(4)
+  })
+
+  test('O3 restoreSet puts the removed Set back so the Exercise equals the original Sets 1, 2 and 3', async () => {
+    const id = await seed()
+    const { removed } = await deleteSet(id, 'back-squat', 2, BASE + 900 * SECOND)
+
+    const restored = await restoreSet(id, removed, BASE + 1000 * SECOND)
+
+    const byIndex = (entries: SetEntry[]) =>
+      entries.filter((one) => one.exerciseId === 'back-squat').sort((a, b) => a.setIndex - b.setIndex)
+    expect(byIndex(restored.entries)).toEqual([squat1, squat2, squat3])
+    expect(restored.entries.filter((one) => one.exerciseId === 'press')).toEqual([press1])
+    expect(restored.updatedAt).toBe(BASE + 1000 * SECOND)
+    expect(byIndex((await db.sessions.get(id))!.entries)).toEqual([squat1, squat2, squat3])
+  })
+
+  test('O3 restoreSet on a missing Session rejects naming the id', async () => {
+    await expect(restoreSet('nope', squat1)).rejects.toThrow('no session nope is stored')
+  })
+})
+
+// --- E12-T6: saveSession, the History editor's single write --------------------------------
+
+describe('E12-T6 saveSession stores an edited finished Session', () => {
+  const squat1 = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+  const squat2 = entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND)
+  const original = (): Session =>
+    storedSession({
+      id: 'done',
+      startedAt: BASE,
+      finishedAt: BASE + 3600 * SECOND,
+      entries: [squat1, squat2],
+      updatedAt: BASE + 3600 * SECOND,
+    })
+  const NOW = BASE + 5 * DAY
+
+  test('O14 saveSession stores the edited Sets and times and stamps updatedAt to now', async () => {
+    await db.sessions.put(original())
+    const draft: Session = {
+      ...original(),
+      startedAt: BASE + 60 * SECOND,
+      finishedAt: BASE + 5400 * SECOND,
+      entries: [entry('back-squat', 1, 70, 5, BASE + 100 * SECOND)],
+    }
+
+    const saved = await saveSession(draft, NOW)
+
+    const expected: Session = { ...draft, updatedAt: NOW }
+    expect(saved).toEqual(expected)
+    expect(await db.sessions.get('done')).toEqual(expected)
+  })
+
+  test('O14 saveSession leaves every other stored Session untouched', async () => {
+    const other = storedSession({ id: 'other', entries: [squat1], updatedAt: BASE + 7 * SECOND })
+    await db.sessions.bulkPut([original(), other])
+
+    await saveSession({ ...original(), entries: [squat1] }, NOW)
+
+    expect(await db.sessions.get('other')).toEqual(other)
+  })
+
+  test('O15 saveSession with the end before the start rejects with the O15 message and writes nothing', async () => {
+    await db.sessions.put(original())
+
+    await expect(
+      saveSession({ ...original(), finishedAt: BASE - SECOND }, NOW),
+    ).rejects.toThrow('End time must be after the start time.')
+
+    expect(await db.sessions.get('done')).toEqual(original())
+  })
+
+  test('O15 saveSession accepts an end equal to the start', async () => {
+    await db.sessions.put(original())
+
+    const saved = await saveSession({ ...original(), finishedAt: BASE }, NOW)
+
+    expect(saved.finishedAt).toBe(BASE)
+    expect((await db.sessions.get('done'))?.finishedAt).toBe(BASE)
+  })
+
+  test('O15 saveSession with no Sets rejects with the O15 message and writes nothing', async () => {
+    await db.sessions.put(original())
+
+    await expect(saveSession({ ...original(), entries: [] }, NOW)).rejects.toThrow(
+      'A workout needs at least one set. Delete the workout instead.',
+    )
+
+    expect(await db.sessions.get('done')).toEqual(original())
+  })
+
+  test('O14 saveSession on a Session no longer stored rejects naming the id and creates nothing', async () => {
+    await expect(saveSession({ ...original(), id: 'nope' }, NOW)).rejects.toThrow(
+      'no session nope is stored',
+    )
+
+    expect(await db.sessions.get('nope')).toBeUndefined()
+  })
+})
+
+// --- a deleted Session is a marked document (E12-T1) ------------------------------------------
+
+describe('E12-T1 a discarded Session stays stored but no reader returns it', () => {
+  const DISCARDED_AT = BASE + 2 * DAY
+
+  test('O4 isLive is true for a Session with no deletedAt', () => {
+    expect(isLive(storedSession({ id: 'live', updatedAt: BASE }))).toBe(true)
+  })
+
+  test('O4 isLive is false for a Session with deletedAt set', () => {
+    expect(isLive(storedSession({ id: 'gone', updatedAt: BASE, deletedAt: DISCARDED_AT }))).toBe(false)
+  })
+
+  test('O4 discardSession stores the Session with deletedAt and updatedAt at now, entries and finishedAt kept', async () => {
+    const original = storedSession({
+      id: 'done',
+      entries: [entry('back-squat', 0, 60, 8, BASE + 60 * SECOND)],
+      swaps: { 'back-squat': 'leg-press' },
+      updatedAt: BASE + 3600 * SECOND,
+    })
+    await db.sessions.put(original)
+
+    await discardSession('done', DISCARDED_AT)
+
+    expect(await db.sessions.get('done')).toEqual({
+      ...original,
+      deletedAt: DISCARDED_AT,
+      updatedAt: DISCARDED_AT,
+    })
+    expect(await db.sessions.count()).toBe(1)
+  })
+
+  test('O4 discardSession on a Session in progress keeps it unfinished and marks it deleted', async () => {
+    const original = storedSession({
+      id: 'in-progress',
+      finishedAt: null,
+      entries: [entry('lunges', 0, 20, 10, BASE + 60 * SECOND)],
+      updatedAt: BASE + 60 * SECOND,
+    })
+    await db.sessions.put(original)
+
+    await discardSession('in-progress', DISCARDED_AT)
+
+    expect(await db.sessions.get('in-progress')).toEqual({
+      ...original,
+      deletedAt: DISCARDED_AT,
+      updatedAt: DISCARDED_AT,
+    })
+  })
+
+  test('O4 discardSession leaves the other stored Sessions as they are', async () => {
+    const [kept, target] = history(2)
+    await db.sessions.bulkPut([kept, target])
+
+    await discardSession(target.id, DISCARDED_AT)
+
+    expect(await db.sessions.get(kept.id)).toEqual(kept)
+  })
+
+  test('O4 discardSession of an unknown id rejects naming the id and stores nothing', async () => {
+    await expect(discardSession('missing', DISCARDED_AT)).rejects.toThrow('no session missing is stored')
+    expect(await db.sessions.count()).toBe(0)
+  })
+
+  test('O4 getActiveSession does not return a discarded Session in progress', async () => {
+    await db.sessions.put(storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }))
+
+    await discardSession('in-progress', DISCARDED_AT)
+
+    expect(await getActiveSession()).toBeNull()
+  })
+
+  test('O4 getActiveSession skips a stored deleted Session in progress for an older live one', async () => {
+    const live = storedSession({ id: 'live', startedAt: BASE, finishedAt: null, updatedAt: BASE })
+    const deleted = storedSession({
+      id: 'deleted',
+      startedAt: BASE + DAY,
+      finishedAt: null,
+      updatedAt: DISCARDED_AT,
+      deletedAt: DISCARDED_AT,
+    })
+    await db.sessions.bulkPut([live, deleted])
+
+    expect(await getActiveSession()).toEqual(live)
+  })
+
+  test('O4 a discarded Session in progress no longer blocks startOrResumeSession from starting a new one', async () => {
+    await db.sessions.put(
+      storedSession({ id: 'in-progress', startedAt: BASE, finishedAt: null, updatedAt: BASE }),
+    )
+    await discardSession('in-progress', BASE + 60 * SECOND)
+    const now = BASE + 120 * SECOND
+
+    const session = await startOrResumeSession('assaf-ab-2026', 'workout-b', now)
+
+    expect(session.id).not.toBe('in-progress')
+    expect(session.workoutId).toBe('workout-b')
+    expect(session.startedAt).toBe(now)
+    expect(session.finishedAt).toBeNull()
+    expect(await getActiveSession()).toEqual(session)
+  })
+
+  test('O4 startOrResumeSession leaves a discarded Session in progress as it was marked', async () => {
+    await db.sessions.put(
+      storedSession({ id: 'in-progress', startedAt: BASE, finishedAt: null, updatedAt: BASE }),
+    )
+    await discardSession('in-progress', BASE + 60 * SECOND)
+    const marked = await db.sessions.get('in-progress')
+
+    await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE + 5 * 60 * 60 * SECOND)
+
+    expect(await db.sessions.get('in-progress')).toEqual(marked)
+  })
+
+  test('O4 listSessions does not return a discarded finished Session', async () => {
+    const stored = history(3)
+    await db.sessions.bulkPut(stored)
+
+    await discardSession('session-1', DISCARDED_AT)
+
+    expect((await listSessions()).map((session) => session.id)).toEqual(['session-0', 'session-2'])
+  })
+
+  test('O4 listSessions returns nothing when the only finished Session is discarded', async () => {
+    await db.sessions.bulkPut(history(1))
+
+    await discardSession('session-0', DISCARDED_AT)
+
+    expect(await listSessions()).toEqual([])
+  })
+
+  test('O4 getLastEntriesFor skips a discarded newer Session and answers from the older live one', async () => {
+    const stored = history(
+      2,
+      new Map([
+        [0, [entry('back-squat', 0, 80, 5, BASE + 60 * SECOND)]],
+        [1, [entry('back-squat', 0, 60, 8, BASE - DAY + 60 * SECOND)]],
+      ]),
+    )
+    await db.sessions.bulkPut(stored)
+
+    await discardSession('session-0', DISCARDED_AT)
+
+    expect(await getLastEntriesFor('back-squat')).toEqual([
+      entry('back-squat', 0, 60, 8, BASE - DAY + 60 * SECOND),
+    ])
+  })
+
+  test('O4 getLastEntriesFor returns no entries when the only Session holding the Exercise is discarded', async () => {
+    await db.sessions.bulkPut(
+      history(1, new Map([[0, [entry('back-squat', 0, 80, 5, BASE + 60 * SECOND)]]])),
+    )
+
+    await discardSession('session-0', DISCARDED_AT)
+
+    expect(await getLastEntriesFor('back-squat')).toEqual([])
+  })
+
+  test('O4 getLastSwap skips a discarded newer Session and answers from the older live one', async () => {
+    await db.sessions.bulkPut([
+      storedSession({
+        id: 'newer',
+        startedAt: BASE,
+        finishedAt: BASE + 3600 * SECOND,
+        swaps: { 'back-squat': 'leg-press' },
+      }),
+      storedSession({
+        id: 'older',
+        startedAt: BASE - DAY,
+        finishedAt: BASE - DAY + 3600 * SECOND,
+        swaps: { 'back-squat': 'hack-squat' },
+      }),
+    ])
+
+    await discardSession('newer', DISCARDED_AT)
+
+    expect(await getLastSwap('assaf-ab-2026', 'workout-a', 'back-squat')).toBe('hack-squat')
+  })
+
+  test('O4 getLastSwap returns null when the only Session with the swap is discarded', async () => {
+    await db.sessions.put(storedSession({ id: 'only', swaps: { 'back-squat': 'leg-press' } }))
+
+    await discardSession('only', DISCARDED_AT)
+
+    expect(await getLastSwap('assaf-ab-2026', 'workout-a', 'back-squat')).toBeNull()
+  })
+
+  test('O4 sessionsChangedSince still returns a discarded Session, so sync pushes it', async () => {
+    await db.sessions.put(storedSession({ id: 'done', updatedAt: BASE }))
+
+    await discardSession('done', DISCARDED_AT)
+
+    expect(await sessionsChangedSince(BASE)).toEqual([
+      storedSession({ id: 'done', updatedAt: DISCARDED_AT, deletedAt: DISCARDED_AT }),
+    ])
+  })
+
+  test('O4 allSessions still returns a discarded Session', async () => {
+    await db.sessions.put(storedSession({ id: 'done', updatedAt: BASE }))
+
+    await discardSession('done', DISCARDED_AT)
+
+    expect((await allSessions()).map((session) => session.id)).toEqual(['done'])
+  })
+})
+
+describe('E12-T1 a stale empty Session is marked deleted, not removed', () => {
+  const HOUR = 60 * 60 * SECOND
+  const STARTED = BASE
+
+  function inProgressEmpty(): Session {
+    return storedSession({
+      id: 'forgotten-empty',
+      startedAt: STARTED,
+      finishedAt: null,
+      entries: [],
+      updatedAt: STARTED,
+    })
+  }
+
+  test('O5 finishStaleSession stores a stale empty Session with deletedAt and updatedAt at now', async () => {
+    const now = STARTED + 5 * HOUR
+    await db.sessions.put(inProgressEmpty())
+
+    await finishStaleSession(now)
+
+    expect(await db.sessions.get('forgotten-empty')).toEqual({
+      ...inProgressEmpty(),
+      deletedAt: now,
+      updatedAt: now,
+    })
+  })
+
+  test('O5 finishStaleSession stores the stale empty Session the way discardSession would', async () => {
+    const now = STARTED + 5 * HOUR
+    await db.sessions.put(inProgressEmpty())
+    await discardSession('forgotten-empty', now)
+    const discarded = await db.sessions.get('forgotten-empty')
+    await db.sessions.put(inProgressEmpty())
+
+    await finishStaleSession(now)
+
+    expect(await db.sessions.get('forgotten-empty')).toEqual(discarded)
+  })
+
+  test('O5 after a stale empty Session is marked, getActiveSession and listSessions return nothing', async () => {
+    await db.sessions.put(inProgressEmpty())
+
+    await finishStaleSession(STARTED + 5 * HOUR)
+
+    expect(await getActiveSession()).toBeNull()
+    expect(await listSessions()).toEqual([])
+  })
+
+  test('O5 finishStaleSession leaves an already-deleted Session in progress as stored', async () => {
+    const deleted = { ...inProgressEmpty(), deletedAt: STARTED + HOUR, updatedAt: STARTED + HOUR }
+    await db.sessions.put(deleted)
+
+    await finishStaleSession(STARTED + 10 * HOUR)
+
+    expect(await db.sessions.get('forgotten-empty')).toEqual(deleted)
   })
 })

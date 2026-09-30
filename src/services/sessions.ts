@@ -1,5 +1,6 @@
 import {
   clearSwap,
+  discardSession,
   finishSession,
   finishStaleSession,
   getActiveSession,
@@ -7,6 +8,10 @@ import {
   getLastSwap,
   listSessions,
   logSet,
+  deleteSet,
+  restoreSet,
+  saveSession,
+  updateSet,
   setSwap,
   startOrResumeSession,
 } from '../storage/sessionStore'
@@ -18,7 +23,20 @@ export type SessionService = {
   resumeActive(): Promise<Session | null>
   start(programId: string, workoutId: string): Promise<Session>
   logSet(sessionId: string, entry: SetEntry): Promise<Session>
+  updateSet(
+    sessionId: string,
+    exerciseId: string,
+    setIndex: number,
+    values: { weightKg: number | null; reps: number },
+  ): Promise<Session>
+  deleteSet(
+    sessionId: string,
+    exerciseId: string,
+    setIndex: number,
+  ): Promise<{ session: Session; removed: SetEntry }>
+  restoreSet(sessionId: string, entry: SetEntry): Promise<Session>
   finish(sessionId: string): Promise<Session>
+  save(session: Session): Promise<Session>
   lastEntriesFor(exerciseId: string): Promise<SetEntry[]>
   lastEntriesForSession(session: Session | null, programs: Program[]): Promise<Map<string, SetEntry[]>>
   lastSwapsForSession(session: Session | null, programs: Program[]): Promise<Record<string, string>>
@@ -26,6 +44,7 @@ export type SessionService = {
   list(): Promise<Session[]>
   applySwap(sessionId: string, plannedId: string, doneId: string): Promise<void>
   undoSwap(sessionId: string, plannedId: string): Promise<void>
+  discard(sessionId: string): Promise<void>
 }
 
 // The UI shows no text when starting, finishing, swapping or reading history fails: each of
@@ -36,6 +55,9 @@ const SWAP_FAILED = 'the swap could not be saved'
 const HISTORY_FAILED = 'the history could not be read'
 /** SetScreen shows a failed log's message under the set as it stands. */
 const LOG_FAILED = 'the set could not be saved'
+/** The History editor shows a failed save's message under its Sets (E12-T6). */
+const SAVE_FAILED = 'the workout could not be saved'
+const DISCARD_FAILED = 'the workout could not be deleted'
 
 /** `sessionStore`'s rejection for an id it does not hold (`requireSession`). */
 const MISSING_SESSION = /^no session .* is stored$/
@@ -120,8 +142,28 @@ export function createSessionService(deps: ServiceDeps): SessionService {
       return write(sessionId, () => logSet(sessionId, entry, now()), LOG_FAILED)
     },
 
+    async updateSet(sessionId, exerciseId, setIndex, values) {
+      return write(
+        sessionId,
+        () => updateSet(sessionId, exerciseId, setIndex, values, now()),
+        LOG_FAILED,
+      )
+    },
+
+    async deleteSet(sessionId, exerciseId, setIndex) {
+      return write(sessionId, () => deleteSet(sessionId, exerciseId, setIndex, now()), LOG_FAILED)
+    },
+
+    async restoreSet(sessionId, entry) {
+      return write(sessionId, () => restoreSet(sessionId, entry, now()), LOG_FAILED)
+    },
+
     async finish(sessionId) {
       return write(sessionId, () => finishSession(sessionId, now()), FINISH_FAILED)
+    },
+
+    async save(session) {
+      return write(session.id, () => saveSession(session, now()), SAVE_FAILED)
     },
 
     async lastEntriesFor(exerciseId) {
@@ -196,6 +238,11 @@ export function createSessionService(deps: ServiceDeps): SessionService {
     /** Refused, as `'storage-failed'`, once the swapped-in exercise has a logged set. */
     async undoSwap(sessionId, plannedId) {
       await write(sessionId, () => clearSwap(sessionId, plannedId, now()), SWAP_FAILED)
+    },
+
+    /** Marks the Session deleted through `discardSession` (E12-T1). */
+    async discard(sessionId) {
+      await write(sessionId, () => discardSession(sessionId, now()), DISCARD_FAILED)
     },
   }
 }

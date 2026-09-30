@@ -51,3 +51,40 @@
   background: var(--color-surface);
   color: var(--color-accent);
 }
+
+/* A swapped-in row: clay edge and an "instead of" line, so the swap reads without colour too.
+ * Clay (--color-accent), never court green, which is reserved for the primary action. */
+.exercise-row.swapped {
+  border-left: var(--space-1) solid var(--color-accent);
+}
+
+.exercise-instead {
+  display: block;
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+}
+
+.exercise-title {
+  display: flex;
+  flex-direction: column;
+}
+
+/* "Discard workout" and its inline confirm, under the rows. */
+.exercise-discard,
+.exercise-discard-confirm-yes,
+.exercise-discard-confirm-cancel {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-accent);
+}
+
+.exercise-discard-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}

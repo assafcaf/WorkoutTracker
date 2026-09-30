@@ -20,6 +20,22 @@ export type SetScreenProps = {
   sessionId: string
   lastEntries: SetEntry[]
   /**
+   * The last finished Session's entries for this Exercise (E12-T4), not merged with today's, shown
+   * as the "Last time" line. Optional; empty or omitted shows no line.
+   */
+  lastTime?: SetEntry[]
+  /**
+   * This Session's Sets for the Exercise (E12-T3), listed in `setIndex` order and tappable to
+   * edit. Optional so callers predating it need not pass it; omitted or empty shows no list.
+   */
+  logged?: SetEntry[]
+  /** Stores new values for logged Set `setIndex` (E12-T3). */
+  onEditSet?(setIndex: number, values: { weightKg: number | null; reps: number }): Promise<void>
+  /** Removes logged Set `setIndex`, answering it so Undo can put it back (E12-T3). */
+  onDeleteSet?(setIndex: number): Promise<SetEntry>
+  /** Puts a deleted Set back exactly (E12-T3). */
+  onRestoreSet?(entry: SetEntry): Promise<void>
+  /**
    * Persists one Set to the Session `sessionId` and answers the Session as stored (E11-T10); a
    * rejection's message is shown under the set as it stands. The screen persists nothing itself.
    */
@@ -110,8 +126,20 @@ export function setCounterText(
   return setIndex > plannedSets ? `Set ${setIndex} · extra` : `Set ${setIndex} of ${plannedSets}`
 }
 
+/** "80×8 · 80×8 · 80×7", in set order; a Bodyweight Set reads "BW×8". */
+function lastTimeText(exerciseId: string, entries: SetEntry[]): string {
+  return entries
+    .filter((entry) => entry.exerciseId === exerciseId)
+    .sort((a, b) => a.setIndex - b.setIndex)
+    .map((entry) => `${entry.weightKg === null ? 'BW' : entry.weightKg}×${entry.reps}`)
+    .join(' · ')
+}
+
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
 const TICK_MS = 500
+
+/** How long Undo stays offered after a Set is deleted (E12-T3). */
+const UNDO_MS = 5000
 
 /** The set on the dials: which one it is and the two values it will be logged with. */
 type OpenSet = { setIndex: number; weightKg: number | null; reps: number }
@@ -196,6 +224,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
   // and otherwise the catalog's own; the Dial and Ladder both follow it via `effectiveExercise`.
+  const lastTime = lastTimeText(exercise.id, props.lastTime ?? [])
   const [weightStep, setWeightStep] = useState<number>(
     props.weightStep ?? exercise.weightStep,
   )
@@ -215,7 +244,29 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const [extraOpen, setExtraOpen] = useState<boolean>(props.extra ?? false)
   // Sets are opened in order, so the ones before the opened set are this session's so far;
   // every log then recounts from the session it was written to.
-  const [loggedCount, setLoggedCount] = useState<number>(props.setIndex - 1)
+  const [loggedCountState, setLoggedCount] = useState<number>(props.setIndex - 1)
+  // Given `logged`, the caller's Sets are the count: it follows edits, deletes and restores.
+  const loggedSets = (props.logged ?? [])
+    .filter((entry) => entry.exerciseId === exercise.id)
+    .sort((a, b) => a.setIndex - b.setIndex)
+  const loggedCount = props.logged === undefined ? loggedCountState : loggedSets.length
+  // The logged Set open for editing, if any (E12-T3), and the Set just deleted that Undo restores.
+  const [editing, setEditing] = useState<number | null>(null)
+  const [undo, setUndo] = useState<SetEntry | null>(null)
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function clearUndo(): void {
+    if (undoTimer.current !== null) clearTimeout(undoTimer.current)
+    undoTimer.current = null
+    setUndo(null)
+  }
+
+  useEffect(
+    () => () => {
+      if (undoTimer.current !== null) clearTimeout(undoTimer.current)
+    },
+    [],
+  )
   const [error, setError] = useState<string | null>(null)
   const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(() =>
     initialLastLoggedAt(exercise.id, props.lastEntries, props.sessionStartedAt ?? 0),
@@ -239,7 +290,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   }, [lastLoggedAt])
 
   const rest = restState(lastLoggedAt, plan.restSeconds, now)
-  const done = open.setIndex > plan.sets && !extraOpen
+  const done = editing === null && open.setIndex > plan.sets && !extraOpen
 
   // Fires playRestOver once per rest period: only after this mount has actually seen the rest
   // running (isOver false) for the current lastLoggedAt, so a screen opened with rest already
@@ -287,6 +338,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       const merged = mergeEntry(history, entry)
       const nextSetIndex = open.setIndex + 1
       setError(null)
+      clearUndo()
       setHistory(merged)
       setLastLoggedAt(loggedAt)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
@@ -301,6 +353,66 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     }
   }
 
+  function openLogged(entry: SetEntry): void {
+    setError(null)
+    setEditing(entry.setIndex)
+    setOpen({ setIndex: entry.setIndex, weightKg: entry.weightKg, reps: entry.reps })
+  }
+
+  /** Back to the next Set to log, `next` being its index. */
+  function returnToLogging(next: number, from: SetEntry[] = history): void {
+    setError(null)
+    setEditing(null)
+    setExtraOpen(false)
+    setOpen(openSetFor(exercise, plan, next, from))
+  }
+
+  async function saveSet(): Promise<void> {
+    if (editing === null || props.onEditSet === undefined) return
+    const validation = validateEntry(open.weightKg, open.reps)
+    if (!validation.ok) {
+      setError(validation.error)
+      return
+    }
+    const values = { weightKg: open.weightKg, reps: open.reps }
+    try {
+      await props.onEditSet(editing, values)
+      const before = loggedSets.find((entry) => entry.setIndex === editing)
+      const merged = before === undefined ? history : mergeEntry(history, { ...before, ...values })
+      setHistory(merged)
+      returnToLogging(loggedSets.length + 1, merged)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  async function deleteSet(): Promise<void> {
+    if (editing === null || props.onDeleteSet === undefined) return
+    try {
+      const removed = await props.onDeleteSet(editing)
+      returnToLogging(loggedSets.length)
+      if (undoTimer.current !== null) clearTimeout(undoTimer.current)
+      setUndo(removed)
+      undoTimer.current = setTimeout(() => {
+        undoTimer.current = null
+        setUndo(null)
+      }, UNDO_MS)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  async function restoreSet(): Promise<void> {
+    if (undo === null || props.onRestoreSet === undefined) return
+    try {
+      await props.onRestoreSet(undo)
+      clearUndo()
+      returnToLogging(loggedSets.length + 2)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
   /** Opens one extra set here, and tells the caller, which may reopen it as an extra set. */
   function addSet(add: NonNullable<SetScreenProps['onAddSet']>): void {
     setExtraOpen(true)
@@ -309,7 +421,23 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   // Past the plan the screen is done: every planned set is logged, so "Log set" is withheld and
   // only an extra set is offered -- and only to a caller that knows what to do with it.
-  const actions = !done ? (
+  const actions = editing !== null ? (
+    <>
+      <button type="button" className="save-set" onClick={() => void saveSet()}>
+        Save set
+      </button>
+      <button type="button" className="delete-set" onClick={() => void deleteSet()}>
+        Delete set
+      </button>
+      <button
+        type="button"
+        className="cancel-edit"
+        onClick={() => returnToLogging(loggedSets.length + 1)}
+      >
+        Cancel
+      </button>
+    </>
+  ) : !done ? (
     <button type="button" className="log-set" onClick={() => void log()}>
       Log set
     </button>
@@ -346,6 +474,25 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </div>
       <p className="set-counter">{setCounterText(open.setIndex, plan.sets, loggedCount, done)}</p>
 
+      {lastTime === '' ? null : <p className="set-last-time">Last time: {lastTime}</p>}
+
+      {loggedSets.length === 0 ? null : (
+        <ul className="logged-sets" aria-label="Sets logged">
+          {loggedSets.map((entry) => (
+            <li key={entry.setIndex}>
+              <button
+                type="button"
+                className="logged-set"
+                data-editing={editing === entry.setIndex ? 'true' : undefined}
+                onClick={() => openLogged(entry)}
+              >
+                {entry.weightKg === null ? 'BW' : entry.weightKg} × {entry.reps}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <WeightDial
         exercise={effectiveExercise}
         value={open.weightKg}
@@ -361,6 +508,15 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       )}
 
       {actionBar === null ? actions : createPortal(actions, actionBar)}
+
+      {undo === null ? null : (
+        <p role="status" className="set-undo">
+          Set deleted
+          <button type="button" className="undo-delete" onClick={() => void restoreSet()}>
+            Undo
+          </button>
+        </p>
+      )}
 
       <p role="status" className="set-logged" data-family={family}>
         {loggedMessage}
