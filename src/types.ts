@@ -81,7 +81,12 @@ export type Program = {
 /** A Program the trainee created or edited, stamped with when it was first stored (E9). */
 export type UserProgram = Program & { createdAt: number }
 
+/** What a Set is, when it is not plain working volume (E14). Working is the absence of `kind`. */
+export type SetKind = 'warmup' | 'drop' | 'failure' | 'amrap'
+
 export type SetEntry = {
+  /** Absent on a working Set (E14). */
+  kind?: SetKind
   exerciseId: string
   setIndex: number
   weightKg: number | null

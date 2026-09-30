@@ -496,3 +496,35 @@ test('O13 a bodyweight Exercise sets most-reps-in-a-set only with more reps, a t
   ])
   expect(recordsSetBy(pushUps, pushUpsPlan, earlier, cur(tie), tie)).toEqual([])
 })
+
+test('O2 recordsFor ignores warm-up Sets that would otherwise win every record', () => {
+  const withWarmups = [
+    session({
+      startedAt: 100,
+      entries: [
+        { exerciseId: 'back-squat', setIndex: 1, weightKg: 200, reps: 20, loggedAt: 100, kind: 'warmup' },
+        { exerciseId: 'back-squat', setIndex: 2, weightKg: 60, reps: 8, loggedAt: 101 },
+        { exerciseId: 'back-squat', setIndex: 3, weightKg: 60, reps: 9, loggedAt: 102, kind: 'drop' },
+      ],
+    }),
+  ]
+  const without = [
+    session({
+      startedAt: 100,
+      entries: [
+        { exerciseId: 'back-squat', setIndex: 2, weightKg: 60, reps: 8, loggedAt: 101 },
+        { exerciseId: 'back-squat', setIndex: 3, weightKg: 60, reps: 9, loggedAt: 102, kind: 'drop' },
+      ],
+    }),
+  ]
+  const result = recordsFor(backSquat, squatPlan, withWarmups)
+  expect(result).toEqual(recordsFor(backSquat, squatPlan, without))
+  expect(result.find((r) => r.kind === 'heaviest-set')?.weightKg).toBe(60)
+  expect(recordsFor(backSquat, squatPlan, [
+    session({
+      entries: [
+        { exerciseId: 'back-squat', setIndex: 1, weightKg: 200, reps: 20, loggedAt: 1, kind: 'warmup' },
+      ],
+    }),
+  ])).toEqual([])
+})

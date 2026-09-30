@@ -188,3 +188,35 @@ test('O7 assistance value is the lowest non-null weightKg in the session, kept p
 
   expect(result.points).toEqual([{ at: 10, value: 25 }])
 })
+
+test('O2 seriesFor ignores warm-up Sets, and a Session of only warm-ups gives no point', () => {
+  const sessions = [
+    session({
+      id: 's1',
+      startedAt: 10,
+      entries: [
+        { exerciseId: 'back-squat', setIndex: 1, weightKg: 200, reps: 20, loggedAt: 10, kind: 'warmup' },
+        { exerciseId: 'back-squat', setIndex: 2, weightKg: 60, reps: 0, loggedAt: 11 },
+      ],
+    }),
+    session({
+      id: 's2',
+      startedAt: 20,
+      entries: [
+        { exerciseId: 'back-squat', setIndex: 1, weightKg: 200, reps: 20, loggedAt: 20, kind: 'warmup' },
+      ],
+    }),
+  ]
+  expect(seriesFor(backSquat, sessions).points).toEqual([{ at: 10, value: 60 }])
+
+  const pushUpSessions = [
+    session({
+      startedAt: 10,
+      entries: [
+        { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 30, loggedAt: 10, kind: 'warmup' },
+        { exerciseId: 'push-ups', setIndex: 2, weightKg: null, reps: 12, loggedAt: 11 },
+      ],
+    }),
+  ]
+  expect(seriesFor(pushUps, pushUpSessions).points).toEqual([{ at: 10, value: 12 }])
+})

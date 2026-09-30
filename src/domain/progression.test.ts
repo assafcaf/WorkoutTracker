@@ -230,6 +230,30 @@ test('O4 push-ups count every entry, so an extra set can make up a short one', (
   expect(result.suggestion).toEqual({ kind: 'add-set' })
 })
 
+test('O2 progression answers as if the warm-up Sets were not in the last entries', () => {
+  const squat = exerciseFor('back-squat')
+  const working = sets('back-squat', [
+    [60, 8],
+    [60, 8],
+  ])
+  const withWarmups: SetEntry[] = [
+    { ...sets('back-squat', [[100, 1]])[0], kind: 'warmup' },
+    ...working,
+  ]
+  const result = progression(squat, squatPlan, withWarmups)
+  expect(result).toEqual(progression(squat, squatPlan, working))
+  expect(result.workingWeightKg).toBe(60)
+
+  const onlyWarmups = withWarmups.slice(0, 1)
+  expect(progression(squat, squatPlan, onlyWarmups)).toEqual(progression(squat, squatPlan, []))
+
+  const bodyweight: SetEntry[] = [
+    { ...sets('push-ups', [[null, 50]])[0], kind: 'warmup' },
+    ...sets('push-ups', [[null, 10]]),
+  ]
+  expect(progression(pushUps, pushUpsPlan, bodyweight).achievedReps).toBe(10)
+})
+
 test('O4 no history for push-ups gives an empty bar over the planned sets', () => {
   expect(progression(pushUps, pushUpsPlan, [])).toEqual({
     workingWeightKg: null,
