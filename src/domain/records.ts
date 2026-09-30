@@ -92,13 +92,24 @@ export function recordsFor(
   ]
 }
 
-/** Not implemented yet (E13-T3). */
+/**
+ * The records `entry` sets: those `recordsFor` changes when `entry` is added to everything
+ * logged before it (earlier Sessions plus this Session's Sets with a smaller `loggedAt`).
+ * Nothing when no earlier Session holds the Exercise.
+ */
 export function recordsSetBy(
-  _exercise: Exercise,
-  _plan: ExercisePlan,
-  _earlier: Session[],
-  _session: Session,
-  _entry: SetEntry,
+  exercise: Exercise,
+  plan: ExercisePlan,
+  earlier: Session[],
+  session: Session,
+  entry: SetEntry,
 ): ExerciseRecord[] {
-  throw new Error("not implemented")
+  if (!earlier.some((s) => s.entries.some((e) => e.exerciseId === exercise.id))) return []
+  const prior = session.entries.filter((e) => e.loggedAt < entry.loggedAt)
+  const before = recordsFor(exercise, plan, [...earlier, { ...session, entries: prior }])
+  const after = recordsFor(exercise, plan, [...earlier, { ...session, entries: [...prior, entry] }])
+  return after.filter((a) => {
+    const b = before.find((r) => r.kind === a.kind)
+    return !b || b.value !== a.value || b.weightKg !== a.weightKg || b.reps !== a.reps
+  })
 }
