@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import './ExerciseList.css'
 import { VolumeVsBaseline } from './VolumeVsBaseline'
 import type {
@@ -48,6 +49,11 @@ export type ExerciseListProps = {
   sessions: Session[]
   /** The chosen baseline (E8-T10), same for every row until Settings offers a per-Exercise one. */
   volumeBaseline: VolumeBaseline
+  /**
+   * Throws the Session away (E12-T5), after the list's inline confirm. No control is shown when
+   * absent.
+   */
+  onDiscard?(): void
 }
 
 /** How many sets of this exercise the session already holds. */
@@ -94,9 +100,13 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
     onApplySwap,
     sessions,
     volumeBaseline,
+    onDiscard,
   } = props
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+  const setCount = session.entries.length
 
   return (
+    <>
     <ul className="exercise-list">
       {workout.exercises.map((plan) => {
         const doneId = session.swaps?.[plan.exerciseId]
@@ -172,5 +182,25 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         )
       })}
     </ul>
+    {onDiscard === undefined ? null : confirmingDiscard ? (
+      <div className="exercise-discard-confirm" role="group" aria-label="Discard workout">
+        <p>{`Discard this workout? Its ${setCount} ${setCount === 1 ? 'set is' : 'sets are'} deleted.`}</p>
+        <button type="button" className="exercise-discard-confirm-yes" onClick={onDiscard}>
+          Discard
+        </button>
+        <button
+          type="button"
+          className="exercise-discard-confirm-cancel"
+          onClick={() => setConfirmingDiscard(false)}
+        >
+          Cancel
+        </button>
+      </div>
+    ) : (
+      <button type="button" className="exercise-discard" onClick={() => setConfirmingDiscard(true)}>
+        Discard workout
+      </button>
+    )}
+    </>
   )
 }
