@@ -607,6 +607,13 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         {loggedMessage}
       </p>
 
+      {rest === null || done || extraOpen || editing !== null || open.setIndex > plan.sets ? null : (
+        <p className="set-next">
+          Next: set {open.setIndex} · {open.weightKg === null ? 'BW' : `${open.weightKg} kg`} ×{' '}
+          {plan.repRange[0]}–{plan.repRange[1]}
+        </p>
+      )}
+
       {rest === null ? null : (
         <div className="rest-timer" data-over={rest.isOver ? 'true' : undefined}>
           <span className="rest-label">{rest.isOver ? 'Rest over' : 'Rest'}</span>
