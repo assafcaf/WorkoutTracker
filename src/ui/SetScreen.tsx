@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { presetForSet } from '../domain/prefill'
-import { restState } from '../domain/rest'
+import { formatRest, restState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
@@ -143,12 +143,6 @@ const UNDO_MS = 5000
 
 /** The set on the dials: which one it is and the two values it will be logged with. */
 type OpenSet = { setIndex: number; weightKg: number | null; reps: number }
-
-/** The remaining rest as "m:ss", counting the part-second still to go as a whole one. */
-function formatRest(remainingSeconds: number): string {
-  const total = Math.ceil(remainingSeconds)
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
-}
 
 /**
  * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
