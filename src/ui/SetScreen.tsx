@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { presetForSet } from '../domain/prefill'
 import { recordsSetBy } from '../domain/records'
-import { formatRest, restState } from '../domain/rest'
+import { adjustRest, formatOver, formatRest, restAfter } from '../domain/rest'
+import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
@@ -117,14 +118,10 @@ export type SetScreenProps = {
    * The Session's latest Set, whichever Exercise it was, and the Plan rest of the Exercise it
    * belongs to (E13-T8), resolved by the caller; `null`/omitted shows no rest. Replaces the
    * per-Exercise seed from `lastEntries`; after a log the screen rests from the Set it just logged.
-   *
-   * STUB (E13-T8 test-designer): accepted but not yet read.
    */
   restFrom?: { entry: SetEntry; planRestSeconds: number } | null
   /**
    * Stores `restSeconds` as the rest after `entry` (E13-T8), from −15 s, +15 s or Skip.
-   *
-   * STUB (E13-T8 test-designer): accepted but not yet called.
    */
   onSetRest?(entry: SetEntry, restSeconds: number): Promise<void>
 }
@@ -204,20 +201,17 @@ function openSetFor(
   return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries }) }
 }
 
+/** The Set rest runs after, with the Plan rest of the Exercise it belongs to (E13-T8). */
+type RestFrom = { entry: SetEntry; planRestSeconds: number }
+
 /**
- * The rest timer's seed on open: the latest `loggedAt` among `lastEntries` for this Exercise
- * that falls within this Session, or `null` when none does -- an entry carried over from an
- * earlier, already-finished session must not read as rest still owed (E6-T2, O6/O7).
+ * What identifies one rest period: the Set it follows and its length. The beep is tracked per
+ * key, so a changed length is a new zero to sound at, and a re-render of the same one is not.
  */
-function initialLastLoggedAt(
-  exerciseId: string,
-  lastEntries: SetEntry[],
-  sessionStartedAt: number,
-): number | null {
-  const loggedThisSession = lastEntries
-    .filter((entry) => entry.exerciseId === exerciseId && entry.loggedAt >= sessionStartedAt)
-    .map((entry) => entry.loggedAt)
-  return loggedThisSession.length === 0 ? null : Math.max(...loggedThisSession)
+function restKey(from: RestFrom | null): string | null {
+  if (from === null) return null
+  const { entry, planRestSeconds } = from
+  return `${entry.exerciseId}#${entry.setIndex}@${entry.loggedAt}/${entry.restSeconds ?? planRestSeconds}`
 }
 
 /**
@@ -290,9 +284,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   )
   const [toast, setToast] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(() =>
-    initialLastLoggedAt(exercise.id, props.lastEntries, props.sessionStartedAt ?? 0),
-  )
+  // The Set rest follows: the caller's `restFrom` (the Session's latest Set), until this screen
+  // logs one or adjusts the rest; a changed `restFrom` -- the stored adjustment, a delete -- wins.
+  const [restFrom, setRestFrom] = useState<RestFrom | null>(props.restFrom ?? null)
+  const propRestKey = restKey(props.restFrom ?? null)
+  useEffect(() => {
+    setRestFrom(props.restFrom ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the Set's identity and rest
+  }, [propRestKey])
+  const lastLoggedAt = restFrom === null ? null : restFrom.entry.loggedAt
+  const currentRestKey = restKey(restFrom)
   const [loggedMessage, setLoggedMessage] = useState<string>('')
   const [now, setNow] = useState<number>(() => Date.now())
 
@@ -325,32 +326,63 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const isRecordSet = (entry: SetEntry): boolean =>
     earlier.length > 0 && recordsSetBy(exercise, plan, earlier, thisSession, entry).length > 0
 
-  const rest = restState(lastLoggedAt, plan.restSeconds, now)
+  const rest: RestState | null =
+    restFrom === null ? null : restAfter(restFrom.entry, restFrom.planRestSeconds, now)
   const done = editing === null && open.setIndex > plan.sets && !extraOpen
 
   // Fires playRestOver once per rest period: only after this mount has actually seen the rest
-  // running (isOver false) for the current lastLoggedAt, so a screen opened with rest already
-  // over -- e.g. from history -- never sounds, and a later tick on the same finished rest
-  // period does not sound again.
+  // running (isOver false) for the current Set, so a screen opened with rest already over --
+  // e.g. from history -- never sounds, and a later tick on the same finished rest does not sound
+  // again. A changed length (±15 s) keeps what was seen of the same Set and moves the zero;
+  // Skip marks its key as already fired, so it ends the rest silently.
   const restOverTrackingRef = useRef<{
-    lastLoggedAt: number | null
+    key: string | null
+    loggedAt: number | null
     seenRunning: boolean
     fired: boolean
-  }>({ lastLoggedAt: null, seenRunning: false, fired: false })
+  }>({ key: null, loggedAt: null, seenRunning: false, fired: false })
+  const restIsOver = rest === null || rest.isOver
 
   useEffect(() => {
     const tracking = restOverTrackingRef.current
-    if (tracking.lastLoggedAt !== lastLoggedAt) {
-      restOverTrackingRef.current = { lastLoggedAt, seenRunning: false, fired: false }
+    if (tracking.key !== currentRestKey) {
+      const sameSet = tracking.loggedAt === lastLoggedAt
+      restOverTrackingRef.current = {
+        key: currentRestKey,
+        loggedAt: lastLoggedAt,
+        seenRunning: sameSet && tracking.seenRunning,
+        fired: false,
+      }
     }
     const current = restOverTrackingRef.current
-    if (!rest.isOver) {
+    if (!restIsOver) {
       current.seenRunning = true
     } else if (current.seenRunning && !current.fired) {
       current.fired = true
       playRestOver()
     }
-  }, [lastLoggedAt, rest.isOver])
+  }, [currentRestKey, lastLoggedAt, restIsOver])
+
+  /** −15 s, +15 s or Skip: the Set's new rest, shown now and stored through `onSetRest`. */
+  function adjust(adjustment: RestAdjustment): void {
+    if (restFrom === null) return
+    const at = Date.now()
+    const restSeconds = adjustRest(restFrom.entry, restFrom.planRestSeconds, adjustment, at)
+    const next: RestFrom = { ...restFrom, entry: { ...restFrom.entry, restSeconds } }
+    if (adjustment.kind === 'skip') {
+      restOverTrackingRef.current = {
+        key: restKey(next),
+        loggedAt: next.entry.loggedAt,
+        seenRunning: true,
+        fired: true,
+      }
+    }
+    setNow(at)
+    setRestFrom(next)
+    props.onSetRest?.(restFrom.entry, restSeconds).catch((cause: unknown) => {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    })
+  }
 
   async function log(): Promise<void> {
     unlockRestSound()
@@ -376,7 +408,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setError(null)
       clearUndo()
       setHistory(merged)
-      setLastLoggedAt(loggedAt)
+      setRestFrom({ entry, planRestSeconds: plan.restSeconds })
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
       setExtraOpen(false)
@@ -575,13 +607,37 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         {loggedMessage}
       </p>
 
-      {lastLoggedAt === null ? null : (
-        <p className="rest-timer">
-          <span role="timer" aria-label="Rest remaining">
-            {formatRest(rest.remainingSeconds)}
-          </span>
-          {rest.isOver ? ' rest over' : ' rest'}
-        </p>
+      {rest === null ? null : (
+        <div className="rest-timer" data-over={rest.isOver ? 'true' : undefined}>
+          <span className="rest-label">{rest.isOver ? 'Rest over' : 'Rest'}</span>
+          <button type="button" className="rest-readout">
+            <span role="timer" aria-label="Rest remaining">
+              {rest.isOver ? formatOver(rest.overSeconds) : formatRest(rest.remainingSeconds)}
+            </span>
+            {rest.isOver ? ' over' : null}
+          </button>
+          {rest.isOver ? null : (
+            <div className="rest-controls">
+              <button
+                type="button"
+                className="rest-adjust"
+                onClick={() => adjust({ kind: 'add', seconds: -15 })}
+              >
+                −15 s
+              </button>
+              <button
+                type="button"
+                className="rest-adjust"
+                onClick={() => adjust({ kind: 'add', seconds: 15 })}
+              >
+                +15 s
+              </button>
+              <button type="button" className="rest-skip" onClick={() => adjust({ kind: 'skip' })}>
+                Skip
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
