@@ -165,6 +165,9 @@ const TICK_MS = 500
 /** How long Undo stays offered after a Set is deleted (E12-T3). */
 const UNDO_MS = 5000
 
+/** How long the Log set button and the new row show the Set as just logged (E13-T10). */
+const CONFIRMED_MS = 1500
+
 /** The set on the dials: which one it is and the two values it will be logged with. */
 type OpenSet = { setIndex: number; weightKg: number | null; reps: number }
 
@@ -279,6 +282,15 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   useEffect(
     () => () => {
       if (undoTimer.current !== null) clearTimeout(undoTimer.current)
+    },
+    [],
+  )
+  // The Set logged in the last CONFIRMED_MS: the button and its row show it as just logged.
+  const [justLogged, setJustLogged] = useState<number | null>(null)
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (confirmTimer.current !== null) clearTimeout(confirmTimer.current)
     },
     [],
   )
@@ -409,6 +421,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       clearUndo()
       setHistory(merged)
       setRestFrom({ entry, planRestSeconds: plan.restSeconds })
+      if (confirmTimer.current !== null) clearTimeout(confirmTimer.current)
+      setJustLogged(open.setIndex)
+      confirmTimer.current = setTimeout(() => {
+        confirmTimer.current = null
+        setJustLogged(null)
+      }, CONFIRMED_MS)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
       setExtraOpen(false)
@@ -516,9 +534,24 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </button>
     </>
   ) : !done ? (
-    <button type="button" className="log-set" onClick={() => void log()}>
-      Log set
-    </button>
+    justLogged !== null ? (
+      <button
+        type="button"
+        className="log-set log-set--confirmed"
+        aria-label="Log set"
+        onClick={() => void log()}
+      >
+        Logged ✓
+      </button>
+    ) : (
+      <button type="button" className="log-set" aria-label="Log set" onClick={() => void log()}>
+        {rest === null
+          ? 'Log set'
+          : rest.isOver
+            ? `Rest ${formatOver(rest.overSeconds)}`
+            : `Rest ${formatRest(rest.remainingSeconds)}`}
+      </button>
+    )
   ) : (
     <>
       {onFinishExercise === undefined ? null : (
@@ -557,7 +590,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {loggedSets.length === 0 ? null : (
         <ul className="logged-sets" aria-label="Sets logged">
           {loggedSets.map((entry) => (
-            <li key={entry.setIndex}>
+            <li
+              key={entry.setIndex}
+              className={justLogged === entry.setIndex ? 'just-logged' : undefined}
+            >
               <button
                 type="button"
                 className="logged-set"
