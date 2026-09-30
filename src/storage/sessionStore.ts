@@ -1,6 +1,6 @@
 import type { Session, SetEntry } from '../types'
 import { db } from './db'
-import { insertSet, removeSet } from '../domain/setEdits'
+import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 
 /** How many finished sessions a history lookup walks before it gives up. */
 const HISTORY_SCAN_LIMIT = 200
@@ -177,6 +177,23 @@ export async function restoreSet(
   return db.transaction('rw', db.sessions, async () => {
     const session = await requireSession(sessionId)
     const updated: Session = { ...session, entries: insertSet(session.entries, entry), updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
+}
+
+/**
+ * The History editor's single write (E12-T6): checks `finishedAt >= startedAt` and that at
+ * least one Set remains, stamps `updatedAt`, and stores the whole Session in one `put`.
+ */
+export async function saveSession(session: Session, now: number = Date.now()): Promise<Session> {
+  if (session.finishedAt !== null && session.finishedAt < session.startedAt) {
+    throw new Error(END_BEFORE_START)
+  }
+  if (session.entries.length === 0) throw new Error(NO_SETS_LEFT)
+  return db.transaction('rw', db.sessions, async () => {
+    await requireSession(session.id)
+    const updated: Session = { ...session, updatedAt: now }
     await db.sessions.put(updated)
     return updated
   })

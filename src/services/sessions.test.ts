@@ -99,6 +99,7 @@ describe('O5 the session service', () => {
       'presetHistory',
       'restoreSet',
       'resumeActive',
+      'save',
       'start',
       'undoSwap',
       'updateSet',
@@ -675,5 +676,39 @@ describe('E12-T2 the session service edits a logged Set', () => {
     const rejection = harness().service.restoreSet('missing', squat1)
     await expect(rejection).rejects.toBeInstanceOf(ServiceError)
     await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+  })
+})
+
+// --- E12-T6: save, the History editor's single write ---------------------------------------
+
+describe('E12-T6 the session service saves an edited finished Session', () => {
+  const bench1 = entry('bench', 1, 60, 8, BASE + 100 * SECOND)
+  const bench2 = entry('bench', 2, 62.5, 6, BASE + 200 * SECOND)
+  const original = (): Session =>
+    storedSession({ id: 'done', entries: [bench1, bench2], updatedAt: BASE + HOUR })
+
+  test('O14 save stores the draft, stamps now() and announces sessions once', async () => {
+    await putSessions([original()])
+    const { service, emitted } = harness()
+    const draft: Session = {
+      ...original(),
+      finishedAt: BASE + 2 * HOUR,
+      entries: [entry('bench', 1, 65, 5, BASE + 100 * SECOND)],
+    }
+
+    const saved = await service.save(draft)
+
+    expect(saved).toEqual({ ...draft, updatedAt: NOW })
+    expect(await stored('done')).toEqual({ ...draft, updatedAt: NOW })
+    expect(emitted()).toBe(1)
+  })
+
+  test("O14 save of a Session no longer stored rejects with ServiceError 'not-found' and announces nothing", async () => {
+    const { service, emitted } = harness()
+    const rejection = service.save(original())
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+    expect(emitted()).toBe(0)
+    expect(await stored('done')).toBeUndefined()
   })
 })

@@ -1,9 +1,10 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test } from 'vitest'
 import { db } from '../../storage/db'
 import { createServices } from '../../services'
 import type { SyncedSession } from '../../sync/protocol'
+import type { Session } from '../../types'
 import { FakeSyncServer } from '../../test/fakeSyncServer'
 import type { AppRoute } from '../routes'
 import { ServicesProvider } from '../ServicesProvider'
@@ -129,4 +130,137 @@ test('O12 a Session pulled by services.sync.syncNow from FakeSyncServer shows in
   })
 
   await screen.findByRole('button', { name: 'Open session' }, SETTLE)
+})
+
+// --- E12-T6: the History editor ---------------------------------------------------------------
+
+const MINUTE = 60 * 1_000
+/** Local wall-clock times, so the `datetime-local` values below are literals in any timezone. */
+const EDIT_START = new Date(2023, 10, 14, 18, 0).getTime()
+const EDIT_END = new Date(2023, 10, 14, 19, 0).getTime()
+/** The services' clock: days after the Session, so a save's stamp is later than its old one. */
+const EDIT_NOW = new Date(2023, 10, 20, 9, 0).getTime()
+
+/** A finished Workout A Session of three Back squat Sets: 60 x 8, 62.5 x 6, 65 x 5. */
+function editableSession(): Session {
+  return {
+    id: 'done-1',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt: EDIT_START,
+    finishedAt: EDIT_END,
+    entries: [
+      { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, reps: 8, loggedAt: EDIT_START + 10 * MINUTE },
+      { exerciseId: 'back-squat', setIndex: 2, weightKg: 62.5, reps: 6, loggedAt: EDIT_START + 20 * MINUTE },
+      { exerciseId: 'back-squat', setIndex: 3, weightKg: 65, reps: 5, loggedAt: EDIT_START + 30 * MINUTE },
+    ],
+    updatedAt: EDIT_END,
+  }
+}
+
+type Editing = { services: ReturnType<typeof createServices>; writes: () => number }
+
+/** Seeds `editableSession`, renders History over real services, and counts `'sessions'` writes. */
+async function renderHistoryWithEditableSession(): Promise<Editing> {
+  await db.sessions.put(editableSession())
+  const services = createServices({ now: () => EDIT_NOW, storageAvailable: true })
+  let writes = 0
+  services.bus.subscribe('sessions', () => {
+    writes += 1
+  })
+  render(
+    <ServicesProvider services={services}>
+      <HistoryFeature navigate={navigate} onInSession={onInSession} />
+    </ServicesProvider>,
+  )
+  return { services, writes: () => writes }
+}
+
+async function openEditor(): Promise<void> {
+  const edit = await screen.findByRole('button', { name: 'Edit workout' }, SETTLE)
+  await userEvent.setup().click(edit)
+  await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+}
+
+function squatGroup(): HTMLElement {
+  return screen.getByRole('group', { name: 'Back squat' })
+}
+
+test('O13 Edit workout on a History row opens the editor for that Session', async () => {
+  await renderHistoryWithEditableSession()
+
+  await openEditor()
+
+  expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2023-11-14T18:00')
+  expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2023-11-14T19:00')
+  expect(within(squatGroup()).getByRole('button', { name: 'Edit set 3' })).toBeVisible()
+  expect(within(squatGroup()).getByRole('button', { name: 'Delete set 3' })).toBeVisible()
+  expect(within(squatGroup()).getByRole('button', { name: 'Add set' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled()
+})
+
+test('O14 Save stores the edited Sets in one write, advances updatedAt and History shows the change', async () => {
+  const { writes } = await renderHistoryWithEditableSession()
+  await openEditor()
+  const user = userEvent.setup()
+
+  await user.click(within(squatGroup()).getByRole('button', { name: 'Delete set 2' }))
+  await user.click(within(squatGroup()).getByRole('button', { name: 'Add set' }))
+  await user.click(within(squatGroup()).getByRole('button', { name: 'Edit set 1' }))
+  await user.click(within(screen.getByRole('group', { name: 'Weight (kg)' })).getByRole('button', { name: 'Increase weight' }))
+  // Nothing reaches storage before Save: the editor works on a draft.
+  expect(await db.sessions.get('done-1')).toEqual(editableSession())
+
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(writes()).toBe(1), SETTLE)
+  const stored = await db.sessions.get('done-1')
+  expect(stored?.updatedAt).toBe(EDIT_NOW)
+  expect([...(stored?.entries ?? [])].sort((one, other) => one.setIndex - other.setIndex)).toEqual([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 62.5, reps: 8, loggedAt: EDIT_START + 10 * MINUTE },
+    { exerciseId: 'back-squat', setIndex: 2, weightKg: 65, reps: 5, loggedAt: EDIT_START + 30 * MINUTE },
+    { exerciseId: 'back-squat', setIndex: 3, weightKg: 65, reps: 5, loggedAt: EDIT_END },
+  ])
+  // 62.5 x 8 + 65 x 5 + 65 x 5 = 1150 kg over 3 sets.
+  await waitFor(() => {
+    const row = screen.getByRole('button', { name: 'Edit workout' }).closest('li')
+    expect(row).not.toBeNull()
+    expect(within(row as HTMLElement).getByText('3 sets')).toBeVisible()
+    expect(within(row as HTMLElement).getByText('1150 kg')).toBeVisible()
+  }, SETTLE)
+  expect(writes()).toBe(1)
+})
+
+test('O14 Save stores changed start and end times', async () => {
+  await renderHistoryWithEditableSession()
+  await openEditor()
+
+  fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2023-11-14T17:45' } })
+  fireEvent.change(screen.getByLabelText('End'), { target: { value: '2023-11-14T19:30' } })
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(async () => {
+    const stored = await db.sessions.get('done-1')
+    expect(stored).toEqual({
+      ...editableSession(),
+      startedAt: new Date(2023, 10, 14, 17, 45).getTime(),
+      finishedAt: new Date(2023, 10, 14, 19, 30).getTime(),
+      updatedAt: EDIT_NOW,
+    })
+  }, SETTLE)
+})
+
+test('O14 Cancel leaves the stored Session unchanged and returns to History', async () => {
+  const { writes } = await renderHistoryWithEditableSession()
+  await openEditor()
+  const user = userEvent.setup()
+
+  await user.click(within(squatGroup()).getByRole('button', { name: 'Delete set 1' }))
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  await screen.findByRole('button', { name: 'Edit workout' }, SETTLE)
+  expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
+  expect(await db.sessions.get('done-1')).toEqual(editableSession())
+  expect(writes()).toBe(0)
 })

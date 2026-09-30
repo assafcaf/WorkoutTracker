@@ -82,8 +82,10 @@ export function HistoryList(props: {
   resolve: (id: string) => Exercise | undefined
   /** Opens a session's summary (E5-T20, M16) from its row's "Open session" button. */
   onOpen?(sessionId: string): void
+  /** Opens the History editor (E12-T6) from a row's "Edit workout" button. */
+  onEdit?(sessionId: string, exerciseId?: string): void
 }): JSX.Element {
-  const { sessions, programs, resolve, onOpen } = props
+  const { sessions, programs, resolve, onOpen, onEdit } = props
 
   if (sessions.length === 0) {
     return (
@@ -114,6 +116,15 @@ export function HistoryList(props: {
                 onClick={() => onOpen(session.id)}
               >
                 Open session
+              </button>
+            ) : null}
+            {onEdit ? (
+              <button
+                type="button"
+                className="history-edit"
+                onClick={() => onEdit(session.id)}
+              >
+                Edit workout
               </button>
             ) : null}
             {/* `role="presentation"` on the group `<li>`s below: `getByRole('listitem')` must

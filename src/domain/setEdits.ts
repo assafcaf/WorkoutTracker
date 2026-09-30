@@ -1,5 +1,11 @@
 import type { SetEntry } from '../types'
 
+/** Why a finished Session whose end comes before its start cannot be saved (E12-T6, O15). */
+export const END_BEFORE_START = 'End time must be after the start time.'
+
+/** Why a finished Session with no Sets left cannot be saved (E12-T6, O15). */
+export const NO_SETS_LEFT = 'A workout needs at least one set. Delete the workout instead.'
+
 /**
  * Removes one Set of an Exercise and renumbers that Exercise's later Sets down by one.
  * Returns the remaining entries and the removed one. Pure.
