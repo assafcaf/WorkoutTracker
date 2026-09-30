@@ -58,6 +58,9 @@
  * sets the same floor on its own children, so this is what holds outside a shell. */
 .log-set,
 .add-set,
+.save-set,
+.delete-set,
+.cancel-edit,
 .finish-exercise {
   min-height: var(--tap-min);
 }
