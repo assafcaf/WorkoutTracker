@@ -1668,3 +1668,130 @@ test('O9 in the done state there is no Next line', () => {
 
   expect(screen.queryByText(NEXT_LINE)).toBeNull()
 })
+
+// E13-T10: the Log set button carries the rest, and the logged cue.
+
+test('O7 with 1:24 of rest left the Log set button reads "Rest 1:24" and is still named Log set', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 96_000)
+  renderSetScreen({
+    setIndex: 2,
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  expect(readoutValue(logButton())).toBe('Rest 1:24')
+})
+
+test('O7 once the rest is over 42 s ago the Log set button reads "Rest +0:42" and is still named Log set', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 222_000)
+  renderSetScreen({
+    setIndex: 2,
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  expect(readoutValue(logButton())).toBe('Rest +0:42')
+})
+
+test('O7 the rest on the Log set button counts down with the clock', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE + 96_000)
+  renderSetScreen({
+    setIndex: 2,
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+  expect(readoutValue(logButton())).toBe('Rest 1:24')
+
+  await vi.advanceTimersByTimeAsync(10_000)
+
+  expect(readoutValue(logButton())).toBe('Rest 1:14')
+})
+
+test('O7 a Set that matches its Preset logs with one tap on the Log set button while it shows the rest', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 96_000)
+  const { user, onLog } = renderSetScreen({
+    setIndex: 2,
+    lastEntries: [historyEntry(1, 60, 10)],
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+  expect(readoutValue(logButton())).toBe('Rest 1:24')
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1]).toEqual(
+    expect.objectContaining({ exerciseId: 'back-squat', setIndex: 2, weightKg: 60, reps: 10 }),
+  )
+})
+
+test('O8 tapping Log set shows "Logged ✓" with class log-set--confirmed, named Log set, and keeps the status text', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderWithSessionRest([])
+  expect(readoutValue(logButton())).toBe('Log set')
+
+  await tapWithFakeTimers(logButton())
+
+  expect(readoutValue(logButton())).toBe('Logged ✓')
+  expect(logButton()).toHaveClass('log-set--confirmed')
+  expect(screen.getByText('Set 1 logged · 50 kg × 8')).toBeVisible()
+})
+
+test('O8 the confirmed state ends after 1.5 s: the button shows the rest again without the class', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderWithSessionRest([])
+  await tapWithFakeTimers(logButton())
+  await vi.advanceTimersByTimeAsync(1_400)
+  expect(readoutValue(logButton())).toBe('Logged ✓')
+
+  await vi.advanceTimersByTimeAsync(200)
+
+  expect(logButton()).not.toHaveClass('log-set--confirmed')
+  expect(readoutValue(logButton())).toMatch(/^Rest \d:\d\d$/)
+  expect(screen.getByText('Set 1 logged · 50 kg × 8')).toBeVisible()
+})
+
+test('O8 the new row of the logged-set list carries just-logged for 1.5 s, and only that row', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderWithSessionRest([squatEntry(1, BASE - 60_000)])
+
+  await tapWithFakeTimers(logButton())
+
+  const rows = within(screen.getByRole('list', { name: 'Sets logged' })).getAllByRole('listitem')
+  expect(rows).toHaveLength(2)
+  expect(rows[0]).not.toHaveClass('just-logged')
+  expect(rows[1]).toHaveClass('just-logged')
+
+  await vi.advanceTimersByTimeAsync(1_600)
+
+  expect(rows[1]).not.toHaveClass('just-logged')
+})
+
+test('O8 tapping Log set inside the confirmed window still logs the next Set', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  const { onLog } = renderWithSessionRestLogging()
+
+  await tapWithFakeTimers(logButton())
+  await vi.advanceTimersByTimeAsync(500)
+  expect(logButton()).toHaveClass('log-set--confirmed')
+  await tapWithFakeTimers(logButton())
+
+  expect(onLog).toHaveBeenCalledTimes(2)
+  expect(onLog.mock.calls[1][1]).toEqual(expect.objectContaining({ setIndex: 2 }))
+  expect(readoutValue(logButton())).toBe('Logged ✓')
+  expect(screen.getByText('Set 2 logged · 50 kg × 8')).toBeVisible()
+})
+
+/** `renderWithSessionRest` with a spy on the log double, to count what is logged. */
+function renderWithSessionRestLogging() {
+  const onLog = vi.fn()
+  const inner = sessionLogSet()
+  renderWithSessionRest([], {
+    onLog: async (id, entry) => {
+      onLog(id, entry)
+      return inner(id, entry)
+    },
+  })
+  return { onLog }
+}
