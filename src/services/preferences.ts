@@ -24,6 +24,8 @@ export type PreferenceService = {
   volumeBaseline(): Promise<VolumeBaseline>
   setVolumeBaseline(b: VolumeBaseline): Promise<void>
   lastExportedAt(): Promise<number | null>
+  exerciseNote(exerciseId: string): Promise<string | null>
+  setExerciseNote(exerciseId: string, text: string): Promise<void>
 }
 
 /**
@@ -49,5 +51,8 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
     volumeBaseline: () => callStorage(deps, getVolumeBaseline, 'volumeBaseline read failed'),
     setVolumeBaseline: (baseline) => write(() => storeVolumeBaseline(baseline, deps.now())),
     lastExportedAt: () => callStorage(deps, getLastExportedAt, 'lastExportedAt read failed'),
+    // STUB (E14-T3 test-designer): not implemented yet.
+    exerciseNote: () => Promise.reject(new Error('NotImplementedError')),
+    setExerciseNote: () => Promise.reject(new Error('NotImplementedError')),
   }
 }

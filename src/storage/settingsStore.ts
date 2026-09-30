@@ -141,6 +141,9 @@ export async function setWeightSteps(
   await db.settings.put({ key: WEIGHT_STEPS_KEY, value: steps, updatedAt: now })
 }
 
+/** The `settings` table key every Exercise note is kept under, in one row (E14-T3). */
+export const EXERCISE_NOTES_KEY = 'exerciseNotes'
+
 /** The `settings` table key the volume baseline choice is stored under (E8). */
 export const VOLUME_BASELINE_KEY = 'volumeBaseline'
 

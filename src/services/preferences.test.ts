@@ -28,8 +28,10 @@ test('O5 createPreferenceService exposes exactly the preference operations', () 
 
   expect(Object.keys(service).sort()).toEqual(
     [
+      'exerciseNote',
       'gymEquipment',
       'lastExportedAt',
+      'setExerciseNote',
       'setGymEquipment',
       'setVolumeBaseline',
       'setWeightStep',
@@ -66,6 +68,75 @@ test('O5 setWeightStep then weightStep returns the newly saved step, leaving oth
 
   expect(await service.weightStep('deadlift')).toBe(2.5)
   expect(await service.weightStep('back-squat')).toBeNull()
+})
+
+test('O10 exerciseNote resolves null for an Exercise with no saved note', async () => {
+  const service = createPreferenceService(deps())
+
+  expect(await service.exerciseNote('deadlift')).toBeNull()
+})
+
+test('O10 setExerciseNote then exerciseNote returns the note, keyed by the id, leaving other Exercises null', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setExerciseNote('deadlift', 'belt on, chalk')
+
+  expect(await service.exerciseNote('deadlift')).toBe('belt on, chalk')
+  expect(await service.exerciseNote('romanian-deadlift')).toBeNull()
+  expect((await db.settings.get('exerciseNotes'))?.value).toEqual({ deadlift: 'belt on, chalk' })
+})
+
+test('O10 setting a note for a second Exercise keeps the first Exercise note', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setExerciseNote('deadlift', 'belt on')
+  await service.setExerciseNote('back-squat', 'high bar')
+
+  expect(await service.exerciseNote('deadlift')).toBe('belt on')
+  expect(await service.exerciseNote('back-squat')).toBe('high bar')
+})
+
+test.each(['', '   ', ' \n\t '])('O10 an empty or whitespace-only note %j removes the Exercise key', async (text) => {
+  const service = createPreferenceService(deps())
+  await service.setExerciseNote('deadlift', 'belt on')
+  await service.setExerciseNote('back-squat', 'high bar')
+
+  await service.setExerciseNote('deadlift', text)
+
+  expect(await service.exerciseNote('deadlift')).toBeNull()
+  expect((await db.settings.get('exerciseNotes'))?.value).toEqual({ 'back-squat': 'high bar' })
+})
+
+test('O10 a note longer than 500 characters is stored as its first 500', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setExerciseNote('deadlift', 'a'.repeat(400) + 'b'.repeat(200))
+
+  expect(await service.exerciseNote('deadlift')).toBe('a'.repeat(400) + 'b'.repeat(100))
+})
+
+test('O10 a note of exactly 500 characters is kept whole', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setExerciseNote('deadlift', 'c'.repeat(500))
+
+  expect(await service.exerciseNote('deadlift')).toBe('c'.repeat(500))
+})
+
+test('O10 setExerciseNote stamps the exerciseNotes row with now and notifies the preferences topic once', async () => {
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+  const service = createPreferenceService(deps({ bus }))
+
+  await service.setExerciseNote('deadlift', 'belt on')
+
+  expect(await db.settings.get('exerciseNotes')).toEqual({
+    key: 'exerciseNotes',
+    value: { deadlift: 'belt on' },
+    updatedAt: 1_700_000_000_000,
+  })
+  expect(listener).toHaveBeenCalledTimes(1)
 })
 
 test('O5 volumeBaseline defaults to the last-session baseline when nothing has been saved', async () => {
