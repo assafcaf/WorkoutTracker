@@ -23,6 +23,22 @@ function isFinished(session: Session): boolean {
   return session.finishedAt !== null
 }
 
+/** False when the Session has been discarded or deleted (`deletedAt` set) (E12-T1). */
+export function isLive(session: Session): boolean {
+  void session
+  throw new Error('not implemented: isLive (E12-T1)')
+}
+
+/**
+ * Stores the Session marked deleted, `deletedAt` and `updatedAt` at `now`, entries kept (E12-T1).
+ * Rejects with `no session <id> is stored` for an unknown id.
+ */
+export async function discardSession(sessionId: string, now: number): Promise<void> {
+  void sessionId
+  void now
+  throw new Error('not implemented: discardSession (E12-T1)')
+}
+
 /**
  * Finished sessions, newest first, across every program, at most `limit` of them. The cap
  * keeps the newest end, so only sessions older than it fall out of reach.

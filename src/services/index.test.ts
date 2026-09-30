@@ -44,6 +44,7 @@ describe('O5 createServices returns exactly the service API', () => {
     expect(ownKeys(services().sessions)).toEqual([
       'applySwap',
       'deleteSet',
+      'discard',
       'finish',
       'lastEntriesFor',
       'lastEntriesForSession',

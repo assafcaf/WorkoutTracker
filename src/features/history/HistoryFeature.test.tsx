@@ -304,3 +304,41 @@ test('O18 Edit on an Exercise in an expanded History card opens the editor with 
   expect(within(editorDeadlift).getByRole('group', { name: 'Weight (kg)' })).toBeVisible()
   expect(within(squatGroup()).queryByRole('group', { name: 'Weight (kg)' })).toBeNull()
 })
+
+// --- E12-T1 O4: History and Stats skip a deleted Session ---------------------------------------
+
+/** A finished Workout A Session stored with `deletedAt`, as `discardSession` leaves one. */
+function deletedSession(id: string): Session {
+  return { ...syncedSession(id, T0 + 2 * HOUR), deletedAt: T0 + 2 * HOUR }
+}
+
+test('E12-T1 O4 History does not list a deleted Session', async () => {
+  await db.sessions.bulkPut([syncedSession('live', T0 + HOUR), deletedSession('deleted')])
+  const services = createServices({ now: () => NOW, storageAvailable: true })
+
+  render(
+    <ServicesProvider services={services}>
+      <HistoryFeature navigate={navigate} onInSession={onInSession} />
+    </ServicesProvider>,
+  )
+
+  // One collapsed History card per listed Session (E12-T9).
+  await screen.findAllByRole('button', { expanded: false }, SETTLE)
+  expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(1)
+})
+
+test('E12-T1 O4 Stats draws no volume bar for a Session that is deleted', async () => {
+  await db.sessions.put(deletedSession('deleted'))
+  const services = createServices({ now: () => NOW, storageAvailable: true })
+
+  render(
+    <ServicesProvider services={services}>
+      <HistoryFeature navigate={navigate} onInSession={onInSession} />
+    </ServicesProvider>,
+  )
+
+  const group = await waitFor(() => historyViewSwitch(), SETTLE)
+  await userEvent.setup().click(within(group).getByRole('button', { name: 'Stats' }))
+
+  await screen.findByText(/No sessions yet\. Finish a session to draw its volume bar\./, {}, SETTLE)
+})

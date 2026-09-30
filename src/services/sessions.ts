@@ -43,6 +43,7 @@ export type SessionService = {
   list(): Promise<Session[]>
   applySwap(sessionId: string, plannedId: string, doneId: string): Promise<void>
   undoSwap(sessionId: string, plannedId: string): Promise<void>
+  discard(sessionId: string): Promise<void>
 }
 
 // The UI shows no text when starting, finishing, swapping or reading history fails: each of
@@ -235,6 +236,12 @@ export function createSessionService(deps: ServiceDeps): SessionService {
     /** Refused, as `'storage-failed'`, once the swapped-in exercise has a logged set. */
     async undoSwap(sessionId, plannedId) {
       await write(sessionId, () => clearSwap(sessionId, plannedId, now()), SWAP_FAILED)
+    },
+
+    /** Marks the Session deleted through `discardSession` (E12-T1). */
+    async discard(sessionId) {
+      void sessionId
+      throw new Error('not implemented: SessionService.discard (E12-T1)')
     },
   }
 }

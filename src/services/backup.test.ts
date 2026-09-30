@@ -133,6 +133,20 @@ test('O5 export shares the file exportBackup would build and stamps lastExported
   expect(row?.updatedAt).toBe(BASE)
 })
 
+test('E12-T1 O4 export leaves a deleted Session out of the backup file', async () => {
+  const [kept, deleted] = sessionsFixture(2)
+  await db.sessions.bulkPut([kept, { ...deleted, deletedAt: BASE, updatedAt: BASE }])
+  const { clickedAnchors } = installDownloadFallback()
+
+  await createBackupService(makeDeps()).export()
+
+  expect(clickedAnchors).toHaveLength(1)
+  const createObjectURL = URL.createObjectURL as ReturnType<typeof vi.fn>
+  const blobArg = createObjectURL.mock.calls[0][0] as Blob
+  const file = JSON.parse(await blobArg.text()) as BackupFile
+  expect(file.sessions).toEqual([kept])
+})
+
 // --- O8: export announces exactly the preferences topic ---------------------------------------
 
 test('O8 export calls a preferences subscriber exactly once and does not call sessions or programs', async () => {

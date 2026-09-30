@@ -90,6 +90,7 @@ describe('O5 the session service', () => {
     expect(Object.keys(service).sort()).toEqual([
       'applySwap',
       'deleteSet',
+      'discard',
       'finish',
       'lastEntriesFor',
       'lastEntriesForSession',
@@ -150,7 +151,17 @@ describe('O5 the session service', () => {
     ])
 
     await expect(harness().service.resumeActive()).resolves.toBeNull()
-    expect(await stored('empty')).toBeUndefined()
+    // E12-T1 O5: "deletes" is now a mark at the service clock, so sync can carry it.
+    expect(await stored('empty')).toEqual(
+      storedSession({
+        id: 'empty',
+        startedAt: BASE,
+        finishedAt: null,
+        entries: [],
+        updatedAt: NOW,
+        deletedAt: NOW,
+      }),
+    )
   })
 
   test('O5 start creates a new Session in progress for the chosen Workout', async () => {
@@ -710,5 +721,66 @@ describe('E12-T6 the session service saves an edited finished Session', () => {
     await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
     expect(emitted()).toBe(0)
     expect(await stored('done')).toBeUndefined()
+  })
+})
+
+// --- E12-T1: discard marks the Session deleted and announces it --------------------------------
+
+describe('E12-T1 SessionService.discard', () => {
+  test('O4 discard stores the Session with deletedAt and updatedAt at the service clock', async () => {
+    const active = storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries: [entry('bench', 0, 60, 8, NOW - 30 * 60 * SECOND)],
+      updatedAt: NOW - 30 * 60 * SECOND,
+    })
+    await putSessions([active])
+
+    await harness().service.discard('active')
+
+    expect(await stored('active')).toEqual({ ...active, deletedAt: NOW, updatedAt: NOW })
+  })
+
+  test('O4 after discard of the Session in progress, resumeActive returns null', async () => {
+    await putSessions([
+      storedSession({ id: 'active', startedAt: NOW - HOUR, finishedAt: null, updatedAt: NOW - HOUR }),
+    ])
+    const { service } = harness()
+
+    await service.discard('active')
+
+    await expect(service.resumeActive()).resolves.toBeNull()
+  })
+
+  test('O4 after discard of a finished Session, list leaves it out', async () => {
+    await putSessions([
+      storedSession({ id: 'done' }),
+      storedSession({ id: 'kept', startedAt: BASE - DAY, finishedAt: BASE - DAY + HOUR }),
+    ])
+    const { service } = harness()
+
+    await service.discard('done')
+
+    expect((await service.list()).map((session) => session.id)).toEqual(['kept'])
+  })
+
+  test("O4 discard announces 'sessions' once", async () => {
+    await putSessions([storedSession({ id: 'done' })])
+    const { service, emitted } = harness()
+
+    await service.discard('done')
+
+    expect(emitted()).toBe(1)
+  })
+
+  test("O4 discard of a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
+    const { service, emitted } = harness()
+
+    const rejection = service.discard('missing')
+
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+    expect(emitted()).toBe(0)
   })
 })

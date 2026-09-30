@@ -106,6 +106,11 @@ export type Session = {
    * written by this build; absent on sessions imported from an older backup.
    */
   updatedAt?: number
+  /**
+   * When this Session was discarded or deleted (E12-T1). A deleted Session stays stored and
+   * synced, but no reader returns it. Absent on a live Session.
+   */
+  deletedAt?: number
 }
 
 /**
