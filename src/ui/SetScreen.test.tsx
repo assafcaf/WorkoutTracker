@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
@@ -847,9 +847,9 @@ function renderWithLogged(
   over: Partial<SetScreenProps> = {},
   fakeTimers = false,
 ) {
-  const user = fakeTimers
-    ? userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) })
-    : userEvent.setup()
+  // Under fake timers userEvent hangs; those tests tap with `tapWithFakeTimers` instead.
+  const user = userEvent.setup()
+  void fakeTimers
   const onEditSet = vi.fn()
   const onDeleteSet = vi.fn()
   const onRestoreSet = vi.fn()
@@ -928,6 +928,13 @@ function loggedSetNames(): string[] {
     .map((button) => (button.textContent ?? '').replace(/\s+/g, ' ').trim())
 }
 
+/** A tap under fake timers, where userEvent hangs: fires the click and flushes the promises. */
+async function tapWithFakeTimers(element: HTMLElement): Promise<void> {
+  await act(async () => {
+    fireEvent.click(element)
+  })
+}
+
 function loggedSetButton(name: string): HTMLElement {
   return screen.getByRole('button', { name })
 }
@@ -973,13 +980,13 @@ test('O8 tapping a logged Set shows its values on the Dials with Save set, Delet
 })
 
 test('O8 Save set stores the new values, updates the list and returns to the next Set to log', async () => {
-  const { user, onEditSet } = renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 80, 8)])
+  const { user, onEditSet } = renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 82.5, 6)])
 
   await user.click(loggedSetButton('80 × 8'))
   await enterOnKeypad(user, repsReadout(), ['9'])
   await user.click(screen.getByRole('button', { name: 'Save set' }))
 
-  await waitFor(() => expect(loggedSetNames()).toEqual(['80 × 9', '80 × 8']))
+  await waitFor(() => expect(loggedSetNames()).toEqual(['80 × 9', '82.5 × 6']))
   expect(onEditSet).toHaveBeenCalledTimes(1)
   expect(onEditSet).toHaveBeenCalledWith(1, { weightKg: 80, reps: 9 })
   expect(screen.getByText('Set 3 of 4')).toBeVisible()
@@ -990,7 +997,7 @@ test('O8 Save set stores the new values, updates the list and returns to the nex
 test('O8 Cancel changes nothing and returns to the next Set to log', async () => {
   const { user, onEditSet, onDeleteSet } = renderWithLogged([
     loggedEntry(1, 80, 8),
-    loggedEntry(2, 80, 8),
+    loggedEntry(2, 82.5, 6),
   ])
 
   await user.click(loggedSetButton('80 × 8'))
@@ -999,7 +1006,7 @@ test('O8 Cancel changes nothing and returns to the next Set to log', async () =>
 
   expect(onEditSet).not.toHaveBeenCalled()
   expect(onDeleteSet).not.toHaveBeenCalled()
-  expect(loggedSetNames()).toEqual(['80 × 8', '80 × 8'])
+  expect(loggedSetNames()).toEqual(['80 × 8', '82.5 × 6'])
   expect(screen.getByText('Set 3 of 4')).toBeVisible()
   expect(screen.getByRole('button', { name: 'Log set' })).toBeVisible()
 })
@@ -1051,15 +1058,15 @@ test('O9 tapping Undo restores the deleted Set exactly and hides Undo', async ()
 
 test('O9 Undo is still there at 4.9 s and gone at 5 s, and the deletion stands', async () => {
   vi.useFakeTimers()
-  const { user, onRestoreSet } = renderWithLogged(
+  const { onRestoreSet } = renderWithLogged(
     [loggedEntry(1, 80, 8), loggedEntry(2, 90, 6)],
     {},
     true,
   )
 
-  await user.click(loggedSetButton('90 × 6'))
-  await user.click(screen.getByRole('button', { name: 'Delete set' }))
-  expect(await screen.findByRole('button', { name: 'Undo' })).toBeVisible()
+  await tapWithFakeTimers(loggedSetButton('90 × 6'))
+  await tapWithFakeTimers(screen.getByRole('button', { name: 'Delete set' }))
+  expect(screen.getByRole('button', { name: 'Undo' })).toBeVisible()
 
   await vi.advanceTimersByTimeAsync(4900)
   expect(screen.getByRole('button', { name: 'Undo' })).toBeVisible()
@@ -1085,15 +1092,15 @@ test('O9 Undo disappears when the next Set is logged', async () => {
 test('O9 leaving the screen clears the Undo timer without restoring or erroring', async () => {
   vi.useFakeTimers()
   const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-  const { user, onRestoreSet, unmount } = renderWithLogged(
+  const { onRestoreSet, unmount } = renderWithLogged(
     [loggedEntry(1, 80, 8), loggedEntry(2, 90, 6)],
     {},
     true,
   )
 
-  await user.click(loggedSetButton('90 × 6'))
-  await user.click(screen.getByRole('button', { name: 'Delete set' }))
-  expect(await screen.findByRole('button', { name: 'Undo' })).toBeVisible()
+  await tapWithFakeTimers(loggedSetButton('90 × 6'))
+  await tapWithFakeTimers(screen.getByRole('button', { name: 'Delete set' }))
+  expect(screen.getByRole('button', { name: 'Undo' })).toBeVisible()
   unmount()
   await vi.advanceTimersByTimeAsync(10_000)
 
