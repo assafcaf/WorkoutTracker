@@ -381,6 +381,22 @@ export function WorkoutFeature({
       })
   }
 
+  /** `ExerciseList.onDiscard`: discards the Session in progress and returns to the picker. */
+  function handleDiscard(): void {
+    if (!session) return
+    services.sessions
+      .discard(session.id)
+      .then(() => {
+        setSession(null)
+        setOpenSet(null)
+        setView('picker')
+        void syncNow()
+      })
+      .catch(() => {
+        // The list stays up; nothing was discarded.
+      })
+  }
+
   /** `SetScreen.onOpenInfo`: the detail overlay for the catalog exercise on screen (E5-T15). */
   function handleOpenInfoForExercise(exerciseId: string): void {
     const exercise = catalog.get(exerciseId)
@@ -489,6 +505,7 @@ export function WorkoutFeature({
           onApplySwap={handleApplySwap}
           sessions={sessions}
           volumeBaseline={volumeBaseline}
+          onDiscard={handleDiscard}
         />
       </AppShell>
     )
