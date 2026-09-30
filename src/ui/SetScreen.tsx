@@ -151,6 +151,10 @@ export type SetScreenProps = {
    * `onUseRestForExercise` resolves.
    */
   programName?: string
+  /** Whether Track effort is on (E14-T10): chips 0 1 2 3+ show under the logged-set status. */
+  trackEffort?: boolean
+  /** Stores (or with `null` clears) the RIR of logged Set `setIndex` (E14-T10). */
+  onSetEffort?(setIndex: number, rir: 0 | 1 | 2 | 3 | null): Promise<void>
 }
 
 /**

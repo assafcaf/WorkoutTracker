@@ -45,6 +45,10 @@ export type SettingsProps = {
    * `volumeBaseline`.
    */
   onVolumeBaselineChange?(baseline: VolumeBaseline): void
+  /** Whether Track effort is on (E14-T10); omitted reads as off. */
+  trackEffort?: boolean
+  /** Called with the next Track effort value when its checkbox is toggled (E14-T10). */
+  onTrackEffortChange?(on: boolean): void
 }
 
 /**

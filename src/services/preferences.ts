@@ -28,6 +28,9 @@ export type PreferenceService = {
   lastExportedAt(): Promise<number | null>
   exerciseNote(exerciseId: string): Promise<string | null>
   setExerciseNote(exerciseId: string, text: string): Promise<void>
+  /** Whether Track effort is on; `false` when unset (E14-T10). */
+  trackEffort(): Promise<boolean>
+  setTrackEffort(on: boolean): Promise<void>
 }
 
 /**
@@ -61,5 +64,8 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       ),
     setExerciseNote: (exerciseId, text) =>
       write(() => storeExerciseNote(exerciseId, text, deps.now())),
+    // STUB (E14-T10 test-designer): not implemented yet.
+    trackEffort: () => Promise.reject(new Error('NotImplementedError')),
+    setTrackEffort: () => Promise.reject(new Error('NotImplementedError')),
   }
 }

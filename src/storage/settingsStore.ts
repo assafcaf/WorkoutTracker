@@ -178,6 +178,9 @@ export async function setExerciseNote(
 /** The `settings` table key the volume baseline choice is stored under (E8). */
 export const VOLUME_BASELINE_KEY = 'volumeBaseline'
 
+/** The `settings` table key the Track effort choice is stored under, a `boolean` (E14-T10). */
+export const EFFORT_TRACKING_KEY = 'effortTracking'
+
 const DEFAULT_VOLUME_BASELINE: VolumeBaseline = { period: 'last' }
 
 /** The stored volume baseline, or `{ period: 'last' }` when none has been chosen. */
