@@ -9,6 +9,7 @@ import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
+import { RestDial } from './RestDial'
 import { Toast } from './Toast'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
@@ -129,12 +130,12 @@ export type SetScreenProps = {
   /**
    * Stores `restSeconds`, just set on the rest Dial, as the rest of this Exercise's Plan in the
    * Session's Program (E13-T9), offered as "Use 2:30 for <Exercise>"; a rejection's message shows
-   * inline. STUB (E13-T9 test-designer): accepted but not yet offered.
+   * inline.
    */
   onUseRestForExercise?(restSeconds: number): Promise<void>
   /**
    * The Session's Program's name (E13-T9), for the "Saved to <Program>" line once
-   * `onUseRestForExercise` resolves. STUB (E13-T9 test-designer): accepted but not yet shown.
+   * `onUseRestForExercise` resolves.
    */
   programName?: string
 }
@@ -215,6 +216,15 @@ function openSetFor(
   lastEntries: SetEntry[],
 ): OpenSet {
   return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries }) }
+}
+
+/**
+ * The "Use m:ss for <Exercise>" line after the rest Dial's Set rest (E13-T9): offered, being
+ * saved, saved, or refused with the Program service's message.
+ */
+type UseRestOffer = {
+  seconds: number
+  status: 'offered' | 'saving' | 'saved' | { error: string }
 }
 
 /** The Set rest runs after, with the Plan rest of the Exercise it belongs to (E13-T8). */
@@ -389,8 +399,38 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     }
   }, [currentRestKey, lastLoggedAt, restIsOver])
 
-  /** −15 s, +15 s or Skip: the Set's new rest, shown now and stored through `onSetRest`. */
+  // The rest Dial, open from the rest readout, and the Use offer its Set rest leaves (E13-T9).
+  const [restDialOpen, setRestDialOpen] = useState(false)
+  const [useOffer, setUseOffer] = useState<UseRestOffer | null>(null)
+
+  /** The rest Dial's Set rest: the Set's rest is `seconds`, and it may become the Plan's. */
+  function setRestFromDial(seconds: number): void {
+    setRestDialOpen(false)
+    applyRest({ kind: 'set', seconds })
+    if (props.onUseRestForExercise !== undefined) setUseOffer({ seconds, status: 'offered' })
+  }
+
+  async function saveRestForExercise(): Promise<void> {
+    if (useOffer === null || props.onUseRestForExercise === undefined) return
+    const { seconds } = useOffer
+    setUseOffer({ seconds, status: 'saving' })
+    try {
+      await props.onUseRestForExercise(seconds)
+      setUseOffer({ seconds, status: 'saved' })
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause)
+      setUseOffer({ seconds, status: { error: message } })
+    }
+  }
+
+  /** −15 s, +15 s or Skip: never offered as the Plan's rest, so they withdraw the Use offer. */
   function adjust(adjustment: RestAdjustment): void {
+    setUseOffer(null)
+    applyRest(adjustment)
+  }
+
+  /** The Set's new rest, shown now and stored through `onSetRest`. */
+  function applyRest(adjustment: RestAdjustment): void {
     if (restFrom === null) return
     const at = Date.now()
     const restSeconds = adjustRest(restFrom.entry, restFrom.planRestSeconds, adjustment, at)
@@ -441,6 +481,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         confirmTimer.current = null
         setJustLogged(null)
       }, CONFIRMED_MS)
+      setUseOffer(null)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
       setExtraOpen(false)
@@ -670,7 +711,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {rest === null ? null : (
         <div className="rest-timer" data-over={rest.isOver ? 'true' : undefined}>
           <span className="rest-label">{rest.isOver ? 'Rest over' : 'Rest'}</span>
-          <button type="button" className="rest-readout">
+          <button
+            type="button"
+            className="rest-readout"
+            onClick={() => setRestDialOpen(true)}
+          >
             <span role="timer" aria-label="Rest remaining">
               {rest.isOver ? formatOver(rest.overSeconds) : formatRest(rest.remainingSeconds)}
             </span>
@@ -698,6 +743,36 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             </div>
           )}
         </div>
+      )}
+
+      {rest === null || restFrom === null || !restDialOpen ? null : (
+        <RestDial
+          seconds={restFrom.entry.restSeconds ?? restFrom.planRestSeconds}
+          onSet={setRestFromDial}
+          onCancel={() => setRestDialOpen(false)}
+        />
+      )}
+
+      {useOffer === null ? null : (
+        <p className="rest-use">
+          {useOffer.status === 'saved' ? (
+            props.programName === undefined ? 'Saved' : `Saved to ${props.programName}`
+          ) : (
+            <button
+              type="button"
+              className="rest-use-offer"
+              disabled={useOffer.status === 'saving'}
+              onClick={() => void saveRestForExercise()}
+            >
+              Use {formatRest(useOffer.seconds)} for {exercise.name}
+            </button>
+          )}
+          {typeof useOffer.status === 'object' ? (
+            <span className="rest-use-error" role="alert">
+              {useOffer.status.error}
+            </span>
+          ) : null}
+        </p>
       )}
     </div>
   )

@@ -87,6 +87,31 @@
   font: inherit;
 }
 
+/* "Use m:ss for <Exercise>" after the rest Dial's Set rest (E13-T9), then "Saved to <Program>"
+ * or the Program service's refusal. */
+.rest-use {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.rest-use-offer {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font: inherit;
+}
+
+.rest-use-error {
+  color: var(--color-text);
+}
+
 /* The two controls reach the tap-target floor wherever they are rendered -- the action bar
  * sets the same floor on its own children, so this is what holds outside a shell. */
 .log-set,
