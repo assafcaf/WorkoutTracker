@@ -89,6 +89,8 @@ export type SetEntry = {
   loggedAt: number
   /** The rest that follows this Set, when the trainee changed it (E13). */
   restSeconds?: number
+  /** A Bodyweight Set's signed load in kg (E14): never 0, only on a Bodyweight Set. */
+  loadKg?: number
 }
 
 export type Session = {
