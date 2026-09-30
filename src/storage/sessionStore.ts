@@ -195,6 +195,18 @@ export async function setRest(
   })
 }
 
+/** Stores the Session note, or removes it when `note` is empty or whitespace (E14-T4). */
+export async function setNote(
+  sessionId: string,
+  note: string,
+  now: number = Date.now(),
+): Promise<Session> {
+  void sessionId
+  void note
+  void now
+  throw new Error('NotImplementedError: setNote')
+}
+
 /** Removes one logged Set, renumbering the Exercise's later Sets down by one. */
 export async function deleteSet(
   sessionId: string,

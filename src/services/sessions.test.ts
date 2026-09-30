@@ -101,6 +101,7 @@ describe('O5 the session service', () => {
       'restoreSet',
       'resumeActive',
       'save',
+      'setNote',
       'setRest',
       'start',
       'undoSwap',
@@ -815,6 +816,48 @@ describe('E13-T5 the session service stores a changed rest', () => {
   test("O3 setRest on a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
     const { service, emitted } = harness()
     const rejection = service.setRest('missing', 'squat', 1, 60)
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+    expect(emitted()).toBe(0)
+  })
+})
+
+// --- E14-T4: setNote through the service ---------------------------------------------------
+
+describe('E14-T4 the session service stores a Session note', () => {
+  const seed = (): Session =>
+    storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries: [entry('squat', 1, 60, 8, NOW - 300 * SECOND)],
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O12 setNote stores the note in one write, stamps now() and announces sessions once', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const updated = await service.setNote('active', 'Felt strong')
+
+    expect(updated).toEqual({ ...seed(), note: 'Felt strong', updatedAt: NOW })
+    expect(await stored('active')).toEqual({ ...seed(), note: 'Felt strong', updatedAt: NOW })
+    expect(emitted()).toBe(1)
+  })
+
+  test('O12 setNote with whitespace only removes an existing note', async () => {
+    await putSessions([{ ...seed(), note: 'old' }])
+    const { service } = harness()
+
+    const updated = await service.setNote('active', '   ')
+
+    expect('note' in updated).toBe(false)
+    expect('note' in ((await stored('active')) as Session)).toBe(false)
+  })
+
+  test("O12 setNote on a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
+    const { service, emitted } = harness()
+    const rejection = service.setNote('missing', 'x')
     await expect(rejection).rejects.toBeInstanceOf(ServiceError)
     await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
     expect(emitted()).toBe(0)

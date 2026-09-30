@@ -54,6 +54,10 @@ export type ExerciseListProps = {
    * absent.
    */
   onDiscard?(): void
+  /** The Session note (E14-T4); shown under the list, edited through "Add note". */
+  note?: string
+  /** Saves the note text (500 characters at most); empty removes it. No control when absent. */
+  onSaveNote?(text: string): Promise<void>
 }
 
 /** How many sets of this exercise the session already holds. */

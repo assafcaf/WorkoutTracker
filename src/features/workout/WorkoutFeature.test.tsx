@@ -784,3 +784,33 @@ test('O6 when programs.save refuses, its message shows inline and the back squat
   expect(screen.queryByText(/^Saved to/)).toBeNull()
   expect(await planRests(services, 'workout-a')).toEqual([180, 90, 90, 90, 90, 90, 90])
 })
+
+// --- E14-T4: the Session note on the list --------------------------------------------------
+
+test('O12 Add note under the exercise list stores the typed text as the Session note', async () => {
+  const { user } = await startWorkoutAWithSets(0)
+
+  await user.click(await screen.findByRole('button', { name: 'Add note' }, SETTLE))
+  await user.type(screen.getByLabelText('Note'), 'Slept badly')
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(async () => expect((await storedActiveSession())?.note).toBe('Slept badly'), SETTLE)
+  expect(await screen.findByText('Slept badly', undefined, SETTLE)).toBeVisible()
+})
+
+test('O12 saving the note empty removes it from the stored Session', async () => {
+  const services = await servicesOnAssafAB()
+  const started = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  await services.sessions.setNote(started.id, 'to be removed')
+  const { user } = renderFeature(services)
+
+  await user.click(await screen.findByRole('button', { name: 'Edit note' }, SETTLE))
+  await user.clear(screen.getByLabelText('Note'))
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(async () => {
+    const stored = await storedActiveSession()
+    expect(stored).not.toBeNull()
+    expect(stored && 'note' in stored).toBe(false)
+  }, SETTLE)
+})

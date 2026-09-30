@@ -113,6 +113,8 @@ export type Session = {
    * synced, but no reader returns it. Absent on a live Session.
    */
   deletedAt?: number
+  /** The trainee's free-text Session note, 500 characters at most (E14-T4). Absent when none. */
+  note?: string
 }
 
 /**
