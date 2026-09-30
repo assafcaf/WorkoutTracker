@@ -175,13 +175,24 @@ export async function updateSet(
 
 /** Stores a changed rest length on one logged Set (E13-T5). */
 export async function setRest(
-  _sessionId: string,
-  _exerciseId: string,
-  _setIndex: number,
-  _restSeconds: number,
-  _now: number = Date.now(),
+  sessionId: string,
+  exerciseId: string,
+  setIndex: number,
+  restSeconds: number,
+  now: number = Date.now(),
 ): Promise<Session> {
-  throw new Error('not implemented')
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const at = session.entries.findIndex(
+      (stored) => stored.exerciseId === exerciseId && stored.setIndex === setIndex,
+    )
+    if (at < 0) throw new Error(`no set ${setIndex} of ${exerciseId} is logged`)
+    const entries = [...session.entries]
+    entries[at] = { ...entries[at], restSeconds }
+    const updated: Session = { ...session, entries, updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
 }
 
 /** Removes one logged Set, renumbering the Exercise's later Sets down by one. */

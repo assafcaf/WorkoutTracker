@@ -11,6 +11,7 @@ import {
   deleteSet,
   restoreSet,
   saveSession,
+  setRest,
   updateSet,
   setSwap,
   startOrResumeSession,
@@ -156,8 +157,12 @@ export function createSessionService(deps: ServiceDeps): SessionService {
       )
     },
 
-    async setRest(_sessionId, _exerciseId, _setIndex, _restSeconds) {
-      throw new Error('not implemented')
+    async setRest(sessionId, exerciseId, setIndex, restSeconds) {
+      return write(
+        sessionId,
+        () => setRest(sessionId, exerciseId, setIndex, restSeconds, now()),
+        LOG_FAILED,
+      )
     },
 
     async deleteSet(sessionId, exerciseId, setIndex) {
