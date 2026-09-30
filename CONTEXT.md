@@ -36,6 +36,10 @@ _Avoid_: Log, entry, instance
 Free text of up to 500 characters the trainee attaches to a Session, in progress or finished (`Session.note`). Empty removes it.
 _Avoid_: Comment, memo
 
+**Exercise note**:
+Free text of up to 500 characters the trainee keeps for an Exercise, such as its setup; shown above the Dials on every Session of that Exercise. Empty removes it.
+_Avoid_: Comment, memo, Session note
+
 **Set**:
 One performed set — a weight and a rep count, recorded against a Session and referencing the
 catalog Exercise rather than the Program's Plan.

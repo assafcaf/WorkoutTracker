@@ -55,6 +55,7 @@ type OpenSet = {
   history: SetEntry[]
   extra: boolean
   weightStep: number | null
+  exerciseNote: string | null
 }
 
 /** The detail overlay (E5-T8, E5-T15) or the ranked alternatives overlay (E5-T12). */
@@ -348,9 +349,10 @@ export function WorkoutFeature({
     Promise.all([
       services.sessions.lastEntriesFor(exerciseId),
       services.preferences.weightStep(exerciseId),
+      services.preferences.exerciseNote(exerciseId),
     ])
-      .then(([history, weightStep]) => {
-        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep })
+      .then(([history, weightStep, exerciseNote]) => {
+        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep, exerciseNote })
         setView('set')
       })
       .catch(() => {
@@ -470,6 +472,16 @@ export function WorkoutFeature({
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}
             weightStep={openSet.weightStep}
+            exerciseNote={openSet.exerciseNote}
+            onSaveExerciseNote={async (text) => {
+              await services.preferences.setExerciseNote(openSet.exerciseId, text)
+              const saved = await services.preferences.exerciseNote(openSet.exerciseId)
+              setOpenSet((current) =>
+                current && current.exerciseId === openSet.exerciseId
+                  ? { ...current, exerciseNote: saved }
+                  : current,
+              )
+            }}
             onWeightStepChange={(step) => {
               services.preferences.setWeightStep(openSet.exerciseId, step).catch(() => {
                 // Nothing to recover to here; the screen keeps the step it already has.
