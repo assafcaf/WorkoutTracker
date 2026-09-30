@@ -61,6 +61,22 @@ export function progression(
   }
 
   if (exercise.bodyweight) {
+    const loads = lastEntries.flatMap((entry) => (entry.loadKg ? [entry.loadKg] : []))
+    if (loads.length > 0) {
+      const load = Math.max(...loads)
+      const atLoad = lastEntries.filter((entry) => entry.loadKg === load)
+      const loadedTarget = atLoad.length * topReps
+      const loadedFull = atLoad.every((entry) => entry.reps >= topReps)
+      return {
+        workingWeightKg: null,
+        achievedReps: sumReps(atLoad),
+        targetReps: loadedTarget,
+        isFull: loadedFull,
+        suggestion: loadedFull
+          ? { kind: 'add-load', nextLoadKg: load + exercise.weightStep }
+          : null,
+      }
+    }
     const targetReps = plan.sets * topReps
     const achievedReps = sumReps(lastEntries)
     const isFull = achievedReps >= targetReps

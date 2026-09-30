@@ -63,7 +63,11 @@ export function presetForSet(args: {
 
   const match = sequence[position - 1] ?? sequence[sequence.length - 1]
   if (match !== undefined) {
-    return { weightKg: exercise.bodyweight ? null : match.weightKg, reps: match.reps }
+    return {
+      weightKg: exercise.bodyweight ? null : match.weightKg,
+      reps: match.reps,
+      ...(match.loadKg ? { loadKg: match.loadKg } : {}),
+    }
   }
 
   return {

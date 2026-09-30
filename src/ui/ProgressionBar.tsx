@@ -1,4 +1,5 @@
 import './ProgressionBar.css'
+import { loadText } from '../domain/setText'
 import type { Progression, Suggestion } from '../domain/progression'
 
 export type ProgressionBarProps = { progression: Progression }
@@ -13,7 +14,7 @@ function suggestionText(suggestion: Suggestion): string {
     case 'add-set':
       return 'Add a set'
     case 'add-load':
-      return 'Next: add load'
+      return `Next: ${loadText({ weightKg: null, loadKg: suggestion.nextLoadKg })}`
   }
 }
 

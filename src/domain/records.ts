@@ -58,7 +58,7 @@ export function recordsFor(
   const sets = sessions.flatMap((session) =>
     session.entries
       .filter((entry) => entry.exerciseId === exercise.id && countsTowardStats(entry))
-      .map((entry) => ({ weightKg: entry.weightKg, reps: entry.reps, at: session.startedAt })),
+      .map((entry) => ({ weightKg: entry.weightKg, reps: entry.reps, loadKg: entry.loadKg, at: session.startedAt })),
   )
 
   if (exercise.invertProgress) {
@@ -74,7 +74,20 @@ export function recordsFor(
     const candidates: Candidate[] = sets.map((set) => ({ ...set, value: set.reps }))
     const winner = best(candidates)
     if (!winner) return []
-    return [toRecord('most-reps-in-a-set', winner)]
+    const records = [toRecord('most-reps-in-a-set', winner)]
+    const loaded = sets.filter((set) => set.loadKg)
+    const heaviestLoad = best(loaded.map((set) => ({ ...set, value: set.loadKg as number })))
+    if (!heaviestLoad) return records
+    const atLoad = best(
+      loaded
+        .filter((set) => set.loadKg === heaviestLoad.value)
+        .map((set) => ({ ...set, value: set.reps })),
+    ) as Candidate
+    return [
+      ...records,
+      toRecord('heaviest-load', heaviestLoad),
+      toRecord('most-reps-at-load', { ...heaviestLoad, value: atLoad.value, reps: atLoad.reps, at: atLoad.at }),
+    ]
   }
 
   const loadedSets = sets.filter((set) => set.weightKg !== null)
