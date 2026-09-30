@@ -13,6 +13,10 @@ import {
   GYM_EQUIPMENT_KEY,
   LAST_EXPORTED_AT_KEY,
   USER_PROGRAMS_KEY,
+  EXERCISE_NOTES_KEY,
+  EFFORT_TRACKING_KEY,
+  getExerciseNotes,
+  getTrackEffort,
   VOLUME_BASELINE_KEY,
   WEIGHT_STEPS_KEY,
   deleteKeys,
@@ -53,6 +57,8 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     weightSteps,
     volumeBaseline,
     userPrograms,
+    exerciseNotes,
+    effortTracking,
   ] = await Promise.all([
     listSessions(),
     readRow(ACTIVE_PROGRAM_ID_KEY),
@@ -61,6 +67,8 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     getWeightSteps(),
     getVolumeBaseline(),
     getUserPrograms(),
+    getExerciseNotes(),
+    getTrackEffort(),
   ])
   const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
 
@@ -75,6 +83,8 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
       weightSteps,
       volumeBaseline,
       userPrograms,
+      ...(Object.keys(exerciseNotes).length > 0 ? { exerciseNotes } : {}),
+      ...(effortTracking ? { effortTracking } : {}),
     },
   }
 }
@@ -187,6 +197,12 @@ export function createBackupService(
 
             if (file.settings.userPrograms === undefined) toDelete.push(USER_PROGRAMS_KEY)
             else toPut.push({ key: USER_PROGRAMS_KEY, value: file.settings.userPrograms, updatedAt: now })
+
+            if (file.settings.exerciseNotes === undefined) toDelete.push(EXERCISE_NOTES_KEY)
+            else toPut.push({ key: EXERCISE_NOTES_KEY, value: file.settings.exerciseNotes, updatedAt: now })
+
+            if (file.settings.effortTracking === undefined) toDelete.push(EFFORT_TRACKING_KEY)
+            else toPut.push({ key: EFFORT_TRACKING_KEY, value: file.settings.effortTracking, updatedAt: now })
 
             if (toPut.length > 0) await putRows(toPut)
             if (toDelete.length > 0) await deleteKeys(toDelete)
