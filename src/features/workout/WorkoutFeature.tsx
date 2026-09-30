@@ -422,6 +422,7 @@ export function WorkoutFeature({
               session,
               openSet.exerciseId,
             )}
+            lastTime={openSet.history}
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}
             weightStep={openSet.weightStep}
