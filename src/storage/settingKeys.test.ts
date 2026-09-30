@@ -49,6 +49,7 @@ describe('D3 every setting key is declared once in settingKeys', () => {
   test('D3 syncedSettingKeys are exactly the five synced keys', () => {
     expect([...syncedSettingKeys()].sort()).toEqual([
       'activeProgramId',
+      'effortTracking',
       'exerciseNotes',
       'gymEquipment',
       'userPrograms',

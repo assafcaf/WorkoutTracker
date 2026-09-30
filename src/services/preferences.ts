@@ -5,10 +5,12 @@ import {
   getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
+  getTrackEffort,
   getVolumeBaseline,
   getWeightStep,
   setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
+  setTrackEffort as storeTrackEffort,
   setVolumeBaseline as storeVolumeBaseline,
   setWeightStep as storeWeightStep,
 } from '../storage/settingsStore'
@@ -28,6 +30,9 @@ export type PreferenceService = {
   lastExportedAt(): Promise<number | null>
   exerciseNote(exerciseId: string): Promise<string | null>
   setExerciseNote(exerciseId: string, text: string): Promise<void>
+  /** Whether Track effort is on; `false` when unset (E14-T10). */
+  trackEffort(): Promise<boolean>
+  setTrackEffort(on: boolean): Promise<void>
 }
 
 /**
@@ -61,5 +66,7 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       ),
     setExerciseNote: (exerciseId, text) =>
       write(() => storeExerciseNote(exerciseId, text, deps.now())),
+    trackEffort: () => callStorage(deps, getTrackEffort, 'trackEffort read failed'),
+    setTrackEffort: (on) => write(() => storeTrackEffort(on, deps.now())),
   }
 }

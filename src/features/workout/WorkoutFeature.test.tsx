@@ -977,3 +977,68 @@ test('O11 saving the Exercise note empty removes it', async () => {
   )
   expect(await screen.findByRole('button', { name: 'Add note' }, SETTLE)).toBeVisible()
 })
+
+// --- E14-T10: Track effort and the RIR chips -------------------------------------------------
+
+/** Turns Track effort on in the stored settings, then logs Back squat set 1 from the set screen. */
+async function logFirstSquatSet(trackEffort: boolean): Promise<UserEvent> {
+  if (trackEffort) await db.settings.put({ key: 'effortTracking', value: true, updatedAt: NOW })
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  return user
+}
+
+test('O9 with Track effort on, logging a Set shows the RIR chips 0 1 2 3+', async () => {
+  await logFirstSquatSet(true)
+
+  const chips = await screen.findByRole('group', { name: 'Reps in reserve' }, SETTLE)
+  expect(within(chips).getAllByRole('button').map((chip) => chip.textContent)).toEqual([
+    '0',
+    '1',
+    '2',
+    '3+',
+  ])
+})
+
+test('O9 with Track effort off, logging a Set shows no chips', async () => {
+  await logFirstSquatSet(false)
+  await screen.findByText(/^Set 1 logged/, undefined, SETTLE)
+
+  expect(screen.queryByRole('group', { name: 'Reps in reserve' })).toBeNull()
+})
+
+test('O9 tapping a chip stores that rir on the just-logged Set, and tapping another replaces it', async () => {
+  const user = await logFirstSquatSet(true)
+  const chips = await screen.findByRole('group', { name: 'Reps in reserve' }, SETTLE)
+
+  await user.click(within(chips).getByRole('button', { name: '2' }))
+  await waitFor(async () => {
+    expect((await storedActiveSession())?.entries.find((e) => e.setIndex === 1)?.rir).toBe(2)
+  }, SETTLE)
+
+  await user.click(within(chips).getByRole('button', { name: '3+' }))
+  await waitFor(async () => {
+    expect((await storedActiveSession())?.entries.find((e) => e.setIndex === 1)?.rir).toBe(3)
+  }, SETTLE)
+})
+
+test('O9 ignoring the chips stores no rir on the logged Set', async () => {
+  await logFirstSquatSet(true)
+  await screen.findByRole('group', { name: 'Reps in reserve' }, SETTLE)
+
+  const stored = await storedActiveSession()
+  expect(stored?.entries).toHaveLength(1)
+  expect(stored?.entries[0] && 'rir' in stored.entries[0]).toBe(false)
+})
+
+test('O9 a Set with rir reads RIR n in the logged-set list', async () => {
+  const user = await logFirstSquatSet(true)
+  const chips = await screen.findByRole('group', { name: 'Reps in reserve' }, SETTLE)
+
+  await user.click(within(chips).getByRole('button', { name: '1' }))
+
+  const list = screen.getByRole('list', { name: 'Sets logged' })
+  await waitFor(() => expect(list.textContent).toMatch(/× \d+\s*· RIR 1$/), SETTLE)
+})

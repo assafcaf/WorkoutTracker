@@ -151,6 +151,10 @@ export type SetScreenProps = {
    * `onUseRestForExercise` resolves.
    */
   programName?: string
+  /** Whether Track effort is on (E14-T10): chips 0 1 2 3+ show under the logged-set status. */
+  trackEffort?: boolean
+  /** Stores (or with `null` clears) the RIR of logged Set `setIndex` (E14-T10). */
+  onSetEffort?(setIndex: number, rir: 0 | 1 | 2 | 3 | null): Promise<void>
 }
 
 /**
@@ -373,6 +377,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const lastLoggedAt = restFrom === null ? null : restFrom.entry.loggedAt
   const currentRestKey = restKey(restFrom)
   const [loggedMessage, setLoggedMessage] = useState<string>('')
+  // The RIR chips belong to the Set last logged here and its pick (E14-T10); local, not stored.
+  const [effort, setEffort] = useState<{ setIndex: number; rir: 0 | 1 | 2 | 3 | null } | null>(
+    null,
+  )
   const [now, setNow] = useState<number>(() => Date.now())
 
   // The controls belong to the screen's bottom edge, which inside the shell is the sticky
@@ -531,6 +539,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       }, CONFIRMED_MS)
       setUseOffer(null)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
+      setEffort({ setIndex: open.setIndex, rir: null })
       setOpen(
         openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter)),
       )
@@ -554,6 +563,15 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
+  }
+
+  /** A chip tap: shows the pick at once and stores it without holding anything up. */
+  function pickEffort(rir: 0 | 1 | 2 | 3): void {
+    if (effort === null) return
+    setEffort({ ...effort, rir })
+    props.onSetEffort?.(effort.setIndex, rir).catch((cause: unknown) => {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    })
   }
 
   function openLogged(entry: SetEntry): void {
@@ -792,6 +810,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               {entry.kind === undefined ? null : (
                 <span className="set-kind-marker">{KIND_MARKERS[entry.kind]}</span>
               )}
+              {entry.rir === undefined ? null : (
+                <span className="logged-set-rir">
+                  {' · RIR '}
+                  {entry.rir === 3 ? '3+' : entry.rir}
+                </span>
+              )}
               {isRecordSet(entry) ? (
                 <span className="pr-badge" aria-label="Personal record">
                   PR
@@ -885,6 +909,22 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       <p role="status" className="set-logged" data-family={family}>
         {loggedMessage}
       </p>
+
+      {props.trackEffort !== true || effort === null ? null : (
+        <div className="effort-chips" role="group" aria-label="Reps in reserve">
+          {([0, 1, 2, 3] as const).map((rir) => (
+            <button
+              key={rir}
+              type="button"
+              className="effort-chip"
+              aria-pressed={effort.rir === rir}
+              onClick={() => pickEffort(rir)}
+            >
+              {rir === 3 ? '3+' : rir}
+            </button>
+          ))}
+        </div>
+      )}
 
       {rest === null || done || extraOpen || editing !== null || position > plan.sets ? null : (
         <p className="set-next">

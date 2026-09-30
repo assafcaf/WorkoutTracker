@@ -295,3 +295,49 @@ test('O13 SettingsFeature pressing Sync now runs the sync service', async () => 
     expect(sync.syncNow.mock.calls.length).toBeGreaterThan(before)
   }, SETTLE)
 })
+
+// --- E14-T10: Track effort ------------------------------------------------------------------
+
+test('O9 SettingsFeature shows Track effort unticked when nothing is stored', async () => {
+  renderFeature(buildServices(fakeSync()))
+
+  const box = await screen.findByRole('checkbox', { name: 'Track effort' }, SETTLE)
+  expect(box).not.toBeChecked()
+})
+
+test('O9 SettingsFeature shows Track effort ticked when it is stored on', async () => {
+  await db.settings.put({ key: 'effortTracking', value: true, updatedAt: NOW })
+  renderFeature(buildServices(fakeSync()))
+
+  await waitFor(() => {
+    expect(screen.getByRole('checkbox', { name: 'Track effort' })).toBeChecked()
+  }, SETTLE)
+})
+
+test('O9 ticking Track effort stores true under effortTracking and shows it ticked', async () => {
+  const user = userEvent.setup()
+  renderFeature(buildServices(fakeSync()))
+  await user.click(await screen.findByRole('checkbox', { name: 'Track effort' }, SETTLE))
+
+  await waitFor(async () => {
+    expect((await db.settings.get('effortTracking'))?.value).toBe(true)
+  }, SETTLE)
+  await waitFor(() => {
+    expect(screen.getByRole('checkbox', { name: 'Track effort' })).toBeChecked()
+  }, SETTLE)
+})
+
+test('O9 unticking Track effort stores false under effortTracking', async () => {
+  const user = userEvent.setup()
+  await db.settings.put({ key: 'effortTracking', value: true, updatedAt: NOW })
+  renderFeature(buildServices(fakeSync()))
+  await waitFor(() => {
+    expect(screen.getByRole('checkbox', { name: 'Track effort' })).toBeChecked()
+  }, SETTLE)
+
+  await user.click(screen.getByRole('checkbox', { name: 'Track effort' }))
+
+  await waitFor(async () => {
+    expect((await db.settings.get('effortTracking'))?.value).toBe(false)
+  }, SETTLE)
+})

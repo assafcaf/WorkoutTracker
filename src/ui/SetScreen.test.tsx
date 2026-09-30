@@ -2411,3 +2411,157 @@ test('O6 Cancel in edit mode changes no kind and returns the row to Working', as
   expect(onEditSet).not.toHaveBeenCalled()
   expect(chosenKinds()).toEqual(['Working'])
 })
+
+// --- E14-T10: RIR chips under the logged-set status (O9) --------------------------------------
+
+function effortChips(): HTMLElement | null {
+  return screen.queryByRole('group', { name: 'Reps in reserve' })
+}
+
+function chip(name: string): HTMLElement {
+  return within(effortChips() as HTMLElement).getByRole('button', { name })
+}
+
+test('O9 before any Set is logged, no chips show even with Track effort on', () => {
+  renderSetScreen({ trackEffort: true, onSetEffort: vi.fn(async () => undefined) })
+
+  expect(effortChips()).toBeNull()
+})
+
+test('O9 with Track effort on, logging a Set shows the chips 0 1 2 3+', async () => {
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort: vi.fn(async () => undefined) })
+
+  await user.click(logButton())
+
+  const chips = await screen.findByRole('group', { name: 'Reps in reserve' })
+  expect(within(chips).getAllByRole('button').map((button) => button.textContent)).toEqual([
+    '0',
+    '1',
+    '2',
+    '3+',
+  ])
+})
+
+test('O9 with Track effort off or omitted, logging a Set shows no chips', async () => {
+  const { user } = renderSetScreen({ onSetEffort: vi.fn(async () => undefined) })
+
+  await user.click(logButton())
+  await screen.findByText('Set 1 logged · 50 kg × 8')
+
+  expect(effortChips()).toBeNull()
+})
+
+test('O9 tapping a chip calls onSetEffort with the just-logged setIndex and that rir', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+
+  await user.click(chip('2'))
+
+  expect(onSetEffort).toHaveBeenCalledTimes(1)
+  expect(onSetEffort).toHaveBeenCalledWith(1, 2)
+  expect(chip('2')).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('O9 the 3+ chip stores rir 3 and the 0 chip stores rir 0', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+
+  await user.click(chip('3+'))
+  await user.click(chip('0'))
+
+  expect(onSetEffort.mock.calls).toEqual([
+    [1, 3],
+    [1, 0],
+  ])
+})
+
+test('O9 tapping another chip replaces the choice: only the latest shows pressed', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+
+  await user.click(chip('2'))
+  await user.click(chip('1'))
+
+  expect(onSetEffort.mock.calls).toEqual([
+    [1, 2],
+    [1, 1],
+  ])
+  expect(chip('1')).toHaveAttribute('aria-pressed', 'true')
+  expect(chip('2')).toHaveAttribute('aria-pressed', 'false')
+})
+
+test('O9 ignoring the chips calls onSetEffort never, and Log set logs the next Set at once', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user, onLog } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(2))
+  expect(onSetEffort).not.toHaveBeenCalled()
+})
+
+test('O9 Log set never waits for an effort write still pending', async () => {
+  const onSetEffort = vi.fn(() => new Promise<void>(() => undefined))
+  const { user, onLog } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+  await user.click(chip('1'))
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(2))
+})
+
+test('O9 logging the next Set moves the chips to it, with nothing pressed', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+  await user.click(chip('2'))
+
+  await user.click(logButton())
+  await screen.findByText('Set 2 logged · 50 kg × 8')
+
+  for (const name of ['0', '1', '2', '3+']) {
+    expect(chip(name)).toHaveAttribute('aria-pressed', 'false')
+  }
+  await user.click(chip('3+'))
+  expect(onSetEffort).toHaveBeenLastCalledWith(2, 3)
+})
+
+test('O9 the chips stay after the confirmed window ends', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderSetScreen({ trackEffort: true, onSetEffort: vi.fn(async () => undefined) })
+
+  await tapWithFakeTimers(logButton())
+  await vi.advanceTimersByTimeAsync(10_000)
+
+  expect(effortChips()).not.toBeNull()
+})
+
+test('O9 a logged Set with rir reads "weight × reps · RIR n", RIR 0 included, and 3 reads RIR 3+', () => {
+  renderWithLogged([
+    { ...loggedEntry(1, 80, 8), rir: 2 },
+    { ...loggedEntry(2, 80, 8), rir: 0 },
+    { ...loggedEntry(3, 80, 8), rir: 3 },
+    loggedEntry(4, 80, 8),
+  ])
+
+  const rows = within(screen.getByRole('list', { name: 'Sets logged' })).getAllByRole('listitem')
+  const texts = rows.map((row) => (row.textContent ?? '').replace(/\s+/g, ' ').trim())
+  expect(texts[0]).toBe('80 × 8 · RIR 2')
+  expect(texts[1]).toBe('80 × 8 · RIR 0')
+  expect(texts[2]).toBe('80 × 8 · RIR 3+')
+  expect(texts[3]).toBe('80 × 8')
+  // The RIR text sits beside the tappable Set, not inside its name.
+  expect(loggedSetNames()).toEqual(['80 × 8', '80 × 8', '80 × 8', '80 × 8'])
+})

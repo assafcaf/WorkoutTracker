@@ -171,6 +171,10 @@ export function WorkoutFeature({
     (s) => orElse<VolumeBaseline>(s.preferences.volumeBaseline(), { period: 'last' }),
     ['preferences'],
   )
+  const trackEffortData = useServiceData(
+    (s) => orElse(s.preferences.trackEffort(), false),
+    ['preferences'],
+  )
   const sessionsData = useServiceData(
     (s) => orElse<Session[]>(s.sessions.list(), []),
     ['sessions'],
@@ -517,6 +521,12 @@ export function WorkoutFeature({
             }}
             onRestoreSet={async (entry) => {
               setSession(await services.sessions.restoreSet(session.id, entry))
+            }}
+            trackEffort={trackEffortData.status === 'ready' && trackEffortData.data}
+            onSetEffort={async (setIndex, rir) => {
+              setSession(
+                await services.sessions.setEffort(session.id, openSet.exerciseId, setIndex, rir),
+              )
             }}
             restFrom={restFrom}
             onSetRest={async (entry, restSeconds) => {

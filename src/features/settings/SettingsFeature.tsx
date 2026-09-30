@@ -34,6 +34,13 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
   const programsData = useServiceData((s) => s.programs.load(), ['programs'])
   const gymEquipmentData = useServiceData((s) => s.preferences.gymEquipment(), ['preferences'])
   const volumeBaselineData = useServiceData((s) => s.preferences.volumeBaseline(), ['preferences'])
+  const trackEffortData = useServiceData((s) => s.preferences.trackEffort(), ['preferences'])
+  const [chosenEffort, setChosenEffort] = useState<boolean | null>(null)
+  // Dropped once the stored choice reads back as the one made.
+  useEffect(() => {
+    if (trackEffortData.status !== 'ready') return
+    setChosenEffort((chosen) => (chosen === trackEffortData.data ? null : chosen))
+  }, [trackEffortData])
   const catalogData = useServiceData((s) => s.catalog.load(), [])
   const [savedBaseline, setSavedBaseline] = useState<VolumeBaseline | null>(null)
   // Dropped once the stored baseline reads back as the one chosen.
@@ -89,6 +96,13 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     })
   }
 
+  function handleTrackEffortChange(on: boolean): void {
+    setChosenEffort(on)
+    services.preferences.setTrackEffort(on).catch(() => {
+      setChosenEffort(null)
+    })
+  }
+
   function handleExport(): void {
     setImportError(null)
     services.backup.export().catch(() => {
@@ -133,6 +147,8 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
         onGymEquipmentChange={handleGymEquipmentChange}
         volumeBaseline={volumeBaseline}
         onVolumeBaselineChange={handleVolumeBaselineChange}
+        trackEffort={chosenEffort ?? (trackEffortData.status === 'ready' ? trackEffortData.data : false)}
+        onTrackEffortChange={handleTrackEffortChange}
         sync={syncControls.sync}
         onSyncNow={() => {
           void syncControls.syncNow()
