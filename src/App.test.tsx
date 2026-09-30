@@ -326,7 +326,7 @@ test('O6 opening a lift last logged in an earlier, finished session shows no res
   await openExercise(user, 'Back squat')
   await screen.findByRole('button', { name: 'Weight' }, SETTLE)
 
-  expect(screen.queryByRole('timer')).toBeNull()
+  expect(screen.queryByRole('timer', { name: 'Rest remaining' })).toBeNull()
 })
 
 // --- O13: the session survives the app being closed --------------------------------------
