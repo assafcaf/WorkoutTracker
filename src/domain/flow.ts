@@ -10,8 +10,17 @@ export function nextExerciseAfter(
   session: Session,
   currentExerciseId: string,
 ): string | null {
-  void workout
-  void session
-  // Stub: to be implemented; answers the current id so every test fails on its assertion.
-  return currentExerciseId
+  const plans = workout.exercises
+  const swaps = session.swaps ?? {}
+  const doneId = (plannedId: string): string => swaps[plannedId] ?? plannedId
+  const current = plans.findIndex(
+    (plan) => plan.exerciseId === currentExerciseId || doneId(plan.exerciseId) === currentExerciseId,
+  )
+  for (let step = 1; step <= plans.length; step += 1) {
+    const plan = plans[(current + step + plans.length) % plans.length]
+    const id = doneId(plan.exerciseId)
+    const logged = session.entries.filter((entry) => entry.exerciseId === id).length
+    if (logged < plan.sets) return id
+  }
+  return null
 }

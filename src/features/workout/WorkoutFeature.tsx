@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
+import { nextExerciseAfter } from '../../domain/flow'
 import { familyOf } from '../../domain/muscles'
 import { latestSet } from '../../domain/rest'
 import { ServiceError } from '../../services'
@@ -440,6 +441,8 @@ export function WorkoutFeature({
         latest === null || latestPlan === undefined
           ? null
           : { entry: latest, planRestSeconds: latestPlan.restSeconds }
+      const nextId = nextExerciseAfter(located.workout, session, openSet.exerciseId)
+      const nextName = nextId === null ? null : (resolveListExercise(nextId)?.name ?? null)
       content = (
         <AppShell title={exercise.name} onBack={() => setView('list')} action={<ActionBarSlot />}>
           <ElapsedTime startedAt={session.startedAt} />
@@ -504,7 +507,17 @@ export function WorkoutFeature({
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}
-            onFinishExercise={() => setView('list')}
+            upNext={nextName}
+            onFinishExercise={() => {
+              if (nextId === null) {
+                setView('list')
+                return
+              }
+              const loggedNext = session.entries.filter(
+                (entry) => entry.exerciseId === nextId,
+              ).length
+              handleOpenSet(nextId, loggedNext + 1)
+            }}
           />
         </AppShell>
       )

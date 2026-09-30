@@ -72,6 +72,8 @@ export type SetScreenProps = {
    * "Add set".
    */
   onFinishExercise?(): void
+  /** The name of the next unfinished Exercise, shown above "Finish exercise" (E13-T12). */
+  upNext?: string | null
   /**
    * Whether the set on the dials was opened by "Add set" as an extra set past the plan (E6-T1).
    * A screen opened past the plan with `extra` false is in the done state. Optional, read as
@@ -237,6 +239,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     onOpenInfo,
     onOpenAlternatives,
     onFinishExercise,
+    upNext,
     family,
   } = props
 
@@ -554,6 +557,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     )
   ) : (
     <>
+      {onFinishExercise === undefined || !upNext ? null : (
+        <p className="up-next">Up next: {upNext}</p>
+      )}
       {onFinishExercise === undefined ? null : (
         <button type="button" className="finish-exercise" onClick={onFinishExercise}>
           Finish exercise
