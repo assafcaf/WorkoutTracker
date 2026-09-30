@@ -19,7 +19,14 @@ import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
+/** The longest Exercise note, in characters (E14-T11). */
+const EXERCISE_NOTE_MAX = 500
+
 export type SetScreenProps = {
+  /** The Exercise note shown above the Dials (E14-T11); null or omitted shows Add note. */
+  exerciseNote?: string | null
+  /** Saves the Exercise note (500 characters at most); empty removes it (E14-T11). */
+  onSaveExerciseNote?(text: string): Promise<void>
   exercise: Exercise
   plan: ExercisePlan
   setIndex: number
@@ -429,6 +436,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   // The rest Dial, open from the rest readout, and the Use offer its Set rest leaves (E13-T9).
   const [restDialOpen, setRestDialOpen] = useState(false)
+  // The Exercise note editor (E14-T11).
+  const [editingNote, setEditingNote] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
   const [useOffer, setUseOffer] = useState<UseRestOffer | null>(null)
 
   /** The rest Dial's Set rest: the Set's rest is `seconds`, and it may become the Plan's. */
@@ -760,6 +770,58 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             </li>
           ))}
         </ul>
+      )}
+
+      {props.onSaveExerciseNote === undefined ? null : editingNote ? (
+        <div className="set-note-editor">
+          <label className="set-note-label">
+            <span>Note</span>
+            <textarea
+              className="set-note-input"
+              maxLength={EXERCISE_NOTE_MAX}
+              value={noteDraft}
+              onChange={(event) => setNoteDraft(event.target.value)}
+            />
+          </label>
+          <div className="set-note-actions">
+            <button
+              type="button"
+              className="set-note-save"
+              onClick={() => {
+                const save = props.onSaveExerciseNote
+                if (save === undefined) return
+                void save(noteDraft.slice(0, EXERCISE_NOTE_MAX)).then(() => setEditingNote(false))
+              }}
+            >
+              Save note
+            </button>
+            <button type="button" className="set-note-cancel" onClick={() => setEditingNote(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : props.exerciseNote === undefined || props.exerciseNote === null || props.exerciseNote === '' ? (
+        <button
+          type="button"
+          className="set-note-add"
+          onClick={() => {
+            setNoteDraft('')
+            setEditingNote(true)
+          }}
+        >
+          Add note
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="set-note-text"
+          onClick={() => {
+            setNoteDraft(props.exerciseNote ?? '')
+            setEditingNote(true)
+          }}
+        >
+          {props.exerciseNote}
+        </button>
       )}
 
       <WeightDial

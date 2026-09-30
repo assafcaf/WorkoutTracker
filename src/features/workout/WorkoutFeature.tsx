@@ -55,6 +55,7 @@ type OpenSet = {
   history: SetEntry[]
   extra: boolean
   weightStep: number | null
+  exerciseNote: string | null
 }
 
 /** The detail overlay (E5-T8, E5-T15) or the ranked alternatives overlay (E5-T12). */
@@ -350,11 +351,26 @@ export function WorkoutFeature({
       services.preferences.weightStep(exerciseId),
     ])
       .then(([history, weightStep]) => {
-        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep })
+        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep, exerciseNote: null })
         setView('set')
+        loadExerciseNote(exerciseId)
       })
       .catch(() => {
         // Without the history the preset would be wrong; the list stays up instead.
+      })
+  }
+
+  /** Fills in the open set's Exercise note once it is read; the screen is already up. */
+  function loadExerciseNote(exerciseId: string): void {
+    services.preferences
+      .exerciseNote(exerciseId)
+      .then((exerciseNote) => {
+        setOpenSet((current) =>
+          current && current.exerciseId === exerciseId ? { ...current, exerciseNote } : current,
+        )
+      })
+      .catch(() => {
+        // Without the note the screen offers Add note; the set itself is unaffected.
       })
   }
 
@@ -470,6 +486,11 @@ export function WorkoutFeature({
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}
             weightStep={openSet.weightStep}
+            exerciseNote={openSet.exerciseNote}
+            onSaveExerciseNote={async (text) => {
+              await services.preferences.setExerciseNote(openSet.exerciseId, text)
+              loadExerciseNote(openSet.exerciseId)
+            }}
             onWeightStepChange={(step) => {
               services.preferences.setWeightStep(openSet.exerciseId, step).catch(() => {
                 // Nothing to recover to here; the screen keeps the step it already has.

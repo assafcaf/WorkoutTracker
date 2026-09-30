@@ -928,3 +928,52 @@ test('O5 after a warm-up today, lunges opens on last time’s first working Set,
     ),
   ).toEqual(['10', '12'])
 })
+
+// --- E14-T11: the Exercise note on the set screen ------------------------------------------
+
+test('O11 a saved Exercise note shows on the set screen of a new Session of that Exercise', async () => {
+  const services = await servicesOnAssafAB()
+  await services.preferences.setExerciseNote('back-squat', 'belt on, chalk')
+  const { user } = renderFeature(services)
+
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+
+  expect(await screen.findByText('belt on, chalk', undefined, SETTLE)).toBeVisible()
+})
+
+test('O11 Add note on the set screen stores the Exercise note under its id', async () => {
+  const services = await servicesOnAssafAB()
+  const { user } = renderFeature(services)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+
+  await user.click(await screen.findByRole('button', { name: 'Add note' }, SETTLE))
+  await user.type(screen.getByLabelText('Note'), 'pin 4')
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(
+    async () => expect(await services.preferences.exerciseNote('back-squat')).toBe('pin 4'),
+    SETTLE,
+  )
+  expect(await screen.findByText('pin 4', undefined, SETTLE)).toBeVisible()
+  expect(await services.preferences.exerciseNote('bench-press')).toBeNull()
+})
+
+test('O11 saving the Exercise note empty removes it', async () => {
+  const services = await servicesOnAssafAB()
+  await services.preferences.setExerciseNote('back-squat', 'belt on')
+  const { user } = renderFeature(services)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+
+  await user.click(await screen.findByText('belt on', undefined, SETTLE))
+  await user.clear(screen.getByLabelText('Note'))
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(
+    async () => expect(await services.preferences.exerciseNote('back-squat')).toBeNull(),
+    SETTLE,
+  )
+  expect(await screen.findByRole('button', { name: 'Add note' }, SETTLE)).toBeVisible()
+})

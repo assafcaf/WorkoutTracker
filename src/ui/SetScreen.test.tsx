@@ -2142,3 +2142,91 @@ test('O4 while resting after 2 warm-ups and 1 working Set on a 3-Set Plan the Ne
 
   expect(screen.getByText(NEXT_LINE)).toBeVisible()
 })
+
+// --- E14-T11 [O11]: the Exercise note above the Dials ---------------------------------------
+
+test('O11 an Exercise note shows above the Dials', () => {
+  renderSetScreen({
+    exerciseNote: 'belt on, chalk',
+    onSaveExerciseNote: vi.fn(async () => undefined),
+  })
+
+  const note = screen.getByText('belt on, chalk')
+  expect(note).toBeVisible()
+  expect(
+    note.compareDocumentPosition(weightReadout()) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull()
+})
+
+test('O11 without a note an Add note link shows above the Dials', () => {
+  renderSetScreen({ exerciseNote: null, onSaveExerciseNote: vi.fn(async () => undefined) })
+
+  const add = screen.getByRole('button', { name: 'Add note' })
+  expect(
+    add.compareDocumentPosition(weightReadout()) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy()
+})
+
+test('O11 tapping the note opens an editor holding it, limited to 500 characters', async () => {
+  const { user } = renderSetScreen({
+    exerciseNote: 'belt on',
+    onSaveExerciseNote: vi.fn(async () => undefined),
+  })
+
+  await user.click(screen.getByText('belt on'))
+
+  const editor = screen.getByLabelText('Note') as HTMLTextAreaElement
+  expect(editor.value).toBe('belt on')
+  expect(editor.maxLength).toBe(500)
+  expect(screen.getByRole('button', { name: 'Save note' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+})
+
+test('O11 Save note hands the edited text to onSaveExerciseNote and closes the editor', async () => {
+  const onSave = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: onSave })
+
+  await user.click(screen.getByText('belt on'))
+  await user.clear(screen.getByLabelText('Note'))
+  await user.type(screen.getByLabelText('Note'), 'belt off')
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith('belt off'))
+  await waitFor(() => expect(screen.queryByLabelText('Note')).toBeNull())
+})
+
+test('O11 Add note then Save note saves the typed text', async () => {
+  const onSave = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ exerciseNote: null, onSaveExerciseNote: onSave })
+
+  await user.click(screen.getByRole('button', { name: 'Add note' }))
+  await user.type(screen.getByLabelText('Note'), 'pin 4')
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith('pin 4'))
+})
+
+test('O11 Cancel leaves the note as it was and saves nothing', async () => {
+  const onSave = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: onSave })
+
+  await user.click(screen.getByText('belt on'))
+  await user.type(screen.getByLabelText('Note'), ' extra')
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  expect(screen.queryByLabelText('Note')).toBeNull()
+  expect(screen.getByText('belt on')).toBeVisible()
+  expect(onSave).not.toHaveBeenCalled()
+})
+
+test('O11 saving the note empty hands an empty string to onSaveExerciseNote', async () => {
+  const onSave = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: onSave })
+
+  await user.click(screen.getByText('belt on'))
+  await user.clear(screen.getByLabelText('Note'))
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(''))
+})
