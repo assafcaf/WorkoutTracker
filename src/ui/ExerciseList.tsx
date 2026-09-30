@@ -105,34 +105,51 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         const logged = loggedSets(session.entries, effectiveId)
         const lastDoneId = lastSwaps[plan.exerciseId]
 
-        const label =
-          doneId !== undefined ? (
-            `${exercise?.name ?? doneId}, instead of ${resolve(plan.exerciseId)?.name ?? plan.exerciseId}, ${plan.sets} sets, ${plan.repRange[0]}-${plan.repRange[1]} reps, ${plan.restSeconds}s rest`
-          ) : (
-            <>
-              <span className="exercise-name">{exercise?.name ?? plan.exerciseId}</span>{' '}
-              <span className="set-progress">{`${logged}/${plan.sets}`}</span>
-            </>
-          )
+        const label = (
+          <>
+            <span className="exercise-title">
+              <span className="exercise-name">{exercise?.name ?? effectiveId}</span>
+              {doneId !== undefined ? (
+                <>
+                  {' '}
+                  <span className="exercise-instead">
+                    {`instead of ${resolve(plan.exerciseId)?.name ?? plan.exerciseId}`}
+                  </span>
+                </>
+              ) : null}
+            </span>{' '}
+            <span className="set-progress">{`${logged}/${plan.sets}`}</span>
+          </>
+        )
 
+        const rowBody = (
+          <>
+            {label}
+            {exercise !== undefined ? (
+              <VolumeVsBaseline
+                exercise={exercise}
+                entries={session.entries}
+                sessions={sessions}
+                baseline={volumeBaseline}
+                now={Date.now()}
+              />
+            ) : null}
+          </>
+        )
+        const open = () => onOpenSet(effectiveId, nextSetIndex(logged, plan))
+
+        // Two literal classNames, not a computed one: the control audit reads them statically.
         return (
           <li key={plan.exerciseId}>
-            <button
-              type="button"
-              className="exercise-row"
-              onClick={() => onOpenSet(effectiveId, nextSetIndex(logged, plan))}
-            >
-              {label}
-              {exercise !== undefined ? (
-                <VolumeVsBaseline
-                  exercise={exercise}
-                  entries={session.entries}
-                  sessions={sessions}
-                  baseline={volumeBaseline}
-                  now={Date.now()}
-                />
-              ) : null}
-            </button>
+            {doneId !== undefined ? (
+              <button type="button" className="exercise-row swapped" onClick={open}>
+                {rowBody}
+              </button>
+            ) : (
+              <button type="button" className="exercise-row" onClick={open}>
+                {rowBody}
+              </button>
+            )}
             {doneId !== undefined && logged === 0 ? (
               <button
                 type="button"
