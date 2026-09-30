@@ -167,13 +167,16 @@ export function setCounterText(
   plannedSets: number,
   loggedCount: number,
   done: boolean,
+  amrapFloor?: number,
 ): string {
   if (done) {
     return loggedCount > plannedSets
       ? `${loggedCount} sets logged · ${plannedSets} planned`
       : `All ${plannedSets} sets logged`
   }
-  return setIndex > plannedSets ? `Set ${setIndex} · extra` : `Set ${setIndex} of ${plannedSets}`
+  const text =
+    setIndex > plannedSets ? `Set ${setIndex} · extra` : `Set ${setIndex} of ${plannedSets}`
+  return amrapFloor === undefined ? text : `${text} · ${amrapFloor}+ reps`
 }
 
 /** "80×8 · 80×8 · 80×7", in set order; a Bodyweight Set reads "BW×8". */
@@ -241,7 +244,13 @@ function openSetFor(
   lastEntries: SetEntry[],
   logged?: SetEntry[],
 ): OpenSet {
-  return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries, logged }), kind: null }
+  // The Plan's last Set opens on AMRAP when the Plan marks it (E14-T13).
+  const position =
+    logged === undefined
+      ? setIndex
+      : 1 + workingSets(logged).filter((entry) => entry.setIndex < setIndex).length
+  const kind = plan.amrapLast === true && position === plan.sets ? 'amrap' : null
+  return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries, logged }), kind }
 }
 
 /**
@@ -788,7 +797,13 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           Alternatives
         </button>
       </div>
-      <p className="set-counter">{setCounterText(position, plan.sets, loggedCount, done)}</p>
+      <p className="set-counter">{setCounterText(
+          position,
+          plan.sets,
+          loggedCount,
+          done,
+          open.kind === 'amrap' ? plan.repRange[0] : undefined,
+        )}</p>
 
       {lastTime === '' ? null : <p className="set-last-time">Last time: {lastTime}</p>}
 
