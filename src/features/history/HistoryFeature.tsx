@@ -88,6 +88,9 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
                     setEditing(null)
                   }}
                   onCancel={() => setEditing(null)}
+                  onDelete={() => {
+                    void services.sessions.discard(editSession.id).then(() => setEditing(null))
+                  }}
                 />
               )
             }

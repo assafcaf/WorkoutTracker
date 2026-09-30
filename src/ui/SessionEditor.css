@@ -90,7 +90,8 @@
 
 .session-editor-set-action,
 .session-editor-add,
-.session-editor-cancel {
+.session-editor-cancel,
+.session-editor-delete {
   min-height: var(--tap-min);
   padding: 0 var(--space-3);
   border: none;
