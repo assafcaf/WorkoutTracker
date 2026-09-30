@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { volumeSeries } from './volume'
+import { sessionVolume, volumeSeries } from './volume'
 import type { Resolve } from './muscles'
 import type { Exercise, Program, Session, SetEntry, Workout } from '../types'
 
@@ -184,4 +184,18 @@ test('O8 workoutName is looked up from the session workout in programs when it e
   const [point] = volumeSeries([namedSession], resolve, [namedProgram])
 
   expect(point.workoutName).toBe('Push Day')
+})
+
+test('O15 sessionVolume answers the kg and bodyweight reps of one session by the series rule', () => {
+  const s = session({
+    id: 'sv',
+    entries: [
+      setEntry({ exerciseId: 'back-squat', weightKg: 60, reps: 8 }),
+      setEntry({ exerciseId: 'push-up', weightKg: null, reps: 12 }),
+      setEntry({ exerciseId: 'assisted-dip', weightKg: 30, reps: 6 }),
+      setEntry({ exerciseId: 'unknown', weightKg: 99, reps: 99 }),
+    ],
+  })
+
+  expect(sessionVolume(s, resolve)).toEqual({ kg: 480, bodyweightReps: 18 })
 })
