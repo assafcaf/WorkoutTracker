@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { contributors, muscleSets, toRegionCounts } from '../domain/muscles'
 import type { Region, Resolve } from '../domain/muscles'
-import type { LibraryExercise, Muscle, Session } from '../types'
+import type { ExercisePlan, LibraryExercise, Muscle, Session } from '../types'
 import { BodyMap } from './body/BodyMap'
 import { BodyMapLegend } from './body/BodyMapLegend'
 import { CourtStripe } from './CourtStripe'
@@ -13,6 +13,10 @@ export type SessionSummaryProps = {
   session: Session
   resolve: Resolve
   library: Map<string, LibraryExercise>
+  /** Finished Sessions started before this one (E13-T7): what its PRs are measured against. */
+  earlierSessions?: Session[]
+  /** The Plan for an Exercise in this Session's Workout, if it has one (E13-T7). */
+  planFor?(exerciseId: string): ExercisePlan | undefined
   onClose(): void
   /** A region panel's "Browse exercises" (M9), carried up to whoever can switch tabs. */
   onBrowse?(muscles: Muscle[]): void

@@ -366,3 +366,37 @@ test('O16 Delete workout, confirmed, removes the Session from History, Stats and
   expect(screen.queryByText('Heaviest set')).toBeNull()
   expect(screen.getByText(/No sets yet/)).toBeVisible()
 })
+
+// --- E13-T7 O16: duration, volume and PRs on a Session opened from History --------------------
+
+test('O16 opening a Session from History shows its duration, volume and the PR it set', async () => {
+  await db.sessions.put(editableSession())
+  const start = Date.UTC(2023, 10, 16, 12, 0)
+  await db.sessions.put({
+    id: 'later-1',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt: start,
+    finishedAt: start + 65 * MINUTE,
+    entries: [
+      { exerciseId: 'back-squat', setIndex: 1, weightKg: 70, reps: 5, loggedAt: start + 10 * MINUTE },
+      { exerciseId: 'back-squat', setIndex: 2, weightKg: 70, reps: 5, loggedAt: start + 20 * MINUTE },
+    ],
+    updatedAt: start + 65 * MINUTE,
+  })
+  const services = createServices({ now: () => EDIT_NOW, storageAvailable: true })
+  render(
+    <ServicesProvider services={services}>
+      <HistoryFeature navigate={navigate} onInSession={onInSession} />
+    </ServicesProvider>,
+  )
+
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: /2023-11-16/ }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Open session' }, SETTLE))
+  const dialog = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+
+  expect(within(dialog).getByText('1 h 05 min')).toBeVisible()
+  expect(within(dialog).getByText('700 kg')).toBeVisible()
+  expect(within(dialog).getByText('Back squat · Heaviest set · 70 kg × 5')).toBeVisible()
+})
