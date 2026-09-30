@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -2036,4 +2039,29 @@ test('O6 Skip after Set rest withdraws the Use offer: Skip never offers it', asy
 
   await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:00 over'))
   expect(screen.queryByRole('button', { name: /^Use .* for / })).toBeNull()
+})
+
+// --- fix-rest-corner [F1]: the rest panel sits at the set screen's top-right corner ---------
+
+test('F1 the rest panel is the first element of the set screen, before the links and the Dials', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  const screenEl = document.querySelector('.set-screen')
+  const panel = document.querySelector('.rest-timer')
+  expect(panel).not.toBeNull()
+  expect(screenEl?.firstElementChild).toBe(panel)
+  expect(panel?.textContent).toContain('1:20')
+  expect(panel?.querySelector('.rest-controls')).not.toBeNull()
+})
+
+test('F1 the stylesheet places .rest-timer top-right with its content right-aligned', () => {
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'SetScreen.css'), 'utf-8')
+  const rule = /(?:^|\})\s*\.rest-timer\s*\{([^}]*)\}/m.exec(css)
+  expect(rule).not.toBeNull()
+  const body = rule?.[1] ?? ''
+  expect(body).toMatch(/position:\s*(absolute|fixed)/)
+  expect(body).toMatch(/top:/)
+  expect(body).toMatch(/right:/)
+  expect(body).toMatch(/justify-content:\s*flex-end|text-align:\s*right/)
 })
