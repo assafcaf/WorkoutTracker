@@ -2043,6 +2043,7 @@ async function finishedUpperBackSession(): Promise<void> {
 async function openOnlyHistorySession(user: UserEvent): Promise<HTMLElement> {
   await pressTab(user, 'History')
   const row = await screen.findByRole('listitem', {}, SETTLE)
+  await user.click(within(row).getByRole('button', { expanded: false }))
   await user.click(within(row).getByRole('button', { name: 'Open session' }))
   return screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 }

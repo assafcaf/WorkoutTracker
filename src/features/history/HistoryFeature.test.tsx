@@ -72,8 +72,10 @@ test('O12 HistoryFeature lists a finished Session and opens its summary', async 
   )
 
   historyViewSwitch()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { expanded: false }, SETTLE))
   const open = await screen.findByRole('button', { name: 'Open session' }, SETTLE)
-  await userEvent.setup().click(open)
+  await user.click(open)
 
   await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 })
@@ -109,6 +111,7 @@ test('O12 a Session written through services.sessions shows in History without a
     await finishASession(services)
   })
 
+  await userEvent.setup().click(await screen.findByRole('button', { expanded: false }, SETTLE))
   await screen.findByRole('button', { name: 'Open session' }, SETTLE)
 })
 
@@ -129,6 +132,7 @@ test('O12 a Session pulled by services.sync.syncNow from FakeSyncServer shows in
     await services.sync.syncNow()
   })
 
+  await userEvent.setup().click(await screen.findByRole('button', { expanded: false }, SETTLE))
   await screen.findByRole('button', { name: 'Open session' }, SETTLE)
 })
 
@@ -176,7 +180,13 @@ async function renderHistoryWithEditableSession(): Promise<Editing> {
   return { services, writes: () => writes }
 }
 
+/** Expands the only History card (E12-T9), where Edit workout and Open session live. */
+async function expandTheCard(): Promise<void> {
+  await userEvent.setup().click(await screen.findByRole('button', { expanded: false }, SETTLE))
+}
+
 async function openEditor(): Promise<void> {
+  await expandTheCard()
   const edit = await screen.findByRole('button', { name: 'Edit workout' }, SETTLE)
   await userEvent.setup().click(edit)
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
@@ -224,10 +234,9 @@ test('O14 Save stores the edited Sets in one write, advances updatedAt and Histo
   ])
   // 62.5 x 8 + 65 x 5 + 65 x 5 = 1150 kg over 3 sets.
   await waitFor(() => {
-    const row = screen.getByRole('button', { name: 'Edit workout' }).closest('li')
-    expect(row).not.toBeNull()
-    expect(within(row as HTMLElement).getByText('3 sets')).toBeVisible()
-    expect(within(row as HTMLElement).getByText('1150 kg')).toBeVisible()
+    const row = screen.getByRole('listitem')
+    expect(within(row).getByText('3 sets')).toBeVisible()
+    expect(within(row).getByText('1150 kg')).toBeVisible()
   }, SETTLE)
   expect(writes()).toBe(1)
 })
@@ -259,8 +268,39 @@ test('O14 Cancel leaves the stored Session unchanged and returns to History', as
   await user.click(within(squatGroup()).getByRole('button', { name: 'Delete set 1' }))
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
-  await screen.findByRole('button', { name: 'Edit workout' }, SETTLE)
+  await screen.findByRole('button', { expanded: false }, SETTLE)
   expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
   expect(await db.sessions.get('done-1')).toEqual(editableSession())
   expect(writes()).toBe(0)
+})
+
+test('O18 Edit on an Exercise in an expanded History card opens the editor with that Exercise\'s first Set open on the Dials', async () => {
+  await db.sessions.put({
+    ...editableSession(),
+    entries: [
+      ...editableSession().entries,
+      { exerciseId: 'deadlift', setIndex: 1, weightKg: 80, reps: 5, loggedAt: EDIT_START + 40 * MINUTE },
+      { exerciseId: 'deadlift', setIndex: 2, weightKg: 90, reps: 3, loggedAt: EDIT_START + 50 * MINUTE },
+    ],
+  })
+  const services = createServices({ now: () => EDIT_NOW, storageAvailable: true })
+  render(
+    <ServicesProvider services={services}>
+      <HistoryFeature navigate={navigate} onInSession={onInSession} />
+    </ServicesProvider>,
+  )
+  const user = userEvent.setup()
+  await expandTheCard()
+  const deadlift = (await screen.findByRole('heading', { name: 'Deadlift' }, SETTLE)).closest('li') as HTMLElement
+  expect(within(deadlift).getByText('80 × 5')).toBeVisible()
+  expect(within(deadlift).getByText('90 × 3')).toBeVisible()
+
+  await user.click(within(deadlift).getByRole('button', { name: 'Edit' }))
+
+  await screen.findByRole('button', { name: 'Save' }, SETTLE)
+  const editorDeadlift = screen.getByRole('group', { name: 'Deadlift' })
+  expect(within(editorDeadlift).getByRole('button', { name: 'Edit set 1' })).toHaveAttribute('aria-pressed', 'true')
+  expect(within(editorDeadlift).getByRole('button', { name: 'Edit set 2' })).toHaveAttribute('aria-pressed', 'false')
+  expect(within(editorDeadlift).getByRole('group', { name: 'Weight (kg)' })).toBeVisible()
+  expect(within(squatGroup()).queryByRole('group', { name: 'Weight (kg)' })).toBeNull()
 })
