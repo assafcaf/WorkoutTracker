@@ -349,14 +349,28 @@ export function WorkoutFeature({
     Promise.all([
       services.sessions.lastEntriesFor(exerciseId),
       services.preferences.weightStep(exerciseId),
-      services.preferences.exerciseNote(exerciseId),
     ])
-      .then(([history, weightStep, exerciseNote]) => {
-        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep, exerciseNote })
+      .then(([history, weightStep]) => {
+        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep, exerciseNote: null })
         setView('set')
+        loadExerciseNote(exerciseId)
       })
       .catch(() => {
         // Without the history the preset would be wrong; the list stays up instead.
+      })
+  }
+
+  /** Fills in the open set's Exercise note once it is read; the screen is already up. */
+  function loadExerciseNote(exerciseId: string): void {
+    services.preferences
+      .exerciseNote(exerciseId)
+      .then((exerciseNote) => {
+        setOpenSet((current) =>
+          current && current.exerciseId === exerciseId ? { ...current, exerciseNote } : current,
+        )
+      })
+      .catch(() => {
+        // Without the note the screen offers Add note; the set itself is unaffected.
       })
   }
 
@@ -475,12 +489,7 @@ export function WorkoutFeature({
             exerciseNote={openSet.exerciseNote}
             onSaveExerciseNote={async (text) => {
               await services.preferences.setExerciseNote(openSet.exerciseId, text)
-              const saved = await services.preferences.exerciseNote(openSet.exerciseId)
-              setOpenSet((current) =>
-                current && current.exerciseId === openSet.exerciseId
-                  ? { ...current, exerciseNote: saved }
-                  : current,
-              )
+              loadExerciseNote(openSet.exerciseId)
             }}
             onWeightStepChange={(step) => {
               services.preferences.setWeightStep(openSet.exerciseId, step).catch(() => {
