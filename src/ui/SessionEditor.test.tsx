@@ -320,3 +320,41 @@ test('O15 SessionEditor with every Set deleted shows the no-sets line and disabl
   await user.click(saveButton())
   expect(onSave).not.toHaveBeenCalled()
 })
+
+// --- E12-T7 O16: Delete workout -----------------------------------------------------------------
+
+function renderEditorWithDelete(): { onDelete: Mock; onSave: Mock } {
+  const onDelete = vi.fn()
+  const onSave = vi.fn().mockResolvedValue(undefined)
+  render(
+    <SessionEditor
+      session={finished()}
+      workoutName="Upper A"
+      resolve={resolve}
+      onSave={onSave}
+      onCancel={vi.fn()}
+      onDelete={onDelete}
+    />,
+  )
+  return { onDelete, onSave }
+}
+
+test('O16 SessionEditor Delete workout asks to confirm inline and does not delete until confirmed', async () => {
+  const { onDelete } = renderEditorWithDelete()
+  const user = userEvent.setup()
+
+  await user.click(screen.getByRole('button', { name: 'Delete workout' }))
+
+  expect(screen.getByRole('button', { name: 'Confirm' })).toBeVisible()
+  expect(onDelete).not.toHaveBeenCalled()
+
+  await user.click(screen.getByRole('button', { name: 'Confirm' }))
+
+  expect(onDelete).toHaveBeenCalledTimes(1)
+})
+
+test('O16 SessionEditor without onDelete shows no Delete workout', () => {
+  renderEditor()
+
+  expect(screen.queryByRole('button', { name: 'Delete workout' })).toBeNull()
+})

@@ -342,3 +342,27 @@ test('E12-T1 O4 Stats draws no volume bar for a Session that is deleted', async 
 
   await screen.findByText(/No sessions yet\. Finish a session to draw its volume bar\./, {}, SETTLE)
 })
+
+// --- E12-T7 O16: Delete workout from the editor ------------------------------------------------
+
+test('O16 Delete workout, confirmed, removes the Session from History, Stats and the records', async () => {
+  await renderHistoryWithEditableSession()
+  const user = userEvent.setup()
+  // Before: Stats holds the Session's records.
+  await user.click(within(await waitFor(() => historyViewSwitch(), SETTLE)).getByRole('button', { name: 'Stats' }))
+  await screen.findByText('Heaviest set', {}, SETTLE)
+  await user.click(within(historyViewSwitch()).getByRole('button', { name: 'History' }))
+
+  await openEditor()
+  await user.click(screen.getByRole('button', { name: 'Delete workout' }))
+  await user.click(screen.getByRole('button', { name: 'Confirm' }))
+
+  await screen.findByText(/No finished workouts yet/, {}, SETTLE)
+  expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
+  expect((await db.sessions.get('done-1'))?.deletedAt).toBeDefined()
+
+  await user.click(within(historyViewSwitch()).getByRole('button', { name: 'Stats' }))
+  await screen.findByText(/No sessions yet\. Finish a session to draw its volume bar\./, {}, SETTLE)
+  expect(screen.queryByText('Heaviest set')).toBeNull()
+  expect(screen.getByText(/No sets yet/)).toBeVisible()
+})
