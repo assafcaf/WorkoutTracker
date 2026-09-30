@@ -87,6 +87,8 @@ export type SetEntry = {
   weightKg: number | null
   reps: number
   loggedAt: number
+  /** The rest that follows this Set, when the trainee changed it (E13). */
+  restSeconds?: number
 }
 
 export type Session = {
