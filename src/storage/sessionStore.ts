@@ -173,6 +173,17 @@ export async function updateSet(
   })
 }
 
+/** Stores a changed rest length on one logged Set (E13-T5). */
+export async function setRest(
+  _sessionId: string,
+  _exerciseId: string,
+  _setIndex: number,
+  _restSeconds: number,
+  _now: number = Date.now(),
+): Promise<Session> {
+  throw new Error('not implemented')
+}
+
 /** Removes one logged Set, renumbering the Exercise's later Sets down by one. */
 export async function deleteSet(
   sessionId: string,
