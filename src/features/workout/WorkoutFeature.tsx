@@ -14,6 +14,7 @@ import type {
 } from '../../types'
 import { ActionBarSlot, AppShell } from '../../ui/AppShell'
 import { BackupBadge } from '../../ui/BackupBadge'
+import { ElapsedTime } from '../../ui/ElapsedTime'
 import { ExerciseList } from '../../ui/ExerciseList'
 import { NoProgram } from '../../ui/NoProgram'
 import { ResumeCard } from '../../ui/ResumeCard'
@@ -427,6 +428,7 @@ export function WorkoutFeature({
       const family = primaryMuscle === undefined ? undefined : familyOf(primaryMuscle)
       content = (
         <AppShell title={exercise.name} onBack={() => setView('list')} action={<ActionBarSlot />}>
+          <ElapsedTime startedAt={session.startedAt} />
           <SetScreen
             key={`${openSet.exerciseId}#${openSet.setIndex}`}
             exercise={exercise}
@@ -492,6 +494,7 @@ export function WorkoutFeature({
           </button>
         }
       >
+        <ElapsedTime startedAt={session.startedAt} />
         <ExerciseList
           program={located.program}
           workout={located.workout}
