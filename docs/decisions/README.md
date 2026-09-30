@@ -49,3 +49,4 @@ rewrite history.
 - [0010](0010-user-programs-are-one-synced-setting.md): user Programs are one synced setting, and a new user starts with no Program
 - [0011](0011-layered-client-services.md): the client is layered — domain, storage, services, screen groups — and the lint enforces it
 - [0012](0012-deleted-sessions-are-marked-documents.md): a deleted Session is a marked document (`deletedAt`), and every Session reader skips it
+- [0013](0013-rest-is-stored-on-the-set-and-is-session-wide.md): a changed rest is stored on the Set that starts it, rest follows the Session's latest Set, and a PR is what `recordsFor` changes

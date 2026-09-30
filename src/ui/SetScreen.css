@@ -8,6 +8,7 @@
  */
 
 .set-screen {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -49,6 +50,11 @@
 /* The rest left, read off the clock. Tabular figures so the seconds do not shift the line as
  * they count down. */
 .rest-timer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  justify-content: flex-end;
+  text-align: right;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

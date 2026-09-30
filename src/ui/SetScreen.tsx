@@ -628,6 +628,43 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   return (
     <div className="set-screen">
+      {rest === null ? null : (
+        <div className="rest-timer" data-over={rest.isOver ? 'true' : undefined}>
+          <span className="rest-label">{rest.isOver ? 'Rest over' : 'Rest'}</span>
+          <button
+            type="button"
+            className="rest-readout"
+            onClick={() => setRestDialOpen(true)}
+          >
+            <span role="timer" aria-label="Rest remaining">
+              {rest.isOver ? formatOver(rest.overSeconds) : formatRest(rest.remainingSeconds)}
+            </span>
+            {rest.isOver ? ' over' : null}
+          </button>
+          {rest.isOver ? null : (
+            <div className="rest-controls">
+              <button
+                type="button"
+                className="rest-adjust"
+                onClick={() => adjust({ kind: 'add', seconds: -15 })}
+              >
+                −15 s
+              </button>
+              <button
+                type="button"
+                className="rest-adjust"
+                onClick={() => adjust({ kind: 'add', seconds: 15 })}
+              >
+                +15 s
+              </button>
+              <button type="button" className="rest-skip" onClick={() => adjust({ kind: 'skip' })}>
+                Skip
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* The exercise's name is the shell's own header title (`AppShell`'s `<h1>`, set by every
           caller to `exercise.name`); a second heading here would duplicate it verbatim, which
           collides for a caller matching an exercise's set screen by its accessible name alone
@@ -707,43 +744,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           Next: set {open.setIndex} · {open.weightKg === null ? 'BW' : `${open.weightKg} kg`} ×{' '}
           {plan.repRange[0]}–{plan.repRange[1]}
         </p>
-      )}
-
-      {rest === null ? null : (
-        <div className="rest-timer" data-over={rest.isOver ? 'true' : undefined}>
-          <span className="rest-label">{rest.isOver ? 'Rest over' : 'Rest'}</span>
-          <button
-            type="button"
-            className="rest-readout"
-            onClick={() => setRestDialOpen(true)}
-          >
-            <span role="timer" aria-label="Rest remaining">
-              {rest.isOver ? formatOver(rest.overSeconds) : formatRest(rest.remainingSeconds)}
-            </span>
-            {rest.isOver ? ' over' : null}
-          </button>
-          {rest.isOver ? null : (
-            <div className="rest-controls">
-              <button
-                type="button"
-                className="rest-adjust"
-                onClick={() => adjust({ kind: 'add', seconds: -15 })}
-              >
-                −15 s
-              </button>
-              <button
-                type="button"
-                className="rest-adjust"
-                onClick={() => adjust({ kind: 'add', seconds: 15 })}
-              >
-                +15 s
-              </button>
-              <button type="button" className="rest-skip" onClick={() => adjust({ kind: 'skip' })}>
-                Skip
-              </button>
-            </div>
-          )}
-        </div>
       )}
 
       {rest === null || restFrom === null || !restDialOpen ? null : (
