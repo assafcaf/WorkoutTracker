@@ -499,6 +499,31 @@ export function WorkoutFeature({
                 ),
               )
             }}
+            programName={located.program.name}
+            onUseRestForExercise={async (restSeconds) => {
+              // The Plan this Exercise sits under -- a swap writes the Plan it was swapped
+              // under -- in the Session's Program; a bundled Program becomes the user's copy.
+              const { programs: current, userPrograms } = await services.programs.load()
+              const program = current.find((candidate) => candidate.id === session.programId)
+              if (program === undefined) throw new Error('The Program is gone')
+              const stored = userPrograms.find((candidate) => candidate.id === program.id)
+              await services.programs.save({
+                ...program,
+                workouts: program.workouts.map((workout) =>
+                  workout.id !== session.workoutId
+                    ? workout
+                    : {
+                        ...workout,
+                        exercises: workout.exercises.map((candidate) =>
+                          candidate.exerciseId === plannedId
+                            ? { ...candidate, restSeconds }
+                            : candidate,
+                        ),
+                      },
+                ),
+                createdAt: stored?.createdAt ?? Date.now(),
+              })
+            }}
             onLog={(id, entry) => services.sessions.logSet(id, entry)}
             onLogged={(logged) => {
               setSession(logged)
