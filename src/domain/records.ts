@@ -1,5 +1,5 @@
 import { epley } from './series'
-import type { Exercise, ExercisePlan, Session } from '../types'
+import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
 export type RecordKind =
   | 'heaviest-set'
@@ -90,4 +90,15 @@ export function recordsFor(
     toRecord('best-e1rm', e1rm as Candidate),
     toRecord('most-reps-at-weight', mostRepsAtWeight as Candidate),
   ]
+}
+
+/** Not implemented yet (E13-T3). */
+export function recordsSetBy(
+  _exercise: Exercise,
+  _plan: ExercisePlan,
+  _earlier: Session[],
+  _session: Session,
+  _entry: SetEntry,
+): ExerciseRecord[] {
+  throw new Error("not implemented")
 }

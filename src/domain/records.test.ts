@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { recordsFor } from './records'
+import { recordsFor, recordsSetBy } from './records'
 import type { Exercise, ExercisePlan, Session } from '../types'
 
 // Fixtures built by hand, following src/domain/series.test.ts's convention. Expected numbers
@@ -316,4 +316,183 @@ test('O9 a tie for most reps in a set goes to the earliest session', () => {
 
 test('O9 an empty session history gives no records', () => {
   expect(recordsFor(backSquat, squatPlan, [])).toEqual([])
+})
+
+// --- recordsSetBy (E13-T3) ---
+
+const set = (exerciseId: string, weightKg: number | null, reps: number, loggedAt: number) => ({
+  exerciseId,
+  setIndex: 1,
+  weightKg,
+  reps,
+  loggedAt,
+})
+
+test('O13 a Set heavier than anything before sets the heaviest-set record and whichever other records it changes', () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('back-squat', 60, 8, 10)] })]
+  const entry = set('back-squat', 70, 5, 105)
+  const current = session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  const result = recordsSetBy(backSquat, squatPlan, earlier, current, entry)
+
+  // 70 * (1 + 5/30) = 81.67 beats 60 * (1 + 8/30) = 76; reps at the new heaviest weight is 5.
+  expect(result).toEqual([
+    { kind: 'heaviest-set', label: 'Heaviest set', value: 70, weightKg: 70, reps: 5, at: 100 },
+    {
+      kind: 'best-e1rm',
+      label: 'Best estimated 1RM',
+      value: 70 * (1 + 5 / 30),
+      weightKg: 70,
+      reps: 5,
+      at: 100,
+    },
+    {
+      kind: 'most-reps-at-weight',
+      label: 'Most reps at the heaviest weight',
+      value: 5,
+      weightKg: 70,
+      reps: 5,
+      at: 100,
+    },
+  ])
+})
+
+test('O13 a lighter Set with a better estimated 1RM answers only best-e1rm', () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('back-squat', 100, 1, 10)] })]
+  const entry = set('back-squat', 90, 10, 105)
+  const current = session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  const result = recordsSetBy(backSquat, squatPlan, earlier, current, entry)
+
+  expect(result.map((r) => r.kind)).toEqual(['best-e1rm'])
+  expect(result[0].weightKg).toBe(90)
+  expect(result[0].reps).toBe(10)
+})
+
+test('O13 more reps at the same heaviest weight answers best-e1rm and most-reps-at-weight, not heaviest-set', () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('back-squat', 100, 3, 10)] })]
+  const entry = set('back-squat', 100, 5, 105)
+  const current = session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  const result = recordsSetBy(backSquat, squatPlan, earlier, current, entry)
+
+  expect(result.map((r) => r.kind)).toEqual(['best-e1rm', 'most-reps-at-weight'])
+})
+
+test('O13 a new heaviest Set with fewer reps still answers most-reps-at-weight, because that record moves with the heaviest weight', () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('back-squat', 60, 10, 10)] })]
+  const entry = set('back-squat', 70, 2, 105)
+  const current = session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  const result = recordsSetBy(backSquat, squatPlan, earlier, current, entry)
+
+  // e1rm: 70 * (1 + 2/30) = 74.67 < 60 * (1 + 10/30) = 80, so best-e1rm is unchanged.
+  expect(result.map((r) => r.kind)).toEqual(['heaviest-set', 'most-reps-at-weight'])
+  expect(result[1].value).toBe(2)
+})
+
+test('O13 a Set that ties the existing records answers nothing', () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('back-squat', 80, 6, 10)] })]
+  const entry = set('back-squat', 80, 6, 105)
+  const current = session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  expect(recordsSetBy(backSquat, squatPlan, earlier, current, entry)).toEqual([])
+})
+
+test('O13 a Set below the existing records answers nothing', () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('back-squat', 80, 6, 10)] })]
+  const entry = set('back-squat', 70, 5, 105)
+  const current = session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  expect(recordsSetBy(backSquat, squatPlan, earlier, current, entry)).toEqual([])
+})
+
+test('O13 the first-ever Session of an Exercise has no earlier Session, so its Sets set no records', () => {
+  const entry = set('back-squat', 70, 5, 105)
+  const current = session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  expect(recordsSetBy(backSquat, squatPlan, [], current, entry)).toEqual([])
+})
+
+test('O13 earlier Sessions that hold only other Exercises count as no earlier Session for this one', () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('bench-press', 60, 8, 10)] })]
+  const entry = set('back-squat', 70, 5, 105)
+  const current = session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  expect(recordsSetBy(backSquat, squatPlan, earlier, current, entry)).toEqual([])
+})
+
+test("O13 this Session's earlier Sets count as logged before: a repeat of them ties and sets nothing", () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('back-squat', 60, 8, 10)] })]
+  const first = set('back-squat', 70, 5, 105)
+  const second = { ...set('back-squat', 70, 5, 205), setIndex: 2 }
+  const current = session({
+    id: 'cur',
+    startedAt: 100,
+    finishedAt: null,
+    entries: [first, second],
+  })
+
+  expect(recordsSetBy(backSquat, squatPlan, earlier, current, second)).toEqual([])
+  expect(recordsSetBy(backSquat, squatPlan, earlier, current, first).length).toBeGreaterThan(0)
+})
+
+test("O13 this Session's later Sets do not count as logged before", () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('back-squat', 60, 8, 10)] })]
+  const first = set('back-squat', 70, 5, 105)
+  const later = { ...set('back-squat', 100, 5, 205), setIndex: 2 }
+  const current = session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [later, first] })
+
+  const result = recordsSetBy(backSquat, squatPlan, earlier, current, first)
+
+  expect(result.map((r) => r.kind)).toEqual(['heaviest-set', 'best-e1rm', 'most-reps-at-weight'])
+  expect(result[0].weightKg).toBe(70)
+})
+
+test('O13 an assisted Exercise sets lowest-assistance only with less assistance at the target reps', () => {
+  const earlier = [
+    session({ id: 'e1', startedAt: 10, entries: [set('assisted-pull-ups', 27, 8, 10)] }),
+  ]
+  const better = set('assisted-pull-ups', 25, 8, 105)
+  const tie = set('assisted-pull-ups', 27, 8, 105)
+  const belowTarget = set('assisted-pull-ups', 20, 5, 105)
+  const cur = (entry: ReturnType<typeof set>) =>
+    session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  const result = recordsSetBy(assistedPullUps, pullUpsPlan, earlier, cur(better), better)
+
+  expect(result).toEqual([
+    {
+      kind: 'lowest-assistance',
+      label: 'Lowest assistance at target reps',
+      value: 25,
+      weightKg: 25,
+      reps: 8,
+      at: 100,
+    },
+  ])
+  expect(recordsSetBy(assistedPullUps, pullUpsPlan, earlier, cur(tie), tie)).toEqual([])
+  expect(
+    recordsSetBy(assistedPullUps, pullUpsPlan, earlier, cur(belowTarget), belowTarget),
+  ).toEqual([])
+})
+
+test('O13 a bodyweight Exercise sets most-reps-in-a-set only with more reps, a tie sets nothing', () => {
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [set('push-ups', null, 15, 10)] })]
+  const more = set('push-ups', null, 16, 105)
+  const tie = set('push-ups', null, 15, 105)
+  const cur = (entry: ReturnType<typeof set>) =>
+    session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
+
+  expect(recordsSetBy(pushUps, pushUpsPlan, earlier, cur(more), more)).toEqual([
+    {
+      kind: 'most-reps-in-a-set',
+      label: 'Most reps in a set',
+      value: 16,
+      weightKg: null,
+      reps: 16,
+      at: 100,
+    },
+  ])
+  expect(recordsSetBy(pushUps, pushUpsPlan, earlier, cur(tie), tie)).toEqual([])
 })
