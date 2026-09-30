@@ -129,6 +129,36 @@ export async function logSet(
   })
 }
 
+/** Replaces the weight and reps of one logged Set, keeping its `setIndex` and `loggedAt`. */
+export async function updateSet(
+  sessionId: string,
+  exerciseId: string,
+  setIndex: number,
+  values: { weightKg: number | null; reps: number },
+  now: number = Date.now(),
+): Promise<Session> {
+  throw new Error(`not implemented: updateSet(${sessionId}, ${exerciseId}, ${setIndex}, ${now})`)
+}
+
+/** Removes one logged Set, renumbering the Exercise's later Sets down by one. */
+export async function deleteSet(
+  sessionId: string,
+  exerciseId: string,
+  setIndex: number,
+  now: number = Date.now(),
+): Promise<{ session: Session; removed: SetEntry }> {
+  throw new Error(`not implemented: deleteSet(${sessionId}, ${exerciseId}, ${setIndex}, ${now})`)
+}
+
+/** Puts a removed Set back where it was, moving the Exercise's later Sets up by one. */
+export async function restoreSet(
+  sessionId: string,
+  entry: SetEntry,
+  now: number = Date.now(),
+): Promise<Session> {
+  throw new Error(`not implemented: restoreSet(${sessionId}, ${entry.exerciseId}, ${now})`)
+}
+
 /**
  * Stamps a session finished and returns it as stored.
  */
