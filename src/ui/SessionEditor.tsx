@@ -103,6 +103,12 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
     if (time !== null) setDraft({ ...draft, [field]: time })
   }
 
+  function changeNote(text: string): void {
+    const { note: _previous, ...rest } = draft
+    void _previous
+    setDraft(text === '' ? rest : { ...rest, note: text })
+  }
+
   function changeSet(target: OpenSet, values: Partial<Pick<SetEntry, 'weightKg' | 'reps'>>): void {
     setDraft({
       ...draft,
@@ -241,6 +247,16 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
           </section>
         )
       })}
+
+      <label className="session-editor-note">
+        <span>Note</span>
+        <textarea
+          className="session-editor-note-input"
+          maxLength={500}
+          value={draft.note ?? ''}
+          onChange={(event) => changeNote(event.target.value)}
+        />
+      </label>
 
       {noSets ? <p className="session-editor-invalid">{NO_SETS_LEFT}</p> : null}
 

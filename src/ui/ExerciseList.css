@@ -88,3 +88,44 @@
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
+
+.exercise-note {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+.exercise-note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.exercise-note-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.exercise-note-input {
+  min-height: calc(var(--tap-min) * 2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-raised);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.exercise-note-add,
+.exercise-note-save {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-accent);
+}

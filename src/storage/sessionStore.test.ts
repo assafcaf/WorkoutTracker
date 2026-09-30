@@ -16,6 +16,7 @@ import {
   restoreSet,
   updateSet,
   setRest,
+  setNote,
   putSessions,
   replaceAllSessions,
   saveSession,
@@ -1644,5 +1645,59 @@ describe('E13-T5 storing a changed rest on a logged Set', () => {
     await expect(setRest(id, 'back-squat', 9, 60, BASE + 900 * SECOND)).rejects.toThrow(/no set/i)
 
     expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
+  })
+})
+
+// --- E14-T4: setNote -------------------------------------------------------------------------
+
+describe('E14-T4 storing a Session note', () => {
+  const squat1 = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+
+  async function seed(over: Partial<Session> = {}): Promise<string> {
+    await db.sessions.put(
+      storedSession({ id: 'noted', finishedAt: null, entries: [squat1], updatedAt: BASE + 400 * SECOND, ...over }),
+    )
+    return 'noted'
+  }
+
+  test('O12 setNote stores the note on the Session and stamps updatedAt, changing nothing else', async () => {
+    const id = await seed()
+    const before = await db.sessions.get(id)
+
+    const updated = await setNote(id, 'Left shoulder felt tight', BASE + 900 * SECOND)
+
+    const expected = { ...before, note: 'Left shoulder felt tight', updatedAt: BASE + 900 * SECOND }
+    expect(updated).toEqual(expected)
+    expect(await db.sessions.get(id)).toEqual(expected)
+  })
+
+  test('O12 setNote on a finished Session stores the note too', async () => {
+    const id = await seed({ finishedAt: BASE + 3600 * SECOND })
+
+    const updated = await setNote(id, 'Good session', BASE + 900 * SECOND)
+
+    expect(updated.note).toBe('Good session')
+    expect((await db.sessions.get(id))?.finishedAt).toBe(BASE + 3600 * SECOND)
+  })
+
+  test('O12 setNote with an empty string removes an existing note', async () => {
+    const id = await seed({ note: 'old' })
+
+    const updated = await setNote(id, '', BASE + 900 * SECOND)
+
+    expect('note' in updated).toBe(false)
+    expect('note' in ((await db.sessions.get(id)) as Session)).toBe(false)
+  })
+
+  test('O12 setNote with whitespace only removes the note instead of storing blanks', async () => {
+    const id = await seed({ note: 'old' })
+
+    await setNote(id, '  \n ', BASE + 900 * SECOND)
+
+    expect('note' in ((await db.sessions.get(id)) as Session)).toBe(false)
+  })
+
+  test('O12 setNote on a missing Session rejects naming the id', async () => {
+    await expect(setNote('nope', 'x')).rejects.toThrow('no session nope is stored')
   })
 })

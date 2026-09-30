@@ -32,6 +32,10 @@ One actual visit to the gym: a Workout being or having been performed, with the 
 against it. What you did.
 _Avoid_: Log, entry, instance
 
+**Session note**:
+Free text of up to 500 characters the trainee attaches to a Session, in progress or finished (`Session.note`). Empty removes it.
+_Avoid_: Comment, memo
+
 **Set**:
 One performed set — a weight and a rep count, recorded against a Session and referencing the
 catalog Exercise rather than the Program's Plan.

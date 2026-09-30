@@ -384,6 +384,13 @@ export function WorkoutFeature({
       })
   }
 
+  /** `ExerciseList.onSaveNote`: stores the Session note; empty removes it (E14-T4). */
+  async function handleSaveNote(text: string): Promise<void> {
+    if (!session) return
+    setSession(await services.sessions.setNote(session.id, text))
+    void syncNow()
+  }
+
   /** `ExerciseList.onDiscard`: discards the Session in progress and returns to the picker. */
   function handleDiscard(): void {
     if (!session) return
@@ -575,6 +582,8 @@ export function WorkoutFeature({
           sessions={sessions}
           volumeBaseline={volumeBaseline}
           onDiscard={handleDiscard}
+          note={session.note}
+          onSaveNote={handleSaveNote}
         />
       </AppShell>
     )

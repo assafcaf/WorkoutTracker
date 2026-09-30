@@ -358,3 +358,40 @@ test('O16 SessionEditor without onDelete shows no Delete workout', () => {
 
   expect(screen.queryByRole('button', { name: 'Delete workout' })).toBeNull()
 })
+
+// --- E14-T4: the Session note in the editor --------------------------------------------------
+
+test('O12 SessionEditor shows the Session note and saves an edited one in the single write', async () => {
+  const { onSave } = renderEditor({ ...finished(), note: 'Old note' })
+  const user = userEvent.setup()
+  expect(screen.getByLabelText('Note')).toHaveValue('Old note')
+
+  await user.clear(screen.getByLabelText('Note'))
+  await user.type(screen.getByLabelText('Note'), 'New note')
+  await user.click(saveButton())
+
+  const draft = await savedDraft(onSave)
+  expect(draft.note).toBe('New note')
+  expect(onSave).toHaveBeenCalledTimes(1)
+})
+
+test('O12 SessionEditor adds a note to a Session that had none', async () => {
+  const { onSave } = renderEditor()
+  const user = userEvent.setup()
+
+  await user.type(screen.getByLabelText('Note'), 'Fresh')
+  await user.click(saveButton())
+
+  expect((await savedDraft(onSave)).note).toBe('Fresh')
+})
+
+test('O12 SessionEditor saving the note cleared hands over a draft without a note', async () => {
+  const { onSave } = renderEditor({ ...finished(), note: 'Old note' })
+  const user = userEvent.setup()
+
+  await user.clear(screen.getByLabelText('Note'))
+  await user.click(saveButton())
+
+  const draft = await savedDraft(onSave)
+  expect(draft.note === undefined || draft.note === '').toBe(true)
+})

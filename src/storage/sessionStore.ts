@@ -195,6 +195,22 @@ export async function setRest(
   })
 }
 
+/** Stores the Session note, or removes it when `note` is empty or whitespace (E14-T4). */
+export async function setNote(
+  sessionId: string,
+  note: string,
+  now: number = Date.now(),
+): Promise<Session> {
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const { note: _previous, ...rest } = session
+    void _previous
+    const updated: Session = note.trim() === '' ? { ...rest, updatedAt: now } : { ...rest, note, updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
+}
+
 /** Removes one logged Set, renumbering the Exercise's later Sets down by one. */
 export async function deleteSet(
   sessionId: string,
