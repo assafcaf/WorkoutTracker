@@ -14,7 +14,7 @@ export type SessionEditorProps = {
   focusExerciseId?: string
   onSave(draft: Session): Promise<void>
   onCancel(): void
-  /** Rendered by E12-T7. */
+  /** Delete workout, called after an inline confirm; the button is absent without it. */
   onDelete?(): void
 }
 
@@ -86,7 +86,8 @@ function firstSetOf(session: Session, exerciseId: string | undefined): OpenSet |
 
 /** The History editor (E12-T6): edits a draft of a finished Session, saved in one write. */
 export function SessionEditor(props: SessionEditorProps): JSX.Element {
-  const { session, workoutName, resolve, focusExerciseId, onSave, onCancel } = props
+  const { session, workoutName, resolve, focusExerciseId, onSave, onCancel, onDelete } = props
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [draft, setDraft] = useState<Session>(session)
   const [open, setOpen] = useState<OpenSet | null>(() => firstSetOf(session, focusExerciseId))
   const [error, setError] = useState<string | null>(null)
@@ -249,6 +250,24 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
       )}
 
       <div className="session-editor-actions">
+        {onDelete === undefined ? null : confirmingDelete ? (
+          <>
+            <button type="button" className="session-editor-cancel" onClick={() => setConfirmingDelete(false)}>
+              Keep
+            </button>
+            <button type="button" className="session-editor-delete" onClick={onDelete}>
+              Confirm
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="session-editor-delete"
+            onClick={() => setConfirmingDelete(true)}
+          >
+            Delete workout
+          </button>
+        )}
         <button type="button" className="session-editor-cancel" onClick={onCancel}>
           Cancel
         </button>
