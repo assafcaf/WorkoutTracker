@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { presetForSet } from '../domain/prefill'
+import { recordsSetBy } from '../domain/records'
 import { formatRest, restState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
+import { Toast } from './Toast'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import './SetScreen.css'
@@ -106,6 +108,11 @@ export type SetScreenProps = {
    * STUB (E10-T8 test-designer): accepted but not yet wired onto `.set-logged`.
    */
   family?: MuscleFamily
+  /**
+   * Finished Sessions started before this one (E13-T6), the baseline `recordsSetBy` measures a
+   * Set against. Optional; omitted or empty means no Set is a record.
+   */
+  earlierSessions?: Session[]
 }
 
 /**
@@ -133,6 +140,12 @@ function lastTimeText(exerciseId: string, entries: SetEntry[]): string {
     .sort((a, b) => a.setIndex - b.setIndex)
     .map((entry) => `${entry.weightKg === null ? 'BW' : entry.weightKg}×${entry.reps}`)
     .join(' · ')
+}
+
+/** "New PR · Heaviest set, Best estimated 1RM · 85 kg × 5": every record's label, then the Set. */
+function recordToastText(labels: string[], weightKg: number | null, reps: number): string {
+  const load = weightKg === null ? `${reps} reps` : `${weightKg} kg × ${reps}`
+  return `New PR · ${labels.join(', ')} · ${load}`
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -261,6 +274,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     },
     [],
   )
+  const [toast, setToast] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(() =>
     initialLastLoggedAt(exercise.id, props.lastEntries, props.sessionStartedAt ?? 0),
@@ -282,6 +296,20 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     const tick = setInterval(() => setNow(Date.now()), TICK_MS)
     return () => clearInterval(tick)
   }, [lastLoggedAt])
+
+  // A logged Set holds a record for as long as it sets one against the earlier Sessions and this
+  // Session's Sets before it, so the badge follows edits and deletes.
+  const earlier = props.earlierSessions ?? []
+  const thisSession: Session = {
+    id: sessionId,
+    programId: '',
+    workoutId: '',
+    startedAt: props.sessionStartedAt ?? 0,
+    finishedAt: null,
+    entries: props.logged ?? [],
+  }
+  const isRecordSet = (entry: SetEntry): boolean =>
+    earlier.length > 0 && recordsSetBy(exercise, plan, earlier, thisSession, entry).length > 0
 
   const rest = restState(lastLoggedAt, plan.restSeconds, now)
   const done = editing === null && open.setIndex > plan.sets && !extraOpen
@@ -340,6 +368,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setExtraOpen(false)
       setLoggedCount(
         session.entries.filter((logged) => logged.exerciseId === exercise.id).length,
+      )
+      const records = recordsSetBy(exercise, plan, props.earlierSessions ?? [], session, entry)
+      setToast(
+        records.length === 0
+          ? null
+          : recordToastText(
+              records.map((record) => record.label),
+              entry.weightKg,
+              entry.reps,
+            ),
       )
       onLogged(session, nextSetIndex)
     } catch (cause) {
@@ -482,6 +520,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               >
                 {entry.weightKg === null ? 'BW' : entry.weightKg} × {entry.reps}
               </button>
+              {isRecordSet(entry) ? (
+                <span className="pr-badge" aria-label="Personal record">
+                  PR
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -511,6 +554,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           </button>
         </p>
       )}
+
+      {toast === null ? null : <Toast message={toast} onDismiss={() => setToast(null)} />}
 
       <p role="status" className="set-logged" data-family={family}>
         {loggedMessage}
