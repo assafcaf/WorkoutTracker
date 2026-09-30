@@ -1612,3 +1612,59 @@ test('O4 after the latest Set is deleted, rest follows the new latest Set', asyn
 
   await waitFor(() => expect(readoutValue(restReadout())).toBe('1:20'))
 })
+
+// E13-T11: the Next Set line while rest is showing.
+const NEXT_LINE = /^Next: set /
+
+test('O9 while resting before a planned Set the screen shows Next: set 2 · 60 kg × 8–10', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({
+    setIndex: 2,
+    lastEntries: [historyEntry(1, 60, 10)],
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  expect(screen.getByText('Next: set 2 · 60 kg × 8–10')).toBeVisible()
+})
+
+test('O9 a Bodyweight Exercise reads Next: set 2 · BW × 10–15', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 30_000)
+  renderSetScreen({
+    exercise: pushUps,
+    plan: pushUpPlan,
+    setIndex: 2,
+    lastEntries: [pushUpEntry(1, 12, BASE)],
+    restFrom: { entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 },
+  })
+
+  expect(screen.getByText('Next: set 2 · BW × 10–15')).toBeVisible()
+})
+
+test('O9 without rest there is no Next line', () => {
+  renderSetScreen({ setIndex: 2, lastEntries: [historyEntry(1, 60, 10)], restFrom: null })
+
+  expect(screen.queryByText(NEXT_LINE)).toBeNull()
+})
+
+test('O9 on an extra Set past the plan there is no Next line', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({
+    setIndex: 5,
+    extra: true,
+    lastEntries: [historyEntry(4, 60, 10)],
+    restFrom: { entry: historyEntry(4, 60, 10), planRestSeconds: 180 },
+  })
+
+  expect(screen.queryByText(NEXT_LINE)).toBeNull()
+})
+
+test('O9 in the done state there is no Next line', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({
+    setIndex: 5,
+    lastEntries: [historyEntry(4, 60, 10)],
+    restFrom: { entry: historyEntry(4, 60, 10), planRestSeconds: 180 },
+  })
+
+  expect(screen.queryByText(NEXT_LINE)).toBeNull()
+})
