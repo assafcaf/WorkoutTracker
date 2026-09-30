@@ -75,8 +75,10 @@ describe('O5 createServices returns exactly the service API', () => {
       'lastExportedAt',
       'setExerciseNote',
       'setGymEquipment',
+      'setTrackEffort',
       'setVolumeBaseline',
       'setWeightStep',
+      'trackEffort',
       'volumeBaseline',
       'weightStep',
     ])

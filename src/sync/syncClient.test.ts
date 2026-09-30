@@ -708,6 +708,7 @@ test('O11 the sync after adopting b@x pulls all of b@x data from since 0 and pus
 test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides activeProgramId and gymEquipment', () => {
   expect([...SYNCED_SETTING_KEYS].sort()).toEqual([
     'activeProgramId',
+    'effortTracking',
     'exerciseNotes',
     'gymEquipment',
     'userPrograms',
