@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
-import { expect, test } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { expect, test, vi } from 'vitest'
 import { HistoryList, summarise } from './HistoryList'
 import type { Exercise, Program, Session, SetEntry } from '../types'
 
@@ -195,4 +196,27 @@ test('S11 HistoryList groups a session\'s sets by exercise, headed by the resolv
 
   // The back-squat set stays under its own group, not mixed into the Hammer Curls one.
   expect(within(hammerGroup).queryByText(/60/)).not.toBeInTheDocument()
+})
+
+// --- E12-T6: Edit workout opens the History editor ----------------------------------------
+
+test('O13 HistoryList with onEdit renders Edit workout on the row, and tapping it calls onEdit with the session id', async () => {
+  const onEdit = vi.fn()
+  render(
+    <HistoryList
+      sessions={[sessionWith([loadedEntry('back-squat', 1, 60, 8)])]}
+      programs={[assaf]}
+      resolve={resolveFixture}
+      onOpen={() => {}}
+      onEdit={onEdit}
+    />,
+  )
+
+  const row = screen.getByRole('listitem')
+  expect(within(row).getByRole('button', { name: 'Open session' })).toBeVisible()
+  await userEvent.setup().click(within(row).getByRole('button', { name: 'Edit workout' }))
+
+  expect(onEdit).toHaveBeenCalledTimes(1)
+  expect(onEdit.mock.calls[0][0]).toBe('session-under-test')
+  expect(onEdit.mock.calls[0][1]).toBeUndefined()
 })

@@ -34,6 +34,7 @@ export type SessionService = {
   ): Promise<{ session: Session; removed: SetEntry }>
   restoreSet(sessionId: string, entry: SetEntry): Promise<Session>
   finish(sessionId: string): Promise<Session>
+  save(session: Session): Promise<Session>
   lastEntriesFor(exerciseId: string): Promise<SetEntry[]>
   lastEntriesForSession(session: Session | null, programs: Program[]): Promise<Map<string, SetEntry[]>>
   lastSwapsForSession(session: Session | null, programs: Program[]): Promise<Record<string, string>>
@@ -153,6 +154,11 @@ export function createSessionService(deps: ServiceDeps): SessionService {
 
     async finish(sessionId) {
       return write(sessionId, () => finishSession(sessionId, now()), FINISH_FAILED)
+    },
+
+    async save(session) {
+      void session
+      throw new Error('SessionService.save is not implemented')
     },
 
     async lastEntriesFor(exerciseId) {

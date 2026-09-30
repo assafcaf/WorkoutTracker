@@ -183,6 +183,16 @@ export async function restoreSet(
 }
 
 /**
+ * The History editor's single write (E12-T6): checks `finishedAt >= startedAt` and that at
+ * least one Set remains, stamps `updatedAt`, and stores the whole Session in one `put`.
+ */
+export async function saveSession(session: Session, now: number = Date.now()): Promise<Session> {
+  void session
+  void now
+  throw new Error('saveSession is not implemented')
+}
+
+/**
  * Stamps a session finished and returns it as stored.
  */
 export async function finishSession(sessionId: string, now: number): Promise<Session> {

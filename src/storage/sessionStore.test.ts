@@ -15,6 +15,7 @@ import {
   updateSet,
   putSessions,
   replaceAllSessions,
+  saveSession,
   sessionsChangedSince,
   setSwap,
   startOrResumeSession,
@@ -1209,5 +1210,83 @@ describe('E12-T2 editing a logged Set', () => {
 
   test('O3 restoreSet on a missing Session rejects naming the id', async () => {
     await expect(restoreSet('nope', squat1)).rejects.toThrow('no session nope is stored')
+  })
+})
+
+// --- E12-T6: saveSession, the History editor's single write --------------------------------
+
+describe('E12-T6 saveSession stores an edited finished Session', () => {
+  const squat1 = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+  const squat2 = entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND)
+  const original = (): Session =>
+    storedSession({
+      id: 'done',
+      startedAt: BASE,
+      finishedAt: BASE + 3600 * SECOND,
+      entries: [squat1, squat2],
+      updatedAt: BASE + 3600 * SECOND,
+    })
+  const NOW = BASE + 5 * DAY
+
+  test('O14 saveSession stores the edited Sets and times and stamps updatedAt to now', async () => {
+    await db.sessions.put(original())
+    const draft: Session = {
+      ...original(),
+      startedAt: BASE + 60 * SECOND,
+      finishedAt: BASE + 5400 * SECOND,
+      entries: [entry('back-squat', 1, 70, 5, BASE + 100 * SECOND)],
+    }
+
+    const saved = await saveSession(draft, NOW)
+
+    const expected: Session = { ...draft, updatedAt: NOW }
+    expect(saved).toEqual(expected)
+    expect(await db.sessions.get('done')).toEqual(expected)
+  })
+
+  test('O14 saveSession leaves every other stored Session untouched', async () => {
+    const other = storedSession({ id: 'other', entries: [squat1], updatedAt: BASE + 7 * SECOND })
+    await db.sessions.bulkPut([original(), other])
+
+    await saveSession({ ...original(), entries: [squat1] }, NOW)
+
+    expect(await db.sessions.get('other')).toEqual(other)
+  })
+
+  test('O15 saveSession with the end before the start rejects with the O15 message and writes nothing', async () => {
+    await db.sessions.put(original())
+
+    await expect(
+      saveSession({ ...original(), finishedAt: BASE - SECOND }, NOW),
+    ).rejects.toThrow('End time must be after the start time.')
+
+    expect(await db.sessions.get('done')).toEqual(original())
+  })
+
+  test('O15 saveSession accepts an end equal to the start', async () => {
+    await db.sessions.put(original())
+
+    const saved = await saveSession({ ...original(), finishedAt: BASE }, NOW)
+
+    expect(saved.finishedAt).toBe(BASE)
+    expect((await db.sessions.get('done'))?.finishedAt).toBe(BASE)
+  })
+
+  test('O15 saveSession with no Sets rejects with the O15 message and writes nothing', async () => {
+    await db.sessions.put(original())
+
+    await expect(saveSession({ ...original(), entries: [] }, NOW)).rejects.toThrow(
+      'A workout needs at least one set. Delete the workout instead.',
+    )
+
+    expect(await db.sessions.get('done')).toEqual(original())
+  })
+
+  test('O14 saveSession on a Session no longer stored rejects naming the id and creates nothing', async () => {
+    await expect(saveSession({ ...original(), id: 'nope' }, NOW)).rejects.toThrow(
+      'no session nope is stored',
+    )
+
+    expect(await db.sessions.get('nope')).toBeUndefined()
   })
 })
