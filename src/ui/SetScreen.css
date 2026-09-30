@@ -58,6 +58,9 @@
  * sets the same floor on its own children, so this is what holds outside a shell. */
 .log-set,
 .add-set,
+.save-set,
+.delete-set,
+.cancel-edit,
 .finish-exercise {
   min-height: var(--tap-min);
 }
@@ -76,4 +79,35 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   color: var(--color-accent);
+}
+
+.logged-sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.logged-set,
+.undo-delete {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.logged-set[data-editing='true'] {
+  font-weight: 700;
+}
+
+.set-undo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
 }

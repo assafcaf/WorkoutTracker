@@ -432,6 +432,24 @@ export function WorkoutFeature({
               })
             }}
             family={family}
+            logged={session.entries.filter((entry) => entry.exerciseId === openSet.exerciseId)}
+            onEditSet={async (setIndex, values) => {
+              setSession(
+                await services.sessions.updateSet(session.id, openSet.exerciseId, setIndex, values),
+              )
+            }}
+            onDeleteSet={async (setIndex) => {
+              const { session: updated, removed } = await services.sessions.deleteSet(
+                session.id,
+                openSet.exerciseId,
+                setIndex,
+              )
+              setSession(updated)
+              return removed
+            }}
+            onRestoreSet={async (entry) => {
+              setSession(await services.sessions.restoreSet(session.id, entry))
+            }}
             onLog={(id, entry) => services.sessions.logSet(id, entry)}
             onLogged={(logged) => {
               setSession(logged)
