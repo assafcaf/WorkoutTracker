@@ -7,6 +7,8 @@ const MIN_WEIGHT_KG = 0
 const MAX_WEIGHT_KG = 500
 const MIN_REPS = 0.5
 const MAX_REPS = 100
+const MIN_LOAD_KG = -60
+const MAX_LOAD_KG = 100
 
 // Round to a small number of decimal places to avoid floating-point drift (e.g. 7.5 + 1.25
 // coming out as 8.750000000000002) when stepping repeatedly by fractional weightStep values.
@@ -56,32 +58,35 @@ export type EntryValidation = { ok: true } | { ok: false; error: string }
 /**
  * The Load Dial's Rungs for a Bodyweight Exercise (E14-T14): every signed load in kg from -60 to
  * +100 inclusive, `step` apart, with 0 (plain bodyweight) among them.
- *
- * STUB (E14-T14 test-designer): not yet implemented.
  */
 export function loadLadder(step: number): number[] {
-  void step
-  throw new Error('not implemented: loadLadder')
+  const below: number[] = []
+  for (let k = 1; roundToStep(-k * step) >= MIN_LOAD_KG; k++) below.unshift(roundToStep(-k * step))
+  const above: number[] = []
+  for (let k = 0; roundToStep(k * step) <= MAX_LOAD_KG; k++) above.push(roundToStep(k * step))
+  return [...below, ...above]
 }
 
 /**
  * Validates a logged set's weight and reps. Weight must be null (bodyweight) or within
- * 0-500 kg inclusive; reps must be within 0.5-100 inclusive.
- *
- * STUB (E14-T14 test-designer): `loadKg`, when given, is to be checked within -60 to 100.
+ * 0-500 kg inclusive; reps must be within 0.5-100 inclusive; a Bodyweight Set's `loadKg`, when
+ * given, must be within -60 to +100 kg inclusive (E14-T14).
  */
 export function validateEntry(
   weightKg: number | null,
   reps: number,
   loadKg?: number,
 ): EntryValidation {
-  void loadKg
   if (weightKg !== null && (weightKg < MIN_WEIGHT_KG || weightKg > MAX_WEIGHT_KG)) {
     return { ok: false, error: `Weight must be between ${MIN_WEIGHT_KG} and ${MAX_WEIGHT_KG} kg.` }
   }
 
   if (reps < MIN_REPS || reps > MAX_REPS) {
     return { ok: false, error: `Reps must be between ${MIN_REPS} and ${MAX_REPS}.` }
+  }
+
+  if (loadKg !== undefined && (loadKg < MIN_LOAD_KG || loadKg > MAX_LOAD_KG)) {
+    return { ok: false, error: `Load must be between ${MIN_LOAD_KG} and +${MAX_LOAD_KG} kg.` }
   }
 
   return { ok: true }

@@ -1,6 +1,7 @@
 import type { Session, SetEntry, SetKind } from '../types'
 import { db } from './db'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
+import { validateEntry } from '../domain/dial'
 
 /** How many finished sessions a history lookup walks before it gives up. */
 const HISTORY_SCAN_LIMIT = 200
@@ -151,7 +152,11 @@ export async function logSet(
   })
 }
 
-/** Replaces the weight and reps of one logged Set, keeping its `setIndex` and `loggedAt`. */
+/**
+ * Replaces the weight and reps of one logged Set, keeping its `setIndex` and `loggedAt`. A given
+ * `loadKg` replaces a Bodyweight Set's Load, and null or 0 removes it (E14-T14); a Load outside
+ * -60 to +100 kg rejects before anything is written.
+ */
 export async function updateSet(
   sessionId: string,
   exerciseId: string,
@@ -159,6 +164,10 @@ export async function updateSet(
   values: { weightKg: number | null; reps: number; kind?: SetKind | null; loadKg?: number | null },
   now: number = Date.now(),
 ): Promise<Session> {
+  if (typeof values.loadKg === 'number') {
+    const checked = validateEntry(values.weightKg, values.reps, values.loadKg)
+    if (!checked.ok) throw new Error(checked.error)
+  }
   return db.transaction('rw', db.sessions, async () => {
     const session = await requireSession(sessionId)
     const at = session.entries.findIndex(
@@ -166,13 +175,15 @@ export async function updateSet(
     )
     if (at < 0) throw new Error(`no set ${setIndex} of ${exerciseId} is logged`)
     const entries = [...session.entries]
-    const { kind: was, ...others } = entries[at]
+    const { kind: was, loadKg: wasLoad, ...others } = entries[at]
     const kind = values.kind === undefined ? was : (values.kind ?? undefined)
+    const loadKg = values.loadKg === undefined ? wasLoad : values.loadKg || undefined
     entries[at] = {
       ...others,
       weightKg: values.weightKg,
       reps: values.reps,
       ...(kind === undefined ? {} : { kind }),
+      ...(loadKg === undefined ? {} : { loadKg }),
     }
     const updated: Session = { ...session, entries, updatedAt: now }
     await db.sessions.put(updated)
