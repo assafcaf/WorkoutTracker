@@ -1,5 +1,6 @@
 import type { Session, SetEntry } from '../types'
 import { db } from './db'
+import { insertSet, removeSet } from '../domain/setEdits'
 
 /** How many finished sessions a history lookup walks before it gives up. */
 const HISTORY_SCAN_LIMIT = 200
@@ -137,7 +138,18 @@ export async function updateSet(
   values: { weightKg: number | null; reps: number },
   now: number = Date.now(),
 ): Promise<Session> {
-  throw new Error(`not implemented: updateSet(${sessionId}, ${exerciseId}, ${setIndex}, ${now})`)
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const at = session.entries.findIndex(
+      (stored) => stored.exerciseId === exerciseId && stored.setIndex === setIndex,
+    )
+    if (at < 0) throw new Error(`no set ${setIndex} of ${exerciseId} is logged`)
+    const entries = [...session.entries]
+    entries[at] = { ...entries[at], weightKg: values.weightKg, reps: values.reps }
+    const updated: Session = { ...session, entries, updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
 }
 
 /** Removes one logged Set, renumbering the Exercise's later Sets down by one. */
@@ -147,7 +159,13 @@ export async function deleteSet(
   setIndex: number,
   now: number = Date.now(),
 ): Promise<{ session: Session; removed: SetEntry }> {
-  throw new Error(`not implemented: deleteSet(${sessionId}, ${exerciseId}, ${setIndex}, ${now})`)
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const { entries, removed } = removeSet(session.entries, exerciseId, setIndex)
+    const updated: Session = { ...session, entries, updatedAt: now }
+    await db.sessions.put(updated)
+    return { session: updated, removed }
+  })
 }
 
 /** Puts a removed Set back where it was, moving the Exercise's later Sets up by one. */
@@ -156,7 +174,12 @@ export async function restoreSet(
   entry: SetEntry,
   now: number = Date.now(),
 ): Promise<Session> {
-  throw new Error(`not implemented: restoreSet(${sessionId}, ${entry.exerciseId}, ${now})`)
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const updated: Session = { ...session, entries: insertSet(session.entries, entry), updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
 }
 
 /**
