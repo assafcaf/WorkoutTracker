@@ -11,6 +11,7 @@ import {
   deleteSet,
   restoreSet,
   saveSession,
+  setEffort,
   setRest,
   setNote,
   updateSet,
@@ -30,6 +31,12 @@ export type SessionService = {
     exerciseId: string,
     setIndex: number,
     values: { weightKg: number | null; reps: number },
+  ): Promise<Session>
+  setEffort(
+    sessionId: string,
+    exerciseId: string,
+    setIndex: number,
+    rir: 0 | 1 | 2 | 3 | null,
   ): Promise<Session>
   setRest(
     sessionId: string,
@@ -155,6 +162,14 @@ export function createSessionService(deps: ServiceDeps): SessionService {
       return write(
         sessionId,
         () => updateSet(sessionId, exerciseId, setIndex, values, now()),
+        LOG_FAILED,
+      )
+    },
+
+    async setEffort(sessionId, exerciseId, setIndex, rir) {
+      return write(
+        sessionId,
+        () => setEffort(sessionId, exerciseId, setIndex, rir, now()),
         LOG_FAILED,
       )
     },

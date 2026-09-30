@@ -173,6 +173,30 @@ export async function updateSet(
   })
 }
 
+/** Stores, replaces or (with null) removes the effort of one logged Set (E14-T2). */
+export async function setEffort(
+  sessionId: string,
+  exerciseId: string,
+  setIndex: number,
+  rir: 0 | 1 | 2 | 3 | null,
+  now: number = Date.now(),
+): Promise<Session> {
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const at = session.entries.findIndex(
+      (stored) => stored.exerciseId === exerciseId && stored.setIndex === setIndex,
+    )
+    if (at < 0) throw new Error(`no set ${setIndex} of ${exerciseId} is logged`)
+    const { rir: _previous, ...rest } = session.entries[at]
+    void _previous
+    const entries = [...session.entries]
+    entries[at] = rir === null ? rest : { ...rest, rir }
+    const updated: Session = { ...session, entries, updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
+}
+
 /** Stores a changed rest length on one logged Set (E13-T5). */
 export async function setRest(
   sessionId: string,

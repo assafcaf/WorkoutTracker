@@ -96,6 +96,8 @@ export type SetEntry = {
   restSeconds?: number
   /** A Bodyweight Set's signed load in kg (E14): never 0, only on a Bodyweight Set. */
   loadKg?: number
+  /** Reps in reserve, felt effort of this Set (E14); 3 means 3 or more. Absent when not told. */
+  rir?: 0 | 1 | 2 | 3
 }
 
 export type Session = {
