@@ -18,7 +18,7 @@ import {
   setSwap,
   startOrResumeSession,
 } from '../storage/sessionStore'
-import type { Program, Session, SetEntry, Workout } from '../types'
+import type { Program, Session, SetEntry, SetKind, Workout } from '../types'
 import type { ServiceDeps } from './deps'
 import { callStorage, ServiceError } from './errors'
 
@@ -30,7 +30,7 @@ export type SessionService = {
     sessionId: string,
     exerciseId: string,
     setIndex: number,
-    values: { weightKg: number | null; reps: number },
+    values: { weightKg: number | null; reps: number; kind?: SetKind | null },
   ): Promise<Session>
   setEffort(
     sessionId: string,

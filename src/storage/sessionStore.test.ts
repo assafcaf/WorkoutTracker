@@ -1788,3 +1788,49 @@ describe('E14-T2 storing the effort of a logged Set', () => {
     expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
   })
 })
+
+// --- E14-T9: updateSet carries a Set's kind -------------------------------------------------
+
+describe('E14-T9 updateSet changes a logged Set kind', () => {
+  const plain = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+  const dropSet = { ...entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND), kind: 'drop' as const }
+
+  async function seed(): Promise<string> {
+    await db.sessions.put(
+      storedSession({
+        id: 'kinds',
+        finishedAt: null,
+        entries: [plain, dropSet],
+        updatedAt: BASE + 400 * SECOND,
+      }),
+    )
+    return 'kinds'
+  }
+
+  test('O6 updateSet with a kind stores it on the Set, keeping the other values', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 1, { weightKg: 60, reps: 8, kind: 'warmup' }, BASE + 900 * SECOND)
+
+    expect(updated.entries[0]).toEqual({ ...plain, kind: 'warmup' })
+    expect((await db.sessions.get(id))?.entries[0]).toEqual({ ...plain, kind: 'warmup' })
+  })
+
+  test('O6 updateSet with kind null removes the kind field', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 2, { weightKg: 62.5, reps: 6, kind: null }, BASE + 900 * SECOND)
+
+    expect(updated.entries[1]).toEqual(entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND))
+    expect('kind' in updated.entries[1]).toBe(false)
+    expect('kind' in ((await db.sessions.get(id))?.entries[1] as object)).toBe(false)
+  })
+
+  test('O6 updateSet without a kind leaves the Set kind as it was', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 2, { weightKg: 65, reps: 5 }, BASE + 900 * SECOND)
+
+    expect(updated.entries[1]).toEqual({ ...dropSet, weightKg: 65, reps: 5 })
+  })
+})

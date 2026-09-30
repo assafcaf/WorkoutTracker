@@ -1,4 +1,4 @@
-import type { Session, SetEntry } from '../types'
+import type { Session, SetEntry, SetKind } from '../types'
 import { db } from './db'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 
@@ -156,7 +156,7 @@ export async function updateSet(
   sessionId: string,
   exerciseId: string,
   setIndex: number,
-  values: { weightKg: number | null; reps: number },
+  values: { weightKg: number | null; reps: number; kind?: SetKind | null },
   now: number = Date.now(),
 ): Promise<Session> {
   return db.transaction('rw', db.sessions, async () => {
@@ -166,7 +166,14 @@ export async function updateSet(
     )
     if (at < 0) throw new Error(`no set ${setIndex} of ${exerciseId} is logged`)
     const entries = [...session.entries]
-    entries[at] = { ...entries[at], weightKg: values.weightKg, reps: values.reps }
+    const { kind: was, ...others } = entries[at]
+    const kind = values.kind === undefined ? was : (values.kind ?? undefined)
+    entries[at] = {
+      ...others,
+      weightKg: values.weightKg,
+      reps: values.reps,
+      ...(kind === undefined ? {} : { kind }),
+    }
     const updated: Session = { ...session, entries, updatedAt: now }
     await db.sessions.put(updated)
     return updated

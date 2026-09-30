@@ -12,12 +12,13 @@ import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
 import { RestDial } from './RestDial'
+import { SetKindRow } from './SetKindRow'
 import { Toast } from './Toast'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
-import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
+import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
 
 /** The longest Exercise note, in characters (E14-T11). */
 const EXERCISE_NOTE_MAX = 500
@@ -43,7 +44,10 @@ export type SetScreenProps = {
    */
   logged?: SetEntry[]
   /** Stores new values for logged Set `setIndex` (E12-T3). */
-  onEditSet?(setIndex: number, values: { weightKg: number | null; reps: number }): Promise<void>
+  onEditSet?(
+    setIndex: number,
+    values: { weightKg: number | null; reps: number; kind?: SetKind | null },
+  ): Promise<void>
   /** Removes logged Set `setIndex`, answering it so Undo can put it back (E12-T3). */
   onDeleteSet?(setIndex: number): Promise<SetEntry>
   /** Puts a deleted Set back exactly (E12-T3). */
@@ -192,8 +196,11 @@ const UNDO_MS = 5000
 /** How long the Log set button and the new row show the Set as just logged (E13-T10). */
 const CONFIRMED_MS = 1500
 
+/** The one-letter marker a Set of another kind carries in the logged list (E14-T9). */
+const KIND_MARKERS: Record<SetKind, string> = { warmup: 'W', drop: 'D', failure: 'F', amrap: 'A' }
+
 /** The set on the dials: which one it is and the two values it will be logged with. */
-type OpenSet = { setIndex: number; weightKg: number | null; reps: number }
+type OpenSet = { setIndex: number; weightKg: number | null; reps: number; kind: SetKind | null }
 
 /**
  * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
@@ -230,7 +237,7 @@ function openSetFor(
   lastEntries: SetEntry[],
   logged?: SetEntry[],
 ): OpenSet {
-  return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries, logged }) }
+  return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries, logged }), kind: null }
 }
 
 /**
@@ -503,6 +510,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       weightKg: open.weightKg,
       reps: open.reps,
       loggedAt,
+      ...(open.kind === null ? {} : { kind: open.kind }),
     }
 
     try {
@@ -551,7 +559,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   function openLogged(entry: SetEntry): void {
     setError(null)
     setEditing(entry.setIndex)
-    setOpen({ setIndex: entry.setIndex, weightKg: entry.weightKg, reps: entry.reps })
+    setOpen({
+      setIndex: entry.setIndex,
+      weightKg: entry.weightKg,
+      reps: entry.reps,
+      kind: entry.kind ?? null,
+    })
   }
 
   /** Back to the next Set to log, `next` being its index and `sets` today's Sets by then. */
@@ -569,19 +582,33 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setError(validation.error)
       return
     }
-    const values = { weightKg: open.weightKg, reps: open.reps }
+    const before = loggedSets.find((entry) => entry.setIndex === editing)
+    // The kind goes along only when it was changed; omitted, the service keeps the Set's own.
+    const kindChanged = open.kind !== (before?.kind ?? null)
+    const values = {
+      weightKg: open.weightKg,
+      reps: open.reps,
+      ...(kindChanged ? { kind: open.kind } : {}),
+    }
     try {
       await props.onEditSet(editing, values)
-      const before = loggedSets.find((entry) => entry.setIndex === editing)
-      const edited = loggedSets.map((entry) =>
-        entry.setIndex === editing ? { ...entry, ...values } : entry,
-      )
+      const edited = loggedSets.map((entry) => {
+        if (entry.setIndex !== editing) return entry
+        const { kind: _was, ...unkinded } = entry
+        void _was
+        return {
+          ...unkinded,
+          weightKg: values.weightKg,
+          reps: values.reps,
+          ...(open.kind === null ? {} : { kind: open.kind }),
+        }
+      })
       const merged =
         props.logged !== undefined
           ? layTodayOver(history, edited)
           : before === undefined
             ? history
-            : mergeEntry(history, { ...before, ...values })
+            : mergeEntry(history, edited.find((entry) => entry.setIndex === editing) ?? before)
       setHistory(merged)
       returnToLogging(loggedSets.length + 1, edited, merged)
     } catch (cause) {
@@ -762,6 +789,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               >
                 {formatSet(entry)}
               </button>
+              {entry.kind === undefined ? null : (
+                <span className="set-kind-marker">{KIND_MARKERS[entry.kind]}</span>
+              )}
               {isRecordSet(entry) ? (
                 <span className="pr-badge" aria-label="Personal record">
                   PR
@@ -831,6 +861,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         onStepChange={handleStepChange}
       />
       <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+      <SetKindRow value={open.kind} onChange={(kind) => setOpen({ ...open, kind })} />
 
       {error === null ? null : (
         <p className="set-error" role="alert">
