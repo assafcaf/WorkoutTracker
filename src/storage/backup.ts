@@ -25,6 +25,10 @@ export type BackupFile = {
     volumeBaseline?: VolumeBaseline
     /** The trainee's created and edited Programs (E9). Absent on a backup made before E9. */
     userPrograms?: UserProgram[]
+    /** Every Exercise's note by Exercise id (E14). Absent on a backup made before E14. */
+    exerciseNotes?: Record<string, string>
+    /** The Track effort choice (E14). Absent on a backup made before E14. */
+    effortTracking?: boolean
   }
 }
 
