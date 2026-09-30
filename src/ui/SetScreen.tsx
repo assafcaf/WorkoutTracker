@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { formatSet, formatSetCompact } from '../domain/setText'
-import { presetForSet } from '../domain/prefill'
+import { layTodayOver, presetForSet } from '../domain/prefill'
+import { countsTowardStats, workingSets } from '../domain/setKind'
 import { recordsSetBy } from '../domain/records'
 import { adjustRest, formatOver, formatRest, restAfter } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
@@ -143,7 +144,8 @@ export type SetScreenProps = {
 
 /**
  * The set counter's text (E6-T1): "Set 2 of 3" | "Set 4 · extra" | "All 3 sets logged" |
- * "4 sets logged · 3 planned". `loggedCount` is this Session's Sets for the Exercise.
+ * "4 sets logged · 3 planned". `setIndex` is the open Set's working position and `loggedCount`
+ * this Session's working Sets for the Exercise: warm-ups don't use up the Plan (E14-T8).
  */
 export function setCounterText(
   setIndex: number,
@@ -210,13 +212,18 @@ function mergeEntry(entries: SetEntry[], entry: SetEntry): SetEntry[] {
   return merged
 }
 
+/**
+ * The Set at `setIndex` on the dials, preset from `lastEntries`; `logged`, this Session's Sets
+ * for the Exercise when the caller supplies them, places it among the working Sets (E14-T8).
+ */
 function openSetFor(
   exercise: Exercise,
   plan: ExercisePlan,
   setIndex: number,
   lastEntries: SetEntry[],
+  logged?: SetEntry[],
 ): OpenSet {
-  return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries }) }
+  return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries, logged }) }
 }
 
 /**
@@ -278,9 +285,17 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     props.onWeightStepChange?.(step)
   }
 
+  // The Sets this screen logs or edits are laid over the history the next one presets from: by
+  // `setIndex` without `logged`, and with it by working position (E14-T8).
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
-    openSetFor(exercise, plan, props.setIndex, props.lastEntries),
+    openSetFor(
+      exercise,
+      plan,
+      props.setIndex,
+      props.lastEntries,
+      props.logged?.filter((entry) => entry.exerciseId === exercise.id),
+    ),
   )
   // An extra set opened by "Add set" stays open until it is logged; past the plan, anything
   // else is the done state, which offers only "Add set".
@@ -292,7 +307,19 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const loggedSets = (props.logged ?? [])
     .filter((entry) => entry.exerciseId === exercise.id)
     .sort((a, b) => a.setIndex - b.setIndex)
-  const loggedCount = props.logged === undefined ? loggedCountState : loggedSets.length
+  const loggedCount =
+    props.logged === undefined ? loggedCountState : workingSets(loggedSets).length
+  // The open Set's place among the working Sets (E14-T8): warm-ups take a `setIndex` but don't use
+  // up the Plan. Without `logged`, every Set before it was working.
+  const position =
+    props.logged === undefined
+      ? open.setIndex
+      : 1 + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
+
+  /** Today's Sets to preset from once they are `entries`: none when the caller gives no `logged`. */
+  function today(entries: SetEntry[]): SetEntry[] | undefined {
+    return props.logged === undefined ? undefined : entries
+  }
   // The logged Set open for editing, if any (E12-T3), and the Set just deleted that Undo restores.
   const [editing, setEditing] = useState<number | null>(null)
   const [undo, setUndo] = useState<SetEntry | null>(null)
@@ -365,7 +392,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   const rest: RestState | null =
     restFrom === null ? null : restAfter(restFrom.entry, restFrom.planRestSeconds, now)
-  const done = editing === null && open.setIndex > plan.sets && !extraOpen
+  const done = editing === null && position > plan.sets && !extraOpen
 
   // Fires playRestOver once per rest period: only after this mount has actually seen the rest
   // running (isOver false) for the current Set, so a screen opened with rest already over --
@@ -470,7 +497,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
     try {
       const session = await onLog(sessionId, entry)
-      const merged = mergeEntry(history, entry)
+      const todayAfter = mergeEntry(loggedSets, entry)
+      const merged =
+        props.logged === undefined ? mergeEntry(history, entry) : layTodayOver(history, todayAfter)
       const nextSetIndex = open.setIndex + 1
       setError(null)
       clearUndo()
@@ -484,10 +513,14 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       }, CONFIRMED_MS)
       setUseOffer(null)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
-      setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
+      setOpen(
+        openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter)),
+      )
       setExtraOpen(false)
       setLoggedCount(
-        session.entries.filter((logged) => logged.exerciseId === exercise.id).length,
+        session.entries.filter(
+          (logged) => logged.exerciseId === exercise.id && countsTowardStats(logged),
+        ).length,
       )
       const records = recordsSetBy(exercise, plan, props.earlierSessions ?? [], session, entry)
       setToast(
@@ -511,12 +544,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     setOpen({ setIndex: entry.setIndex, weightKg: entry.weightKg, reps: entry.reps })
   }
 
-  /** Back to the next Set to log, `next` being its index. */
-  function returnToLogging(next: number, from: SetEntry[] = history): void {
+  /** Back to the next Set to log, `next` being its index and `sets` today's Sets by then. */
+  function returnToLogging(next: number, sets: SetEntry[], from: SetEntry[] = history): void {
     setError(null)
     setEditing(null)
     setExtraOpen(false)
-    setOpen(openSetFor(exercise, plan, next, from))
+    setOpen(openSetFor(exercise, plan, next, from, today(sets)))
   }
 
   async function saveSet(): Promise<void> {
@@ -530,9 +563,17 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     try {
       await props.onEditSet(editing, values)
       const before = loggedSets.find((entry) => entry.setIndex === editing)
-      const merged = before === undefined ? history : mergeEntry(history, { ...before, ...values })
+      const edited = loggedSets.map((entry) =>
+        entry.setIndex === editing ? { ...entry, ...values } : entry,
+      )
+      const merged =
+        props.logged !== undefined
+          ? layTodayOver(history, edited)
+          : before === undefined
+            ? history
+            : mergeEntry(history, { ...before, ...values })
       setHistory(merged)
-      returnToLogging(loggedSets.length + 1, merged)
+      returnToLogging(loggedSets.length + 1, edited, merged)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
@@ -542,7 +583,15 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     if (editing === null || props.onDeleteSet === undefined) return
     try {
       const removed = await props.onDeleteSet(editing)
-      returnToLogging(loggedSets.length)
+      const deletedAt = editing
+      returnToLogging(
+        loggedSets.length,
+        loggedSets
+          .filter((entry) => entry.setIndex !== deletedAt)
+          .map((entry) =>
+            entry.setIndex > deletedAt ? { ...entry, setIndex: entry.setIndex - 1 } : entry,
+          ),
+      )
       if (undoTimer.current !== null) clearTimeout(undoTimer.current)
       setUndo(removed)
       undoTimer.current = setTimeout(() => {
@@ -559,7 +608,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     try {
       await props.onRestoreSet(undo)
       clearUndo()
-      returnToLogging(loggedSets.length + 2)
+      returnToLogging(loggedSets.length + 2, [
+        ...loggedSets.map((entry) =>
+          entry.setIndex >= undo.setIndex ? { ...entry, setIndex: entry.setIndex + 1 } : entry,
+        ),
+        undo,
+      ])
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
@@ -584,7 +638,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       <button
         type="button"
         className="cancel-edit"
-        onClick={() => returnToLogging(loggedSets.length + 1)}
+        onClick={() => returnToLogging(loggedSets.length + 1, loggedSets)}
       >
         Cancel
       </button>
@@ -679,7 +733,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           Alternatives
         </button>
       </div>
-      <p className="set-counter">{setCounterText(open.setIndex, plan.sets, loggedCount, done)}</p>
+      <p className="set-counter">{setCounterText(position, plan.sets, loggedCount, done)}</p>
 
       {lastTime === '' ? null : <p className="set-last-time">Last time: {lastTime}</p>}
 
@@ -739,9 +793,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         {loggedMessage}
       </p>
 
-      {rest === null || done || extraOpen || editing !== null || open.setIndex > plan.sets ? null : (
+      {rest === null || done || extraOpen || editing !== null || position > plan.sets ? null : (
         <p className="set-next">
-          Next: set {open.setIndex} · {open.weightKg === null ? 'BW' : `${open.weightKg} kg`} ×{' '}
+          Next: set {position} · {open.weightKg === null ? 'BW' : `${open.weightKg} kg`} ×{' '}
           {plan.repRange[0]}–{plan.repRange[1]}
         </p>
       )}
