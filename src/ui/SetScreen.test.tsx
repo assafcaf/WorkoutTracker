@@ -1795,3 +1795,245 @@ function renderWithSessionRestLogging() {
   })
   return { onLog }
 }
+
+// --- E13-T9: the rest Dial (O5) and "Use for this exercise" (O6) ------------------------------
+//
+// The rest Dial opens from the rest readout: a listbox named "Rest ladder" whose options are the
+// 15 s Rungs "0:15" … "10:00", with Set rest and Cancel. A back-squat Set at BASE rests
+// squatPlan's 180 s; the clock is frozen 100 s later (1:20 left) unless a test says otherwise.
+
+/** Taps the rest readout and answers the rest Dial's Rung column. */
+async function openRestDial(user: UserEvent): Promise<HTMLElement> {
+  await user.click(restReadout())
+  return screen.findByRole('listbox', { name: 'Rest ladder' })
+}
+
+/** Opens the rest Dial, picks the Rung `label` ("2:30") and taps Set rest. */
+async function setRestOnDial(user: UserEvent, label: string): Promise<void> {
+  const ladder = await openRestDial(user)
+  await user.click(within(ladder).getByRole('option', { name: label }))
+  await user.click(screen.getByRole('button', { name: 'Set rest' }))
+}
+
+function useRestOffer(name: string): HTMLElement | null {
+  return screen.queryByRole('button', { name })
+}
+
+test('O5 tapping a running rest readout opens the rest Dial on the current length, 3:00', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  const ladder = await openRestDial(user)
+
+  const selected = within(ladder).getAllByRole('option', { selected: true })
+  expect(selected.map((option) => option.textContent)).toEqual(['3:00'])
+})
+
+test("O5 the rest Dial opens on the Set's own changed length, not the Plan's", async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([{ ...squatEntry(1, BASE), restSeconds: 120 }])
+
+  const ladder = await openRestDial(user)
+
+  const selected = within(ladder).getAllByRole('option', { selected: true })
+  expect(selected.map((option) => option.textContent)).toEqual(['2:00'])
+})
+
+test('O5 the rest Dial has 40 Rungs, 15 s apart, from 0:15 to 10:00', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  const ladder = await openRestDial(user)
+
+  const rungs = within(ladder)
+    .getAllByRole('option')
+    .map((option) => option.textContent)
+  expect(rungs).toHaveLength(40)
+  expect(rungs.slice(0, 3)).toEqual(['0:15', '0:30', '0:45'])
+  expect(rungs.slice(-2)).toEqual(['9:45', '10:00'])
+})
+
+test('O5 the rest Dial offers Set rest and Cancel', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await openRestDial(user)
+
+  expect(screen.getByRole('button', { name: 'Set rest' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+})
+
+test('O5 tapping a rest readout that is over opens the rest Dial too', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 200_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+  expect(readoutValue(restReadout())).toBe('+0:20 over')
+
+  const ladder = await openRestDial(user)
+
+  const selected = within(ladder).getAllByRole('option', { selected: true })
+  expect(selected.map((option) => option.textContent)).toEqual(['3:00'])
+})
+
+test('O5 Set rest 2:30 with 100 s gone restarts the rest from loggedAt: the readout reads 0:50', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await setRestOnDial(user, '2:30')
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('0:50'))
+})
+
+test('O5 Set rest 2:30 tells onSetRest the Set with a rest of 150 s', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user, onSetRest } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await setRestOnDial(user, '2:30')
+
+  await waitFor(() => expect(onSetRest).toHaveBeenCalledTimes(1))
+  expect(onSetRest).toHaveBeenCalledWith(
+    expect.objectContaining({ exerciseId: 'back-squat', setIndex: 1, loggedAt: BASE }),
+    150,
+  )
+})
+
+test('O5 Set rest 1:30 with 100 s gone reads as over: +0:10 over', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await setRestOnDial(user, '1:30')
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:10 over'))
+})
+
+test('O5 Set rest 4:00 on a rest over by 0:20 runs it again: the readout reads 0:40', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 200_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await setRestOnDial(user, '4:00')
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('0:40'))
+})
+
+test('O5 Set rest closes the rest Dial', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await setRestOnDial(user, '2:30')
+
+  await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Rest ladder' })).toBeNull())
+})
+
+test('O5 Cancel on the rest Dial closes it and changes nothing', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user, onSetRest } = renderWithSessionRest([squatEntry(1, BASE)])
+  const ladder = await openRestDial(user)
+  await user.click(within(ladder).getByRole('option', { name: '2:30' }))
+
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Rest ladder' })).toBeNull())
+  expect(readoutValue(restReadout())).toBe('1:20')
+  expect(onSetRest).not.toHaveBeenCalled()
+})
+
+test('O6 after Set rest 2:30 an inline Use 2:30 for Back squat shows', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)], {
+    programName: 'A/B Split',
+    onUseRestForExercise: vi.fn(async () => undefined),
+  })
+
+  await setRestOnDial(user, '2:30')
+
+  expect(await screen.findByRole('button', { name: 'Use 2:30 for Back squat' })).toBeVisible()
+})
+
+test('O6 tapping Use 2:30 for Back squat tells onUseRestForExercise 150 s', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const onUseRestForExercise = vi.fn(async () => undefined)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)], {
+    programName: 'A/B Split',
+    onUseRestForExercise,
+  })
+  await setRestOnDial(user, '2:30')
+
+  await user.click(await screen.findByRole('button', { name: 'Use 2:30 for Back squat' }))
+
+  expect(onUseRestForExercise).toHaveBeenCalledTimes(1)
+  expect(onUseRestForExercise).toHaveBeenCalledWith(150)
+})
+
+test('O6 once the Program is saved the line reads Saved to A/B Split in place of the offer', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)], {
+    programName: 'A/B Split',
+    onUseRestForExercise: vi.fn(async () => undefined),
+  })
+  await setRestOnDial(user, '2:30')
+
+  await user.click(await screen.findByRole('button', { name: 'Use 2:30 for Back squat' }))
+
+  expect(await screen.findByText('Saved to A/B Split')).toBeVisible()
+  expect(useRestOffer('Use 2:30 for Back squat')).toBeNull()
+})
+
+test("O6 when onUseRestForExercise rejects, its message shows inline and no Saved to line", async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)], {
+    programName: 'A/B Split',
+    onUseRestForExercise: vi.fn(async () => {
+      throw new Error('Could not save the Program')
+    }),
+  })
+  await setRestOnDial(user, '2:30')
+
+  await user.click(await screen.findByRole('button', { name: 'Use 2:30 for Back squat' }))
+
+  expect(await screen.findByText('Could not save the Program')).toBeVisible()
+  expect(screen.queryByText(/^Saved to/)).toBeNull()
+})
+
+test('O6 Cancel on the rest Dial offers no Use for this exercise', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)], {
+    programName: 'A/B Split',
+    onUseRestForExercise: vi.fn(async () => undefined),
+  })
+  const ladder = await openRestDial(user)
+  await user.click(within(ladder).getByRole('option', { name: '2:30' }))
+
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Rest ladder' })).toBeNull())
+  expect(screen.queryByRole('button', { name: /^Use .* for / })).toBeNull()
+})
+
+test('O6 +15 s after Set rest withdraws the Use offer: ±15 s never offers it', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)], {
+    programName: 'A/B Split',
+    onUseRestForExercise: vi.fn(async () => undefined),
+  })
+  await setRestOnDial(user, '2:30')
+  await screen.findByRole('button', { name: 'Use 2:30 for Back squat' })
+
+  await user.click(plus15())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:05'))
+  expect(screen.queryByRole('button', { name: /^Use .* for / })).toBeNull()
+})
+
+test('O6 Skip after Set rest withdraws the Use offer: Skip never offers it', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)], {
+    programName: 'A/B Split',
+    onUseRestForExercise: vi.fn(async () => undefined),
+  })
+  await setRestOnDial(user, '2:30')
+  await screen.findByRole('button', { name: 'Use 2:30 for Back squat' })
+
+  await user.click(skip())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:00 over'))
+  expect(screen.queryByRole('button', { name: /^Use .* for / })).toBeNull()
+})

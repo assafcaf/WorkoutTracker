@@ -126,6 +126,17 @@ export type SetScreenProps = {
    * Stores `restSeconds` as the rest after `entry` (E13-T8), from −15 s, +15 s or Skip.
    */
   onSetRest?(entry: SetEntry, restSeconds: number): Promise<void>
+  /**
+   * Stores `restSeconds`, just set on the rest Dial, as the rest of this Exercise's Plan in the
+   * Session's Program (E13-T9), offered as "Use 2:30 for <Exercise>"; a rejection's message shows
+   * inline. STUB (E13-T9 test-designer): accepted but not yet offered.
+   */
+  onUseRestForExercise?(restSeconds: number): Promise<void>
+  /**
+   * The Session's Program's name (E13-T9), for the "Saved to <Program>" line once
+   * `onUseRestForExercise` resolves. STUB (E13-T9 test-designer): accepted but not yet shown.
+   */
+  programName?: string
 }
 
 /**
