@@ -166,7 +166,14 @@ export async function updateSet(
     )
     if (at < 0) throw new Error(`no set ${setIndex} of ${exerciseId} is logged`)
     const entries = [...session.entries]
-    entries[at] = { ...entries[at], weightKg: values.weightKg, reps: values.reps }
+    const { kind: was, ...others } = entries[at]
+    const kind = values.kind === undefined ? was : (values.kind ?? undefined)
+    entries[at] = {
+      ...others,
+      weightKg: values.weightKg,
+      reps: values.reps,
+      ...(kind === undefined ? {} : { kind }),
+    }
     const updated: Session = { ...session, entries, updatedAt: now }
     await db.sessions.put(updated)
     return updated

@@ -1,0 +1,27 @@
+.set-kind-row {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0;
+}
+
+.set-kind-choice {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.set-kind-choice[aria-pressed='true'] {
+  font-weight: 700;
+  background: var(--color-raised);
+}
+
+.set-kind-marker {
+  margin-left: 6px;
+  font-weight: 700;
+  font-size: 0.8em;
+}
