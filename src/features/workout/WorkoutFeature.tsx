@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
 import { familyOf } from '../../domain/muscles'
+import { latestSet } from '../../domain/rest'
 import { ServiceError } from '../../services'
 import type {
   Exercise,
@@ -426,6 +427,19 @@ export function WorkoutFeature({
     if (plan && exercise) {
       const primaryMuscle = libraryMap.get(exercise.libraryId)?.primaryMuscles[0]
       const family = primaryMuscle === undefined ? undefined : familyOf(primaryMuscle)
+      // Rest is Session-wide: it follows the Session's latest Set, by its own Exercise's Plan rest.
+      const latest = latestSet(session.entries)
+      const latestPlan =
+        latest === null
+          ? undefined
+          : located.workout.exercises.find(
+              (candidate) =>
+                candidate.exerciseId === plannedExerciseIdFor(session, latest.exerciseId),
+            )
+      const restFrom =
+        latest === null || latestPlan === undefined
+          ? null
+          : { entry: latest, planRestSeconds: latestPlan.restSeconds }
       content = (
         <AppShell title={exercise.name} onBack={() => setView('list')} action={<ActionBarSlot />}>
           <ElapsedTime startedAt={session.startedAt} />
@@ -470,6 +484,17 @@ export function WorkoutFeature({
             }}
             onRestoreSet={async (entry) => {
               setSession(await services.sessions.restoreSet(session.id, entry))
+            }}
+            restFrom={restFrom}
+            onSetRest={async (entry, restSeconds) => {
+              setSession(
+                await services.sessions.setRest(
+                  session.id,
+                  entry.exerciseId,
+                  entry.setIndex,
+                  restSeconds,
+                ),
+              )
             }}
             onLog={(id, entry) => services.sessions.logSet(id, entry)}
             onLogged={(logged) => {

@@ -49,9 +49,42 @@
 /* The rest left, read off the clock. Tabular figures so the seconds do not shift the line as
  * they count down. */
 .rest-timer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
   color: var(--color-muted);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
+}
+
+/* The rest readout (E13-T8): the time alone, a button the rest Dial will open from. */
+.rest-readout {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+/* −15 s, +15 s and Skip, offered only while rest runs. */
+.rest-controls {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.rest-adjust,
+.rest-skip {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
 }
 
 /* The two controls reach the tap-target floor wherever they are rendered -- the action bar
