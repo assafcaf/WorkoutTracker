@@ -20,6 +20,11 @@ export type SetScreenProps = {
   sessionId: string
   lastEntries: SetEntry[]
   /**
+   * The last finished Session's entries for this Exercise (E12-T4), not merged with today's, shown
+   * as the "Last time" line. Optional; empty or omitted shows no line.
+   */
+  lastTime?: SetEntry[]
+  /**
    * Persists one Set to the Session `sessionId` and answers the Session as stored (E11-T10); a
    * rejection's message is shown under the set as it stands. The screen persists nothing itself.
    */
@@ -110,6 +115,15 @@ export function setCounterText(
   return setIndex > plannedSets ? `Set ${setIndex} · extra` : `Set ${setIndex} of ${plannedSets}`
 }
 
+/** "80×8 · 80×8 · 80×7", in set order; a Bodyweight Set reads "BW×8". */
+function lastTimeText(exerciseId: string, entries: SetEntry[]): string {
+  return entries
+    .filter((entry) => entry.exerciseId === exerciseId)
+    .sort((a, b) => a.setIndex - b.setIndex)
+    .map((entry) => `${entry.weightKg === null ? 'BW' : entry.weightKg}×${entry.reps}`)
+    .join(' · ')
+}
+
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
 const TICK_MS = 500
 
@@ -196,6 +210,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
   // and otherwise the catalog's own; the Dial and Ladder both follow it via `effectiveExercise`.
+  const lastTime = lastTimeText(exercise.id, props.lastTime ?? [])
   const [weightStep, setWeightStep] = useState<number>(
     props.weightStep ?? exercise.weightStep,
   )
@@ -345,6 +360,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </button>
       </div>
       <p className="set-counter">{setCounterText(open.setIndex, plan.sets, loggedCount, done)}</p>
+
+      {lastTime === '' ? null : <p className="set-last-time">Last time: {lastTime}</p>}
 
       <WeightDial
         exercise={effectiveExercise}

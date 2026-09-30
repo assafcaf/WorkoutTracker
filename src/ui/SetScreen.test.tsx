@@ -789,3 +789,47 @@ test('O9 an onLog that rejects shows its message inline and leaves the same set 
   expect(screen.getByText('Set 2 of 4')).toBeVisible()
   expect(onLogged).not.toHaveBeenCalled()
 })
+
+test('O10 lastTime shows the last finished session as one "Last time" line', () => {
+  renderSetScreen({
+    lastTime: [historyEntry(1, 80, 8), historyEntry(2, 80, 8), historyEntry(3, 80, 7)],
+  })
+
+  expect(screen.getByText('Last time: 80×8 · 80×8 · 80×7')).toBeVisible()
+})
+
+test('O10 a bodyweight set in lastTime reads BW×8', () => {
+  renderSetScreen({
+    exercise: pushUps,
+    plan: pushUpPlan,
+    lastTime: [{ exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 8, loggedAt: BASE }],
+  })
+
+  expect(screen.getByText('Last time: BW×8')).toBeVisible()
+})
+
+test('O10 with no lastTime there is no Last time line', () => {
+  renderSetScreen({ lastTime: [] })
+
+  expect(screen.queryByText(/Last time/)).toBeNull()
+})
+
+test('O10 sets logged today never change the Last time line', async () => {
+  const { user } = renderSetScreen({ lastTime: [historyEntry(1, 80, 8)] })
+
+  await user.click(logButton())
+  await screen.findByText('Set 2 of 4')
+
+  expect(screen.getByText('Last time: 80×8')).toBeVisible()
+})
+
+test('O11 a preset set is logged by one tap on Log set', async () => {
+  const { user, onLog } = renderSetScreen({
+    lastEntries: [historyEntry(1, 80, 8)],
+    lastTime: [historyEntry(1, 80, 8)],
+  })
+
+  await user.click(logButton())
+
+  expect(onLog).toHaveBeenCalledTimes(1)
+})
