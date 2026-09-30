@@ -201,10 +201,14 @@ export async function setNote(
   note: string,
   now: number = Date.now(),
 ): Promise<Session> {
-  void sessionId
-  void note
-  void now
-  throw new Error('NotImplementedError: setNote')
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const { note: _previous, ...rest } = session
+    void _previous
+    const updated: Session = note.trim() === '' ? { ...rest, updatedAt: now } : { ...rest, note, updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
 }
 
 /** Removes one logged Set, renumbering the Exercise's later Sets down by one. */

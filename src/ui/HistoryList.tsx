@@ -145,6 +145,7 @@ function HistoryCard(props: { session: Session } & Omit<HistoryListProps, 'sessi
               </li>
             ))}
           </ul>
+          {session.note ? <p className="history-note">{session.note}</p> : null}
           {onOpen ? (
             <button type="button" className="history-open" onClick={() => onOpen(session.id)}>
               Open session
