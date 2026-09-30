@@ -25,8 +25,7 @@ function isFinished(session: Session): boolean {
 
 /** False when the Session has been discarded or deleted (`deletedAt` set) (E12-T1). */
 export function isLive(session: Session): boolean {
-  void session
-  throw new Error('not implemented: isLive (E12-T1)')
+  return session.deletedAt === undefined
 }
 
 /**
@@ -34,9 +33,10 @@ export function isLive(session: Session): boolean {
  * Rejects with `no session <id> is stored` for an unknown id.
  */
 export async function discardSession(sessionId: string, now: number): Promise<void> {
-  void sessionId
-  void now
-  throw new Error('not implemented: discardSession (E12-T1)')
+  await db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    await db.sessions.put({ ...session, deletedAt: now, updatedAt: now })
+  })
 }
 
 /**
@@ -44,7 +44,10 @@ export async function discardSession(sessionId: string, now: number): Promise<vo
  * keeps the newest end, so only sessions older than it fall out of reach.
  */
 async function finishedSessionsNewestFirst(limit?: number): Promise<Session[]> {
-  const finished = db.sessions.orderBy('startedAt').reverse().filter(isFinished)
+  const finished = db.sessions
+    .orderBy('startedAt')
+    .reverse()
+    .filter((session) => isFinished(session) && isLive(session))
   return limit === undefined ? finished.toArray() : finished.limit(limit).toArray()
 }
 
@@ -62,7 +65,7 @@ export const STALE_SESSION_MS = 4 * 60 * 60 * 1000
 
 /**
  * Finishes the Session in progress at its last activity when that was `STALE_SESSION_MS` or
- * more before `now`, or deletes it when it holds no Sets (E8-T6).
+ * more before `now`, or marks it deleted when it holds no Sets (E8-T6, E12-T1).
  */
 export async function finishStaleSession(now: number): Promise<void> {
   await db.transaction('rw', db.sessions, async () => {
@@ -73,9 +76,11 @@ export async function finishStaleSession(now: number): Promise<void> {
       active.startedAt,
     )
     if (now - lastActivity < STALE_SESSION_MS) return
-    // An empty session has nothing for history or presets, so it goes rather than finishes.
-    if (active.entries.length === 0) await db.sessions.delete(active.id)
-    else await db.sessions.put({ ...active, finishedAt: lastActivity, updatedAt: now })
+    // An empty session has nothing for history or presets, so it goes rather than finishes:
+    // marked deleted, not removed, so the deletion syncs to other devices (E12-T1).
+    if (active.entries.length === 0) {
+      await db.sessions.put({ ...active, deletedAt: now, updatedAt: now })
+    } else await db.sessions.put({ ...active, finishedAt: lastActivity, updatedAt: now })
   })
 }
 
@@ -110,13 +115,13 @@ export async function startOrResumeSession(
 }
 
 /**
- * The session with `finishedAt === null`, or null when there is none.
+ * The live session with `finishedAt === null`, or null when there is none.
  */
 export async function getActiveSession(): Promise<Session | null> {
   const active = await db.sessions
     .orderBy('startedAt')
     .reverse()
-    .filter((session) => !isFinished(session))
+    .filter((session) => !isFinished(session) && isLive(session))
     .first()
   return active ?? null
 }

@@ -1,5 +1,6 @@
 import {
   clearSwap,
+  discardSession,
   finishSession,
   finishStaleSession,
   getActiveSession,
@@ -56,6 +57,7 @@ const HISTORY_FAILED = 'the history could not be read'
 const LOG_FAILED = 'the set could not be saved'
 /** The History editor shows a failed save's message under its Sets (E12-T6). */
 const SAVE_FAILED = 'the workout could not be saved'
+const DISCARD_FAILED = 'the workout could not be deleted'
 
 /** `sessionStore`'s rejection for an id it does not hold (`requireSession`). */
 const MISSING_SESSION = /^no session .* is stored$/
@@ -240,8 +242,7 @@ export function createSessionService(deps: ServiceDeps): SessionService {
 
     /** Marks the Session deleted through `discardSession` (E12-T1). */
     async discard(sessionId) {
-      void sessionId
-      throw new Error('not implemented: SessionService.discard (E12-T1)')
+      await write(sessionId, () => discardSession(sessionId, now()), DISCARD_FAILED)
     },
   }
 }
