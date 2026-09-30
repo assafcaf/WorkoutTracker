@@ -10,6 +10,9 @@ import {
   getLastSwap,
   listSessions,
   logSet,
+  deleteSet,
+  restoreSet,
+  updateSet,
   putSessions,
   replaceAllSessions,
   sessionsChangedSince,
@@ -1091,5 +1094,120 @@ describe('D4 inTransaction commits the writes inside it together or not at all',
     expect(await db.sessions.toArray()).toEqual([
       storedSession({ id: 'in-progress', finishedAt: null, updatedAt: BASE }),
     ])
+  })
+})
+
+// --- E12-T2: updateSet, deleteSet, restoreSet ------------------------------------------------
+
+describe('E12-T2 editing a logged Set', () => {
+  const squat1 = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+  const squat2 = entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND)
+  const squat3 = entry('back-squat', 3, 65, 5, BASE + 300 * SECOND)
+  const press1 = entry('press', 1, 30, 10, BASE + 150 * SECOND)
+
+  async function seed(): Promise<string> {
+    await db.sessions.put(
+      storedSession({
+        id: 'editing',
+        finishedAt: null,
+        entries: [squat1, press1, squat2, squat3],
+        updatedAt: BASE + 400 * SECOND,
+      }),
+    )
+    return 'editing'
+  }
+
+  test('O1 updateSet stores the new weight and reps, keeping setIndex and loggedAt', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 2, { weightKg: 70, reps: 4 }, BASE + 900 * SECOND)
+
+    const expected = [squat1, press1, entry('back-squat', 2, 70, 4, BASE + 200 * SECOND), squat3]
+    expect(updated.entries).toEqual(expected)
+    expect((await db.sessions.get(id))?.entries).toEqual(expected)
+  })
+
+  test('O1 updateSet advances the Session updatedAt to now', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 2, { weightKg: 70, reps: 4 }, BASE + 900 * SECOND)
+
+    expect(updated.updatedAt).toBe(BASE + 900 * SECOND)
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 900 * SECOND)
+  })
+
+  test('O1 updateSet accepts a null weight', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 1, { weightKg: null, reps: 12 }, BASE + 900 * SECOND)
+
+    expect(updated.entries[0]).toEqual(entry('back-squat', 1, null, 12, BASE + 100 * SECOND))
+  })
+
+  test('O1 updateSet on a missing Session rejects naming the id', async () => {
+    await expect(updateSet('nope', 'back-squat', 1, { weightKg: 1, reps: 1 })).rejects.toThrow(
+      'no session nope is stored',
+    )
+  })
+
+  test('O1 updateSet on a Set that is not logged rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(
+      updateSet(id, 'back-squat', 9, { weightKg: 1, reps: 1 }, BASE + 900 * SECOND),
+    ).rejects.toThrow(/no set/i)
+
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
+  })
+
+  test('O2 deleteSet renumbers the later Sets down, keeps loggedAt and other Exercises untouched', async () => {
+    const id = await seed()
+
+    const { session, removed } = await deleteSet(id, 'back-squat', 2, BASE + 900 * SECOND)
+
+    expect(removed).toEqual(squat2)
+    const expected = [squat1, press1, entry('back-squat', 2, 65, 5, BASE + 300 * SECOND)]
+    expect(session.entries).toEqual(expected)
+    expect((await db.sessions.get(id))?.entries).toEqual(expected)
+  })
+
+  test('O2 deleteSet advances the Session updatedAt to now', async () => {
+    const id = await seed()
+
+    const { session } = await deleteSet(id, 'back-squat', 2, BASE + 900 * SECOND)
+
+    expect(session.updatedAt).toBe(BASE + 900 * SECOND)
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 900 * SECOND)
+  })
+
+  test('O2 deleteSet on a missing Session rejects naming the id', async () => {
+    await expect(deleteSet('nope', 'back-squat', 1)).rejects.toThrow('no session nope is stored')
+  })
+
+  test('O2 deleteSet on a Set that is not logged rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(deleteSet(id, 'press', 2, BASE + 900 * SECOND)).rejects.toThrow(/no set/i)
+
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
+    expect((await db.sessions.get(id))?.entries).toHaveLength(4)
+  })
+
+  test('O3 restoreSet puts the removed Set back so the Exercise equals the original Sets 1, 2 and 3', async () => {
+    const id = await seed()
+    const { removed } = await deleteSet(id, 'back-squat', 2, BASE + 900 * SECOND)
+
+    const restored = await restoreSet(id, removed, BASE + 1000 * SECOND)
+
+    const byIndex = (entries: SetEntry[]) =>
+      entries.filter((one) => one.exerciseId === 'back-squat').sort((a, b) => a.setIndex - b.setIndex)
+    expect(byIndex(restored.entries)).toEqual([squat1, squat2, squat3])
+    expect(restored.entries.filter((one) => one.exerciseId === 'press')).toEqual([press1])
+    expect(restored.updatedAt).toBe(BASE + 1000 * SECOND)
+    expect(byIndex((await db.sessions.get(id))!.entries)).toEqual([squat1, squat2, squat3])
+  })
+
+  test('O3 restoreSet on a missing Session rejects naming the id', async () => {
+    await expect(restoreSet('nope', squat1)).rejects.toThrow('no session nope is stored')
   })
 })

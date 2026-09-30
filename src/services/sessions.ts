@@ -7,6 +7,9 @@ import {
   getLastSwap,
   listSessions,
   logSet,
+  deleteSet,
+  restoreSet,
+  updateSet,
   setSwap,
   startOrResumeSession,
 } from '../storage/sessionStore'
@@ -18,6 +21,18 @@ export type SessionService = {
   resumeActive(): Promise<Session | null>
   start(programId: string, workoutId: string): Promise<Session>
   logSet(sessionId: string, entry: SetEntry): Promise<Session>
+  updateSet(
+    sessionId: string,
+    exerciseId: string,
+    setIndex: number,
+    values: { weightKg: number | null; reps: number },
+  ): Promise<Session>
+  deleteSet(
+    sessionId: string,
+    exerciseId: string,
+    setIndex: number,
+  ): Promise<{ session: Session; removed: SetEntry }>
+  restoreSet(sessionId: string, entry: SetEntry): Promise<Session>
   finish(sessionId: string): Promise<Session>
   lastEntriesFor(exerciseId: string): Promise<SetEntry[]>
   lastEntriesForSession(session: Session | null, programs: Program[]): Promise<Map<string, SetEntry[]>>
@@ -118,6 +133,22 @@ export function createSessionService(deps: ServiceDeps): SessionService {
 
     async logSet(sessionId, entry) {
       return write(sessionId, () => logSet(sessionId, entry, now()), LOG_FAILED)
+    },
+
+    async updateSet(sessionId, exerciseId, setIndex, values) {
+      return write(
+        sessionId,
+        () => updateSet(sessionId, exerciseId, setIndex, values, now()),
+        LOG_FAILED,
+      )
+    },
+
+    async deleteSet(sessionId, exerciseId, setIndex) {
+      return write(sessionId, () => deleteSet(sessionId, exerciseId, setIndex, now()), LOG_FAILED)
+    },
+
+    async restoreSet(sessionId, entry) {
+      return write(sessionId, () => restoreSet(sessionId, entry, now()), LOG_FAILED)
     },
 
     async finish(sessionId) {
