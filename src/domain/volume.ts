@@ -1,12 +1,13 @@
 import type { Program, Session } from '../types'
 import type { Resolve } from './muscles'
+import { workingSets } from './setKind'
 
 /** One Session's loaded volume and bodyweight reps, by the rule `volumeSeries` uses. */
 export function sessionVolume(session: Session, resolve: Resolve): { kg: number; bodyweightReps: number } {
   let kg = 0
   let bodyweightReps = 0
 
-  for (const entry of session.entries) {
+  for (const entry of workingSets(session.entries)) {
     const exercise = resolve(entry.exerciseId)
     if (!exercise) continue
 

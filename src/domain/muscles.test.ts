@@ -281,6 +281,36 @@ const EIGHTEEN_REGIONS: readonly Region[] = [
   'neck',
 ]
 
+test('O3 muscleSets answers what it answers with the warm-up Sets removed', () => {
+  const entries: SetEntry[] = [
+    setEntry({ exerciseId: 'back-squat', kind: 'warmup' }),
+    setEntry({ exerciseId: 'back-squat' }),
+  ]
+
+  const result = muscleSets(entries, squatResolve, squatLibraryMap)
+
+  expect(result.get('quadriceps')).toBe(1)
+  expect(result.get('glutes')).toBe(0.5)
+})
+
+test('O3 weekSets answers what it answers with the warm-up Sets removed', () => {
+  const now = 10 * 24 * 60 * 60 * 1000
+  const sessions = [
+    session({
+      id: 'week',
+      entries: [
+        setEntry({ exerciseId: 'back-squat', loggedAt: now - 1000, kind: 'warmup' }),
+        setEntry({ exerciseId: 'back-squat', loggedAt: now - 2000 }),
+      ],
+    }),
+  ]
+
+  const result = weekSets(sessions, now, squatResolve, squatLibraryMap)
+
+  expect(result.get('quadriceps')).toBe(1)
+  expect(result.get('glutes')).toBe(0.5)
+})
+
 test('O6 every Region musclesForRegion returns muscles that all share one family', () => {
   for (const region of EIGHTEEN_REGIONS) {
     const muscles = musclesForRegion(region)
