@@ -1042,3 +1042,102 @@ test('O9 a Set with rir reads RIR n in the logged-set list', async () => {
   const list = screen.getByRole('list', { name: 'Sets logged' })
   await waitFor(() => expect(list.textContent).toMatch(/× \d+\s*· RIR 1$/), SETTLE)
 })
+
+// --- E14-T14: the Load Dial and the tap budget (O17, O19) ------------------------------------
+
+// Workout A's push-ups Plan is 3 Sets of 10–15 with no amrapLast, so nothing preselects a kind;
+// push-ups is Bodyweight with a 1 kg weight step.
+
+/**
+ * Last time's push-ups, finished: set 1 at BW+10 × 12. Then today's Session in progress, holding
+ * `today` (none by default).
+ */
+async function pushUpsLastTimeAtBwPlus10(today: SetEntry[] = []): Promise<Services> {
+  const services = await servicesOnAssafAB()
+  const last = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  await services.sessions.logSet(last.id, {
+    exerciseId: 'push-ups',
+    setIndex: 1,
+    weightKg: null,
+    reps: 12,
+    loadKg: 10,
+    loggedAt: NOW,
+  })
+  await services.sessions.finish(last.id)
+  const started = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  for (const entry of today) await services.sessions.logSet(started.id, entry)
+  return services
+}
+
+function loadReadoutValue(): string {
+  const readout = screen.getByRole('button', { name: 'Load' })
+  return (readout.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
+test('O19 with the kind row, the Load Dial, a note and effort on, a Set matching its Preset logs with one tap on Log set, stored as working with no rir', async () => {
+  const services = await pushUpsLastTimeAtBwPlus10()
+  await services.preferences.setExerciseNote('push-ups', 'hands under shoulders')
+  await db.settings.put({ key: 'effortTracking', value: true, updatedAt: NOW })
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Push-ups')
+
+  // Every R3 control is on screen before the tap.
+  await screen.findByRole('group', { name: 'Load' }, SETTLE)
+  expect(loadReadoutValue()).toBe('BW+10')
+  expect(screen.getByRole('group', { name: 'Set kind' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute('aria-pressed', 'true')
+  expect(await screen.findByText('hands under shoulders', undefined, SETTLE)).toBeVisible()
+
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+
+  expect(await screen.findByText('Set 2 of 3', undefined, SETTLE)).toBeVisible()
+  await waitFor(async () => expect((await storedActiveSession())?.entries).toHaveLength(1), SETTLE)
+  const [logged] = (await storedActiveSession())?.entries ?? []
+  expect(logged).toEqual({
+    exerciseId: 'push-ups',
+    setIndex: 1,
+    weightKg: null,
+    reps: 12,
+    loadKg: 10,
+    loggedAt: expect.any(Number),
+  })
+  expect('kind' in logged).toBe(false)
+  expect('rir' in logged).toBe(false)
+})
+
+test('O17 a push-ups Set logged at BW−20 on the Load Dial is stored with loadKg -20', async () => {
+  const { user } = renderFeature(await pushUpsLastTimeAtBwPlus10())
+  await openExercise(user, 'Push-ups')
+
+  const ladder = await screen.findByRole('listbox', { name: 'Load ladder' }, SETTLE)
+  await user.click(within(ladder).getByRole('option', { name: 'BW−20' }))
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+
+  await waitFor(async () => {
+    expect((await storedActiveSession())?.entries[0]).toMatchObject({
+      exerciseId: 'push-ups',
+      weightKg: null,
+      loadKg: -20,
+    })
+  }, SETTLE)
+})
+
+test('O17 editing a logged BW+10 Set to BW+12 stores loadKg 12 through services.sessions.updateSet', async () => {
+  const { user } = renderFeature(
+    await pushUpsLastTimeAtBwPlus10([
+      { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 12, loadKg: 10, loggedAt: NOW + 1 },
+    ]),
+  )
+  await openExercise(user, 'Push-ups')
+
+  await user.click(await screen.findByRole('button', { name: 'BW+10 × 12' }, SETTLE))
+  expect(loadReadoutValue()).toBe('BW+10')
+  await user.click(
+    within(screen.getByRole('listbox', { name: 'Load ladder' })).getByRole('option', { name: 'BW+12' }),
+  )
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(async () => {
+    expect((await storedActiveSession())?.entries[0]?.loadKg).toBe(12)
+  }, SETTLE)
+})

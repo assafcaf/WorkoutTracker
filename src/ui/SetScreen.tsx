@@ -10,6 +10,7 @@ import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
+import { LoadDial } from './LoadDial'
 import { RepsDial } from './RepsDial'
 import { RestDial } from './RestDial'
 import { SetKindRow } from './SetKindRow'
@@ -46,7 +47,7 @@ export type SetScreenProps = {
   /** Stores new values for logged Set `setIndex` (E12-T3). */
   onEditSet?(
     setIndex: number,
-    values: { weightKg: number | null; reps: number; kind?: SetKind | null },
+    values: { weightKg: number | null; reps: number; kind?: SetKind | null; loadKg?: number | null },
   ): Promise<void>
   /** Removes logged Set `setIndex`, answering it so Undo can put it back (E12-T3). */
   onDeleteSet?(setIndex: number): Promise<SetEntry>
@@ -206,8 +207,22 @@ const CONFIRMED_MS = 1500
 /** The one-letter marker a Set of another kind carries in the logged list (E14-T9). */
 const KIND_MARKERS: Record<SetKind, string> = { warmup: 'W', drop: 'D', failure: 'F', amrap: 'A' }
 
-/** The set on the dials: which one it is and the two values it will be logged with. */
-type OpenSet = { setIndex: number; weightKg: number | null; reps: number; kind: SetKind | null }
+/**
+ * The set on the dials: which one it is and the values it will be logged with. `loadKg` is a
+ * Bodyweight Set's signed Load (E14-T14), 0 for plain bodyweight and on a loaded Exercise.
+ */
+type OpenSet = {
+  setIndex: number
+  weightKg: number | null
+  reps: number
+  kind: SetKind | null
+  loadKg: number
+}
+
+/** The `loadKg` a Set on the dials is logged with: none at plain bodyweight (E14-T14). */
+function loadOf(open: OpenSet): { loadKg: number } | Record<string, never> {
+  return open.loadKg === 0 ? {} : { loadKg: open.loadKg }
+}
 
 /**
  * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
@@ -250,7 +265,8 @@ function openSetFor(
       ? setIndex
       : 1 + workingSets(logged).filter((entry) => entry.setIndex < setIndex).length
   const kind = plan.amrapLast === true && position === plan.sets ? 'amrap' : null
-  return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries, logged }), kind }
+  const { loadKg, ...preset } = presetForSet({ exercise, plan, setIndex, lastEntries, logged })
+  return { setIndex, ...preset, kind, loadKg: exercise.bodyweight ? (loadKg ?? 0) : 0 }
 }
 
 /**
@@ -514,7 +530,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   async function log(): Promise<void> {
     unlockRestSound()
-    const validation = validateEntry(open.weightKg, open.reps)
+    const validation = validateEntry(open.weightKg, open.reps, open.loadKg)
     if (!validation.ok) {
       setError(validation.error)
       return
@@ -526,6 +542,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setIndex: open.setIndex,
       weightKg: open.weightKg,
       reps: open.reps,
+      ...loadOf(open),
       loggedAt,
       ...(open.kind === null ? {} : { kind: open.kind }),
     }
@@ -591,6 +608,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       weightKg: entry.weightKg,
       reps: entry.reps,
       kind: entry.kind ?? null,
+      loadKg: entry.loadKg ?? 0,
     })
   }
 
@@ -604,7 +622,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   async function saveSet(): Promise<void> {
     if (editing === null || props.onEditSet === undefined) return
-    const validation = validateEntry(open.weightKg, open.reps)
+    const validation = validateEntry(open.weightKg, open.reps, open.loadKg)
     if (!validation.ok) {
       setError(validation.error)
       return
@@ -616,17 +634,21 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       weightKg: open.weightKg,
       reps: open.reps,
       ...(kindChanged ? { kind: open.kind } : {}),
+      // A Bodyweight Set always sends its Load, null at plain bodyweight to remove one (E14-T14).
+      ...(exercise.bodyweight ? { loadKg: open.loadKg === 0 ? null : open.loadKg } : {}),
     }
     try {
       await props.onEditSet(editing, values)
       const edited = loggedSets.map((entry) => {
         if (entry.setIndex !== editing) return entry
-        const { kind: _was, ...unkinded } = entry
+        const { kind: _was, loadKg: _wasLoad, ...unkinded } = entry
         void _was
+        void _wasLoad
         return {
           ...unkinded,
           weightKg: values.weightKg,
           reps: values.reps,
+          ...loadOf(open),
           ...(open.kind === null ? {} : { kind: open.kind }),
         }
       })
@@ -900,6 +922,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         onStepChange={handleStepChange}
       />
       <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+      {exercise.bodyweight ? (
+        <LoadDial step={weightStep} value={open.loadKg} onChange={(loadKg) => setOpen({ ...open, loadKg })} />
+      ) : null}
       <SetKindRow value={open.kind} onChange={(kind) => setOpen({ ...open, kind })} />
 
       {error === null ? null : (
