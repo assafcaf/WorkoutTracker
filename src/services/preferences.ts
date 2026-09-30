@@ -2,10 +2,12 @@ import type { ServiceDeps } from './deps'
 import type { VolumeBaseline } from '../types'
 import { callStorage } from './errors'
 import {
+  getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
   getVolumeBaseline,
   getWeightStep,
+  setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
   setVolumeBaseline as storeVolumeBaseline,
   setWeightStep as storeWeightStep,
@@ -51,8 +53,13 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
     volumeBaseline: () => callStorage(deps, getVolumeBaseline, 'volumeBaseline read failed'),
     setVolumeBaseline: (baseline) => write(() => storeVolumeBaseline(baseline, deps.now())),
     lastExportedAt: () => callStorage(deps, getLastExportedAt, 'lastExportedAt read failed'),
-    // STUB (E14-T3 test-designer): not implemented yet.
-    exerciseNote: () => Promise.reject(new Error('NotImplementedError')),
-    setExerciseNote: () => Promise.reject(new Error('NotImplementedError')),
+    exerciseNote: (exerciseId) =>
+      callStorage(
+        deps,
+        async () => (await getExerciseNotes())[exerciseId] ?? null,
+        'exerciseNote read failed',
+      ),
+    setExerciseNote: (exerciseId, text) =>
+      write(() => storeExerciseNote(exerciseId, text, deps.now())),
   }
 }

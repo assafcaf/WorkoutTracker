@@ -144,6 +144,37 @@ export async function setWeightSteps(
 /** The `settings` table key every Exercise note is kept under, in one row (E14-T3). */
 export const EXERCISE_NOTES_KEY = 'exerciseNotes'
 
+/** The longest note kept; a longer one is cut to its first characters. */
+export const MAX_EXERCISE_NOTE_LENGTH = 500
+
+/** Every Exercise note by Exercise id; `{}` when none has been stored. */
+export async function getExerciseNotes(): Promise<Record<string, string>> {
+  const value = (await db.settings.get(EXERCISE_NOTES_KEY))?.value
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+  const notes: Record<string, string> = {}
+  for (const [id, note] of Object.entries(value)) {
+    if (typeof note === 'string') notes[id] = note
+  }
+  return notes
+}
+
+/**
+ * Stores `text` as `exerciseId`'s note, keeping every other Exercise's note. An empty or
+ * whitespace-only `text` removes the Exercise's key; a longer-than-500 one is cut to 500.
+ */
+export async function setExerciseNote(
+  exerciseId: string,
+  text: string,
+  now: number = Date.now(),
+): Promise<void> {
+  await db.transaction('rw', db.settings, async () => {
+    const notes = await getExerciseNotes()
+    if (text.trim() === '') delete notes[exerciseId]
+    else notes[exerciseId] = text.slice(0, MAX_EXERCISE_NOTE_LENGTH)
+    await db.settings.put({ key: EXERCISE_NOTES_KEY, value: notes, updatedAt: now })
+  })
+}
+
 /** The `settings` table key the volume baseline choice is stored under (E8). */
 export const VOLUME_BASELINE_KEY = 'volumeBaseline'
 
