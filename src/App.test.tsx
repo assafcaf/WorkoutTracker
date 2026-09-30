@@ -2944,8 +2944,36 @@ describe('E8-T4', { timeout: 15_000 }, () => {
   })
 
   test('O1 pressing Finish exercise returns to the Workout’s exercise list', async () => {
+    // Finish exercise leads on to the next unfinished Exercise (E13-T12), so it returns to the
+    // list only when every other Exercise is done: seed those, log back squat's last Set, finish.
     const user = userEvent.setup()
-    await logAllThreePlannedBackSquatSets(user)
+    const now = Date.now()
+    const done = (exerciseId: string, count: number, offset: number): SetEntry[] =>
+      Array.from({ length: count }, (_, index) => ({
+        exerciseId,
+        setIndex: index + 1,
+        weightKg: 20,
+        reps: 10,
+        loggedAt: now - offset + index,
+      }))
+    await db.sessions.put({
+      id: 'others-done',
+      programId: 'full-body-starter',
+      workoutId: 'full-body',
+      startedAt: now - 20 * 60 * 1000,
+      finishedAt: null,
+      entries: [
+        ...done('back-squat', 2, 4 * 60 * 1000),
+        ...done('db-bench-press', 3, 3 * 60 * 1000),
+        ...done('machine-row', 3, 2 * 60 * 1000),
+        ...done('hyper-extension', 2, 1 * 60 * 1000),
+      ],
+      updatedAt: now,
+    })
+    await setActiveProgramId('full-body-starter')
+    await renderApp()
+    await openExercise(user, 'Back squat')
+    await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
 
     await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
 

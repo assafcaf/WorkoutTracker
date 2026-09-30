@@ -532,3 +532,94 @@ test('O4 after the latest Set is deleted, rest follows the new latest Set', asyn
 
   await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
 })
+
+// --- E13-T12 O11: Finish exercise leads on to the next unfinished Exercise --------------------
+
+/** Four back squat Sets (Workout A plans 4) at T0, for the done state. */
+const FOUR_SQUATS = [1, 2, 3, 4].map((setIndex) => ({
+  exerciseId: 'back-squat',
+  setIndex,
+  weightKg: 60,
+  loggedAt: T0,
+}))
+
+test('O11 the done state of back squat shows Up next: Lunges above Finish exercise', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
+  await openExercise(user, 'Back squat')
+
+  const upNext = await screen.findByText('Up next: Lunges', undefined, SETTLE)
+  const finish = screen.getByRole('button', { name: 'Finish exercise' })
+
+  expect(upNext.compareDocumentPosition(finish) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O11 Finish exercise opens the next Exercise on Set 1 of its plan', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
+  await openExercise(user, 'Back squat')
+
+  await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
+
+  expect(await screen.findByText('Set 1 of 3', undefined, SETTLE)).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Lunges' })).toBeVisible()
+})
+
+test('O11 after Finish exercise the next set screen still counts the rest from the last Set', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
+  await openExercise(user, 'Back squat')
+
+  await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
+
+  // Back squat's 180 s from T0, 100 s gone.
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
+})
+
+test('O11 Finish exercise skips a next Exercise whose Sets are all logged', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const lunges = [1, 2, 3].map((setIndex) => ({
+    exerciseId: 'lunges',
+    setIndex,
+    weightKg: 20,
+    loggedAt: T0,
+  }))
+  const { user } = renderFeature((await workoutAWithLogged([...FOUR_SQUATS, ...lunges])).services)
+  await openExercise(user, 'Back squat')
+
+  expect(await screen.findByText('Up next: DB bench press', undefined, SETTLE)).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Finish exercise' }))
+
+  expect(await screen.findByText('Set 1 of 4', undefined, SETTLE)).toBeVisible()
+})
+
+test('O11 with every Exercise done there is no Up next line and Finish exercise returns to the list', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const plans: Array<[string, number]> = [
+    ['back-squat', 4],
+    ['lunges', 3],
+    ['db-bench-press', 4],
+    ['push-ups', 3],
+    ['machine-shoulder-press', 3],
+    ['lateral-raises', 3],
+    ['cable-push-down', 3],
+  ]
+  const all = plans.flatMap(([exerciseId, count]) =>
+    Array.from({ length: count }, (_, index) => ({
+      exerciseId,
+      setIndex: index + 1,
+      weightKg: 20,
+      loggedAt: T0,
+    })),
+  )
+  const { user } = renderFeature((await workoutAWithLogged(all)).services)
+  await openExercise(user, 'Back squat')
+
+  const finish = await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE)
+  expect(screen.queryByText(/^Up next/)).toBeNull()
+  await user.click(finish)
+
+  const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  expect(progressOf(backSquat)).toBe('4/4')
+  expect(screen.queryByRole('button', { name: 'Finish exercise' })).toBeNull()
+})
