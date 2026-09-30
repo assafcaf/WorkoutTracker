@@ -20,6 +20,11 @@ export type SetScreenProps = {
   sessionId: string
   lastEntries: SetEntry[]
   /**
+   * The last finished Session's entries for this Exercise (E12-T4), not merged with today's, shown
+   * as the "Last time" line. Optional; empty or omitted shows no line.
+   */
+  lastTime?: SetEntry[]
+  /**
    * Persists one Set to the Session `sessionId` and answers the Session as stored (E11-T10); a
    * rejection's message is shown under the set as it stands. The screen persists nothing itself.
    */
