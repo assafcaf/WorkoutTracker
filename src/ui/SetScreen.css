@@ -172,3 +172,12 @@
   color: var(--color-surface);
   font-weight: 600;
 }
+
+.log-set--confirmed {
+  background: var(--color-primary);
+}
+
+.logged-sets li.just-logged {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
