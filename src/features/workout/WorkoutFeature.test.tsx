@@ -381,3 +381,22 @@ test('O12 cancelling the discard leaves the Session as it was', async () => {
   expect(progressOf(backSquat)).toBe('2/4')
   expect((await storedActiveSession())?.entries).toHaveLength(2)
 })
+
+test('O12 the exercise list and the set screen each show the Workout time', async () => {
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await startWorkout(user, 'Workout A')
+
+  expect(await screen.findByRole('timer', { name: 'Workout time' }, SETTLE)).toBeVisible()
+
+  await openExercise(user, 'Back squat')
+  await screen.findByRole('button', { name: 'Log set' }, SETTLE)
+
+  expect(screen.getByRole('timer', { name: 'Workout time' })).toBeVisible()
+})
+
+test('O12 the picker shows no Workout time', async () => {
+  renderFeature(await servicesOnAssafAB())
+  await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
+
+  expect(screen.queryByRole('timer', { name: 'Workout time' })).toBeNull()
+})
