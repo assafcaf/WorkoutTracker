@@ -17,7 +17,7 @@ import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
-import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
+import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
 
 /** The longest Exercise note, in characters (E14-T11). */
 const EXERCISE_NOTE_MAX = 500
@@ -43,7 +43,10 @@ export type SetScreenProps = {
    */
   logged?: SetEntry[]
   /** Stores new values for logged Set `setIndex` (E12-T3). */
-  onEditSet?(setIndex: number, values: { weightKg: number | null; reps: number }): Promise<void>
+  onEditSet?(
+    setIndex: number,
+    values: { weightKg: number | null; reps: number; kind?: SetKind | null },
+  ): Promise<void>
   /** Removes logged Set `setIndex`, answering it so Undo can put it back (E12-T3). */
   onDeleteSet?(setIndex: number): Promise<SetEntry>
   /** Puts a deleted Set back exactly (E12-T3). */

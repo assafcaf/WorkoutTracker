@@ -912,3 +912,35 @@ describe('E14-T2 the session service stores the effort of a Set', () => {
     expect(emitted()).toBe(0)
   })
 })
+
+describe('E14-T9 the session service changes a Set kind', () => {
+  const squat1 = entry('squat', 1, 60, 8, NOW - 300 * SECOND)
+  const squat2 = { ...entry('squat', 2, 62.5, 6, NOW - 200 * SECOND), kind: 'failure' as const }
+  const seed = (): Session =>
+    storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries: [squat1, squat2],
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O6 updateSet with a kind stores it through the service', async () => {
+    await putSessions([seed()])
+    const { service } = harness()
+
+    const updated = await service.updateSet('active', 'squat', 1, { weightKg: 60, reps: 8, kind: 'amrap' })
+
+    expect(updated.entries[0]).toEqual({ ...squat1, kind: 'amrap' })
+    expect((await stored('active'))?.entries[0]).toEqual({ ...squat1, kind: 'amrap' })
+  })
+
+  test('O6 updateSet with kind null removes the kind through the service', async () => {
+    await putSessions([seed()])
+    const { service } = harness()
+
+    const updated = await service.updateSet('active', 'squat', 2, { weightKg: 62.5, reps: 6, kind: null })
+
+    expect('kind' in updated.entries[1]).toBe(false)
+  })
+})

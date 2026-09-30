@@ -1,4 +1,4 @@
-import type { Session, SetEntry } from '../types'
+import type { Session, SetEntry, SetKind } from '../types'
 import { db } from './db'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 
@@ -156,7 +156,7 @@ export async function updateSet(
   sessionId: string,
   exerciseId: string,
   setIndex: number,
-  values: { weightKg: number | null; reps: number },
+  values: { weightKg: number | null; reps: number; kind?: SetKind | null },
   now: number = Date.now(),
 ): Promise<Session> {
   return db.transaction('rw', db.sessions, async () => {

@@ -903,8 +903,15 @@ function renderWithLogged(
         onLogged={() => undefined}
         onEditSet={async (setIndex, values) => {
           onEditSet(setIndex, values)
+          // Like the service (E14-T9): a kind sets the field, `null` removes it, absent keeps it.
+          const { kind, ...rest } = values
           setLogged((before) =>
-            before.map((entry) => (entry.setIndex === setIndex ? { ...entry, ...values } : entry)),
+            before.map((entry) => {
+              if (entry.setIndex !== setIndex) return entry
+              const { kind: was, ...others } = entry
+              const next = kind === undefined ? was : (kind ?? undefined)
+              return { ...others, ...rest, ...(next === undefined ? {} : { kind: next }) }
+            }),
           )
         }}
         onDeleteSet={async (setIndex) => {
@@ -2229,4 +2236,178 @@ test('O11 saving the note empty hands an empty string to onSaveExerciseNote', as
   await user.click(screen.getByRole('button', { name: 'Save note' }))
 
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(''))
+})
+
+// --- E14-T9: the set-kind row ----------------------------------------------------------------
+
+/** The kind buttons of the row under the Dials, which names the chosen one with aria-pressed. */
+function kindButton(label: string): HTMLElement {
+  return screen.getByRole('button', { name: label })
+}
+
+function chosenKinds(): string[] {
+  return ['W-up', 'Working', 'Drop', 'Fail', 'AMRAP'].filter(
+    (label) => kindButton(label).getAttribute('aria-pressed') === 'true',
+  )
+}
+
+test('O6 the set screen opens with the kind row on Working', () => {
+  renderSetScreen()
+
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O6 choosing Drop before Log set stores the Set with kind drop', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton('Drop'))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1].kind).toBe('drop')
+})
+
+test.each([
+  ['W-up', 'warmup'],
+  ['Fail', 'failure'],
+  ['AMRAP', 'amrap'],
+] as const)('O6 choosing %s before Log set stores kind %s', async (label, kind) => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton(label))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1].kind).toBe(kind)
+})
+
+test('O6 a Set logged on Working has no kind field', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect('kind' in onLog.mock.calls[0][1]).toBe(false)
+})
+
+test('O6 choosing another kind and back to Working stores no kind field', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton('Fail'))
+  await user.click(kindButton('Working'))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect('kind' in onLog.mock.calls[0][1]).toBe(false)
+})
+
+test('O6 after the log the kind row returns to Working', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton('Drop'))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(chosenKinds()).toEqual(['Working']))
+})
+
+test('O6 the next Set logged after a Drop has no kind', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton('Drop'))
+  await user.click(logButton())
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(chosenKinds()).toEqual(['Working']))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(2))
+  expect('kind' in onLog.mock.calls[1][1]).toBe(false)
+})
+
+test.each([
+  ['warmup', 'W'],
+  ['drop', 'D'],
+  ['failure', 'F'],
+  ['amrap', 'A'],
+] as const)('O6 a %s Set in the logged list carries the marker %s', (kind, marker) => {
+  renderWithLogged([{ ...loggedEntry(1, 80, 8), kind }])
+
+  const list = screen.getByRole('list', { name: 'Sets logged' })
+  expect(within(list).getByText(marker)).toBeVisible()
+})
+
+test('O6 a Working Set in the logged list carries no marker', () => {
+  renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 82.5, 6)])
+
+  const list = screen.getByRole('list', { name: 'Sets logged' })
+  for (const marker of ['W', 'D', 'F', 'A']) {
+    expect(within(list).queryByText(marker)).toBeNull()
+  }
+})
+
+test("O6 the marker does not change the logged Set button's name", () => {
+  renderWithLogged([{ ...loggedEntry(1, 80, 8), kind: 'drop' }])
+
+  expect(loggedSetNames()).toEqual(['80 × 8'])
+})
+
+test('O6 in edit mode the kind row shows the Set kind', async () => {
+  const { user } = renderWithLogged([{ ...loggedEntry(1, 80, 8), kind: 'failure' }])
+
+  await user.click(loggedSetButton('80 × 8'))
+
+  expect(chosenKinds()).toEqual(['Fail'])
+})
+
+test('O6 in edit mode a Working Set shows Working', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O6 Save set stores a changed kind', async () => {
+  const { user, onEditSet } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(kindButton('W-up'))
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet).toHaveBeenCalledWith(1, { weightKg: 80, reps: 8, kind: 'warmup' })
+})
+
+test('O6 Save set after choosing Working on a kinded Set removes the kind with null', async () => {
+  const { user, onEditSet } = renderWithLogged([{ ...loggedEntry(1, 80, 8), kind: 'drop' }])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(kindButton('Working'))
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet).toHaveBeenCalledWith(1, { weightKg: 80, reps: 8, kind: null })
+})
+
+test('O6 after Save set the row is back on Working for the next Set to log', async () => {
+  const { user, onEditSet } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(kindButton('Drop'))
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Save set' })).toBeNull())
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O6 Cancel in edit mode changes no kind and returns the row to Working', async () => {
+  const { user, onEditSet } = renderWithLogged([{ ...loggedEntry(1, 80, 8), kind: 'drop' }])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(kindButton('Fail'))
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  expect(onEditSet).not.toHaveBeenCalled()
+  expect(chosenKinds()).toEqual(['Working'])
 })
