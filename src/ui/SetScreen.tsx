@@ -534,20 +534,24 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </button>
     </>
   ) : !done ? (
-    <button
-      type="button"
-      className={justLogged === null ? 'log-set' : 'log-set log-set--confirmed'}
-      aria-label="Log set"
-      onClick={() => void log()}
-    >
-      {justLogged !== null
-        ? 'Logged ✓'
-        : rest === null
+    justLogged !== null ? (
+      <button
+        type="button"
+        className="log-set log-set--confirmed"
+        aria-label="Log set"
+        onClick={() => void log()}
+      >
+        Logged ✓
+      </button>
+    ) : (
+      <button type="button" className="log-set" aria-label="Log set" onClick={() => void log()}>
+        {rest === null
           ? 'Log set'
           : rest.isOver
             ? `Rest ${formatOver(rest.overSeconds)}`
             : `Rest ${formatRest(rest.remainingSeconds)}`}
-    </button>
+      </button>
+    )
   ) : (
     <>
       {onFinishExercise === undefined ? null : (

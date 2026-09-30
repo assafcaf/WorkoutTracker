@@ -175,6 +175,7 @@
 
 .log-set--confirmed {
   background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .logged-sets li.just-logged {
