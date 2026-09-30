@@ -57,6 +57,8 @@ export type ExercisePlan = {
   restSeconds: number
   /** The weight this Plan's Exercise starts at in this Program, overriding the catalog's (E9). */
   startWeightKg?: number
+  /** The Plan's last Set is to failure (AMRAP); present only when `true` (E14). */
+  amrapLast?: boolean
 }
 
 export type Workout = {
