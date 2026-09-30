@@ -9,3 +9,4 @@
 - On Windows, io.open(path,'w',encoding='utf-8') with no newline= writes CRLF (even with autocrlf false), causing whole-file rebase conflicts; pass newline='\n' writing repo files (E8-T8, 2026-09-25)
 - git reset --hard <epic> is denied by settings.json even in a clean worktree; when HEAD is an ancestor, git merge --ff-only <epic> (allowed) reaches the same commit (E9-T6, 2026-09-26)
 - Before red, grep App.test.tsx for the bundled program being hidden: if its the switch target in choose-another-program tests, visiblePrograms wiring breaks them; flag it in NOTES (E9-T6, 2026-09-26)
+- verify-red.sh wants the whole test command after `--` (`-- bash .claude/workflow/bin/vitest-gate.sh <files>`), not bare file paths; add `--deps node_modules --lockfile package-lock.json` to skip npm ci (E12-T1, 2026-09-30)
