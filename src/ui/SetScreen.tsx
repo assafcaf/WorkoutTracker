@@ -20,6 +20,10 @@ import type { MuscleFamily } from '../domain/muscles'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
 export type SetScreenProps = {
+  /** The Exercise note shown above the Dials (E14-T11); null or omitted shows Add note. */
+  exerciseNote?: string | null
+  /** Saves the Exercise note (500 characters at most); empty removes it (E14-T11). */
+  onSaveExerciseNote?(text: string): Promise<void>
   exercise: Exercise
   plan: ExercisePlan
   setIndex: number
