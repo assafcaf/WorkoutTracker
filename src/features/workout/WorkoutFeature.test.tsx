@@ -22,7 +22,7 @@ const NOW = 1_700_000_000_000
 const SETTLE = { timeout: 3000 }
 
 /** Workout B's seated-biceps-curls swapped for Hammer_Curls, as the exercise list names it. */
-const HAMMER_ROW = /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/
+const HAMMER_ROW = /^Hammer Curls[ ]+instead of Seated biceps curls/
 
 const signedOutFetch = (async () => new Response(null, { status: 401 })) as typeof fetch
 

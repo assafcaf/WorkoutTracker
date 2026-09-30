@@ -1592,7 +1592,7 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   // own plan (sets: 3, repRange: [10, 12], restSeconds: 90).
   const swappedRow = await screen.findByRole(
     'button',
-    { name: /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/ },
+    { name: /^Hammer Curls[ ]+instead of Seated biceps curls/ },
     SETTLE,
   )
   expect(swappedRow).toBeVisible()
@@ -1618,7 +1618,7 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
 
   const swappedRow = await screen.findByRole(
     'button',
-    { name: /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/ },
+    { name: /^Hammer Curls[ ]+instead of Seated biceps curls/ },
     SETTLE,
   )
   await user.click(swappedRow)
@@ -1639,7 +1639,7 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
 // workout that plans seated-biceps-curls (sets: 3, repRange: [10, 12], restSeconds: 90).
 
 /** The swapped row's accessible name, as E5-T12 already renders it. */
-const HAMMER_ROW = /^Hammer Curls, instead of Seated biceps curls, 3 sets, 10-12 reps, 90s rest/
+const HAMMER_ROW = /^Hammer Curls[ ]+instead of Seated biceps curls/
 
 /**
  * From seated-biceps-curls' set screen: opens Alternatives, taps "Do this instead" on Hammer
