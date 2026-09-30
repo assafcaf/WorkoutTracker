@@ -1,4 +1,5 @@
 import { epley } from './series'
+import { countsTowardStats } from './setKind'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
 export type RecordKind =
@@ -52,7 +53,7 @@ export function recordsFor(
 ): ExerciseRecord[] {
   const sets = sessions.flatMap((session) =>
     session.entries
-      .filter((entry) => entry.exerciseId === exercise.id)
+      .filter((entry) => entry.exerciseId === exercise.id && countsTowardStats(entry))
       .map((entry) => ({ weightKg: entry.weightKg, reps: entry.reps, at: session.startedAt })),
   )
 

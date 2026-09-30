@@ -1,8 +1,8 @@
 import type { SetEntry } from '../types'
 
-/** Stub (E14-T1): whether a Set counts toward stats. Not yet implemented. */
-export function countsTowardStats(_entry: SetEntry): boolean {
-  return true
+/** Whether a Set counts toward stats: every Set except a warm-up. */
+export function countsTowardStats(entry: SetEntry): boolean {
+  return entry.kind !== 'warmup'
 }
 
 export function workingSets(entries: SetEntry[]): SetEntry[] {

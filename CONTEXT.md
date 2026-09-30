@@ -38,6 +38,14 @@ catalog Exercise rather than the Program's Plan.
 See `docs/decisions/0002-pwa-local-first-workout-tracker.md`.
 _Avoid_: Entry, rep log, record
 
+**Set kind**:
+How a Set was performed, stored as the Set's optional `kind`: `warmup`, `drop`, `failure` or
+`amrap`. A normal (working) Set has no `kind`.
+
+**Warm-up**:
+A Set of kind `warmup`. It is logged and shown, but does not count toward stats: records, the
+e1RM series and progression ignore it (`countsTowardStats`).
+
 **Rest**:
 The time after a Set before the next, derived from the Set's `loggedAt` and its rest length (its own `restSeconds`, else the Plan's).
 
