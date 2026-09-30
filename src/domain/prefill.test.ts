@@ -187,3 +187,107 @@ test('O4 a Bodyweight Exercise still presets a null weight dial even with a Plan
 
   expect(result).toEqual({ weightKg: null, reps: pushUpsPlan.repRange[0] })
 })
+
+// --- E14-T8 O5: the Preset matches working Sets by position; warm-ups are skipped ------------
+
+function squatSet(
+  setIndex: number,
+  weightKg: number,
+  reps: number,
+  kind?: 'warmup',
+): SetEntry {
+  return {
+    exerciseId: 'back-squat',
+    setIndex,
+    weightKg,
+    reps,
+    loggedAt: setIndex,
+    ...(kind === undefined ? {} : { kind }),
+  }
+}
+
+/** Last time: two warm-ups, then three working Sets (60×8, 62.5×8, 65×6). */
+const warmedUpLastTime: SetEntry[] = [
+  squatSet(1, 40, 10, 'warmup'),
+  squatSet(2, 50, 8, 'warmup'),
+  squatSet(3, 60, 8),
+  squatSet(4, 62.5, 8),
+  squatSet(5, 65, 6),
+]
+
+test('O5 the first working Set opens on last time’s first working Set, past its two warm-ups', () => {
+  const result = presetForSet({
+    exercise: squatExercise,
+    plan: squatPlan,
+    setIndex: 1,
+    lastEntries: warmedUpLastTime,
+    logged: [],
+  })
+
+  expect(result).toEqual({ weightKg: 60, reps: 8 })
+})
+
+test('O5 the third working Set opens on last time’s third working Set when no warm-up was logged today', () => {
+  const result = presetForSet({
+    exercise: squatExercise,
+    plan: squatPlan,
+    setIndex: 3,
+    lastEntries: warmedUpLastTime,
+    logged: [squatSet(1, 60, 8), squatSet(2, 62.5, 8)],
+  })
+
+  expect(result).toEqual({ weightKg: 65, reps: 6 })
+})
+
+test('O5 a Set opened after today’s warm-up keeps the working target: last time’s first working Set', () => {
+  const result = presetForSet({
+    exercise: squatExercise,
+    plan: squatPlan,
+    setIndex: 2,
+    lastEntries: warmedUpLastTime,
+    logged: [squatSet(1, 20, 12, 'warmup')],
+  })
+
+  expect(result).toEqual({ weightKg: 60, reps: 8 })
+})
+
+test('O5 the second working Set after a warm-up and a working Set today opens on last time’s second working Set', () => {
+  const result = presetForSet({
+    exercise: squatExercise,
+    plan: squatPlan,
+    setIndex: 3,
+    lastEntries: warmedUpLastTime,
+    logged: [squatSet(1, 20, 12, 'warmup'), squatSet(2, 60, 8)],
+  })
+
+  expect(result).toEqual({ weightKg: 62.5, reps: 8 })
+})
+
+test('O5 past last time’s working Sets the Preset is its last working Set, never a warm-up logged after it', () => {
+  const lastEntries: SetEntry[] = [
+    squatSet(1, 55, 8),
+    squatSet(2, 57.5, 9),
+    squatSet(3, 40, 12, 'warmup'),
+  ]
+
+  const result = presetForSet({
+    exercise: squatExercise,
+    plan: squatPlan,
+    setIndex: 3,
+    lastEntries,
+  })
+
+  expect(result).toEqual({ weightKg: 57.5, reps: 9 })
+})
+
+test('O5 a last time of warm-ups only presets the Exercise start weight and the rep floor', () => {
+  const result = presetForSet({
+    exercise: squatExercise,
+    plan: squatPlan,
+    setIndex: 1,
+    lastEntries: [squatSet(1, 30, 10, 'warmup'), squatSet(2, 40, 8, 'warmup')],
+    logged: [],
+  })
+
+  expect(result).toEqual({ weightKg: 50, reps: 8 })
+})

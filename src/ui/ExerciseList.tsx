@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { workingSets } from '../domain/setKind'
 import './ExerciseList.css'
 import { VolumeVsBaseline } from './VolumeVsBaseline'
 import type {
@@ -63,9 +64,14 @@ export type ExerciseListProps = {
 /** The longest Session note, in characters (E14-T4). */
 const NOTE_MAX = 500
 
-/** How many sets of this exercise the session already holds. */
+/** How many sets of this exercise the session already holds, warm-ups included. */
 function loggedSets(entries: SetEntry[], exerciseId: string): number {
   return entries.filter((entry) => entry.exerciseId === exerciseId).length
+}
+
+/** How many of the plan's sets this exercise has used up: its working sets (E14-T8). */
+function workingLogged(entries: SetEntry[], exerciseId: string): number {
+  return workingSets(entries).filter((entry) => entry.exerciseId === exerciseId).length
 }
 
 /**
@@ -124,6 +130,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         const effectiveId = doneId ?? plan.exerciseId
         const exercise = resolve(effectiveId)
         const logged = loggedSets(session.entries, effectiveId)
+        const working = workingLogged(session.entries, effectiveId)
         const lastDoneId = lastSwaps[plan.exerciseId]
 
         const label = (
@@ -139,7 +146,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
                 </>
               ) : null}
             </span>{' '}
-            <span className="set-progress">{`${logged}/${plan.sets}`}</span>
+            <span className="set-progress">{`${working}/${plan.sets}`}</span>
           </>
         )
 

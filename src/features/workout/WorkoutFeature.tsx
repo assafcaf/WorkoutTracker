@@ -3,6 +3,7 @@ import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
 import { nextExerciseAfter } from '../../domain/flow'
 import { familyOf } from '../../domain/muscles'
+import { layTodayOver } from '../../domain/prefill'
 import { latestSet } from '../../domain/rest'
 import { ServiceError } from '../../services'
 import type {
@@ -459,10 +460,11 @@ export function WorkoutFeature({
             plan={plan}
             setIndex={openSet.setIndex}
             sessionId={session.id}
-            lastEntries={services.sessions.presetHistory(
+            // Today's Sets laid over last time's by working position (E14-T8): a `setIndex`
+            // overlay would let a warm-up stand in for a working Set.
+            lastEntries={layTodayOver(
               openSet.history,
-              session,
-              openSet.exerciseId,
+              session.entries.filter((entry) => entry.exerciseId === openSet.exerciseId),
             )}
             lastTime={openSet.history}
             sessionStartedAt={session.startedAt}

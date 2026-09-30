@@ -2065,3 +2065,80 @@ test('F1 the stylesheet places .rest-timer top-right with its content right-alig
   expect(body).toMatch(/right:/)
   expect(body).toMatch(/justify-content:\s*flex-end|text-align:\s*right/)
 })
+
+// --- E14-T8 O4: warm-ups don't use up the Plan's Sets; setIndex still numbers every Set -------
+
+function warmupEntry(setIndex: number, weightKg: number, reps: number): SetEntry {
+  return { ...loggedEntry(setIndex, weightKg, reps), kind: 'warmup' }
+}
+
+/** Today on a 3-Set back squat Plan: warm-ups 40×10 and 50×8, then one working Set 60×8. */
+const twoWarmupsOneWorking: SetEntry[] = [
+  warmupEntry(1, 40, 10),
+  warmupEntry(2, 50, 8),
+  loggedEntry(3, 60, 8),
+]
+
+test('O4 with 2 warm-ups and 1 working Set logged on a 3-Set Plan the counter reads Set 2 of 3', () => {
+  renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan })
+
+  expect(screen.getByText('Set 2 of 3')).toBeVisible()
+})
+
+test('O4 with 2 warm-ups and 1 working Set logged on a 3-Set Plan the screen offers Log set, not the done state', () => {
+  renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan, onAddSet: vi.fn() })
+
+  expect(logSetButton()).not.toBeNull()
+  expect(addSetButton()).toBeNull()
+})
+
+test('O4 with 2 warm-ups and 3 working Sets logged on a 3-Set Plan the done state reads All 3 sets logged', () => {
+  renderWithLogged(
+    [...twoWarmupsOneWorking, loggedEntry(4, 62.5, 8), loggedEntry(5, 65, 6)],
+    { plan: threeSetSquatPlan, onAddSet: vi.fn() },
+  )
+
+  expect(screen.getByText('All 3 sets logged')).toBeVisible()
+  expect(logSetButton()).toBeNull()
+})
+
+test('O4 after 2 warm-ups and 1 working Set, logging 2 more working Sets reaches the done state', async () => {
+  const { user } = renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan })
+
+  await user.click(logButton())
+  await waitFor(() => expect(screen.getByText('Set 3 of 3')).toBeVisible())
+  await user.click(await screen.findByRole('button', { name: 'Log set' }))
+
+  await waitFor(() => expect(screen.getByText('All 3 sets logged')).toBeVisible())
+  expect(logSetButton()).toBeNull()
+})
+
+test('O4 the working Set logged after 2 warm-ups and 1 working Set takes setIndex 4', async () => {
+  const { user } = renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan })
+
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  expect((await storedEntries())[0].setIndex).toBe(4)
+})
+
+test('O4 deleting a warm-up leaves the counter on Set 2 of 3', async () => {
+  const { user, onDeleteSet } = renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan })
+
+  await user.click(screen.getByRole('button', { name: /50 × 8$/ }))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(onDeleteSet).toHaveBeenCalledWith(2))
+  await waitFor(() => expect(screen.getByText('Set 2 of 3')).toBeVisible())
+  expect(logSetButton()).not.toBeNull()
+})
+
+test('O4 while resting after 2 warm-ups and 1 working Set on a 3-Set Plan the Next line shows', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderWithLogged(twoWarmupsOneWorking, {
+    plan: threeSetSquatPlan,
+    restFrom: { entry: loggedEntry(3, 60, 8), planRestSeconds: 180 },
+  })
+
+  expect(screen.getByText(NEXT_LINE)).toBeVisible()
+})
