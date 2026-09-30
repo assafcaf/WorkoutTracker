@@ -317,3 +317,67 @@ test('O9 Done on the Session summary leaves the picker, reporting onInSession(fa
   expect(screen.queryByRole('button', { name: 'Resume Workout A' })).toBeNull()
   expect(onInSession).toHaveBeenLastCalledWith(false)
 })
+
+// --- E12-T5: discard the workout in progress ------------------------------------------------
+
+/** Starts Workout A on the real services, with `count` back squat sets logged, and renders it. */
+async function startWorkoutAWithSets(count: number): Promise<{ user: UserEvent }> {
+  const services = await servicesOnAssafAB()
+  const started = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  for (let index = 1; index <= count; index += 1) {
+    await services.sessions.logSet(started.id, {
+      exerciseId: 'back-squat',
+      setIndex: index,
+      weightKg: 60,
+      reps: 8,
+      loggedAt: NOW,
+    })
+  }
+  const { user } = renderFeature(services)
+  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  return { user }
+}
+
+test('O12 Discard workout asks "Discard this workout? Its N sets are deleted." with the set count', async () => {
+  const { user } = await startWorkoutAWithSets(3)
+
+  await user.click(await screen.findByRole('button', { name: 'Discard workout' }, SETTLE))
+
+  expect(await screen.findByText('Discard this workout? Its 3 sets are deleted.')).toBeVisible()
+})
+
+test('O12 confirming discards the Session and returns to the Workout tab with no resume card', async () => {
+  const { user } = await startWorkoutAWithSets(2)
+
+  await user.click(await screen.findByRole('button', { name: 'Discard workout' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Discard' }, SETTLE))
+
+  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Resume Workout A' })).toBeNull()
+  expect(await storedActiveSession()).toBeNull()
+})
+
+test('O12 after discarding, the next Start begins a new Session', async () => {
+  const { user } = await startWorkoutAWithSets(2)
+  const before = (await db.sessions.toArray())[0]
+
+  await user.click(await screen.findByRole('button', { name: 'Discard workout' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Discard' }, SETTLE))
+  await startWorkout(user, 'Workout A')
+
+  const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  expect(progressOf(backSquat)).toBe('0/4')
+  expect((await storedActiveSession())?.id).not.toBe(before.id)
+})
+
+test('O12 cancelling the discard leaves the Session as it was', async () => {
+  const { user } = await startWorkoutAWithSets(2)
+
+  await user.click(await screen.findByRole('button', { name: 'Discard workout' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Cancel' }, SETTLE))
+
+  expect(screen.queryByText(/^Discard this workout\?/)).toBeNull()
+  const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  expect(progressOf(backSquat)).toBe('2/4')
+  expect((await storedActiveSession())?.entries).toHaveLength(2)
+})
