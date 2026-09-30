@@ -2,10 +2,12 @@ import type { ServiceDeps } from './deps'
 import type { VolumeBaseline } from '../types'
 import { callStorage } from './errors'
 import {
+  getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
   getVolumeBaseline,
   getWeightStep,
+  setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
   setVolumeBaseline as storeVolumeBaseline,
   setWeightStep as storeWeightStep,
@@ -24,6 +26,8 @@ export type PreferenceService = {
   volumeBaseline(): Promise<VolumeBaseline>
   setVolumeBaseline(b: VolumeBaseline): Promise<void>
   lastExportedAt(): Promise<number | null>
+  exerciseNote(exerciseId: string): Promise<string | null>
+  setExerciseNote(exerciseId: string, text: string): Promise<void>
 }
 
 /**
@@ -49,5 +53,13 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
     volumeBaseline: () => callStorage(deps, getVolumeBaseline, 'volumeBaseline read failed'),
     setVolumeBaseline: (baseline) => write(() => storeVolumeBaseline(baseline, deps.now())),
     lastExportedAt: () => callStorage(deps, getLastExportedAt, 'lastExportedAt read failed'),
+    exerciseNote: (exerciseId) =>
+      callStorage(
+        deps,
+        async () => (await getExerciseNotes())[exerciseId] ?? null,
+        'exerciseNote read failed',
+      ),
+    setExerciseNote: (exerciseId, text) =>
+      write(() => storeExerciseNote(exerciseId, text, deps.now())),
   }
 }
