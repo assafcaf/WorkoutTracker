@@ -814,3 +814,117 @@ test('O12 saving the note empty removes it from the stored Session', async () =>
     expect(stored && 'note' in stored).toBe(false)
   }, SETTLE)
 })
+
+// --- E14-T8 O4/O5: warm-ups don't use up the Plan, and Presets match working Sets ------------
+//
+// Workout A's lunges Plan is 3 Sets of 10–12; lunges step by 1 kg from 7 kg. Warm-ups are stored
+// through the real service with `kind: 'warmup'`, as E14-T9's kind row will store them.
+
+type KindedSet = {
+  exerciseId: string
+  setIndex: number
+  weightKg: number
+  reps: number
+  kind?: 'warmup'
+}
+
+async function logAll(services: Services, sessionId: string, sets: KindedSet[]): Promise<void> {
+  for (const set of sets) {
+    await services.sessions.logSet(sessionId, { ...set, loggedAt: T0 + set.setIndex })
+  }
+}
+
+/** Lunges today: warm-ups 4×12 and 5×10, then one working Set 9×12. */
+const LUNGES_TWO_WARMUPS_ONE_WORKING: KindedSet[] = [
+  { exerciseId: 'lunges', setIndex: 1, weightKg: 4, reps: 12, kind: 'warmup' },
+  { exerciseId: 'lunges', setIndex: 2, weightKg: 5, reps: 10, kind: 'warmup' },
+  { exerciseId: 'lunges', setIndex: 3, weightKg: 9, reps: 12 },
+]
+
+async function workoutAWithKinded(sets: KindedSet[]): Promise<Services> {
+  const services = await servicesOnAssafAB()
+  const started = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  await logAll(services, started.id, sets)
+  return services
+}
+
+test('O4 lunges with 2 warm-ups and 1 working Set logged reads 1/3 on the exercise list', async () => {
+  renderFeature(await workoutAWithKinded(LUNGES_TWO_WARMUPS_ONE_WORKING))
+
+  const lunges = await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)
+  expect(progressOf(lunges)).toBe('1/3')
+})
+
+test('O4 opening lunges with 2 warm-ups and 1 working Set logged shows Set 2 of 3 with Log set', async () => {
+  const { user } = renderFeature(await workoutAWithKinded(LUNGES_TWO_WARMUPS_ONE_WORKING))
+  await openExercise(user, 'Lunges')
+
+  expect(await screen.findByText('Set 2 of 3', undefined, SETTLE)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Log set' })).toBeVisible()
+})
+
+test('O4 the lunges Set logged after 2 warm-ups and 1 working Set is stored as setIndex 4', async () => {
+  const { user } = renderFeature(await workoutAWithKinded(LUNGES_TWO_WARMUPS_ONE_WORKING))
+  await openExercise(user, 'Lunges')
+
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+
+  await waitFor(async () => {
+    const stored = await storedActiveSession()
+    expect(stored?.entries.map((entry) => entry.setIndex)).toEqual([1, 2, 3, 4])
+  }, SETTLE)
+})
+
+test('O4 opening lunges with 2 warm-ups and 3 working Sets logged shows the done state', async () => {
+  const { user } = renderFeature(
+    await workoutAWithKinded([
+      ...LUNGES_TWO_WARMUPS_ONE_WORKING,
+      { exerciseId: 'lunges', setIndex: 4, weightKg: 9, reps: 11 },
+      { exerciseId: 'lunges', setIndex: 5, weightKg: 9, reps: 10 },
+    ]),
+  )
+  await openExercise(user, 'Lunges')
+
+  expect(await screen.findByText('All 3 sets logged', undefined, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+})
+
+test('O4 with back squat done and only warm-ups on lunges, Up next is Lunges', async () => {
+  const { user } = renderFeature(
+    await workoutAWithKinded([
+      ...FOUR_SQUATS.map((set) => ({ ...set, reps: 10 })),
+      ...LUNGES_TWO_WARMUPS_ONE_WORKING.slice(0, 2),
+      { exerciseId: 'lunges', setIndex: 3, weightKg: 6, reps: 8, kind: 'warmup' as const },
+    ]),
+  )
+  await openExercise(user, 'Back squat')
+
+  expect(await screen.findByText('Up next: Lunges', undefined, SETTLE)).toBeVisible()
+})
+
+test('O5 after a warm-up today, lunges opens on last time’s first working Set, not its warm-up', async () => {
+  const services = await servicesOnAssafAB()
+  const last = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  await logAll(services, last.id, [
+    { exerciseId: 'lunges', setIndex: 1, weightKg: 4, reps: 12, kind: 'warmup' },
+    { exerciseId: 'lunges', setIndex: 2, weightKg: 5, reps: 10, kind: 'warmup' },
+    { exerciseId: 'lunges', setIndex: 3, weightKg: 10, reps: 12 },
+    { exerciseId: 'lunges', setIndex: 4, weightKg: 11, reps: 10 },
+    { exerciseId: 'lunges', setIndex: 5, weightKg: 12, reps: 10 },
+  ])
+  await services.sessions.finish(last.id)
+  const today = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  await logAll(services, today.id, [
+    { exerciseId: 'lunges', setIndex: 1, weightKg: 6, reps: 12, kind: 'warmup' },
+  ])
+
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Lunges')
+
+  const weight = await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  expect(
+    [weight, screen.getByRole('button', { name: 'Reps' })].map((readout) =>
+      (readout.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    ),
+  ).toEqual(['10', '12'])
+})

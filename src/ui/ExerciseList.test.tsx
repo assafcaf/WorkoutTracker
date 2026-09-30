@@ -505,3 +505,27 @@ test('O12 without onSaveNote the list offers no Add note', () => {
 
   expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull()
 })
+
+// --- E14-T8 O4: warm-ups don't use up the Plan's Sets ---------------------------------------
+
+function warmupEntry(exerciseId: string, setIndex: number): SetEntry {
+  return { ...entry(exerciseId, setIndex), kind: 'warmup' }
+}
+
+test('O4 lunges planned for 3 Sets with 2 warm-ups and 1 working Set logged reads 1/3', () => {
+  renderList([warmupEntry('lunges', 1), warmupEntry('lunges', 2), entry('lunges', 3)])
+
+  expect(progressOf('Lunges')).toBe('1/3')
+})
+
+test('O4 lunges with 2 warm-ups and 3 working Sets logged reads 3/3', () => {
+  renderList([
+    warmupEntry('lunges', 1),
+    warmupEntry('lunges', 2),
+    entry('lunges', 3),
+    entry('lunges', 4),
+    entry('lunges', 5),
+  ])
+
+  expect(progressOf('Lunges')).toBe('3/3')
+})

@@ -20,6 +20,11 @@ export function presetForSet(args: {
   plan: ExercisePlan
   setIndex: number
   lastEntries: SetEntry[]
+  /**
+   * This Session's Sets for the Exercise already logged (E14-T8), from which the working
+   * position of the Set at `setIndex` is counted. Omitted: every Set before it was working.
+   */
+  logged?: SetEntry[]
 }): { weightKg: number | null; reps: number } {
   const { exercise, plan, setIndex, lastEntries } = args
 
