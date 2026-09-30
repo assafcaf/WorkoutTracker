@@ -111,3 +111,31 @@
   gap: 0.75rem;
   margin: 0.5rem 0;
 }
+
+.logged-sets li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pr-badge {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 6rem;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font-weight: 600;
+}

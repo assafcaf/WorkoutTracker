@@ -448,6 +448,9 @@ export function WorkoutFeature({
               })
             }}
             family={family}
+            earlierSessions={sessions.filter(
+              (earlier) => earlier.finishedAt !== null && earlier.startedAt < session.startedAt,
+            )}
             logged={session.entries.filter((entry) => entry.exerciseId === openSet.exerciseId)}
             onEditSet={async (setIndex, values) => {
               setSession(
