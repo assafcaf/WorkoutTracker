@@ -26,8 +26,14 @@
       "Bash(gh pr create *)",
       "Bash(gh pr view *)",
       "Bash(gh pr checks *)",
-      "Bash(bash .claude/workflow/bin/verify-red.sh *)",
-      "Bash(bash .claude/workflow/bin/weakened-tests.sh *)"
+      "Bash(bash .claude/workflow/bin/*)",
+      "Bash(npm ci)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx eslint .)",
+      "Bash(npm run build)",
+      "Bash(npx vite --port 5173 --strictPort --host 127.0.0.1)",
+      "Bash(git rebase *)",
+      "Bash(git restore -- *)"
     ],
     "deny": [
       "Bash(git checkout *)",

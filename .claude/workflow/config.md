@@ -6,6 +6,8 @@ installer wrote this from your answers; `/setup-workflow` fills in what it can d
 (statuses, transition ids, the commands that actually run here) and checks the rest. After
 that it is yours: edit it when the project changes.
 
+PAD version: 0.2.0
+
 ## Tracker
 
 - **Adapter:** `local`. Operations are in `.claude/workflow/trackers/local.md`; the
@@ -116,7 +118,10 @@ gone.
 | Setup in a fresh worktree | `npm ci` |
 | Run named tests | `bash .claude/workflow/bin/vitest-gate.sh {tests}` (`{tests}` = space-separated test file paths) |
 | Full suite | `bash .claude/workflow/bin/vitest-gate.sh` |
-| Lint | `npx tsc --noEmit && npx eslint .` |
+| Typecheck | `npx tsc --noEmit` |
+| Lint | `npx eslint .` |
+| Dependency directory | `node_modules` |
+| Lockfile | `package-lock.json` |
 | Red means | exit code `1`: tests ran and at least one failed. A suite that failed to import, or a path matching no test files, exits `2` and does not count |
 | Test paths | `src/`, tests colocated with the code as `*.test.ts` / `*.test.tsx` |
 | Weakened tests | `bash .claude/workflow/bin/weakened-tests.sh <base> <head>`, with the two env vars below exported first |
@@ -141,11 +146,34 @@ export WEAK_ADDED="((it|test|describe)\.(skip|todo|only|fails)|xit\(|xdescribe\(
 gate pass on a suite that never ran. Test names must be plain quoted strings, not template
 literals, or `TEST_DEF` cannot see them.
 
-> **Not yet runnable.** There is no `package.json` in this repo, so every command above fails
-> today. E1's scaffolding task creates the project and must commit `package.json` *and*
-> `package-lock.json` in its red commit — `verify-red.sh` installs in a throwaway worktree at
-> that commit, so without the lockfile the red check cannot run. The scaffolding task is done
-> when the full-suite command above exits 0 here.
+## Git moves
+
+The git commands the workflow's agents run, one per capability, each in the form this repo's
+settings allow. `bash .claude/workflow/bin/check-moves.sh` proves every row against the
+effective settings (`~/.claude/settings.json`, `.claude/settings.json`,
+`.claude/settings.local.json`): a command must match an allow rule and no deny rule, since one
+that matches neither would stop the run on a prompt. A failing row prints the allow rule to add.
+`<sha>`, `<branch>` and `<path>` stand for any value.
+
+This repo denies `git checkout`, `git switch`, `git stash` and `git reset --hard`, so four rows
+differ from PAD's defaults. A fresh agent worktree starts at an ancestor of the epic head, so
+`merge --ff-only` reaches the same commit `reset --hard` would (E9, 2026-09-26).
+
+| Capability | Command |
+|---|---|
+| `branch-from-epic-head` | `git worktree add -b <branch> <path> <sha>` |
+| `move-onto-sha` | `git merge --ff-only <sha>` |
+| `take-red` | `git merge --ff-only <sha>` |
+| `rebase-red` | `git rebase <sha>` |
+| `discard-changes` | `git restore -- <path>` |
+| `set-aside-work` | `git commit -a -m <message>` |
+| `try-merge` | `git merge --no-ff --no-commit <branch>` |
+| `abort-merge` | `git merge --abort` |
+| `commit-merge` | `git commit --no-edit` |
+| `revert-merge` | `git revert -m 1 <sha>` |
+| `push-epic` | `git push origin <branch>` |
+| `remove-worktree` | `git worktree remove <path>` |
+| `delete-merged-branch` | `git branch -d <branch>` |
 
 ## Serial resources
 
@@ -153,27 +181,46 @@ Outcomes tagged with a resource run one task at a time, by the orchestrator, aft
 this for anything the host can't provide or can't share: a GPU machine, a device, a staging
 database. None are configured.
 
-| Tag | Meaning | How to run |
-|---|---|---|
-| `iphone` | The trainee's iPhone, with the app installed to the home screen. Needed for outcomes about installing, launching standalone, and cold-starting with no network — no emulator reproduces iOS's behaviour here | Not a command. The orchestrator posts the steps and the expected result, the operator performs them on the phone at the merged commit, and pastes what happened into the run log. The resource is free when the operator says so |
-| `cloudflare` | The operator's Cloudflare account: the deployed Worker, its D1 database and the Access application in front of it. Needed for outcomes about the real login, the real database and the deployed URL | The orchestrator runs `npx wrangler deploy` / `npx wrangler d1 ...` from the merged commit (wrangler is logged in on this host) and checks the deployed URL; steps that need a browser sign-in or the phone are posted to the operator, who pastes the result into the run log |
+Each resource has a class. `automated`: the orchestrator runs the command and reads the result
+itself. `operator-run`: only a person can run it (a real session, a device); the orchestrator
+does not run it but writes a review packet for the operator, and the outcome waits on that.
 
-## Local app
+| Tag | Class | Meaning | How to run |
+|---|---|---|---|
+| `iphone` | `operator-run` | The trainee's iPhone, with the app installed to the home screen. Needed for outcomes about installing, launching standalone, and cold-starting with no network — no emulator reproduces iOS's behaviour here | Not a command. The orchestrator posts the steps and the expected result, the operator performs them on the phone at the merged commit, and pastes what happened into the run log. The resource is free when the operator says so |
+| `cloudflare` | `automated` | The operator's Cloudflare account: the deployed Worker, its D1 database and the Access application in front of it. Needed for outcomes about the real login, the real database and the deployed URL | The orchestrator runs `npx wrangler deploy` / `npx wrangler d1 ...` from the merged commit (wrangler is logged in on this host) and checks the deployed URL; steps that need a browser sign-in or the phone are posted to the operator, who pastes the result into the run log |
 
-`/batch-implement` runs this from the epic worktree during a run, so each merge shows up live
-(added 2026-09-27, E10; see `CLAUDE.md`, "A local app during a batch run"). Dev mode serves the
-app only: `/api/*` needs `npm run worker:dev` or the deployed Worker.
+## Surfaces
 
-| Command | URL |
-|---|---|
-| `npx vite --port 5173 --strictPort --host 127.0.0.1` | http://127.0.0.1:5173 |
+The places where the product is seen or used, from a scan on 2026-09-30. `bin/preview.sh` runs
+the `web-ui` preview from the epic worktree during a run, so each merge shows up live at
+http://127.0.0.1:5173 (the local app of E10; see `CLAUDE.md`, "A local app during a batch
+run"). After a lockfile change, run `npm ci` in the epic worktree before the restart.
+
+| Surface | Entry point | Test drives it by | Person looks by | Automated check | Preview start | Ready when | Restart when changed | Cannot show |
+|---|---|---|---|---|---|---|---|---|
+| `web-ui` | `src/main.tsx` | vitest + jsdom + Testing Library (`src/**/*.test.tsx`) | opening http://127.0.0.1:5173 | `npm run build` | `npx vite --port 5173 --strictPort --host 127.0.0.1` | `curl -sf -o /dev/null http://127.0.0.1:5173/` | `package.json, package-lock.json, vite.config.ts` | `/api/*` (sign-in, cloud sync) and the service worker: dev mode serves the app only |
+| `api-worker` | `src/worker/index.ts` | vitest, D1 faked with sql.js (`src/worker/*.test.ts`) | `npm run worker:dev` after `npm run build`, or the deployed https://workout-tracker.assafcaf.workers.dev | | | | | the real Access login: only the deployed Worker has it (`cloudflare` resource) |
+| `installed-pwa` | `src/pwa/registerSW.ts` | jsdom unit tests of the manifest, precache and offline paths (`src/pwa/*.test.ts`) | installing the deployed app on the iPhone (`iphone` resource) | | | | | install and offline cold launch anywhere but a real device on the deployed origin |
+
+## Review
+
+- **Cadence:** `after-first-wave`. When the operator reviews the running product. Options:
+  `after-first-wave` (once, after the first wave merges), `per-wave` (after every wave),
+  `end-only` (once, before the PR), `none`.
 
 ## Execution
 
 - **Branches:** epic branch `epic/<EPIC>-<slug>` (e.g. `epic/E1-log-a-workout`), in worktree
   `.claude/worktrees/<EPIC>`. `.claude/settings.json` must set `worktree.baseRef: head`, so
   implementer worktrees branch from the epic branch.
+- **Mode:** `owner`. How `/batch-implement` runs a task: `owner` (ticket-owner agents) or
+  `workflow` (the Workflow tool). `--mode` overrides it for one run. The Workflow tool is
+  available here; owner stays the default until a `--mode workflow` run proves it (2026-09-30).
 - **Parallelism:** at most `5` tasks (ticket owners) at once. Raised from 3 on 2026-09-23: E5 ran at 5 on the operator's ruling.
+- **Suite slots:** `3` — at most this many full-suite runs at once, through `bin/suite-slot.sh`;
+  a waiting merge gate goes first. `PAD_SUITE_SLOTS` overrides it. The 2026-09-30 load probe ran
+  3 at once with no failures (~137s each, 88s alone).
 - **Final review:** `off`. Set to a `/code-review` level (`low`, `medium`, …) to run one
   review over the finished epic branch before the PR.
 - **Publishing:** `origin` is https://github.com/assafcaf/WorkoutTracker (public), added
