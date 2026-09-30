@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
+import { formatSet, formatSetCompact } from '../domain/setText'
 import { presetForSet } from '../domain/prefill'
 import { recordsSetBy } from '../domain/records'
 import { adjustRest, formatOver, formatRest, restAfter } from '../domain/rest'
@@ -163,7 +164,7 @@ function lastTimeText(exerciseId: string, entries: SetEntry[]): string {
   return entries
     .filter((entry) => entry.exerciseId === exerciseId)
     .sort((a, b) => a.setIndex - b.setIndex)
-    .map((entry) => `${entry.weightKg === null ? 'BW' : entry.weightKg}×${entry.reps}`)
+    .map(formatSetCompact)
     .join(' · ')
 }
 
@@ -658,7 +659,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 data-editing={editing === entry.setIndex ? 'true' : undefined}
                 onClick={() => openLogged(entry)}
               >
-                {entry.weightKg === null ? 'BW' : entry.weightKg} × {entry.reps}
+                {formatSet(entry)}
               </button>
               {isRecordSet(entry) ? (
                 <span className="pr-badge" aria-label="Personal record">

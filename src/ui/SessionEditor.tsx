@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatSet } from '../domain/setText'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 import type { Exercise, Session, SetEntry } from '../types'
 import { RepsDial } from './RepsDial'
@@ -44,7 +45,7 @@ function fromLocalInput(value: string): number | null {
 
 /** What a Set row reads: `60 × 8`, or `BW × 10` for a Set carrying no weight. */
 function setText(entry: SetEntry): string {
-  return `${entry.weightKg === null ? 'BW' : entry.weightKg} × ${entry.reps}`
+  return formatSet(entry)
 }
 
 /** The draft's Sets grouped by Exercise, in first-appearance order, each group by `setIndex`. */
