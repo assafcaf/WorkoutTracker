@@ -1108,3 +1108,153 @@ test('O9 leaving the screen clears the Undo timer without restoring or erroring'
   expect(errors).not.toHaveBeenCalled()
   expect(vi.getTimerCount()).toBe(0)
 })
+
+// --- E13-T6: the PR toast and the `PR` badge ----------------------------------------------------
+//
+// The earlier finished Session holds back-squat 80 x 8, so its records are heaviest set 80,
+// best e1RM 80 x (1 + 8/30) = 101.33, and most reps at the heaviest weight 8 (at 80).
+//   85 x 5  -> heaviest set 85 (new), e1RM 99.17 (no), reps at heaviest weight 5 at 85 (changed).
+//   75 x 12 -> e1RM 75 x 1.4 = 105 (new); heaviest stays 80; reps at 80 stay 8.
+//   70 x 5  -> e1RM 81.67: no record at all.
+
+const earlierSession: Session = {
+  id: 'earlier-session',
+  programId: 'assaf-ab-2026',
+  workoutId: 'workout-a',
+  startedAt: BASE - 86_400_000,
+  finishedAt: BASE - 86_000_000,
+  entries: [
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 80, reps: 8, loggedAt: BASE - 86_400_000 },
+  ],
+}
+
+function prBadges(): HTMLElement[] {
+  return screen.queryAllByLabelText('Personal record')
+}
+
+/** The badges on the logged-set row whose button reads `name`. */
+function badgesOnRow(name: string): HTMLElement[] {
+  const row = loggedSetButton(name).closest('li') as HTMLElement
+  return within(row).queryAllByLabelText('Personal record')
+}
+
+test('O14 logging a Set that sets one record shows a toast naming it and the Set', async () => {
+  const { user } = renderSetScreen({
+    earlierSessions: [earlierSession],
+    lastEntries: [historyEntry(1, 75, 12)],
+  })
+
+  await user.click(logButton())
+
+  expect(await screen.findByText('New PR · Best estimated 1RM · 75 kg × 12')).toBeVisible()
+})
+
+test('O14 the toast joins every record label with a comma', async () => {
+  const { user } = renderSetScreen({
+    earlierSessions: [earlierSession],
+    lastEntries: [historyEntry(1, 85, 5)],
+  })
+
+  await user.click(logButton())
+
+  expect(
+    await screen.findByText(
+      'New PR · Heaviest set, Most reps at the heaviest weight · 85 kg × 5',
+    ),
+  ).toBeVisible()
+})
+
+test('O14 logging a Set that sets no record shows no toast', async () => {
+  const { user, onLog } = renderSetScreen({
+    earlierSessions: [earlierSession],
+    lastEntries: [historyEntry(1, 70, 5)],
+  })
+
+  await user.click(logButton())
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  await screen.findByText('Set 1 logged · 70 kg × 5')
+
+  expect(screen.queryByText(/New PR/)).toBeNull()
+})
+
+test('O14 a first-ever Exercise Session (no earlier Sessions) shows no toast', async () => {
+  const { user, onLog } = renderSetScreen({
+    earlierSessions: [],
+    lastEntries: [historyEntry(1, 85, 5)],
+  })
+
+  await user.click(logButton())
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  await screen.findByText('Set 1 logged · 85 kg × 5')
+
+  expect(screen.queryByText(/New PR/)).toBeNull()
+})
+
+test('O14 a record toast is not a modal', async () => {
+  const { user } = renderSetScreen({
+    earlierSessions: [earlierSession],
+    lastEntries: [historyEntry(1, 75, 12)],
+  })
+
+  await user.click(logButton())
+  await screen.findByText(/New PR/)
+
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.queryByRole('alertdialog')).toBeNull()
+})
+
+test('O14 the record toast goes away after 3 s', async () => {
+  vi.useFakeTimers()
+  renderSetScreen({
+    earlierSessions: [earlierSession],
+    lastEntries: [historyEntry(1, 75, 12)],
+  })
+
+  await tapWithFakeTimers(logButton())
+  expect(screen.getByText(/New PR/)).toBeVisible()
+
+  await vi.advanceTimersByTimeAsync(3100)
+  expect(screen.queryByText(/New PR/)).toBeNull()
+})
+
+test('O14 a logged Set that set a record carries a Personal record badge; one that did not does not', () => {
+  renderWithLogged([loggedEntry(1, 85, 5), loggedEntry(2, 70, 5)], {
+    earlierSessions: [earlierSession],
+  })
+
+  expect(badgesOnRow('85 × 5')).toHaveLength(1)
+  expect(badgesOnRow('70 × 5')).toHaveLength(0)
+  expect(screen.getAllByText('PR')).toHaveLength(1)
+})
+
+test('O14 no Set carries a badge without earlier Sessions', () => {
+  renderWithLogged([loggedEntry(1, 85, 5)])
+
+  expect(prBadges()).toHaveLength(0)
+})
+
+test('O14 editing a record Set down takes its badge off', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 85, 5), loggedEntry(2, 70, 5)], {
+    earlierSessions: [earlierSession],
+  })
+  expect(badgesOnRow('85 × 5')).toHaveLength(1)
+
+  await user.click(loggedSetButton('85 × 5'))
+  await enterOnKeypad(user, weightReadout(), ['7', '0'])
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(loggedSetNames()).toEqual(['70 × 5', '70 × 5']))
+  expect(prBadges()).toHaveLength(0)
+})
+
+test('O14 deleting a record Set takes its badge with it', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 85, 5), loggedEntry(2, 70, 5)], {
+    earlierSessions: [earlierSession],
+  })
+
+  await user.click(loggedSetButton('85 × 5'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(loggedSetNames()).toEqual(['70 × 5']))
+  expect(prBadges()).toHaveLength(0)
+})

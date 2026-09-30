@@ -106,6 +106,13 @@ export type SetScreenProps = {
    * STUB (E10-T8 test-designer): accepted but not yet wired onto `.set-logged`.
    */
   family?: MuscleFamily
+  /**
+   * Finished Sessions started before this one (E13-T6), the baseline `recordsSetBy` measures a
+   * Set against. Optional; omitted or empty means no Set is a record.
+   *
+   * STUB (E13-T6 test-designer): accepted but not yet used for the toast or the `PR` badge.
+   */
+  earlierSessions?: Session[]
 }
 
 /**
