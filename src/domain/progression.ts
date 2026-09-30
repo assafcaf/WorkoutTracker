@@ -1,4 +1,5 @@
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
+import { workingSets as excludeWarmups } from './setKind'
 
 export type SuggestionKind = 'add-weight' | 'reduce-assistance' | 'add-set'
 export type Suggestion = { kind: SuggestionKind; nextWeightKg?: number }
@@ -44,8 +45,9 @@ const sumReps = (entries: SetEntry[]): number =>
 export function progression(
   exercise: Exercise,
   plan: ExercisePlan,
-  lastEntries: SetEntry[],
+  allEntries: SetEntry[],
 ): Progression {
+  const lastEntries = excludeWarmups(allEntries)
   const topReps = plan.repRange[1]
 
   if (lastEntries.length === 0) {
