@@ -944,3 +944,48 @@ describe('E14-T9 the session service changes a Set kind', () => {
     expect('kind' in updated.entries[1]).toBe(false)
   })
 })
+
+describe('E14-T14 the session service edits a Bodyweight Set Load', () => {
+  const pushUp1 = entry('push-ups', 1, null, 12, NOW - 300 * SECOND)
+  const pushUp2 = { ...entry('push-ups', 2, null, 8, NOW - 200 * SECOND), loadKg: 10 }
+  const seed = (): Session =>
+    storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries: [pushUp1, pushUp2],
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O17 updateSet with a loadKg stores it through the service and announces sessions once', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const updated = await service.updateSet('active', 'push-ups', 2, { weightKg: null, reps: 8, loadKg: 15 })
+
+    expect(updated.entries[1]).toEqual({ ...pushUp2, loadKg: 15 })
+    expect((await stored('active'))?.entries[1]).toEqual({ ...pushUp2, loadKg: 15 })
+    expect(emitted()).toBe(1)
+  })
+
+  test('O17 updateSet with loadKg null removes the Load through the service', async () => {
+    await putSessions([seed()])
+    const { service } = harness()
+
+    const updated = await service.updateSet('active', 'push-ups', 2, { weightKg: null, reps: 8, loadKg: null })
+
+    expect(updated.entries[1]).toEqual(entry('push-ups', 2, null, 8, NOW - 200 * SECOND))
+    expect('loadKg' in updated.entries[1]).toBe(false)
+  })
+
+  test('O17 updateSet with a Load outside -60 to +100 rejects with a ServiceError, stores nothing and announces nothing', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const rejection = service.updateSet('active', 'push-ups', 1, { weightKg: null, reps: 12, loadKg: 120 })
+
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    expect((await stored('active'))?.entries).toEqual([pushUp1, pushUp2])
+    expect(emitted()).toBe(0)
+  })
+})

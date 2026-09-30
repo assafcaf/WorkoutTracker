@@ -46,7 +46,7 @@ export type SetScreenProps = {
   /** Stores new values for logged Set `setIndex` (E12-T3). */
   onEditSet?(
     setIndex: number,
-    values: { weightKg: number | null; reps: number; kind?: SetKind | null },
+    values: { weightKg: number | null; reps: number; kind?: SetKind | null; loadKg?: number | null },
   ): Promise<void>
   /** Removes logged Set `setIndex`, answering it so Undo can put it back (E12-T3). */
   onDeleteSet?(setIndex: number): Promise<SetEntry>

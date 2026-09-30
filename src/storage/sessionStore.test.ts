@@ -1834,3 +1834,82 @@ describe('E14-T9 updateSet changes a logged Set kind', () => {
     expect(updated.entries[1]).toEqual({ ...dropSet, weightKg: 65, reps: 5 })
   })
 })
+
+// --- E14-T14: updateSet carries a Bodyweight Set's Load --------------------------------------
+
+describe('E14-T14 updateSet edits a logged Bodyweight Set Load', () => {
+  const plainPushUp = entry('push-ups', 1, null, 12, BASE + 100 * SECOND)
+  const loadedPushUp = { ...entry('push-ups', 2, null, 8, BASE + 200 * SECOND), loadKg: 10 }
+
+  async function seed(): Promise<string> {
+    await db.sessions.put(
+      storedSession({
+        id: 'loads',
+        finishedAt: null,
+        entries: [plainPushUp, loadedPushUp],
+        updatedAt: BASE + 400 * SECOND,
+      }),
+    )
+    return 'loads'
+  }
+
+  test('O17 updateSet with a loadKg stores the new Load, keeping the other values', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: 12 }, BASE + 900 * SECOND)
+
+    expect(updated.entries[1]).toEqual({ ...loadedPushUp, loadKg: 12 })
+    expect((await db.sessions.get(id))?.entries[1]).toEqual({ ...loadedPushUp, loadKg: 12 })
+  })
+
+  test('O17 updateSet with a loadKg adds a Load to a plain Bodyweight Set', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'push-ups', 1, { weightKg: null, reps: 12, loadKg: -20 }, BASE + 900 * SECOND)
+
+    expect(updated.entries[0]).toEqual({ ...plainPushUp, loadKg: -20 })
+  })
+
+  test('O17 updateSet with loadKg null removes the loadKg field', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: null }, BASE + 900 * SECOND)
+
+    expect(updated.entries[1]).toEqual(entry('push-ups', 2, null, 8, BASE + 200 * SECOND))
+    expect('loadKg' in updated.entries[1]).toBe(false)
+    expect('loadKg' in ((await db.sessions.get(id))?.entries[1] as object)).toBe(false)
+  })
+
+  test('O17 updateSet with loadKg 0 stores no loadKg: a Load is never 0', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: 0 }, BASE + 900 * SECOND)
+
+    expect('loadKg' in updated.entries[1]).toBe(false)
+    expect('loadKg' in ((await db.sessions.get(id))?.entries[1] as object)).toBe(false)
+  })
+
+  test('O17 updateSet with a Load above +100 rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(
+      updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: 101 }, BASE + 900 * SECOND),
+    ).rejects.toThrow()
+
+    const stored = await db.sessions.get(id)
+    expect(stored?.entries[1]).toEqual(loadedPushUp)
+    expect(stored?.updatedAt).toBe(BASE + 400 * SECOND)
+  })
+
+  test('O17 updateSet with a Load below -60 rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(
+      updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: -61 }, BASE + 900 * SECOND),
+    ).rejects.toThrow()
+
+    const stored = await db.sessions.get(id)
+    expect(stored?.entries[1]).toEqual(loadedPushUp)
+    expect(stored?.updatedAt).toBe(BASE + 400 * SECOND)
+  })
+})

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { loadCatalog } from '../data/catalog'
-import { buildLadder, stepWeight, validateEntry } from './dial'
+import { buildLadder, loadLadder, stepWeight, validateEntry } from './dial'
 import type { Exercise } from '../types'
 
 // Real catalog fixtures, per the ticket's guidance: prefer the real 14-exercise catalog over
@@ -106,4 +106,54 @@ test('O11 validateEntry rejects reps just above 100 naming the accepted range', 
   expect(result.ok).toBe(false)
   expect((result as { ok: false; error: string }).error).toContain('0.5')
   expect((result as { ok: false; error: string }).error).toContain('100')
+})
+
+// --- E14-T14: the Load Dial's Ladder and the Load's range (O17) -------------------------------
+
+test('O17 loadLadder(1) runs from -60 to +100 in 1 kg Rungs: 161 of them', () => {
+  const ladder = loadLadder(1)
+
+  expect(ladder).toHaveLength(161)
+  expect(ladder[0]).toBe(-60)
+  expect(ladder[1]).toBe(-59)
+  expect(ladder[160]).toBe(100)
+})
+
+test('O17 loadLadder(1) has plain bodyweight, 0, as a Rung between -20 and +10', () => {
+  const ladder = loadLadder(1)
+
+  expect(ladder[40]).toBe(-20)
+  expect(ladder[60]).toBe(0)
+  expect(ladder[70]).toBe(10)
+})
+
+test('O17 loadLadder(2.5) runs from -60 to +100 in 2.5 kg Rungs: 65 of them, 0 among them', () => {
+  const ladder = loadLadder(2.5)
+
+  expect(ladder).toHaveLength(65)
+  expect(ladder.slice(0, 3)).toEqual([-60, -57.5, -55])
+  expect(ladder[24]).toBe(0)
+  expect(ladder[64]).toBe(100)
+})
+
+test('O17 loadLadder(1.25) has no floating-point drift: 8.75 is a Rung and +100 the last', () => {
+  const ladder = loadLadder(1.25)
+
+  expect(ladder).toHaveLength(129)
+  expect(ladder).toContain(8.75)
+  expect(ladder).toContain(0)
+  expect(ladder[128]).toBe(100)
+})
+
+test('O17 validateEntry accepts a Load of -60 and of +100, the ends of the range', () => {
+  expect(validateEntry(null, 8, -60)).toEqual({ ok: true })
+  expect(validateEntry(null, 8, 100)).toEqual({ ok: true })
+})
+
+test('O17 validateEntry rejects a Load just above +100', () => {
+  expect(validateEntry(null, 8, 100.5).ok).toBe(false)
+})
+
+test('O17 validateEntry rejects a Load just below -60', () => {
+  expect(validateEntry(null, 8, -60.5).ok).toBe(false)
 })

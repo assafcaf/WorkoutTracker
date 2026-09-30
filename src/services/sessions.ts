@@ -30,7 +30,7 @@ export type SessionService = {
     sessionId: string,
     exerciseId: string,
     setIndex: number,
-    values: { weightKg: number | null; reps: number; kind?: SetKind | null },
+    values: { weightKg: number | null; reps: number; kind?: SetKind | null; loadKg?: number | null },
   ): Promise<Session>
   setEffort(
     sessionId: string,

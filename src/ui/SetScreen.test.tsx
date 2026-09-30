@@ -904,13 +904,20 @@ function renderWithLogged(
         onEditSet={async (setIndex, values) => {
           onEditSet(setIndex, values)
           // Like the service (E14-T9): a kind sets the field, `null` removes it, absent keeps it.
-          const { kind, ...rest } = values
+          // E14-T14: a loadKg the same way, and a Load of 0 is no Load.
+          const { kind, loadKg, ...rest } = values
           setLogged((before) =>
             before.map((entry) => {
               if (entry.setIndex !== setIndex) return entry
-              const { kind: was, ...others } = entry
+              const { kind: was, loadKg: wasLoad, ...others } = entry
               const next = kind === undefined ? was : (kind ?? undefined)
-              return { ...others, ...rest, ...(next === undefined ? {} : { kind: next }) }
+              const nextLoad = loadKg === undefined ? wasLoad : loadKg || undefined
+              return {
+                ...others,
+                ...rest,
+                ...(next === undefined ? {} : { kind: next }),
+                ...(nextLoad === undefined ? {} : { loadKg: nextLoad }),
+              }
             }),
           )
         }}
@@ -2603,4 +2610,207 @@ test('O14 the AMRAP Set is stored with kind amrap and reps above the range', asy
   await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
   expect(onLog.mock.calls[0][1].kind).toBe('amrap')
   expect(onLog.mock.calls[0][1].reps).toBeGreaterThan(10)
+})
+
+// --- E14-T14: the Load Dial on a Bodyweight Exercise (O17) ------------------------------------
+
+// Push-ups is Bodyweight with a 1 kg weight step; Assisted pull-ups is not Bodyweight -- it keeps
+// its inverted weight on the Weight Dial (a spec non-goal to move it onto a signed Load).
+const assistedPullUps = catalog.get('assisted-pull-ups') as Exercise
+const assistedPullUpPlan: ExercisePlan = {
+  exerciseId: 'assisted-pull-ups',
+  sets: 4,
+  repRange: [5, 8],
+  restSeconds: 90,
+}
+
+function loadGroup(): HTMLElement | null {
+  return screen.queryByRole('group', { name: 'Load' })
+}
+
+function loadReadout(): HTMLElement {
+  return screen.getByRole('button', { name: 'Load' })
+}
+
+/** Taps the Load Dial's Rung reading `label`: "BW+10", "BW−20". */
+async function chooseLoad(user: UserEvent, label: string): Promise<void> {
+  const ladder = screen.getByRole('listbox', { name: 'Load ladder' })
+  await user.click(within(ladder).getByRole('option', { name: label }))
+}
+
+/** A push-ups Set logged today, with its Load when it has one. */
+function pushUpSet(setIndex: number, reps: number, loadKg?: number): SetEntry {
+  return {
+    ...loggedEntry(setIndex, null, reps, 'push-ups'),
+    ...(loadKg === undefined ? {} : { loadKg }),
+  }
+}
+
+test('O17 a Bodyweight Exercise shows the Load Dial under the reps Dial', () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  const load = loadGroup()
+  expect(load).not.toBeNull()
+  const reps = screen.getByRole('group', { name: 'Reps' })
+  expect(reps.compareDocumentPosition(load as HTMLElement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O17 Assisted pull-ups, not a Bodyweight Exercise, shows no Load Dial', () => {
+  renderSetScreen({ exercise: assistedPullUps, plan: assistedPullUpPlan })
+
+  expect(screen.getByRole('group', { name: 'Reps' })).toBeInTheDocument()
+  expect(loadGroup()).toBeNull()
+})
+
+test('O17 with no Load in its Preset the Load Dial opens on BW', () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  expect(readoutValue(loadReadout())).toBe('BW')
+})
+
+test("O17 the Load Dial's Rungs follow the Exercise's stored weight step", () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan, weightStep: 2.5 })
+
+  const ladder = screen.getByRole('listbox', { name: 'Load ladder' })
+  const shown = within(ladder).getAllByRole('option').map((option) => option.textContent)
+  expect(shown).toHaveLength(65)
+  expect(shown).toContain('BW+2.5')
+  expect(shown).not.toContain('BW+1')
+})
+
+test('O17 left at BW, the Set logs exactly as today, with no loadKg', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await screen.findByRole('group', { name: 'Load' })
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  const entry = onLog.mock.calls[0][1]
+  expect(entry).toEqual({
+    exerciseId: 'push-ups',
+    setIndex: 1,
+    weightKg: null,
+    reps: 10,
+    loggedAt: expect.any(Number),
+  })
+  expect('loadKg' in entry).toBe(false)
+})
+
+test('O17 at BW+10 the Set stores loadKg 10, weightKg staying null', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW+10')
+  expect(readoutValue(loadReadout())).toBe('BW+10')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1]).toMatchObject({ weightKg: null, reps: 10, loadKg: 10 })
+})
+
+test('O17 at BW−20 the Set stores loadKg -20', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW−20')
+  expect(readoutValue(loadReadout())).toBe('BW−20')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1]).toMatchObject({ weightKg: null, loadKg: -20 })
+})
+
+test('O17 back at BW after choosing a Load, the Set stores no loadKg', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW+10')
+  await chooseLoad(user, 'BW')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect('loadKg' in onLog.mock.calls[0][1]).toBe(false)
+})
+
+test("O17 the Load Dial opens on the Preset's Load, and one tap logs it", async () => {
+  const { user, onLog } = renderSetScreen({
+    exercise: pushUps,
+    plan: pushUpPlan,
+    lastEntries: [{ exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 12, loadKg: 10, loggedAt: BASE }],
+  })
+
+  expect(readoutValue(loadReadout())).toBe('BW+10')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1]).toMatchObject({ weightKg: null, reps: 12, loadKg: 10 })
+})
+
+test('O17 the next Set opens on the Load just logged', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW+10')
+  await user.click(logButton())
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+
+  await screen.findByText('Set 2 of 3')
+  expect(readoutValue(loadReadout())).toBe('BW+10')
+})
+
+test('O17 a Set logged at BW+10 shows as BW+10 × 10 in the logged-set list', async () => {
+  const { user } = renderWithLogged([], { exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW+10')
+  await user.click(logButton())
+
+  const list = await screen.findByRole('list', { name: 'Sets logged' })
+  expect(within(list).getByRole('button', { name: 'BW+10 × 10' })).toBeVisible()
+})
+
+test("O17 in edit mode the Load Dial reads the logged Set's Load", async () => {
+  const { user } = renderWithLogged([pushUpSet(1, 8, 10)], { exercise: pushUps, plan: pushUpPlan })
+
+  await user.click(loggedSetButton('BW+10 × 8'))
+
+  expect(screen.getByRole('button', { name: 'Save set' })).toBeVisible()
+  expect(readoutValue(loadReadout())).toBe('BW+10')
+})
+
+test('O17 Save set stores a changed Load through onEditSet', async () => {
+  const { user, onEditSet } = renderWithLogged([pushUpSet(1, 8, 10)], {
+    exercise: pushUps,
+    plan: pushUpPlan,
+  })
+
+  await user.click(loggedSetButton('BW+10 × 8'))
+  await chooseLoad(user, 'BW+12')
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet).toHaveBeenCalledWith(1, expect.objectContaining({ weightKg: null, reps: 8, loadKg: 12 }))
+})
+
+test('O17 Save set adds a Load to a plain Bodyweight Set', async () => {
+  const { user, onEditSet } = renderWithLogged([pushUpSet(1, 8)], {
+    exercise: pushUps,
+    plan: pushUpPlan,
+  })
+
+  await user.click(loggedSetButton('BW × 8'))
+  await chooseLoad(user, 'BW−20')
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet).toHaveBeenCalledWith(1, expect.objectContaining({ loadKg: -20 }))
+})
+
+test('O17 Save set at BW on a loaded Set removes its Load with loadKg null', async () => {
+  const { user, onEditSet } = renderWithLogged([pushUpSet(1, 8, 10)], {
+    exercise: pushUps,
+    plan: pushUpPlan,
+  })
+
+  await user.click(loggedSetButton('BW+10 × 8'))
+  await chooseLoad(user, 'BW')
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet.mock.calls[0][1].loadKg).toBeNull()
 })

@@ -54,10 +54,28 @@ export function stepWeight(value: number, dir: 1 | -1, exercise: Exercise): numb
 export type EntryValidation = { ok: true } | { ok: false; error: string }
 
 /**
+ * The Load Dial's Rungs for a Bodyweight Exercise (E14-T14): every signed load in kg from -60 to
+ * +100 inclusive, `step` apart, with 0 (plain bodyweight) among them.
+ *
+ * STUB (E14-T14 test-designer): not yet implemented.
+ */
+export function loadLadder(step: number): number[] {
+  void step
+  throw new Error('not implemented: loadLadder')
+}
+
+/**
  * Validates a logged set's weight and reps. Weight must be null (bodyweight) or within
  * 0-500 kg inclusive; reps must be within 0.5-100 inclusive.
+ *
+ * STUB (E14-T14 test-designer): `loadKg`, when given, is to be checked within -60 to 100.
  */
-export function validateEntry(weightKg: number | null, reps: number): EntryValidation {
+export function validateEntry(
+  weightKg: number | null,
+  reps: number,
+  loadKg?: number,
+): EntryValidation {
+  void loadKg
   if (weightKg !== null && (weightKg < MIN_WEIGHT_KG || weightKg > MAX_WEIGHT_KG)) {
     return { ok: false, error: `Weight must be between ${MIN_WEIGHT_KG} and ${MAX_WEIGHT_KG} kg.` }
   }
