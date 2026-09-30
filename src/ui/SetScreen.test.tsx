@@ -126,6 +126,17 @@ function readoutValue(element: HTMLElement): string {
   return (element.textContent ?? '').replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * The rest readout (E13-T8): the button in the rest panel that holds the "Rest remaining" timer.
+ * Its text is the rest alone: "1:20" while it runs, "+0:42 over" once it is over.
+ */
+function restReadout(): HTMLElement {
+  const timer = screen.getByRole('timer', { name: 'Rest remaining' })
+  const button = timer.closest('button')
+  if (button === null) throw new Error('the rest readout is not a button')
+  return button
+}
+
 /** Taps a readout to open its keypad, taps `keys`, then commits with OK. */
 async function enterOnKeypad(user: UserEvent, readout: HTMLElement, keys: string[]): Promise<void> {
   await user.click(readout)
@@ -349,9 +360,17 @@ test('S6 tapping Alternatives tells the caller to open alternatives for the on-s
 })
 
 test('O12 the rest timer reads 0:00 before any set is logged', () => {
-  renderSetScreen({ setIndex: 2, lastEntries: [historyEntry(2, 60, 10)] })
+  // E13-T8: rest that has just run out no longer reads a bare "0:00" -- it reads "+0:00 over".
+  // The Session's latest Set (restFrom) was logged at BASE with squatPlan's 180 s rest, and "now"
+  // is frozen exactly 180 s later, before anything is logged on this screen.
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 180_000)
+  renderSetScreen({
+    setIndex: 2,
+    lastEntries: [historyEntry(2, 60, 10)],
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
 
-  expect(readoutValue(screen.getByRole('timer'))).toBe('0:00')
+  expect(readoutValue(restReadout())).toBe('+0:00 over')
 })
 
 test('O12 the rest timer formats the remaining rest as minutes and seconds', async () => {
@@ -593,12 +612,14 @@ test('O4 a Bodyweight Exercise has no Type weight button', () => {
 test('O7 opening back-squat whose latest Set in this Session was logged 100 s ago shows 1:20 remaining', () => {
   // back-squat's plan here carries a 180 s rest (squatPlan); the last Set in this session was
   // logged at BASE, and "now" is frozen 100 s later, so 80 s of the 180 s remain -- "1:20".
+  // E13-T8: the caller now hands that Set in as `restFrom`; `lastEntries` no longer seeds rest.
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
   renderSetScreen({
     setIndex: 2,
     plan: squatPlan,
     sessionStartedAt: BASE,
     lastEntries: [historyEntry(2, 60, 10)],
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
   expect(readoutValue(screen.getByRole('timer'))).toBe('1:20')
@@ -628,6 +649,7 @@ test('O1 playRestOver is called exactly once when the clock passes the Plan rest
       sessionId={SESSION_ID}
       sessionStartedAt={BASE}
       lastEntries={[pushUpEntry(1, 12, BASE)]}
+      restFrom={{ entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 }}
       onLog={sessionLogSet()}
       onLogged={vi.fn()}
     />,
@@ -661,6 +683,7 @@ test('O1 playRestOver is not called when a set screen opens with this Session re
       sessionId={SESSION_ID}
       sessionStartedAt={BASE}
       lastEntries={[pushUpEntry(1, 12, BASE)]}
+      restFrom={{ entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 }}
       onLog={sessionLogSet()}
       onLogged={vi.fn()}
     />,
@@ -1257,4 +1280,335 @@ test('O14 deleting a record Set takes its badge with it', async () => {
 
   await waitFor(() => expect(loggedSetNames()).toEqual(['70 × 5']))
   expect(prBadges()).toHaveLength(0)
+})
+
+// --- E13-T8 O4: rest follows the Session, with -15 s, +15 s and Skip -------------------------
+//
+// The caller hands in the Session's latest Set as `restFrom`, with the Plan rest of the Exercise
+// it belongs to. Adjusting the rest tells the caller the Set's new `restSeconds` through
+// `onSetRest`; the caller stores it and hands the stored Set back as `restFrom`.
+
+/**
+ * The set screen under a parent that owns the Session's Sets the way WorkoutFeature does:
+ * `restFrom` is always the latest of them by `loggedAt` (a push-ups Set rests 90 s, a back-squat
+ * Set 180 s), and the log, delete and `onSetRest` doubles store what they are told.
+ */
+function renderWithSessionRest(initial: SetEntry[], over: Partial<SetScreenProps> = {}) {
+  const user = userEvent.setup()
+  const onSetRest = vi.fn()
+  const baseLog = sessionLogSet()
+  let current = initial
+
+  function Parent(): JSX.Element {
+    const [entries, setEntries] = useState<SetEntry[]>(initial)
+    current = entries
+    const latest = entries.reduce<SetEntry | null>(
+      (found, entry) => (found === null || entry.loggedAt > found.loggedAt ? entry : found),
+      null,
+    )
+    const squats = entries
+      .filter((entry) => entry.exerciseId === 'back-squat')
+      .sort((a, b) => a.setIndex - b.setIndex)
+    return (
+      <SetScreen
+        exercise={backSquat}
+        plan={squatPlan}
+        setIndex={initial.filter((entry) => entry.exerciseId === 'back-squat').length + 1}
+        sessionId={SESSION_ID}
+        sessionStartedAt={BASE}
+        lastEntries={[]}
+        logged={squats}
+        restFrom={
+          latest === null
+            ? null
+            : { entry: latest, planRestSeconds: latest.exerciseId === 'push-ups' ? 90 : 180 }
+        }
+        onLog={async (id, entry) => {
+          const session = await baseLog(id, entry)
+          setEntries((before) => [...before, entry])
+          return session
+        }}
+        onLogged={() => undefined}
+        onSetRest={async (entry, restSeconds) => {
+          onSetRest(entry, restSeconds)
+          setEntries((before) =>
+            before.map((stored) =>
+              stored.exerciseId === entry.exerciseId && stored.setIndex === entry.setIndex
+                ? { ...stored, restSeconds }
+                : stored,
+            ),
+          )
+        }}
+        onDeleteSet={async (setIndex) => {
+          const removed = current.find(
+            (entry) => entry.exerciseId === 'back-squat' && entry.setIndex === setIndex,
+          ) as SetEntry
+          setEntries((before) => before.filter((entry) => entry !== removed))
+          return removed
+        }}
+        {...over}
+      />
+    )
+  }
+  render(<Parent />)
+  return { user, onSetRest }
+}
+
+/** A back-squat Set of this Session, logged at `loggedAt`. */
+function squatEntry(setIndex: number, loggedAt: number): SetEntry {
+  return { exerciseId: 'back-squat', setIndex, weightKg: 60, reps: 10, loggedAt }
+}
+
+function plus15(): HTMLElement {
+  return screen.getByRole('button', { name: '+15 s' })
+}
+
+function minus15(): HTMLElement {
+  return screen.getByRole('button', { name: /^[−-]15 s$/ })
+}
+
+function skip(): HTMLElement {
+  return screen.getByRole('button', { name: 'Skip' })
+}
+
+test('O4 tapping +15 s with 1:20 of rest left makes the rest readout read 1:35', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+  expect(readoutValue(restReadout())).toBe('1:20')
+
+  await user.click(plus15())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:35'))
+})
+
+test('O4 tapping +15 s tells onSetRest the Set with a rest of 195 s', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user, onSetRest } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await user.click(plus15())
+
+  await waitFor(() => expect(onSetRest).toHaveBeenCalledTimes(1))
+  expect(onSetRest).toHaveBeenCalledWith(
+    expect.objectContaining({ exerciseId: 'back-squat', setIndex: 1, loggedAt: BASE }),
+    195,
+  )
+})
+
+test('O4 tapping −15 s with 1:20 of rest left makes the rest readout read 1:05', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await user.click(minus15())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:05'))
+})
+
+test('O4 tapping −15 s tells onSetRest the Set with a rest of 165 s', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user, onSetRest } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await user.click(minus15())
+
+  await waitFor(() => expect(onSetRest).toHaveBeenCalledTimes(1))
+  expect(onSetRest).toHaveBeenCalledWith(
+    expect.objectContaining({ exerciseId: 'back-squat', setIndex: 1, loggedAt: BASE }),
+    165,
+  )
+})
+
+test('O4 tapping −15 s with 10 s of rest left ends the rest at +0:00 over, never below zero', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 170_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+  expect(readoutValue(restReadout())).toBe('0:10')
+
+  await user.click(minus15())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:00 over'))
+})
+
+test('O4 tapping −15 s with 10 s of rest left stores the 170 s already rested', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 170_000)
+  const { user, onSetRest } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await user.click(minus15())
+
+  await waitFor(() => expect(onSetRest).toHaveBeenCalledTimes(1))
+  expect(onSetRest.mock.calls[0][1]).toBe(170)
+})
+
+test('O4 tapping Skip makes the rest readout read +0:00 over', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await user.click(skip())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:00 over'))
+})
+
+test('O4 tapping Skip tells onSetRest the Set with the 100 s already rested', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user, onSetRest } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await user.click(skip())
+
+  await waitFor(() => expect(onSetRest).toHaveBeenCalledTimes(1))
+  expect(onSetRest).toHaveBeenCalledWith(
+    expect.objectContaining({ exerciseId: 'back-squat', setIndex: 1, loggedAt: BASE }),
+    100,
+  )
+})
+
+test('O4 after Skip the rest readout counts up: 42 s later it reads +0:42 over', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE + 100_000)
+  renderWithSessionRest([squatEntry(1, BASE)])
+  await tapWithFakeTimers(skip())
+  expect(readoutValue(restReadout())).toBe('+0:00 over')
+
+  await vi.advanceTimersByTimeAsync(42_000)
+
+  expect(readoutValue(restReadout())).toBe('+0:42 over')
+})
+
+test('O4 Skip ends the rest silently: playRestOver is never called', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderWithSessionRest([pushUpEntry(1, 12, BASE)])
+  await vi.advanceTimersByTimeAsync(30_000)
+
+  await tapWithFakeTimers(skip())
+  await vi.advanceTimersByTimeAsync(200_000)
+
+  expect(playRestOver).not.toHaveBeenCalled()
+})
+
+test('O4 after +15 s the beep fires once, at the adjusted zero rather than the Plan rest', async () => {
+  // A push-ups Set at BASE rests 90 s; +15 s at 80 s in makes it 105 s.
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderWithSessionRest([pushUpEntry(1, 12, BASE)])
+  await vi.advanceTimersByTimeAsync(80_000)
+  await tapWithFakeTimers(plus15())
+
+  await vi.advanceTimersByTimeAsync(20_000)
+  expect(playRestOver).not.toHaveBeenCalled()
+
+  await vi.advanceTimersByTimeAsync(6_000)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+
+  await vi.advanceTimersByTimeAsync(10_000)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+})
+
+test('O4 after −15 s the beep fires once, at the earlier adjusted zero', async () => {
+  // A push-ups Set at BASE rests 90 s; −15 s at 10 s in makes it 75 s.
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderWithSessionRest([pushUpEntry(1, 12, BASE)])
+  await vi.advanceTimersByTimeAsync(10_000)
+  await tapWithFakeTimers(minus15())
+
+  await vi.advanceTimersByTimeAsync(64_000)
+  expect(playRestOver).not.toHaveBeenCalled()
+
+  await vi.advanceTimersByTimeAsync(2_000)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+
+  await vi.advanceTimersByTimeAsync(10_000)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+})
+
+test("O4 a set screen opened on a Set whose rest was changed to 195 s shows that rest, not the Plan's", () => {
+  // What a reload hands back: the stored Set carries restSeconds 195 against the Plan's 180.
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({
+    setIndex: 2,
+    restFrom: { entry: { ...historyEntry(1, 60, 10), restSeconds: 195 }, planRestSeconds: 180 },
+  })
+
+  expect(readoutValue(restReadout())).toBe('1:35')
+})
+
+test("O4 the rest follows the Session's latest Set of another Exercise, by that Exercise's Plan rest", () => {
+  // Back squat on screen (Plan rest 180 s); the Session's latest Set is push-ups (90 s), 30 s ago.
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 30_000)
+  renderSetScreen({
+    setIndex: 1,
+    restFrom: { entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 },
+  })
+
+  expect(readoutValue(restReadout())).toBe('1:00')
+})
+
+test('O4 with restFrom null no rest shows, even when lastEntries hold a Set of this Session', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({ setIndex: 2, lastEntries: [historyEntry(1, 60, 10)], restFrom: null })
+
+  expect(screen.queryByRole('timer', { name: 'Rest remaining' })).toBeNull()
+})
+
+test('O4 after a log the rest follows the Set just logged, not the earlier restFrom', async () => {
+  // restFrom is a push-ups Set 50 s ago (40 s of its 90 s left); the back-squat Set logged now
+  // rests squatPlan's 180 s.
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  const { user } = renderSetScreen({
+    setIndex: 1,
+    restFrom: { entry: pushUpEntry(1, 12, BASE + 50_000), planRestSeconds: 90 },
+  })
+  expect(readoutValue(restReadout())).toBe('0:40')
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('3:00'))
+})
+
+test('O4 once rest is over, −15 s, +15 s and Skip are not offered', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 200_000)
+  renderSetScreen({
+    setIndex: 2,
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+  expect(restReadout()).toBeVisible()
+
+  expect(screen.queryByRole('button', { name: '+15 s' })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^[−-]15 s$/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
+})
+
+test('O4 while rest runs, −15 s, +15 s and Skip are offered', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({
+    setIndex: 2,
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  expect(plus15()).toBeVisible()
+  expect(minus15()).toBeVisible()
+  expect(skip()).toBeVisible()
+})
+
+test('O4 a rest that ran out 20 s ago reads +0:20 over', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 200_000)
+  renderSetScreen({
+    setIndex: 2,
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  expect(readoutValue(restReadout())).toBe('+0:20 over')
+})
+
+test('O4 after the latest Set is deleted, rest follows the new latest Set', async () => {
+  // Set 1 at BASE; set 2 is logged on screen 60 s later. Deleting set 2 at 100 s leaves set 1 as
+  // the latest: 180 s from BASE, 1:20 left.
+  let clock = BASE + 60_000
+  vi.spyOn(Date, 'now').mockImplementation(() => clock)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+  await user.click(logButton())
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('3:00'))
+  clock = BASE + 100_000
+
+  await user.click(await screen.findByRole('button', { name: '50 × 8' }))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:20'))
 })

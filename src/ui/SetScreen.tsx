@@ -113,6 +113,20 @@ export type SetScreenProps = {
    * Set against. Optional; omitted or empty means no Set is a record.
    */
   earlierSessions?: Session[]
+  /**
+   * The Session's latest Set, whichever Exercise it was, and the Plan rest of the Exercise it
+   * belongs to (E13-T8), resolved by the caller; `null`/omitted shows no rest. Replaces the
+   * per-Exercise seed from `lastEntries`; after a log the screen rests from the Set it just logged.
+   *
+   * STUB (E13-T8 test-designer): accepted but not yet read.
+   */
+  restFrom?: { entry: SetEntry; planRestSeconds: number } | null
+  /**
+   * Stores `restSeconds` as the rest after `entry` (E13-T8), from −15 s, +15 s or Skip.
+   *
+   * STUB (E13-T8 test-designer): accepted but not yet called.
+   */
+  onSetRest?(entry: SetEntry, restSeconds: number): Promise<void>
 }
 
 /**
