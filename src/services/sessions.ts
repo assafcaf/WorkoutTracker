@@ -9,6 +9,7 @@ import {
   logSet,
   deleteSet,
   restoreSet,
+  saveSession,
   updateSet,
   setSwap,
   startOrResumeSession,
@@ -52,6 +53,8 @@ const SWAP_FAILED = 'the swap could not be saved'
 const HISTORY_FAILED = 'the history could not be read'
 /** SetScreen shows a failed log's message under the set as it stands. */
 const LOG_FAILED = 'the set could not be saved'
+/** The History editor shows a failed save's message under its Sets (E12-T6). */
+const SAVE_FAILED = 'the workout could not be saved'
 
 /** `sessionStore`'s rejection for an id it does not hold (`requireSession`). */
 const MISSING_SESSION = /^no session .* is stored$/
@@ -157,8 +160,7 @@ export function createSessionService(deps: ServiceDeps): SessionService {
     },
 
     async save(session) {
-      void session
-      throw new Error('SessionService.save is not implemented')
+      return write(session.id, () => saveSession(session, now()), SAVE_FAILED)
     },
 
     async lastEntriesFor(exerciseId) {
