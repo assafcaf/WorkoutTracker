@@ -101,6 +101,7 @@ describe('O5 the session service', () => {
       'restoreSet',
       'resumeActive',
       'save',
+      'setRest',
       'start',
       'undoSwap',
       'updateSet',
@@ -779,6 +780,41 @@ describe('E12-T1 SessionService.discard', () => {
 
     const rejection = service.discard('missing')
 
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+    expect(emitted()).toBe(0)
+  })
+})
+
+// --- E13-T5: setRest through the service ---------------------------------------------------
+
+describe('E13-T5 the session service stores a changed rest', () => {
+  const squat1 = entry('squat', 1, 60, 8, NOW - 300 * SECOND)
+  const squat2 = entry('squat', 2, 62.5, 6, NOW - 200 * SECOND)
+  const seed = (): Session =>
+    storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries: [squat1, squat2],
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O3 setRest stores restSeconds, stamps now() and announces sessions once', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const updated = await service.setRest('active', 'squat', 2, 150)
+
+    expect(updated.entries).toEqual([squat1, { ...squat2, restSeconds: 150 }])
+    expect((await stored('active'))?.entries).toEqual([squat1, { ...squat2, restSeconds: 150 }])
+    expect((await stored('active'))?.updatedAt).toBe(NOW)
+    expect(emitted()).toBe(1)
+  })
+
+  test("O3 setRest on a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
+    const { service, emitted } = harness()
+    const rejection = service.setRest('missing', 'squat', 1, 60)
     await expect(rejection).rejects.toBeInstanceOf(ServiceError)
     await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
     expect(emitted()).toBe(0)
