@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
@@ -832,4 +833,271 @@ test('O11 a preset set is logged by one tap on Log set', async () => {
   await user.click(logButton())
 
   expect(onLog).toHaveBeenCalledTimes(1)
+})
+
+// --- E12-T3: this Session's Sets on the set screen: edit, delete, Undo -------------------------
+
+/**
+ * The set screen under a parent that owns the Session's Sets the way WorkoutFeature does: the
+ * `logged` prop follows what the edit, delete, restore and log doubles store. Deleting renumbers
+ * the later Sets down by one, as the service does (E12-T2).
+ */
+function renderWithLogged(
+  initial: SetEntry[],
+  over: Partial<SetScreenProps> = {},
+  fakeTimers = false,
+) {
+  const user = fakeTimers
+    ? userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) })
+    : userEvent.setup()
+  const onEditSet = vi.fn()
+  const onDeleteSet = vi.fn()
+  const onRestoreSet = vi.fn()
+  const baseLog = sessionLogSet()
+  let current = initial
+
+  function Parent(): JSX.Element {
+    const [logged, setLogged] = useState<SetEntry[]>(initial)
+    current = logged
+    const sort = (entries: SetEntry[]) => [...entries].sort((a, b) => a.setIndex - b.setIndex)
+    return (
+      <SetScreen
+        exercise={backSquat}
+        plan={squatPlan}
+        setIndex={initial.length + 1}
+        sessionId={SESSION_ID}
+        sessionStartedAt={BASE}
+        lastEntries={initial}
+        logged={logged}
+        onLog={async (id, entry) => {
+          const session = await baseLog(id, entry)
+          setLogged((before) => sort([...before, entry]))
+          return session
+        }}
+        onLogged={() => undefined}
+        onEditSet={async (setIndex, values) => {
+          onEditSet(setIndex, values)
+          setLogged((before) =>
+            before.map((entry) => (entry.setIndex === setIndex ? { ...entry, ...values } : entry)),
+          )
+        }}
+        onDeleteSet={async (setIndex) => {
+          onDeleteSet(setIndex)
+          const removed = current.find((entry) => entry.setIndex === setIndex) as SetEntry
+          setLogged((before) =>
+            before
+              .filter((entry) => entry.setIndex !== setIndex)
+              .map((entry) =>
+                entry.setIndex > setIndex ? { ...entry, setIndex: entry.setIndex - 1 } : entry,
+              ),
+          )
+          return removed
+        }}
+        onRestoreSet={async (entry) => {
+          onRestoreSet(entry)
+          setLogged((before) =>
+            sort([
+              ...before.map((kept) =>
+                kept.setIndex >= entry.setIndex ? { ...kept, setIndex: kept.setIndex + 1 } : kept,
+              ),
+              entry,
+            ]),
+          )
+        }}
+        {...over}
+      />
+    )
+  }
+  const { unmount } = render(<Parent />)
+  return { user, onEditSet, onDeleteSet, onRestoreSet, unmount }
+}
+
+function loggedEntry(
+  setIndex: number,
+  weightKg: number | null,
+  reps: number,
+  exerciseId = 'back-squat',
+): SetEntry {
+  return { exerciseId, setIndex, weightKg, reps, loggedAt: BASE + setIndex }
+}
+
+/** The tappable logged Sets, in the order the screen lists them: "80 × 8", "BW × 8". */
+function loggedSetNames(): string[] {
+  return screen
+    .queryAllByRole('button', { name: /^(\d+(\.\d+)?|BW) × \d+$/ })
+    .map((button) => (button.textContent ?? '').replace(/\s+/g, ' ').trim())
+}
+
+function loggedSetButton(name: string): HTMLElement {
+  return screen.getByRole('button', { name })
+}
+
+test("O7 this Session's Sets are listed in setIndex order as weight × reps", () => {
+  renderWithLogged([loggedEntry(2, 90, 6), loggedEntry(1, 80, 8)])
+
+  expect(loggedSetNames()).toEqual(['80 × 8', '90 × 6'])
+})
+
+test('O7 a Bodyweight Set is listed as BW × reps', () => {
+  renderWithLogged([loggedEntry(1, null, 8, 'push-ups')], {
+    exercise: pushUps,
+    plan: pushUpPlan,
+  })
+
+  expect(loggedSetNames()).toEqual(['BW × 8'])
+})
+
+test('O7 once the only logged Set is deleted no list shows', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8)])
+  expect(loggedSetNames()).toEqual(['80 × 8'])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(screen.getByText('Set 1 of 4')).toBeVisible())
+  expect(loggedSetNames()).toEqual([])
+  expect(screen.queryByRole('list', { name: /logged/i })).toBeNull()
+})
+
+test('O8 tapping a logged Set shows its values on the Dials with Save set, Delete set and Cancel', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 90, 6)])
+
+  await user.click(loggedSetButton('90 × 6'))
+
+  expect(readoutValue(weightReadout())).toBe('90')
+  expect(readoutValue(repsReadout())).toBe('6')
+  expect(screen.getByRole('button', { name: 'Save set' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Delete set' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+})
+
+test('O8 Save set stores the new values, updates the list and returns to the next Set to log', async () => {
+  const { user, onEditSet } = renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await enterOnKeypad(user, repsReadout(), ['9'])
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(loggedSetNames()).toEqual(['80 × 9', '80 × 8']))
+  expect(onEditSet).toHaveBeenCalledTimes(1)
+  expect(onEditSet).toHaveBeenCalledWith(1, { weightKg: 80, reps: 9 })
+  expect(screen.getByText('Set 3 of 4')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Log set' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Save set' })).toBeNull()
+})
+
+test('O8 Cancel changes nothing and returns to the next Set to log', async () => {
+  const { user, onEditSet, onDeleteSet } = renderWithLogged([
+    loggedEntry(1, 80, 8),
+    loggedEntry(2, 80, 8),
+  ])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await enterOnKeypad(user, repsReadout(), ['9'])
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  expect(onEditSet).not.toHaveBeenCalled()
+  expect(onDeleteSet).not.toHaveBeenCalled()
+  expect(loggedSetNames()).toEqual(['80 × 8', '80 × 8'])
+  expect(screen.getByText('Set 3 of 4')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Log set' })).toBeVisible()
+})
+
+test('O9 Delete set removes the Set from the list, drops the counter and shows Undo', async () => {
+  const { user, onDeleteSet } = renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 90, 6)])
+  expect(screen.getByText('Set 3 of 4')).toBeVisible()
+
+  await user.click(loggedSetButton('90 × 6'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(loggedSetNames()).toEqual(['80 × 8']))
+  expect(onDeleteSet).toHaveBeenCalledWith(2)
+  expect(screen.getByText('Set 2 of 4')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Undo' })).toBeVisible()
+})
+
+test('O9 Delete set on a finished Exercise brings Log set back', async () => {
+  const { user } = renderWithLogged([
+    loggedEntry(1, 80, 8),
+    loggedEntry(2, 80, 8),
+    loggedEntry(3, 80, 8),
+    loggedEntry(4, 80, 7),
+  ])
+  expect(screen.getByText('All 4 sets logged')).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+
+  await user.click(loggedSetButton('80 × 7'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  expect(await screen.findByRole('button', { name: 'Log set' })).toBeVisible()
+  expect(screen.getByText('Set 4 of 4')).toBeVisible()
+})
+
+test('O9 tapping Undo restores the deleted Set exactly and hides Undo', async () => {
+  const removed = loggedEntry(2, 90, 6)
+  const { user, onRestoreSet } = renderWithLogged([loggedEntry(1, 80, 8), removed])
+
+  await user.click(loggedSetButton('90 × 6'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+  await user.click(await screen.findByRole('button', { name: 'Undo' }))
+
+  expect(onRestoreSet).toHaveBeenCalledTimes(1)
+  expect(onRestoreSet).toHaveBeenCalledWith(removed)
+  await waitFor(() => expect(loggedSetNames()).toEqual(['80 × 8', '90 × 6']))
+  expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
+  expect(screen.getByText('Set 3 of 4')).toBeVisible()
+})
+
+test('O9 Undo is still there at 4.9 s and gone at 5 s, and the deletion stands', async () => {
+  vi.useFakeTimers()
+  const { user, onRestoreSet } = renderWithLogged(
+    [loggedEntry(1, 80, 8), loggedEntry(2, 90, 6)],
+    {},
+    true,
+  )
+
+  await user.click(loggedSetButton('90 × 6'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+  expect(await screen.findByRole('button', { name: 'Undo' })).toBeVisible()
+
+  await vi.advanceTimersByTimeAsync(4900)
+  expect(screen.getByRole('button', { name: 'Undo' })).toBeVisible()
+
+  await vi.advanceTimersByTimeAsync(100)
+  expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
+  expect(onRestoreSet).not.toHaveBeenCalled()
+  expect(loggedSetNames()).toEqual(['80 × 8'])
+})
+
+test('O9 Undo disappears when the next Set is logged', async () => {
+  const { user, onRestoreSet } = renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 90, 6)])
+
+  await user.click(loggedSetButton('90 × 6'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+  await screen.findByRole('button', { name: 'Undo' })
+  await user.click(logButton())
+
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull())
+  expect(onRestoreSet).not.toHaveBeenCalled()
+})
+
+test('O9 leaving the screen clears the Undo timer without restoring or erroring', async () => {
+  vi.useFakeTimers()
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  const { user, onRestoreSet, unmount } = renderWithLogged(
+    [loggedEntry(1, 80, 8), loggedEntry(2, 90, 6)],
+    {},
+    true,
+  )
+
+  await user.click(loggedSetButton('90 × 6'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+  expect(await screen.findByRole('button', { name: 'Undo' })).toBeVisible()
+  unmount()
+  await vi.advanceTimersByTimeAsync(10_000)
+
+  expect(onRestoreSet).not.toHaveBeenCalled()
+  expect(errors).not.toHaveBeenCalled()
+  expect(vi.getTimerCount()).toBe(0)
 })

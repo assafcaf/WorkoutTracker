@@ -25,6 +25,19 @@ export type SetScreenProps = {
    */
   lastTime?: SetEntry[]
   /**
+   * This Session's Sets for the Exercise (E12-T3), listed in `setIndex` order and tappable to
+   * edit. Optional so callers predating it need not pass it; omitted or empty shows no list.
+   *
+   * STUB (E12-T3 test-designer): accepted but not yet rendered.
+   */
+  logged?: SetEntry[]
+  /** Stores new values for logged Set `setIndex` (E12-T3). STUB: not yet wired. */
+  onEditSet?(setIndex: number, values: { weightKg: number | null; reps: number }): Promise<void>
+  /** Removes logged Set `setIndex`, answering it so Undo can put it back (E12-T3). STUB. */
+  onDeleteSet?(setIndex: number): Promise<SetEntry>
+  /** Puts a deleted Set back exactly (E12-T3). STUB. */
+  onRestoreSet?(entry: SetEntry): Promise<void>
+  /**
    * Persists one Set to the Session `sessionId` and answers the Session as stored (E11-T10); a
    * rejection's message is shown under the set as it stands. The screen persists nothing itself.
    */
