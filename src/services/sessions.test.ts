@@ -101,6 +101,7 @@ describe('O5 the session service', () => {
       'restoreSet',
       'resumeActive',
       'save',
+      'setEffort',
       'setNote',
       'setRest',
       'start',
@@ -858,6 +859,54 @@ describe('E14-T4 the session service stores a Session note', () => {
   test("O12 setNote on a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
     const { service, emitted } = harness()
     const rejection = service.setNote('missing', 'x')
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+    expect(emitted()).toBe(0)
+  })
+})
+
+// --- E14-T2: setEffort through the service -------------------------------------------------
+
+describe('E14-T2 the session service stores the effort of a Set', () => {
+  const squat1 = entry('squat', 1, 60, 8, NOW - 300 * SECOND)
+  const squat2 = entry('squat', 2, 62.5, 6, NOW - 200 * SECOND)
+  const seed = (entries = [squat1, squat2]): Session =>
+    storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries,
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O8 setEffort stores rir, stamps now() and announces sessions once', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const updated = await service.setEffort('active', 'squat', 2, 1)
+
+    expect(updated.entries).toEqual([squat1, { ...squat2, rir: 1 }])
+    expect((await stored('active'))?.entries).toEqual([squat1, { ...squat2, rir: 1 }])
+    expect((await stored('active'))?.updatedAt).toBe(NOW)
+    expect(emitted()).toBe(1)
+  })
+
+  test('O8 setEffort with null removes rir, stamps now() and announces sessions once', async () => {
+    await putSessions([seed([squat1, { ...squat2, rir: 2 }])])
+    const { service, emitted } = harness()
+
+    const updated = await service.setEffort('active', 'squat', 2, null)
+
+    expect(updated.entries).toEqual([squat1, squat2])
+    const second = (await stored('active'))?.entries[1]
+    expect(second && 'rir' in second).toBe(false)
+    expect((await stored('active'))?.updatedAt).toBe(NOW)
+    expect(emitted()).toBe(1)
+  })
+
+  test("O8 setEffort on a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
+    const { service, emitted } = harness()
+    const rejection = service.setEffort('missing', 'squat', 1, 2)
     await expect(rejection).rejects.toBeInstanceOf(ServiceError)
     await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
     expect(emitted()).toBe(0)

@@ -173,6 +173,22 @@ export async function updateSet(
   })
 }
 
+/** Stores, replaces or (with null) removes the effort of one logged Set (E14-T2). */
+export async function setEffort(
+  sessionId: string,
+  exerciseId: string,
+  setIndex: number,
+  rir: 0 | 1 | 2 | 3 | null,
+  now: number = Date.now(),
+): Promise<Session> {
+  void sessionId
+  void exerciseId
+  void setIndex
+  void rir
+  void now
+  throw new Error('not implemented')
+}
+
 /** Stores a changed rest length on one logged Set (E13-T5). */
 export async function setRest(
   sessionId: string,

@@ -31,6 +31,12 @@ export type SessionService = {
     setIndex: number,
     values: { weightKg: number | null; reps: number },
   ): Promise<Session>
+  setEffort(
+    sessionId: string,
+    exerciseId: string,
+    setIndex: number,
+    rir: 0 | 1 | 2 | 3 | null,
+  ): Promise<Session>
   setRest(
     sessionId: string,
     exerciseId: string,
@@ -157,6 +163,14 @@ export function createSessionService(deps: ServiceDeps): SessionService {
         () => updateSet(sessionId, exerciseId, setIndex, values, now()),
         LOG_FAILED,
       )
+    },
+
+    async setEffort(sessionId, exerciseId, setIndex, rir) {
+      void sessionId
+      void exerciseId
+      void setIndex
+      void rir
+      throw new Error('not implemented')
     },
 
     async setRest(sessionId, exerciseId, setIndex, restSeconds) {

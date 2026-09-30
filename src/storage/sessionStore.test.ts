@@ -15,6 +15,7 @@ import {
   deleteSet,
   restoreSet,
   updateSet,
+  setEffort,
   setRest,
   setNote,
   putSessions,
@@ -1699,5 +1700,91 @@ describe('E14-T4 storing a Session note', () => {
 
   test('O12 setNote on a missing Session rejects naming the id', async () => {
     await expect(setNote('nope', 'x')).rejects.toThrow('no session nope is stored')
+  })
+})
+
+// --- E14-T2: setEffort -----------------------------------------------------------------------
+
+describe('E14-T2 storing the effort of a logged Set', () => {
+  const squat1 = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+  const squat2 = entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND)
+  const press1 = entry('press', 1, 30, 10, BASE + 150 * SECOND)
+
+  async function seed(entries = [squat1, press1, squat2]): Promise<string> {
+    await db.sessions.put(
+      storedSession({ id: 'effort', finishedAt: null, entries, updatedAt: BASE + 400 * SECOND }),
+    )
+    return 'effort'
+  }
+
+  test('O8 setEffort stores rir on that Set only and changes no other field or entry', async () => {
+    const id = await seed()
+
+    const updated = await setEffort(id, 'back-squat', 2, 1, BASE + 900 * SECOND)
+
+    const expected = [squat1, press1, { ...squat2, rir: 1 }]
+    expect(updated.entries).toEqual(expected)
+    expect((await db.sessions.get(id))?.entries).toEqual(expected)
+  })
+
+  test('O8 setEffort stores 0 (to failure) rather than treating it as no effort', async () => {
+    const id = await seed()
+
+    const updated = await setEffort(id, 'press', 1, 0, BASE + 900 * SECOND)
+
+    expect(updated.entries.find((e) => e.exerciseId === 'press')).toEqual({ ...press1, rir: 0 })
+  })
+
+  test('O8 setEffort advances the Session updatedAt to now and leaves other Session fields', async () => {
+    const id = await seed()
+    const before = await db.sessions.get(id)
+
+    const updated = await setEffort(id, 'back-squat', 2, 3, BASE + 900 * SECOND)
+
+    expect(updated.updatedAt).toBe(BASE + 900 * SECOND)
+    expect(await db.sessions.get(id)).toEqual({
+      ...before,
+      entries: updated.entries,
+      updatedAt: BASE + 900 * SECOND,
+    })
+  })
+
+  test('O8 setEffort replaces an earlier rir', async () => {
+    const id = await seed([{ ...squat1, rir: 2 }])
+
+    const updated = await setEffort(id, 'back-squat', 1, 0, BASE + 900 * SECOND)
+
+    expect(updated.entries).toEqual([{ ...squat1, rir: 0 }])
+  })
+
+  test('O8 setEffort with null removes rir from the Set and stores the removal', async () => {
+    const id = await seed([{ ...squat1, rir: 2, restSeconds: 90 }])
+
+    const updated = await setEffort(id, 'back-squat', 1, null, BASE + 900 * SECOND)
+
+    expect(updated.entries).toEqual([{ ...squat1, restSeconds: 90 }])
+    const stored = (await db.sessions.get(id))?.entries[0]
+    expect(stored && 'rir' in stored).toBe(false)
+    expect(updated.updatedAt).toBe(BASE + 900 * SECOND)
+  })
+
+  test('O8 updateSet keeps the rir of the Set it edits', async () => {
+    const id = await seed([{ ...squat1, rir: 2 }])
+
+    const updated = await updateSet(id, 'back-squat', 1, { weightKg: 65, reps: 5 }, BASE + 900 * SECOND)
+
+    expect(updated.entries).toEqual([{ ...squat1, weightKg: 65, reps: 5, rir: 2 }])
+  })
+
+  test('O8 setEffort on a missing Session rejects naming the id', async () => {
+    await expect(setEffort('nope', 'back-squat', 1, 2)).rejects.toThrow('no session nope is stored')
+  })
+
+  test('O8 setEffort on a Set that is not logged rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(setEffort(id, 'back-squat', 9, 2, BASE + 900 * SECOND)).rejects.toThrow(/no set/i)
+
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
   })
 })
