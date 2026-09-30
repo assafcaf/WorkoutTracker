@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import { SessionSummary } from './SessionSummary'
 import type { Region } from '../domain/muscles'
-import type { Exercise, LibraryExercise, Muscle, Session, SetEntry } from '../types'
+import type { Exercise, ExercisePlan, LibraryExercise, Muscle, Session, SetEntry } from '../types'
 
 // E5-T20 [M16] and [M9], on the summary itself. Synthetic catalog and library entries, so every
 // count below is hand-derived from the fixtures:
@@ -62,12 +62,16 @@ const LIBRARY = new Map<string, LibraryExercise>([
   ['Lib_Pulldown', libraryEntry('Lib_Pulldown', ['lats'], ['biceps'])],
   ['Lib_Row', libraryEntry('Lib_Row', ['middle back'], ['biceps', 'lats'])],
   ['Lib_Squat', libraryEntry('Lib_Squat', ['quadriceps'], ['glutes'])],
+  ['Lib_Bench', libraryEntry('Lib_Bench', ['chest'], ['triceps'])],
+  ['Lib_PushUp', libraryEntry('Lib_PushUp', ['chest'], ['triceps'])],
 ])
 
 const CATALOG = new Map<string, Exercise>([
   ['pulldown', catalogEntry('pulldown', 'Pulldown', 'Lib_Pulldown')],
   ['row', catalogEntry('row', 'Row', 'Lib_Row')],
   ['squat', catalogEntry('squat', 'Squat', 'Lib_Squat')],
+  ['bench', catalogEntry('bench', 'Bench press', 'Lib_Bench')],
+  ['pushup', { ...catalogEntry('pushup', 'Push-up', 'Lib_PushUp'), bodyweight: true }],
 ])
 
 const resolve = (id: string): Exercise | undefined => CATALOG.get(id)
@@ -272,4 +276,118 @@ test('O13 SessionSummary renders a decorative court-stripe at the top', () => {
   expect(stripe).not.toBeNull()
   expect(stripe).toHaveAttribute('aria-hidden', 'true')
   expect(dialog.firstElementChild).toBe(stripe)
+})
+
+// --- E13-T7 (O16): duration, volume and the PRs set, above the body map ---------------------------
+
+const MINUTE = 60_000
+const PLANS: Record<string, ExercisePlan> = {
+  bench: { exerciseId: 'bench', sets: 3, repRange: [5, 8], restSeconds: 120 },
+  pushup: { exerciseId: 'pushup', sets: 3, repRange: [10, 15], restSeconds: 60 },
+}
+const planFor = (id: string): ExercisePlan | undefined => PLANS[id]
+
+function benchSession(
+  id: string,
+  startedAt: number,
+  minutes: number,
+  count: number,
+  weightKg: number,
+  reps: number,
+): Session {
+  return {
+    id,
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt,
+    finishedAt: startedAt + minutes * MINUTE,
+    entries: Array.from({ length: count }, (_, index) => ({
+      exerciseId: 'bench',
+      setIndex: index + 1,
+      weightKg,
+      reps,
+      loggedAt: startedAt + (index + 1) * 1000,
+    })),
+  }
+}
+
+function renderWithStats(session: Session, earlierSessions: Session[] = []): HTMLElement {
+  render(
+    <SessionSummary
+      session={session}
+      earlierSessions={earlierSessions}
+      planFor={planFor}
+      resolve={resolve}
+      library={LIBRARY}
+      onClose={vi.fn()}
+    />,
+  )
+  return summaryDialog()
+}
+
+test('O16 SessionSummary shows a 52-minute Session’s duration as 52 min', () => {
+  const dialog = renderWithStats(benchSession('d52', BASE, 52, 1, 40, 5))
+
+  expect(within(dialog).getByText('52 min')).toBeVisible()
+})
+
+test('O16 SessionSummary shows a 65-minute Session’s duration as 1 h 05 min', () => {
+  const dialog = renderWithStats(benchSession('d65', BASE, 65, 1, 40, 5))
+
+  expect(within(dialog).getByText('1 h 05 min')).toBeVisible()
+})
+
+test('O16 SessionSummary shows the volume as 4,250 kg, and no bodyweight reps when there are none', () => {
+  const dialog = renderWithStats(benchSession('vol', BASE, 52, 10, 85, 5))
+
+  expect(within(dialog).getByText('4,250 kg')).toBeVisible()
+  expect(dialog.textContent).not.toContain('bodyweight reps')
+})
+
+test('O16 SessionSummary adds · 36 bodyweight reps to the volume when the Session has bodyweight sets', () => {
+  const session = benchSession('bw', BASE, 52, 10, 85, 5)
+  session.entries.push(
+    ...[1, 2, 3].map((index) => ({
+      exerciseId: 'pushup',
+      setIndex: index,
+      weightKg: null,
+      reps: 12,
+      loggedAt: BASE + 100_000 + index,
+    })),
+  )
+  const dialog = renderWithStats(session)
+
+  expect(within(dialog).getByText('4,250 kg · 36 bodyweight reps')).toBeVisible()
+})
+
+test('O16 SessionSummary lists a PR set in the Session as Bench press · Heaviest set · 85 kg × 5', () => {
+  const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
+  const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
+
+  const line = within(dialog).getByText('Bench press · Heaviest set · 85 kg × 5')
+  expect(line).toBeVisible()
+  expect(line.closest('li')).not.toBeNull()
+})
+
+test('O16 SessionSummary shows duration, volume and PRs above the body map', () => {
+  const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
+  const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
+
+  const map = dialog.querySelector('[data-region]')!
+  for (const text of ['52 min', '1,275 kg', 'Bench press · Heaviest set · 85 kg × 5']) {
+    const element = within(dialog).getByText(text)
+    expect(
+      element.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING,
+      `${text} must come before the body map`,
+    ).toBeTruthy()
+  }
+})
+
+test('O16 SessionSummary with no PRs shows no PR list', () => {
+  const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 90, 5)
+  const dialog = renderWithStats(benchSession('nopr', BASE, 52, 3, 85, 5), [earlier])
+
+  expect(within(dialog).getByText('52 min')).toBeVisible()
+  expect(within(dialog).queryAllByRole('listitem')).toHaveLength(0)
+  expect(dialog.textContent).not.toContain('Heaviest set')
 })

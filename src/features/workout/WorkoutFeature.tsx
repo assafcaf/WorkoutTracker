@@ -576,6 +576,18 @@ export function WorkoutFeature({
           session={summarySession}
           resolve={resolveListExercise}
           library={libraryMap}
+          earlierSessions={sessions.filter(
+            (other) =>
+              other.id !== summarySession.id &&
+              other.finishedAt !== undefined &&
+              other.startedAt < summarySession.startedAt,
+          )}
+          planFor={(exerciseId) =>
+            programs
+              .find((program) => program.id === summarySession.programId)
+              ?.workouts.find((workout) => workout.id === summarySession.workoutId)
+              ?.exercises.find((plan) => plan.exerciseId === exerciseId)
+          }
           onClose={() => setSummarySession(null)}
           onBrowse={(muscles) => {
             setSummarySession(null)
