@@ -52,7 +52,7 @@ export function presetForSet(args: {
    * position of the Set at `setIndex` is counted. Omitted: every Set before it was working.
    */
   logged?: SetEntry[]
-}): { weightKg: number | null; reps: number } {
+}): { weightKg: number | null; reps: number; loadKg?: number } {
   const { exercise, plan, setIndex, lastEntries, logged } = args
 
   const position =
@@ -63,7 +63,11 @@ export function presetForSet(args: {
 
   const match = sequence[position - 1] ?? sequence[sequence.length - 1]
   if (match !== undefined) {
-    return { weightKg: exercise.bodyweight ? null : match.weightKg, reps: match.reps }
+    return {
+      weightKg: exercise.bodyweight ? null : match.weightKg,
+      reps: match.reps,
+      ...(match.loadKg ? { loadKg: match.loadKg } : {}),
+    }
   }
 
   return {

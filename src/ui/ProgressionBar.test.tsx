@@ -134,3 +134,15 @@ test('O12 the progression bar stylesheet fills with --color-accent on a --color-
   expect(css).toMatch(/var\(\s*--color-raised\s*\)/)
   expect(css).not.toMatch(/var\(\s*--color-border\s*\)/)
 })
+
+test('O16 a full bodyweight bar suggesting more load shows Next: BW+12.5', () => {
+  renderBar({
+    workingWeightKg: null,
+    achievedReps: 30,
+    targetReps: 30,
+    isFull: true,
+    suggestion: { kind: 'add-load', nextLoadKg: 12.5 },
+  })
+
+  expect(screen.getByText('Next: BW+12.5')).toBeVisible()
+})

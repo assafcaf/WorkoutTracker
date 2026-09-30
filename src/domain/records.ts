@@ -8,6 +8,8 @@ export type RecordKind =
   | 'most-reps-at-weight'
   | 'lowest-assistance'
   | 'most-reps-in-a-set'
+  | 'heaviest-load'
+  | 'most-reps-at-load'
 
 export type ExerciseRecord = {
   kind: RecordKind
@@ -24,6 +26,8 @@ const LABELS: Record<RecordKind, string> = {
   'most-reps-at-weight': 'Most reps at the heaviest weight',
   'lowest-assistance': 'Lowest assistance at target reps',
   'most-reps-in-a-set': 'Most reps in a set',
+  'heaviest-load': 'Heaviest load',
+  'most-reps-at-load': 'Most reps at the heaviest load',
 }
 
 type Candidate = { weightKg: number | null; reps: number; at: number; value: number }
@@ -54,7 +58,7 @@ export function recordsFor(
   const sets = sessions.flatMap((session) =>
     session.entries
       .filter((entry) => entry.exerciseId === exercise.id && countsTowardStats(entry))
-      .map((entry) => ({ weightKg: entry.weightKg, reps: entry.reps, at: session.startedAt })),
+      .map((entry) => ({ weightKg: entry.weightKg, reps: entry.reps, loadKg: entry.loadKg, at: session.startedAt })),
   )
 
   if (exercise.invertProgress) {
@@ -70,7 +74,20 @@ export function recordsFor(
     const candidates: Candidate[] = sets.map((set) => ({ ...set, value: set.reps }))
     const winner = best(candidates)
     if (!winner) return []
-    return [toRecord('most-reps-in-a-set', winner)]
+    const records = [toRecord('most-reps-in-a-set', winner)]
+    const loaded = sets.filter((set) => set.loadKg)
+    const heaviestLoad = best(loaded.map((set) => ({ ...set, value: set.loadKg as number })))
+    if (!heaviestLoad) return records
+    const atLoad = best(
+      loaded
+        .filter((set) => set.loadKg === heaviestLoad.value)
+        .map((set) => ({ ...set, value: set.reps })),
+    ) as Candidate
+    return [
+      ...records,
+      toRecord('heaviest-load', heaviestLoad),
+      toRecord('most-reps-at-load', { ...heaviestLoad, value: atLoad.value, reps: atLoad.reps, at: atLoad.at }),
+    ]
   }
 
   const loadedSets = sets.filter((set) => set.weightKg !== null)

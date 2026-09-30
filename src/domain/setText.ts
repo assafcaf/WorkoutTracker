@@ -2,7 +2,8 @@ import type { SetEntry } from '../types'
 
 type SetTextInput = Pick<SetEntry, 'weightKg' | 'reps' | 'loadKg'>
 
-function loadText({ weightKg, loadKg }: SetTextInput): string {
+/** The load part of a Set's text: `80`, `BW`, `BW+10`, `BW−20`. */
+export function loadText({ weightKg, loadKg }: Pick<SetEntry, 'weightKg' | 'loadKg'>): string {
   if (weightKg !== null) return String(weightKg)
   if (!loadKg) return 'BW'
   return loadKg > 0 ? `BW+${loadKg}` : `BW−${Math.abs(loadKg)}`

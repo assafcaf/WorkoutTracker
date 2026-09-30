@@ -291,3 +291,35 @@ test('O5 a last time of warm-ups only presets the Exercise start weight and the 
 
   expect(result).toEqual({ weightKg: 50, reps: 8 })
 })
+
+test('O16 a bodyweight exercise carries the matched Set loadKg into the Preset like a weight', () => {
+  const lastEntries: SetEntry[] = [
+    { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 12, loggedAt: 1, loadKg: 10 },
+    { exerciseId: 'push-ups', setIndex: 2, weightKg: null, reps: 9, loggedAt: 2, loadKg: 12.5 },
+  ]
+
+  expect(
+    presetForSet({ exercise: pushUpsExercise, plan: pushUpsPlan, setIndex: 1, lastEntries }),
+  ).toEqual({ weightKg: null, reps: 12, loadKg: 10 })
+  expect(
+    presetForSet({ exercise: pushUpsExercise, plan: pushUpsPlan, setIndex: 2, lastEntries }),
+  ).toEqual({ weightKg: null, reps: 9, loadKg: 12.5 })
+  // past last time's Sets: the last one as it was lifted
+  expect(
+    presetForSet({ exercise: pushUpsExercise, plan: pushUpsPlan, setIndex: 3, lastEntries }),
+  ).toEqual({ weightKg: null, reps: 9, loadKg: 12.5 })
+})
+
+test('O16 a bodyweight Preset with no loaded Set answers exactly as before, with no loadKg', () => {
+  const lastEntries: SetEntry[] = [
+    { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 12, loggedAt: 1 },
+  ]
+  const result = presetForSet({
+    exercise: pushUpsExercise,
+    plan: pushUpsPlan,
+    setIndex: 1,
+    lastEntries,
+  })
+  expect(result).toEqual({ weightKg: null, reps: 12 })
+  expect(result).not.toHaveProperty('loadKg')
+})
