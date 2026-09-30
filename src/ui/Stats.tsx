@@ -67,11 +67,13 @@ function recordUnit(record: ExerciseRecord): string {
   switch (record.kind) {
     case 'heaviest-set':
     case 'best-e1rm':
+    case 'heaviest-load':
       return 'kg'
     case 'lowest-assistance':
       return 'kg assist'
     case 'most-reps-at-weight':
     case 'most-reps-in-a-set':
+    case 'most-reps-at-load':
       return 'reps'
   }
 }

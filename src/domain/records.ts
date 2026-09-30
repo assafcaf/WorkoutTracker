@@ -8,6 +8,8 @@ export type RecordKind =
   | 'most-reps-at-weight'
   | 'lowest-assistance'
   | 'most-reps-in-a-set'
+  | 'heaviest-load'
+  | 'most-reps-at-load'
 
 export type ExerciseRecord = {
   kind: RecordKind
@@ -24,6 +26,8 @@ const LABELS: Record<RecordKind, string> = {
   'most-reps-at-weight': 'Most reps at the heaviest weight',
   'lowest-assistance': 'Lowest assistance at target reps',
   'most-reps-in-a-set': 'Most reps in a set',
+  'heaviest-load': 'Heaviest load',
+  'most-reps-at-load': 'Most reps at the heaviest load',
 }
 
 type Candidate = { weightKg: number | null; reps: number; at: number; value: number }

@@ -528,3 +528,69 @@ test('O2 recordsFor ignores warm-up Sets that would otherwise win every record',
     }),
   ])).toEqual([])
 })
+
+// --- O16: Load records on a Bodyweight Exercise ---
+
+test('O16 a loaded Bodyweight Exercise adds heaviest-load and most-reps-at-load', () => {
+  const sessions = [
+    session({
+      startedAt: 100,
+      entries: [
+        { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 15, loggedAt: 1 },
+        { exerciseId: 'push-ups', setIndex: 2, weightKg: null, reps: 8, loggedAt: 2, loadKg: 10 },
+        { exerciseId: 'push-ups', setIndex: 3, weightKg: null, reps: 11, loggedAt: 3, loadKg: 10 },
+      ],
+    }),
+    session({
+      startedAt: 200,
+      entries: [
+        { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 5, loggedAt: 4, loadKg: 15 },
+        { exerciseId: 'push-ups', setIndex: 2, weightKg: null, reps: 7, loggedAt: 5, loadKg: 15 },
+      ],
+    }),
+  ]
+  const records = recordsFor(pushUps, pushUpsPlan, sessions)
+
+  expect(records.find((r) => r.kind === 'heaviest-load')).toMatchObject({
+    label: 'Heaviest load',
+    value: 15,
+    reps: 5,
+    at: 200,
+  })
+  expect(records.find((r) => r.kind === 'most-reps-at-load')).toMatchObject({
+    label: 'Most reps at the heaviest load',
+    value: 7,
+    reps: 7,
+    at: 200,
+  })
+  // the existing record stays, reps-only
+  expect(records.find((r) => r.kind === 'most-reps-in-a-set')).toMatchObject({ value: 15, at: 100 })
+})
+
+test('O16 a Bodyweight Exercise with no loaded Set, or only load 0, answers only most-reps-in-a-set', () => {
+  const sessions = [
+    session({
+      startedAt: 100,
+      entries: [
+        { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 12, loggedAt: 1 },
+        { exerciseId: 'push-ups', setIndex: 2, weightKg: null, reps: 9, loggedAt: 2, loadKg: 0 },
+      ],
+    }),
+  ]
+  const records = recordsFor(pushUps, pushUpsPlan, sessions)
+  expect(records.map((r) => r.kind)).toEqual(['most-reps-in-a-set'])
+  expect(records[0].value).toBe(12)
+})
+
+test('O16 warm-up Sets with a load do not set a load record', () => {
+  const sessions = [
+    session({
+      entries: [
+        { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 5, loggedAt: 1, loadKg: 40, kind: 'warmup' },
+        { exerciseId: 'push-ups', setIndex: 2, weightKg: null, reps: 10, loggedAt: 2, loadKg: 5 },
+      ],
+    }),
+  ]
+  const records = recordsFor(pushUps, pushUpsPlan, sessions)
+  expect(records.find((r) => r.kind === 'heaviest-load')?.value).toBe(5)
+})

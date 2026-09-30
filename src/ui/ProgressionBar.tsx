@@ -12,6 +12,8 @@ function suggestionText(suggestion: Suggestion): string {
       return `Next: ${String(suggestion.nextWeightKg)} kg assist`
     case 'add-set':
       return 'Add a set'
+    case 'add-load':
+      return 'Next: add load'
   }
 }
 

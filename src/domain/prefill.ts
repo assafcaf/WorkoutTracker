@@ -52,7 +52,7 @@ export function presetForSet(args: {
    * position of the Set at `setIndex` is counted. Omitted: every Set before it was working.
    */
   logged?: SetEntry[]
-}): { weightKg: number | null; reps: number } {
+}): { weightKg: number | null; reps: number; loadKg?: number } {
   const { exercise, plan, setIndex, lastEntries, logged } = args
 
   const position =

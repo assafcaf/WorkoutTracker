@@ -1,8 +1,8 @@
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
 import { workingSets as excludeWarmups } from './setKind'
 
-export type SuggestionKind = 'add-weight' | 'reduce-assistance' | 'add-set'
-export type Suggestion = { kind: SuggestionKind; nextWeightKg?: number }
+export type SuggestionKind = 'add-weight' | 'reduce-assistance' | 'add-set' | 'add-load'
+export type Suggestion = { kind: SuggestionKind; nextWeightKg?: number; nextLoadKg?: number }
 export type Progression = {
   workingWeightKg: number | null
   achievedReps: number
