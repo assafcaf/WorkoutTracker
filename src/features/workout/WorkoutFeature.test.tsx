@@ -74,7 +74,7 @@ function progressOf(row: HTMLElement): string {
 /** The Session in progress as stored, read straight from the database. */
 async function storedActiveSession(): Promise<Session | null> {
   const all = await db.sessions.toArray()
-  return all.find((session) => session.finishedAt === null) ?? null
+  return all.find((session) => session.finishedAt === null && !session.deletedAt) ?? null
 }
 
 /** From Workout B's seated biceps curls set screen: swaps it for Hammer Curls. */
