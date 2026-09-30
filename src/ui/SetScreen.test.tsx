@@ -2565,3 +2565,42 @@ test('O9 a logged Set with rir reads "weight × reps · RIR n", RIR 0 included, 
   // The RIR text sits beside the tappable Set, not inside its name.
   expect(loggedSetNames()).toEqual(['80 × 8', '80 × 8', '80 × 8', '80 × 8'])
 })
+
+// --- E14-T13: AMRAP on the set screen --------------------------------------------------------
+
+const amrapPlan: ExercisePlan = { ...squatPlan, sets: 3, amrapLast: true }
+
+test('O14 the last planned Set of an amrapLast Plan reads Set 3 of 3 · 8+ reps and opens on AMRAP', () => {
+  renderSetScreen({ plan: amrapPlan, setIndex: 3 })
+
+  expect(screen.getByText('Set 3 of 3 · 8+ reps')).toBeVisible()
+  expect(chosenKinds()).toEqual(['AMRAP'])
+})
+
+test('O14 an earlier Set of an amrapLast Plan reads plain and opens on Working', () => {
+  renderSetScreen({ plan: amrapPlan, setIndex: 2 })
+
+  expect(screen.getByText('Set 2 of 3')).toBeVisible()
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O14 choosing AMRAP on any Set makes the counter read 8+ reps', async () => {
+  const { user } = renderSetScreen({ plan: { ...squatPlan, sets: 3 }, setIndex: 2 })
+
+  await user.click(kindButton('AMRAP'))
+
+  expect(screen.getByText('Set 2 of 3 · 8+ reps')).toBeVisible()
+})
+
+test('O14 the AMRAP Set is stored with kind amrap and reps above the range', async () => {
+  const { user, onLog } = renderSetScreen({ plan: amrapPlan, setIndex: 3 })
+
+  await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1].kind).toBe('amrap')
+  expect(onLog.mock.calls[0][1].reps).toBeGreaterThan(10)
+})

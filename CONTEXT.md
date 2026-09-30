@@ -50,6 +50,11 @@ _Avoid_: Entry, rep log, record
 How a Set was performed, stored as the Set's optional `kind`: `warmup`, `drop`, `failure` or
 `amrap`. A normal (working) Set has no `kind`.
 
+**AMRAP**:
+A Set taken to as many reps as possible: its kind is `amrap`, and the Plan's bottom rep count is
+a floor, not a target, so the set counter reads "8+ reps". A Plan's `amrapLast` opens its last
+planned Set on it.
+
 **Warm-up**:
 A Set of kind `warmup`. It is logged and shown, but does not count toward stats: records, the
 e1RM series and progression ignore it (`countsTowardStats`).
