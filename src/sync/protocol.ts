@@ -7,6 +7,7 @@ export type SyncedSettingKey =
   | 'volumeBaseline'
   | 'userPrograms'
   | 'exerciseNotes'
+  | 'effortTracking'
 export const SYNCED_SETTING_KEYS: readonly SyncedSettingKey[] = [
   'activeProgramId',
   'gymEquipment',
@@ -14,6 +15,7 @@ export const SYNCED_SETTING_KEYS: readonly SyncedSettingKey[] = [
   'volumeBaseline',
   'userPrograms',
   'exerciseNotes',
+  'effortTracking',
 ]
 export type SyncedSetting = { key: SyncedSettingKey; value: unknown; updatedAt: number }
 export type SyncRequest = { since: number; sessions: SyncedSession[]; settings: SyncedSetting[] }

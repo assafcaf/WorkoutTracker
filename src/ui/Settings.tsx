@@ -82,6 +82,8 @@ export function Settings(props: SettingsProps): JSX.Element {
     onAdoptAccount,
     volumeBaseline = { period: 'last' },
     onVolumeBaselineChange = () => {},
+    trackEffort = false,
+    onTrackEffortChange,
   } = props
 
   const currentAggregate = 'aggregate' in volumeBaseline ? volumeBaseline.aggregate : 'avg'
@@ -224,6 +226,18 @@ export function Settings(props: SettingsProps): JSX.Element {
             />
           </label>
         ) : null}
+      </fieldset>
+      <fieldset className="settings-group">
+        <legend className="settings-legend">Effort</legend>
+        <label className="settings-action">
+          <input
+            type="checkbox"
+            className="settings-checkbox"
+            checked={trackEffort}
+            onChange={(event) => onTrackEffortChange?.(event.target.checked)}
+          />
+          <span className="settings-action-label">Track effort</span>
+        </label>
       </fieldset>
       <button type="button" className="settings-action" onClick={() => onExport?.()}>
         <span className="settings-action-label">Export</span>

@@ -5,10 +5,12 @@ import {
   getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
+  getTrackEffort,
   getVolumeBaseline,
   getWeightStep,
   setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
+  setTrackEffort as storeTrackEffort,
   setVolumeBaseline as storeVolumeBaseline,
   setWeightStep as storeWeightStep,
 } from '../storage/settingsStore'
@@ -64,8 +66,7 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       ),
     setExerciseNote: (exerciseId, text) =>
       write(() => storeExerciseNote(exerciseId, text, deps.now())),
-    // STUB (E14-T10 test-designer): not implemented yet.
-    trackEffort: () => Promise.reject(new Error('NotImplementedError')),
-    setTrackEffort: () => Promise.reject(new Error('NotImplementedError')),
+    trackEffort: () => callStorage(deps, getTrackEffort, 'trackEffort read failed'),
+    setTrackEffort: (on) => write(() => storeTrackEffort(on, deps.now())),
   }
 }

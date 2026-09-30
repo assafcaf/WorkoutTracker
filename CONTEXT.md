@@ -141,3 +141,8 @@ _Avoid_: Page, container, view
 Sessions, programs or preferences: what a write announces, so only the screens reading it
 re-read.
 _Avoid_: Event, channel, subscription
+
+**Effort**:
+How many reps the trainee had left (RIR, 0 to 3+) on a logged Set, recorded from chips after the
+log when **Track effort** is on in Settings. Optional, never blocks the next Set.
+_Avoid_: Intensity, RPE
