@@ -70,6 +70,11 @@ An Exercise carrying no weight at all, as opposed to one loaded with zero. Its w
 rather than `0`.
 _Avoid_: Unweighted, freeweight, no-load
 
+**Load**:
+The signed weight on a Bodyweight Set, in kg: positive when added (a belt), negative when assisted
+(a band or machine). Never `0`; absent on a plain Bodyweight Set and on loaded Sets.
+_Avoid_: Offset, modifier
+
 **Region**:
 A zone of the body map, shaded by how many sets reached it and tapped to see what trained it.
 Each of the 17 muscles maps to at least one Region (`shoulders` to two).

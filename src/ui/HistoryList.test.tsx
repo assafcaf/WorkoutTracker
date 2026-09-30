@@ -171,6 +171,19 @@ function resolveFixture(id: string): Exercise | undefined {
   return undefined
 }
 
+test('O15 an expanded HistoryList card lists a Bodyweight Set with its signed load through formatSet', async () => {
+  const session = sessionWith([
+    { exerciseId: 'Hammer_Curls', setIndex: 1, weightKg: null, reps: 8, loggedAt: BASE + 1, loadKg: 10 },
+    { exerciseId: 'Hammer_Curls', setIndex: 2, weightKg: null, reps: 6, loggedAt: BASE + 2, loadKg: -20 },
+  ])
+
+  render(<HistoryList sessions={[session]} programs={[assaf]} resolve={resolveFixture} />)
+  await userEvent.setup().click(cardToggle())
+
+  expect(screen.getByText('BW+10 × 8')).toBeVisible()
+  expect(screen.getByText('BW−20 × 6')).toBeVisible()
+})
+
 /** The card's own toggle: the one button that carries `aria-expanded`. */
 function cardToggle(): HTMLElement {
   return screen.getByRole('button', { expanded: false })
