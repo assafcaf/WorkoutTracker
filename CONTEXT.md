@@ -145,3 +145,6 @@ The bar weight and pairs of plates the trainee has; one synced setting.
 
 **Plate line**:
 The plates for one side of the bar, for the weight on the Dial.
+
+**Warm-up ramp**:
+The Warm-up Sets proposed before the first working Set of a barbell Exercise.
