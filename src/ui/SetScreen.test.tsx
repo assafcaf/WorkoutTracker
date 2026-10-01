@@ -2814,3 +2814,139 @@ test('O17 Save set at BW on a loaded Set removes its Load with loadKg null', asy
   await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
   expect(onEditSet.mock.calls[0][1].loadKg).toBeNull()
 })
+
+// --- E15-T2 O12: 1:00 of rest after a Warm-up --------------------------------------------------
+//
+// A back-squat Warm-up at BASE on a 180 s Plan (renderWithSessionRest gives back squat 180 s).
+
+function warmupSquat(setIndex: number, loggedAt: number, restSeconds?: number): SetEntry {
+  return { ...squatEntry(setIndex, loggedAt), kind: 'warmup', ...(restSeconds === undefined ? {} : { restSeconds }) }
+}
+
+test('O12 the Rest readout starts from 1:00 after a Warm-up on a 180 s Plan', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE)
+  renderWithSessionRest([warmupSquat(1, BASE)])
+
+  expect(readoutValue(restReadout())).toBe('1:00')
+})
+
+test('O12 the Log set button reads Rest 0:50 ten seconds after a Warm-up', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  renderWithSessionRest([warmupSquat(1, BASE)])
+
+  expect(logButton().textContent).toBe('Rest 0:50')
+})
+
+test('O12 a Warm-up rest is over after 60 s: the readout reads +0:10 over at 70 s', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 70_000)
+  renderWithSessionRest([warmupSquat(1, BASE)])
+
+  expect(readoutValue(restReadout())).toBe('+0:10 over')
+  expect(logButton().textContent).toBe('Rest +0:10')
+})
+
+test('O12 a working Set rests the Plan length: 3:00 at once', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  expect(readoutValue(restReadout())).toBe('3:00')
+})
+
+test('O12 a Warm-up whose rest was adjusted keeps its stored rest: 2:30 stays 2:20 at 10 s', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  renderWithSessionRest([warmupSquat(1, BASE, 150)])
+
+  expect(readoutValue(restReadout())).toBe('2:20')
+})
+
+test('O12 +15 s at 10 s into a Warm-up rest makes the readout 1:05 and stores 75', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user, onSetRest } = renderWithSessionRest([warmupSquat(1, BASE)])
+
+  await user.click(plus15())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:05'))
+  expect(onSetRest).toHaveBeenCalledWith(expect.objectContaining({ setIndex: 1 }), 75)
+})
+
+test('O12 -15 s at 10 s into a Warm-up rest makes the readout 0:35 and stores 45', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user, onSetRest } = renderWithSessionRest([warmupSquat(1, BASE)])
+
+  await user.click(minus15())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('0:35'))
+  expect(onSetRest).toHaveBeenCalledWith(expect.objectContaining({ setIndex: 1 }), 45)
+})
+
+test('O12 the rest Dial opens on 1:00 after a Warm-up', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user } = renderWithSessionRest([warmupSquat(1, BASE)])
+
+  const ladder = await openRestDial(user)
+
+  const selected = within(ladder).getAllByRole('option', { selected: true })
+  expect(selected.map((option) => option.textContent)).toEqual(['1:00'])
+})
+
+test('O12 the rest Dial opens on the stored rest of an adjusted Warm-up, 2:30', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user } = renderWithSessionRest([warmupSquat(1, BASE, 150)])
+
+  const ladder = await openRestDial(user)
+
+  const selected = within(ladder).getAllByRole('option', { selected: true })
+  expect(selected.map((option) => option.textContent)).toEqual(['2:30'])
+})
+
+test('O12 Set rest after a Warm-up offers no Use for this exercise', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user, onSetRest } = renderWithSessionRest([warmupSquat(1, BASE)], {
+    programName: 'A/B Split',
+    onUseRestForExercise: vi.fn(async () => undefined),
+  })
+
+  await setRestOnDial(user, '2:30')
+
+  await waitFor(() => expect(onSetRest).toHaveBeenCalledWith(expect.objectContaining({ setIndex: 1 }), 150))
+  expect(screen.queryByRole('button', { name: /^Use .* for / })).toBeNull()
+})
+
+test('O12 the beep fires once, at the Warm-up zero of 60 s rather than the Plan 180 s', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderWithSessionRest([warmupSquat(1, BASE)])
+
+  await vi.advanceTimersByTimeAsync(55_000)
+  expect(playRestOver).not.toHaveBeenCalled()
+
+  await vi.advanceTimersByTimeAsync(10_000)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+
+  await vi.advanceTimersByTimeAsync(10_000)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+})
+
+test('O12 changing the Set to Working moves its Rest to the Plan length: 1:00 becomes 3:00', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE)
+  const warm = warmupSquat(1, BASE)
+  const { kind: _kind, ...working } = warm
+  const props: SetScreenProps = {
+    exercise: backSquat,
+    plan: squatPlan,
+    setIndex: 2,
+    sessionId: SESSION_ID,
+    sessionStartedAt: BASE,
+    lastEntries: [],
+    logged: [warm],
+    restFrom: { entry: warm, planRestSeconds: 180 },
+    onLog: sessionLogSet(),
+    onLogged: () => undefined,
+  }
+  const { rerender } = render(<SetScreen {...props} />)
+  expect(readoutValue(restReadout())).toBe('1:00')
+
+  rerender(<SetScreen {...props} logged={[working]} restFrom={{ entry: working, planRestSeconds: 180 }} />)
+
+  expect(readoutValue(restReadout())).toBe('3:00')
+})

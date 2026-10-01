@@ -35,6 +35,14 @@ export function latestSet(entries: SetEntry[]): SetEntry | null {
   return latest
 }
 
+/** The rest after a Warm-up Set that stored none, at most (E15-T2). */
+export const WARMUP_REST_SECONDS = 60
+
+/** STUB (E15-T2): not yet the Warm-up rule. */
+export function restLengthOf(entry: SetEntry, planRestSeconds: number): number {
+  return entry.restSeconds ?? planRestSeconds
+}
+
 /** Rest after `entry`: its own `restSeconds` when set, else the Plan's. */
 export function restAfter(entry: SetEntry, planRestSeconds: number, now: number): RestState {
   return restState(entry.loggedAt, entry.restSeconds ?? planRestSeconds, now)
