@@ -1,6 +1,12 @@
 import { expect, test } from 'vitest'
 import type { LibraryExercise, PlateInventory } from '../types'
-import { DEFAULT_PLATE_INVENTORY, formatPlates, isBarbell, platesFor } from './plates'
+import {
+  DEFAULT_PLATE_INVENTORY,
+  formatPlates,
+  isBarbell,
+  platesFor,
+  validatePlateInventory,
+} from './plates'
 
 const inv = DEFAULT_PLATE_INVENTORY
 
@@ -145,4 +151,87 @@ test('isBarbell is true only for barbell equipment', () => {
   expect(isBarbell(entry('dumbbell'))).toBe(false)
   expect(isBarbell(entry(null))).toBe(false)
   expect(isBarbell(undefined)).toBe(false)
+})
+
+// --- E15-T3 O4: validatePlateInventory ---
+
+const validInventory: PlateInventory = {
+  barKg: 15,
+  plates: [
+    { kg: 2.5, pairs: 2 },
+    { kg: 20, pairs: 0 },
+    { kg: 10, pairs: 20 },
+  ],
+}
+
+test('O4 validatePlateInventory accepts a valid inventory and answers its plates heaviest first', () => {
+  expect(validatePlateInventory(validInventory)).toEqual({
+    ok: true,
+    inventory: {
+      barKg: 15,
+      plates: [
+        { kg: 20, pairs: 0 },
+        { kg: 10, pairs: 20 },
+        { kg: 2.5, pairs: 2 },
+      ],
+    },
+  })
+})
+
+test('O4 validatePlateInventory accepts the default inventory unchanged', () => {
+  expect(validatePlateInventory(DEFAULT_PLATE_INVENTORY)).toEqual({
+    ok: true,
+    inventory: DEFAULT_PLATE_INVENTORY,
+  })
+})
+
+test('O4 validatePlateInventory accepts the bar and plate boundaries 0, 50, 0.25 and 50', () => {
+  const edges = {
+    barKg: 0,
+    plates: [
+      { kg: 50, pairs: 20 },
+      { kg: 0.25, pairs: 0 },
+    ],
+  }
+  expect(validatePlateInventory(edges).ok).toBe(true)
+  expect(validatePlateInventory({ barKg: 50, plates: [] }).ok).toBe(true)
+})
+
+test('O4 validatePlateInventory accepts exactly 12 plate sizes', () => {
+  const plates = Array.from({ length: 12 }, (_, i) => ({ kg: i + 1, pairs: 1 }))
+  expect(validatePlateInventory({ barKg: 20, plates }).ok).toBe(true)
+})
+
+test.each([
+  ['a bar under 0', { barKg: -1, plates: [] }],
+  ['a bar over 50', { barKg: 50.5, plates: [] }],
+  ['a bar that is not a number', { barKg: '20', plates: [] }],
+  ['a bar that is NaN', { barKg: NaN, plates: [] }],
+  ['a plate under 0.25', { barKg: 20, plates: [{ kg: 0.2, pairs: 1 }] }],
+  ['a plate over 50', { barKg: 20, plates: [{ kg: 50.5, pairs: 1 }] }],
+  ['a fractional pair count', { barKg: 20, plates: [{ kg: 10, pairs: 1.5 }] }],
+  ['a negative pair count', { barKg: 20, plates: [{ kg: 10, pairs: -1 }] }],
+  ['a pair count over 20', { barKg: 20, plates: [{ kg: 10, pairs: 21 }] }],
+  [
+    'two plates of the same weight',
+    {
+      barKg: 20,
+      plates: [
+        { kg: 10, pairs: 1 },
+        { kg: 10, pairs: 2 },
+      ],
+    },
+  ],
+  [
+    'more than 12 plate sizes',
+    { barKg: 20, plates: Array.from({ length: 13 }, (_, i) => ({ kg: i + 1, pairs: 1 })) },
+  ],
+  ['plates that are not a list', { barKg: 20, plates: 'many' }],
+  ['a missing bar', { plates: [] }],
+  ['null', null],
+  ['a string', 'inventory'],
+])('O4 validatePlateInventory rejects %s with a message', (_name, value) => {
+  const result = validatePlateInventory(value)
+  expect(result.ok).toBe(false)
+  if (!result.ok) expect(result.error.length).toBeGreaterThan(0)
 })
