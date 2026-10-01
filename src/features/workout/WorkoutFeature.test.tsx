@@ -1217,3 +1217,51 @@ test('O8 a swapped-in barbell Exercise shows the Plate line', async () => {
     SETTLE,
   )
 })
+
+// --- E15-T7: the Warm-up ramp and the tap budget on a barbell Exercise ------------------------
+
+function addWarmupsOffer(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('button.add-warmups')
+}
+
+test('O13 on Back squat with the Plate line and Add warm-ups showing, one tap on Log set stores one working Set', async () => {
+  // The default Plate inventory: Back squat opens on its 50 kg start weight, 15 kg a side.
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await waitFor(() => expect(plateLine()?.textContent).toBe('Per side: 15'), SETTLE)
+  await waitFor(() => expect(addWarmupsOffer()).not.toBeNull(), SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+
+  await waitFor(async () => {
+    expect((await storedActiveSession())?.entries).toHaveLength(1)
+  }, SETTLE)
+  const [entry] = (await storedActiveSession())?.entries ?? []
+  expect([entry.exerciseId, entry.setIndex, entry.weightKg, entry.kind]).toEqual([
+    'back-squat',
+    1,
+    50,
+    undefined,
+  ])
+})
+
+test('O10 after a reload with one Warm-up logged for Back squat, Add warm-ups continues from Warm-up 2 of 3', async () => {
+  // The ramp for Back squat's 50 kg is 25 × 5, 35 × 3, 42.5 × 2; the first is already logged.
+  const services = await workoutAWithKinded([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 25, reps: 5, kind: 'warmup' },
+  ])
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Back squat')
+  await waitFor(() => expect(addWarmupsOffer()).not.toBeNull(), SETTLE)
+
+  await user.click(addWarmupsOffer() as HTMLElement)
+
+  await waitFor(
+    () =>
+      expect(document.querySelector('p.warmup-ramp')?.textContent).toBe(
+        'Warm-up 2 of 3 · 35 kg × 3',
+      ),
+    SETTLE,
+  )
+})
