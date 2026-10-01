@@ -12,6 +12,7 @@ import {
   ACTIVE_PROGRAM_ID_KEY,
   GYM_EQUIPMENT_KEY,
   LAST_EXPORTED_AT_KEY,
+  PLATE_INVENTORY_KEY,
   USER_PROGRAMS_KEY,
   EXERCISE_NOTES_KEY,
   EFFORT_TRACKING_KEY,
@@ -31,6 +32,7 @@ import {
 } from '../storage/settingsStore'
 import { inTransaction } from '../storage/transaction'
 import type { SettingRow } from '../storage/db'
+import type { PlateInventory } from '../types'
 import type { SyncResult } from '../sync/syncClient'
 import { CHANGE_TOPICS } from './changes'
 import { callStorage, ServiceError } from './errors'
@@ -59,6 +61,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     userPrograms,
     exerciseNotes,
     effortTracking,
+    plateInventoryRow,
   ] = await Promise.all([
     listSessions(),
     readRow(ACTIVE_PROGRAM_ID_KEY),
@@ -69,6 +72,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     getUserPrograms(),
     getExerciseNotes(),
     getTrackEffort(),
+    readRow(PLATE_INVENTORY_KEY),
   ])
   const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
 
@@ -85,6 +89,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
       userPrograms,
       ...(Object.keys(exerciseNotes).length > 0 ? { exerciseNotes } : {}),
       ...(effortTracking ? { effortTracking } : {}),
+      ...(plateInventoryRow ? { plateInventory: plateInventoryRow.value as PlateInventory } : {}),
     },
   }
 }
@@ -203,6 +208,9 @@ export function createBackupService(
 
             if (file.settings.effortTracking === undefined) toDelete.push(EFFORT_TRACKING_KEY)
             else toPut.push({ key: EFFORT_TRACKING_KEY, value: file.settings.effortTracking, updatedAt: now })
+
+            if (file.settings.plateInventory === undefined) toDelete.push(PLATE_INVENTORY_KEY)
+            else toPut.push({ key: PLATE_INVENTORY_KEY, value: file.settings.plateInventory, updatedAt: now })
 
             if (toPut.length > 0) await putRows(toPut)
             if (toDelete.length > 0) await deleteKeys(toDelete)
