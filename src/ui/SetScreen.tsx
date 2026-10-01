@@ -1,23 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
-import { presetForSet } from '../domain/prefill'
+import { formatSet, formatSetCompact } from '../domain/setText'
+import { layTodayOver, presetForSet } from '../domain/prefill'
+import { countsTowardStats, workingSets } from '../domain/setKind'
 import { recordsSetBy } from '../domain/records'
 import { adjustRest, formatOver, formatRest, restAfter } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
+import { LoadDial } from './LoadDial'
 import { RepsDial } from './RepsDial'
 import { RestDial } from './RestDial'
+import { SetKindRow } from './SetKindRow'
 import { Toast } from './Toast'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
-import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
+import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
+
+/** The longest Exercise note, in characters (E14-T11). */
+const EXERCISE_NOTE_MAX = 500
 
 export type SetScreenProps = {
+  /** The Exercise note shown above the Dials (E14-T11); null or omitted shows Add note. */
+  exerciseNote?: string | null
+  /** Saves the Exercise note (500 characters at most); empty removes it (E14-T11). */
+  onSaveExerciseNote?(text: string): Promise<void>
   exercise: Exercise
   plan: ExercisePlan
   setIndex: number
@@ -34,7 +45,10 @@ export type SetScreenProps = {
    */
   logged?: SetEntry[]
   /** Stores new values for logged Set `setIndex` (E12-T3). */
-  onEditSet?(setIndex: number, values: { weightKg: number | null; reps: number }): Promise<void>
+  onEditSet?(
+    setIndex: number,
+    values: { weightKg: number | null; reps: number; kind?: SetKind | null; loadKg?: number | null },
+  ): Promise<void>
   /** Removes logged Set `setIndex`, answering it so Undo can put it back (E12-T3). */
   onDeleteSet?(setIndex: number): Promise<SetEntry>
   /** Puts a deleted Set back exactly (E12-T3). */
@@ -138,24 +152,32 @@ export type SetScreenProps = {
    * `onUseRestForExercise` resolves.
    */
   programName?: string
+  /** Whether Track effort is on (E14-T10): chips 0 1 2 3+ show under the logged-set status. */
+  trackEffort?: boolean
+  /** Stores (or with `null` clears) the RIR of logged Set `setIndex` (E14-T10). */
+  onSetEffort?(setIndex: number, rir: 0 | 1 | 2 | 3 | null): Promise<void>
 }
 
 /**
  * The set counter's text (E6-T1): "Set 2 of 3" | "Set 4 · extra" | "All 3 sets logged" |
- * "4 sets logged · 3 planned". `loggedCount` is this Session's Sets for the Exercise.
+ * "4 sets logged · 3 planned". `setIndex` is the open Set's working position and `loggedCount`
+ * this Session's working Sets for the Exercise: warm-ups don't use up the Plan (E14-T8).
  */
 export function setCounterText(
   setIndex: number,
   plannedSets: number,
   loggedCount: number,
   done: boolean,
+  amrapFloor?: number,
 ): string {
   if (done) {
     return loggedCount > plannedSets
       ? `${loggedCount} sets logged · ${plannedSets} planned`
       : `All ${plannedSets} sets logged`
   }
-  return setIndex > plannedSets ? `Set ${setIndex} · extra` : `Set ${setIndex} of ${plannedSets}`
+  const text =
+    setIndex > plannedSets ? `Set ${setIndex} · extra` : `Set ${setIndex} of ${plannedSets}`
+  return amrapFloor === undefined ? text : `${text} · ${amrapFloor}+ reps`
 }
 
 /** "80×8 · 80×8 · 80×7", in set order; a Bodyweight Set reads "BW×8". */
@@ -163,7 +185,7 @@ function lastTimeText(exerciseId: string, entries: SetEntry[]): string {
   return entries
     .filter((entry) => entry.exerciseId === exerciseId)
     .sort((a, b) => a.setIndex - b.setIndex)
-    .map((entry) => `${entry.weightKg === null ? 'BW' : entry.weightKg}×${entry.reps}`)
+    .map(formatSetCompact)
     .join(' · ')
 }
 
@@ -182,8 +204,25 @@ const UNDO_MS = 5000
 /** How long the Log set button and the new row show the Set as just logged (E13-T10). */
 const CONFIRMED_MS = 1500
 
-/** The set on the dials: which one it is and the two values it will be logged with. */
-type OpenSet = { setIndex: number; weightKg: number | null; reps: number }
+/** The one-letter marker a Set of another kind carries in the logged list (E14-T9). */
+const KIND_MARKERS: Record<SetKind, string> = { warmup: 'W', drop: 'D', failure: 'F', amrap: 'A' }
+
+/**
+ * The set on the dials: which one it is and the values it will be logged with. `loadKg` is a
+ * Bodyweight Set's signed Load (E14-T14), 0 for plain bodyweight and on a loaded Exercise.
+ */
+type OpenSet = {
+  setIndex: number
+  weightKg: number | null
+  reps: number
+  kind: SetKind | null
+  loadKg: number
+}
+
+/** The `loadKg` a Set on the dials is logged with: none at plain bodyweight (E14-T14). */
+function loadOf(open: OpenSet): { loadKg: number } | Record<string, never> {
+  return open.loadKg === 0 ? {} : { loadKg: open.loadKg }
+}
 
 /**
  * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
@@ -209,13 +248,25 @@ function mergeEntry(entries: SetEntry[], entry: SetEntry): SetEntry[] {
   return merged
 }
 
+/**
+ * The Set at `setIndex` on the dials, preset from `lastEntries`; `logged`, this Session's Sets
+ * for the Exercise when the caller supplies them, places it among the working Sets (E14-T8).
+ */
 function openSetFor(
   exercise: Exercise,
   plan: ExercisePlan,
   setIndex: number,
   lastEntries: SetEntry[],
+  logged?: SetEntry[],
 ): OpenSet {
-  return { setIndex, ...presetForSet({ exercise, plan, setIndex, lastEntries }) }
+  // The Plan's last Set opens on AMRAP when the Plan marks it (E14-T13).
+  const position =
+    logged === undefined
+      ? setIndex
+      : 1 + workingSets(logged).filter((entry) => entry.setIndex < setIndex).length
+  const kind = plan.amrapLast === true && position === plan.sets ? 'amrap' : null
+  const { loadKg, ...preset } = presetForSet({ exercise, plan, setIndex, lastEntries, logged })
+  return { setIndex, ...preset, kind, loadKg: exercise.bodyweight ? (loadKg ?? 0) : 0 }
 }
 
 /**
@@ -277,9 +328,17 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     props.onWeightStepChange?.(step)
   }
 
+  // The Sets this screen logs or edits are laid over the history the next one presets from: by
+  // `setIndex` without `logged`, and with it by working position (E14-T8).
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
-    openSetFor(exercise, plan, props.setIndex, props.lastEntries),
+    openSetFor(
+      exercise,
+      plan,
+      props.setIndex,
+      props.lastEntries,
+      props.logged?.filter((entry) => entry.exerciseId === exercise.id),
+    ),
   )
   // An extra set opened by "Add set" stays open until it is logged; past the plan, anything
   // else is the done state, which offers only "Add set".
@@ -291,7 +350,19 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const loggedSets = (props.logged ?? [])
     .filter((entry) => entry.exerciseId === exercise.id)
     .sort((a, b) => a.setIndex - b.setIndex)
-  const loggedCount = props.logged === undefined ? loggedCountState : loggedSets.length
+  const loggedCount =
+    props.logged === undefined ? loggedCountState : workingSets(loggedSets).length
+  // The open Set's place among the working Sets (E14-T8): warm-ups take a `setIndex` but don't use
+  // up the Plan. Without `logged`, every Set before it was working.
+  const position =
+    props.logged === undefined
+      ? open.setIndex
+      : 1 + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
+
+  /** Today's Sets to preset from once they are `entries`: none when the caller gives no `logged`. */
+  function today(entries: SetEntry[]): SetEntry[] | undefined {
+    return props.logged === undefined ? undefined : entries
+  }
   // The logged Set open for editing, if any (E12-T3), and the Set just deleted that Undo restores.
   const [editing, setEditing] = useState<number | null>(null)
   const [undo, setUndo] = useState<SetEntry | null>(null)
@@ -331,6 +402,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const lastLoggedAt = restFrom === null ? null : restFrom.entry.loggedAt
   const currentRestKey = restKey(restFrom)
   const [loggedMessage, setLoggedMessage] = useState<string>('')
+  // The RIR chips belong to the Set last logged here and its pick (E14-T10); local, not stored.
+  const [effort, setEffort] = useState<{ setIndex: number; rir: 0 | 1 | 2 | 3 | null } | null>(
+    null,
+  )
   const [now, setNow] = useState<number>(() => Date.now())
 
   // The controls belong to the screen's bottom edge, which inside the shell is the sticky
@@ -364,7 +439,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   const rest: RestState | null =
     restFrom === null ? null : restAfter(restFrom.entry, restFrom.planRestSeconds, now)
-  const done = editing === null && open.setIndex > plan.sets && !extraOpen
+  const done = editing === null && position > plan.sets && !extraOpen
 
   // Fires playRestOver once per rest period: only after this mount has actually seen the rest
   // running (isOver false) for the current Set, so a screen opened with rest already over --
@@ -401,6 +476,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   // The rest Dial, open from the rest readout, and the Use offer its Set rest leaves (E13-T9).
   const [restDialOpen, setRestDialOpen] = useState(false)
+  // The Exercise note editor (E14-T11).
+  const [editingNote, setEditingNote] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
   const [useOffer, setUseOffer] = useState<UseRestOffer | null>(null)
 
   /** The rest Dial's Set rest: the Set's rest is `seconds`, and it may become the Plan's. */
@@ -452,7 +530,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   async function log(): Promise<void> {
     unlockRestSound()
-    const validation = validateEntry(open.weightKg, open.reps)
+    const validation = validateEntry(open.weightKg, open.reps, open.loadKg)
     if (!validation.ok) {
       setError(validation.error)
       return
@@ -464,12 +542,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setIndex: open.setIndex,
       weightKg: open.weightKg,
       reps: open.reps,
+      ...loadOf(open),
       loggedAt,
+      ...(open.kind === null ? {} : { kind: open.kind }),
     }
 
     try {
       const session = await onLog(sessionId, entry)
-      const merged = mergeEntry(history, entry)
+      const todayAfter = mergeEntry(loggedSets, entry)
+      const merged =
+        props.logged === undefined ? mergeEntry(history, entry) : layTodayOver(history, todayAfter)
       const nextSetIndex = open.setIndex + 1
       setError(null)
       clearUndo()
@@ -483,10 +565,15 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       }, CONFIRMED_MS)
       setUseOffer(null)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
-      setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
+      setEffort({ setIndex: open.setIndex, rir: null })
+      setOpen(
+        openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter)),
+      )
       setExtraOpen(false)
       setLoggedCount(
-        session.entries.filter((logged) => logged.exerciseId === exercise.id).length,
+        session.entries.filter(
+          (logged) => logged.exerciseId === exercise.id && countsTowardStats(logged),
+        ).length,
       )
       const records = recordsSetBy(exercise, plan, props.earlierSessions ?? [], session, entry)
       setToast(
@@ -504,34 +591,75 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     }
   }
 
+  /** A chip tap: shows the pick at once and stores it without holding anything up. */
+  function pickEffort(rir: 0 | 1 | 2 | 3): void {
+    if (effort === null) return
+    setEffort({ ...effort, rir })
+    props.onSetEffort?.(effort.setIndex, rir).catch((cause: unknown) => {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    })
+  }
+
   function openLogged(entry: SetEntry): void {
     setError(null)
     setEditing(entry.setIndex)
-    setOpen({ setIndex: entry.setIndex, weightKg: entry.weightKg, reps: entry.reps })
+    setOpen({
+      setIndex: entry.setIndex,
+      weightKg: entry.weightKg,
+      reps: entry.reps,
+      kind: entry.kind ?? null,
+      loadKg: entry.loadKg ?? 0,
+    })
   }
 
-  /** Back to the next Set to log, `next` being its index. */
-  function returnToLogging(next: number, from: SetEntry[] = history): void {
+  /** Back to the next Set to log, `next` being its index and `sets` today's Sets by then. */
+  function returnToLogging(next: number, sets: SetEntry[], from: SetEntry[] = history): void {
     setError(null)
     setEditing(null)
     setExtraOpen(false)
-    setOpen(openSetFor(exercise, plan, next, from))
+    setOpen(openSetFor(exercise, plan, next, from, today(sets)))
   }
 
   async function saveSet(): Promise<void> {
     if (editing === null || props.onEditSet === undefined) return
-    const validation = validateEntry(open.weightKg, open.reps)
+    const validation = validateEntry(open.weightKg, open.reps, open.loadKg)
     if (!validation.ok) {
       setError(validation.error)
       return
     }
-    const values = { weightKg: open.weightKg, reps: open.reps }
+    const before = loggedSets.find((entry) => entry.setIndex === editing)
+    // The kind goes along only when it was changed; omitted, the service keeps the Set's own.
+    const kindChanged = open.kind !== (before?.kind ?? null)
+    const values = {
+      weightKg: open.weightKg,
+      reps: open.reps,
+      ...(kindChanged ? { kind: open.kind } : {}),
+      // A Bodyweight Set always sends its Load, null at plain bodyweight to remove one (E14-T14).
+      ...(exercise.bodyweight ? { loadKg: open.loadKg === 0 ? null : open.loadKg } : {}),
+    }
     try {
       await props.onEditSet(editing, values)
-      const before = loggedSets.find((entry) => entry.setIndex === editing)
-      const merged = before === undefined ? history : mergeEntry(history, { ...before, ...values })
+      const edited = loggedSets.map((entry) => {
+        if (entry.setIndex !== editing) return entry
+        const { kind: _was, loadKg: _wasLoad, ...unkinded } = entry
+        void _was
+        void _wasLoad
+        return {
+          ...unkinded,
+          weightKg: values.weightKg,
+          reps: values.reps,
+          ...loadOf(open),
+          ...(open.kind === null ? {} : { kind: open.kind }),
+        }
+      })
+      const merged =
+        props.logged !== undefined
+          ? layTodayOver(history, edited)
+          : before === undefined
+            ? history
+            : mergeEntry(history, edited.find((entry) => entry.setIndex === editing) ?? before)
       setHistory(merged)
-      returnToLogging(loggedSets.length + 1, merged)
+      returnToLogging(loggedSets.length + 1, edited, merged)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
@@ -541,7 +669,15 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     if (editing === null || props.onDeleteSet === undefined) return
     try {
       const removed = await props.onDeleteSet(editing)
-      returnToLogging(loggedSets.length)
+      const deletedAt = editing
+      returnToLogging(
+        loggedSets.length,
+        loggedSets
+          .filter((entry) => entry.setIndex !== deletedAt)
+          .map((entry) =>
+            entry.setIndex > deletedAt ? { ...entry, setIndex: entry.setIndex - 1 } : entry,
+          ),
+      )
       if (undoTimer.current !== null) clearTimeout(undoTimer.current)
       setUndo(removed)
       undoTimer.current = setTimeout(() => {
@@ -558,7 +694,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     try {
       await props.onRestoreSet(undo)
       clearUndo()
-      returnToLogging(loggedSets.length + 2)
+      returnToLogging(loggedSets.length + 2, [
+        ...loggedSets.map((entry) =>
+          entry.setIndex >= undo.setIndex ? { ...entry, setIndex: entry.setIndex + 1 } : entry,
+        ),
+        undo,
+      ])
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
@@ -583,7 +724,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       <button
         type="button"
         className="cancel-edit"
-        onClick={() => returnToLogging(loggedSets.length + 1)}
+        onClick={() => returnToLogging(loggedSets.length + 1, loggedSets)}
       >
         Cancel
       </button>
@@ -678,7 +819,13 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           Alternatives
         </button>
       </div>
-      <p className="set-counter">{setCounterText(open.setIndex, plan.sets, loggedCount, done)}</p>
+      <p className="set-counter">{setCounterText(
+          position,
+          plan.sets,
+          loggedCount,
+          done,
+          open.kind === 'amrap' ? plan.repRange[0] : undefined,
+        )}</p>
 
       {lastTime === '' ? null : <p className="set-last-time">Last time: {lastTime}</p>}
 
@@ -695,8 +842,17 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 data-editing={editing === entry.setIndex ? 'true' : undefined}
                 onClick={() => openLogged(entry)}
               >
-                {entry.weightKg === null ? 'BW' : entry.weightKg} × {entry.reps}
+                {formatSet(entry)}
               </button>
+              {entry.kind === undefined ? null : (
+                <span className="set-kind-marker">{KIND_MARKERS[entry.kind]}</span>
+              )}
+              {entry.rir === undefined ? null : (
+                <span className="logged-set-rir">
+                  {' · RIR '}
+                  {entry.rir === 3 ? '3+' : entry.rir}
+                </span>
+              )}
               {isRecordSet(entry) ? (
                 <span className="pr-badge" aria-label="Personal record">
                   PR
@@ -707,6 +863,58 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </ul>
       )}
 
+      {props.onSaveExerciseNote === undefined ? null : editingNote ? (
+        <div className="set-note-editor">
+          <label className="set-note-label">
+            <span>Note</span>
+            <textarea
+              className="set-note-input"
+              maxLength={EXERCISE_NOTE_MAX}
+              value={noteDraft}
+              onChange={(event) => setNoteDraft(event.target.value)}
+            />
+          </label>
+          <div className="set-note-actions">
+            <button
+              type="button"
+              className="set-note-save"
+              onClick={() => {
+                const save = props.onSaveExerciseNote
+                if (save === undefined) return
+                void save(noteDraft.slice(0, EXERCISE_NOTE_MAX)).then(() => setEditingNote(false))
+              }}
+            >
+              Save note
+            </button>
+            <button type="button" className="set-note-cancel" onClick={() => setEditingNote(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : props.exerciseNote === undefined || props.exerciseNote === null || props.exerciseNote === '' ? (
+        <button
+          type="button"
+          className="set-note-add"
+          onClick={() => {
+            setNoteDraft('')
+            setEditingNote(true)
+          }}
+        >
+          Add note
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="set-note-text"
+          onClick={() => {
+            setNoteDraft(props.exerciseNote ?? '')
+            setEditingNote(true)
+          }}
+        >
+          {props.exerciseNote}
+        </button>
+      )}
+
       <WeightDial
         exercise={effectiveExercise}
         value={open.weightKg}
@@ -714,6 +922,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         onStepChange={handleStepChange}
       />
       <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+      {exercise.bodyweight ? (
+        <LoadDial step={weightStep} value={open.loadKg} onChange={(loadKg) => setOpen({ ...open, loadKg })} />
+      ) : null}
+      <SetKindRow value={open.kind} onChange={(kind) => setOpen({ ...open, kind })} />
 
       {error === null ? null : (
         <p className="set-error" role="alert">
@@ -738,9 +950,25 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         {loggedMessage}
       </p>
 
-      {rest === null || done || extraOpen || editing !== null || open.setIndex > plan.sets ? null : (
+      {props.trackEffort !== true || effort === null ? null : (
+        <div className="effort-chips" role="group" aria-label="Reps in reserve">
+          {([0, 1, 2, 3] as const).map((rir) => (
+            <button
+              key={rir}
+              type="button"
+              className="effort-chip"
+              aria-pressed={effort.rir === rir}
+              onClick={() => pickEffort(rir)}
+            >
+              {rir === 3 ? '3+' : rir}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {rest === null || done || extraOpen || editing !== null || position > plan.sets ? null : (
         <p className="set-next">
-          Next: set {open.setIndex} · {open.weightKg === null ? 'BW' : `${open.weightKg} kg`} ×{' '}
+          Next: set {position} · {open.weightKg === null ? 'BW' : `${open.weightKg} kg`} ×{' '}
           {plan.repRange[0]}–{plan.repRange[1]}
         </p>
       )}

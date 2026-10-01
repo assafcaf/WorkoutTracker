@@ -1,4 +1,5 @@
 import type { Exercise, Session, SetEntry, VolumeBaseline } from '../types'
+import { workingSets } from './setKind'
 
 export type ExerciseVolume = { amount: number; unit: 'kg' | 'reps' }
 
@@ -8,7 +9,7 @@ export type ExerciseVolume = { amount: number; unit: 'kg' | 'reps' }
  * only entries whose `exerciseId` matches `exercise.id`.
  */
 export function exerciseVolume(exercise: Exercise, entries: SetEntry[]): ExerciseVolume {
-  const own = entries.filter((entry) => entry.exerciseId === exercise.id)
+  const own = workingSets(entries).filter((entry) => entry.exerciseId === exercise.id)
 
   if (!exercise.bodyweight && !exercise.invertProgress) {
     const amount = own.reduce((sum, entry) => sum + entry.reps * (entry.weightKg ?? 0), 0)
@@ -45,7 +46,7 @@ export function baselineVolume(
   now: number,
 ): number | null {
   const finished = sessions.filter(
-    (session) => session.finishedAt !== null && session.entries.some((entry) => entry.exerciseId === exercise.id),
+    (session) => session.finishedAt !== null && workingSets(session.entries).some((entry) => entry.exerciseId === exercise.id),
   )
 
   if (finished.length === 0) return null

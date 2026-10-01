@@ -1,4 +1,5 @@
 import type { Exercise, Session } from '../types'
+import { countsTowardStats } from './setKind'
 
 export type SeriesKind = 'e1rm' | 'reps' | 'assistance'
 export type SeriesPoint = { at: number; value: number }
@@ -20,7 +21,9 @@ export function seriesFor(exercise: Exercise, sessions: Session[]): Series {
   const points: SeriesPoint[] = []
 
   for (const session of sorted) {
-    const sets = session.entries.filter((entry) => entry.exerciseId === exercise.id)
+    const sets = session.entries.filter(
+      (entry) => entry.exerciseId === exercise.id && countsTowardStats(entry),
+    )
     if (sets.length === 0) continue
 
     if (kind === 'e1rm') {

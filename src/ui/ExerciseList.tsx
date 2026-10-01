@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { workingSets } from '../domain/setKind'
 import './ExerciseList.css'
 import { VolumeVsBaseline } from './VolumeVsBaseline'
 import type {
@@ -54,11 +55,23 @@ export type ExerciseListProps = {
    * absent.
    */
   onDiscard?(): void
+  /** The Session note (E14-T4); shown under the list, edited through "Add note". */
+  note?: string
+  /** Saves the note text (500 characters at most); empty removes it. No control when absent. */
+  onSaveNote?(text: string): Promise<void>
 }
 
-/** How many sets of this exercise the session already holds. */
+/** The longest Session note, in characters (E14-T4). */
+const NOTE_MAX = 500
+
+/** How many sets of this exercise the session already holds, warm-ups included. */
 function loggedSets(entries: SetEntry[], exerciseId: string): number {
   return entries.filter((entry) => entry.exerciseId === exerciseId).length
+}
+
+/** How many of the plan's sets this exercise has used up: its working sets (E14-T8). */
+function workingLogged(entries: SetEntry[], exerciseId: string): number {
+  return workingSets(entries).filter((entry) => entry.exerciseId === exerciseId).length
 }
 
 /**
@@ -101,7 +114,11 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
     sessions,
     volumeBaseline,
     onDiscard,
+    note,
+    onSaveNote,
   } = props
+  const [editingNote, setEditingNote] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const setCount = session.entries.length
 
@@ -113,6 +130,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         const effectiveId = doneId ?? plan.exerciseId
         const exercise = resolve(effectiveId)
         const logged = loggedSets(session.entries, effectiveId)
+        const working = workingLogged(session.entries, effectiveId)
         const lastDoneId = lastSwaps[plan.exerciseId]
 
         const label = (
@@ -128,7 +146,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
                 </>
               ) : null}
             </span>{' '}
-            <span className="set-progress">{`${logged}/${plan.sets}`}</span>
+            <span className="set-progress">{`${working}/${plan.sets}`}</span>
           </>
         )
 
@@ -182,6 +200,40 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         )
       })}
     </ul>
+    {note === undefined || note === '' ? null : <p className="exercise-note">{note}</p>}
+    {onSaveNote === undefined ? null : editingNote ? (
+      <div className="exercise-note-editor">
+        <label className="exercise-note-label">
+          <span>Note</span>
+          <textarea
+            className="exercise-note-input"
+            maxLength={NOTE_MAX}
+            value={noteDraft}
+            onChange={(event) => setNoteDraft(event.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          className="exercise-note-save"
+          onClick={() => {
+            void onSaveNote(noteDraft.slice(0, NOTE_MAX)).then(() => setEditingNote(false))
+          }}
+        >
+          Save note
+        </button>
+      </div>
+    ) : (
+      <button
+        type="button"
+        className="exercise-note-add"
+        onClick={() => {
+          setNoteDraft(note ?? '')
+          setEditingNote(true)
+        }}
+      >
+        {note === undefined || note === '' ? 'Add note' : 'Edit note'}
+      </button>
+    )}
     {onDiscard === undefined ? null : confirmingDiscard ? (
       <div className="exercise-discard-confirm" role="group" aria-label="Discard workout">
         <p>{`Discard this workout? Its ${setCount} ${setCount === 1 ? 'set is' : 'sets are'} deleted.`}</p>

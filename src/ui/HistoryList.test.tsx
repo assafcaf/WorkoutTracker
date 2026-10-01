@@ -171,6 +171,19 @@ function resolveFixture(id: string): Exercise | undefined {
   return undefined
 }
 
+test('O15 an expanded HistoryList card lists a Bodyweight Set with its signed load through formatSet', async () => {
+  const session = sessionWith([
+    { exerciseId: 'Hammer_Curls', setIndex: 1, weightKg: null, reps: 8, loggedAt: BASE + 1, loadKg: 10 },
+    { exerciseId: 'Hammer_Curls', setIndex: 2, weightKg: null, reps: 6, loggedAt: BASE + 2, loadKg: -20 },
+  ])
+
+  render(<HistoryList sessions={[session]} programs={[assaf]} resolve={resolveFixture} />)
+  await userEvent.setup().click(cardToggle())
+
+  expect(screen.getByText('BW+10 × 8')).toBeVisible()
+  expect(screen.getByText('BW−20 × 6')).toBeVisible()
+})
+
 /** The card's own toggle: the one button that carries `aria-expanded`. */
 function cardToggle(): HTMLElement {
   return screen.getByRole('button', { expanded: false })
@@ -333,4 +346,36 @@ test('O18 the exercise group list items stay role presentation so the Session ca
   await userEvent.setup().click(cardToggle())
 
   expect(screen.getAllByRole('listitem')).toHaveLength(1)
+})
+
+// --- E14-T4: the Session note on the History card ---------------------------------------------
+
+test('O12 an expanded History card shows the Session note and a collapsed one does not', async () => {
+  render(
+    <HistoryList
+      sessions={[{ ...sessionWith([loadedEntry('back-squat', 1, 60, 10)]), note: 'PR on squat' }]}
+      programs={[assaf]}
+      resolve={() => undefined}
+    />,
+  )
+  expect(screen.queryByText('PR on squat')).toBeNull()
+
+  await userEvent.setup().click(screen.getByRole('button', { expanded: false }))
+
+  expect(screen.getByText('PR on squat')).toBeVisible()
+})
+
+test('O12 an expanded History card of a Session without a note shows no note element', async () => {
+  render(
+    <HistoryList
+      sessions={[sessionWith([loadedEntry('back-squat', 1, 60, 10)])]}
+      programs={[assaf]}
+      resolve={() => undefined}
+    />,
+  )
+
+  await userEvent.setup().click(screen.getByRole('button', { expanded: false }))
+
+  expect(screen.queryByText('undefined')).toBeNull()
+  expect(document.querySelector('.history-note')).toBeNull()
 })

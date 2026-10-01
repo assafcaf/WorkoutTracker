@@ -31,6 +31,7 @@ type DraftPlan = {
   rest: string
   /** `''` means no starting weight: the Exercise's own is used. */
   startWeight: string
+  amrapLast: boolean
 }
 
 type DraftWorkout = { id: string; name: string; hidden: boolean; plans: DraftPlan[] }
@@ -43,6 +44,7 @@ function toDraftPlan(plan: ExercisePlan): DraftPlan {
     maxReps: String(plan.repRange[1]),
     rest: String(plan.restSeconds),
     startWeight: plan.startWeightKg === undefined ? '' : String(plan.startWeightKg),
+    amrapLast: plan.amrapLast === true,
   }
 }
 
@@ -54,6 +56,7 @@ function toPlan(draft: DraftPlan): ExercisePlan {
     restSeconds: Number(draft.rest),
   }
   if (draft.startWeight.trim() !== '') plan.startWeightKg = Number(draft.startWeight)
+  if (draft.amrapLast) plan.amrapLast = true
   return plan
 }
 
@@ -311,7 +314,7 @@ export function ProgramEditor({
             {workout.plans.map((plan, j) => {
               const exercise = resolve(plan.exerciseId)
               const planPath = `${workoutPath}.exercises.${j}`
-              const numberField = (label: string, key: keyof DraftPlan, faultPath: string) => {
+              const numberField = (label: string, key: Exclude<keyof DraftPlan, 'amrapLast'>, faultPath: string) => {
                 const message = faultMessage(faults, faultPath)
                 return (
                 <label className="program-editor-field">
@@ -360,6 +363,17 @@ export function ProgramEditor({
                         />
                       </label>
                     )}
+                    <label className="program-editor-field">
+                      <input
+                        type="checkbox"
+                        className="program-editor-checkbox"
+                        checked={plan.amrapLast}
+                        onChange={(event) =>
+                          updatePlan(workout.id, j, { amrapLast: event.target.checked })
+                        }
+                      />
+                      <span className="program-editor-label">Last set AMRAP</span>
+                    </label>
                   </div>
                   {repRangeMessage && (
                     <p id={faultId(`${planPath}.repRange`)} className="program-editor-fault">

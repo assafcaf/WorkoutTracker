@@ -199,3 +199,20 @@ test('O15 sessionVolume answers the kg and bodyweight reps of one session by the
 
   expect(sessionVolume(s, resolve)).toEqual({ kg: 480, bodyweightReps: 18 })
 })
+
+test('O3 volumeSeries answers what it answers with the warm-up Sets removed', () => {
+  const s = session({
+    id: 'warm',
+    startedAt: 5,
+    entries: [
+      setEntry({ exerciseId: 'back-squat', weightKg: 20, reps: 10, kind: 'warmup' }),
+      setEntry({ exerciseId: 'back-squat', weightKg: 60, reps: 8 }),
+      setEntry({ exerciseId: 'push-up', weightKg: null, reps: 5, kind: 'warmup' }),
+      setEntry({ exerciseId: 'push-up', weightKg: null, reps: 12 }),
+    ],
+  })
+
+  expect(volumeSeries([s], resolve, [])).toEqual([
+    { at: 5, workoutName: 'fixture-workout', kg: 480, bodyweightReps: 12 },
+  ])
+})

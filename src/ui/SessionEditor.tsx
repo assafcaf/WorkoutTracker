@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatSet } from '../domain/setText'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 import type { Exercise, Session, SetEntry } from '../types'
 import { RepsDial } from './RepsDial'
@@ -44,7 +45,7 @@ function fromLocalInput(value: string): number | null {
 
 /** What a Set row reads: `60 × 8`, or `BW × 10` for a Set carrying no weight. */
 function setText(entry: SetEntry): string {
-  return `${entry.weightKg === null ? 'BW' : entry.weightKg} × ${entry.reps}`
+  return formatSet(entry)
 }
 
 /** The draft's Sets grouped by Exercise, in first-appearance order, each group by `setIndex`. */
@@ -100,6 +101,12 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
   function changeTime(field: 'startedAt' | 'finishedAt', value: string): void {
     const time = fromLocalInput(value)
     if (time !== null) setDraft({ ...draft, [field]: time })
+  }
+
+  function changeNote(text: string): void {
+    const { note: _previous, ...rest } = draft
+    void _previous
+    setDraft(text === '' ? rest : { ...rest, note: text })
   }
 
   function changeSet(target: OpenSet, values: Partial<Pick<SetEntry, 'weightKg' | 'reps'>>): void {
@@ -240,6 +247,16 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
           </section>
         )
       })}
+
+      <label className="session-editor-note">
+        <span>Note</span>
+        <textarea
+          className="session-editor-note-input"
+          maxLength={500}
+          value={draft.note ?? ''}
+          onChange={(event) => changeNote(event.target.value)}
+        />
+      </label>
 
       {noSets ? <p className="session-editor-invalid">{NO_SETS_LEFT}</p> : null}
 

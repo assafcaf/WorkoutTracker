@@ -230,6 +230,30 @@ test('O4 push-ups count every entry, so an extra set can make up a short one', (
   expect(result.suggestion).toEqual({ kind: 'add-set' })
 })
 
+test('O2 progression answers as if the warm-up Sets were not in the last entries', () => {
+  const squat = exerciseFor('back-squat')
+  const working = sets('back-squat', [
+    [60, 8],
+    [60, 8],
+  ])
+  const withWarmups: SetEntry[] = [
+    { ...sets('back-squat', [[100, 1]])[0], kind: 'warmup' },
+    ...working,
+  ]
+  const result = progression(squat, squatPlan, withWarmups)
+  expect(result).toEqual(progression(squat, squatPlan, working))
+  expect(result.workingWeightKg).toBe(60)
+
+  const onlyWarmups = withWarmups.slice(0, 1)
+  expect(progression(squat, squatPlan, onlyWarmups)).toEqual(progression(squat, squatPlan, []))
+
+  const bodyweight: SetEntry[] = [
+    { ...sets('push-ups', [[null, 50]])[0], kind: 'warmup' },
+    ...sets('push-ups', [[null, 10]]),
+  ]
+  expect(progression(pushUps, pushUpsPlan, bodyweight).achievedReps).toBe(10)
+})
+
 test('O4 no history for push-ups gives an empty bar over the planned sets', () => {
   expect(progression(pushUps, pushUpsPlan, [])).toEqual({
     workingWeightKg: null,
@@ -238,4 +262,49 @@ test('O4 no history for push-ups gives an empty bar over the planned sets', () =
     isFull: false,
     suggestion: null,
   })
+})
+
+// --- O16: progression at the highest load ---
+
+const weightedPushUps: Exercise = { ...pushUps, weightStep: 2.5 }
+
+function loaded(logged: Array<[number | undefined, number]>): SetEntry[] {
+  return logged.map(([loadKg, reps], i) => ({
+    exerciseId: 'push-ups',
+    setIndex: i + 1,
+    weightKg: null,
+    reps,
+    loggedAt: 1000 + i,
+    ...(loadKg === undefined ? {} : { loadKg }),
+  }))
+}
+
+test('O16 push-ups full at the highest load suggest add-load of load plus weightStep', () => {
+  // range 10-15: both sets at load 10 reach 15; the lighter set at 5 is ignored
+  const last = loaded([[5, 8], [10, 15], [10, 15]])
+  const result = progression(weightedPushUps, pushUpsPlan, last)
+  expect(result.isFull).toBe(true)
+  expect(result.achievedReps).toBe(30)
+  expect(result.targetReps).toBe(30)
+  expect(result.suggestion).toEqual({ kind: 'add-load', nextLoadKg: 12.5 })
+})
+
+test('O16 push-ups short of the top reps at the highest load suggest nothing', () => {
+  const last = loaded([[5, 15], [10, 15], [10, 12]])
+  const result = progression(weightedPushUps, pushUpsPlan, last)
+  expect(result.isFull).toBe(false)
+  expect(result.achievedReps).toBe(27)
+  expect(result.targetReps).toBe(30)
+  expect(result.suggestion).toBeNull()
+})
+
+test('O16 push-ups with no loaded Set, or only load 0, still answer by the whole plan and add-set', () => {
+  const noLoad = loaded([[undefined, 15], [undefined, 15], [undefined, 15]])
+  const zeroLoad = loaded([[0, 15], [0, 15], [0, 15]])
+  for (const last of [noLoad, zeroLoad]) {
+    const result = progression(weightedPushUps, pushUpsPlan, last)
+    expect(result.targetReps).toBe(45)
+    expect(result.achievedReps).toBe(45)
+    expect(result.suggestion).toEqual({ kind: 'add-set' })
+  }
 })

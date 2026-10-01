@@ -3,6 +3,7 @@ import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
 import { nextExerciseAfter } from '../../domain/flow'
 import { familyOf } from '../../domain/muscles'
+import { layTodayOver } from '../../domain/prefill'
 import { latestSet } from '../../domain/rest'
 import { ServiceError } from '../../services'
 import type {
@@ -54,6 +55,7 @@ type OpenSet = {
   history: SetEntry[]
   extra: boolean
   weightStep: number | null
+  exerciseNote: string | null
 }
 
 /** The detail overlay (E5-T8, E5-T15) or the ranked alternatives overlay (E5-T12). */
@@ -167,6 +169,10 @@ export function WorkoutFeature({
   )
   const volumeBaselineData = useServiceData(
     (s) => orElse<VolumeBaseline>(s.preferences.volumeBaseline(), { period: 'last' }),
+    ['preferences'],
+  )
+  const trackEffortData = useServiceData(
+    (s) => orElse(s.preferences.trackEffort(), false),
     ['preferences'],
   )
   const sessionsData = useServiceData(
@@ -349,11 +355,26 @@ export function WorkoutFeature({
       services.preferences.weightStep(exerciseId),
     ])
       .then(([history, weightStep]) => {
-        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep })
+        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep, exerciseNote: null })
         setView('set')
+        loadExerciseNote(exerciseId)
       })
       .catch(() => {
         // Without the history the preset would be wrong; the list stays up instead.
+      })
+  }
+
+  /** Fills in the open set's Exercise note once it is read; the screen is already up. */
+  function loadExerciseNote(exerciseId: string): void {
+    services.preferences
+      .exerciseNote(exerciseId)
+      .then((exerciseNote) => {
+        setOpenSet((current) =>
+          current && current.exerciseId === exerciseId ? { ...current, exerciseNote } : current,
+        )
+      })
+      .catch(() => {
+        // Without the note the screen offers Add note; the set itself is unaffected.
       })
   }
 
@@ -382,6 +403,13 @@ export function WorkoutFeature({
       .catch(() => {
         // The list stays up; nothing was cleared, so there is nothing to undo.
       })
+  }
+
+  /** `ExerciseList.onSaveNote`: stores the Session note; empty removes it (E14-T4). */
+  async function handleSaveNote(text: string): Promise<void> {
+    if (!session) return
+    setSession(await services.sessions.setNote(session.id, text))
+    void syncNow()
   }
 
   /** `ExerciseList.onDiscard`: discards the Session in progress and returns to the picker. */
@@ -452,15 +480,21 @@ export function WorkoutFeature({
             plan={plan}
             setIndex={openSet.setIndex}
             sessionId={session.id}
-            lastEntries={services.sessions.presetHistory(
+            // Today's Sets laid over last time's by working position (E14-T8): a `setIndex`
+            // overlay would let a warm-up stand in for a working Set.
+            lastEntries={layTodayOver(
               openSet.history,
-              session,
-              openSet.exerciseId,
+              session.entries.filter((entry) => entry.exerciseId === openSet.exerciseId),
             )}
             lastTime={openSet.history}
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}
             weightStep={openSet.weightStep}
+            exerciseNote={openSet.exerciseNote}
+            onSaveExerciseNote={async (text) => {
+              await services.preferences.setExerciseNote(openSet.exerciseId, text)
+              loadExerciseNote(openSet.exerciseId)
+            }}
             onWeightStepChange={(step) => {
               services.preferences.setWeightStep(openSet.exerciseId, step).catch(() => {
                 // Nothing to recover to here; the screen keeps the step it already has.
@@ -487,6 +521,12 @@ export function WorkoutFeature({
             }}
             onRestoreSet={async (entry) => {
               setSession(await services.sessions.restoreSet(session.id, entry))
+            }}
+            trackEffort={trackEffortData.status === 'ready' && trackEffortData.data}
+            onSetEffort={async (setIndex, rir) => {
+              setSession(
+                await services.sessions.setEffort(session.id, openSet.exerciseId, setIndex, rir),
+              )
             }}
             restFrom={restFrom}
             onSetRest={async (entry, restSeconds) => {
@@ -575,6 +615,8 @@ export function WorkoutFeature({
           sessions={sessions}
           volumeBaseline={volumeBaseline}
           onDiscard={handleDiscard}
+          note={session.note}
+          onSaveNote={handleSaveNote}
         />
       </AppShell>
     )

@@ -150,3 +150,44 @@ describe('baselineVolume (O2)', () => {
     expect(baselineVolume(squat, threeSessions, { period: '1w', aggregate: 'max' }, daysAgo(-90))).toBeNull()
   })
 })
+
+describe('warm-up Sets (E14 O3)', () => {
+  test('exerciseVolume answers what it answers with the warm-up Sets removed', () => {
+    const entries = [
+      setEntry({ exerciseId: 'back-squat', reps: 10, weightKg: 20, kind: 'warmup' }),
+      setEntry({ exerciseId: 'back-squat', reps: 5, weightKg: 60 }),
+    ]
+
+    expect(exerciseVolume(squat, entries)).toEqual({ amount: 300, unit: 'kg' })
+    expect(exerciseVolume(pushup, [
+      setEntry({ exerciseId: 'push-up', reps: 7, weightKg: null, kind: 'warmup' }),
+      setEntry({ exerciseId: 'push-up', reps: 12, weightKg: null }),
+    ])).toEqual({ amount: 12, unit: 'reps' })
+  })
+
+  test('baselineVolume answers what it answers with the warm-up Sets removed', () => {
+    const warmed = session({
+      id: 'warmed',
+      startedAt: daysAgo(2),
+      finishedAt: daysAgo(2),
+      entries: [
+        setEntry({ exerciseId: 'back-squat', reps: 10, weightKg: 100, kind: 'warmup' }),
+        setEntry({ exerciseId: 'back-squat', reps: 5, weightKg: 60 }),
+      ],
+    })
+
+    expect(baselineVolume(squat, [warmed], { period: 'last' }, NOW)).toBe(300)
+    expect(baselineVolume(squat, [warmed], { period: '1w', aggregate: 'max' }, NOW)).toBe(300)
+  })
+
+  test('a finished Session holding only warm-up Sets of the Exercise gives no baseline', () => {
+    const onlyWarmup = session({
+      id: 'only-warmup',
+      startedAt: daysAgo(2),
+      finishedAt: daysAgo(2),
+      entries: [setEntry({ exerciseId: 'back-squat', reps: 10, weightKg: 100, kind: 'warmup' })],
+    })
+
+    expect(baselineVolume(squat, [onlyWarmup], { period: 'last' }, NOW)).toBeNull()
+  })
+})

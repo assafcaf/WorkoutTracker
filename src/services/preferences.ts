@@ -2,11 +2,15 @@ import type { ServiceDeps } from './deps'
 import type { VolumeBaseline } from '../types'
 import { callStorage } from './errors'
 import {
+  getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
+  getTrackEffort,
   getVolumeBaseline,
   getWeightStep,
+  setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
+  setTrackEffort as storeTrackEffort,
   setVolumeBaseline as storeVolumeBaseline,
   setWeightStep as storeWeightStep,
 } from '../storage/settingsStore'
@@ -24,6 +28,11 @@ export type PreferenceService = {
   volumeBaseline(): Promise<VolumeBaseline>
   setVolumeBaseline(b: VolumeBaseline): Promise<void>
   lastExportedAt(): Promise<number | null>
+  exerciseNote(exerciseId: string): Promise<string | null>
+  setExerciseNote(exerciseId: string, text: string): Promise<void>
+  /** Whether Track effort is on; `false` when unset (E14-T10). */
+  trackEffort(): Promise<boolean>
+  setTrackEffort(on: boolean): Promise<void>
 }
 
 /**
@@ -49,5 +58,15 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
     volumeBaseline: () => callStorage(deps, getVolumeBaseline, 'volumeBaseline read failed'),
     setVolumeBaseline: (baseline) => write(() => storeVolumeBaseline(baseline, deps.now())),
     lastExportedAt: () => callStorage(deps, getLastExportedAt, 'lastExportedAt read failed'),
+    exerciseNote: (exerciseId) =>
+      callStorage(
+        deps,
+        async () => (await getExerciseNotes())[exerciseId] ?? null,
+        'exerciseNote read failed',
+      ),
+    setExerciseNote: (exerciseId, text) =>
+      write(() => storeExerciseNote(exerciseId, text, deps.now())),
+    trackEffort: () => callStorage(deps, getTrackEffort, 'trackEffort read failed'),
+    setTrackEffort: (on) => write(() => storeTrackEffort(on, deps.now())),
   }
 }

@@ -106,3 +106,24 @@ test('O10 nextExerciseAfter finds the current Plan from its swap’s id', () => 
 
   expect(nextExerciseAfter(workout, swapped, 'db-press')).toBe('row')
 })
+
+// E14-T8 O4: warm-ups don't use up a Plan's Sets.
+function warmups(exerciseId: string, count: number): SetEntry[] {
+  return sets(exerciseId, count).map((entry) => ({ ...entry, kind: 'warmup' as const }))
+}
+
+test('O4 nextExerciseAfter treats a Plan holding only warm-ups as not done', () => {
+  const warmedUp = session([...sets('squat', 2), ...warmups('press', 2)])
+
+  expect(nextExerciseAfter(workout, warmedUp, 'squat')).toBe('press')
+})
+
+test('O4 nextExerciseAfter treats a Plan with 2 warm-ups and 1 of 2 working Sets as not done', () => {
+  const press: SetEntry[] = [
+    ...warmups('press', 2),
+    { exerciseId: 'press', setIndex: 3, weightKg: 40, reps: 8, loggedAt: 2_000 },
+  ]
+  const partial = session([...sets('squat', 2), ...press])
+
+  expect(nextExerciseAfter(workout, partial, 'squat')).toBe('press')
+})

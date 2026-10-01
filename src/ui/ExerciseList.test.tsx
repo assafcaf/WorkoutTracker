@@ -419,3 +419,113 @@ test('O17 the swapped row counter advances as Sets of the done Exercise are logg
 
   expect(document.querySelector('.exercise-row.swapped .set-progress')).toHaveTextContent('2/3')
 })
+
+// --- E14-T4: the Session note under the list ---------------------------------------------------
+
+function renderWithNote(note: string | undefined, onSaveNote: (text: string) => Promise<void>) {
+  const user = userEvent.setup()
+  render(
+    <ExerciseList
+      program={assaf}
+      workout={workoutA}
+      resolve={resolve}
+      session={sessionWith([])}
+      onOpenSet={vi.fn()}
+      onFinish={vi.fn()}
+      lastSwaps={{}}
+      onUndoSwap={vi.fn()}
+      onApplySwap={vi.fn()}
+      lastEntries={new Map()}
+      sessions={[]}
+      volumeBaseline={{ period: 'last' }}
+      note={note}
+      onSaveNote={onSaveNote}
+    />,
+  )
+  return { user }
+}
+
+test('O12 Add note sits after the exercise rows and opens a Note field', async () => {
+  const { user } = renderWithNote(undefined, vi.fn().mockResolvedValue(undefined))
+  const add = screen.getByRole('button', { name: 'Add note' })
+  expect(precedes(row('Back squat'), add)).toBe(true)
+
+  await user.click(add)
+
+  expect(screen.getByLabelText('Note')).toBeVisible()
+})
+
+test('O12 saving a typed note calls onSaveNote with exactly that text', async () => {
+  const onSaveNote = vi.fn().mockResolvedValue(undefined)
+  const { user } = renderWithNote(undefined, onSaveNote)
+  await user.click(screen.getByRole('button', { name: 'Add note' }))
+
+  await user.type(screen.getByLabelText('Note'), 'Left shoulder tight')
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  expect(onSaveNote.mock.calls).toEqual([['Left shoulder tight']])
+})
+
+test('O12 the Note field takes 500 characters at most', async () => {
+  const onSaveNote = vi.fn().mockResolvedValue(undefined)
+  const { user } = renderWithNote(undefined, onSaveNote)
+  await user.click(screen.getByRole('button', { name: 'Add note' }))
+
+  await user.click(screen.getByLabelText('Note'))
+  await user.paste('a'.repeat(501))
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  expect(onSaveNote.mock.calls).toEqual([['a'.repeat(500)]])
+})
+
+test('O12 an existing note is shown under the list and its text opens for editing', async () => {
+  const onSaveNote = vi.fn().mockResolvedValue(undefined)
+  const { user } = renderWithNote('Bar felt heavy', onSaveNote)
+  expect(screen.getByText('Bar felt heavy')).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Edit note' }))
+
+  expect(screen.getByLabelText('Note')).toHaveValue('Bar felt heavy')
+})
+
+test('O12 clearing the field and saving calls onSaveNote with an empty string', async () => {
+  const onSaveNote = vi.fn().mockResolvedValue(undefined)
+  const { user } = renderWithNote('Bar felt heavy', onSaveNote)
+  await user.click(screen.getByRole('button', { name: 'Edit note' }))
+
+  await user.clear(screen.getByLabelText('Note'))
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  expect(onSaveNote.mock.calls).toEqual([['']])
+})
+
+test('O12 without onSaveNote the list offers no Add note', () => {
+  renderList([])
+
+  expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull()
+})
+
+// --- E14-T8 O4: warm-ups don't use up the Plan's Sets ---------------------------------------
+
+function warmupEntry(exerciseId: string, setIndex: number): SetEntry {
+  return { ...entry(exerciseId, setIndex), kind: 'warmup' }
+}
+
+test('O4 lunges planned for 3 Sets with 2 warm-ups and 1 working Set logged reads 1/3', () => {
+  renderList([warmupEntry('lunges', 1), warmupEntry('lunges', 2), entry('lunges', 3)])
+
+  expect(progressOf('Lunges')).toBe('1/3')
+})
+
+test('O4 lunges with 2 warm-ups and 3 working Sets logged reads 3/3', () => {
+  renderList([
+    warmupEntry('lunges', 1),
+    warmupEntry('lunges', 2),
+    entry('lunges', 3),
+    entry('lunges', 4),
+    entry('lunges', 5),
+  ])
+
+  expect(progressOf('Lunges')).toBe('3/3')
+})

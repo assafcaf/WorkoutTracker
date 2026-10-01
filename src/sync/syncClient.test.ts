@@ -18,6 +18,7 @@ import {
   type SyncResponse,
 } from './protocol'
 import { createChangeBus } from '../services/changes'
+import { createPreferenceService } from '../services/preferences'
 import { createSyncService, type SyncResult, type SyncService } from '../services/sync'
 
 // E11-T7: every call below goes through `services.sync`, the only way the UI reaches sync. One
@@ -707,6 +708,8 @@ test('O11 the sync after adopting b@x pulls all of b@x data from since 0 and pus
 test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides activeProgramId and gymEquipment', () => {
   expect([...SYNCED_SETTING_KEYS].sort()).toEqual([
     'activeProgramId',
+    'effortTracking',
+    'exerciseNotes',
     'gymEquipment',
     'userPrograms',
     'volumeBaseline',
@@ -843,6 +846,56 @@ test('O6 an older userPrograms from another device leaves the newer local list',
   await syncNow({ fetch: server.fetch })
 
   expect(await getUserPrograms()).toEqual([userProgram('local-newer')])
+})
+
+// --- E14-T3 O10: an Exercise note reaches the other device through sync -----------------------
+
+function preferencesAt(now: number) {
+  return createPreferenceService({ now: () => now, bus: createChangeBus(), storageAvailable: true })
+}
+
+test('O10 a note device A sets is answered by PreferenceService.exerciseNote on device B after A syncs and B syncs', async () => {
+  await preferencesAt(T0 + 500).setExerciseNote('back-squat', 'pause at the bottom')
+  await syncNow({ fetch: server.fetch })
+  // Device B: a fresh store, same account, never synced.
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(await preferencesAt(T0 + 900).exerciseNote('back-squat')).toBe('pause at the bottom')
+  expect(await preferencesAt(T0 + 900).exerciseNote('bench')).toBeNull()
+})
+
+test('O10 the note is pushed as one exerciseNotes setting stamped with the time of the write', async () => {
+  await preferencesAt(T0 + 500).setExerciseNote('back-squat', 'pause at the bottom')
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(server.syncRequests()[0].settings).toContainEqual({
+    key: 'exerciseNotes',
+    value: { 'back-squat': 'pause at the bottom' },
+    updatedAt: T0 + 500,
+  })
+})
+
+test('O10 a note emptied on device A removes the Exercise key on device B, keeping the other notes', async () => {
+  const a = preferencesAt(T0 + 500)
+  await a.setExerciseNote('back-squat', 'pause at the bottom')
+  await a.setExerciseNote('bench', 'feet flat')
+  await syncNow({ fetch: server.fetch })
+  await preferencesAt(T0 + 600).setExerciseNote('back-squat', '')
+  await syncNow({ fetch: server.fetch })
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(server.settingsOf('a@x').find((s) => s.key === 'exerciseNotes')?.value).toEqual({
+    bench: 'feet flat',
+  })
+  expect(await preferencesAt(T0 + 900).exerciseNote('back-squat')).toBeNull()
+  expect(await preferencesAt(T0 + 900).exerciseNote('bench')).toBe('feet flat')
 })
 
 // --- E12-T1 O6: a Session discarded on one device disappears from the other ------------------

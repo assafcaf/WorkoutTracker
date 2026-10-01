@@ -15,7 +15,9 @@ import {
   deleteSet,
   restoreSet,
   updateSet,
+  setEffort,
   setRest,
+  setNote,
   putSessions,
   replaceAllSessions,
   saveSession,
@@ -1644,5 +1646,270 @@ describe('E13-T5 storing a changed rest on a logged Set', () => {
     await expect(setRest(id, 'back-squat', 9, 60, BASE + 900 * SECOND)).rejects.toThrow(/no set/i)
 
     expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
+  })
+})
+
+// --- E14-T4: setNote -------------------------------------------------------------------------
+
+describe('E14-T4 storing a Session note', () => {
+  const squat1 = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+
+  async function seed(over: Partial<Session> = {}): Promise<string> {
+    await db.sessions.put(
+      storedSession({ id: 'noted', finishedAt: null, entries: [squat1], updatedAt: BASE + 400 * SECOND, ...over }),
+    )
+    return 'noted'
+  }
+
+  test('O12 setNote stores the note on the Session and stamps updatedAt, changing nothing else', async () => {
+    const id = await seed()
+    const before = await db.sessions.get(id)
+
+    const updated = await setNote(id, 'Left shoulder felt tight', BASE + 900 * SECOND)
+
+    const expected = { ...before, note: 'Left shoulder felt tight', updatedAt: BASE + 900 * SECOND }
+    expect(updated).toEqual(expected)
+    expect(await db.sessions.get(id)).toEqual(expected)
+  })
+
+  test('O12 setNote on a finished Session stores the note too', async () => {
+    const id = await seed({ finishedAt: BASE + 3600 * SECOND })
+
+    const updated = await setNote(id, 'Good session', BASE + 900 * SECOND)
+
+    expect(updated.note).toBe('Good session')
+    expect((await db.sessions.get(id))?.finishedAt).toBe(BASE + 3600 * SECOND)
+  })
+
+  test('O12 setNote with an empty string removes an existing note', async () => {
+    const id = await seed({ note: 'old' })
+
+    const updated = await setNote(id, '', BASE + 900 * SECOND)
+
+    expect('note' in updated).toBe(false)
+    expect('note' in ((await db.sessions.get(id)) as Session)).toBe(false)
+  })
+
+  test('O12 setNote with whitespace only removes the note instead of storing blanks', async () => {
+    const id = await seed({ note: 'old' })
+
+    await setNote(id, '  \n ', BASE + 900 * SECOND)
+
+    expect('note' in ((await db.sessions.get(id)) as Session)).toBe(false)
+  })
+
+  test('O12 setNote on a missing Session rejects naming the id', async () => {
+    await expect(setNote('nope', 'x')).rejects.toThrow('no session nope is stored')
+  })
+})
+
+// --- E14-T2: setEffort -----------------------------------------------------------------------
+
+describe('E14-T2 storing the effort of a logged Set', () => {
+  const squat1 = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+  const squat2 = entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND)
+  const press1 = entry('press', 1, 30, 10, BASE + 150 * SECOND)
+
+  async function seed(entries = [squat1, press1, squat2]): Promise<string> {
+    await db.sessions.put(
+      storedSession({ id: 'effort', finishedAt: null, entries, updatedAt: BASE + 400 * SECOND }),
+    )
+    return 'effort'
+  }
+
+  test('O8 setEffort stores rir on that Set only and changes no other field or entry', async () => {
+    const id = await seed()
+
+    const updated = await setEffort(id, 'back-squat', 2, 1, BASE + 900 * SECOND)
+
+    const expected = [squat1, press1, { ...squat2, rir: 1 }]
+    expect(updated.entries).toEqual(expected)
+    expect((await db.sessions.get(id))?.entries).toEqual(expected)
+  })
+
+  test('O8 setEffort stores 0 (to failure) rather than treating it as no effort', async () => {
+    const id = await seed()
+
+    const updated = await setEffort(id, 'press', 1, 0, BASE + 900 * SECOND)
+
+    expect(updated.entries.find((e) => e.exerciseId === 'press')).toEqual({ ...press1, rir: 0 })
+  })
+
+  test('O8 setEffort advances the Session updatedAt to now and leaves other Session fields', async () => {
+    const id = await seed()
+    const before = await db.sessions.get(id)
+
+    const updated = await setEffort(id, 'back-squat', 2, 3, BASE + 900 * SECOND)
+
+    expect(updated.updatedAt).toBe(BASE + 900 * SECOND)
+    expect(await db.sessions.get(id)).toEqual({
+      ...before,
+      entries: updated.entries,
+      updatedAt: BASE + 900 * SECOND,
+    })
+  })
+
+  test('O8 setEffort replaces an earlier rir', async () => {
+    const id = await seed([{ ...squat1, rir: 2 }])
+
+    const updated = await setEffort(id, 'back-squat', 1, 0, BASE + 900 * SECOND)
+
+    expect(updated.entries).toEqual([{ ...squat1, rir: 0 }])
+  })
+
+  test('O8 setEffort with null removes rir from the Set and stores the removal', async () => {
+    const id = await seed([{ ...squat1, rir: 2, restSeconds: 90 }])
+
+    const updated = await setEffort(id, 'back-squat', 1, null, BASE + 900 * SECOND)
+
+    expect(updated.entries).toEqual([{ ...squat1, restSeconds: 90 }])
+    const stored = (await db.sessions.get(id))?.entries[0]
+    expect(stored && 'rir' in stored).toBe(false)
+    expect(updated.updatedAt).toBe(BASE + 900 * SECOND)
+  })
+
+  test('O8 updateSet keeps the rir of the Set it edits', async () => {
+    const id = await seed([{ ...squat1, rir: 2 }])
+
+    const updated = await updateSet(id, 'back-squat', 1, { weightKg: 65, reps: 5 }, BASE + 900 * SECOND)
+
+    expect(updated.entries).toEqual([{ ...squat1, weightKg: 65, reps: 5, rir: 2 }])
+  })
+
+  test('O8 setEffort on a missing Session rejects naming the id', async () => {
+    await expect(setEffort('nope', 'back-squat', 1, 2)).rejects.toThrow('no session nope is stored')
+  })
+
+  test('O8 setEffort on a Set that is not logged rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(setEffort(id, 'back-squat', 9, 2, BASE + 900 * SECOND)).rejects.toThrow(/no set/i)
+
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
+  })
+})
+
+// --- E14-T9: updateSet carries a Set's kind -------------------------------------------------
+
+describe('E14-T9 updateSet changes a logged Set kind', () => {
+  const plain = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+  const dropSet = { ...entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND), kind: 'drop' as const }
+
+  async function seed(): Promise<string> {
+    await db.sessions.put(
+      storedSession({
+        id: 'kinds',
+        finishedAt: null,
+        entries: [plain, dropSet],
+        updatedAt: BASE + 400 * SECOND,
+      }),
+    )
+    return 'kinds'
+  }
+
+  test('O6 updateSet with a kind stores it on the Set, keeping the other values', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 1, { weightKg: 60, reps: 8, kind: 'warmup' }, BASE + 900 * SECOND)
+
+    expect(updated.entries[0]).toEqual({ ...plain, kind: 'warmup' })
+    expect((await db.sessions.get(id))?.entries[0]).toEqual({ ...plain, kind: 'warmup' })
+  })
+
+  test('O6 updateSet with kind null removes the kind field', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 2, { weightKg: 62.5, reps: 6, kind: null }, BASE + 900 * SECOND)
+
+    expect(updated.entries[1]).toEqual(entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND))
+    expect('kind' in updated.entries[1]).toBe(false)
+    expect('kind' in ((await db.sessions.get(id))?.entries[1] as object)).toBe(false)
+  })
+
+  test('O6 updateSet without a kind leaves the Set kind as it was', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'back-squat', 2, { weightKg: 65, reps: 5 }, BASE + 900 * SECOND)
+
+    expect(updated.entries[1]).toEqual({ ...dropSet, weightKg: 65, reps: 5 })
+  })
+})
+
+// --- E14-T14: updateSet carries a Bodyweight Set's Load --------------------------------------
+
+describe('E14-T14 updateSet edits a logged Bodyweight Set Load', () => {
+  const plainPushUp = entry('push-ups', 1, null, 12, BASE + 100 * SECOND)
+  const loadedPushUp = { ...entry('push-ups', 2, null, 8, BASE + 200 * SECOND), loadKg: 10 }
+
+  async function seed(): Promise<string> {
+    await db.sessions.put(
+      storedSession({
+        id: 'loads',
+        finishedAt: null,
+        entries: [plainPushUp, loadedPushUp],
+        updatedAt: BASE + 400 * SECOND,
+      }),
+    )
+    return 'loads'
+  }
+
+  test('O17 updateSet with a loadKg stores the new Load, keeping the other values', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: 12 }, BASE + 900 * SECOND)
+
+    expect(updated.entries[1]).toEqual({ ...loadedPushUp, loadKg: 12 })
+    expect((await db.sessions.get(id))?.entries[1]).toEqual({ ...loadedPushUp, loadKg: 12 })
+  })
+
+  test('O17 updateSet with a loadKg adds a Load to a plain Bodyweight Set', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'push-ups', 1, { weightKg: null, reps: 12, loadKg: -20 }, BASE + 900 * SECOND)
+
+    expect(updated.entries[0]).toEqual({ ...plainPushUp, loadKg: -20 })
+  })
+
+  test('O17 updateSet with loadKg null removes the loadKg field', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: null }, BASE + 900 * SECOND)
+
+    expect(updated.entries[1]).toEqual(entry('push-ups', 2, null, 8, BASE + 200 * SECOND))
+    expect('loadKg' in updated.entries[1]).toBe(false)
+    expect('loadKg' in ((await db.sessions.get(id))?.entries[1] as object)).toBe(false)
+  })
+
+  test('O17 updateSet with loadKg 0 stores no loadKg: a Load is never 0', async () => {
+    const id = await seed()
+
+    const updated = await updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: 0 }, BASE + 900 * SECOND)
+
+    expect('loadKg' in updated.entries[1]).toBe(false)
+    expect('loadKg' in ((await db.sessions.get(id))?.entries[1] as object)).toBe(false)
+  })
+
+  test('O17 updateSet with a Load above +100 rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(
+      updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: 101 }, BASE + 900 * SECOND),
+    ).rejects.toThrow()
+
+    const stored = await db.sessions.get(id)
+    expect(stored?.entries[1]).toEqual(loadedPushUp)
+    expect(stored?.updatedAt).toBe(BASE + 400 * SECOND)
+  })
+
+  test('O17 updateSet with a Load below -60 rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(
+      updateSet(id, 'push-ups', 2, { weightKg: null, reps: 8, loadKg: -61 }, BASE + 900 * SECOND),
+    ).rejects.toThrow()
+
+    const stored = await db.sessions.get(id)
+    expect(stored?.entries[1]).toEqual(loadedPushUp)
+    expect(stored?.updatedAt).toBe(BASE + 400 * SECOND)
   })
 })

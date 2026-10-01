@@ -502,3 +502,53 @@ test('O1 entering a date in "Since" calls onVolumeBaselineChange with period sin
     aggregate: 'max',
   })
 })
+
+// --- E14-T10: Track effort -------------------------------------------------------------------
+
+function renderWithTrackEffort(over: { trackEffort?: boolean; onTrackEffortChange?: (on: boolean) => void }) {
+  render(
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
+      {...over}
+    />,
+  )
+}
+
+test('O9 Settings has a Track effort checkbox under the legend Effort, off by default', () => {
+  renderWithTrackEffort({})
+
+  const group = screen.getByRole('group', { name: 'Effort' })
+  expect(within(group).getByRole('checkbox', { name: 'Track effort' })).not.toBeChecked()
+})
+
+test('O9 the Track effort checkbox is ticked when trackEffort is on', () => {
+  renderWithTrackEffort({ trackEffort: true })
+
+  expect(screen.getByRole('checkbox', { name: 'Track effort' })).toBeChecked()
+})
+
+test('O9 ticking Track effort calls onTrackEffortChange with true', async () => {
+  const user = userEvent.setup()
+  const onTrackEffortChange = vi.fn()
+  renderWithTrackEffort({ trackEffort: false, onTrackEffortChange })
+
+  await user.click(screen.getByRole('checkbox', { name: 'Track effort' }))
+
+  expect(onTrackEffortChange).toHaveBeenCalledTimes(1)
+  expect(onTrackEffortChange).toHaveBeenCalledWith(true)
+})
+
+test('O9 unticking Track effort calls onTrackEffortChange with false', async () => {
+  const user = userEvent.setup()
+  const onTrackEffortChange = vi.fn()
+  renderWithTrackEffort({ trackEffort: true, onTrackEffortChange })
+
+  await user.click(screen.getByRole('checkbox', { name: 'Track effort' }))
+
+  expect(onTrackEffortChange).toHaveBeenCalledWith(false)
+})

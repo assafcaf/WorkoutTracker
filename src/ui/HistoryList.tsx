@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatSet } from '../domain/setText'
 import type { Exercise, Program, Session, SetEntry } from '../types'
 import './HistoryList.css'
 
@@ -74,7 +75,7 @@ function groupByExercise(
 
 /** A set as the card lists it: `80 × 8`, or `BW × 15` for a bodyweight set. */
 function setLabel(entry: SetEntry): string {
-  return `${entry.weightKg === null ? 'BW' : entry.weightKg} × ${entry.reps}`
+  return formatSet(entry)
 }
 
 /** A session's length in whole minutes, from `startedAt` to `finishedAt` (0 while unfinished). */
@@ -145,6 +146,7 @@ function HistoryCard(props: { session: Session } & Omit<HistoryListProps, 'sessi
               </li>
             ))}
           </ul>
+          {session.note ? <p className="history-note">{session.note}</p> : null}
           {onOpen ? (
             <button type="button" className="history-open" onClick={() => onOpen(session.id)}>
               Open session

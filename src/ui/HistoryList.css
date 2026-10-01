@@ -128,3 +128,8 @@
   color: var(--color-text);
   font-size: var(--text-sm);
 }
+
+.history-note {
+  margin: var(--space-2) 0 0;
+  white-space: pre-wrap;
+}

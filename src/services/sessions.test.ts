@@ -101,6 +101,8 @@ describe('O5 the session service', () => {
       'restoreSet',
       'resumeActive',
       'save',
+      'setEffort',
+      'setNote',
       'setRest',
       'start',
       'undoSwap',
@@ -817,6 +819,173 @@ describe('E13-T5 the session service stores a changed rest', () => {
     const rejection = service.setRest('missing', 'squat', 1, 60)
     await expect(rejection).rejects.toBeInstanceOf(ServiceError)
     await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+    expect(emitted()).toBe(0)
+  })
+})
+
+// --- E14-T4: setNote through the service ---------------------------------------------------
+
+describe('E14-T4 the session service stores a Session note', () => {
+  const seed = (): Session =>
+    storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries: [entry('squat', 1, 60, 8, NOW - 300 * SECOND)],
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O12 setNote stores the note in one write, stamps now() and announces sessions once', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const updated = await service.setNote('active', 'Felt strong')
+
+    expect(updated).toEqual({ ...seed(), note: 'Felt strong', updatedAt: NOW })
+    expect(await stored('active')).toEqual({ ...seed(), note: 'Felt strong', updatedAt: NOW })
+    expect(emitted()).toBe(1)
+  })
+
+  test('O12 setNote with whitespace only removes an existing note', async () => {
+    await putSessions([{ ...seed(), note: 'old' }])
+    const { service } = harness()
+
+    const updated = await service.setNote('active', '   ')
+
+    expect('note' in updated).toBe(false)
+    expect('note' in ((await stored('active')) as Session)).toBe(false)
+  })
+
+  test("O12 setNote on a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
+    const { service, emitted } = harness()
+    const rejection = service.setNote('missing', 'x')
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+    expect(emitted()).toBe(0)
+  })
+})
+
+// --- E14-T2: setEffort through the service -------------------------------------------------
+
+describe('E14-T2 the session service stores the effort of a Set', () => {
+  const squat1 = entry('squat', 1, 60, 8, NOW - 300 * SECOND)
+  const squat2 = entry('squat', 2, 62.5, 6, NOW - 200 * SECOND)
+  const seed = (entries = [squat1, squat2]): Session =>
+    storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries,
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O8 setEffort stores rir, stamps now() and announces sessions once', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const updated = await service.setEffort('active', 'squat', 2, 1)
+
+    expect(updated.entries).toEqual([squat1, { ...squat2, rir: 1 }])
+    expect((await stored('active'))?.entries).toEqual([squat1, { ...squat2, rir: 1 }])
+    expect((await stored('active'))?.updatedAt).toBe(NOW)
+    expect(emitted()).toBe(1)
+  })
+
+  test('O8 setEffort with null removes rir, stamps now() and announces sessions once', async () => {
+    await putSessions([seed([squat1, { ...squat2, rir: 2 }])])
+    const { service, emitted } = harness()
+
+    const updated = await service.setEffort('active', 'squat', 2, null)
+
+    expect(updated.entries).toEqual([squat1, squat2])
+    const second = (await stored('active'))?.entries[1]
+    expect(second && 'rir' in second).toBe(false)
+    expect((await stored('active'))?.updatedAt).toBe(NOW)
+    expect(emitted()).toBe(1)
+  })
+
+  test("O8 setEffort on a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
+    const { service, emitted } = harness()
+    const rejection = service.setEffort('missing', 'squat', 1, 2)
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+    expect(emitted()).toBe(0)
+  })
+})
+
+describe('E14-T9 the session service changes a Set kind', () => {
+  const squat1 = entry('squat', 1, 60, 8, NOW - 300 * SECOND)
+  const squat2 = { ...entry('squat', 2, 62.5, 6, NOW - 200 * SECOND), kind: 'failure' as const }
+  const seed = (): Session =>
+    storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries: [squat1, squat2],
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O6 updateSet with a kind stores it through the service', async () => {
+    await putSessions([seed()])
+    const { service } = harness()
+
+    const updated = await service.updateSet('active', 'squat', 1, { weightKg: 60, reps: 8, kind: 'amrap' })
+
+    expect(updated.entries[0]).toEqual({ ...squat1, kind: 'amrap' })
+    expect((await stored('active'))?.entries[0]).toEqual({ ...squat1, kind: 'amrap' })
+  })
+
+  test('O6 updateSet with kind null removes the kind through the service', async () => {
+    await putSessions([seed()])
+    const { service } = harness()
+
+    const updated = await service.updateSet('active', 'squat', 2, { weightKg: 62.5, reps: 6, kind: null })
+
+    expect('kind' in updated.entries[1]).toBe(false)
+  })
+})
+
+describe('E14-T14 the session service edits a Bodyweight Set Load', () => {
+  const pushUp1 = entry('push-ups', 1, null, 12, NOW - 300 * SECOND)
+  const pushUp2 = { ...entry('push-ups', 2, null, 8, NOW - 200 * SECOND), loadKg: 10 }
+  const seed = (): Session =>
+    storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries: [pushUp1, pushUp2],
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O17 updateSet with a loadKg stores it through the service and announces sessions once', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const updated = await service.updateSet('active', 'push-ups', 2, { weightKg: null, reps: 8, loadKg: 15 })
+
+    expect(updated.entries[1]).toEqual({ ...pushUp2, loadKg: 15 })
+    expect((await stored('active'))?.entries[1]).toEqual({ ...pushUp2, loadKg: 15 })
+    expect(emitted()).toBe(1)
+  })
+
+  test('O17 updateSet with loadKg null removes the Load through the service', async () => {
+    await putSessions([seed()])
+    const { service } = harness()
+
+    const updated = await service.updateSet('active', 'push-ups', 2, { weightKg: null, reps: 8, loadKg: null })
+
+    expect(updated.entries[1]).toEqual(entry('push-ups', 2, null, 8, NOW - 200 * SECOND))
+    expect('loadKg' in updated.entries[1]).toBe(false)
+  })
+
+  test('O17 updateSet with a Load outside -60 to +100 rejects with a ServiceError, stores nothing and announces nothing', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const rejection = service.updateSet('active', 'push-ups', 1, { weightKg: null, reps: 12, loadKg: 120 })
+
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    expect((await stored('active'))?.entries).toEqual([pushUp1, pushUp2])
     expect(emitted()).toBe(0)
   })
 })

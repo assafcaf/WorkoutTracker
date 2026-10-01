@@ -32,11 +32,32 @@ One actual visit to the gym: a Workout being or having been performed, with the 
 against it. What you did.
 _Avoid_: Log, entry, instance
 
+**Session note**:
+Free text of up to 500 characters the trainee attaches to a Session, in progress or finished (`Session.note`). Empty removes it.
+_Avoid_: Comment, memo
+
+**Exercise note**:
+Free text of up to 500 characters the trainee keeps for an Exercise, such as its setup; shown above the Dials on every Session of that Exercise. Empty removes it.
+_Avoid_: Comment, memo, Session note
+
 **Set**:
 One performed set — a weight and a rep count, recorded against a Session and referencing the
 catalog Exercise rather than the Program's Plan.
 See `docs/decisions/0002-pwa-local-first-workout-tracker.md`.
 _Avoid_: Entry, rep log, record
+
+**Set kind**:
+How a Set was performed, stored as the Set's optional `kind`: `warmup`, `drop`, `failure` or
+`amrap`. A normal (working) Set has no `kind`.
+
+**AMRAP**:
+A Set taken to as many reps as possible: its kind is `amrap`, and the Plan's bottom rep count is
+a floor, not a target, so the set counter reads "8+ reps". A Plan's `amrapLast` opens its last
+planned Set on it.
+
+**Warm-up**:
+A Set of kind `warmup`. It is logged and shown, but does not count toward stats: records, the
+e1RM series and progression ignore it (`countsTowardStats`).
 
 **Rest**:
 The time after a Set before the next, derived from the Set's `loggedAt` and its rest length (its own `restSeconds`, else the Plan's).
@@ -69,6 +90,11 @@ _Avoid_: Default, prefill, seed, suggestion
 An Exercise carrying no weight at all, as opposed to one loaded with zero. Its weight is absent
 rather than `0`.
 _Avoid_: Unweighted, freeweight, no-load
+
+**Load**:
+The signed weight on a Bodyweight Set, in kg: positive when added (a belt), negative when assisted
+(a band or machine). Never `0`; absent on a plain Bodyweight Set and on loaded Sets.
+_Avoid_: Offset, modifier
 
 **Region**:
 A zone of the body map, shaded by how many sets reached it and tapped to see what trained it.
@@ -120,3 +146,8 @@ _Avoid_: Page, container, view
 Sessions, programs or preferences: what a write announces, so only the screens reading it
 re-read.
 _Avoid_: Event, channel, subscription
+
+**Effort**:
+How many reps the trainee had left (RIR, 0 to 3+) on a logged Set, recorded from chips after the
+log when **Track effort** is on in Settings. Optional, never blocks the next Set.
+_Avoid_: Intensity, RPE

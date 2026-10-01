@@ -903,8 +903,22 @@ function renderWithLogged(
         onLogged={() => undefined}
         onEditSet={async (setIndex, values) => {
           onEditSet(setIndex, values)
+          // Like the service (E14-T9): a kind sets the field, `null` removes it, absent keeps it.
+          // E14-T14: a loadKg the same way, and a Load of 0 is no Load.
+          const { kind, loadKg, ...rest } = values
           setLogged((before) =>
-            before.map((entry) => (entry.setIndex === setIndex ? { ...entry, ...values } : entry)),
+            before.map((entry) => {
+              if (entry.setIndex !== setIndex) return entry
+              const { kind: was, loadKg: wasLoad, ...others } = entry
+              const next = kind === undefined ? was : (kind ?? undefined)
+              const nextLoad = loadKg === undefined ? wasLoad : loadKg || undefined
+              return {
+                ...others,
+                ...rest,
+                ...(next === undefined ? {} : { kind: next }),
+                ...(nextLoad === undefined ? {} : { loadKg: nextLoad }),
+              }
+            }),
           )
         }}
         onDeleteSet={async (setIndex) => {
@@ -2064,4 +2078,739 @@ test('F1 the stylesheet places .rest-timer top-right with its content right-alig
   expect(body).toMatch(/top:/)
   expect(body).toMatch(/right:/)
   expect(body).toMatch(/justify-content:\s*flex-end|text-align:\s*right/)
+})
+
+// --- E14-T8 O4: warm-ups don't use up the Plan's Sets; setIndex still numbers every Set -------
+
+function warmupEntry(setIndex: number, weightKg: number, reps: number): SetEntry {
+  return { ...loggedEntry(setIndex, weightKg, reps), kind: 'warmup' }
+}
+
+/** Today on a 3-Set back squat Plan: warm-ups 40×10 and 50×8, then one working Set 60×8. */
+const twoWarmupsOneWorking: SetEntry[] = [
+  warmupEntry(1, 40, 10),
+  warmupEntry(2, 50, 8),
+  loggedEntry(3, 60, 8),
+]
+
+test('O4 with 2 warm-ups and 1 working Set logged on a 3-Set Plan the counter reads Set 2 of 3', () => {
+  renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan })
+
+  expect(screen.getByText('Set 2 of 3')).toBeVisible()
+})
+
+test('O4 with 2 warm-ups and 1 working Set logged on a 3-Set Plan the screen offers Log set, not the done state', () => {
+  renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan, onAddSet: vi.fn() })
+
+  expect(logSetButton()).not.toBeNull()
+  expect(addSetButton()).toBeNull()
+})
+
+test('O4 with 2 warm-ups and 3 working Sets logged on a 3-Set Plan the done state reads All 3 sets logged', () => {
+  renderWithLogged(
+    [...twoWarmupsOneWorking, loggedEntry(4, 62.5, 8), loggedEntry(5, 65, 6)],
+    { plan: threeSetSquatPlan, onAddSet: vi.fn() },
+  )
+
+  expect(screen.getByText('All 3 sets logged')).toBeVisible()
+  expect(logSetButton()).toBeNull()
+})
+
+test('O4 after 2 warm-ups and 1 working Set, logging 2 more working Sets reaches the done state', async () => {
+  const { user } = renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan })
+
+  await user.click(logButton())
+  await waitFor(() => expect(screen.getByText('Set 3 of 3')).toBeVisible())
+  await user.click(await screen.findByRole('button', { name: 'Log set' }))
+
+  await waitFor(() => expect(screen.getByText('All 3 sets logged')).toBeVisible())
+  expect(logSetButton()).toBeNull()
+})
+
+test('O4 the working Set logged after 2 warm-ups and 1 working Set takes setIndex 4', async () => {
+  const { user } = renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan })
+
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  expect((await storedEntries())[0].setIndex).toBe(4)
+})
+
+test('O4 deleting a warm-up leaves the counter on Set 2 of 3', async () => {
+  const { user, onDeleteSet } = renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan })
+
+  await user.click(screen.getByRole('button', { name: /50 × 8$/ }))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(onDeleteSet).toHaveBeenCalledWith(2))
+  await waitFor(() => expect(screen.getByText('Set 2 of 3')).toBeVisible())
+  expect(logSetButton()).not.toBeNull()
+})
+
+test('O4 while resting after 2 warm-ups and 1 working Set on a 3-Set Plan the Next line shows', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderWithLogged(twoWarmupsOneWorking, {
+    plan: threeSetSquatPlan,
+    restFrom: { entry: loggedEntry(3, 60, 8), planRestSeconds: 180 },
+  })
+
+  expect(screen.getByText(NEXT_LINE)).toBeVisible()
+})
+
+// --- E14-T11 [O11]: the Exercise note above the Dials ---------------------------------------
+
+test('O11 an Exercise note shows above the Dials', () => {
+  renderSetScreen({
+    exerciseNote: 'belt on, chalk',
+    onSaveExerciseNote: vi.fn(async () => undefined),
+  })
+
+  const note = screen.getByText('belt on, chalk')
+  expect(note).toBeVisible()
+  expect(
+    note.compareDocumentPosition(weightReadout()) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull()
+})
+
+test('O11 without a note an Add note link shows above the Dials', () => {
+  renderSetScreen({ exerciseNote: null, onSaveExerciseNote: vi.fn(async () => undefined) })
+
+  const add = screen.getByRole('button', { name: 'Add note' })
+  expect(
+    add.compareDocumentPosition(weightReadout()) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy()
+})
+
+test('O11 tapping the note opens an editor holding it, limited to 500 characters', async () => {
+  const { user } = renderSetScreen({
+    exerciseNote: 'belt on',
+    onSaveExerciseNote: vi.fn(async () => undefined),
+  })
+
+  await user.click(screen.getByText('belt on'))
+
+  const editor = screen.getByLabelText('Note') as HTMLTextAreaElement
+  expect(editor.value).toBe('belt on')
+  expect(editor.maxLength).toBe(500)
+  expect(screen.getByRole('button', { name: 'Save note' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+})
+
+test('O11 Save note hands the edited text to onSaveExerciseNote and closes the editor', async () => {
+  const onSave = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: onSave })
+
+  await user.click(screen.getByText('belt on'))
+  await user.clear(screen.getByLabelText('Note'))
+  await user.type(screen.getByLabelText('Note'), 'belt off')
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith('belt off'))
+  await waitFor(() => expect(screen.queryByLabelText('Note')).toBeNull())
+})
+
+test('O11 Add note then Save note saves the typed text', async () => {
+  const onSave = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ exerciseNote: null, onSaveExerciseNote: onSave })
+
+  await user.click(screen.getByRole('button', { name: 'Add note' }))
+  await user.type(screen.getByLabelText('Note'), 'pin 4')
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith('pin 4'))
+})
+
+test('O11 Cancel leaves the note as it was and saves nothing', async () => {
+  const onSave = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: onSave })
+
+  await user.click(screen.getByText('belt on'))
+  await user.type(screen.getByLabelText('Note'), ' extra')
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  expect(screen.queryByLabelText('Note')).toBeNull()
+  expect(screen.getByText('belt on')).toBeVisible()
+  expect(onSave).not.toHaveBeenCalled()
+})
+
+test('O11 saving the note empty hands an empty string to onSaveExerciseNote', async () => {
+  const onSave = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: onSave })
+
+  await user.click(screen.getByText('belt on'))
+  await user.clear(screen.getByLabelText('Note'))
+  await user.click(screen.getByRole('button', { name: 'Save note' }))
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(''))
+})
+
+// --- E14-T9: the set-kind row ----------------------------------------------------------------
+
+/** The kind buttons of the row under the Dials, which names the chosen one with aria-pressed. */
+function kindButton(label: string): HTMLElement {
+  return screen.getByRole('button', { name: label })
+}
+
+function chosenKinds(): string[] {
+  return ['W-up', 'Working', 'Drop', 'Fail', 'AMRAP'].filter(
+    (label) => kindButton(label).getAttribute('aria-pressed') === 'true',
+  )
+}
+
+test('O6 the set screen opens with the kind row on Working', () => {
+  renderSetScreen()
+
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O6 choosing Drop before Log set stores the Set with kind drop', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton('Drop'))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1].kind).toBe('drop')
+})
+
+test.each([
+  ['W-up', 'warmup'],
+  ['Fail', 'failure'],
+  ['AMRAP', 'amrap'],
+] as const)('O6 choosing %s before Log set stores kind %s', async (label, kind) => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton(label))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1].kind).toBe(kind)
+})
+
+test('O6 a Set logged on Working has no kind field', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect('kind' in onLog.mock.calls[0][1]).toBe(false)
+})
+
+test('O6 choosing another kind and back to Working stores no kind field', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton('Fail'))
+  await user.click(kindButton('Working'))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect('kind' in onLog.mock.calls[0][1]).toBe(false)
+})
+
+test('O6 after the log the kind row returns to Working', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton('Drop'))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(chosenKinds()).toEqual(['Working']))
+})
+
+test('O6 the next Set logged after a Drop has no kind', async () => {
+  const { user, onLog } = renderSetScreen()
+
+  await user.click(kindButton('Drop'))
+  await user.click(logButton())
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(chosenKinds()).toEqual(['Working']))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(2))
+  expect('kind' in onLog.mock.calls[1][1]).toBe(false)
+})
+
+test.each([
+  ['warmup', 'W'],
+  ['drop', 'D'],
+  ['failure', 'F'],
+  ['amrap', 'A'],
+] as const)('O6 a %s Set in the logged list carries the marker %s', (kind, marker) => {
+  renderWithLogged([{ ...loggedEntry(1, 80, 8), kind }])
+
+  const list = screen.getByRole('list', { name: 'Sets logged' })
+  expect(within(list).getByText(marker)).toBeVisible()
+})
+
+test('O6 a Working Set in the logged list carries no marker', () => {
+  renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 82.5, 6)])
+
+  const list = screen.getByRole('list', { name: 'Sets logged' })
+  for (const marker of ['W', 'D', 'F', 'A']) {
+    expect(within(list).queryByText(marker)).toBeNull()
+  }
+})
+
+test("O6 the marker does not change the logged Set button's name", () => {
+  renderWithLogged([{ ...loggedEntry(1, 80, 8), kind: 'drop' }])
+
+  expect(loggedSetNames()).toEqual(['80 × 8'])
+})
+
+test('O6 in edit mode the kind row shows the Set kind', async () => {
+  const { user } = renderWithLogged([{ ...loggedEntry(1, 80, 8), kind: 'failure' }])
+
+  await user.click(loggedSetButton('80 × 8'))
+
+  expect(chosenKinds()).toEqual(['Fail'])
+})
+
+test('O6 in edit mode a Working Set shows Working', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O6 Save set stores a changed kind', async () => {
+  const { user, onEditSet } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(kindButton('W-up'))
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet).toHaveBeenCalledWith(1, { weightKg: 80, reps: 8, kind: 'warmup' })
+})
+
+test('O6 Save set after choosing Working on a kinded Set removes the kind with null', async () => {
+  const { user, onEditSet } = renderWithLogged([{ ...loggedEntry(1, 80, 8), kind: 'drop' }])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(kindButton('Working'))
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet).toHaveBeenCalledWith(1, { weightKg: 80, reps: 8, kind: null })
+})
+
+test('O6 after Save set the row is back on Working for the next Set to log', async () => {
+  const { user, onEditSet } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(kindButton('Drop'))
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Save set' })).toBeNull())
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O6 Cancel in edit mode changes no kind and returns the row to Working', async () => {
+  const { user, onEditSet } = renderWithLogged([{ ...loggedEntry(1, 80, 8), kind: 'drop' }])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(kindButton('Fail'))
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  expect(onEditSet).not.toHaveBeenCalled()
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+// --- E14-T10: RIR chips under the logged-set status (O9) --------------------------------------
+
+function effortChips(): HTMLElement | null {
+  return screen.queryByRole('group', { name: 'Reps in reserve' })
+}
+
+function chip(name: string): HTMLElement {
+  return within(effortChips() as HTMLElement).getByRole('button', { name })
+}
+
+test('O9 before any Set is logged, no chips show even with Track effort on', () => {
+  renderSetScreen({ trackEffort: true, onSetEffort: vi.fn(async () => undefined) })
+
+  expect(effortChips()).toBeNull()
+})
+
+test('O9 with Track effort on, logging a Set shows the chips 0 1 2 3+', async () => {
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort: vi.fn(async () => undefined) })
+
+  await user.click(logButton())
+
+  const chips = await screen.findByRole('group', { name: 'Reps in reserve' })
+  expect(within(chips).getAllByRole('button').map((button) => button.textContent)).toEqual([
+    '0',
+    '1',
+    '2',
+    '3+',
+  ])
+})
+
+test('O9 with Track effort off or omitted, logging a Set shows no chips', async () => {
+  const { user } = renderSetScreen({ onSetEffort: vi.fn(async () => undefined) })
+
+  await user.click(logButton())
+  await screen.findByText('Set 1 logged · 50 kg × 8')
+
+  expect(effortChips()).toBeNull()
+})
+
+test('O9 tapping a chip calls onSetEffort with the just-logged setIndex and that rir', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+
+  await user.click(chip('2'))
+
+  expect(onSetEffort).toHaveBeenCalledTimes(1)
+  expect(onSetEffort).toHaveBeenCalledWith(1, 2)
+  expect(chip('2')).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('O9 the 3+ chip stores rir 3 and the 0 chip stores rir 0', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+
+  await user.click(chip('3+'))
+  await user.click(chip('0'))
+
+  expect(onSetEffort.mock.calls).toEqual([
+    [1, 3],
+    [1, 0],
+  ])
+})
+
+test('O9 tapping another chip replaces the choice: only the latest shows pressed', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+
+  await user.click(chip('2'))
+  await user.click(chip('1'))
+
+  expect(onSetEffort.mock.calls).toEqual([
+    [1, 2],
+    [1, 1],
+  ])
+  expect(chip('1')).toHaveAttribute('aria-pressed', 'true')
+  expect(chip('2')).toHaveAttribute('aria-pressed', 'false')
+})
+
+test('O9 ignoring the chips calls onSetEffort never, and Log set logs the next Set at once', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user, onLog } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(2))
+  expect(onSetEffort).not.toHaveBeenCalled()
+})
+
+test('O9 Log set never waits for an effort write still pending', async () => {
+  const onSetEffort = vi.fn(() => new Promise<void>(() => undefined))
+  const { user, onLog } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+  await user.click(chip('1'))
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(2))
+})
+
+test('O9 logging the next Set moves the chips to it, with nothing pressed', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ trackEffort: true, onSetEffort })
+  await user.click(logButton())
+  await screen.findByRole('group', { name: 'Reps in reserve' })
+  await user.click(chip('2'))
+
+  await user.click(logButton())
+  await screen.findByText('Set 2 logged · 50 kg × 8')
+
+  for (const name of ['0', '1', '2', '3+']) {
+    expect(chip(name)).toHaveAttribute('aria-pressed', 'false')
+  }
+  await user.click(chip('3+'))
+  expect(onSetEffort).toHaveBeenLastCalledWith(2, 3)
+})
+
+test('O9 the chips stay after the confirmed window ends', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderSetScreen({ trackEffort: true, onSetEffort: vi.fn(async () => undefined) })
+
+  await tapWithFakeTimers(logButton())
+  await vi.advanceTimersByTimeAsync(10_000)
+
+  expect(effortChips()).not.toBeNull()
+})
+
+test('O9 a logged Set with rir reads "weight × reps · RIR n", RIR 0 included, and 3 reads RIR 3+', () => {
+  renderWithLogged([
+    { ...loggedEntry(1, 80, 8), rir: 2 },
+    { ...loggedEntry(2, 80, 8), rir: 0 },
+    { ...loggedEntry(3, 80, 8), rir: 3 },
+    loggedEntry(4, 80, 8),
+  ])
+
+  const rows = within(screen.getByRole('list', { name: 'Sets logged' })).getAllByRole('listitem')
+  const texts = rows.map((row) => (row.textContent ?? '').replace(/\s+/g, ' ').trim())
+  expect(texts[0]).toBe('80 × 8 · RIR 2')
+  expect(texts[1]).toBe('80 × 8 · RIR 0')
+  expect(texts[2]).toBe('80 × 8 · RIR 3+')
+  expect(texts[3]).toBe('80 × 8')
+  // The RIR text sits beside the tappable Set, not inside its name.
+  expect(loggedSetNames()).toEqual(['80 × 8', '80 × 8', '80 × 8', '80 × 8'])
+})
+
+// --- E14-T13: AMRAP on the set screen --------------------------------------------------------
+
+const amrapPlan: ExercisePlan = { ...squatPlan, sets: 3, amrapLast: true }
+
+test('O14 the last planned Set of an amrapLast Plan reads Set 3 of 3 · 8+ reps and opens on AMRAP', () => {
+  renderSetScreen({ plan: amrapPlan, setIndex: 3 })
+
+  expect(screen.getByText('Set 3 of 3 · 8+ reps')).toBeVisible()
+  expect(chosenKinds()).toEqual(['AMRAP'])
+})
+
+test('O14 an earlier Set of an amrapLast Plan reads plain and opens on Working', () => {
+  renderSetScreen({ plan: amrapPlan, setIndex: 2 })
+
+  expect(screen.getByText('Set 2 of 3')).toBeVisible()
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O14 choosing AMRAP on any Set makes the counter read 8+ reps', async () => {
+  const { user } = renderSetScreen({ plan: { ...squatPlan, sets: 3 }, setIndex: 2 })
+
+  await user.click(kindButton('AMRAP'))
+
+  expect(screen.getByText('Set 2 of 3 · 8+ reps')).toBeVisible()
+})
+
+test('O14 the AMRAP Set is stored with kind amrap and reps above the range', async () => {
+  const { user, onLog } = renderSetScreen({ plan: amrapPlan, setIndex: 3 })
+
+  await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1].kind).toBe('amrap')
+  expect(onLog.mock.calls[0][1].reps).toBeGreaterThan(10)
+})
+
+// --- E14-T14: the Load Dial on a Bodyweight Exercise (O17) ------------------------------------
+
+// Push-ups is Bodyweight with a 1 kg weight step; Assisted pull-ups is not Bodyweight -- it keeps
+// its inverted weight on the Weight Dial (a spec non-goal to move it onto a signed Load).
+const assistedPullUps = catalog.get('assisted-pull-ups') as Exercise
+const assistedPullUpPlan: ExercisePlan = {
+  exerciseId: 'assisted-pull-ups',
+  sets: 4,
+  repRange: [5, 8],
+  restSeconds: 90,
+}
+
+function loadGroup(): HTMLElement | null {
+  return screen.queryByRole('group', { name: 'Load' })
+}
+
+function loadReadout(): HTMLElement {
+  return screen.getByRole('button', { name: 'Load' })
+}
+
+/** Taps the Load Dial's Rung reading `label`: "BW+10", "BW−20". */
+async function chooseLoad(user: UserEvent, label: string): Promise<void> {
+  const ladder = screen.getByRole('listbox', { name: 'Load ladder' })
+  await user.click(within(ladder).getByRole('option', { name: label }))
+}
+
+/** A push-ups Set logged today, with its Load when it has one. */
+function pushUpSet(setIndex: number, reps: number, loadKg?: number): SetEntry {
+  return {
+    ...loggedEntry(setIndex, null, reps, 'push-ups'),
+    ...(loadKg === undefined ? {} : { loadKg }),
+  }
+}
+
+test('O17 a Bodyweight Exercise shows the Load Dial under the reps Dial', () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  const load = loadGroup()
+  expect(load).not.toBeNull()
+  const reps = screen.getByRole('group', { name: 'Reps' })
+  expect(reps.compareDocumentPosition(load as HTMLElement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O17 Assisted pull-ups, not a Bodyweight Exercise, shows no Load Dial', () => {
+  renderSetScreen({ exercise: assistedPullUps, plan: assistedPullUpPlan })
+
+  expect(screen.getByRole('group', { name: 'Reps' })).toBeInTheDocument()
+  expect(loadGroup()).toBeNull()
+})
+
+test('O17 with no Load in its Preset the Load Dial opens on BW', () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  expect(readoutValue(loadReadout())).toBe('BW')
+})
+
+test("O17 the Load Dial's Rungs follow the Exercise's stored weight step", () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan, weightStep: 2.5 })
+
+  const ladder = screen.getByRole('listbox', { name: 'Load ladder' })
+  const shown = within(ladder).getAllByRole('option').map((option) => option.textContent)
+  expect(shown).toHaveLength(65)
+  expect(shown).toContain('BW+2.5')
+  expect(shown).not.toContain('BW+1')
+})
+
+test('O17 left at BW, the Set logs exactly as today, with no loadKg', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await screen.findByRole('group', { name: 'Load' })
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  const entry = onLog.mock.calls[0][1]
+  expect(entry).toEqual({
+    exerciseId: 'push-ups',
+    setIndex: 1,
+    weightKg: null,
+    reps: 10,
+    loggedAt: expect.any(Number),
+  })
+  expect('loadKg' in entry).toBe(false)
+})
+
+test('O17 at BW+10 the Set stores loadKg 10, weightKg staying null', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW+10')
+  expect(readoutValue(loadReadout())).toBe('BW+10')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1]).toMatchObject({ weightKg: null, reps: 10, loadKg: 10 })
+})
+
+test('O17 at BW−20 the Set stores loadKg -20', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW−20')
+  expect(readoutValue(loadReadout())).toBe('BW−20')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1]).toMatchObject({ weightKg: null, loadKg: -20 })
+})
+
+test('O17 back at BW after choosing a Load, the Set stores no loadKg', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW+10')
+  await chooseLoad(user, 'BW')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect('loadKg' in onLog.mock.calls[0][1]).toBe(false)
+})
+
+test("O17 the Load Dial opens on the Preset's Load, and one tap logs it", async () => {
+  const { user, onLog } = renderSetScreen({
+    exercise: pushUps,
+    plan: pushUpPlan,
+    lastEntries: [{ exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 12, loadKg: 10, loggedAt: BASE }],
+  })
+
+  expect(readoutValue(loadReadout())).toBe('BW+10')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1]).toMatchObject({ weightKg: null, reps: 12, loadKg: 10 })
+})
+
+test('O17 the next Set opens on the Load just logged', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW+10')
+  await user.click(logButton())
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+
+  await screen.findByText('Set 2 of 3')
+  expect(readoutValue(loadReadout())).toBe('BW+10')
+})
+
+test('O17 a Set logged at BW+10 shows as BW+10 × 10 in the logged-set list', async () => {
+  const { user } = renderWithLogged([], { exercise: pushUps, plan: pushUpPlan })
+
+  await chooseLoad(user, 'BW+10')
+  await user.click(logButton())
+
+  const list = await screen.findByRole('list', { name: 'Sets logged' })
+  expect(within(list).getByRole('button', { name: 'BW+10 × 10' })).toBeVisible()
+})
+
+test("O17 in edit mode the Load Dial reads the logged Set's Load", async () => {
+  const { user } = renderWithLogged([pushUpSet(1, 8, 10)], { exercise: pushUps, plan: pushUpPlan })
+
+  await user.click(loggedSetButton('BW+10 × 8'))
+
+  expect(screen.getByRole('button', { name: 'Save set' })).toBeVisible()
+  expect(readoutValue(loadReadout())).toBe('BW+10')
+})
+
+test('O17 Save set stores a changed Load through onEditSet', async () => {
+  const { user, onEditSet } = renderWithLogged([pushUpSet(1, 8, 10)], {
+    exercise: pushUps,
+    plan: pushUpPlan,
+  })
+
+  await user.click(loggedSetButton('BW+10 × 8'))
+  await chooseLoad(user, 'BW+12')
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet).toHaveBeenCalledWith(1, expect.objectContaining({ weightKg: null, reps: 8, loadKg: 12 }))
+})
+
+test('O17 Save set adds a Load to a plain Bodyweight Set', async () => {
+  const { user, onEditSet } = renderWithLogged([pushUpSet(1, 8)], {
+    exercise: pushUps,
+    plan: pushUpPlan,
+  })
+
+  await user.click(loggedSetButton('BW × 8'))
+  await chooseLoad(user, 'BW−20')
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet).toHaveBeenCalledWith(1, expect.objectContaining({ loadKg: -20 }))
+})
+
+test('O17 Save set at BW on a loaded Set removes its Load with loadKg null', async () => {
+  const { user, onEditSet } = renderWithLogged([pushUpSet(1, 8, 10)], {
+    exercise: pushUps,
+    plan: pushUpPlan,
+  })
+
+  await user.click(loggedSetButton('BW+10 × 8'))
+  await chooseLoad(user, 'BW')
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onEditSet.mock.calls[0][1].loadKg).toBeNull()
 })

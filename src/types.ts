@@ -57,6 +57,8 @@ export type ExercisePlan = {
   restSeconds: number
   /** The weight this Plan's Exercise starts at in this Program, overriding the catalog's (E9). */
   startWeightKg?: number
+  /** The Plan's last Set is to failure (AMRAP); present only when `true` (E14). */
+  amrapLast?: boolean
 }
 
 export type Workout = {
@@ -81,7 +83,12 @@ export type Program = {
 /** A Program the trainee created or edited, stamped with when it was first stored (E9). */
 export type UserProgram = Program & { createdAt: number }
 
+/** What a Set is, when it is not plain working volume (E14). Working is the absence of `kind`. */
+export type SetKind = 'warmup' | 'drop' | 'failure' | 'amrap'
+
 export type SetEntry = {
+  /** Absent on a working Set (E14). */
+  kind?: SetKind
   exerciseId: string
   setIndex: number
   weightKg: number | null
@@ -89,6 +96,10 @@ export type SetEntry = {
   loggedAt: number
   /** The rest that follows this Set, when the trainee changed it (E13). */
   restSeconds?: number
+  /** A Bodyweight Set's signed load in kg (E14): never 0, only on a Bodyweight Set. */
+  loadKg?: number
+  /** Reps in reserve, felt effort of this Set (E14); 3 means 3 or more. Absent when not told. */
+  rir?: 0 | 1 | 2 | 3
 }
 
 export type Session = {
@@ -113,6 +124,8 @@ export type Session = {
    * synced, but no reader returns it. Absent on a live Session.
    */
   deletedAt?: number
+  /** The trainee's free-text Session note, 500 characters at most (E14-T4). Absent when none. */
+  note?: string
 }
 
 /**

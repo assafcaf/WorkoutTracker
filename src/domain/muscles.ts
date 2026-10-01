@@ -1,4 +1,5 @@
 import type { Exercise, LibraryExercise, Muscle, Session, SetEntry } from '../types'
+import { workingSets } from './setKind'
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -124,7 +125,7 @@ export function muscleSets(
   library: Map<string, LibraryExercise>,
 ): Map<Muscle, number> {
   const counts = new Map<Muscle, number>()
-  for (const entry of entries) {
+  for (const entry of workingSets(entries)) {
     const resolved = resolveLibraryExercise(entry, resolve, library)
     if (!resolved) continue
     accumulate(counts, resolved.libraryExercise)
