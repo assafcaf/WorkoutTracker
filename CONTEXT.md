@@ -139,3 +139,9 @@ _Avoid_: Event, channel, subscription
 How many reps the trainee had left (RIR, 0 to 3+) on a logged Set, recorded from chips after the
 log when **Track effort** is on in Settings. Optional, never blocks the next Set.
 _Avoid_: Intensity, RPE
+
+**Plate inventory**:
+The bar weight and pairs of plates the trainee has; one synced setting.
+
+**Plate line**:
+The plates for one side of the bar, for the weight on the Dial.

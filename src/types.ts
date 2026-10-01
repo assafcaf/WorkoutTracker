@@ -43,6 +43,12 @@ export type LibraryExercise = {
   images: string[]
 }
 
+/** One size of plate and how many pairs of it the trainee has. */
+export type Plate = { kg: number; pairs: number }
+
+/** The bar weight and the plates the trainee has (the Plate inventory). */
+export type PlateInventory = { barKg: number; plates: Plate[] }
+
 /** A harvested Muscle & Strength video for one library exercise (E5-T2/E5-T7). */
 export type Video = {
   provider: 'youtube' | 'vimeo'
