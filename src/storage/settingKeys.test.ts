@@ -52,6 +52,7 @@ describe('D3 every setting key is declared once in settingKeys', () => {
       'effortTracking',
       'exerciseNotes',
       'gymEquipment',
+      'plateInventory',
       'userPrograms',
       'volumeBaseline',
       'weightSteps',
@@ -60,6 +61,14 @@ describe('D3 every setting key is declared once in settingKeys', () => {
 
   test('D3 syncedSettingKeys equals SYNCED_SETTING_KEYS in the sync protocol', () => {
     expect([...syncedSettingKeys()].sort()).toEqual([...SYNCED_SETTING_KEYS].sort())
+  })
+
+  test('O4 plateInventory is declared synced on the preferences topic', () => {
+    expect(SETTING_KEYS.find((info) => info.key === 'plateInventory')).toEqual({
+      key: 'plateInventory',
+      synced: true,
+      topic: 'preferences',
+    })
   })
 
   test('D3 the synced flags in SETTING_KEYS agree with syncedSettingKeys', () => {

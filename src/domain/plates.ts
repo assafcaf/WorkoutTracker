@@ -13,6 +13,14 @@ export const DEFAULT_PLATE_INVENTORY: PlateInventory = {
   ],
 }
 
+/** Whether `value` is a Plate inventory the app accepts; a valid answer has plates heaviest first. */
+export function validatePlateInventory(
+  value: unknown,
+): { ok: true; inventory: PlateInventory } | { ok: false; error: string } {
+  void value
+  throw new Error('NotImplementedError: validatePlateInventory')
+}
+
 export type PlateLoading = { perSide: number[]; madeKg: number; exact: boolean }
 
 const toGrams = (kg: number) => Math.round(kg * 1000)

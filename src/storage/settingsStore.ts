@@ -1,4 +1,4 @@
-import type { Program, UserProgram, VolumeBaseline } from '../types'
+import type { PlateInventory, Program, UserProgram, VolumeBaseline } from '../types'
 import { db, type SettingRow } from './db'
 
 // --- whole rows for sync and backup (E11-T2) ------------------------------------------------
@@ -173,6 +173,24 @@ export async function setExerciseNote(
     else notes[exerciseId] = text.slice(0, MAX_EXERCISE_NOTE_LENGTH)
     await db.settings.put({ key: EXERCISE_NOTES_KEY, value: notes, updatedAt: now })
   })
+}
+
+/** The `settings` table key the Plate inventory is kept under, in one row (E15-T3). */
+export const PLATE_INVENTORY_KEY = 'plateInventory'
+
+/** The stored Plate inventory; the default when the row is absent or invalid. */
+export async function getPlateInventory(): Promise<PlateInventory> {
+  throw new Error('NotImplementedError: getPlateInventory')
+}
+
+/** Stores `inventory`, plates heaviest first, in the one `plateInventory` row. */
+export async function setPlateInventory(
+  inventory: PlateInventory,
+  now: number = Date.now(),
+): Promise<void> {
+  void inventory
+  void now
+  throw new Error('NotImplementedError: setPlateInventory')
 }
 
 /** The `settings` table key the volume baseline choice is stored under (E8). */
