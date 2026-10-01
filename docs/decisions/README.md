@@ -51,3 +51,4 @@ rewrite history.
 - [0012](0012-deleted-sessions-are-marked-documents.md): a deleted Session is a marked document (`deletedAt`), and every Session reader skips it
 - [0013](0013-rest-is-stored-on-the-set-and-is-session-wide.md): a changed rest is stored on the Set that starts it, rest follows the Session's latest Set, and a PR is what `recordsFor` changes
 - [0014](0014-set-kind-effort-load-and-notes-are-optional-fields.md): a Set's kind, effort and load and the notes are optional fields, and only warm-ups leave the stats
+- [0015](0015-plate-inventory-is-a-synced-setting-and-the-warm-up-ramp-is-not-stored.md): the Plate inventory is one synced setting, and the Warm-up ramp and Warm-up rest are derived, not stored
