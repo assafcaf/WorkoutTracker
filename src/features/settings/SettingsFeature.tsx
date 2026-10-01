@@ -7,7 +7,7 @@ import { Settings } from '../../ui/Settings'
 import { BackupBadge } from '../../ui/BackupBadge'
 import { ImportConfirm } from '../../ui/ImportConfirm'
 import { ServiceError, type PendingImport } from '../../services'
-import type { VolumeBaseline } from '../../types'
+import type { PlateInventory, VolumeBaseline } from '../../types'
 
 export type SettingsFeatureProps = {
   navigate(to: AppRoute): void
@@ -41,6 +41,8 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     if (trackEffortData.status !== 'ready') return
     setChosenEffort((chosen) => (chosen === trackEffortData.data ? null : chosen))
   }, [trackEffortData])
+  const plateInventoryData = useServiceData((s) => s.preferences.plateInventory(), ['preferences'])
+  const [plateError, setPlateError] = useState<string | null>(null)
   const catalogData = useServiceData((s) => s.catalog.load(), [])
   const [savedBaseline, setSavedBaseline] = useState<VolumeBaseline | null>(null)
   // Dropped once the stored baseline reads back as the one chosen.
@@ -103,6 +105,14 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     })
   }
 
+  function handlePlateInventoryChange(inventory: PlateInventory): void {
+    setPlateError(null)
+    services.preferences.setPlateInventory(inventory).catch((error: unknown) => {
+      // Refused: the stored inventory stays, and shows again.
+      setPlateError(error instanceof Error ? error.message : 'the plates could not be saved')
+    })
+  }
+
   function handleExport(): void {
     setImportError(null)
     services.backup.export().catch(() => {
@@ -149,6 +159,9 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
         onVolumeBaselineChange={handleVolumeBaselineChange}
         trackEffort={chosenEffort ?? (trackEffortData.status === 'ready' ? trackEffortData.data : false)}
         onTrackEffortChange={handleTrackEffortChange}
+        plateInventory={plateInventoryData.status === 'ready' ? plateInventoryData.data : undefined}
+        onPlateInventoryChange={handlePlateInventoryChange}
+        plateInventoryError={plateError}
         sync={syncControls.sync}
         onSyncNow={() => {
           void syncControls.syncNow()

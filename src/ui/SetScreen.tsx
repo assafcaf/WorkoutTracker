@@ -5,7 +5,10 @@ import { formatSet, formatSetCompact } from '../domain/setText'
 import { layTodayOver, presetForSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { recordsSetBy } from '../domain/records'
-import { adjustRest, formatOver, formatRest, restAfter } from '../domain/rest'
+import { formatPlates, platesFor } from '../domain/plates'
+import { warmupRamp } from '../domain/warmup'
+import type { WarmupStep } from '../domain/warmup'
+import { adjustRest, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
@@ -19,12 +22,17 @@ import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
-import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
+import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind } from '../types'
 
 /** The longest Exercise note, in characters (E14-T11). */
 const EXERCISE_NOTE_MAX = 500
 
 export type SetScreenProps = {
+  /**
+   * The Plate inventory (E15-T6), given only for a barbell Exercise; the Plate line under the
+   * weight Dial reads from it. `null` or omitted shows no Plate line.
+   */
+  plates?: PlateInventory | null
   /** The Exercise note shown above the Dials (E14-T11); null or omitted shows Add note. */
   exerciseNote?: string | null
   /** Saves the Exercise note (500 characters at most); empty removes it (E14-T11). */
@@ -225,6 +233,12 @@ function loadOf(open: OpenSet): { loadKg: number } | Record<string, never> {
 }
 
 /**
+ * A Warm-up ramp under way (E15-T7): its steps, the one on the Dials, and the working weight and
+ * reps the Dials return to when it ends. Screen state only; nothing of it is stored.
+ */
+type Ramp = { steps: WarmupStep[]; index: number; workingKg: number; workingReps: number }
+
+/**
  * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
  * `reps`: "Set 2 logged · 50 kg × 8" for a loaded Exercise, "Set 2 logged · 12 reps" for a
  * Bodyweight one (`weightKg === null`) (E6-T2).
@@ -288,7 +302,7 @@ type RestFrom = { entry: SetEntry; planRestSeconds: number }
 function restKey(from: RestFrom | null): string | null {
   if (from === null) return null
   const { entry, planRestSeconds } = from
-  return `${entry.exerciseId}#${entry.setIndex}@${entry.loggedAt}/${entry.restSeconds ?? planRestSeconds}`
+  return `${entry.exerciseId}#${entry.setIndex}@${entry.loggedAt}/${restLengthOf(entry, planRestSeconds)}`
 }
 
 /**
@@ -365,6 +379,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   }
   // The logged Set open for editing, if any (E12-T3), and the Set just deleted that Undo restores.
   const [editing, setEditing] = useState<number | null>(null)
+  // The Warm-up ramp under way, if any (E15-T7); it starts only on a tap of Add warm-ups.
+  const [ramp, setRamp] = useState<Ramp | null>(null)
   const [undo, setUndo] = useState<SetEntry | null>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -485,7 +501,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   function setRestFromDial(seconds: number): void {
     setRestDialOpen(false)
     applyRest({ kind: 'set', seconds })
-    if (props.onUseRestForExercise !== undefined) setUseOffer({ seconds, status: 'offered' })
+    // A Warm-up's short rest says nothing about the Exercise's Plan rest: no offer (E15-T2).
+    const afterWarmup = restFrom?.entry.kind === 'warmup'
+    if (props.onUseRestForExercise !== undefined && !afterWarmup) {
+      setUseOffer({ seconds, status: 'offered' })
+    }
   }
 
   async function saveRestForExercise(): Promise<void> {
@@ -566,9 +586,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setUseOffer(null)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setEffort({ setIndex: open.setIndex, rir: null })
-      setOpen(
-        openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter)),
-      )
+      const next = openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter))
+      const nextStep = ramp === null ? undefined : ramp.steps[ramp.index + 1]
+      if (ramp === null) {
+        setOpen(next)
+      } else if (nextStep === undefined) {
+        // The last Warm-up: back to the working weight the ramp was started from.
+        setRamp(null)
+        setOpen({ ...next, weightKg: ramp.workingKg, reps: ramp.workingReps })
+      } else {
+        setRamp({ ...ramp, index: ramp.index + 1 })
+        setOpen({ ...next, weightKg: nextStep.weightKg, reps: nextStep.reps, kind: 'warmup' })
+      }
       setExtraOpen(false)
       setLoggedCount(
         session.entries.filter(
@@ -600,7 +629,35 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     })
   }
 
+  // The ramp Add warm-ups would start (E15-T7): for the weight on the Dial, from the step after
+  // the Warm-ups already logged. Offered only before the first working Set of a barbell Exercise.
+  const warmupsLogged = loggedSets.length - workingSets(loggedSets).length
+  const rampOffer: WarmupStep[] | null =
+    props.plates && ramp === null && editing === null && !done && loggedCount === 0 && open.weightKg !== null
+      ? warmupRamp(open.weightKg, props.plates)
+      : null
+  const rampStep = ramp === null ? undefined : ramp.steps[ramp.index]
+
+  function startRamp(steps: WarmupStep[]): void {
+    const step = steps[warmupsLogged]
+    if (step === undefined || open.weightKg === null) return
+    setError(null)
+    setRamp({ steps, index: warmupsLogged, workingKg: open.weightKg, workingReps: open.reps })
+    setOpen({ ...open, weightKg: step.weightKg, reps: step.reps, kind: 'warmup' })
+  }
+
+  /** The kind row: choosing another kind than Warm-up ends a ramp at its working weight. */
+  function chooseKind(kind: SetKind | null): void {
+    if (ramp === null || kind === 'warmup') {
+      setOpen({ ...open, kind })
+      return
+    }
+    setRamp(null)
+    setOpen({ ...open, weightKg: ramp.workingKg, reps: ramp.workingReps, kind })
+  }
+
   function openLogged(entry: SetEntry): void {
+    setRamp(null)
     setError(null)
     setEditing(entry.setIndex)
     setOpen({
@@ -921,11 +978,23 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         onChange={(weightKg) => setOpen({ ...open, weightKg })}
         onStepChange={handleStepChange}
       />
+      {props.plates && open.weightKg !== null ? (
+        <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
+      ) : null}
       <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
       {exercise.bodyweight ? (
         <LoadDial step={weightStep} value={open.loadKg} onChange={(loadKg) => setOpen({ ...open, loadKg })} />
       ) : null}
-      <SetKindRow value={open.kind} onChange={(kind) => setOpen({ ...open, kind })} />
+      <SetKindRow value={open.kind} onChange={chooseKind} />
+      {ramp !== null && rampStep !== undefined ? (
+        <p className="warmup-ramp">
+          Warm-up {ramp.index + 1} of {ramp.steps.length} · {rampStep.weightKg} kg × {rampStep.reps}
+        </p>
+      ) : rampOffer !== null && rampOffer.length > warmupsLogged ? (
+        <button type="button" className="add-warmups" onClick={() => startRamp(rampOffer)}>
+          Add warm-ups
+        </button>
+      ) : null}
 
       {error === null ? null : (
         <p className="set-error" role="alert">
@@ -966,7 +1035,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </div>
       )}
 
-      {rest === null || done || extraOpen || editing !== null || position > plan.sets ? null : (
+      {rest === null || done || extraOpen || editing !== null || ramp !== null || position > plan.sets ? null : (
         <p className="set-next">
           Next: set {position} · {open.weightKg === null ? 'BW' : `${open.weightKg} kg`} ×{' '}
           {plan.repRange[0]}–{plan.repRange[1]}
@@ -975,7 +1044,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
       {rest === null || restFrom === null || !restDialOpen ? null : (
         <RestDial
-          seconds={restFrom.entry.restSeconds ?? restFrom.planRestSeconds}
+          seconds={restLengthOf(restFrom.entry, restFrom.planRestSeconds)}
           onSet={setRestFromDial}
           onCancel={() => setRestDialOpen(false)}
         />
