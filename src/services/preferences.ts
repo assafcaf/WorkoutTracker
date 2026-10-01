@@ -1,15 +1,18 @@
 import type { ServiceDeps } from './deps'
 import type { PlateInventory, VolumeBaseline } from '../types'
+import { validatePlateInventory } from '../domain/plates'
 import { callStorage } from './errors'
 import {
   getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
+  getPlateInventory,
   getTrackEffort,
   getVolumeBaseline,
   getWeightStep,
   setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
+  setPlateInventory as storePlateInventory,
   setTrackEffort as storeTrackEffort,
   setVolumeBaseline as storeVolumeBaseline,
   setWeightStep as storeWeightStep,
@@ -72,7 +75,11 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       write(() => storeExerciseNote(exerciseId, text, deps.now())),
     trackEffort: () => callStorage(deps, getTrackEffort, 'trackEffort read failed'),
     setTrackEffort: (on) => write(() => storeTrackEffort(on, deps.now())),
-    plateInventory: () => Promise.reject(new Error('NotImplementedError: plateInventory')),
-    setPlateInventory: () => Promise.reject(new Error('NotImplementedError: setPlateInventory')),
+    plateInventory: () => callStorage(deps, getPlateInventory, 'plateInventory read failed'),
+    setPlateInventory: async (inventory) => {
+      const verdict = validatePlateInventory(inventory)
+      if (!verdict.ok) throw new Error(verdict.error)
+      await write(() => storePlateInventory(verdict.inventory, deps.now()))
+    },
   }
 }

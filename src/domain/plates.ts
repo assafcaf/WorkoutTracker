@@ -1,4 +1,4 @@
-import type { LibraryExercise, PlateInventory } from '../types'
+import type { LibraryExercise, Plate, PlateInventory } from '../types'
 
 export const DEFAULT_PLATE_INVENTORY: PlateInventory = {
   barKg: 20,
@@ -17,8 +17,31 @@ export const DEFAULT_PLATE_INVENTORY: PlateInventory = {
 export function validatePlateInventory(
   value: unknown,
 ): { ok: true; inventory: PlateInventory } | { ok: false; error: string } {
-  void value
-  throw new Error('NotImplementedError: validatePlateInventory')
+  if (typeof value !== 'object' || value === null) return fail('The plate inventory is not valid.')
+  const { barKg, plates } = value as { barKg?: unknown; plates?: unknown }
+  if (typeof barKg !== 'number' || !Number.isFinite(barKg) || barKg < 0 || barKg > 50) {
+    return fail('The bar must weigh between 0 and 50 kg.')
+  }
+  if (!Array.isArray(plates)) return fail('The plates are not a list.')
+  if (plates.length > 12) return fail('Use at most 12 plate sizes.')
+  const clean: Plate[] = []
+  for (const plate of plates) {
+    const { kg, pairs } = (plate ?? {}) as { kg?: unknown; pairs?: unknown }
+    if (typeof kg !== 'number' || !Number.isFinite(kg) || kg < 0.25 || kg > 50) {
+      return fail('Each plate must weigh between 0.25 and 50 kg.')
+    }
+    if (typeof pairs !== 'number' || !Number.isInteger(pairs) || pairs < 0 || pairs > 20) {
+      return fail('Each plate size needs a whole number of pairs from 0 to 20.')
+    }
+    if (clean.some((p) => p.kg === kg)) return fail('Two plates cannot weigh the same.')
+    clean.push({ kg, pairs })
+  }
+  clean.sort((a, b) => b.kg - a.kg)
+  return { ok: true, inventory: { barKg, plates: clean } }
+}
+
+function fail(error: string): { ok: false; error: string } {
+  return { ok: false, error }
 }
 
 export type PlateLoading = { perSide: number[]; madeKg: number; exact: boolean }
