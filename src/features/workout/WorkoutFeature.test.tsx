@@ -1141,3 +1141,79 @@ test('O17 editing a logged BW+10 Set to BW+12 stores loadKg 12 through services.
     expect((await storedActiveSession())?.entries[0]?.loadKg).toBe(12)
   }, SETTLE)
 })
+
+// --- E15-T6: the Plate line on a barbell Exercise's set screen --------------------------------
+
+// 20 kg bar, two pairs each of 20, 10 and 5 kg: Back squat opens at its 50 kg start weight,
+// 15 kg a side, loaded 10 + 5.
+const RACK = {
+  barKg: 20,
+  plates: [
+    { kg: 20, pairs: 2 },
+    { kg: 10, pairs: 2 },
+    { kg: 5, pairs: 2 },
+  ],
+}
+
+function plateLine(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('p.plate-line')
+}
+
+test('O8 Back squat, a barbell Exercise, shows the Plate line from the stored inventory', async () => {
+  const services = await servicesOnAssafAB()
+  await services.preferences.setPlateInventory(RACK)
+  const { user } = renderFeature(services)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+
+  await waitFor(() => expect(plateLine()?.textContent).toBe('Per side: 10 · 5'), SETTLE)
+})
+
+test('O8 a change to the stored inventory while the set screen is open changes the Plate line', async () => {
+  const services = await servicesOnAssafAB()
+  await services.preferences.setPlateInventory(RACK)
+  const { user } = renderFeature(services)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await waitFor(() => expect(plateLine()?.textContent).toBe('Per side: 10 · 5'), SETTLE)
+
+  await services.preferences.setPlateInventory({ barKg: 10, plates: [{ kg: 20, pairs: 2 }] })
+
+  await waitFor(() => expect(plateLine()?.textContent).toBe('Per side: 20'), SETTLE)
+})
+
+test('O8 DB bench press, a dumbbell Exercise, shows no Plate line', async () => {
+  const services = await servicesOnAssafAB()
+  await services.preferences.setPlateInventory(RACK)
+  const { user } = renderFeature(services)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'DB bench press')
+
+  await screen.findByRole('button', { name: 'Log set' }, SETTLE)
+  expect(plateLine()).toBeNull()
+})
+
+test('O8 Push-ups, a bodyweight Exercise, shows no Plate line', async () => {
+  const services = await servicesOnAssafAB()
+  await services.preferences.setPlateInventory(RACK)
+  const { user } = renderFeature(services)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Push-ups')
+
+  await screen.findByRole('button', { name: 'Log set' }, SETTLE)
+  expect(plateLine()).toBeNull()
+})
+
+test('O8 a swapped-in barbell Exercise shows the Plate line', async () => {
+  const services = await servicesOnAssafAB()
+  await services.preferences.setPlateInventory(RACK)
+  const started = await services.sessions.start('assaf-ab-2026', 'workout-b')
+  await services.sessions.applySwap(started.id, 'seated-biceps-curls', 'Barbell_Curl')
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Barbell Curl')
+
+  await waitFor(
+    () => expect(plateLine()?.textContent).toMatch(/^(Per side:|Nearest|Bar only|Lighter)/),
+    SETTLE,
+  )
+})

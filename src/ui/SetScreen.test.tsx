@@ -2950,3 +2950,128 @@ test('O12 changing the Set to Working moves its Rest to the Plan length: 1:00 be
 
   expect(readoutValue(restReadout())).toBe('3:00')
 })
+
+// --- E15-T6: the Plate line under the weight Dial -----------------------------------------------
+
+// A rack with a 20 kg bar and two pairs each of 20, 10 and 5 kg plates, so every expected line
+// below is worked by hand: 60 kg -> 20 a side, 80 -> 20 + 10, 100 -> 20 + 20.
+const RACK = {
+  barKg: 20,
+  plates: [
+    { kg: 20, pairs: 2 },
+    { kg: 10, pairs: 2 },
+    { kg: 5, pairs: 2 },
+  ],
+}
+
+function plateLine(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('p.plate-line')
+}
+
+function plateLineText(): string {
+  return (plateLine()?.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
+test('O8 a barbell set screen shows the Plate line for the weight on the Dial', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  expect(plateLineText()).toBe('Per side: 20')
+})
+
+test('O8 the Plate line sits directly under the weight Dial, before the reps Dial', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  const line = plateLine() as HTMLElement
+  expect(line).not.toBeNull()
+  expect(weightReadout().compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(line.compareDocumentPosition(repsReadout()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O8 a weight entered on the keypad moves the Plate line: 80 kg reads Per side: 20 · 10', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  await enterOnKeypad(user, weightReadout(), ['8', '0'])
+
+  expect(plateLineText()).toBe('Per side: 20 · 10')
+})
+
+test('O8 the plus button moves the Plate line: 62.5 kg reads Nearest 60 kg · per side: 20', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+
+  expect(plateLineText()).toBe('Nearest 60 kg · per side: 20')
+})
+
+test('O8 a weight under the bar reads Lighter than the 20 kg bar', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  await enterOnKeypad(user, weightReadout(), ['1', '5'])
+
+  expect(plateLineText()).toBe('Lighter than the 20 kg bar')
+})
+
+test('O8 a change to the stored inventory changes the Plate line', () => {
+  const props: SetScreenProps = {
+    exercise: backSquat,
+    plan: squatPlan,
+    setIndex: 1,
+    sessionId: SESSION_ID,
+    sessionStartedAt: BASE,
+    lastEntries: [historyEntry(1, 60, 10)],
+    onLog: sessionLogSet(),
+    onLogged: () => undefined,
+    plates: RACK,
+  }
+  const { rerender } = render(<SetScreen {...props} />)
+  expect(plateLineText()).toBe('Per side: 20')
+
+  rerender(<SetScreen {...props} plates={{ barKg: 10, plates: [{ kg: 25, pairs: 2 }] }} />)
+
+  expect(plateLineText()).toBe('Per side: 25')
+})
+
+test('O8 during Rest the Plate line shows the plates of the next Set on the Dial', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE)
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+  await enterOnKeypad(user, weightReadout(), ['8', '0'])
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(restReadout()).toBeTruthy())
+  expect(readoutValue(weightReadout())).toBe('80')
+  expect(plateLineText()).toBe('Per side: 20 · 10')
+})
+
+test('O8 in the edit mode the Plate line shows the plates of the edited Set', async () => {
+  const logged: SetEntry[] = [
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 100, reps: 8, loggedAt: BASE },
+  ]
+  const { user } = renderSetScreen({
+    setIndex: 2,
+    lastEntries: logged,
+    logged,
+    plates: RACK,
+  })
+  expect(plateLineText()).toBe('Per side: 20 · 20')
+  await enterOnKeypad(user, weightReadout(), ['6', '0'])
+  expect(plateLineText()).toBe('Per side: 20')
+
+  const loggedSet = document.querySelector<HTMLElement>('button.logged-set') as HTMLElement
+  await user.click(loggedSet)
+
+  expect(readoutValue(weightReadout())).toBe('100')
+  expect(plateLineText()).toBe('Per side: 20 · 20')
+})
+
+test('O8 with plates null there is no Plate line', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: null })
+
+  expect(plateLine()).toBeNull()
+})
+
+test('O8 with plates omitted there is no Plate line', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  expect(plateLine()).toBeNull()
+})

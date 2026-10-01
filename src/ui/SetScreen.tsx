@@ -5,6 +5,7 @@ import { formatSet, formatSetCompact } from '../domain/setText'
 import { layTodayOver, presetForSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { recordsSetBy } from '../domain/records'
+import { formatPlates, platesFor } from '../domain/plates'
 import { adjustRest, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
@@ -19,12 +20,17 @@ import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
-import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
+import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind } from '../types'
 
 /** The longest Exercise note, in characters (E14-T11). */
 const EXERCISE_NOTE_MAX = 500
 
 export type SetScreenProps = {
+  /**
+   * The Plate inventory (E15-T6), given only for a barbell Exercise; the Plate line under the
+   * weight Dial reads from it. `null` or omitted shows no Plate line.
+   */
+  plates?: PlateInventory | null
   /** The Exercise note shown above the Dials (E14-T11); null or omitted shows Add note. */
   exerciseNote?: string | null
   /** Saves the Exercise note (500 characters at most); empty removes it (E14-T11). */
@@ -925,6 +931,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         onChange={(weightKg) => setOpen({ ...open, weightKg })}
         onStepChange={handleStepChange}
       />
+      {props.plates && open.weightKg !== null ? (
+        <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
+      ) : null}
       <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
       {exercise.bodyweight ? (
         <LoadDial step={weightStep} value={open.loadKg} onChange={(loadKg) => setOpen({ ...open, loadKg })} />
