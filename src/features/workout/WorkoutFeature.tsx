@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
+import { nextExerciseAfter } from '../../domain/flow'
 import { familyOf } from '../../domain/muscles'
+import { latestSet } from '../../domain/rest'
 import { ServiceError } from '../../services'
 import type {
   Exercise,
@@ -14,6 +16,7 @@ import type {
 } from '../../types'
 import { ActionBarSlot, AppShell } from '../../ui/AppShell'
 import { BackupBadge } from '../../ui/BackupBadge'
+import { ElapsedTime } from '../../ui/ElapsedTime'
 import { ExerciseList } from '../../ui/ExerciseList'
 import { NoProgram } from '../../ui/NoProgram'
 import { ResumeCard } from '../../ui/ResumeCard'
@@ -425,8 +428,24 @@ export function WorkoutFeature({
     if (plan && exercise) {
       const primaryMuscle = libraryMap.get(exercise.libraryId)?.primaryMuscles[0]
       const family = primaryMuscle === undefined ? undefined : familyOf(primaryMuscle)
+      // Rest is Session-wide: it follows the Session's latest Set, by its own Exercise's Plan rest.
+      const latest = latestSet(session.entries)
+      const latestPlan =
+        latest === null
+          ? undefined
+          : located.workout.exercises.find(
+              (candidate) =>
+                candidate.exerciseId === plannedExerciseIdFor(session, latest.exerciseId),
+            )
+      const restFrom =
+        latest === null || latestPlan === undefined
+          ? null
+          : { entry: latest, planRestSeconds: latestPlan.restSeconds }
+      const nextId = nextExerciseAfter(located.workout, session, openSet.exerciseId)
+      const nextName = nextId === null ? null : (resolveListExercise(nextId)?.name ?? null)
       content = (
         <AppShell title={exercise.name} onBack={() => setView('list')} action={<ActionBarSlot />}>
+          <ElapsedTime startedAt={session.startedAt} />
           <SetScreen
             key={`${openSet.exerciseId}#${openSet.setIndex}`}
             exercise={exercise}
@@ -448,6 +467,9 @@ export function WorkoutFeature({
               })
             }}
             family={family}
+            earlierSessions={sessions.filter(
+              (earlier) => earlier.finishedAt !== null && earlier.startedAt < session.startedAt,
+            )}
             logged={session.entries.filter((entry) => entry.exerciseId === openSet.exerciseId)}
             onEditSet={async (setIndex, values) => {
               setSession(
@@ -466,6 +488,42 @@ export function WorkoutFeature({
             onRestoreSet={async (entry) => {
               setSession(await services.sessions.restoreSet(session.id, entry))
             }}
+            restFrom={restFrom}
+            onSetRest={async (entry, restSeconds) => {
+              setSession(
+                await services.sessions.setRest(
+                  session.id,
+                  entry.exerciseId,
+                  entry.setIndex,
+                  restSeconds,
+                ),
+              )
+            }}
+            programName={located.program.name}
+            onUseRestForExercise={async (restSeconds) => {
+              // The Plan this Exercise sits under -- a swap writes the Plan it was swapped
+              // under -- in the Session's Program; a bundled Program becomes the user's copy.
+              const { programs: current, userPrograms } = await services.programs.load()
+              const program = current.find((candidate) => candidate.id === session.programId)
+              if (program === undefined) throw new Error('The Program is gone')
+              const stored = userPrograms.find((candidate) => candidate.id === program.id)
+              await services.programs.save({
+                ...program,
+                workouts: program.workouts.map((workout) =>
+                  workout.id !== session.workoutId
+                    ? workout
+                    : {
+                        ...workout,
+                        exercises: workout.exercises.map((candidate) =>
+                          candidate.exerciseId === plannedId
+                            ? { ...candidate, restSeconds }
+                            : candidate,
+                        ),
+                      },
+                ),
+                createdAt: stored?.createdAt ?? Date.now(),
+              })
+            }}
             onLog={(id, entry) => services.sessions.logSet(id, entry)}
             onLogged={(logged) => {
               setSession(logged)
@@ -474,7 +532,17 @@ export function WorkoutFeature({
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}
-            onFinishExercise={() => setView('list')}
+            upNext={nextName}
+            onFinishExercise={() => {
+              if (nextId === null) {
+                setView('list')
+                return
+              }
+              const loggedNext = session.entries.filter(
+                (entry) => entry.exerciseId === nextId,
+              ).length
+              handleOpenSet(nextId, loggedNext + 1)
+            }}
           />
         </AppShell>
       )
@@ -492,6 +560,7 @@ export function WorkoutFeature({
           </button>
         }
       >
+        <ElapsedTime startedAt={session.startedAt} />
         <ExerciseList
           program={located.program}
           workout={located.workout}
@@ -576,6 +645,18 @@ export function WorkoutFeature({
           session={summarySession}
           resolve={resolveListExercise}
           library={libraryMap}
+          earlierSessions={sessions.filter(
+            (other) =>
+              other.id !== summarySession.id &&
+              other.finishedAt !== undefined &&
+              other.startedAt < summarySession.startedAt,
+          )}
+          planFor={(exerciseId) =>
+            programs
+              .find((program) => program.id === summarySession.programId)
+              ?.workouts.find((workout) => workout.id === summarySession.workoutId)
+              ?.exercises.find((plan) => plan.exerciseId === exerciseId)
+          }
           onClose={() => setSummarySession(null)}
           onBrowse={(muscles) => {
             setSummarySession(null)

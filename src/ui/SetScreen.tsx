@@ -2,11 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { presetForSet } from '../domain/prefill'
-import { restState } from '../domain/rest'
+import { recordsSetBy } from '../domain/records'
+import { adjustRest, formatOver, formatRest, restAfter } from '../domain/rest'
+import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
+import { RestDial } from './RestDial'
+import { Toast } from './Toast'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import './SetScreen.css'
@@ -69,6 +73,8 @@ export type SetScreenProps = {
    * "Add set".
    */
   onFinishExercise?(): void
+  /** The name of the next unfinished Exercise, shown above "Finish exercise" (E13-T12). */
+  upNext?: string | null
   /**
    * Whether the set on the dials was opened by "Add set" as an extra set past the plan (E6-T1).
    * A screen opened past the plan with `extra` false is in the done state. Optional, read as
@@ -106,6 +112,32 @@ export type SetScreenProps = {
    * STUB (E10-T8 test-designer): accepted but not yet wired onto `.set-logged`.
    */
   family?: MuscleFamily
+  /**
+   * Finished Sessions started before this one (E13-T6), the baseline `recordsSetBy` measures a
+   * Set against. Optional; omitted or empty means no Set is a record.
+   */
+  earlierSessions?: Session[]
+  /**
+   * The Session's latest Set, whichever Exercise it was, and the Plan rest of the Exercise it
+   * belongs to (E13-T8), resolved by the caller; `null`/omitted shows no rest. Replaces the
+   * per-Exercise seed from `lastEntries`; after a log the screen rests from the Set it just logged.
+   */
+  restFrom?: { entry: SetEntry; planRestSeconds: number } | null
+  /**
+   * Stores `restSeconds` as the rest after `entry` (E13-T8), from −15 s, +15 s or Skip.
+   */
+  onSetRest?(entry: SetEntry, restSeconds: number): Promise<void>
+  /**
+   * Stores `restSeconds`, just set on the rest Dial, as the rest of this Exercise's Plan in the
+   * Session's Program (E13-T9), offered as "Use 2:30 for <Exercise>"; a rejection's message shows
+   * inline.
+   */
+  onUseRestForExercise?(restSeconds: number): Promise<void>
+  /**
+   * The Session's Program's name (E13-T9), for the "Saved to <Program>" line once
+   * `onUseRestForExercise` resolves.
+   */
+  programName?: string
 }
 
 /**
@@ -135,20 +167,23 @@ function lastTimeText(exerciseId: string, entries: SetEntry[]): string {
     .join(' · ')
 }
 
+/** "New PR · Heaviest set, Best estimated 1RM · 85 kg × 5": every record's label, then the Set. */
+function recordToastText(labels: string[], weightKg: number | null, reps: number): string {
+  const load = weightKg === null ? `${reps} reps` : `${weightKg} kg × ${reps}`
+  return `New PR · ${labels.join(', ')} · ${load}`
+}
+
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
 const TICK_MS = 500
 
 /** How long Undo stays offered after a Set is deleted (E12-T3). */
 const UNDO_MS = 5000
 
+/** How long the Log set button and the new row show the Set as just logged (E13-T10). */
+const CONFIRMED_MS = 1500
+
 /** The set on the dials: which one it is and the two values it will be logged with. */
 type OpenSet = { setIndex: number; weightKg: number | null; reps: number }
-
-/** The remaining rest as "m:ss", counting the part-second still to go as a whole one. */
-function formatRest(remainingSeconds: number): string {
-  const total = Math.ceil(remainingSeconds)
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
-}
 
 /**
  * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
@@ -184,19 +219,25 @@ function openSetFor(
 }
 
 /**
- * The rest timer's seed on open: the latest `loggedAt` among `lastEntries` for this Exercise
- * that falls within this Session, or `null` when none does -- an entry carried over from an
- * earlier, already-finished session must not read as rest still owed (E6-T2, O6/O7).
+ * The "Use m:ss for <Exercise>" line after the rest Dial's Set rest (E13-T9): offered, being
+ * saved, saved, or refused with the Program service's message.
  */
-function initialLastLoggedAt(
-  exerciseId: string,
-  lastEntries: SetEntry[],
-  sessionStartedAt: number,
-): number | null {
-  const loggedThisSession = lastEntries
-    .filter((entry) => entry.exerciseId === exerciseId && entry.loggedAt >= sessionStartedAt)
-    .map((entry) => entry.loggedAt)
-  return loggedThisSession.length === 0 ? null : Math.max(...loggedThisSession)
+type UseRestOffer = {
+  seconds: number
+  status: 'offered' | 'saving' | 'saved' | { error: string }
+}
+
+/** The Set rest runs after, with the Plan rest of the Exercise it belongs to (E13-T8). */
+type RestFrom = { entry: SetEntry; planRestSeconds: number }
+
+/**
+ * What identifies one rest period: the Set it follows and its length. The beep is tracked per
+ * key, so a changed length is a new zero to sound at, and a re-render of the same one is not.
+ */
+function restKey(from: RestFrom | null): string | null {
+  if (from === null) return null
+  const { entry, planRestSeconds } = from
+  return `${entry.exerciseId}#${entry.setIndex}@${entry.loggedAt}/${entry.restSeconds ?? planRestSeconds}`
 }
 
 /**
@@ -219,6 +260,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     onOpenInfo,
     onOpenAlternatives,
     onFinishExercise,
+    upNext,
     family,
   } = props
 
@@ -267,10 +309,27 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     },
     [],
   )
-  const [error, setError] = useState<string | null>(null)
-  const [lastLoggedAt, setLastLoggedAt] = useState<number | null>(() =>
-    initialLastLoggedAt(exercise.id, props.lastEntries, props.sessionStartedAt ?? 0),
+  // The Set logged in the last CONFIRMED_MS: the button and its row show it as just logged.
+  const [justLogged, setJustLogged] = useState<number | null>(null)
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (confirmTimer.current !== null) clearTimeout(confirmTimer.current)
+    },
+    [],
   )
+  const [toast, setToast] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  // The Set rest follows: the caller's `restFrom` (the Session's latest Set), until this screen
+  // logs one or adjusts the rest; a changed `restFrom` -- the stored adjustment, a delete -- wins.
+  const [restFrom, setRestFrom] = useState<RestFrom | null>(props.restFrom ?? null)
+  const propRestKey = restKey(props.restFrom ?? null)
+  useEffect(() => {
+    setRestFrom(props.restFrom ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the Set's identity and rest
+  }, [propRestKey])
+  const lastLoggedAt = restFrom === null ? null : restFrom.entry.loggedAt
+  const currentRestKey = restKey(restFrom)
   const [loggedMessage, setLoggedMessage] = useState<string>('')
   const [now, setNow] = useState<number>(() => Date.now())
 
@@ -289,32 +348,107 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     return () => clearInterval(tick)
   }, [lastLoggedAt])
 
-  const rest = restState(lastLoggedAt, plan.restSeconds, now)
+  // A logged Set holds a record for as long as it sets one against the earlier Sessions and this
+  // Session's Sets before it, so the badge follows edits and deletes.
+  const earlier = props.earlierSessions ?? []
+  const thisSession: Session = {
+    id: sessionId,
+    programId: '',
+    workoutId: '',
+    startedAt: props.sessionStartedAt ?? 0,
+    finishedAt: null,
+    entries: props.logged ?? [],
+  }
+  const isRecordSet = (entry: SetEntry): boolean =>
+    earlier.length > 0 && recordsSetBy(exercise, plan, earlier, thisSession, entry).length > 0
+
+  const rest: RestState | null =
+    restFrom === null ? null : restAfter(restFrom.entry, restFrom.planRestSeconds, now)
   const done = editing === null && open.setIndex > plan.sets && !extraOpen
 
   // Fires playRestOver once per rest period: only after this mount has actually seen the rest
-  // running (isOver false) for the current lastLoggedAt, so a screen opened with rest already
-  // over -- e.g. from history -- never sounds, and a later tick on the same finished rest
-  // period does not sound again.
+  // running (isOver false) for the current Set, so a screen opened with rest already over --
+  // e.g. from history -- never sounds, and a later tick on the same finished rest does not sound
+  // again. A changed length (±15 s) keeps what was seen of the same Set and moves the zero;
+  // Skip marks its key as already fired, so it ends the rest silently.
   const restOverTrackingRef = useRef<{
-    lastLoggedAt: number | null
+    key: string | null
+    loggedAt: number | null
     seenRunning: boolean
     fired: boolean
-  }>({ lastLoggedAt: null, seenRunning: false, fired: false })
+  }>({ key: null, loggedAt: null, seenRunning: false, fired: false })
+  const restIsOver = rest === null || rest.isOver
 
   useEffect(() => {
     const tracking = restOverTrackingRef.current
-    if (tracking.lastLoggedAt !== lastLoggedAt) {
-      restOverTrackingRef.current = { lastLoggedAt, seenRunning: false, fired: false }
+    if (tracking.key !== currentRestKey) {
+      const sameSet = tracking.loggedAt === lastLoggedAt
+      restOverTrackingRef.current = {
+        key: currentRestKey,
+        loggedAt: lastLoggedAt,
+        seenRunning: sameSet && tracking.seenRunning,
+        fired: false,
+      }
     }
     const current = restOverTrackingRef.current
-    if (!rest.isOver) {
+    if (!restIsOver) {
       current.seenRunning = true
     } else if (current.seenRunning && !current.fired) {
       current.fired = true
       playRestOver()
     }
-  }, [lastLoggedAt, rest.isOver])
+  }, [currentRestKey, lastLoggedAt, restIsOver])
+
+  // The rest Dial, open from the rest readout, and the Use offer its Set rest leaves (E13-T9).
+  const [restDialOpen, setRestDialOpen] = useState(false)
+  const [useOffer, setUseOffer] = useState<UseRestOffer | null>(null)
+
+  /** The rest Dial's Set rest: the Set's rest is `seconds`, and it may become the Plan's. */
+  function setRestFromDial(seconds: number): void {
+    setRestDialOpen(false)
+    applyRest({ kind: 'set', seconds })
+    if (props.onUseRestForExercise !== undefined) setUseOffer({ seconds, status: 'offered' })
+  }
+
+  async function saveRestForExercise(): Promise<void> {
+    if (useOffer === null || props.onUseRestForExercise === undefined) return
+    const { seconds } = useOffer
+    setUseOffer({ seconds, status: 'saving' })
+    try {
+      await props.onUseRestForExercise(seconds)
+      setUseOffer({ seconds, status: 'saved' })
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause)
+      setUseOffer({ seconds, status: { error: message } })
+    }
+  }
+
+  /** −15 s, +15 s or Skip: never offered as the Plan's rest, so they withdraw the Use offer. */
+  function adjust(adjustment: RestAdjustment): void {
+    setUseOffer(null)
+    applyRest(adjustment)
+  }
+
+  /** The Set's new rest, shown now and stored through `onSetRest`. */
+  function applyRest(adjustment: RestAdjustment): void {
+    if (restFrom === null) return
+    const at = Date.now()
+    const restSeconds = adjustRest(restFrom.entry, restFrom.planRestSeconds, adjustment, at)
+    const next: RestFrom = { ...restFrom, entry: { ...restFrom.entry, restSeconds } }
+    if (adjustment.kind === 'skip') {
+      restOverTrackingRef.current = {
+        key: restKey(next),
+        loggedAt: next.entry.loggedAt,
+        seenRunning: true,
+        fired: true,
+      }
+    }
+    setNow(at)
+    setRestFrom(next)
+    props.onSetRest?.(restFrom.entry, restSeconds).catch((cause: unknown) => {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    })
+  }
 
   async function log(): Promise<void> {
     unlockRestSound()
@@ -340,12 +474,29 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setError(null)
       clearUndo()
       setHistory(merged)
-      setLastLoggedAt(loggedAt)
+      setRestFrom({ entry, planRestSeconds: plan.restSeconds })
+      if (confirmTimer.current !== null) clearTimeout(confirmTimer.current)
+      setJustLogged(open.setIndex)
+      confirmTimer.current = setTimeout(() => {
+        confirmTimer.current = null
+        setJustLogged(null)
+      }, CONFIRMED_MS)
+      setUseOffer(null)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setOpen(openSetFor(exercise, plan, nextSetIndex, merged))
       setExtraOpen(false)
       setLoggedCount(
         session.entries.filter((logged) => logged.exerciseId === exercise.id).length,
+      )
+      const records = recordsSetBy(exercise, plan, props.earlierSessions ?? [], session, entry)
+      setToast(
+        records.length === 0
+          ? null
+          : recordToastText(
+              records.map((record) => record.label),
+              entry.weightKg,
+              entry.reps,
+            ),
       )
       onLogged(session, nextSetIndex)
     } catch (cause) {
@@ -438,11 +589,29 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </button>
     </>
   ) : !done ? (
-    <button type="button" className="log-set" onClick={() => void log()}>
-      Log set
-    </button>
+    justLogged !== null ? (
+      <button
+        type="button"
+        className="log-set log-set--confirmed"
+        aria-label="Log set"
+        onClick={() => void log()}
+      >
+        Logged ✓
+      </button>
+    ) : (
+      <button type="button" className="log-set" aria-label="Log set" onClick={() => void log()}>
+        {rest === null
+          ? 'Log set'
+          : rest.isOver
+            ? `Rest ${formatOver(rest.overSeconds)}`
+            : `Rest ${formatRest(rest.remainingSeconds)}`}
+      </button>
+    )
   ) : (
     <>
+      {onFinishExercise === undefined || !upNext ? null : (
+        <p className="up-next">Up next: {upNext}</p>
+      )}
       {onFinishExercise === undefined ? null : (
         <button type="button" className="finish-exercise" onClick={onFinishExercise}>
           Finish exercise
@@ -458,6 +627,43 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   return (
     <div className="set-screen">
+      {rest === null ? null : (
+        <div className="rest-timer" data-over={rest.isOver ? 'true' : undefined}>
+          <span className="rest-label">{rest.isOver ? 'Rest over' : 'Rest'}</span>
+          <button
+            type="button"
+            className="rest-readout"
+            onClick={() => setRestDialOpen(true)}
+          >
+            <span role="timer" aria-label="Rest remaining">
+              {rest.isOver ? formatOver(rest.overSeconds) : formatRest(rest.remainingSeconds)}
+            </span>
+            {rest.isOver ? ' over' : null}
+          </button>
+          {rest.isOver ? null : (
+            <div className="rest-controls">
+              <button
+                type="button"
+                className="rest-adjust"
+                onClick={() => adjust({ kind: 'add', seconds: -15 })}
+              >
+                −15 s
+              </button>
+              <button
+                type="button"
+                className="rest-adjust"
+                onClick={() => adjust({ kind: 'add', seconds: 15 })}
+              >
+                +15 s
+              </button>
+              <button type="button" className="rest-skip" onClick={() => adjust({ kind: 'skip' })}>
+                Skip
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* The exercise's name is the shell's own header title (`AppShell`'s `<h1>`, set by every
           caller to `exercise.name`); a second heading here would duplicate it verbatim, which
           collides for a caller matching an exercise's set screen by its accessible name alone
@@ -479,7 +685,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {loggedSets.length === 0 ? null : (
         <ul className="logged-sets" aria-label="Sets logged">
           {loggedSets.map((entry) => (
-            <li key={entry.setIndex}>
+            <li
+              key={entry.setIndex}
+              className={justLogged === entry.setIndex ? 'just-logged' : undefined}
+            >
               <button
                 type="button"
                 className="logged-set"
@@ -488,6 +697,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               >
                 {entry.weightKg === null ? 'BW' : entry.weightKg} × {entry.reps}
               </button>
+              {isRecordSet(entry) ? (
+                <span className="pr-badge" aria-label="Personal record">
+                  PR
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -518,16 +732,46 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </p>
       )}
 
+      {toast === null ? null : <Toast message={toast} onDismiss={() => setToast(null)} />}
+
       <p role="status" className="set-logged" data-family={family}>
         {loggedMessage}
       </p>
 
-      {lastLoggedAt === null ? null : (
-        <p className="rest-timer">
-          <span role="timer" aria-label="Rest remaining">
-            {formatRest(rest.remainingSeconds)}
-          </span>
-          {rest.isOver ? ' rest over' : ' rest'}
+      {rest === null || done || extraOpen || editing !== null || open.setIndex > plan.sets ? null : (
+        <p className="set-next">
+          Next: set {open.setIndex} · {open.weightKg === null ? 'BW' : `${open.weightKg} kg`} ×{' '}
+          {plan.repRange[0]}–{plan.repRange[1]}
+        </p>
+      )}
+
+      {rest === null || restFrom === null || !restDialOpen ? null : (
+        <RestDial
+          seconds={restFrom.entry.restSeconds ?? restFrom.planRestSeconds}
+          onSet={setRestFromDial}
+          onCancel={() => setRestDialOpen(false)}
+        />
+      )}
+
+      {useOffer === null ? null : (
+        <p className="rest-use">
+          {useOffer.status === 'saved' ? (
+            props.programName === undefined ? 'Saved' : `Saved to ${props.programName}`
+          ) : (
+            <button
+              type="button"
+              className="rest-use-offer"
+              disabled={useOffer.status === 'saving'}
+              onClick={() => void saveRestForExercise()}
+            >
+              Use {formatRest(useOffer.seconds)} for {exercise.name}
+            </button>
+          )}
+          {typeof useOffer.status === 'object' ? (
+            <span className="rest-use-error" role="alert">
+              {useOffer.status.error}
+            </span>
+          ) : null}
         </p>
       )}
     </div>

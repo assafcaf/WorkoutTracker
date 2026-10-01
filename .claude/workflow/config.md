@@ -123,7 +123,7 @@ gone.
 | Dependency directory | `node_modules` |
 | Lockfile | `package-lock.json` |
 | Red means | exit code `1`: tests ran and at least one failed. A suite that failed to import, or a path matching no test files, exits `2` and does not count |
-| Test paths | `src/`, tests colocated with the code as `*.test.ts` / `*.test.tsx` |
+| Test paths | `src/**/*.test.ts src/**/*.test.tsx` — tests colocated with the code. Pass these globs as `--test-paths`: a bare `src/` is read as a prefix, so every product file under `src/` counts as a changed test and `task-submit.sh` rejects every task (E13, 2026-09-30) |
 | Weakened tests | `bash .claude/workflow/bin/weakened-tests.sh <base> <head>`, with the two env vars below exported first |
 
 **Why `vitest-gate.sh` and not `npx vitest run` directly.** The red gate rests on telling "the

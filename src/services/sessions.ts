@@ -11,6 +11,7 @@ import {
   deleteSet,
   restoreSet,
   saveSession,
+  setRest,
   updateSet,
   setSwap,
   startOrResumeSession,
@@ -28,6 +29,12 @@ export type SessionService = {
     exerciseId: string,
     setIndex: number,
     values: { weightKg: number | null; reps: number },
+  ): Promise<Session>
+  setRest(
+    sessionId: string,
+    exerciseId: string,
+    setIndex: number,
+    restSeconds: number,
   ): Promise<Session>
   deleteSet(
     sessionId: string,
@@ -146,6 +153,14 @@ export function createSessionService(deps: ServiceDeps): SessionService {
       return write(
         sessionId,
         () => updateSet(sessionId, exerciseId, setIndex, values, now()),
+        LOG_FAILED,
+      )
+    },
+
+    async setRest(sessionId, exerciseId, setIndex, restSeconds) {
+      return write(
+        sessionId,
+        () => setRest(sessionId, exerciseId, setIndex, restSeconds, now()),
         LOG_FAILED,
       )
     },

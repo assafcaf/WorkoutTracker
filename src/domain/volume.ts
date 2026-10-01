@@ -1,7 +1,26 @@
 import type { Program, Session } from '../types'
 import type { Resolve } from './muscles'
 
-export type VolumePoint = { at: number; workoutName: string; kg: number; bodyweightReps: number }
+/** One Session's loaded volume and bodyweight reps, by the rule `volumeSeries` uses. */
+export function sessionVolume(session: Session, resolve: Resolve): { kg: number; bodyweightReps: number } {
+  let kg = 0
+  let bodyweightReps = 0
+
+  for (const entry of session.entries) {
+    const exercise = resolve(entry.exerciseId)
+    if (!exercise) continue
+
+    if (!exercise.bodyweight && !exercise.invertProgress && entry.weightKg !== null) {
+      kg += entry.reps * entry.weightKg
+    } else {
+      bodyweightReps += entry.reps
+    }
+  }
+
+  return { kg, bodyweightReps }
+}
+
+export type VolumePoint ={ at: number; workoutName: string; kg: number; bodyweightReps: number }
 
 /**
  * One `VolumePoint` per session, ascending by `at` (`session.startedAt`). `kg` sums
@@ -15,19 +34,7 @@ export function volumeSeries(sessions: Session[], resolve: Resolve, programs: Pr
   return [...sessions]
     .sort((a, b) => a.startedAt - b.startedAt)
     .map((session) => {
-      let kg = 0
-      let bodyweightReps = 0
-
-      for (const entry of session.entries) {
-        const exercise = resolve(entry.exerciseId)
-        if (!exercise) continue
-
-        if (!exercise.bodyweight && !exercise.invertProgress && entry.weightKg !== null) {
-          kg += entry.reps * entry.weightKg
-        } else {
-          bodyweightReps += entry.reps
-        }
-      }
+      const { kg, bodyweightReps } = sessionVolume(session, resolve)
 
       const program = programs.find((candidate) => candidate.id === session.programId)
       const workout = program?.workouts.find((candidate) => candidate.id === session.workoutId)

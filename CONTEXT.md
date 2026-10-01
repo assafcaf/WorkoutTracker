@@ -38,6 +38,14 @@ catalog Exercise rather than the Program's Plan.
 See `docs/decisions/0002-pwa-local-first-workout-tracker.md`.
 _Avoid_: Entry, rep log, record
 
+**Rest**:
+The time after a Set before the next, derived from the Set's `loggedAt` and its rest length (its own `restSeconds`, else the Plan's).
+
+**Record**:
+The best Set of one kind for an Exercise (heaviest, best estimated 1RM, and so on), as
+`recordsFor` names it; shown as "PR" in the UI.
+_Avoid_: Best, high score
+
 **Ladder**:
 The ordered list of weights an exercise can legally take, built from its start weight by its
 own step size.

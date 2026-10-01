@@ -1,9 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
-import { beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../../storage/db'
 import { createServices, type Services } from '../../services'
+import { ServiceError } from '../../services/errors'
 import type { Session, SetEntry } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
 import { WorkoutFeature } from './WorkoutFeature'
@@ -30,6 +31,10 @@ beforeEach(async () => {
   await db.open()
   await db.sessions.clear()
   await db.settings.clear()
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 function buildServices(): Services {
@@ -380,4 +385,402 @@ test('O12 cancelling the discard leaves the Session as it was', async () => {
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('2/4')
   expect((await storedActiveSession())?.entries).toHaveLength(2)
+})
+
+test('O12 the exercise list and the set screen each show the Workout time', async () => {
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await startWorkout(user, 'Workout A')
+
+  expect(await screen.findByRole('timer', { name: 'Workout time' }, SETTLE)).toBeVisible()
+
+  await openExercise(user, 'Back squat')
+  await screen.findByRole('button', { name: 'Log set' }, SETTLE)
+
+  expect(screen.getByRole('timer', { name: 'Workout time' })).toBeVisible()
+})
+
+test('O12 the picker shows no Workout time', async () => {
+  renderFeature(await servicesOnAssafAB())
+  await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
+
+  expect(screen.queryByRole('timer', { name: 'Workout time' })).toBeNull()
+})
+
+// --- E13-T8 O4: rest follows the Session's latest Set, and survives a reload ------------------
+//
+// Workout A's back squat Plan rests 180 s and its lunges Plan 90 s. The Sets are logged through
+// the real service at T0, and the wall clock the set screen reads is frozen past it.
+
+const T0 = NOW + 1_000_000
+
+/** The rest readout: the button holding the set screen's "Rest remaining" timer. */
+async function restReadoutText(): Promise<string> {
+  const timer = await screen.findByRole('timer', { name: 'Rest remaining' }, SETTLE)
+  const button = timer.closest('button')
+  if (button === null) throw new Error('the rest readout is not a button')
+  return (button.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/** Workout A in progress with `sets` logged, on the real services; answers them and the Session. */
+async function workoutAWithLogged(
+  sets: Array<{ exerciseId: string; setIndex: number; weightKg: number; loggedAt: number }>,
+): Promise<{ services: Services; sessionId: string }> {
+  const services = await servicesOnAssafAB()
+  const started = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  for (const set of sets) {
+    await services.sessions.logSet(started.id, { ...set, reps: 10 })
+  }
+  return { services, sessionId: started.id }
+}
+
+test("O4 a set screen opened from the list shows the rest of the Session's latest Set, of another Exercise", async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  const { user } = renderFeature(services)
+
+  await openExercise(user, 'Lunges')
+
+  // Back squat's 180 s from T0, 100 s gone -- not lunges' own 90 s.
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
+})
+
+test('O4 +15 s on the set screen stores the Set with a 195 s rest through services.sessions.setRest', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services, sessionId } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  const setRest = vi.spyOn(services.sessions, 'setRest')
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Lunges')
+
+  await user.click(await screen.findByRole('button', { name: '+15 s' }, SETTLE))
+
+  await waitFor(() => expect(setRest).toHaveBeenCalledTimes(1), SETTLE)
+  expect(setRest).toHaveBeenCalledWith(sessionId, 'back-squat', 1, 195)
+  const stored = await storedActiveSession()
+  expect(stored?.entries.find((entry) => entry.exerciseId === 'back-squat')?.restSeconds).toBe(195)
+})
+
+test('O4 +15 s on the set screen moves the rest readout from 1:20 to 1:35', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Lunges')
+
+  await user.click(await screen.findByRole('button', { name: '+15 s' }, SETTLE))
+
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:35'), SETTLE)
+})
+
+test('O4 after +15 s and a reload the set screen shows the same rest', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  const first = renderFeature(services)
+  await openExercise(first.user, 'Lunges')
+  await first.user.click(await screen.findByRole('button', { name: '+15 s' }, SETTLE))
+  await waitFor(async () => {
+    const stored = await storedActiveSession()
+    expect(stored?.entries[0].restSeconds).toBe(195)
+  }, SETTLE)
+
+  cleanup()
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await openExercise(user, 'Lunges')
+
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:35'), SETTLE)
+})
+
+test('O4 after Skip and a reload the set screen reads +0:00 over', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  const first = renderFeature(services)
+  await openExercise(first.user, 'Lunges')
+  await first.user.click(await screen.findByRole('button', { name: 'Skip' }, SETTLE))
+  await waitFor(async () => {
+    const stored = await storedActiveSession()
+    expect(stored?.entries[0].restSeconds).toBe(100)
+  }, SETTLE)
+
+  cleanup()
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await openExercise(user, 'Lunges')
+
+  await waitFor(async () => expect(await restReadoutText()).toBe('+0:00 over'), SETTLE)
+})
+
+test('O4 after the latest Set is deleted, rest follows the new latest Set', async () => {
+  // Back squat at T0 (180 s), then lunges 60 s later (90 s). At 100 s the lunges Set has 0:50
+  // left; deleting it leaves the back squat Set as the latest, with 1:20 left.
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+    { exerciseId: 'lunges', setIndex: 1, weightKg: 20, loggedAt: T0 + 60_000 },
+  ])
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Lunges')
+  await waitFor(async () => expect(await restReadoutText()).toBe('0:50'), SETTLE)
+
+  await user.click(await screen.findByRole('button', { name: '20 × 10' }, SETTLE))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
+})
+
+// --- E13-T12 O11: Finish exercise leads on to the next unfinished Exercise --------------------
+
+/** Four back squat Sets (Workout A plans 4) at T0, for the done state. */
+const FOUR_SQUATS = [1, 2, 3, 4].map((setIndex) => ({
+  exerciseId: 'back-squat',
+  setIndex,
+  weightKg: 60,
+  loggedAt: T0,
+}))
+
+test('O11 the done state of back squat shows Up next: Lunges above Finish exercise', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
+  await openExercise(user, 'Back squat')
+
+  const upNext = await screen.findByText('Up next: Lunges', undefined, SETTLE)
+  const finish = screen.getByRole('button', { name: 'Finish exercise' })
+
+  expect(upNext.compareDocumentPosition(finish) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O11 Finish exercise opens the next Exercise on Set 1 of its plan', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
+  await openExercise(user, 'Back squat')
+
+  await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
+
+  expect(await screen.findByText('Set 1 of 3', undefined, SETTLE)).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Lunges' })).toBeVisible()
+})
+
+test('O11 after Finish exercise the next set screen still counts the rest from the last Set', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
+  await openExercise(user, 'Back squat')
+
+  await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
+
+  // Back squat's 180 s from T0, 100 s gone.
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
+})
+
+test('O11 Finish exercise skips a next Exercise whose Sets are all logged', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const lunges = [1, 2, 3].map((setIndex) => ({
+    exerciseId: 'lunges',
+    setIndex,
+    weightKg: 20,
+    loggedAt: T0,
+  }))
+  const { user } = renderFeature((await workoutAWithLogged([...FOUR_SQUATS, ...lunges])).services)
+  await openExercise(user, 'Back squat')
+
+  expect(await screen.findByText('Up next: DB bench press', undefined, SETTLE)).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Finish exercise' }))
+
+  expect(await screen.findByText('Set 1 of 4', undefined, SETTLE)).toBeVisible()
+})
+
+test('O11 with every Exercise done there is no Up next line and Finish exercise returns to the list', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const plans: Array<[string, number]> = [
+    ['back-squat', 4],
+    ['lunges', 3],
+    ['db-bench-press', 4],
+    ['push-ups', 3],
+    ['machine-shoulder-press', 3],
+    ['lateral-raises', 3],
+    ['cable-push-down', 3],
+  ]
+  const all = plans.flatMap(([exerciseId, count]) =>
+    Array.from({ length: count }, (_, index) => ({
+      exerciseId,
+      setIndex: index + 1,
+      weightKg: 20,
+      loggedAt: T0,
+    })),
+  )
+  const { user } = renderFeature((await workoutAWithLogged(all)).services)
+  await openExercise(user, 'Back squat')
+
+  const finish = await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE)
+  expect(screen.queryByText(/^Up next/)).toBeNull()
+  await user.click(finish)
+
+  const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  expect(progressOf(backSquat)).toBe('4/4')
+  expect(screen.queryByRole('button', { name: 'Finish exercise' })).toBeNull()
+})
+
+// --- E13-T9 O5/O6: the rest Dial, and "Use for this exercise" through programs.save -----------
+//
+// The bundled assaf-ab-2026 is named "A/B Split"; Workout A's Plans rest
+// [180, 90, 90, 90, 90, 90, 90] (back squat first), Workout B's seated biceps curls 90 s.
+
+/** Taps the rest readout, picks the rest Dial's Rung `label` and taps Set rest. */
+async function setRestOnDial(user: UserEvent, label: string): Promise<void> {
+  const timer = await screen.findByRole('timer', { name: 'Rest remaining' }, SETTLE)
+  const readout = timer.closest('button')
+  if (readout === null) throw new Error('the rest readout is not a button')
+  await user.click(readout)
+  const ladder = await screen.findByRole('listbox', { name: 'Rest ladder' }, SETTLE)
+  await user.click(within(ladder).getByRole('option', { name: label }))
+  await user.click(screen.getByRole('button', { name: 'Set rest' }))
+}
+
+/** Each Plan's restSeconds in `workoutId` of assaf-ab-2026, as the Program service loads it. */
+async function planRests(services: Services, workoutId: string): Promise<number[]> {
+  const { programs } = await services.programs.load()
+  const program = programs.find((candidate) => candidate.id === 'assaf-ab-2026')
+  const workout = program?.workouts.find((candidate) => candidate.id === workoutId)
+  return workout?.exercises.map((plan) => plan.restSeconds) ?? []
+}
+
+test('O5 Set rest 2:30 on the rest Dial stores the Set with a 150 s rest through services.sessions.setRest', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services, sessionId } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  const setRest = vi.spyOn(services.sessions, 'setRest')
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Back squat')
+
+  await setRestOnDial(user, '2:30')
+
+  await waitFor(() => expect(setRest).toHaveBeenCalledTimes(1), SETTLE)
+  expect(setRest).toHaveBeenCalledWith(sessionId, 'back-squat', 1, 150)
+  await waitFor(async () => expect(await restReadoutText()).toBe('0:50'), SETTLE)
+})
+
+test('O6 Use 2:30 for Back squat saves A/B Split with the back squat Plan resting 150 s', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Back squat')
+  await setRestOnDial(user, '2:30')
+
+  await user.click(
+    await screen.findByRole('button', { name: 'Use 2:30 for Back squat' }, SETTLE),
+  )
+
+  await waitFor(
+    async () =>
+      expect(await planRests(services, 'workout-a')).toEqual([150, 90, 90, 90, 90, 90, 90]),
+    SETTLE,
+  )
+  expect(await planRests(services, 'workout-b')).toEqual([180, 90, 90, 90, 90, 90, 90])
+})
+
+test('O6 after Use 2:30 for Back squat the line reads Saved to A/B Split', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Back squat')
+  await setRestOnDial(user, '2:30')
+
+  await user.click(
+    await screen.findByRole('button', { name: 'Use 2:30 for Back squat' }, SETTLE),
+  )
+
+  expect(await screen.findByText('Saved to A/B Split', undefined, SETTLE)).toBeVisible()
+})
+
+test("O6 after Use 2:30 for Back squat, the next Session's back squat rest is 2:30", async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services, sessionId } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  const first = renderFeature(services)
+  await openExercise(first.user, 'Back squat')
+  await setRestOnDial(first.user, '2:30')
+  await first.user.click(
+    await screen.findByRole('button', { name: 'Use 2:30 for Back squat' }, SETTLE),
+  )
+  await screen.findByText('Saved to A/B Split', undefined, SETTLE)
+  cleanup()
+  await services.sessions.finish(sessionId)
+  const next = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  await services.sessions.logSet(next.id, {
+    exerciseId: 'back-squat',
+    setIndex: 1,
+    weightKg: 60,
+    reps: 10,
+    loggedAt: T0 + 40_000,
+  })
+
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await openExercise(user, 'Back squat')
+
+  // 150 s from T0 + 40 s, 60 s gone -- not the bundled 180 s's 2:00.
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:30'), SETTLE)
+})
+
+test('O6 a swapped-in Hammer Curls writes its rest to the Seated biceps curls Plan it was swapped under', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 30_000)
+  const services = await servicesOnAssafAB()
+  const started = await services.sessions.start('assaf-ab-2026', 'workout-b')
+  await services.sessions.applySwap(started.id, 'seated-biceps-curls', 'Hammer_Curls')
+  await services.sessions.logSet(started.id, {
+    exerciseId: 'Hammer_Curls',
+    setIndex: 1,
+    weightKg: 10,
+    reps: 10,
+    loggedAt: T0,
+  })
+  const { user } = renderFeature(services)
+  await user.click(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE))
+  await setRestOnDial(user, '2:00')
+
+  await user.click(
+    await screen.findByRole('button', { name: 'Use 2:00 for Hammer Curls' }, SETTLE),
+  )
+
+  await waitFor(
+    async () =>
+      expect(await planRests(services, 'workout-b')).toEqual([180, 90, 90, 90, 90, 90, 120]),
+    SETTLE,
+  )
+  const { programs } = await services.programs.load()
+  const workoutB = programs
+    .find((candidate) => candidate.id === 'assaf-ab-2026')
+    ?.workouts.find((candidate) => candidate.id === 'workout-b')
+  expect(workoutB?.exercises.map((plan) => plan.exerciseId)).not.toContain('Hammer_Curls')
+})
+
+test('O6 when programs.save refuses, its message shows inline and the back squat Plan keeps 180 s', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { services } = await workoutAWithLogged([
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 60, loggedAt: T0 },
+  ])
+  vi.spyOn(services.programs, 'save').mockRejectedValue(
+    new ServiceError('storage-unavailable', 'Could not save the Program'),
+  )
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Back squat')
+  await setRestOnDial(user, '2:30')
+
+  await user.click(
+    await screen.findByRole('button', { name: 'Use 2:30 for Back squat' }, SETTLE),
+  )
+
+  expect(await screen.findByText('Could not save the Program', undefined, SETTLE)).toBeVisible()
+  expect(screen.queryByText(/^Saved to/)).toBeNull()
+  expect(await planRests(services, 'workout-a')).toEqual([180, 90, 90, 90, 90, 90, 90])
 })

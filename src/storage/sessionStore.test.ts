@@ -15,6 +15,7 @@ import {
   deleteSet,
   restoreSet,
   updateSet,
+  setRest,
   putSessions,
   replaceAllSessions,
   saveSession,
@@ -1566,5 +1567,82 @@ describe('E12-T1 a stale empty Session is marked deleted, not removed', () => {
     await finishStaleSession(STARTED + 10 * HOUR)
 
     expect(await db.sessions.get('forgotten-empty')).toEqual(deleted)
+  })
+})
+
+// --- E13-T5: setRest -------------------------------------------------------------------------
+
+describe('E13-T5 storing a changed rest on a logged Set', () => {
+  const squat1 = entry('back-squat', 1, 60, 8, BASE + 100 * SECOND)
+  const squat2 = entry('back-squat', 2, 62.5, 6, BASE + 200 * SECOND)
+  const press1 = entry('press', 1, 30, 10, BASE + 150 * SECOND)
+
+  async function seed(entries = [squat1, press1, squat2]): Promise<string> {
+    await db.sessions.put(
+      storedSession({ id: 'resting', finishedAt: null, entries, updatedAt: BASE + 400 * SECOND }),
+    )
+    return 'resting'
+  }
+
+  test('O3 setRest stores restSeconds on that Set only and changes no other field or entry', async () => {
+    const id = await seed()
+
+    const updated = await setRest(id, 'back-squat', 2, 150, BASE + 900 * SECOND)
+
+    const expected = [squat1, press1, { ...squat2, restSeconds: 150 }]
+    expect(updated.entries).toEqual(expected)
+    expect((await db.sessions.get(id))?.entries).toEqual(expected)
+  })
+
+  test('O3 setRest advances the Session updatedAt to now and leaves other Session fields', async () => {
+    const id = await seed()
+    const before = await db.sessions.get(id)
+
+    const updated = await setRest(id, 'back-squat', 2, 150, BASE + 900 * SECOND)
+
+    expect(updated.updatedAt).toBe(BASE + 900 * SECOND)
+    expect(await db.sessions.get(id)).toEqual({
+      ...before,
+      entries: updated.entries,
+      updatedAt: BASE + 900 * SECOND,
+    })
+  })
+
+  test('O3 setRest replaces an earlier restSeconds', async () => {
+    const id = await seed([{ ...squat1, restSeconds: 90 }])
+
+    const updated = await setRest(id, 'back-squat', 1, 120, BASE + 900 * SECOND)
+
+    expect(updated.entries).toEqual([{ ...squat1, restSeconds: 120 }])
+  })
+
+  test('O3 a Set stored without restSeconds still has none after another Set gets one', async () => {
+    const id = await seed()
+
+    await setRest(id, 'press', 1, 75, BASE + 900 * SECOND)
+
+    const stored = (await db.sessions.get(id))?.entries.find((e) => e.exerciseId === 'back-squat')
+    expect(stored).toEqual(squat1)
+    expect(stored && 'restSeconds' in stored).toBe(false)
+  })
+
+  test('O3 updateSet keeps the restSeconds of the Set it edits', async () => {
+    const id = await seed([{ ...squat1, restSeconds: 90 }])
+
+    const updated = await updateSet(id, 'back-squat', 1, { weightKg: 65, reps: 5 }, BASE + 900 * SECOND)
+
+    expect(updated.entries).toEqual([{ ...squat1, weightKg: 65, reps: 5, restSeconds: 90 }])
+  })
+
+  test('O3 setRest on a missing Session rejects naming the id', async () => {
+    await expect(setRest('nope', 'back-squat', 1, 60)).rejects.toThrow('no session nope is stored')
+  })
+
+  test('O3 setRest on a Set that is not logged rejects and writes nothing', async () => {
+    const id = await seed()
+
+    await expect(setRest(id, 'back-squat', 9, 60, BASE + 900 * SECOND)).rejects.toThrow(/no set/i)
+
+    expect((await db.sessions.get(id))?.updatedAt).toBe(BASE + 400 * SECOND)
   })
 })
