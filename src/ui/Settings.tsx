@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react'
 import type { PlateInventory, Program, VolumeBaseline } from '../types'
 import type { SyncView } from '../services/syncView'
+import { PlateInventoryEditor } from './PlateInventoryEditor'
 import './Settings.css'
 
 export type { SyncView }
@@ -90,6 +91,9 @@ export function Settings(props: SettingsProps): JSX.Element {
     onVolumeBaselineChange = () => {},
     trackEffort = false,
     onTrackEffortChange,
+    plateInventory,
+    onPlateInventoryChange,
+    plateInventoryError,
   } = props
 
   const currentAggregate = 'aggregate' in volumeBaseline ? volumeBaseline.aggregate : 'avg'
@@ -191,6 +195,16 @@ export function Settings(props: SettingsProps): JSX.Element {
           )
         })}
       </fieldset>
+      {plateInventory ? (
+        <fieldset className="settings-group">
+          <legend className="settings-legend">Bar and plates</legend>
+          <PlateInventoryEditor
+            inventory={plateInventory}
+            onChange={(next) => onPlateInventoryChange?.(next)}
+            error={plateInventoryError}
+          />
+        </fieldset>
+      ) : null}
       <fieldset className="settings-group">
         <legend className="settings-legend">Compare volume</legend>
         <label className="settings-action">
