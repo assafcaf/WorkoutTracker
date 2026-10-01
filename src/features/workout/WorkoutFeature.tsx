@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
 import { nextExerciseAfter } from '../../domain/flow'
+import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
 import { layTodayOver } from '../../domain/prefill'
 import { latestSet } from '../../domain/rest'
@@ -173,6 +174,10 @@ export function WorkoutFeature({
   )
   const trackEffortData = useServiceData(
     (s) => orElse(s.preferences.trackEffort(), false),
+    ['preferences'],
+  )
+  const plateInventoryData = useServiceData(
+    (s) => orElse(s.preferences.plateInventory(), null),
     ['preferences'],
   )
   const sessionsData = useServiceData(
@@ -477,6 +482,7 @@ export function WorkoutFeature({
           <SetScreen
             key={`${openSet.exerciseId}#${openSet.setIndex}`}
             exercise={exercise}
+            plates={isBarbell(libraryMap.get(exercise.libraryId)) ? (plateInventoryData.status === 'ready' ? plateInventoryData.data : null) : null}
             plan={plan}
             setIndex={openSet.setIndex}
             sessionId={session.id}
