@@ -19,12 +19,19 @@ import { useWakeLock } from './useWakeLock'
 import { WeightDial } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
-import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
+import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind } from '../types'
 
 /** The longest Exercise note, in characters (E14-T11). */
 const EXERCISE_NOTE_MAX = 500
 
 export type SetScreenProps = {
+  /**
+   * The Plate inventory (E15-T6), given only for a barbell Exercise; the Plate line under the
+   * weight Dial reads from it. `null` or omitted shows no Plate line.
+   *
+   * STUB (E15-T6 test-designer): accepted but not yet rendered.
+   */
+  plates?: PlateInventory | null
   /** The Exercise note shown above the Dials (E14-T11); null or omitted shows Add note. */
   exerciseNote?: string | null
   /** Saves the Exercise note (500 characters at most); empty removes it (E14-T11). */
