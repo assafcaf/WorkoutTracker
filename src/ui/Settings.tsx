@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import type { Program, VolumeBaseline } from '../types'
+import type { PlateInventory, Program, VolumeBaseline } from '../types'
 import type { SyncView } from '../services/syncView'
 import './Settings.css'
 
@@ -49,6 +49,12 @@ export type SettingsProps = {
   trackEffort?: boolean
   /** Called with the next Track effort value when its checkbox is toggled (E14-T10). */
   onTrackEffortChange?(on: boolean): void
+  /** The trainee's bar and plates (E15-T5); omitted, the Bar and plates section does not render. */
+  plateInventory?: PlateInventory
+  /** Called with the next inventory when the bar or a plate row changes. */
+  onPlateInventoryChange?(inventory: PlateInventory): void
+  /** The service's message for a refused change, shown inline. */
+  plateInventoryError?: string | null
 }
 
 /**
