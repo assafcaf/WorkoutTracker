@@ -35,9 +35,18 @@ export function latestSet(entries: SetEntry[]): SetEntry | null {
   return latest
 }
 
+/** The rest after a Warm-up Set that stored none, at most (E15-T2). */
+export const WARMUP_REST_SECONDS = 60
+
+/** The rest after `entry`: its own `restSeconds`, else 60 s at most for a Warm-up, else the Plan's. */
+export function restLengthOf(entry: SetEntry, planRestSeconds: number): number {
+  if (entry.restSeconds !== undefined) return entry.restSeconds
+  return entry.kind === 'warmup' ? Math.min(WARMUP_REST_SECONDS, planRestSeconds) : planRestSeconds
+}
+
 /** Rest after `entry`: its own `restSeconds` when set, else the Plan's. */
 export function restAfter(entry: SetEntry, planRestSeconds: number, now: number): RestState {
-  return restState(entry.loggedAt, entry.restSeconds ?? planRestSeconds, now)
+  return restState(entry.loggedAt, restLengthOf(entry, planRestSeconds), now)
 }
 
 /** The Set's new rest length after `adjustment`. Elapsed is floored to whole seconds. */
@@ -54,7 +63,7 @@ export function adjustRest(
     case 'set':
       return adjustment.seconds
     case 'add':
-      return Math.max(elapsed, (entry.restSeconds ?? planRestSeconds) + adjustment.seconds)
+      return Math.max(elapsed, restLengthOf(entry, planRestSeconds) + adjustment.seconds)
   }
 }
 

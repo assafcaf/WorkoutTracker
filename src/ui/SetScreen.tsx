@@ -5,7 +5,7 @@ import { formatSet, formatSetCompact } from '../domain/setText'
 import { layTodayOver, presetForSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { recordsSetBy } from '../domain/records'
-import { adjustRest, formatOver, formatRest, restAfter } from '../domain/rest'
+import { adjustRest, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
@@ -288,7 +288,7 @@ type RestFrom = { entry: SetEntry; planRestSeconds: number }
 function restKey(from: RestFrom | null): string | null {
   if (from === null) return null
   const { entry, planRestSeconds } = from
-  return `${entry.exerciseId}#${entry.setIndex}@${entry.loggedAt}/${entry.restSeconds ?? planRestSeconds}`
+  return `${entry.exerciseId}#${entry.setIndex}@${entry.loggedAt}/${restLengthOf(entry, planRestSeconds)}`
 }
 
 /**
@@ -485,7 +485,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   function setRestFromDial(seconds: number): void {
     setRestDialOpen(false)
     applyRest({ kind: 'set', seconds })
-    if (props.onUseRestForExercise !== undefined) setUseOffer({ seconds, status: 'offered' })
+    // A Warm-up's short rest says nothing about the Exercise's Plan rest: no offer (E15-T2).
+    const afterWarmup = restFrom?.entry.kind === 'warmup'
+    if (props.onUseRestForExercise !== undefined && !afterWarmup) {
+      setUseOffer({ seconds, status: 'offered' })
+    }
   }
 
   async function saveRestForExercise(): Promise<void> {
@@ -975,7 +979,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
       {rest === null || restFrom === null || !restDialOpen ? null : (
         <RestDial
-          seconds={restFrom.entry.restSeconds ?? restFrom.planRestSeconds}
+          seconds={restLengthOf(restFrom.entry, restFrom.planRestSeconds)}
           onSet={setRestFromDial}
           onCancel={() => setRestDialOpen(false)}
         />
