@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../storage/db'
-import { readRow } from '../storage/settingsStore'
+import { getPlateInventory, readRow } from '../storage/settingsStore'
+import { DEFAULT_PLATE_INVENTORY } from '../domain/plates'
 import { LAST_EXPORTED_AT_KEY, setActiveProgramId } from '../storage/settingsStore'
 import { BACKUP_SCHEMA_VERSION, type BackupFile } from '../storage/backup'
 import type { Session, SetEntry } from '../types'
@@ -382,4 +383,43 @@ test('E14-T15 O18 a backup made before R3 imports with every Set working and no 
   }
   expect((await db.settings.get('exerciseNotes'))?.value ?? {}).toEqual({})
   expect((await db.settings.get('effortTracking'))?.value ?? false).toBe(false)
+})
+
+test('E15-T4 O6 a backup made before the Plate inventory imports with the default and no stored row', async () => {
+  const oldFile = {
+    schemaVersion: 1,
+    exportedAt: BASE,
+    sessions: sessionsFixture(1),
+    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+  }
+  await db.settings.bulkPut([
+    { key: 'plateInventory', value: { barKg: 15, plates: [{ kg: 5, pairs: 2 }] }, updatedAt: BASE },
+  ])
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(oldFile)))
+
+  expect(await db.settings.get('plateInventory')).toBeUndefined()
+  expect(await getPlateInventory()).toEqual(DEFAULT_PLATE_INVENTORY)
+})
+
+test('E15-T4 O6 a changed Plate inventory survives export and import, an unchanged one is not written', async () => {
+  const changed = { barKg: 15, plates: [{ kg: 5, pairs: 2 }] }
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+
+  await service.export()
+  const first = await ((URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls[0][0] as Blob).text()
+  expect(JSON.parse(first).settings).not.toHaveProperty('plateInventory')
+
+  await db.settings.bulkPut([{ key: 'plateInventory', value: changed, updatedAt: BASE }])
+  await service.export()
+  const second = await ((URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls[1][0] as Blob).text()
+  expect(JSON.parse(second).schemaVersion).toBe(1)
+  expect(JSON.parse(second).settings.plateInventory).toEqual(changed)
+
+  await db.settings.clear()
+  await service.confirmImport(await service.read(second))
+  expect(await getPlateInventory()).toEqual(changed)
 })

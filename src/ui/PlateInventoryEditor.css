@@ -1,0 +1,44 @@
+/* The Bar and plates editor (E15-T5): court tokens only. */
+.plate-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.plate-editor-row {
+  display: flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.plate-editor-label {
+  flex: 1;
+}
+
+.plate-editor-input {
+  width: 6rem;
+  min-height: var(--tap-min);
+  font-size: var(--text-md);
+}
+
+.plate-editor-button {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.plate-editor-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}

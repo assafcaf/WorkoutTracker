@@ -216,6 +216,7 @@
 
 .set-note-text,
 .set-note-add,
+.add-warmups,
 .set-note-save,
 .set-note-cancel {
   min-height: var(--tap-min);
@@ -229,6 +230,7 @@
 }
 
 .set-note-add,
+.add-warmups,
 .set-note-save {
   color: var(--color-accent);
 }
@@ -287,4 +289,12 @@
 
 .logged-set-rir {
   margin-left: var(--space-1);
+}
+
+.plate-line,
+.warmup-ramp {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  text-align: center;
 }

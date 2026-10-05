@@ -2814,3 +2814,651 @@ test('O17 Save set at BW on a loaded Set removes its Load with loadKg null', asy
   await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
   expect(onEditSet.mock.calls[0][1].loadKg).toBeNull()
 })
+
+// --- E15-T2 O12: 1:00 of rest after a Warm-up --------------------------------------------------
+//
+// A back-squat Warm-up at BASE on a 180 s Plan (renderWithSessionRest gives back squat 180 s).
+
+function warmupSquat(setIndex: number, loggedAt: number, restSeconds?: number): SetEntry {
+  return { ...squatEntry(setIndex, loggedAt), kind: 'warmup', ...(restSeconds === undefined ? {} : { restSeconds }) }
+}
+
+test('O12 the Rest readout starts from 1:00 after a Warm-up on a 180 s Plan', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE)
+  renderWithSessionRest([warmupSquat(1, BASE)])
+
+  expect(readoutValue(restReadout())).toBe('1:00')
+})
+
+test('O12 the Log set button reads Rest 0:50 ten seconds after a Warm-up', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  renderWithSessionRest([warmupSquat(1, BASE)])
+
+  expect(logButton().textContent).toBe('Rest 0:50')
+})
+
+test('O12 a Warm-up rest is over after 60 s: the readout reads +0:10 over at 70 s', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 70_000)
+  renderWithSessionRest([warmupSquat(1, BASE)])
+
+  expect(readoutValue(restReadout())).toBe('+0:10 over')
+  expect(logButton().textContent).toBe('Rest +0:10')
+})
+
+test('O12 a working Set rests the Plan length: 3:00 at once', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  expect(readoutValue(restReadout())).toBe('3:00')
+})
+
+test('O12 a Warm-up whose rest was adjusted keeps its stored rest: 2:30 stays 2:20 at 10 s', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  renderWithSessionRest([warmupSquat(1, BASE, 150)])
+
+  expect(readoutValue(restReadout())).toBe('2:20')
+})
+
+test('O12 +15 s at 10 s into a Warm-up rest makes the readout 1:05 and stores 75', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user, onSetRest } = renderWithSessionRest([warmupSquat(1, BASE)])
+
+  await user.click(plus15())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:05'))
+  expect(onSetRest).toHaveBeenCalledWith(expect.objectContaining({ setIndex: 1 }), 75)
+})
+
+test('O12 -15 s at 10 s into a Warm-up rest makes the readout 0:35 and stores 45', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user, onSetRest } = renderWithSessionRest([warmupSquat(1, BASE)])
+
+  await user.click(minus15())
+
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('0:35'))
+  expect(onSetRest).toHaveBeenCalledWith(expect.objectContaining({ setIndex: 1 }), 45)
+})
+
+test('O12 the rest Dial opens on 1:00 after a Warm-up', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user } = renderWithSessionRest([warmupSquat(1, BASE)])
+
+  const ladder = await openRestDial(user)
+
+  const selected = within(ladder).getAllByRole('option', { selected: true })
+  expect(selected.map((option) => option.textContent)).toEqual(['1:00'])
+})
+
+test('O12 the rest Dial opens on the stored rest of an adjusted Warm-up, 2:30', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user } = renderWithSessionRest([warmupSquat(1, BASE, 150)])
+
+  const ladder = await openRestDial(user)
+
+  const selected = within(ladder).getAllByRole('option', { selected: true })
+  expect(selected.map((option) => option.textContent)).toEqual(['2:30'])
+})
+
+test('O12 Set rest after a Warm-up offers no Use for this exercise', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
+  const { user, onSetRest } = renderWithSessionRest([warmupSquat(1, BASE)], {
+    programName: 'A/B Split',
+    onUseRestForExercise: vi.fn(async () => undefined),
+  })
+
+  await setRestOnDial(user, '2:30')
+
+  await waitFor(() => expect(onSetRest).toHaveBeenCalledWith(expect.objectContaining({ setIndex: 1 }), 150))
+  expect(screen.queryByRole('button', { name: /^Use .* for / })).toBeNull()
+})
+
+test('O12 the beep fires once, at the Warm-up zero of 60 s rather than the Plan 180 s', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE)
+  renderWithSessionRest([warmupSquat(1, BASE)])
+
+  await vi.advanceTimersByTimeAsync(55_000)
+  expect(playRestOver).not.toHaveBeenCalled()
+
+  await vi.advanceTimersByTimeAsync(10_000)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+
+  await vi.advanceTimersByTimeAsync(10_000)
+  expect(playRestOver).toHaveBeenCalledTimes(1)
+})
+
+test('O12 changing the Set to Working moves its Rest to the Plan length: 1:00 becomes 3:00', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE)
+  const warm = warmupSquat(1, BASE)
+  const { kind: _kind, ...working } = warm
+  const props: SetScreenProps = {
+    exercise: backSquat,
+    plan: squatPlan,
+    setIndex: 2,
+    sessionId: SESSION_ID,
+    sessionStartedAt: BASE,
+    lastEntries: [],
+    logged: [warm],
+    restFrom: { entry: warm, planRestSeconds: 180 },
+    onLog: sessionLogSet(),
+    onLogged: () => undefined,
+  }
+  const { rerender } = render(<SetScreen {...props} />)
+  expect(readoutValue(restReadout())).toBe('1:00')
+
+  rerender(<SetScreen {...props} logged={[working]} restFrom={{ entry: working, planRestSeconds: 180 }} />)
+
+  expect(readoutValue(restReadout())).toBe('3:00')
+})
+
+// --- E15-T6: the Plate line under the weight Dial -----------------------------------------------
+
+// A rack with a 20 kg bar and two pairs each of 20, 10 and 5 kg plates, so every expected line
+// below is worked by hand: 60 kg -> 20 a side, 80 -> 20 + 10, 100 -> 20 + 20.
+const RACK = {
+  barKg: 20,
+  plates: [
+    { kg: 20, pairs: 2 },
+    { kg: 10, pairs: 2 },
+    { kg: 5, pairs: 2 },
+  ],
+}
+
+function plateLine(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('p.plate-line')
+}
+
+function plateLineText(): string {
+  return (plateLine()?.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
+test('O8 a barbell set screen shows the Plate line for the weight on the Dial', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  expect(plateLineText()).toBe('Per side: 20')
+})
+
+test('O8 the Plate line sits directly under the weight Dial, before the reps Dial', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  const line = plateLine() as HTMLElement
+  expect(line).not.toBeNull()
+  expect(weightReadout().compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(line.compareDocumentPosition(repsReadout()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O8 a weight entered on the keypad moves the Plate line: 80 kg reads Per side: 20 · 10', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  await enterOnKeypad(user, weightReadout(), ['8', '0'])
+
+  expect(plateLineText()).toBe('Per side: 20 · 10')
+})
+
+test('O8 the plus button moves the Plate line: 62.5 kg reads Nearest 60 kg · per side: 20', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+
+  expect(plateLineText()).toBe('Nearest 60 kg · per side: 20')
+})
+
+test('O8 a weight under the bar reads Lighter than the 20 kg bar', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  await enterOnKeypad(user, weightReadout(), ['1', '5'])
+
+  expect(plateLineText()).toBe('Lighter than the 20 kg bar')
+})
+
+test('O8 a change to the stored inventory changes the Plate line', () => {
+  const props: SetScreenProps = {
+    exercise: backSquat,
+    plan: squatPlan,
+    setIndex: 1,
+    sessionId: SESSION_ID,
+    sessionStartedAt: BASE,
+    lastEntries: [historyEntry(1, 60, 10)],
+    onLog: sessionLogSet(),
+    onLogged: () => undefined,
+    plates: RACK,
+  }
+  const { rerender } = render(<SetScreen {...props} />)
+  expect(plateLineText()).toBe('Per side: 20')
+
+  rerender(<SetScreen {...props} plates={{ barKg: 10, plates: [{ kg: 25, pairs: 2 }] }} />)
+
+  expect(plateLineText()).toBe('Per side: 25')
+})
+
+test('O8 during Rest the Plate line shows the plates of the next Set on the Dial', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE)
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+  await enterOnKeypad(user, weightReadout(), ['8', '0'])
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(restReadout()).toBeTruthy())
+  expect(readoutValue(weightReadout())).toBe('80')
+  expect(plateLineText()).toBe('Per side: 20 · 10')
+})
+
+test('O8 in the edit mode the Plate line shows the plates of the edited Set', async () => {
+  const logged: SetEntry[] = [
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 100, reps: 8, loggedAt: BASE },
+  ]
+  const { user } = renderSetScreen({
+    setIndex: 2,
+    lastEntries: logged,
+    logged,
+    plates: RACK,
+  })
+  expect(plateLineText()).toBe('Per side: 20 · 20')
+  await enterOnKeypad(user, weightReadout(), ['6', '0'])
+  expect(plateLineText()).toBe('Per side: 20')
+
+  const loggedSet = document.querySelector<HTMLElement>('button.logged-set') as HTMLElement
+  await user.click(loggedSet)
+
+  expect(readoutValue(weightReadout())).toBe('100')
+  expect(plateLineText()).toBe('Per side: 20 · 20')
+})
+
+test('O8 with plates null there is no Plate line', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: null })
+
+  expect(plateLine()).toBeNull()
+})
+
+test('O8 with plates omitted there is no Plate line', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  expect(plateLine()).toBeNull()
+})
+
+// --- E15-T7: the Warm-up ramp on a barbell Exercise's set screen, and the tap budget -----------
+
+// The default Plate inventory, written out: a 20 kg bar and plenty of every plate, so the ramp
+// for 100 kg is 50 × 5, 70 × 3, 85 × 2 and for 40 kg is 20 × 5, 27.5 × 3, 32.5 × 2.
+const FULL_RACK = {
+  barKg: 20,
+  plates: [
+    { kg: 25, pairs: 10 },
+    { kg: 20, pairs: 10 },
+    { kg: 15, pairs: 10 },
+    { kg: 10, pairs: 10 },
+    { kg: 5, pairs: 10 },
+    { kg: 2.5, pairs: 10 },
+    { kg: 1.25, pairs: 10 },
+  ],
+}
+
+/**
+ * A barbell back squat on a 3-Set Plan whose Preset is 100 kg × 8, under the parent that owns
+ * this Session's Sets (`initial` is what a reload hands back).
+ */
+function renderBarbell(initial: SetEntry[] = [], over: Partial<SetScreenProps> = {}) {
+  return renderWithLogged(initial, {
+    plan: threeSetSquatPlan,
+    lastEntries: [historyEntry(1, 100, 8)],
+    plates: FULL_RACK,
+    ...over,
+  })
+}
+
+function addWarmupsOffer(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('button.add-warmups')
+}
+
+function rampLineText(): string | null {
+  const line = document.querySelector<HTMLElement>('p.warmup-ramp')
+  return line === null ? null : (line.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/** Taps Add warm-ups, which must be on offer. */
+async function startRamp(user: UserEvent): Promise<void> {
+  const offer = addWarmupsOffer()
+  expect(offer).not.toBeNull()
+  await user.click(offer as HTMLElement)
+}
+
+/** Taps Log set on the Warm-up step the ramp line names, and waits for it to be stored. */
+async function logStep(user: UserEvent, line: string, storedAfter: number): Promise<void> {
+  await waitFor(() => expect(rampLineText()).toBe(line))
+  await user.click(logButton())
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(storedAfter))
+}
+
+/** Starts the ramp for 100 kg and logs all three Warm-ups, one tap each. */
+async function logWholeRamp(user: UserEvent): Promise<void> {
+  await startRamp(user)
+  await logStep(user, 'Warm-up 1 of 3 · 50 kg × 5', 1)
+  await logStep(user, 'Warm-up 2 of 3 · 70 kg × 3', 2)
+  await logStep(user, 'Warm-up 3 of 3 · 85 kg × 2', 3)
+  await waitFor(() => expect(rampLineText()).toBeNull())
+}
+
+function storedSummary(entry: SetEntry): unknown[] {
+  return [entry.setIndex, entry.weightKg, entry.reps, entry.kind]
+}
+
+test('O10 a barbell Exercise at 100 kg with no working Set logged offers Add warm-ups', () => {
+  renderBarbell()
+
+  const offer = addWarmupsOffer()
+  expect(offer).not.toBeNull()
+  expect((offer as HTMLElement).textContent).toBe('Add warm-ups')
+  expect(offer as HTMLElement).toBeVisible()
+})
+
+test('O10 no ramp line shows until Add warm-ups is tapped', async () => {
+  const { user } = renderBarbell()
+  expect(rampLineText()).toBeNull()
+
+  await startRamp(user)
+
+  expect(rampLineText()).not.toBeNull()
+})
+
+test('O10 tapping Add warm-ups opens the Dials on the first Warm-up step, 50 kg × 5', async () => {
+  const { user } = renderBarbell()
+
+  await startRamp(user)
+
+  expect(readoutValue(weightReadout())).toBe('50')
+  expect(readoutValue(repsReadout())).toBe('5')
+})
+
+test('O10 tapping Add warm-ups puts the kind row on W-up', async () => {
+  const { user } = renderBarbell()
+
+  await startRamp(user)
+
+  expect(chosenKinds()).toEqual(['W-up'])
+})
+
+test('O10 tapping Add warm-ups shows the line Warm-up 1 of 3 · 50 kg × 5', async () => {
+  const { user } = renderBarbell()
+
+  await startRamp(user)
+
+  expect(rampLineText()).toBe('Warm-up 1 of 3 · 50 kg × 5')
+})
+
+test('O10 the ramp is for the weight on the Dial when Add warm-ups is tapped, not the Preset', async () => {
+  const { user } = renderBarbell()
+  await enterOnKeypad(user, weightReadout(), ['4', '0'])
+
+  await startRamp(user)
+
+  expect(rampLineText()).toBe('Warm-up 1 of 3 · 20 kg × 5')
+  expect(readoutValue(weightReadout())).toBe('20')
+})
+
+test('O10 while the ramp runs Add warm-ups is not offered again', async () => {
+  const { user } = renderBarbell()
+
+  await startRamp(user)
+
+  expect(rampLineText()).toBe('Warm-up 1 of 3 · 50 kg × 5')
+  expect(addWarmupsOffer()).toBeNull()
+})
+
+test('O10 Log set during the ramp stores the step as a warmup Set', async () => {
+  const { user } = renderBarbell()
+  await startRamp(user)
+
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  expect(storedSummary((await storedEntries())[0])).toEqual([1, 50, 5, 'warmup'])
+})
+
+test('O10 after a Warm-up is logged the Dials open on the next step, 70 kg × 3', async () => {
+  const { user } = renderBarbell()
+  await startRamp(user)
+
+  await logStep(user, 'Warm-up 1 of 3 · 50 kg × 5', 1)
+
+  await waitFor(() => expect(rampLineText()).toBe('Warm-up 2 of 3 · 70 kg × 3'))
+  expect(readoutValue(weightReadout())).toBe('70')
+  expect(readoutValue(repsReadout())).toBe('3')
+})
+
+test('O10 after a Warm-up is logged the kind row is still on W-up', async () => {
+  const { user } = renderBarbell()
+  await startRamp(user)
+
+  await logStep(user, 'Warm-up 1 of 3 · 50 kg × 5', 1)
+
+  await waitFor(() => expect(rampLineText()).toBe('Warm-up 2 of 3 · 70 kg × 3'))
+  expect(chosenKinds()).toEqual(['W-up'])
+})
+
+test('O10 one tap on Log set per step stores the three Warm-ups of the ramp in order', async () => {
+  const { user } = renderBarbell()
+
+  await logWholeRamp(user)
+
+  const stored = [...(await storedEntries())].sort((a, b) => a.setIndex - b.setIndex)
+  expect(stored.map(storedSummary)).toEqual([
+    [1, 50, 5, 'warmup'],
+    [2, 70, 3, 'warmup'],
+    [3, 85, 2, 'warmup'],
+  ])
+})
+
+test('O10 after the last step the Dials return to the working weight the ramp was started from', async () => {
+  const { user } = renderBarbell()
+  // Moved up from the 100 kg Preset before the ramp: 50%, 70% and 85% of 110 kg are made as
+  // 55, 75 and 92.5 kg.
+  await enterOnKeypad(user, weightReadout(), ['1', '1', '0'])
+  await startRamp(user)
+  await logStep(user, 'Warm-up 1 of 3 · 55 kg × 5', 1)
+  await logStep(user, 'Warm-up 2 of 3 · 75 kg × 3', 2)
+
+  await logStep(user, 'Warm-up 3 of 3 · 92.5 kg × 2', 3)
+
+  await waitFor(() => expect(readoutValue(weightReadout())).toBe('110'))
+  expect(rampLineText()).toBeNull()
+})
+
+test('O10 after the last step the kind row returns to Working', async () => {
+  const { user } = renderBarbell()
+
+  await logWholeRamp(user)
+
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O10 after the last step the set counter still reads Set 1 of 3', async () => {
+  const { user } = renderBarbell()
+
+  await logWholeRamp(user)
+
+  expect(screen.getByText('Set 1 of 3')).toBeVisible()
+})
+
+test('O10 the Set logged after the ramp is stored as a working Set at the working weight', async () => {
+  const { user } = renderBarbell()
+  await logWholeRamp(user)
+
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(4))
+  const last = (await storedEntries()).find((entry) => entry.setIndex === 4) as SetEntry
+  expect(storedSummary(last)).toEqual([4, 100, 8, undefined])
+  expect('kind' in last).toBe(false)
+})
+
+test('O10 choosing Working on the kind row before the last step ends the ramp at the working weight', async () => {
+  const { user } = renderBarbell()
+  await startRamp(user)
+  await logStep(user, 'Warm-up 1 of 3 · 50 kg × 5', 1)
+  await waitFor(() => expect(rampLineText()).toBe('Warm-up 2 of 3 · 70 kg × 3'))
+
+  await user.click(kindButton('Working'))
+
+  expect(rampLineText()).toBeNull()
+  expect(readoutValue(weightReadout())).toBe('100')
+  expect(chosenKinds()).toEqual(['Working'])
+  expect(screen.getByText('Set 1 of 3')).toBeVisible()
+})
+
+test('O10 choosing Drop on the kind row during the ramp ends it and returns the Dial to the working weight', async () => {
+  const { user } = renderBarbell()
+  await startRamp(user)
+  expect(rampLineText()).toBe('Warm-up 1 of 3 · 50 kg × 5')
+
+  await user.click(kindButton('Drop'))
+
+  expect(rampLineText()).toBeNull()
+  expect(readoutValue(weightReadout())).toBe('100')
+  expect(chosenKinds()).not.toContain('W-up')
+})
+
+test('O10 the Set logged after the ramp was ended on the kind row is not a Warm-up', async () => {
+  const { user } = renderBarbell()
+  await startRamp(user)
+  await logStep(user, 'Warm-up 1 of 3 · 50 kg × 5', 1)
+  await waitFor(() => expect(rampLineText()).toBe('Warm-up 2 of 3 · 70 kg × 3'))
+  await user.click(kindButton('Working'))
+
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(2))
+  const last = (await storedEntries()).find((entry) => entry.setIndex === 2) as SetEntry
+  expect(storedSummary(last)).toEqual([2, 100, 8, undefined])
+})
+
+test('O10 a step whose weight and reps were changed on the Dials is logged as changed', async () => {
+  const { user } = renderBarbell()
+  await startRamp(user)
+  await enterOnKeypad(user, weightReadout(), ['5', '5'])
+  await enterOnKeypad(user, repsReadout(), ['6'])
+
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  expect(storedSummary((await storedEntries())[0])).toEqual([1, 55, 6, 'warmup'])
+})
+
+test('O10 after a changed step is logged the ramp still opens its own next step, 70 kg × 3', async () => {
+  const { user } = renderBarbell()
+  await startRamp(user)
+  await enterOnKeypad(user, weightReadout(), ['5', '5'])
+  await user.click(logButton())
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+
+  await waitFor(() => expect(rampLineText()).toBe('Warm-up 2 of 3 · 70 kg × 3'))
+  expect(readoutValue(weightReadout())).toBe('70')
+  expect(readoutValue(repsReadout())).toBe('3')
+})
+
+test('O10 after a reload with one Warm-up logged, Add warm-ups continues from Warm-up 2 of 3', async () => {
+  const { user } = renderBarbell([warmupEntry(1, 50, 5)])
+  expect(readoutValue(weightReadout())).toBe('100')
+  expect(chosenKinds()).toEqual(['Working'])
+
+  await startRamp(user)
+
+  expect(rampLineText()).toBe('Warm-up 2 of 3 · 70 kg × 3')
+  expect(readoutValue(weightReadout())).toBe('70')
+  expect(readoutValue(repsReadout())).toBe('3')
+})
+
+test('O10 the step logged after a reload with one Warm-up logged is stored as setIndex 2', async () => {
+  const { user } = renderBarbell([warmupEntry(1, 50, 5)])
+  await startRamp(user)
+
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  expect(storedSummary((await storedEntries())[0])).toEqual([2, 70, 3, 'warmup'])
+})
+
+test('O10 after a reload with two Warm-ups logged, the ramp has one step left and then returns to 100 kg', async () => {
+  const { user } = renderBarbell([warmupEntry(1, 50, 5), warmupEntry(2, 70, 3)])
+  await startRamp(user)
+
+  await logStep(user, 'Warm-up 3 of 3 · 85 kg × 2', 1)
+
+  await waitFor(() => expect(rampLineText()).toBeNull())
+  expect(readoutValue(weightReadout())).toBe('100')
+  expect(chosenKinds()).toEqual(['Working'])
+})
+
+test('O10 once every step of the ramp is logged the offer is gone', async () => {
+  const { user } = renderBarbell()
+
+  await logWholeRamp(user)
+
+  expect(readoutValue(weightReadout())).toBe('100')
+  expect(addWarmupsOffer()).toBeNull()
+})
+
+test('O10 once a working Set is logged the offer is gone', async () => {
+  const { user } = renderBarbell()
+  expect(addWarmupsOffer()).not.toBeNull()
+
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  await waitFor(() => expect(addWarmupsOffer()).toBeNull())
+})
+
+test('O10 at 40 kg on the Dial the offer shows, and one rung down at 37.5 kg it does not', async () => {
+  const { user } = renderBarbell([], { lastEntries: [historyEntry(1, 40, 8)] })
+  expect(addWarmupsOffer()).not.toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Decrease weight' }))
+
+  expect(readoutValue(weightReadout())).toBe('37.5')
+  expect(addWarmupsOffer()).toBeNull()
+})
+
+test('O10 the edit mode does not show the offer', async () => {
+  const { user } = renderBarbell([warmupEntry(1, 50, 5)])
+  expect(addWarmupsOffer()).not.toBeNull()
+
+  await user.click(document.querySelector<HTMLElement>('button.logged-set') as HTMLElement)
+
+  expect(screen.getByRole('button', { name: 'Save set' })).toBeVisible()
+  expect(addWarmupsOffer()).toBeNull()
+})
+
+test('O10 an Exercise given no plates does not show the offer', () => {
+  const props: SetScreenProps = {
+    exercise: backSquat,
+    plan: threeSetSquatPlan,
+    setIndex: 1,
+    sessionId: SESSION_ID,
+    sessionStartedAt: BASE,
+    lastEntries: [historyEntry(1, 100, 8)],
+    logged: [],
+    onLog: sessionLogSet(),
+    onLogged: () => undefined,
+    plates: FULL_RACK,
+  }
+  const { rerender } = render(<SetScreen {...props} />)
+  expect(addWarmupsOffer()).not.toBeNull()
+
+  rerender(<SetScreen {...props} plates={null} />)
+
+  expect(addWarmupsOffer()).toBeNull()
+})
+
+test('O13 with the Plate line and Add warm-ups showing, one tap on Log set stores the Preset as a working Set', async () => {
+  const { user } = renderBarbell()
+  expect(plateLineText()).toBe('Per side: 25 · 15')
+  expect(addWarmupsOffer()).not.toBeNull()
+  // Merely offering the ramp leaves the open Set on Working.
+  expect(chosenKinds()).toEqual(['Working'])
+
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  const [entry] = await storedEntries()
+  expect(storedSummary(entry)).toEqual([1, 100, 8, undefined])
+  expect('kind' in entry).toBe(false)
+})

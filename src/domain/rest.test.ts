@@ -1,6 +1,14 @@
 import { expect, test } from 'vitest'
 import type { SetEntry } from '../types'
-import { adjustRest, formatOver, formatRest, latestSet, restAfter, restState } from './rest'
+import {
+  adjustRest,
+  formatOver,
+  formatRest,
+  latestSet,
+  restAfter,
+  restLengthOf,
+  restState,
+} from './rest'
 
 // back-squat's plan (src/data/programs/assaf-ab-2026.json, workout-a) prescribes
 // restSeconds: 180, per the ticket. Timestamps are epoch milliseconds, as in SetEntry.loggedAt.
@@ -147,4 +155,67 @@ test('O1 formatRest shows m:ss, counting a part-second still to go as a whole on
 test('O1 formatOver shows +m:ss', () => {
   expect(formatOver(0)).toBe('+0:00')
   expect(formatOver(75)).toBe('+1:15')
+})
+
+// --- E15-T2 O11: a Warm-up rests 60 s unless its rest was adjusted ----------------------------
+
+test('O11 restLengthOf answers 60 for a Warm-up with no restSeconds on a 180 s Plan', () => {
+  expect(restLengthOf(entry(0, { kind: 'warmup' }), 180)).toBe(60)
+})
+
+test('O11 restLengthOf answers the Plan rest for a Warm-up on a Plan that rests under 60 s', () => {
+  expect(restLengthOf(entry(0, { kind: 'warmup' }), 45)).toBe(45)
+})
+
+test('O11 restLengthOf answers 60 for a Warm-up on a Plan that rests exactly 60 s', () => {
+  expect(restLengthOf(entry(0, { kind: 'warmup' }), 60)).toBe(60)
+})
+
+test('O11 restLengthOf answers the Set\'s own restSeconds for a Warm-up that has one', () => {
+  expect(restLengthOf(entry(0, { kind: 'warmup', restSeconds: 150 }), 180)).toBe(150)
+})
+
+test('O11 restLengthOf answers a Warm-up\'s own restSeconds of 0, not 60', () => {
+  expect(restLengthOf(entry(0, { kind: 'warmup', restSeconds: 0 }), 180)).toBe(0)
+})
+
+test('O11 restLengthOf answers the Plan rest for a Set with no kind', () => {
+  expect(restLengthOf(entry(0), 180)).toBe(180)
+})
+
+test.each(['drop', 'failure', 'amrap'] as const)(
+  'O11 restLengthOf answers the Plan rest for a %s Set',
+  (kind) => {
+    expect(restLengthOf(entry(0, { kind }), 180)).toBe(180)
+  },
+)
+
+test('O11 restLengthOf answers its own restSeconds for a working Set that has one', () => {
+  expect(restLengthOf(entry(0, { restSeconds: 100 }), 180)).toBe(100)
+})
+
+test('O11 restAfter counts a Warm-up with no restSeconds down from 60 s on a 180 s Plan', () => {
+  const state = restAfter(entry(0, { kind: 'warmup' }), 180, 10_000)
+
+  expect(state.remainingSeconds).toBe(50)
+  expect(state.isOver).toBe(false)
+})
+
+test('O11 restAfter is over for a Warm-up 70 s on, by 10 s', () => {
+  const state = restAfter(entry(0, { kind: 'warmup' }), 180, 70_000)
+
+  expect(state.isOver).toBe(true)
+  expect(state.overSeconds).toBe(10)
+})
+
+test('O11 adjustRest +15 on a Warm-up with no restSeconds and a 180 s Plan answers 75', () => {
+  expect(adjustRest(entry(0, { kind: 'warmup' }), 180, { kind: 'add', seconds: 15 }, 10_000)).toBe(75)
+})
+
+test('O11 adjustRest -15 on a Warm-up with no restSeconds and a 180 s Plan answers 45', () => {
+  expect(adjustRest(entry(0, { kind: 'warmup' }), 180, { kind: 'add', seconds: -15 }, 10_000)).toBe(45)
+})
+
+test('O11 adjustRest +15 on a working Set with a 180 s Plan answers 195', () => {
+  expect(adjustRest(entry(0), 180, { kind: 'add', seconds: 15 }, 10_000)).toBe(195)
 })

@@ -1,4 +1,5 @@
-import type { Program, UserProgram, VolumeBaseline } from '../types'
+import type { PlateInventory, Program, UserProgram, VolumeBaseline } from '../types'
+import { DEFAULT_PLATE_INVENTORY, validatePlateInventory } from '../domain/plates'
 import { db, type SettingRow } from './db'
 
 // --- whole rows for sync and backup (E11-T2) ------------------------------------------------
@@ -172,6 +173,28 @@ export async function setExerciseNote(
     if (text.trim() === '') delete notes[exerciseId]
     else notes[exerciseId] = text.slice(0, MAX_EXERCISE_NOTE_LENGTH)
     await db.settings.put({ key: EXERCISE_NOTES_KEY, value: notes, updatedAt: now })
+  })
+}
+
+/** The `settings` table key the Plate inventory is kept under, in one row (E15-T3). */
+export const PLATE_INVENTORY_KEY = 'plateInventory'
+
+/** The stored Plate inventory; the default when the row is absent or invalid. */
+export async function getPlateInventory(): Promise<PlateInventory> {
+  const verdict = validatePlateInventory((await db.settings.get(PLATE_INVENTORY_KEY))?.value)
+  return verdict.ok ? verdict.inventory : DEFAULT_PLATE_INVENTORY
+}
+
+/** Stores `inventory`, plates heaviest first, in the one `plateInventory` row. */
+export async function setPlateInventory(
+  inventory: PlateInventory,
+  now: number = Date.now(),
+): Promise<void> {
+  const plates = [...inventory.plates].sort((a, b) => b.kg - a.kg)
+  await db.settings.put({
+    key: PLATE_INVENTORY_KEY,
+    value: { barKg: inventory.barKg, plates },
+    updatedAt: now,
   })
 }
 

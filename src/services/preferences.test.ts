@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../storage/db'
 import { syncedSettingKeys, topicOfSetting } from '../storage/settingKeys'
 import { SYNCED_SETTING_KEYS } from '../sync/protocol'
+import { DEFAULT_PLATE_INVENTORY, validatePlateInventory } from '../domain/plates'
 import { createChangeBus } from './changes'
 import { ServiceError } from './errors'
 import { createPreferenceService } from './preferences'
@@ -33,8 +34,10 @@ test('O5 createPreferenceService exposes exactly the preference operations', () 
       'exerciseNote',
       'gymEquipment',
       'lastExportedAt',
+      'plateInventory',
       'setExerciseNote',
       'setGymEquipment',
+      'setPlateInventory',
       'setTrackEffort',
       'setVolumeBaseline',
       'setWeightStep',
@@ -271,4 +274,87 @@ test('O9 effortTracking is a synced setting on the preferences topic', () => {
   expect(syncedSettingKeys()).toContain('effortTracking')
   expect(topicOfSetting('effortTracking')).toBe('preferences')
   expect([...SYNCED_SETTING_KEYS] as string[]).toContain('effortTracking')
+})
+
+// --- E15-T3 O4: the Plate inventory ---
+
+const rack = {
+  barKg: 15,
+  plates: [
+    { kg: 5, pairs: 2 },
+    { kg: 20, pairs: 3 },
+  ],
+}
+const rackHeaviestFirst = {
+  barKg: 15,
+  plates: [
+    { kg: 20, pairs: 3 },
+    { kg: 5, pairs: 2 },
+  ],
+}
+
+test('O4 plateInventory answers the default inventory when nothing is stored', async () => {
+  expect(await createPreferenceService(deps()).plateInventory()).toEqual(DEFAULT_PLATE_INVENTORY)
+})
+
+test('O4 setPlateInventory then plateInventory answers it with plates heaviest first', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setPlateInventory(rack)
+
+  expect(await service.plateInventory()).toEqual(rackHeaviestFirst)
+})
+
+test('O4 setPlateInventory writes one plateInventory row stamped with now and notifies the preferences topic once', async () => {
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+  const service = createPreferenceService(deps({ bus }))
+
+  await service.setPlateInventory(rack)
+
+  expect(await db.settings.get('plateInventory')).toEqual({
+    key: 'plateInventory',
+    value: rackHeaviestFirst,
+    updatedAt: 1_700_000_000_000,
+  })
+  expect(listener).toHaveBeenCalledTimes(1)
+})
+
+test('O4 setPlateInventory rejects an invalid inventory with a message, storing nothing and notifying no one', async () => {
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+  const service = createPreferenceService(deps({ bus }))
+  const duplicate = {
+    barKg: 20,
+    plates: [
+      { kg: 5, pairs: 1 },
+      { kg: 5, pairs: 2 },
+    ],
+  }
+
+  await expect(service.setPlateInventory({ barKg: 60, plates: [] })).rejects.toThrow(/\S/)
+  await expect(service.setPlateInventory(duplicate)).rejects.toThrow(/\S/)
+
+  expect(await db.settings.get('plateInventory')).toBeUndefined()
+  expect(listener).not.toHaveBeenCalled()
+  // The rejection is the validation's, not a broken service: a valid inventory still goes in.
+  await service.setPlateInventory(rack)
+  expect(listener).toHaveBeenCalledTimes(1)
+})
+
+test('O4 the rejection message is the one validatePlateInventory gives', async () => {
+  const bad = { barKg: 60, plates: [] }
+  const verdict = validatePlateInventory(bad)
+  const service = createPreferenceService(deps())
+
+  expect(verdict.ok).toBe(false)
+  await expect(service.setPlateInventory(bad)).rejects.toThrow(verdict.ok ? 'unreachable' : verdict.error)
+})
+
+test('O4 plateInventory answers the default when the stored value is not a valid inventory', async () => {
+  await db.settings.put({ key: 'plateInventory', value: { barKg: 99, plates: [] }, updatedAt: 1 })
+
+  expect(await createPreferenceService(deps()).plateInventory()).toEqual(DEFAULT_PLATE_INVENTORY)
 })

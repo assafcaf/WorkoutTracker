@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react'
-import type { Program, VolumeBaseline } from '../types'
+import type { PlateInventory, Program, VolumeBaseline } from '../types'
 import type { SyncView } from '../services/syncView'
+import { PlateInventoryEditor } from './PlateInventoryEditor'
 import './Settings.css'
 
 export type { SyncView }
@@ -49,6 +50,12 @@ export type SettingsProps = {
   trackEffort?: boolean
   /** Called with the next Track effort value when its checkbox is toggled (E14-T10). */
   onTrackEffortChange?(on: boolean): void
+  /** The trainee's bar and plates (E15-T5); omitted, the Bar and plates section does not render. */
+  plateInventory?: PlateInventory
+  /** Called with the next inventory when the bar or a plate row changes. */
+  onPlateInventoryChange?(inventory: PlateInventory): void
+  /** The service's message for a refused change, shown inline. */
+  plateInventoryError?: string | null
 }
 
 /**
@@ -84,6 +91,9 @@ export function Settings(props: SettingsProps): JSX.Element {
     onVolumeBaselineChange = () => {},
     trackEffort = false,
     onTrackEffortChange,
+    plateInventory,
+    onPlateInventoryChange,
+    plateInventoryError,
   } = props
 
   const currentAggregate = 'aggregate' in volumeBaseline ? volumeBaseline.aggregate : 'avg'
@@ -185,6 +195,16 @@ export function Settings(props: SettingsProps): JSX.Element {
           )
         })}
       </fieldset>
+      {plateInventory ? (
+        <fieldset className="settings-group">
+          <legend className="settings-legend">Bar and plates</legend>
+          <PlateInventoryEditor
+            inventory={plateInventory}
+            onChange={(next) => onPlateInventoryChange?.(next)}
+            error={plateInventoryError}
+          />
+        </fieldset>
+      ) : null}
       <fieldset className="settings-group">
         <legend className="settings-legend">Compare volume</legend>
         <label className="settings-action">

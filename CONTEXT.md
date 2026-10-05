@@ -1,10 +1,9 @@
 # WorkoutTracker
 
-One trainee's set logger for a fixed A/B program, installed to an iPhone home screen and used
-in a gym with no signal. Local-first: no accounts, no server, no sync.
+One trainee's set logger, installed to an iPhone home screen and used in a gym with no signal.
 
-Every term below was found in the code by a scan, with the sense it already carries there. Use
-these words in outcomes, test names and tickets; use the `_Avoid_` words in none of them.
+Use these words, in the sense the code gives them, in outcomes, test names and tickets; use the
+`_Avoid_` words in none of them.
 
 ## Language
 
@@ -19,8 +18,7 @@ and its place in the order. A Plan points at an Exercise; it does not contain on
 _Avoid_: ExerciseConfig, prescription, slot
 
 **Program**:
-A named set of workouts the trainee follows. One is active at a time, and that choice is user
-state rather than something the repo decides.
+A named set of workouts the trainee follows. One is active at a time.
 _Avoid_: Routine, plan (that word is taken), split
 
 **Workout**:
@@ -28,8 +26,7 @@ One session's worth of Plans — the A or the B of an A/B program. What you are 
 _Avoid_: Day, session (that word is taken), routine
 
 **Session**:
-One actual visit to the gym: a Workout being or having been performed, with the sets logged
-against it. What you did.
+One visit to the gym: a Workout performed, with the sets logged against it. What you did.
 _Avoid_: Log, entry, instance
 
 **Session note**:
@@ -37,7 +34,7 @@ Free text of up to 500 characters the trainee attaches to a Session, in progress
 _Avoid_: Comment, memo
 
 **Exercise note**:
-Free text of up to 500 characters the trainee keeps for an Exercise, such as its setup; shown above the Dials on every Session of that Exercise. Empty removes it.
+Free text of up to 500 characters kept for an Exercise, shown above the Dials. Empty removes it.
 _Avoid_: Comment, memo, Session note
 
 **Set**:
@@ -68,8 +65,7 @@ The best Set of one kind for an Exercise (heaviest, best estimated 1RM, and so o
 _Avoid_: Best, high score
 
 **Ladder**:
-The ordered list of weights an exercise can legally take, built from its start weight by its
-own step size.
+The ordered weights an Exercise can take, built from its start weight by its step.
 _Avoid_: Scale, range, increments
 
 **Rung**:
@@ -77,8 +73,7 @@ One selectable position on a Ladder, and the unit a Dial snaps to.
 _Avoid_: Stop, notch, tick, step
 
 **Dial**:
-The scroll-snap column the trainee sets a value with — one for reps, one for weight — with a
-keypad fallback for a value that sits off the Rungs.
+The scroll-snap column the trainee sets reps or weight with; a keypad covers values off the Rungs.
 _Avoid_: Picker, spinner, wheel, slider
 
 **Preset**:
@@ -87,8 +82,7 @@ there is none, from the Exercise's own defaults.
 _Avoid_: Default, prefill, seed, suggestion
 
 **Bodyweight**:
-An Exercise carrying no weight at all, as opposed to one loaded with zero. Its weight is absent
-rather than `0`.
+An Exercise carrying no weight: its weight is absent, not `0`.
 _Avoid_: Unweighted, freeweight, no-load
 
 **Load**:
@@ -97,35 +91,30 @@ The signed weight on a Bodyweight Set, in kg: positive when added (a belt), nega
 _Avoid_: Offset, modifier
 
 **Region**:
-A zone of the body map, shaded by how many sets reached it and tapped to see what trained it.
-Each of the 17 muscles maps to at least one Region (`shoulders` to two).
+A zone of the body map, shaded by how many sets reached it. Each of the 17 muscles maps to at
+least one.
 _Avoid_: Area, zone, body part
 
 **Muscle family**:
-One of four body-area groups — push, pull, legs, core — that every muscle and Region belongs
-to, and the tint a muscle's chip wears.
+Push, pull, legs or core: the group every muscle and Region belongs to, and its chip's tint.
 _Avoid_: Muscle group, category, colour group
 
 **Shell**:
-The frame around whatever screen is showing: the header, the tab bar, and the sticky action bar
-a screen puts its own control into. Not the precached bundle — call that the **precache**.
-See `docs/decisions/0004-one-palette-one-shell-audited-as-data.md`.
+The frame around the screen showing: header, tab bar and Action bar. Not the precached bundle
+(the **precache**). See `docs/decisions/0004-one-palette-one-shell-audited-as-data.md`.
 _Avoid_: Chrome, frame, layout, app shell
 
 **Action bar**:
-The Shell's sticky bottom slot. The Shell owns the space; the screen showing inside it owns
-what goes there and when it is enabled.
+The Shell's sticky bottom slot; the screen showing decides what goes in it.
 _Avoid_: Footer, toolbar, CTA bar, bottom bar
 
 **Token**:
-One of the 49 custom properties that are the only place a colour, space, radius or type size is
-defined. A closed set — adding a fiftieth is a decision, not a detail.
-See `docs/decisions/0009-court-a-light-mellow-sport-design-language.md`.
+One of the 49 custom properties that alone define a colour, space, radius or type size. A
+closed set. See `docs/decisions/0009-court-a-light-mellow-sport-design-language.md`.
 _Avoid_: Variable, custom property, theme value
 
 **Palette**:
-The colour Tokens specifically. There is one, the light "Court" palette — ivory, court green,
-clay and four muscle-family tints — and no dark mode to keep in step.
+The colour Tokens: one light "Court" palette, no dark mode.
 _Avoid_: Theme, colour scheme, skin
 
 **Service**:
@@ -138,8 +127,7 @@ A storage module: the only code that touches the device database.
 _Avoid_: DAO, data access layer, model
 
 **Screen group (feature)**:
-One tab's container, reading and writing only through Services; in code, a `*Feature`. The
-Workout, Program, Exercises, History and Settings tabs are one each.
+One tab's container, reading and writing only through Services; in code, a `*Feature`.
 _Avoid_: Page, container, view
 
 **Change topic**:
@@ -151,3 +139,12 @@ _Avoid_: Event, channel, subscription
 How many reps the trainee had left (RIR, 0 to 3+) on a logged Set, recorded from chips after the
 log when **Track effort** is on in Settings. Optional, never blocks the next Set.
 _Avoid_: Intensity, RPE
+
+**Plate inventory**:
+The bar weight and pairs of plates the trainee has; one synced setting.
+
+**Plate line**:
+The plates for one side of the bar, for the weight on the Dial.
+
+**Warm-up ramp**:
+The Warm-up Sets proposed before the first working Set of a barbell Exercise.

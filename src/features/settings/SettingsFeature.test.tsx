@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../../storage/db'
@@ -325,6 +325,100 @@ test('O9 ticking Track effort stores true under effortTracking and shows it tick
   await waitFor(() => {
     expect(screen.getByRole('checkbox', { name: 'Track effort' })).toBeChecked()
   }, SETTLE)
+})
+
+// --- E15-T5: Bar and plates ------------------------------------------------------------------
+
+const STORED_RACK = { barKg: 20, plates: [{ kg: 25, pairs: 4 }, { kg: 2.5, pairs: 2 }] }
+
+function barAndPlatesGroup(): HTMLElement {
+  return screen.getByRole('group', { name: 'Bar and plates' })
+}
+
+test('O7 SettingsFeature shows the stored bar and a pair count per plate', async () => {
+  await db.settings.put({ key: 'plateInventory', value: STORED_RACK, updatedAt: NOW })
+  renderFeature(buildServices(fakeSync()))
+
+  await waitFor(() => {
+    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(4)
+  }, SETTLE)
+  expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Bar weight (kg)' })).toHaveValue(20)
+})
+
+test('O7 changing the bar weight in Settings stores the inventory at once', async () => {
+  await db.settings.put({ key: 'plateInventory', value: STORED_RACK, updatedAt: NOW })
+  renderFeature(buildServices(fakeSync()))
+  await waitFor(() => {
+    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Bar weight (kg)' })).toHaveValue(20)
+  }, SETTLE)
+
+  fireEvent.change(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Bar weight (kg)' }), {
+    target: { value: '15' },
+  })
+
+  await waitFor(async () => {
+    expect((await db.settings.get('plateInventory'))?.value).toEqual({ ...STORED_RACK, barKg: 15 })
+  }, SETTLE)
+})
+
+test('O7 Reset to defaults in Settings stores DEFAULT_PLATE_INVENTORY', async () => {
+  const user = userEvent.setup()
+  await db.settings.put({ key: 'plateInventory', value: STORED_RACK, updatedAt: NOW })
+  renderFeature(buildServices(fakeSync()))
+
+  await user.click(await screen.findByRole('button', { name: 'Reset to defaults' }, SETTLE))
+
+  await waitFor(async () => {
+    expect((await db.settings.get('plateInventory'))?.value).toEqual({
+      barKg: 20,
+      plates: [
+        { kg: 25, pairs: 10 },
+        { kg: 20, pairs: 10 },
+        { kg: 15, pairs: 10 },
+        { kg: 10, pairs: 10 },
+        { kg: 5, pairs: 10 },
+        { kg: 2.5, pairs: 10 },
+        { kg: 1.25, pairs: 10 },
+      ],
+    })
+  }, SETTLE)
+})
+
+test('O7 a refused pair count shows the service message inline and leaves the stored inventory as it was', async () => {
+  await db.settings.put({ key: 'plateInventory', value: STORED_RACK, updatedAt: NOW })
+  renderFeature(buildServices(fakeSync()))
+  await waitFor(() => {
+    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(4)
+  }, SETTLE)
+
+  fireEvent.change(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' }), {
+    target: { value: '99' },
+  })
+
+  const alert = await screen.findByRole('alert', {}, SETTLE)
+  expect(alert).toHaveTextContent('Each plate size needs a whole number of pairs from 0 to 20.')
+  expect((await db.settings.get('plateInventory'))?.value).toEqual(STORED_RACK)
+  expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(4)
+})
+
+test('O7 a plate inventory synced in from another device shows without leaving the tab', async () => {
+  const services = buildServices(fakeSync())
+  renderFeature(services)
+  await waitFor(() => {
+    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(10)
+  }, SETTLE)
+
+  await db.settings.put({
+    key: 'plateInventory',
+    value: { barKg: 15, plates: [{ kg: 25, pairs: 3 }] },
+    updatedAt: NOW + 1000,
+  })
+  services.bus.emit('preferences')
+
+  await waitFor(() => {
+    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(3)
+  }, SETTLE)
+  expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Bar weight (kg)' })).toHaveValue(15)
 })
 
 test('O9 unticking Track effort stores false under effortTracking', async () => {

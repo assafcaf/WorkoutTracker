@@ -1,4 +1,4 @@
-import type { Session, UserProgram, VolumeBaseline } from '../types'
+import type { PlateInventory, Session, UserProgram, VolumeBaseline } from '../types'
 
 /** Bumped whenever the shape below changes in a way `readBackup` cannot translate on its own. */
 export const BACKUP_SCHEMA_VERSION = 1
@@ -29,6 +29,8 @@ export type BackupFile = {
     exerciseNotes?: Record<string, string>
     /** The Track effort choice (E14). Absent on a backup made before E14. */
     effortTracking?: boolean
+    /** The trainee's bar and plates (E15). Absent when never changed, and on a backup made before E15. */
+    plateInventory?: PlateInventory
   }
 }
 

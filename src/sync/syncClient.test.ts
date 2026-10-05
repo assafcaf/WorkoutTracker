@@ -711,6 +711,7 @@ test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides active
     'effortTracking',
     'exerciseNotes',
     'gymEquipment',
+    'plateInventory',
     'userPrograms',
     'volumeBaseline',
     'weightSteps',
@@ -968,4 +969,30 @@ test('E12-T1 O6 the server stores the discarded Session unchanged and device B s
   await syncNow({ fetch: server.fetch })
 
   expect(await localSessions()).toEqual([discarded])
+})
+
+// --- E15-T3 O5: a Plate inventory reaches the other device through sync -----------------------
+
+test('O5 a Plate inventory device A stores is answered by PreferenceService.plateInventory on device B after A syncs and B syncs', async () => {
+  const mine = {
+    barKg: 15,
+    plates: [
+      { kg: 20, pairs: 3 },
+      { kg: 5, pairs: 2 },
+    ],
+  }
+  await preferencesAt(T0 + 500).setPlateInventory(mine)
+  await syncNow({ fetch: server.fetch })
+  // Device B: a fresh store, same account, never synced.
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(server.syncRequests()[0].settings).toContainEqual({
+    key: 'plateInventory',
+    value: mine,
+    updatedAt: T0 + 500,
+  })
+  expect(await preferencesAt(T0 + 900).plateInventory()).toEqual(mine)
 })

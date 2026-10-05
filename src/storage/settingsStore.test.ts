@@ -3,12 +3,14 @@ import { db } from './db'
 import {
   ACTIVE_PROGRAM_ID_KEY,
   GYM_EQUIPMENT_KEY,
+  PLATE_INVENTORY_KEY,
   USER_PROGRAMS_KEY,
   deleteKeys,
   deleteProgram,
   getActiveProgramId,
   getUserPrograms,
   getGymEquipment,
+  getPlateInventory,
   getVolumeBaseline,
   getWeightStep,
   getWeightSteps,
@@ -18,12 +20,14 @@ import {
   saveUserProgram,
   setActiveProgramId,
   setGymEquipment,
+  setPlateInventory,
   setLastExportedAt,
   setUserPrograms,
   setVolumeBaseline,
   setWeightStep,
   setWeightSteps,
 } from './settingsStore'
+import { DEFAULT_PLATE_INVENTORY } from '../domain/plates'
 import { mergePrograms } from '../domain/programs'
 import { createChangeBus } from '../services/changes'
 import { createProgramService } from '../services/programs'
@@ -791,5 +795,54 @@ describe('D4 every settings setter given now stamps updatedAt with it', () => {
       value: [userProgram('my-push-pull', { hidden: true })],
       updatedAt: NOW,
     })
+  })
+})
+
+// --- E15-T3 O4: the Plate inventory row ---
+
+describe('O4 the plateInventory setting', () => {
+  const stored = {
+    barKg: 15,
+    plates: [
+      { kg: 20, pairs: 2 },
+      { kg: 5, pairs: 4 },
+    ],
+  }
+
+  test('O4 getPlateInventory answers the default when nothing is stored', async () => {
+    await db.settings.clear()
+    expect(await getPlateInventory()).toEqual(DEFAULT_PLATE_INVENTORY)
+    expect(await db.settings.get('plateInventory')).toBeUndefined()
+  })
+
+  test('O4 setPlateInventory stores the inventory in the plateInventory row stamped with now', async () => {
+    await db.settings.clear()
+    await setPlateInventory(stored, 1234)
+    expect(PLATE_INVENTORY_KEY).toBe('plateInventory')
+    expect(await db.settings.get('plateInventory')).toEqual({
+      key: 'plateInventory',
+      value: stored,
+      updatedAt: 1234,
+    })
+    expect(await getPlateInventory()).toEqual(stored)
+  })
+
+  test.each([
+    ['a number', 7],
+    ['a bar out of range', { barKg: 80, plates: [] }],
+    [
+      'a plate list with a duplicate weight',
+      {
+        barKg: 20,
+        plates: [
+          { kg: 5, pairs: 1 },
+          { kg: 5, pairs: 1 },
+        ],
+      },
+    ],
+  ])('O4 getPlateInventory answers the default for a stored value that is %s', async (_n, value) => {
+    await db.settings.clear()
+    await db.settings.put({ key: 'plateInventory', value, updatedAt: 1 })
+    expect(await getPlateInventory()).toEqual(DEFAULT_PLATE_INVENTORY)
   })
 })
