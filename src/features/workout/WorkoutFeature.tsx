@@ -705,7 +705,12 @@ export function WorkoutFeature({
   }
 
   /** The Live session's header (S2/S3), with its Now | All switch under the row. */
-  function liveHeader(liveSession: Session, workoutName: string, heading = true): JSX.Element {
+  function liveHeader(
+    liveSession: Session,
+    workoutName: string,
+    shown: LiveView,
+    heading = true,
+  ): JSX.Element {
     return (
       <LiveHeader
         workoutName={workoutName}
@@ -713,7 +718,9 @@ export function WorkoutFeature({
         startedAt={liveSession.startedAt}
         onMinimise={handleMinimise}
         onFinish={handleFinish}
-      />
+      >
+        {liveBar(shown)}
+      </LiveHeader>
     )
   }
   // The Live session's projection line and its Now | All switch (Progress Dashboard S2/S3),
@@ -764,10 +771,9 @@ export function WorkoutFeature({
       content = (
         <AppShell
           title={exercise.name}
-          header={liveHeader(session, located.workout.name, false)}
+          header={liveHeader(session, located.workout.name, 'now', false)}
           action={<ActionBarSlot />}
         >
-          {liveBar('now')}
           <SetScreen
             key={`${openSet.exerciseId}#${openSet.setIndex}#${openSet.editSetIndex ?? ''}`}
             editSetIndex={openSet.editSetIndex}
@@ -908,7 +914,7 @@ export function WorkoutFeature({
     content = (
       <AppShell
         title={located.workout.name}
-        header={liveHeader(session, located.workout.name)}
+        header={liveHeader(session, located.workout.name, 'all')}
         action={
           quick === null ? undefined : (
             <button type="button" className="log-set btn-primary" onClick={handleQuickLog}>
@@ -917,7 +923,6 @@ export function WorkoutFeature({
           )
         }
       >
-        {liveBar('all')}
         <ExerciseList
           currentId={currentExerciseId(located.workout, session)}
           onOpenLogged={handleOpenLogged}

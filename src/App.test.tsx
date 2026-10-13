@@ -1022,12 +1022,16 @@ test('O10 Finish workout sits in the sticky action bar rather than after the exe
   await startWorkoutA(user)
 
   // The Progress Dashboard puts Finish in the Live session's sticky header (S2/S3), leaving the
-  // bottom bar to the one primary, Log set; the list itself carries no action bar.
+  // bottom bar to the one primary, Log set (the All view logs its pre-filled next Set, S2).
   const header = shellHeader()
   expect(header, 'the exercise list has no sticky header').not.toBeNull()
   const finish = screen.getByRole('button', { name: 'Finish' })
   expect((header as HTMLElement).contains(finish)).toBe(true)
-  expect(actionBar()).toBeNull()
+  const bar = actionBar() as HTMLElement
+  expect(bar.contains(finish)).toBe(false)
+  expect(Array.from(bar.querySelectorAll('button')).map((button) => button.textContent)).toEqual([
+    expect.stringMatching(/^Log set 1 /),
+  ])
   const main = shellMain()
   expect(main, 'the exercise list is not inside the shell at all').not.toBeNull()
   // The list scrolls; the action does not. A Finish button still trailing the rows would be
