@@ -68,6 +68,8 @@ async function openExercise(user: UserEvent, exerciseName: string): Promise<void
   await user.click(
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )
+  // The screen changes after the click settles; wait for it so later sync reads do not race it.
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
 }
 
 /** What the exercise list shows as an exercise's set progress: "1/4". */
@@ -872,7 +874,7 @@ test('O12 Add note under the exercise list stores the typed text as the Session 
   const { user } = await startWorkoutAWithSets(0)
 
   await user.click(await screen.findByRole('button', { name: 'Add note' }, SETTLE))
-  await user.type(screen.getByLabelText('Note'), 'Slept badly')
+  await user.type(await screen.findByLabelText('Note', undefined, SETTLE), 'Slept badly')
   await user.click(screen.getByRole('button', { name: 'Save note' }))
 
   await waitFor(async () => expect((await storedActiveSession())?.note).toBe('Slept badly'), SETTLE)
@@ -886,7 +888,7 @@ test('O12 saving the note empty removes it from the stored Session', async () =>
   const { user } = renderFeature(services)
 
   await user.click(await screen.findByRole('button', { name: 'Edit note' }, SETTLE))
-  await user.clear(screen.getByLabelText('Note'))
+  await user.clear(await screen.findByLabelText('Note', undefined, SETTLE))
   await user.click(screen.getByRole('button', { name: 'Save note' }))
 
   await waitFor(async () => {
@@ -1089,7 +1091,7 @@ test('O11 Add note on the set screen stores the Exercise note under its id', asy
   await openExercise(user, 'Back squat')
 
   await user.click(await screen.findByRole('button', { name: 'Add note' }, SETTLE))
-  await user.type(screen.getByLabelText('Note'), 'pin 4')
+  await user.type(await screen.findByLabelText('Note', undefined, SETTLE), 'pin 4')
   await user.click(screen.getByRole('button', { name: 'Save note' }))
 
   await waitFor(
@@ -1108,7 +1110,7 @@ test('O11 saving the Exercise note empty removes it', async () => {
   await openExercise(user, 'Back squat')
 
   await user.click(await screen.findByText('belt on', undefined, SETTLE))
-  await user.clear(screen.getByLabelText('Note'))
+  await user.clear(await screen.findByLabelText('Note', undefined, SETTLE))
   await user.click(screen.getByRole('button', { name: 'Save note' }))
 
   await waitFor(
@@ -1452,8 +1454,11 @@ test('O21 closing History returns to the same open Set with its logged Set and r
   const dialog = await screen.findByRole('dialog', { name: 'History · Back squat' }, SETTLE)
   await user.click(within(dialog).getByRole('button', { name: 'Close' }))
 
-  expect(screen.queryByRole('dialog', { name: 'History · Back squat' })).toBeNull()
-  expect(screen.getByText('Set 2 of 4')).toBeVisible()
+  await waitFor(
+    () => expect(screen.queryByRole('dialog', { name: 'History · Back squat' })).toBeNull(),
+    SETTLE,
+  )
+  expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('list', { name: 'Sets logged' }).querySelectorAll('li')).toHaveLength(1)
   expect((await restReadoutText()).slice(0, 2)).toBe(restBefore.slice(0, 2))
   expect((await storedActiveSession())?.entries).toHaveLength(1)
