@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { formatSet, formatSetCompact } from '../domain/setText'
-import { presetForSet } from '../domain/prefill'
+import { presetForSet, presetFromSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { recordsSetBy } from '../domain/records'
 import { formatPlates, platesFor } from '../domain/plates'
@@ -128,9 +128,7 @@ export type SetScreenProps = {
   /**
    * Told the Bodyweight setting just chosen from the Bodyweight switch (E16-T13 O6), so the caller
    * can store the override for this Exercise. A rejection's message shows under the switch, and
-   * the switch returns to the setting it had.
-   *
-   * STUB (E16-T13 test-designer): accepted but not yet wired to a switch.
+   * the switch returns to the setting it had. Without it the screen shows no switch.
    */
   onBodyweightChange?(value: boolean): Promise<void>
   /**
@@ -331,7 +329,7 @@ function restKey(from: RestFrom | null): string | null {
  */
 export function SetScreen(props: SetScreenProps): JSX.Element {
   const {
-    exercise,
+    exercise: givenExercise,
     plan,
     sessionId,
     onLog,
@@ -345,6 +343,13 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     family,
   } = props
 
+  // The Bodyweight setting chosen from the Bodyweight switch (E16-T13 O6), read once on open from
+  // the caller's resolved Exercise; every part of the screen follows it through `exercise`.
+  const [bodyweight, setBodyweight] = useState<boolean>(givenExercise.bodyweight)
+  const [bodyweightError, setBodyweightError] = useState<string | null>(null)
+  const exercise: Exercise =
+    bodyweight === givenExercise.bodyweight ? givenExercise : { ...givenExercise, bodyweight }
+
   // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
   // and otherwise the catalog's own; the Dial and Ladder both follow it via `effectiveExercise`.
   const lastTime = lastTimeText(exercise.id, props.lastTime ?? [])
@@ -356,6 +361,28 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   function handleStepChange(step: number): void {
     setWeightStep(step)
     props.onWeightStepChange?.(step)
+  }
+
+  /**
+   * The Bodyweight switch flipped to `value`: the Dial changes mode at once, the open Set's value
+   * translated into it (`presetFromSet`), and the caller stores it. A rejection puts both back.
+   */
+  function handleBodyweightChange(value: boolean): void {
+    const before = { bodyweight, open }
+    const preset = presetFromSet({
+      exercise: { ...exercise, bodyweight: value },
+      plan,
+      set: { weightKg: open.weightKg, reps: open.reps, loadKg: exercise.bodyweight ? open.loadKg : undefined },
+    })
+    setRamp(null)
+    setBodyweightError(null)
+    setBodyweight(value)
+    setOpen({ ...open, weightKg: preset.weightKg, reps: preset.reps, loadKg: value ? (preset.loadKg ?? 0) : 0 })
+    props.onBodyweightChange?.(value).catch((reason: unknown) => {
+      setBodyweight(before.bodyweight)
+      setOpen(before.open)
+      setBodyweightError(reason instanceof Error ? reason.message : String(reason))
+    })
   }
 
   // What the next Set presets from as last time. Without `logged`, the Sets this screen logs or
@@ -1033,7 +1060,23 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         {props.plates && open.weightKg !== null ? (
           <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
         ) : null}
+        {props.onBodyweightChange === undefined ? null : (
+          <button
+            type="button"
+            role="switch"
+            className="bodyweight-switch"
+            aria-checked={bodyweight}
+            onClick={() => handleBodyweightChange(!bodyweight)}
+          >
+            Bodyweight
+          </button>
+        )}
       </div>
+      {bodyweightError === null ? null : (
+        <p className="bodyweight-error" role="alert">
+          {bodyweightError}
+        </p>
+      )}
       <SetKindRow value={open.kind} onChange={chooseKind} />
       {ramp !== null && rampStep !== undefined ? (
         <p className="warmup-ramp">

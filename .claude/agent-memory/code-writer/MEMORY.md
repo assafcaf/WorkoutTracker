@@ -6,3 +6,4 @@
 - A fixture with array fields (e.g. repRange: [8,10]) can fail tsc --noEmit, inferring number[] not a tuple; add a type annotation to the fixture, not a test-content edit (E9-T6, 2026-09-26)
 - Mid-task isolation can repoint me into the test-designer's own worktree, red commit already HEAD; just implement and commit there, no cherry-pick, report that branch as BRANCH (E11-T3, 2026-09-27)
 - After `git merge --ff-only` onto a new epic head, worker tests fail ("Failed to load url jose") until `npm ci` reruns in the worktree — not a code regression (E11-T5, 2026-09-27)
+- A Bash command holding non-ASCII (e.g. a check-mark in a grep pattern) fails at once with exit 127 "claude-xxxx-cwd: No such file"; keep commands ASCII-only (E16-T13, 2026-10-13)
