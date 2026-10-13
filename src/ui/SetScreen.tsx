@@ -1020,7 +1020,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const actions = !done ? (
     restPanel ?? (
       <div className="log-dock">
-        {resting ? null : offer}
+        {resting || useOffer === null ? null : offer}
         {overShown && rest !== null ? (
           <p className="rest-over" data-over="true">
             Over rest ·{' '}

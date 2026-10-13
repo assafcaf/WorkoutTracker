@@ -21,7 +21,7 @@
   flex: 1;
 }
 
-.snackbar-action {
+.snackbar .snackbar-action {
   min-height: 56px;
   padding: 0 var(--space-4);
   border: 0;
@@ -31,6 +31,6 @@
   font-weight: var(--weight-semibold);
 }
 
-.snackbar-action:active {
+.snackbar .snackbar-action:active {
   background: var(--color-secondary);
 }

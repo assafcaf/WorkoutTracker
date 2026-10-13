@@ -580,6 +580,7 @@ button.set-cell--current {
   align-items: center;
   justify-content: center;
   height: 120px;
+  margin-bottom: var(--space-5);
 }
 
 .plates-sleeve {

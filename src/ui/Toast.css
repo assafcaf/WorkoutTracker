@@ -24,7 +24,11 @@
   min-width: 0;
 }
 
+/* One line: a Set setting several records names them all, the line ending in an ellipsis. */
 .toast-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   line-height: 1.3;
