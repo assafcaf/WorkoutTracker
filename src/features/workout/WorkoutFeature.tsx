@@ -540,7 +540,9 @@ export function WorkoutFeature({
       const nextName = nextId === null ? null : (resolveListExercise(nextId)?.name ?? null)
       content = (
         <AppShell title={exercise.name} onBack={() => setView('list')} action={<ActionBarSlot />}>
-          <ElapsedTime startedAt={session.startedAt} />
+          <p className="workout-time">
+            Workout <ElapsedTime startedAt={session.startedAt} />
+          </p>
           <SetScreen
             key={`${openSet.exerciseId}#${openSet.setIndex}`}
             exercise={exercise}

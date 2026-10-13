@@ -8,10 +8,9 @@
  */
 
 .set-screen {
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 /* Which set of how many, above the dials: the one line that says where in the exercise the
@@ -47,35 +46,45 @@
   font-size: var(--text-sm);
 }
 
-/* The rest left, read off the clock. Tabular figures so the seconds do not shift the line as
- * they count down. */
+/* The rest bar: the first thing on the screen while rest runs, in the flow of the page so it
+ * pushes the rest down rather than covering it. The clock fills the left; "Rest" sits over
+ * −15 s, +15 s and Skip on the right, so the bar is no taller than the clock. Tabular figures
+ * so the seconds do not shift the line as they count down. */
 .rest-timer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  justify-content: flex-end;
-  text-align: right;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'clock label'
+    'clock controls';
   align-items: center;
-  gap: var(--space-2);
+  column-gap: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   color: var(--color-muted);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
+.rest-label {
+  grid-area: label;
+  justify-self: end;
+}
+
 /* The rest readout (E13-T8): the time alone, a button the rest Dial will open from. */
 .rest-readout {
+  grid-area: clock;
   min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-3);
+  padding: 0;
   border: 0;
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text);
   font: inherit;
   font-family: var(--font-display);
   font-size: var(--text-display);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: left;
 }
 
 .rest-timer[data-over='true'] .rest-readout {
@@ -84,17 +93,20 @@
 
 /* −15 s, +15 s and Skip, offered only while rest runs. */
 .rest-controls {
+  grid-area: controls;
   display: flex;
-  gap: var(--space-2);
+  justify-content: flex-end;
+  gap: var(--space-1);
 }
 
 .rest-adjust,
 .rest-skip {
+  min-width: var(--tap-min);
   min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-2);
   border: 0;
   border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  background: var(--color-raised);
   color: var(--color-text);
   font: inherit;
 }
@@ -135,10 +147,12 @@
   min-height: var(--tap-min);
 }
 
-/* The row "Exercise info" and "Alternatives" sit in, above the set counter. */
+/* The row "Exercise info", "Alternatives" and "History" sit in, below the Dials: secondary to
+ * the two numbers, so they never push the Dials down. */
 .set-screen-links {
   display: flex;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .exercise-info,
@@ -150,6 +164,7 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   color: var(--color-accent);
+  font-size: var(--text-sm);
 }
 
 .logged-sets {
@@ -306,19 +321,46 @@
   text-align: center;
 }
 
-/* E16-T11: Weight and Reps side by side, then the step control and Plate line in one row. */
+/* The two numbers, weight × reps, in one row: each Dial is the scrub variant (src/ui/dial.css),
+ * and the × between them is the row's own ::after, ordered between the two Dials so the row's
+ * children stay just the Weight Dial and the Reps Dial. */
 .set-dials {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: stretch;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.set-dials > :first-child {
+  order: 1;
+}
+
+.set-dials::after {
+  order: 2;
+  content: '×';
+  color: var(--color-muted);
+  font-size: var(--text-xl);
+}
+
+.set-dials > :last-child {
+  order: 3;
 }
 
 .set-dial-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
+}
+
+/* The elapsed time of the whole workout, above the Set screen: small and labelled, so it is not
+ * mistaken for the rest clock. */
+.workout-time {
+  margin: 0 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 /* E16-T13: the Bodyweight switch in the controls row, and a failed store's message under it. */

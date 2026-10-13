@@ -8,7 +8,7 @@ import { recordsSetBy } from '../domain/records'
 import { formatPlates, platesFor } from '../domain/plates'
 import { warmupRamp } from '../domain/warmup'
 import type { WarmupStep } from '../domain/warmup'
-import { adjustRest, formatClock, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
+import { adjustRest, formatClock, formatRest, restAfter, restLengthOf } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
@@ -855,12 +855,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         Logged ✓
       </button>
     ) : (
+      // The rest clock has its own bar at the top of the screen; the button only logs.
       <button type="button" className="log-set" aria-label="Log set" onClick={() => void log()}>
-        {rest === null
-          ? 'Log set'
-          : rest.isOver
-            ? `Rest ${formatOver(rest.overSeconds)}`
-            : `Rest ${formatRest(rest.remainingSeconds)}`}
+        Log set
       </button>
     )
   ) : (
@@ -923,23 +920,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           caller to `exercise.name`); a second heading here would duplicate it verbatim, which
           collides for a caller matching an exercise's set screen by its accessible name alone
           (E5-T12's S7, opening a swapped-in exercise's set screen). */}
-      <div className="set-screen-links">
-        <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
-        <button
-          type="button"
-          className="open-alternatives"
-          onClick={() => onOpenAlternatives?.(exercise.id)}
-        >
-          Alternatives
-        </button>
-        <button
-          type="button"
-          className="open-history"
-          onClick={() => onOpenHistory?.(exercise.id)}
-        >
-          History
-        </button>
-      </div>
       <p className="set-counter">{setCounterText(
           position,
           plan.sets,
@@ -984,6 +964,79 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </ul>
       )}
 
+      <div className="set-dials">
+        {exercise.bodyweight ? (
+          // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
+          <WeightDial
+            variant="scrub"
+            exercise={effectiveExercise}
+            value={open.loadKg}
+            onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
+          />
+        ) : (
+          <WeightDial
+            variant="scrub"
+            exercise={effectiveExercise}
+            value={open.weightKg}
+            onChange={(weightKg) => setOpen({ ...open, weightKg })}
+          />
+        )}
+        <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+      </div>
+      <div className="set-dial-controls">
+        {exercise.bodyweight ? null : (
+          <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
+        )}
+        {props.plates && open.weightKg !== null ? (
+          <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
+        ) : null}
+        {props.onBodyweightChange === undefined ? null : (
+          <button
+            type="button"
+            role="switch"
+            className="bodyweight-switch"
+            aria-checked={bodyweight}
+            onClick={() => handleBodyweightChange(!bodyweight)}
+          >
+            Bodyweight
+          </button>
+        )}
+      </div>
+      {bodyweightError === null ? null : (
+        <p className="bodyweight-error" role="alert">
+          {bodyweightError}
+        </p>
+      )}
+      <SetKindRow value={open.kind} onChange={chooseKind} />
+      {ramp !== null && rampStep !== undefined ? (
+        <p className="warmup-ramp">
+          Warm-up {ramp.index + 1} of {ramp.steps.length} · {rampStep.weightKg} kg × {rampStep.reps}
+        </p>
+      ) : rampOffer !== null && rampOffer.length > warmupsLogged ? (
+        <button type="button" className="add-warmups" onClick={() => startRamp(rampOffer)}>
+          Add warm-ups
+        </button>
+      ) : null}
+
+      {/* Secondary: everything that is not the two numbers sits below the Dials, so the Dials
+          are the first thing on the screen after where the trainee is. */}
+      <div className="set-screen-links">
+        <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
+        <button
+          type="button"
+          className="open-alternatives"
+          onClick={() => onOpenAlternatives?.(exercise.id)}
+        >
+          Alternatives
+        </button>
+        <button
+          type="button"
+          className="open-history"
+          onClick={() => onOpenHistory?.(exercise.id)}
+        >
+          History
+        </button>
+      </div>
       {props.onSaveExerciseNote === undefined ? null : editingNote ? (
         <div className="set-note-editor">
           <label className="set-note-label">
@@ -1035,58 +1088,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           {props.exerciseNote}
         </button>
       )}
-
-      <div className="set-dials">
-        {exercise.bodyweight ? (
-          // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
-          <WeightDial
-            exercise={effectiveExercise}
-            value={open.loadKg}
-            onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
-          />
-        ) : (
-          <WeightDial
-            exercise={effectiveExercise}
-            value={open.weightKg}
-            onChange={(weightKg) => setOpen({ ...open, weightKg })}
-          />
-        )}
-        <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
-      </div>
-      <div className="set-dial-controls">
-        {exercise.bodyweight ? null : (
-          <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
-        )}
-        {props.plates && open.weightKg !== null ? (
-          <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
-        ) : null}
-        {props.onBodyweightChange === undefined ? null : (
-          <button
-            type="button"
-            role="switch"
-            className="bodyweight-switch"
-            aria-checked={bodyweight}
-            onClick={() => handleBodyweightChange(!bodyweight)}
-          >
-            Bodyweight
-          </button>
-        )}
-      </div>
-      {bodyweightError === null ? null : (
-        <p className="bodyweight-error" role="alert">
-          {bodyweightError}
-        </p>
-      )}
-      <SetKindRow value={open.kind} onChange={chooseKind} />
-      {ramp !== null && rampStep !== undefined ? (
-        <p className="warmup-ramp">
-          Warm-up {ramp.index + 1} of {ramp.steps.length} · {rampStep.weightKg} kg × {rampStep.reps}
-        </p>
-      ) : rampOffer !== null && rampOffer.length > warmupsLogged ? (
-        <button type="button" className="add-warmups" onClick={() => startRamp(rampOffer)}>
-          Add warm-ups
-        </button>
-      ) : null}
 
       {error === null ? null : (
         <p className="set-error" role="alert">

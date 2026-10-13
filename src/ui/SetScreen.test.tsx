@@ -587,10 +587,10 @@ test('O3 a Bodyweight Exercise names the weight group Weight rather than Weight 
 
 // --- O4: an exact weight or rep count from a visible button --------------------------------
 
-test('O4 typing a weight on the Type weight keypad logs it as an off-ladder weight', async () => {
+test('O4 tapping the weight number opens its keypad, and a typed weight logs off the ladder', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
 
-  await user.click(screen.getByRole('button', { name: 'Type weight' }))
+  await user.click(weightReadout())
   await user.click(screen.getByRole('button', { name: '6' }))
   await user.click(screen.getByRole('button', { name: '3' }))
   await user.click(screen.getByRole('button', { name: 'OK' }))
@@ -603,19 +603,21 @@ test('O4 typing a weight on the Type weight keypad logs it as an off-ladder weig
   expect(entry.weightKg).toBe(63)
 })
 
-test('O4 the Type reps button opens the reps keypad the same way the readout does', async () => {
+test('O4 tapping the reps number opens the reps keypad', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
   expect(screen.queryByRole('button', { name: 'OK' })).toBeNull()
 
-  await user.click(screen.getByRole('button', { name: 'Type reps' }))
+  await user.click(repsReadout())
 
+  expect(screen.getByRole('group', { name: 'Reps keypad' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'OK' })).toBeVisible()
 })
 
-test('O4 a Bodyweight Exercise has no Type weight button', () => {
-  renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+test('O4 neither number has a separate Type button: the number itself opens the keypad', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
 
   expect(screen.queryByRole('button', { name: 'Type weight' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Type reps' })).toBeNull()
 })
 
 test('O7 opening back-squat whose latest Set in this Session was logged 100 s ago shows 1:20 remaining', () => {
@@ -1697,48 +1699,51 @@ test('O9 in the done state there is no Next line', () => {
 
 // E13-T10: the Log set button carries the rest, and the logged cue.
 
-test('O7 with 1:24 of rest left the Log set button reads "Rest 1:24" and is still named Log set', () => {
+test('O7 with 1:24 of rest left the rest bar reads 01:24 and the Log set button still reads Log set', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 96_000)
   renderSetScreen({
     setIndex: 2,
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(readoutValue(logButton())).toBe('Rest 1:24')
+  expect(readoutValue(restReadout())).toBe('01:24')
+  expect(readoutValue(logButton())).toBe('Log set')
 })
 
-test('O7 once the rest is over 42 s ago the Log set button reads "Rest +0:42" and is still named Log set', () => {
+test('O7 once the rest is over 42 s ago the rest bar reads +00:42 and the Log set button still reads Log set', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 222_000)
   renderSetScreen({
     setIndex: 2,
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(readoutValue(logButton())).toBe('Rest +0:42')
+  expect(readoutValue(restReadout())).toBe('+00:42')
+  expect(readoutValue(logButton())).toBe('Log set')
 })
 
-test('O7 the rest on the Log set button counts down with the clock', async () => {
+test('O7 the rest bar counts down with the clock while the Log set button keeps reading Log set', async () => {
   vi.useFakeTimers()
   vi.setSystemTime(BASE + 96_000)
   renderSetScreen({
     setIndex: 2,
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
-  expect(readoutValue(logButton())).toBe('Rest 1:24')
+  expect(readoutValue(restReadout())).toBe('01:24')
 
   await vi.advanceTimersByTimeAsync(10_000)
 
-  expect(readoutValue(logButton())).toBe('Rest 1:14')
+  expect(readoutValue(restReadout())).toBe('01:14')
+  expect(readoutValue(logButton())).toBe('Log set')
 })
 
-test('O7 a Set that matches its Preset logs with one tap on the Log set button while it shows the rest', async () => {
+test('O7 a Set that matches its Preset logs with one tap on the Log set button while rest runs', async () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 96_000)
   const { user, onLog } = renderSetScreen({
     setIndex: 2,
     lastEntries: [historyEntry(1, 60, 10)],
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
-  expect(readoutValue(logButton())).toBe('Rest 1:24')
+  expect(readoutValue(restReadout())).toBe('01:24')
 
   await user.click(logButton())
 
@@ -1761,7 +1766,7 @@ test('O8 tapping Log set shows "Logged ✓" with class log-set--confirmed, named
   expect(screen.getByText('Set 1 logged · 50 kg × 8')).toBeVisible()
 })
 
-test('O8 the confirmed state ends after 1.5 s: the button shows the rest again without the class', async () => {
+test('O8 the confirmed state ends after 1.5 s: the button reads Log set again without the class', async () => {
   vi.useFakeTimers()
   vi.setSystemTime(BASE)
   renderWithSessionRest([])
@@ -1772,7 +1777,7 @@ test('O8 the confirmed state ends after 1.5 s: the button shows the rest again w
   await vi.advanceTimersByTimeAsync(200)
 
   expect(logButton()).not.toHaveClass('log-set--confirmed')
-  expect(readoutValue(logButton())).toMatch(/^Rest \d:\d\d$/)
+  expect(readoutValue(logButton())).toBe('Log set')
   expect(screen.getByText('Set 1 logged · 50 kg × 8')).toBeVisible()
 })
 
@@ -2078,15 +2083,13 @@ test('F1 the rest panel is the first element of the set screen, before the links
   expect(panel?.querySelector('.rest-controls')).not.toBeNull()
 })
 
-test('F1 the stylesheet places .rest-timer top-right with its content right-aligned', () => {
+test('F1 the stylesheet keeps .rest-timer in the flow of the page, so it covers nothing', () => {
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'SetScreen.css'), 'utf-8')
   const rule = /(?:^|\})\s*\.rest-timer\s*\{([^}]*)\}/m.exec(css)
   expect(rule).not.toBeNull()
   const body = rule?.[1] ?? ''
-  expect(body).toMatch(/position:\s*(absolute|fixed)/)
-  expect(body).toMatch(/top:/)
-  expect(body).toMatch(/right:/)
-  expect(body).toMatch(/justify-content:\s*flex-end|text-align:\s*right/)
+  expect(body).not.toMatch(/position:\s*(absolute|fixed)/)
+  expect(body).toMatch(/display:\s*grid/)
 })
 
 // --- E14-T8 O4: warm-ups don't use up the Plan's Sets; setIndex still numbers every Set -------
@@ -2168,7 +2171,7 @@ test('O4 while resting after 2 warm-ups and 1 working Set on a 3-Set Plan the Ne
 
 // --- E14-T11 [O11]: the Exercise note above the Dials ---------------------------------------
 
-test('O11 an Exercise note shows above the Dials', () => {
+test('O11 an Exercise note shows below the Dials', () => {
   renderSetScreen({
     exerciseNote: 'belt on, chalk',
     onSaveExerciseNote: vi.fn(async () => undefined),
@@ -2177,17 +2180,17 @@ test('O11 an Exercise note shows above the Dials', () => {
   const note = screen.getByText('belt on, chalk')
   expect(note).toBeVisible()
   expect(
-    note.compareDocumentPosition(weightReadout()) & Node.DOCUMENT_POSITION_FOLLOWING,
+    note.compareDocumentPosition(weightReadout()) & Node.DOCUMENT_POSITION_PRECEDING,
   ).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull()
 })
 
-test('O11 without a note an Add note link shows above the Dials', () => {
+test('O11 without a note an Add note link shows below the Dials', () => {
   renderSetScreen({ exerciseNote: null, onSaveExerciseNote: vi.fn(async () => undefined) })
 
   const add = screen.getByRole('button', { name: 'Add note' })
   expect(
-    add.compareDocumentPosition(weightReadout()) & Node.DOCUMENT_POSITION_FOLLOWING,
+    add.compareDocumentPosition(weightReadout()) & Node.DOCUMENT_POSITION_PRECEDING,
   ).toBeTruthy()
 })
 
@@ -2898,11 +2901,11 @@ test('O12 the Rest readout starts from 1:00 after a Warm-up on a 180 s Plan', ()
   expect(readoutValue(restReadout())).toBe('01:00')
 })
 
-test('O12 the Log set button reads Rest 0:50 ten seconds after a Warm-up', () => {
+test('O12 the rest bar reads 00:50 ten seconds after a Warm-up', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
   renderWithSessionRest([warmupSquat(1, BASE)])
 
-  expect(logButton().textContent).toBe('Rest 0:50')
+  expect(readoutValue(restReadout())).toBe('00:50')
 })
 
 test('O12 a Warm-up rest is over after 60 s: the readout reads +0:10 over at 70 s', () => {
@@ -2910,7 +2913,7 @@ test('O12 a Warm-up rest is over after 60 s: the readout reads +0:10 over at 70 
   renderWithSessionRest([warmupSquat(1, BASE)])
 
   expect(readoutValue(restReadout())).toBe('+00:10')
-  expect(logButton().textContent).toBe('Rest +0:10')
+  expect(logButton().textContent).toBe('Log set')
 })
 
 test('O12 a working Set rests the Plan length: 3:00 at once', () => {
@@ -3587,18 +3590,19 @@ test('O10 tapping the clock opens the rest Dial', async () => {
   expect(await screen.findByRole('listbox', { name: 'Rest ladder' })).toBeVisible()
 })
 
-test('O10 the Action bar button still reads Rest 1:27 while the clock reads 01:27', () => {
+test('O10 the Action bar button reads Log set while the clock reads 01:27: one clock on screen', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
   renderWithSessionRest([squatEntry(1, BASE)])
 
-  expect(readoutValue(logButton())).toBe('Rest 1:27')
+  expect(readoutValue(restReadout())).toBe('01:27')
+  expect(readoutValue(logButton())).toBe('Log set')
 })
 
-test('O10 the Action bar button still reads Rest +0:42 once over', () => {
+test('O10 the Action bar button reads Log set once the rest is over', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 222_000)
   renderWithSessionRest([squatEntry(1, BASE)])
 
-  expect(readoutValue(logButton())).toBe('Rest +0:42')
+  expect(readoutValue(logButton())).toBe('Log set')
 })
 
 test('O10 +15 s still stores a rest of 195 s through onSetRest', async () => {
@@ -3725,13 +3729,13 @@ test('O9 the Weight Dial no longer holds the step control', () => {
   expect(within(weightGroup).queryByRole('combobox')).toBeNull()
 })
 
-test('O9 the stylesheet lays .set-dials out as two equal columns stretched to one height', () => {
+test('O9 the stylesheet lays .set-dials out as one row: two equal columns with the × between them', () => {
   const decls = declarationsFor(restCss(), '.set-dials')
   expect(decls.get('display')).toBe('grid')
   expect(decls.get('grid-template-columns')).toMatch(
-    /^(repeat\(\s*2\s*,\s*(minmax\(\s*0\s*,\s*1fr\s*\)|1fr)\s*\)|(minmax\(\s*0\s*,\s*1fr\s*\)|1fr)\s+(minmax\(\s*0\s*,\s*1fr\s*\)|1fr))$/,
+    /^minmax\(\s*0\s*,\s*1fr\s*\)\s+auto\s+minmax\(\s*0\s*,\s*1fr\s*\)$/,
   )
-  expect(['start', 'center', 'end', 'baseline']).not.toContain(decls.get('align-items'))
+  expect(declarationsFor(restCss(), '.set-dials::after').get('content')).toBe("'×'")
 })
 
 test('O9 the stylesheet lays .set-dial-controls out as one row', () => {
