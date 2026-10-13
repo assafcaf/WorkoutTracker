@@ -23,7 +23,7 @@ const NOW = 1_700_000_000_000
 const SETTLE = { timeout: 3000 }
 
 /** Workout B's seated-biceps-curls swapped for Hammer_Curls, as the exercise list names it. */
-const HAMMER_ROW = /^Hammer Curls[ ]+instead of Seated biceps curls/
+const HAMMER_ROW = /^Hammer Curls[ ]+for Seated biceps curls/
 
 const signedOutFetch = (async () => new Response(null, { status: 401 })) as typeof fetch
 
@@ -94,6 +94,8 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  // The swap now stays on the Set screen (E16-T12); the list row is one Back away.
+  await user.click(await screen.findByRole('button', { name: 'Back' }, SETTLE))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
 
