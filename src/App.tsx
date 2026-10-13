@@ -3,10 +3,11 @@ import type { Services } from './services'
 import type { Muscle } from './types'
 import { ExercisesFeature } from './features/exercises/ExercisesFeature'
 import type { LibraryFilters } from './features/exercises/ExercisesFeature'
-import { HistoryFeature } from './features/history/HistoryFeature'
+import { LiftsScreen } from './features/lifts/LiftsScreen'
 import { ProgramFeature } from './features/program/ProgramFeature'
 import type { AppRoute } from './features/routes'
 import { ServicesProvider } from './features/ServicesProvider'
+import { SessionsScreen } from './features/sessions/SessionsScreen'
 import { SettingsFeature } from './features/settings/SettingsFeature'
 import { useServiceData } from './features/useServiceData'
 import { WorkoutFeature } from './features/workout/WorkoutFeature'
@@ -193,10 +194,12 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
       ) : (
         <>
           {shown.tab === 'sessions' ? (
-            <HistoryFeature key={visit} navigate={navigate} onInSession={ignoreInSession} only="history" />
+            <SessionsScreen key={visit} navigate={navigate} onInSession={ignoreInSession} />
           ) : null}
           {shown.tab === 'lifts' ? (
-            <HistoryFeature key={visit} navigate={navigate} onInSession={ignoreInSession} only="stats" />
+            <AppShell key={visit} title="Lifts">
+              <LiftsScreen />
+            </AppShell>
           ) : null}
           {shown.tab === 'program' && shown.side === 'program' ? (
             <ProgramFeature key={visit} navigate={navigate} onInSession={ignoreInSession} />

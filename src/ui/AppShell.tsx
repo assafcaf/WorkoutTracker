@@ -29,6 +29,11 @@ export type AppShellProps = {
    */
   header?: ReactNode
   /**
+   * The tab screen draws its own large title (the Dashboard, whose header carries the sync
+   * state): the shell draws no header and leaves the main region unpadded. The tab bar stays.
+   */
+  ownHeader?: boolean
+  /**
    * The sticky bottom action bar's contents. Omitted means no action bar. A screen that fills
    * the bar itself passes `<ActionBarSlot />` and portals its controls in through
    * `useActionBarSlot`.
@@ -115,7 +120,7 @@ function createActionBarHost(): HTMLElement {
  */
 export function AppShell(props: AppShellProps): JSX.Element {
   const chrome = useContext(ShellChromeContext)
-  const { title, subtitle, actions, onBack, action, header, children } = props
+  const { title, subtitle, actions, onBack, action, header, ownHeader, children } = props
   // A screen with a back control, an action bar or a header of its own is inside a session, an
   // editor or a page: no tab bar.
   const tab = props.tab ?? (onBack || action || header ? undefined : chrome.tab)
@@ -135,7 +140,9 @@ export function AppShell(props: AppShellProps): JSX.Element {
   )
 
   let shellHeader: ReactNode
-  if (header) {
+  if (ownHeader && !onBack && !header) {
+    shellHeader = null
+  } else if (header) {
     shellHeader = header
   } else if (onBack) {
     shellHeader = (
@@ -178,7 +185,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
       <div className={shellClass}>
         {isTabScreen && chrome.lead ? <div className="app-lead">{chrome.lead}</div> : null}
         {shellHeader}
-        <main className="app-main">{children}</main>
+        <main className={ownHeader ? 'app-main app-main-flush' : 'app-main'}>{children}</main>
         {action ? (
           <div className="action-bar" ref={holdHost}>
             {action}

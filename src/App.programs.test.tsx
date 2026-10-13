@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
+import { workoutsOffered } from './test/dashboard'
 import abSplitJson from './data/programs/assaf-ab-2026.json'
 import { db } from './storage/db'
 import { USER_PROGRAMS_KEY } from './storage/settingsStore'
@@ -237,9 +238,9 @@ test(
       expect((await db.settings.get('activeProgramId'))?.value).toBe(stored.id)
     }, SETTLE)
     await user.click(screen.getByRole('button', { name: 'Dashboard' }))
+    // The Dashboard's dock offers Push, due first, and "Change" steps through Pull and Legs.
     expect(await screen.findByRole('button', { name: 'Start Push' }, SETTLE)).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Start Pull' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Start Legs' })).toBeVisible()
+    expect(await workoutsOffered(user)).toEqual(['Push', 'Pull', 'Legs'])
   },
   LONG,
 )

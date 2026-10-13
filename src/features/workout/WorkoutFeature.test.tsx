@@ -7,6 +7,7 @@ import { createServices, type Services } from '../../services'
 import { ServiceError } from '../../services/errors'
 import type { Session, SetEntry } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
+import { startFromDashboard, workoutsOffered } from '../../test/dashboard'
 import { WorkoutFeature } from './WorkoutFeature'
 
 // E11-T10 O9: the Workout tab as its own container, over the real services (createServices) and
@@ -61,7 +62,7 @@ function renderFeature(services: Services) {
 }
 
 async function startWorkout(user: UserEvent, workoutName: string): Promise<void> {
-  await user.click(await screen.findByRole('button', { name: `Start ${workoutName}` }, SETTLE))
+  await startFromDashboard(user, workoutName)
 }
 
 async function openExercise(user: UserEvent, exerciseName: string): Promise<void> {
@@ -108,8 +109,9 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
 test('O9 WorkoutFeature shows the Workout picker with the active program’s start buttons', async () => {
   renderFeature(await servicesOnAssafAB())
 
+  // The Dashboard's dock offers the workout due, and "Change" steps to the program's other one.
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeVisible()
+  expect(await workoutsOffered(userEvent.setup())).toEqual(['Workout A', 'Workout B'])
 })
 
 test('O9 WorkoutFeature reports onInSession(false) on the picker', async () => {
@@ -124,10 +126,13 @@ test('O9 WorkoutFeature reports onInSession(false) on the picker', async () => {
 test('O9 with no active program the picker offers Choose a program, which navigates to the Program tab', async () => {
   const { user, navigate } = renderFeature(buildServices())
 
-  await user.click(await screen.findByRole('button', { name: 'Choose a program' }, SETTLE))
-
-  expect(navigate).toHaveBeenCalledWith({ tab: 'program' })
+  // The Dashboard (S8) offers the Programs in place: "Use A/B Split" takes it up right there,
+  // with no trip to the Program tab, and its workout due is then offered.
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
+  await user.click(await screen.findByRole('button', { name: 'Use A/B Split' }, SETTLE))
+
+  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+  expect(navigate).not.toHaveBeenCalled()
 })
 
 // --- start or resume ------------------------------------------------------------------------
@@ -401,7 +406,8 @@ test('O9 Done on the Session summary leaves the picker, reporting onInSession(fa
   await waitFor(() => {
     expect(screen.queryByRole('dialog', { name: 'Session summary' })).toBeNull()
   }, SETTLE)
-  expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
+  // Back on the Dashboard, whose dock offers the workout due after Workout A.
+  expect(await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Resume Workout A' })).toBeNull()
   expect(onInSession).toHaveBeenLastCalledWith(false)
 })

@@ -98,6 +98,11 @@
   padding: var(--space-4);
 }
 
+/* A tab screen that draws its own header (the Dashboard) lays out its own padding too. */
+.app-main-flush {
+  padding: 0;
+}
+
 /* The Settings gear (S1) and its backup-due marker. */
 .settings-open {
   position: relative;
