@@ -223,7 +223,7 @@ const library = new Map(
 const resolveWithLibrary = (id: string): Exercise | undefined => resolveExercise(id, catalog, library)
 
 /** The accessible-name prefix of seated-biceps-curls' row once it is swapped for Hammer_Curls. */
-const SWAPPED_ROW = /^Hammer Curls[ ]+instead of Seated biceps curls/
+const SWAPPED_ROW = /^Hammer Curls[ ]+for Seated biceps curls/
 
 const HAMMER_SWAP = { 'seated-biceps-curls': 'Hammer_Curls' }
 
@@ -400,7 +400,16 @@ test('O17 a swapped row shows the done name, its logged/planned counter and an i
   expect(swapped).toHaveClass('swapped')
   expect(swapped.querySelector('.exercise-name')).toHaveTextContent('Hammer Curls')
   expect(swapped.querySelector('.set-progress')).toHaveTextContent('1/3')
-  expect(swapped.querySelector('.exercise-instead')).toHaveTextContent('instead of Seated biceps curls')
+  expect(swapped.querySelector('.exercise-instead')).toHaveTextContent('for Seated biceps curls')
+})
+
+test('O22 a swapped row shows the chosen name with "for <planned name>" under it', () => {
+  renderWorkoutB(workoutBSession([], HAMMER_SWAP))
+
+  const swapped = document.querySelector('.exercise-row.swapped') as HTMLElement
+  expect(swapped.querySelector('.exercise-name')).toHaveTextContent('Hammer Curls')
+  expect(within(swapped).getByText('for Seated biceps curls')).toBeVisible()
+  expect(swapped).not.toHaveTextContent('instead of')
 })
 
 test('O17 only the swapped row carries the swapped class and an instead-of line', () => {

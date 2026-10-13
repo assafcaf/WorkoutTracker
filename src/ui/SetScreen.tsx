@@ -369,18 +369,32 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // Sets are opened in order, so the ones before the opened set are this session's so far;
   // every log then recounts from the session it was written to.
   const [loggedCountState, setLoggedCount] = useState<number>(props.setIndex - 1)
+  // Sets already done before this screen opened that are not among `logged`: an Exercise swapped
+  // in mid-way is opened at the Set the planned one reached (E16-T12). Zero when opened in order.
+  const [carried] = useState<number>(() =>
+    props.logged === undefined
+      ? 0
+      : Math.max(
+          0,
+          props.setIndex -
+            1 -
+            props.logged.filter(
+              (entry) => entry.exerciseId === exercise.id && entry.setIndex < props.setIndex,
+            ).length,
+        ),
+  )
   // Given `logged`, the caller's Sets are the count: it follows edits, deletes and restores.
   const loggedSets = (props.logged ?? [])
     .filter((entry) => entry.exerciseId === exercise.id)
     .sort((a, b) => a.setIndex - b.setIndex)
   const loggedCount =
-    props.logged === undefined ? loggedCountState : workingSets(loggedSets).length
+    props.logged === undefined ? loggedCountState : carried + workingSets(loggedSets).length
   // The open Set's place among the working Sets (E14-T8): warm-ups take a `setIndex` but don't use
   // up the Plan. Without `logged`, every Set before it was working.
   const position =
     props.logged === undefined
       ? open.setIndex
-      : 1 + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
+      : 1 + carried + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
 
   /** Today's Sets to preset from once they are `entries`: none when the caller gives no `logged`. */
   function today(entries: SetEntry[]): SetEntry[] | undefined {

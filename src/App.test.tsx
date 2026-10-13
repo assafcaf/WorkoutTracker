@@ -1551,7 +1551,7 @@ test('F2 tapping Alternatives on a live set opens the alternatives list as a mod
   }, SETTLE)
   // The set screen underneath stays mounted, and nothing was swapped.
   expect(screen.getByRole('button', { name: 'Weight' })).toBeInTheDocument()
-  expect(screen.queryByText(/instead of Seated biceps curls/)).toBeNull()
+  expect(screen.queryByText(/for Seated biceps curls/)).toBeNull()
 })
 
 test('F3 the Alternatives overlay carries the shared overlay-panel class', async () => {
@@ -1589,12 +1589,16 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  // The chosen Exercise's Set screen opens under the closing overlay; Back waits for both.
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
 
   // The done exercise carries the planned sets, rep range and rest -- seated-biceps-curls'
   // own plan (sets: 3, repRange: [10, 12], restSeconds: 90).
   const swappedRow = await screen.findByRole(
     'button',
-    { name: /^Hammer Curls[ ]+instead of Seated biceps curls/ },
+    { name: /^Hammer Curls[ ]+for Seated biceps curls/ },
     SETTLE,
   )
   expect(swappedRow).toBeVisible()
@@ -1617,10 +1621,14 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  // The chosen Exercise's Set screen opens under the closing overlay; Back waits for both.
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
 
   const swappedRow = await screen.findByRole(
     'button',
-    { name: /^Hammer Curls[ ]+instead of Seated biceps curls/ },
+    { name: /^Hammer Curls[ ]+for Seated biceps curls/ },
     SETTLE,
   )
   await user.click(swappedRow)
@@ -1641,7 +1649,7 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
 // workout that plans seated-biceps-curls (sets: 3, repRange: [10, 12], restSeconds: 90).
 
 /** The swapped row's accessible name, as E5-T12 already renders it. */
-const HAMMER_ROW = /^Hammer Curls[ ]+instead of Seated biceps curls/
+const HAMMER_ROW = /^Hammer Curls[ ]+for Seated biceps curls/
 
 /**
  * From seated-biceps-curls' set screen: opens Alternatives, taps "Do this instead" on Hammer
@@ -1657,6 +1665,11 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  // The swap now stays on the Set screen (E16-T12); the list row is one Back away.
+  // The chosen Exercise's Set screen opens under the closing overlay; Back waits for both.
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
 
