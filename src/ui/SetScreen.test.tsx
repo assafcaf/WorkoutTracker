@@ -3876,3 +3876,19 @@ test('O6 a failed store returns the switch off and the Dial to 60 kg', async () 
   expect(bodyweightSwitch()).not.toBeChecked()
   expect(readoutValue(weightReadout())).toBe('60')
 })
+
+// --- E17-T7 O11: destructive actions wear btn-danger -------------------------------------------
+const BUTTON_ROLES = ['btn-primary', 'btn-secondary', 'btn-quiet', 'btn-danger', 'tab', 'key', 'chip', 'cell', 'icon-btn']
+
+/** The control-table roles a button wears (E17-T7 O10/O11). */
+function rolesOf(button: HTMLElement): string[] {
+  return [...button.classList].filter((name) => BUTTON_ROLES.includes(name))
+}
+
+test('E17 O11 Delete set on the Set screen wears btn-danger and no other role', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+
+  expect(rolesOf(screen.getByRole('button', { name: 'Delete set' }))).toEqual(['btn-danger'])
+})

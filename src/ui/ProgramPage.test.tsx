@@ -886,3 +886,18 @@ test("fix-actions-placement a user-only Program's radio card carries Delete, not
   expect(within(row).getByRole('button', { name: 'Delete' })).toBeVisible()
   expect(within(row).queryByRole('button', { name: 'Reset to original' })).toBeNull()
 })
+
+// --- E17-T7 O11: destructive actions wear btn-danger -------------------------------------------
+const BUTTON_ROLES = ['btn-primary', 'btn-secondary', 'btn-quiet', 'btn-danger', 'tab', 'key', 'chip', 'cell', 'icon-btn']
+
+/** The control-table roles a button wears (E17-T7 O10/O11). */
+function rolesOf(button: HTMLElement): string[] {
+  return [...button.classList].filter((name) => BUTTON_ROLES.includes(name))
+}
+
+test('E17 O11 Delete program wears btn-danger and no other role', () => {
+  const { container } = renderActionsPage()
+
+  const row = programRow(container, 'user-only')
+  expect(rolesOf(within(row).getByRole('button', { name: 'Delete' }))).toEqual(['btn-danger'])
+})
