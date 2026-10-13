@@ -19,6 +19,7 @@ export const SYNCED_SETTING_KEYS: readonly SyncedSettingKey[] = [
   'exerciseNotes',
   'effortTracking',
   'plateInventory',
+  'bodyweightOverrides',
 ]
 export type SyncedSetting = { key: SyncedSettingKey; value: unknown; updatedAt: number }
 export type SyncRequest = { since: number; sessions: SyncedSession[]; settings: SyncedSetting[] }

@@ -3,6 +3,7 @@ import type { PlateInventory, VolumeBaseline } from '../types'
 import { validatePlateInventory } from '../domain/plates'
 import { callStorage } from './errors'
 import {
+  getBodyweightOverrides,
   getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
@@ -10,6 +11,7 @@ import {
   getTrackEffort,
   getVolumeBaseline,
   getWeightStep,
+  setBodyweightOverrides,
   setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
   setPlateInventory as storePlateInventory,
@@ -88,8 +90,14 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       if (!verdict.ok) throw new Error(verdict.error)
       await write(() => storePlateInventory(verdict.inventory, deps.now()))
     },
-    // STUB (E16-T1 test-designer): not implemented yet.
-    bodyweightOverrides: () => Promise.reject(new Error('NotImplementedError: bodyweightOverrides')),
-    setBodyweight: () => Promise.reject(new Error('NotImplementedError: setBodyweight')),
+    bodyweightOverrides: () =>
+      callStorage(deps, getBodyweightOverrides, 'bodyweightOverrides read failed'),
+    setBodyweight: (exerciseId, value, defaultValue) =>
+      write(async () => {
+        const overrides = await getBodyweightOverrides()
+        if (value === defaultValue) delete overrides[exerciseId]
+        else overrides[exerciseId] = value
+        await setBodyweightOverrides(overrides, deps.now())
+      }),
   }
 }
