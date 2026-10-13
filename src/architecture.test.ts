@@ -477,3 +477,25 @@ describe('code moved out of App.tsx is deleted (O15)', () => {
     expect(await db.settings.get('activeProgramId')).toBeUndefined()
   })
 })
+
+// --- E16-T13 O6: the Screen groups resolve Exercises through applyBodyweight ----------------
+
+describe('Screen groups resolve Exercises through applyBodyweight (E16-T13 O6)', () => {
+  test('O6 the Workout, History and Exercises Screen groups that import resolveExercise also import applyBodyweight', () => {
+    const screenGroups = [
+      'src/features/workout/WorkoutFeature.tsx',
+      'src/features/history/HistoryFeature.tsx',
+      'src/features/exercises/ExercisesFeature.tsx',
+    ]
+    const importsName = (file: string, name: string): boolean =>
+      new RegExp(`import\\s+(?!type\\b)\\{[^}]*\\b${name}\\b[^}]*\\}\\s+from`).test(
+        readFileSync(resolve(root, file), 'utf-8'),
+      )
+
+    const offenders = screenGroups.filter(
+      (file) => importsName(file, 'resolveExercise') && !importsName(file, 'applyBodyweight'),
+    )
+
+    expect(offenders).toEqual([])
+  })
+})

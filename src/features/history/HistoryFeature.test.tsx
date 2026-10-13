@@ -400,3 +400,21 @@ test('O16 opening a Session from History shows its duration, volume and the PR i
   expect(within(dialog).getByText('700 kg')).toBeVisible()
   expect(within(dialog).getByText('Back squat · Heaviest set · 70 kg × 5')).toBeVisible()
 })
+
+// --- E16-T13 O6: History resolves Exercises through the Bodyweight override -------------------
+
+test('O6 Stats counts a Back squat Set as bodyweight reps once Back squat is overridden to Bodyweight', async () => {
+  const services = createServices({ now: () => NOW, storageAvailable: true })
+  await finishASession(services)
+  await services.preferences.setBodyweight('back-squat', true, false)
+
+  render(
+    <ServicesProvider services={services}>
+      <HistoryFeature navigate={navigate} onInSession={onInSession} />
+    </ServicesProvider>,
+  )
+  const group = await waitFor(() => historyViewSwitch(), SETTLE)
+  await userEvent.setup().click(within(group).getByRole('button', { name: 'Stats' }))
+
+  expect(await screen.findByText('Workout A: 8 bodyweight reps', {}, SETTLE)).toBeVisible()
+})

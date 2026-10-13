@@ -3738,3 +3738,132 @@ test('O9 the stylesheet lays .set-dial-controls out as one row', () => {
   const decls = declarationsFor(restCss(), '.set-dial-controls')
   expect(decls.get('display')).toMatch(/^(flex|grid)$/)
 })
+
+// --- E16-T13 O6: the Bodyweight switch -------------------------------------------------------
+//
+// The caller hands in the Exercise already resolved through `applyBodyweight`; the switch shows
+// that setting, flips the Dial's mode at once, and tells the caller through `onBodyweightChange`.
+
+/** The Bodyweight switch beside the step control. */
+function bodyweightSwitch(): HTMLElement {
+  return screen.getByRole('switch', { name: 'Bodyweight' })
+}
+
+/** Back squat as the caller resolves it with a Bodyweight override stored for it. */
+const backSquatAsBodyweight: Exercise = { ...backSquat, bodyweight: true }
+
+/** A store that has not answered yet: the screen must not wait on it to change mode. */
+function pendingStore() {
+  return vi.fn((_value: boolean) => new Promise<void>(() => {}))
+}
+
+test('O6 a loaded Exercise shows the Bodyweight switch off, in .set-dial-controls beside the step control', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onBodyweightChange: pendingStore() })
+
+  const toggle = bodyweightSwitch()
+  expect(toggle).not.toBeChecked()
+  expect(controlsRow().contains(toggle)).toBe(true)
+  expect(controlsRow().contains(stepControl(2.5))).toBe(true)
+})
+
+test('O6 a Bodyweight Exercise shows the Bodyweight switch on, in .set-dial-controls', () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan, onBodyweightChange: pendingStore() })
+
+  expect(bodyweightSwitch()).toBeChecked()
+  expect(controlsRow().contains(bodyweightSwitch())).toBe(true)
+})
+
+test('O6 an Exercise the caller resolved as Bodyweight by override shows the switch on', () => {
+  renderSetScreen({ exercise: backSquatAsBodyweight, onBodyweightChange: pendingStore() })
+
+  expect(bodyweightSwitch()).toBeChecked()
+})
+
+test('O6 flipping the switch on tells onBodyweightChange true, once', async () => {
+  const onBodyweightChange = vi.fn(async (_value: boolean) => {})
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onBodyweightChange })
+
+  await user.click(bodyweightSwitch())
+
+  expect(onBodyweightChange.mock.calls).toEqual([[true]])
+})
+
+test('O6 flipping the switch off tells onBodyweightChange false, once', async () => {
+  const onBodyweightChange = vi.fn(async (_value: boolean) => {})
+  const { user } = renderSetScreen({ exercise: backSquatAsBodyweight, onBodyweightChange })
+
+  await user.click(bodyweightSwitch())
+
+  expect(onBodyweightChange.mock.calls).toEqual([[false]])
+})
+
+test('O6 flipping Bodyweight on turns the switch on and the 60 kg Dial into BW+60 at once, before the store answers', async () => {
+  const { user } = renderSetScreen({
+    lastEntries: [historyEntry(1, 60, 10)],
+    onBodyweightChange: pendingStore(),
+  })
+  expect(readoutValue(weightReadout())).toBe('60')
+
+  await user.click(bodyweightSwitch())
+
+  expect(bodyweightSwitch()).toBeChecked()
+  expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['BW+60', '10'])
+})
+
+test('O6 flipping Bodyweight off turns a BW+10 Dial onto the start weight, 50 kg', async () => {
+  const { user } = renderSetScreen({
+    exercise: backSquatAsBodyweight,
+    lastEntries: [{ ...historyEntry(1, null, 10), loadKg: 10 }],
+    onBodyweightChange: pendingStore(),
+  })
+  expect(readoutValue(weightReadout())).toBe('BW+10')
+
+  await user.click(bodyweightSwitch())
+
+  expect(bodyweightSwitch()).not.toBeChecked()
+  expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['50', '10'])
+})
+
+test('O6 a Set logged after flipping Bodyweight on is stored as a Bodyweight Set with the signed Load', async () => {
+  const { user } = renderSetScreen({
+    lastEntries: [historyEntry(1, 60, 10)],
+    onBodyweightChange: vi.fn(async (_value: boolean) => {}),
+  })
+
+  await user.click(bodyweightSwitch())
+  await user.click(logButton())
+
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  const [entry] = await storedEntries()
+  expect([entry.weightKg, entry.loadKg, entry.reps]).toEqual([null, 60, 10])
+})
+
+test('O6 a failed store shows its message under the Bodyweight switch', async () => {
+  const { user } = renderSetScreen({
+    lastEntries: [historyEntry(1, 60, 10)],
+    onBodyweightChange: vi.fn(async (_value: boolean) => {
+      throw new Error('Could not save the setting')
+    }),
+  })
+
+  await user.click(bodyweightSwitch())
+
+  const message = await screen.findByText('Could not save the setting')
+  expect(message).toBeVisible()
+  expect(bodyweightSwitch().compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O6 a failed store returns the switch off and the Dial to 60 kg', async () => {
+  const { user } = renderSetScreen({
+    lastEntries: [historyEntry(1, 60, 10)],
+    onBodyweightChange: vi.fn(async (_value: boolean) => {
+      throw new Error('Could not save the setting')
+    }),
+  })
+
+  await user.click(bodyweightSwitch())
+  await screen.findByText('Could not save the setting')
+
+  expect(bodyweightSwitch()).not.toBeChecked()
+  expect(readoutValue(weightReadout())).toBe('60')
+})

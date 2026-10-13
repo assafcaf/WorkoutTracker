@@ -126,6 +126,14 @@ export type SetScreenProps = {
    */
   onWeightStepChange?(step: number): void
   /**
+   * Told the Bodyweight setting just chosen from the Bodyweight switch (E16-T13 O6), so the caller
+   * can store the override for this Exercise. A rejection's message shows under the switch, and
+   * the switch returns to the setting it had.
+   *
+   * STUB (E16-T13 test-designer): accepted but not yet wired to a switch.
+   */
+  onBodyweightChange?(value: boolean): Promise<void>
+  /**
    * The current Exercise's first primary muscle's family (E10-T8), already resolved by the
    * caller (App.tsx, via the Library and `familyOf`) -- this component treats it as a plain
    * input and does not look it up itself. Optional: an Exercise with no library link, or a
