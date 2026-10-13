@@ -3,7 +3,12 @@ import { useEffect, useRef, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
+import { validateEntry } from '../../domain/dial'
 import { nextExerciseAfter } from '../../domain/flow'
+import { currentExerciseId, liveProgress, planFor } from '../../domain/liveProgress'
+import { presetForSet } from '../../domain/prefill'
+import { workingSets } from '../../domain/setKind'
+import { formatSet } from '../../domain/setText'
 import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
 import { latestSet, restLengthOf } from '../../domain/rest'
@@ -20,7 +25,6 @@ import type {
   Workout,
 } from '../../types'
 import { ActionBarSlot, AppShell, SettingsButton } from '../../ui/AppShell'
-import { Segmented } from '../../ui/controls'
 import { LiveHeader } from '../../ui/LiveHeader'
 import type { LiveStatus } from '../../ui/LiveStrip'
 import { BackupBadge } from '../../ui/BackupBadge'
@@ -32,6 +36,9 @@ import { SetScreen } from '../../ui/SetScreen'
 import { StorageUnavailableBanner } from '../../ui/StorageUnavailableBanner'
 import { WorkoutStartButtons } from '../../ui/WorkoutStartButtons'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
+import { LiveSessionBar } from '../../ui/live/LiveSessionBar'
+import type { LiveView } from '../../ui/live/LiveSessionBar'
+import { UpNextRows } from '../../ui/live/UpNextRows'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
@@ -84,6 +91,8 @@ type OpenSet = {
   seed?: SetEntry[]
   /** The Set the screen is on after logging, which its key (`setIndex`) does not follow. */
   liveSetIndex?: number
+  /** A logged Set to open for editing: a done cell tapped in the All view. */
+  editSetIndex?: number
 }
 
 /** The detail overlay (E5-T8, E5-T15) or the ranked alternatives overlay (E5-T12). */
@@ -501,6 +510,75 @@ export function WorkoutFeature({
       })
   }
 
+  /** A done cell tapped in All: opens its Exercise on the Now view with that Set to edit. */
+  function handleOpenLogged(exerciseId: string, setIndex: number): void {
+    if (!session) return
+    const logged = session.entries.filter((entry) => entry.exerciseId === exerciseId).length
+    Promise.all([
+      services.sessions.lastEntriesFor(exerciseId),
+      services.preferences.weightStep(exerciseId),
+    ])
+      .then(([history, weightStep]) => {
+        setOpenSet({
+          exerciseId,
+          setIndex: logged + 1,
+          history,
+          extra: false,
+          weightStep,
+          exerciseNote: null,
+          editSetIndex: setIndex,
+        })
+        setView('set')
+        loadExerciseNote(exerciseId)
+      })
+      .catch(() => {
+        // The All view stays up; nothing was opened.
+      })
+  }
+
+  /** The Set the All view's Log button logs: the current Exercise's next one, at its Preset. */
+  function quickLogEntry(): { entry: SetEntry; position: number } | null {
+    if (!session || !located) return null
+    const id = currentExerciseId(located.workout, session)
+    if (id === null) return null
+    const plan = planFor(located.workout, session, id)
+    const exercise = resolveListExercise(id)
+    if (!plan || !exercise) return null
+    const today = session.entries.filter((entry) => entry.exerciseId === id)
+    const setIndex = today.length + 1
+    const position = workingSets(today).length + 1
+    const preset = presetForSet({
+      exercise,
+      plan,
+      setIndex,
+      lastEntries: lastEntries.get(id) ?? [],
+      today,
+    })
+    const entry: SetEntry = {
+      exerciseId: id,
+      setIndex,
+      weightKg: preset.weightKg,
+      reps: preset.reps,
+      ...(preset.loadKg ? { loadKg: preset.loadKg } : {}),
+      loggedAt: 0,
+      ...(plan.amrapLast === true && position === plan.sets ? { kind: 'amrap' as const } : {}),
+    }
+    return { entry, position }
+  }
+
+  /** The All view's Log button: one tap logs the pre-filled Set, a whole-Session put. */
+  function handleQuickLog(): void {
+    const next = quickLogEntry()
+    if (!session || next === null) return
+    if (!validateEntry(next.entry.weightKg, next.entry.reps, next.entry.loadKg).ok) return
+    services.sessions
+      .logSet(session.id, { ...next.entry, loggedAt: Date.now() })
+      .then(setSession)
+      .catch(() => {
+        // Nothing was logged; the button stays for another try.
+      })
+  }
+
   /** Fills in the open set's Exercise note once it is read; the screen is already up. */
   function loadExerciseNote(exerciseId: string): void {
     services.preferences
@@ -635,23 +713,29 @@ export function WorkoutFeature({
         startedAt={liveSession.startedAt}
         onMinimise={handleMinimise}
         onFinish={handleFinish}
-      >
-        <Segmented
-          name="live-view"
-          label="Live session view"
-          value={view === 'set' ? 'now' : 'all'}
-          options={[
-            { value: 'now', label: 'Now' },
-            { value: 'all', label: 'All' },
-          ]}
-          onChange={(next) => {
-            if (next === 'all') setView('list')
-            else handleNow()
-          }}
-        />
-      </LiveHeader>
+      />
     )
   }
+  // The Live session's projection line and its Now | All switch (Progress Dashboard S2/S3),
+  // over both views of the Session in progress.
+  const liveBar = (shown: LiveView): JSX.Element | null =>
+    session && located ? (
+      <LiveSessionBar
+        progress={liveProgress({
+          workout: located.workout,
+          session,
+          earlier: sessions,
+          resolve: resolveListExercise,
+        })}
+        workoutName={located.workout.name}
+        view={shown}
+        onViewChange={(next) => {
+          if (next === shown) return
+          if (next === 'all') setView('list')
+          else handleNow()
+        }}
+      />
+    ) : null
 
   let content: JSX.Element | null = null
 
@@ -683,9 +767,22 @@ export function WorkoutFeature({
           header={liveHeader(session, located.workout.name, false)}
           action={<ActionBarSlot />}
         >
-          <h1 className="live-exercise-title">{exercise.name}</h1>
+          {liveBar('now')}
           <SetScreen
-            key={`${openSet.exerciseId}#${openSet.setIndex}`}
+            key={`${openSet.exerciseId}#${openSet.setIndex}#${openSet.editSetIndex ?? ''}`}
+            editSetIndex={openSet.editSetIndex}
+            upcoming={
+              <UpNextRows
+                workout={located.workout}
+                session={session}
+                resolve={resolveListExercise}
+                lastEntries={lastEntries}
+                sessions={sessions}
+                volumeBaseline={volumeBaseline}
+                currentId={openSet.exerciseId}
+                onOpen={handleOpenSet}
+              />
+            }
             exercise={exercise}
             plates={isBarbell(libraryMap.get(exercise.libraryId)) ? (plateInventoryData.status === 'ready' ? plateInventoryData.data : null) : null}
             plan={plan}
@@ -807,9 +904,23 @@ export function WorkoutFeature({
   }
 
   if (content === null && liveOnScreen && view === 'list' && session && located) {
+    const quick = quickLogEntry()
     content = (
-      <AppShell title={located.workout.name} header={liveHeader(session, located.workout.name)}>
+      <AppShell
+        title={located.workout.name}
+        header={liveHeader(session, located.workout.name)}
+        action={
+          quick === null ? undefined : (
+            <button type="button" className="log-set btn-primary" onClick={handleQuickLog}>
+              {`Log set ${quick.position} · ${formatSet(quick.entry)}`}
+            </button>
+          )
+        }
+      >
+        {liveBar('all')}
         <ExerciseList
+          currentId={currentExerciseId(located.workout, session)}
+          onOpenLogged={handleOpenLogged}
           program={located.program}
           workout={located.workout}
           resolve={resolveListExercise}
