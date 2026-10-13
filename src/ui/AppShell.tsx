@@ -157,16 +157,19 @@ export function AppShell(props: AppShellProps): JSX.Element {
       </header>
     )
   } else {
+    // Under a lead (the Program tab's switch, S7a) the screen's own actions ride the lead's row,
+    // right-aligned, and the title below carries only the trailing slot.
+    const titleActions = chrome.lead ? null : actions
     shellHeader = (
       <PageHeader
         className="app-header"
         title={title}
         subtitle={subtitle}
         actions={
-          actions || trailing ? (
+          titleActions || trailing ? (
             <>
               {trailing ? <div className="app-header-trailing">{trailing}</div> : null}
-              {actions}
+              {titleActions}
             </>
           ) : undefined
         }
@@ -183,7 +186,12 @@ export function AppShell(props: AppShellProps): JSX.Element {
     // that lays out no action bar keeps its controls where they stand.
     <ActionBarHostContext.Provider value={action ? host : null}>
       <div className={shellClass}>
-        {isTabScreen && chrome.lead ? <div className="app-lead">{chrome.lead}</div> : null}
+        {isTabScreen && chrome.lead ? (
+          <div className="app-lead">
+            {chrome.lead}
+            {actions ? <div className="app-lead-actions">{actions}</div> : null}
+          </div>
+        ) : null}
         {shellHeader}
         <main className={ownHeader ? 'app-main app-main-flush' : 'app-main'}>{children}</main>
         {action ? (

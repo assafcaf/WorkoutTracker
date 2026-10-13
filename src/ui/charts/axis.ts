@@ -6,19 +6,22 @@ const TICK_TARGET = 4
 /** Up to this many points, the x-axis labels every one; past it, only the first and last. */
 const MAX_X_LABELS = 6
 
-/** A clean step (1, 2 or 5 times a power of ten) giving about `TICK_TARGET` ticks over `span`. */
-function niceStep(span: number): number {
-  const raw = span / TICK_TARGET
+/** A clean step (1, 2 or 5 times a power of ten) giving about `target` ticks over `span`. */
+function niceStep(span: number, target: number): number {
+  const raw = span / target
   const power = 10 ** Math.floor(Math.log10(raw))
   const fraction = raw / power
   const nice = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10
   return nice * power
 }
 
-/** Clean ticks covering `min`..`max`, lowest first. A flat series gets a band around its value. */
-export function ticksFor(min: number, max: number): number[] {
+/**
+ * Clean ticks covering `min`..`max`, lowest first, about `target` steps apart. A flat series
+ * gets a band around its value.
+ */
+export function ticksFor(min: number, max: number, target = TICK_TARGET): number[] {
   const span = max - min
-  const step = niceStep(span > 0 ? span : Math.max(Math.abs(max), 1))
+  const step = niceStep(span > 0 ? span : Math.max(Math.abs(max), 1), target)
   const low = Math.floor(min / step) * step
   const high = Math.max(Math.ceil(max / step) * step, low + step)
   const ticks: number[] = []

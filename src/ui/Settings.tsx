@@ -4,6 +4,7 @@ import type { SyncView } from '../services/syncView'
 import { formatDay } from '../domain/dates'
 import { PlateInventoryEditor } from './PlateInventoryEditor'
 import { Segmented, Select, Switch } from './controls'
+import { Icon } from './icons'
 import './Settings.css'
 
 export type { SyncView }
@@ -158,139 +159,158 @@ export function Settings(props: SettingsProps): JSX.Element {
     <div className="settings">
       <fieldset className="settings-group">
         <legend className="settings-legend">Active program</legend>
-        <Segmented
-          name="active-program"
-          label="Active program"
-          value={activeProgramId ?? ''}
-          options={programs.map((program) => ({ value: program.id, label: program.name }))}
-          onChange={(id) => {
-            if (id !== activeProgramId) onActiveProgramChange(id)
-          }}
-        />
+        <div className="settings-card card">
+          <Segmented
+            name="active-program"
+            label="Active program"
+            value={activeProgramId ?? ''}
+            options={programs.map((program) => ({ value: program.id, label: program.name }))}
+            onChange={(id) => {
+              if (id !== activeProgramId) onActiveProgramChange(id)
+            }}
+          />
+        </div>
       </fieldset>
       <fieldset className="settings-group">
         <legend className="settings-legend">My gym&apos;s equipment</legend>
-        {equipmentTypes.map((type) => {
-          const checked = gymEquipment === null || gymEquipment.includes(type)
-          return (
-            <div key={type} className="settings-action">
-              <Switch checked={checked} onChange={() => handleEquipmentToggle(type)} label={type} />
-            </div>
-          )
-        })}
+        <div className="settings-card card">
+          {equipmentTypes.map((type) => {
+            const checked = gymEquipment === null || gymEquipment.includes(type)
+            return (
+              <div key={type} className="settings-action">
+                <Switch checked={checked} onChange={() => handleEquipmentToggle(type)} label={type} />
+              </div>
+            )
+          })}
+        </div>
       </fieldset>
       {plateInventory ? (
         <fieldset className="settings-group">
           <legend className="settings-legend">Bar and plates</legend>
-          <PlateInventoryEditor
-            inventory={plateInventory}
-            onChange={(next) => onPlateInventoryChange?.(next)}
-            error={plateInventoryError}
-          />
+          <div className="settings-card card">
+            <PlateInventoryEditor
+              inventory={plateInventory}
+              onChange={(next) => onPlateInventoryChange?.(next)}
+              error={plateInventoryError}
+            />
+          </div>
         </fieldset>
       ) : null}
       <fieldset className="settings-group">
         <legend className="settings-legend">Compare volume</legend>
-        <label className="settings-action">
-          <span className="settings-action-label">Compare volume with</span>
-          <Select value={volumeBaseline.period} onChange={handleCompareChange}>
-            <option value="last">Last workout</option>
-            <option value="1w">Past week</option>
-            <option value="1m">Past month</option>
-            <option value="3m">Past 3 months</option>
-            <option value="6m">Past 6 months</option>
-            <option value="since">Since a date</option>
-          </Select>
-        </label>
-        {volumeBaseline.period !== 'last' ? (
+        <div className="settings-card card">
           <label className="settings-action">
-            <span className="settings-action-label">Using</span>
-            <Select value={volumeBaseline.aggregate} onChange={handleAggregateChange}>
-              <option value="avg">Average</option>
-              <option value="max">Best</option>
+            <span className="settings-action-label">Compare volume with</span>
+            <Select value={volumeBaseline.period} onChange={handleCompareChange}>
+              <option value="last">Last workout</option>
+              <option value="1w">Past week</option>
+              <option value="1m">Past month</option>
+              <option value="3m">Past 3 months</option>
+              <option value="6m">Past 6 months</option>
+              <option value="since">Since a date</option>
             </Select>
           </label>
-        ) : null}
-        {volumeBaseline.period === 'since' ? (
-          <label className="settings-action">
-            <span className="settings-action-label">Since</span>
-            <input
-              className="settings-date"
-              type="date"
-              value={new Date(volumeBaseline.since).toISOString().slice(0, 10)}
-              onChange={handleSinceChange}
-            />
-          </label>
-        ) : null}
+          {volumeBaseline.period !== 'last' ? (
+            <label className="settings-action">
+              <span className="settings-action-label">Using</span>
+              <Select value={volumeBaseline.aggregate} onChange={handleAggregateChange}>
+                <option value="avg">Average</option>
+                <option value="max">Best</option>
+              </Select>
+            </label>
+          ) : null}
+          {volumeBaseline.period === 'since' ? (
+            <label className="settings-action">
+              <span className="settings-action-label">Since</span>
+              <input
+                className="settings-date"
+                type="date"
+                value={new Date(volumeBaseline.since).toISOString().slice(0, 10)}
+                onChange={handleSinceChange}
+              />
+            </label>
+          ) : null}
+        </div>
       </fieldset>
       <fieldset className="settings-group">
         <legend className="settings-legend">Effort</legend>
-        <div className="settings-action">
-          <Switch
-            checked={trackEffort}
-            onChange={(next) => onTrackEffortChange?.(next)}
-            label="Track effort"
-          />
+        <div className="settings-card card">
+          <div className="settings-action">
+            <Switch
+              checked={trackEffort}
+              onChange={(next) => onTrackEffortChange?.(next)}
+              label="Track effort"
+            />
+          </div>
         </div>
       </fieldset>
-      <button type="button" className="settings-action btn-secondary" onClick={() => onExport?.()}>
-        <span className="settings-action-label">Export</span>
-      </button>
-      <label className="settings-action">
-        <span className="settings-action-label">Import backup</span>
-        <input
-          className="import-file"
-          type="file"
-          accept="application/json,.json"
-          onChange={handleFileChange}
-        />
-      </label>
+      <section className="settings-group" aria-label="Backup">
+        <h2 className="settings-legend">Backup</h2>
+        <div className="settings-card card">
+          <button type="button" className="settings-action btn-quiet" onClick={() => onExport?.()}>
+            <span className="settings-action-label">Export</span>
+            <Icon name="ChevronRight" size={18} />
+          </button>
+          <label className="settings-action">
+            <span className="settings-action-label">Import backup</span>
+            <Icon name="ChevronRight" size={18} />
+            <input
+              className="import-file"
+              type="file"
+              accept="application/json,.json"
+              onChange={handleFileChange}
+            />
+          </label>
+        </div>
+      </section>
       {sync ? (
         <fieldset className="settings-group">
           <legend className="settings-legend">Account</legend>
-          <p className="settings-account-email">
-            {sync.accountEmail ?? 'Not signed in'}
-          </p>
-          <p className="settings-account-synced">
-            {sync.lastSyncedAt === null
-              ? 'Never synced'
-              : formatDay(new Date(sync.lastSyncedAt), new Date())}
-          </p>
-          <button
-            type="button"
-            className="settings-action btn-secondary"
-            onClick={() => onSyncNow?.()}
-            disabled={sync.status === 'syncing'}
-          >
-            <span className="settings-action-label">Sync now</span>
-          </button>
-          {sync.status === 'signed-out' ? (
-            <a className="settings-action" href="/api/login">
-              <span className="settings-action-label">Sign in</span>
-            </a>
-          ) : null}
-          {sync.status === 'account-mismatch' ? (
-            <>
-              <p className="settings-account-mismatch">
-                This phone is signed in as {sync.signedInEmail}, but last synced as{' '}
-                {sync.accountEmail}.
-              </p>
-              <button
-                type="button"
-                className="settings-action btn-secondary"
-                onClick={() => onAdoptAccount?.()}
-              >
-                <span className="settings-action-label">
-                  Use {sync.signedInEmail}&apos;s data on this phone
-                </span>
-              </button>
-            </>
-          ) : null}
-          {sync.status === 'offline' ? (
-            <p className="settings-account-offline">
-              This phone is offline; it will sync later.
+          <div className="settings-card card">
+            <p className="settings-account-email">
+              {sync.accountEmail ?? 'Not signed in'}
             </p>
-          ) : null}
+            <p className="settings-account-synced">
+              {sync.lastSyncedAt === null
+                ? 'Never synced'
+                : formatDay(new Date(sync.lastSyncedAt), new Date())}
+            </p>
+            <button
+              type="button"
+              className="settings-action btn-quiet"
+              onClick={() => onSyncNow?.()}
+              disabled={sync.status === 'syncing'}
+            >
+              <span className="settings-action-label">Sync now</span>
+            </button>
+            {sync.status === 'signed-out' ? (
+              <a className="settings-action" href="/api/login">
+                <span className="settings-action-label">Sign in</span>
+              </a>
+            ) : null}
+            {sync.status === 'account-mismatch' ? (
+              <>
+                <p className="settings-account-mismatch">
+                  This phone is signed in as {sync.signedInEmail}, but last synced as{' '}
+                  {sync.accountEmail}.
+                </p>
+                <button
+                  type="button"
+                  className="settings-action btn-quiet"
+                  onClick={() => onAdoptAccount?.()}
+                >
+                  <span className="settings-action-label">
+                    Use {sync.signedInEmail}&apos;s data on this phone
+                  </span>
+                </button>
+              </>
+            ) : null}
+            {sync.status === 'offline' ? (
+              <p className="settings-account-offline">
+                This phone is offline; it will sync later.
+              </p>
+            ) : null}
+          </div>
         </fieldset>
       ) : null}
     </div>

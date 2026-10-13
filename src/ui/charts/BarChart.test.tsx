@@ -104,7 +104,7 @@ test('O19 BarChart draws an x-axis labelling the bars with their dates', () => {
 })
 
 test('O19 BarChart draws a y-axis labelling values from 0 up to the tallest bar', () => {
-  const values = axisLabels(datedChart(), 'y').map((label) => Number((label.textContent ?? '').trim()))
+  const values = axisLabels(datedChart(), 'y').map((label) => Number((label.textContent ?? '').trim().replace(/,/g, '')))
 
   expect(values.every((value) => Number.isFinite(value)), `y labels: ${values.join(' | ')}`).toBe(true)
   expect(values).toContain(0)
@@ -127,4 +127,18 @@ test('O19 BarChart.css references no --color-accent token', () => {
   const cssPath = join(resolve(fileURLToPath(import.meta.url), '..'), 'BarChart.css')
 
   expect([...referencedVars(readFileSync(cssPath, 'utf-8'))]).not.toContain('--color-accent')
+})
+
+// S6a: the last bar carries its own value, thousands separated, and the y-axis reads the same
+// way, three clean steps from 0 (0, 5,000, 10,000 for a 9,840 kg session).
+test('S6a BarChart labels the last bar with its value and the y-axis with thousands separators', () => {
+  const { container } = render(
+    <BarChart
+      bars={[bar({ at: OCT_13, value: 8920 }), bar({ at: OCT_20, value: 9840 })]}
+      title="Volume per session, kg"
+    />,
+  )
+
+  expect(container.querySelector('.bar-chart-value-label')?.textContent).toBe('9,840')
+  expect(axisLabels(container, 'y').map((label) => label.textContent)).toEqual(['0', '5,000', '10,000'])
 })

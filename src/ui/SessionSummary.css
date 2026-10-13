@@ -205,7 +205,7 @@
 
 .session-summary-table th:first-child,
 .session-summary-table td:first-child {
-  max-width: 120px;
+  max-width: 100px;
   padding-left: 0;
   overflow: hidden;
   text-align: left;
@@ -252,4 +252,16 @@
   color: var(--color-on-primary);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
+}
+
+/* The table's PR mark is the mock's small tag (S5b): 16 px, a 1 px accent ring. */
+.session-summary-table .tag-pr {
+  min-height: 16px;
+  padding: 0 4px;
+  border-width: 1px;
+  letter-spacing: 0.02em;
+}
+
+.session-summary-table th {
+  white-space: nowrap;
 }

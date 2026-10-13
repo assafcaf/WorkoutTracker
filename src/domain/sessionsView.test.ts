@@ -117,7 +117,7 @@ test('S6a heatRowsFor shows the eleven core rows always and an extra Region only
     'Chest',
     'Shoulders',
     'Triceps',
-    'Upper back',
+    'Lats',
     'Biceps',
     'Quads',
     'Lower back',

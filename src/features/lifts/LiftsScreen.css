@@ -6,7 +6,7 @@
 .lifts {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 10px;
 }
 
 /* The search field: a raised well with the magnifier, the input taking the rest of the row. */
@@ -50,8 +50,8 @@
 .lifts-chips {
   display: flex;
   gap: var(--space-2);
-  margin-right: calc(var(--space-4) * -1);
-  padding-right: var(--space-4);
+  margin: calc(var(--space-1) * -1) calc(var(--space-4) * -1) calc(var(--space-1) * -1) 0;
+  padding: var(--space-1) var(--space-4) var(--space-1) 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -60,10 +60,17 @@
   display: none;
 }
 
-.lifts-chip {
+/* A lift chip (S6b): 36 px drawn, a hairline border and secondary text; the chosen one is
+ * outlined in the accent on the surface. Its hit area reaches the tap floor past its edges, which
+ * is why the row pads itself by the difference and pulls the next block back up by it. */
+.chip.lifts-chip {
+  position: relative;
   flex: none;
-  min-height: var(--tap-min);
+  height: 36px;
+  min-height: 36px;
   padding: 0 var(--space-3);
+  border-color: var(--color-hairline);
+  color: var(--color-secondary);
   font: inherit;
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
@@ -71,7 +78,16 @@
   cursor: pointer;
 }
 
-.lifts-chip[aria-pressed='true'] {
+.lifts-chip::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+
+.chip.lifts-chip[aria-pressed='true'] {
+  border: 1.5px solid var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-primary);
   font-weight: var(--weight-semibold);
 }
 
@@ -99,19 +115,13 @@
 
 .lifts-card-head .segmented {
   flex: none;
-  flex-wrap: nowrap;
-  width: 144px;
-  padding: 3px;
-  border-radius: var(--radius-sm);
+  width: 132px;
+  height: 32px;
 }
 
-.lifts-card-head .segmented-option {
-  padding: 0;
-  font-size: var(--text-sm);
-}
-
+/* A 26 px segment, tapped across the 44 px floor. */
 .lifts-card-head .segmented .segmented-input {
-  border-radius: var(--radius-sm);
+  inset: -9px 0;
 }
 
 .lifts-hero {
