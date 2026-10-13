@@ -1377,3 +1377,60 @@ test('O21 closing History returns to the same open Set with its logged Set and r
   expect((await restReadoutText()).slice(0, 2)).toBe(restBefore.slice(0, 2))
   expect((await storedActiveSession())?.entries).toHaveLength(1)
 })
+
+// --- E16-T14: assisted pull-ups logged before the epic (O16) ----------------------------------
+
+// Before E16 an assisted pull-up was stored as weightKg 27 with no loadKg; it reads BW−27 × 8.
+const MINUS = '−'
+const TIMES = '×'
+
+/** A Session of Tue 6 Oct 2026 as stored before E16: assisted pull-ups at weightKg `kg` x 8. */
+async function seedPreEpicAssisted(id: string, kg: number, finished: boolean, startedAt: number): Promise<void> {
+  await db.sessions.put({
+    id,
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-b',
+    startedAt,
+    finishedAt: finished ? startedAt + 3600_000 : null,
+    entries: [
+      { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: kg, reps: 8, loggedAt: startedAt + 1 },
+    ],
+  } as Session)
+}
+
+const OCT_6 = Date.UTC(2026, 9, 6, 12)
+
+test('O16 a pre-epic assisted pull-ups Set reads BW−27 × 8 on the Last time line and the next Set opens at BW−27', async () => {
+  await seedPreEpicAssisted('pre-epic', 27, true, OCT_6)
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Assisted pull-ups')
+
+  expect(
+    await screen.findByText(new RegExp(`^Last time: BW${MINUS}27 ?${TIMES} ?8$`), undefined, SETTLE),
+  ).toBeVisible()
+  expect(loadReadoutValue()).toBe(`BW${MINUS}27`)
+})
+
+test('O16 the History overlay lists a pre-epic assisted pull-ups Set as BW−27 × 8', async () => {
+  await seedPreEpicAssisted('pre-epic', 27, true, OCT_6)
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await startWorkout(user, 'Workout B')
+  await openExercise(user, 'Assisted pull-ups')
+
+  await user.click(await screen.findByRole('button', { name: 'History' }, SETTLE))
+
+  const dialog = await screen.findByRole('dialog', { name: 'History · Assisted pull-ups' }, SETTLE)
+  expect(dialog.textContent).toMatch(new RegExp(`BW${MINUS}27 ?${TIMES} ?8`))
+})
+
+test('O16 the session summary reads a pre-epic assisted pull-ups Set as BW−27 × 8', async () => {
+  await seedPreEpicAssisted('older', 30, true, Date.UTC(2026, 8, 29, 12))
+  await seedPreEpicAssisted('pre-epic', 27, false, OCT_6)
+  const { user } = renderFeature(await servicesOnAssafAB())
+
+  await user.click(await screen.findByRole('button', { name: 'Finish workout' }, SETTLE))
+
+  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  await waitFor(() => expect(summary.textContent).toMatch(new RegExp(`BW${MINUS}27 ?${TIMES} ?8`)), SETTLE)
+})
