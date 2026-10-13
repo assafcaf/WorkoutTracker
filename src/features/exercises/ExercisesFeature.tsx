@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Muscle } from '../../types'
 import { MUSCLES } from '../../data/library'
 import { LibraryList } from '../../ui/LibraryList'
+import { Select } from '../../ui/controls'
 import type { AppRoute } from '../routes'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import { useServiceData } from '../useServiceData'
@@ -87,7 +88,7 @@ export function ExercisesFeature({
           value={search}
           onChange={(event) => setFilter({ search: event.target.value })}
         />
-        <select
+        <Select
           aria-label="Muscle"
           className="library-filter"
           value={muscle}
@@ -99,8 +100,8 @@ export function ExercisesFeature({
               {option}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
           aria-label="Equipment"
           className="library-filter"
           value={equipment}
@@ -112,7 +113,7 @@ export function ExercisesFeature({
               {option}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <LibraryList
         library={filteredLibrary}

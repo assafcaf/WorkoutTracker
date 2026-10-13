@@ -102,6 +102,165 @@
   border-radius: var(--radius-lg);
 }
 
+/* ---- Switch, Segmented, Select (E17-T8) ----------------------------------------------------
+ * The native controls, unpainted (`appearance: none`) and redrawn from tokens. Each stays the
+ * native element underneath, so the keyboard, screen readers and the OS picker keep working. */
+
+/* A checkbox drawn as a switch: the label text first, the track at the row's end. */
+.switch-field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+}
+
+.switch-label {
+  flex: 1;
+}
+
+.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-control);
+  cursor: pointer;
+  transition: background-color var(--motion-fast);
+}
+
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sheet);
+  transition: transform var(--motion-fast);
+}
+
+.switch:checked {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.switch:checked::before {
+  transform: translateX(18px);
+}
+
+.switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* A radio group drawn as segments on a raised track; the checked radio is the lifted pill. */
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+}
+
+.segmented-option {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+}
+
+/* The radio itself is the segment's surface, laid over the whole option under its label. */
+.segmented .segmented-input {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  cursor: pointer;
+}
+
+.segmented .segmented-input:checked {
+  background: var(--color-surface);
+  outline: 1px solid var(--color-primary);
+  outline-offset: -1px;
+}
+
+.segmented .segmented-input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.segmented-label {
+  position: relative;
+  pointer-events: none;
+}
+
+.segmented-option:has(.segmented-input:checked) {
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* A native select with the icon set's chevron laid over its right edge; the chevron lets taps
+ * through, so the OS picker still opens wherever the select is tapped. */
+.select-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-muted);
+}
+
+.select-field > svg {
+  position: absolute;
+  right: var(--space-3);
+  pointer-events: none;
+}
+
+.select {
+  appearance: none;
+  width: 100%;
+  min-height: var(--tap-min);
+  margin: 0;
+  padding: 0 calc(var(--space-3) * 2 + 18px) 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .tag {
   display: inline-flex;
   align-items: center;

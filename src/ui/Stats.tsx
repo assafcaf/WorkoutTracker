@@ -9,6 +9,7 @@ import type { Resolve } from '../domain/muscles'
 import type { Exercise, ExercisePlan, Program, Session } from '../types'
 import { BarChart } from './charts/BarChart'
 import { LineChart } from './charts/LineChart'
+import { Select } from './controls'
 import { ProgressionBar } from './ProgressionBar'
 import './Stats.css'
 
@@ -108,7 +109,7 @@ function ExerciseProgress({ sessions, resolve, programs }: StatsProps): JSX.Elem
     <>
       <label className="stats-picker">
         <span className="stats-picker-label">Exercise</span>
-        <select
+        <Select
           className="stats-picker-select"
           value={exercise.id}
           onChange={(event) => setChosenId(event.target.value)}
@@ -118,7 +119,7 @@ function ExerciseProgress({ sessions, resolve, programs }: StatsProps): JSX.Elem
               {option.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {plan ? <ProgressionBar progression={progression(exercise, plan, lastEntries)} /> : null}
       <LineChart series={series} title={`${exercise.name} ${SERIES_TITLES[series.kind]}`} />

@@ -76,7 +76,7 @@ function planRow(name: string): HTMLElement {
 }
 
 function amrapBox(name: string): HTMLElement {
-  return within(planRow(name)).getByRole('checkbox', { name: 'Last set AMRAP' })
+  return within(planRow(name)).getByRole('switch', { name: 'Last set AMRAP' })
 }
 
 test('O13: ticking Last set AMRAP on a Plan and saving stores amrapLast true on that Plan only', async () => {

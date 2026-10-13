@@ -14,8 +14,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import postcss from 'postcss'
-import { expect, test } from 'vitest'
-import { declarationsFor } from '../test/cssAudit'
+import { describe, expect, test } from 'vitest'
+import { declarationsFor, literalColours } from '../test/cssAudit'
 
 // src/styles/controlAudit.test.ts -> the repository root.
 const repoRoot = resolve(fileURLToPath(import.meta.url), '..', '..', '..')
@@ -418,4 +418,117 @@ test('E17 O13 every keypad digit button wears the key role', () => {
 
   expect(keys.length).toBeGreaterThan(0)
   for (const key of keys) expect(classesOf(key.attrs)).toContain('key')
+})
+
+// [O12, E17-T8] No native toggle, radio or select paints with OS defaults: every `<select>` and
+// every `<input type="checkbox|radio">` is rendered through src/ui/controls.tsx (Switch,
+// Segmented, Select), and the `.switch`, `.segmented` and `.select` rules reset `appearance`
+// and paint from tokens.
+const STYLED_CONTROLS_MODULE = join(srcDir, 'ui', 'controls.tsx')
+
+/** A `<select>` or a checkbox/radio `<input>`: the native controls that need a styled wrapper. */
+function nativeChoiceKind(control: FoundControl): 'select' | 'checkbox' | 'radio' | null {
+  if (control.tag === 'select') return 'select'
+  if (control.tag !== 'input') return null
+  const type = /\btype\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*['"]([^'"]*)['"]\s*\})/.exec(control.attrs)
+  const value = type ? (type[1] ?? type[2] ?? type[3]) : undefined
+  return value === 'checkbox' || value === 'radio' ? value : null
+}
+
+test('O12 nativeChoiceKind finds selects, checkboxes and radios but not other inputs', () => {
+  const source = [
+    '<select className="x"><option>1</option></select>',
+    '<input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} />',
+    "<input type='radio' name=\"u\" />",
+    '<input type="search" className="s" />',
+    '<input type="number" />',
+    '<button type="button">b</button>',
+  ].join('\n')
+
+  expect(extractControls(source).map(nativeChoiceKind)).toEqual([
+    'select',
+    'checkbox',
+    'radio',
+    null,
+    null,
+    null,
+  ])
+})
+
+test('O12 every select, checkbox and radio under src is rendered through src/ui/controls.tsx', () => {
+  const offenders: string[] = []
+  for (const path of modules()) {
+    if (path === STYLED_CONTROLS_MODULE) continue
+    const source = readFileSync(path, 'utf-8')
+    for (const control of extractControls(source)) {
+      const kind = nativeChoiceKind(control)
+      if (kind !== null) offenders.push(`${rel(path)}: a raw ${kind} (use Switch, Segmented or Select)`)
+    }
+  }
+
+  expect(offenders, 'screens render toggles, radio groups and selects through controls.tsx').toEqual([])
+})
+
+test('O12 controls.tsx renders its select with the select class and its checkbox with the switch class and role switch', () => {
+  const source = readFileSync(STYLED_CONTROLS_MODULE, 'utf-8')
+  const controls = extractControls(source)
+  const selects = controls.filter((control) => nativeChoiceKind(control) === 'select')
+  const checkboxes = controls.filter((control) => nativeChoiceKind(control) === 'checkbox')
+  const radios = controls.filter((control) => nativeChoiceKind(control) === 'radio')
+
+  expect(selects.length, 'controls.tsx renders a <select>').toBeGreaterThan(0)
+  expect(checkboxes.length, 'controls.tsx renders a checkbox <input>').toBeGreaterThan(0)
+  expect(radios.length, 'controls.tsx renders a radio <input>').toBeGreaterThan(0)
+  for (const select of selects) expect(select.attrs).toMatch(/\bselect\b/)
+  for (const checkbox of checkboxes) {
+    expect(classesOf(checkbox.attrs)).toContain('switch')
+    expect(checkbox.attrs).toMatch(/role\s*=\s*["']switch["']/)
+  }
+})
+
+/** Every declaration of every rule whose selector names `.<className>`, across src stylesheets. */
+function declarationsNaming(className: string): { prop: string; value: string }[] {
+  const names = new RegExp(`\\.${className}(?![\\w-])`)
+  const found: { prop: string; value: string }[] = []
+  for (const path of stylesheets()) {
+    postcss.parse(readFileSync(path, 'utf-8')).walkRules((rule) => {
+      if (!names.test(rule.selector)) return
+      rule.each((node) => {
+        if (node.type === 'decl') found.push({ prop: node.prop, value: node.value.trim() })
+      })
+    })
+  }
+  return found
+}
+
+const PAINT_PROPERTIES = new Set([
+  'color',
+  'background',
+  'background-color',
+  'border',
+  'border-color',
+  'outline',
+  'outline-color',
+  'accent-color',
+  'fill',
+  'stroke',
+])
+
+describe.each(['switch', 'segmented', 'select'])('[O12] .%s', (className) => {
+  test(`O12 the .${className} rules declare appearance: none`, () => {
+    const appearance = declarationsNaming(className).filter((decl) => decl.prop === 'appearance')
+
+    expect(appearance.map((decl) => decl.value)).toContain('none')
+  })
+
+  test(`O12 the .${className} rules paint from tokens`, () => {
+    const paint = declarationsNaming(className).filter((decl) => PAINT_PROPERTIES.has(decl.prop))
+
+    expect(
+      paint.some((decl) => /var\(\s*--[\w-]+/.test(decl.value)),
+      `.${className} paints at least one colour through var(--…)`,
+    ).toBe(true)
+    const literal = paint.filter((decl) => literalColours(`a { ${decl.prop}: ${decl.value}; }`).length > 0)
+    expect(literal.map((decl) => `${decl.prop}: ${decl.value}`), `.${className} paints no literal colour`).toEqual([])
+  })
 })

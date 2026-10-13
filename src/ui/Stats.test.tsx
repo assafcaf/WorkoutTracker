@@ -320,7 +320,8 @@ function progressionBar(): HTMLElement | null {
 }
 
 function chartPoints(): Array<{ at: string | null; value: number }> {
-  const svg = exerciseProgressSection().querySelector('svg')
+  // The chart's own svg, not the picker's chevron icon (E17-T8) that precedes it.
+  const svg = exerciseProgressSection().querySelector('svg.line-chart-svg')
   expect(svg, 'the exercise series chart').not.toBeNull()
   return [...(svg as SVGElement).querySelectorAll('circle')].map((circle) => ({
     at: circle.getAttribute('data-at'),
