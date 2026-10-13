@@ -4,7 +4,7 @@ import { copyProgram, uuid, visiblePrograms } from '../../domain/programs'
 import { resolveExercise } from '../../data/resolve'
 import { ServiceError, type ProgramsLoad } from '../../services'
 import { IN_PROGRESS_MESSAGE } from '../../services/programs'
-import { ActionBarSlot, AppShell } from '../../ui/AppShell'
+import { AppShell } from '../../ui/AppShell'
 import { ProgramEditor } from '../../ui/ProgramEditor'
 import { ProgramPage } from '../../ui/ProgramPage'
 import { useServiceData } from '../useServiceData'
@@ -71,6 +71,9 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   const [editor, setEditor] = useState<EditorTarget | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [programMessage, setProgramMessage] = useState<string | null>(null)
+  // Held here, not in the page, so the Programs panel an Edit, Copy or New was opened from is
+  // still open on coming back from the editor.
+  const [programsOpen, setProgramsOpen] = useState(false)
 
   // The tab's shell shows at once, so the tab bar and heading do not wait on the Programs.
   if (programsData.status !== 'ready' || catalogData.status !== 'ready') {
@@ -175,27 +178,21 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   }
 
   if (editor) {
+    // Full screen, no shell and no tab bar (S7b): the editor carries its own Cancel / title /
+    // Save bar, and the way out of it is its own Cancel or Save.
     return (
-      // No tab bar: the way out of the editor is its own Cancel or Save. The editor portals
-      // `Save` into the action bar, gated by its own draft's validity.
-      <AppShell
-        title={
-          editor.mode === 'new' ? 'New program' : editor.mode === 'copy' ? 'Copy program' : 'Edit program'
-        }
-        action={<ActionBarSlot />}
-      >
-        <ProgramEditor
-          key={editor.initial.id}
-          initial={editor.initial}
-          isNew={editor.isNew}
-          resolve={resolveListExercise}
-          library={library}
-          gymEquipment={gymEquipment}
-          onSave={handleSaveProgram}
-          onCancel={closeEditor}
-          saveError={saveError}
-        />
-      </AppShell>
+      <ProgramEditor
+        key={editor.initial.id}
+        initial={editor.initial}
+        isNew={editor.isNew}
+        title={editor.mode === 'copy' ? 'Copy program' : undefined}
+        resolve={resolveListExercise}
+        library={library}
+        gymEquipment={gymEquipment}
+        onSave={handleSaveProgram}
+        onCancel={closeEditor}
+        saveError={saveError}
+      />
     )
   }
 
@@ -218,6 +215,8 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         programMessage={programMessage}
         userProgramIds={new Set(userPrograms.map((program) => program.id))}
         bundledProgramIds={new Set(bundledPrograms.map((program) => program.id))}
+        programsOpen={programsOpen}
+        onProgramsOpenChange={setProgramsOpen}
       />
     </AppShell>
   )

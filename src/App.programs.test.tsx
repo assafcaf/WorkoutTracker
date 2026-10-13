@@ -56,6 +56,21 @@ async function storedUserPrograms(): Promise<UserProgram[]> {
 
 async function openProgramTab(user: User): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
+  await openProgramsPanel(user)
+}
+
+/**
+ * Opens the Programs panel behind the Program tab's overflow (S7a), where the program list and
+ * New program live; with no active Program, New program is on the page itself.
+ */
+async function openProgramsPanel(user: User): Promise<void> {
+  await waitFor(() => {
+    const more = screen.queryByRole('button', { name: 'Programs' })
+    const newProgram = screen.queryByRole('button', { name: 'New program' })
+    expect(more ?? newProgram).not.toBeNull()
+  }, SETTLE)
+  const more = screen.queryByRole('button', { name: 'Programs' })
+  if (more !== null && more.getAttribute('aria-expanded') !== 'true') await user.click(more)
   await screen.findByRole('button', { name: 'New program' }, SETTLE)
 }
 

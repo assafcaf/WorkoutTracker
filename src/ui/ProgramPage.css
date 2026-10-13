@@ -180,6 +180,7 @@
 
 .program-page-exercise {
   overflow: hidden;
+  letter-spacing: -0.01em;
   max-width: 0;
   width: 100%;
   text-overflow: ellipsis;
@@ -191,7 +192,7 @@
 }
 
 .program-page-num {
-  padding-left: var(--space-3);
+  padding-left: 10px;
   text-align: right;
 }
 
@@ -275,7 +276,8 @@
   font-weight: var(--weight-semibold);
 }
 
-.program-page-programs-done {
+.program-page-programs-done,
+.program-page-programs-head .program-page-programs-done {
   min-height: var(--tap-min);
   padding: 0 var(--space-1);
   border: 0;

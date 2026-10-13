@@ -161,6 +161,21 @@ async function storedProgram(id: string): Promise<UserProgram | undefined> {
 
 async function openProgramTab(user: User): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
+  await openProgramsPanel(user)
+}
+
+/**
+ * Opens the Programs panel behind the Program tab's overflow (S7a), where the program list and
+ * New program live; with no active Program, New program is on the page itself.
+ */
+async function openProgramsPanel(user: User): Promise<void> {
+  await waitFor(() => {
+    const more = screen.queryByRole('button', { name: 'Programs' })
+    const newProgram = screen.queryByRole('button', { name: 'New program' })
+    expect(more ?? newProgram).not.toBeNull()
+  }, SETTLE)
+  const more = screen.queryByRole('button', { name: 'Programs' })
+  if (more !== null && more.getAttribute('aria-expanded') !== 'true') await user.click(more)
   await screen.findByRole('button', { name: 'New program' }, SETTLE)
 }
 
@@ -205,6 +220,18 @@ function editorWorkouts(): HTMLElement[] {
   })
 }
 
+/**
+ * The Program tab's exercise row for `exercise` (S7a's workout table), as
+ * `Exercise | Sets × reps | Rest | kg`, or null when no row names it.
+ */
+function planRowText(exercise: string): string | null {
+  const row = [...document.querySelectorAll<HTMLTableRowElement>('.workout-card tbody tr')].find(
+    (candidate) => (candidate.cells[0]?.textContent ?? '').trim() === exercise,
+  )
+  if (row === undefined) return null
+  return [...row.cells].map((cell) => (cell.textContent ?? '').trim()).join(' | ')
+}
+
 /** The editor's visible Workout whose name input holds exactly `name`. */
 function editorWorkout(name: string): HTMLElement {
   const found = editorWorkouts().find(
@@ -220,6 +247,8 @@ async function editProgram(user: User, name: string): Promise<void> {
 }
 
 async function removeWorkout(user: User, name: string): Promise<void> {
+  // Remove workout sits in the Workout's options menu (S7b).
+  await user.click(within(editorWorkout(name)).getByRole('button', { name: `Options for ${name}` }))
   await user.click(within(editorWorkout(name)).getByRole('button', { name: 'Remove workout' }))
 }
 
@@ -563,11 +592,11 @@ test('O12 Reset to original then Confirm on an edited A/B Split shows the bundle
   await renderApp()
 
   await openProgramTab(user)
-  expect(screen.getByText('Back squat 3-5 x 5, rest 240s')).toBeVisible()
+  expect(planRowText('Back squat')).toMatch(/^Back squat \| 5 × 3–5 \| 4:00 \| /)
   await resetAndConfirm(user, 'A/B Split')
 
-  expect(await screen.findByText('Back squat 8-10 x 4, rest 180s', undefined, SETTLE)).toBeVisible()
-  expect(screen.queryByText('Back squat 3-5 x 5, rest 240s')).toBeNull()
+  await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00 \| /), SETTLE)
+  expect(planRowText('Back squat')).not.toContain('5 × 3–5')
 }, LONG)
 
 test('O12 Reset to original then Confirm removes the stored copy and the Reset to original action', async () => {
@@ -596,7 +625,7 @@ test('O12 after Reset to original a set screen on Workout A uses the bundled num
 
   await openProgramTab(user)
   await resetAndConfirm(user, 'A/B Split')
-  await screen.findByText('Back squat 8-10 x 4, rest 180s', undefined, SETTLE)
+  await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00 \| /), SETTLE)
   await user.click(screen.getByRole('button', { name: 'Workout' }))
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
   await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
