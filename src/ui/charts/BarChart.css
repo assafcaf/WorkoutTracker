@@ -23,6 +23,16 @@
 
 .bar-chart-bar {
   fill: var(--color-secondary);
+  /* The rounded foot of a bar hangs 4 px under the baseline; only its rounded top shows. */
+  clip-path: inset(0 0 4px 0);
+}
+
+/* The last bar's own value, above it (S6a). */
+.bar-chart-value-label {
+  fill: var(--color-text);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
 .bar-chart-bar[data-series='b'] {

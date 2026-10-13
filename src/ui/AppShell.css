@@ -35,24 +35,56 @@
   background: var(--color-surface);
 }
 
-/* Above a tab's large title: the Program tab's Program | Exercises switch (S7a). */
+/* Above a tab's large title: the Program tab's Program | Exercises switch (S7a), a 220 x 36
+ * segmented control, with the screen's own actions (Edit, the overflow) at the row's end. */
 .app-lead {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
   min-height: 56px;
-  padding: var(--space-1) var(--space-4) 0;
+  padding: 0 var(--space-4);
+}
+
+.app-lead .segmented {
+  width: 220px;
+  height: 36px;
+}
+
+/* A 30 px segment, tapped across the 44 px floor. */
+.app-lead .segmented .segmented-input {
+  inset: -7px 0;
+}
+
+.app-lead-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  margin-right: -10px;
+}
+
+/* The lead row stands where the title's top padding would; the title sits 4 px under it. */
+.app-lead + .page-header {
+  padding-top: var(--space-1);
+}
+
+/* A tab's content starts 8 px under its large title (S6a, S6b). */
+.page-header + .app-main {
+  padding-top: var(--space-2);
 }
 
 /* A page's compact header (Settings, an editor): sticky, so the back chevron and the title stay
- * reachable while the main region scrolls under them. */
+ * reachable while the main region scrolls under them. 56 px on the surface, the title centred
+ * between the chevron and the trailing slot, as S7b's "Edit A/B Split" bar. */
 .app-header-bar {
   position: sticky;
   top: 0;
   z-index: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(var(--tap-min), 1fr) auto minmax(var(--tap-min), 1fr);
   align-items: center;
   gap: var(--space-1);
-  padding: calc(var(--space-1) + var(--safe-top)) var(--space-4) var(--space-1) var(--space-1);
+  min-height: calc(56px + var(--safe-top));
+  padding: var(--safe-top) var(--space-2) 0;
   border-bottom: 1px solid var(--color-hairline);
   background: var(--color-surface);
 }
@@ -72,9 +104,18 @@
 
 .app-header-title-group {
   display: flex;
-  flex: 1;
   flex-direction: column;
+  min-width: 0;
   overflow: hidden;
+  text-align: center;
+}
+
+.app-header-back {
+  justify-self: start;
+}
+
+.app-header-bar .app-header-trailing {
+  justify-self: end;
 }
 
 .app-header-title {

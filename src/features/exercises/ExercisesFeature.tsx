@@ -3,6 +3,7 @@ import type { Muscle } from '../../types'
 import { MUSCLES } from '../../data/library'
 import { LibraryList } from '../../ui/LibraryList'
 import { Select } from '../../ui/controls'
+import { Icon } from '../../ui/icons'
 import type { AppRoute } from '../routes'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import { useServiceData } from '../useServiceData'
@@ -79,7 +80,8 @@ export function ExercisesFeature({
 
   return (
     <>
-      <div className="library-filters">
+      <label className="library-search-field">
+        <Icon name="Search" size={18} />
         <input
           type="search"
           aria-label="Search exercises"
@@ -88,6 +90,8 @@ export function ExercisesFeature({
           value={search}
           onChange={(event) => setFilter({ search: event.target.value })}
         />
+      </label>
+      <div className="library-filters">
         <Select
           aria-label="Muscle"
           className="library-filter"

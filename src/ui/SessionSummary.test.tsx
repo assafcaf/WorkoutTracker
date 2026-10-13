@@ -495,7 +495,7 @@ test('S5b Worked today lists the regions as heat squares on the session scale', 
 
   const worked = within(summaryDialog()).getByRole('region', { name: 'Worked today' })
   const upperBack = worked.querySelector('[data-region="upper-back"]') as HTMLElement
-  expect(upperBack).toHaveAccessibleName('Upper back, 7 sets')
+  expect(upperBack).toHaveAccessibleName('Lats, 7 sets')
   expect(upperBack.querySelector('.heat-cell')).toHaveAttribute('data-band', '3')
   expect(worked.querySelector('[data-region="gluteal"] .heat-cell')?.textContent).toBe('0.5')
 })

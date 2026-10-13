@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { DEFAULT_PLATE_INVENTORY } from '../domain/plates'
 import type { PlateInventory } from '../types'
+import { Icon } from './icons'
 import './PlateInventoryEditor.css'
 
 export type PlateInventoryEditorProps = {
@@ -53,11 +54,12 @@ export function PlateInventoryEditor(props: PlateInventoryEditorProps): JSX.Elem
           <button
             type="button"
             className="plate-editor-button btn-danger"
+            aria-label={`Remove ${plate.kg} kg`}
             onClick={() =>
               onChange({ ...inventory, plates: inventory.plates.filter((p) => p.kg !== plate.kg) })
             }
           >
-            Remove {plate.kg} kg
+            <Icon name="Trash" size={18} />
           </button>
         </div>
       ))}

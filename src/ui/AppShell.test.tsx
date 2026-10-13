@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
-import { AppShell, SettingsButton } from './AppShell'
+import { AppShell, SettingsButton, ShellChromeContext } from './AppShell'
 import { TabBar } from './TabBar'
 
 /**
@@ -402,4 +402,32 @@ test('AppShell given ownHeader draws no header of its own, an unpadded main regi
   expect(container.querySelector('header')).toBeNull()
   expect(container.querySelector('main.app-main')).toHaveClass('app-main-flush')
   expect(screen.getByRole('navigation', { name: 'Main' })).toBeVisible()
+})
+
+// S7a: under a lead (the Program tab's Program | Exercises switch) the screen's actions ride the
+// lead's row, and the large title keeps only its text.
+test('S7a a tab screen under a lead carries its actions on the lead row, not beside its title', () => {
+  render(
+    <ShellChromeContext.Provider value={{ tab: 'program', onTabChange: vi.fn(), lead: <span>Switch</span> }}>
+      <AppShell title="A/B Split" actions={<button type="button" className="btn-quiet">Edit</button>}>
+        <p>body</p>
+      </AppShell>
+    </ShellChromeContext.Provider>,
+  )
+
+  const lead = screen.getByText('Switch').parentElement as HTMLElement
+  expect(within(lead).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  const header = screen.getByRole('heading', { level: 1, name: 'A/B Split' }).closest('header') as HTMLElement
+  expect(within(header).queryByRole('button', { name: 'Edit' })).toBeNull()
+})
+
+test('S6b a tab screen with no lead keeps its actions beside its title', () => {
+  render(
+    <AppShell title="Lifts" tab="lifts" onTabChange={vi.fn()} actions={<button type="button" className="btn-quiet">Edit</button>}>
+      <p>body</p>
+    </AppShell>,
+  )
+
+  const header = screen.getByRole('heading', { level: 1, name: 'Lifts' }).closest('header') as HTMLElement
+  expect(within(header).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
 })
