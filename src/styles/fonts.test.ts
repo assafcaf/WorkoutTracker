@@ -100,27 +100,28 @@ test('O15 the vendored font has its OFL licence text beside it', () => {
   expect(licence.toUpperCase()).toContain('SIL OPEN FONT LICENSE')
 })
 
+// The O16 titles predate E17-T5's type sweep and are kept; the bodies assert the one family.
 test('O16 .dial-readout reads the display font with tabular numerals', () => {
   const decls = declarationsFor(read('src/ui/dial.css'), '.dial-readout')
-  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-family')).toBe('var(--font-sans)')
   expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
 })
 
 test('O16 .app-header-title reads the display font with tabular numerals', () => {
   const decls = declarationsFor(read('src/ui/AppShell.css'), '.app-header-title')
-  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-family')).toBe('var(--font-sans)')
   expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
 })
 
 test('O16 .stats-record-value reads the display font with tabular numerals', () => {
   const decls = declarationsFor(read('src/ui/Stats.css'), '.stats-record-value')
-  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-family')).toBe('var(--font-sans)')
   expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
 })
 
 test('O16 .set-counter reads the display font with tabular numerals', () => {
   const decls = declarationsFor(read('src/ui/SetScreen.css'), '.set-counter')
-  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-family')).toBe('var(--font-sans)')
   expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
 })
 

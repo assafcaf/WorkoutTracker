@@ -3620,8 +3620,9 @@ function restCss(): string {
 }
 
 test('O10 the clock is styled in --font-display at --text-display with tabular figures', () => {
+  // Title kept from before E17-T5's type sweep; the body asserts the one family.
   const decls = declarationsFor(restCss(), '.rest-readout')
-  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-family')).toBe('var(--font-sans)')
   expect(decls.get('font-size')).toBe('var(--text-display)')
   expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
 })
