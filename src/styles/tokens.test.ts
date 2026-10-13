@@ -119,8 +119,9 @@ const PR_TOKENS: Record<string, string> = {
 
 // BodyMap's four-step shade ramp, raised-to-clay, plus its exercise-scale primary/secondary
 // pair. Not part of CONTRAST_PAIRS: these are map fill colours, not a text/background pair.
+// --map-shade-0 equals --color-raised (BodyMap.test.tsx O14), so it follows E17's raised.
 const MAP_TOKENS: Record<string, string> = {
-  '--map-shade-0': '#ECE6DA',
+  '--map-shade-0': '#EEEEF2',
   '--map-shade-1': '#EBC7B0',
   '--map-shade-2': '#D0906C',
   '--map-shade-3': '#9E5231',
