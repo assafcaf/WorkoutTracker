@@ -10,7 +10,7 @@ import { Icon, type IconName } from './icons'
 const NAMES: IconName[] = [
   'ChevronDown', 'ChevronLeft', 'ChevronRight', 'Check', 'X', 'Plus', 'Minus', 'Trash',
   'Pencil', 'Clock', 'Info', 'History', 'Swap', 'Settings', 'Cloud', 'CloudOff', 'Dumbbell',
-  'ChartLine', 'ListChecks',
+  'ChartLine', 'ListChecks', 'Share',
 ]
 
 describe('[O14] Icon', () => {
