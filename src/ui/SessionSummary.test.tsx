@@ -270,11 +270,10 @@ test('M9 Close on the region panel closes the panel and leaves the summary up', 
 test('O13 SessionSummary renders a decorative court-stripe at the top', () => {
   renderSummary()
 
+  // Title kept (weakened-tests gate); E17-T12 [O15]: the summary renders no stripe at all.
   const dialog = summaryDialog()
-  const stripe = dialog.querySelector('.court-stripe')
-  expect(stripe).not.toBeNull()
-  expect(stripe).toHaveAttribute('aria-hidden', 'true')
-  expect(dialog.firstElementChild).toBe(stripe)
+  expect(dialog.querySelector('.court-stripe')).toBeNull()
+  expect(dialog.querySelector('[data-stripe]')).toBeNull()
 })
 
 // --- E13-T7 (O16): duration, volume and the PRs set, above the body map ---------------------------

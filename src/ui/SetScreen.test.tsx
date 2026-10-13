@@ -3640,7 +3640,13 @@ test('O10 the over clock is coloured --color-accent by a rule on the rest panel'
       .filter((decl): decl is Declaration => decl.type === 'decl' && decl.prop === 'color')
       .map((decl) => decl.value.trim()),
   )
-  expect(colours).toContain('var(--color-accent)')
+  // Title kept (weakened-tests gate); E17-T12 [O1] drops --color-accent, so the over clock
+  // reads in a Status colour: --color-warn or --color-danger.
+  expect(colours).not.toContain('var(--color-accent)')
+  expect(colours.length, 'the over clock declares no colour').toBeGreaterThan(0)
+  for (const colour of colours) {
+    expect(['var(--color-warn)', 'var(--color-danger)']).toContain(colour)
+  }
 })
 
 // --- E16-T6 O13: the Preset carries today's change -----------------------------------------

@@ -3,8 +3,8 @@
 // turns both off.
 //
 // [O18] `button:active` scales by `--press-scale`, `button` transitions over `--motion-fast`,
-// `.set-logged[data-family='<f>']` animates its background to `--family-<f>-tint` for each of
-// the four families, and a `prefers-reduced-motion: reduce` block sets `transition` and
+// `.set-logged[data-family='<f>']` flashes the neutral `--color-primary-tint` whatever its
+// family (E17-T12 [O15]: the `--family-*` tokens are gone), and a `prefers-reduced-motion: reduce` block sets `transition` and
 // `animation` to `none`.
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -137,8 +137,14 @@ test('O18 button transitions over var(--motion-fast)', () => {
 
 for (const family of ['push', 'pull', 'legs', 'core'] as const) {
   test(`O18 .set-logged[data-family='${family}'] animates its background to var(--family-${family}-tint)`, () => {
+    // Title kept (weakened-tests gate); E17-T12 [O15]: the flash is the neutral
+    // --color-primary-tint for every family, and no step names a --family-* or --data-* colour.
+    // A plain `.set-logged` rule counts too: the family-keyed rule, where there is one, wins.
     const css = baseCss()
-    const decls = declarationsForAttrSelector(css, '\\.set-logged', family)
+    const decls = new Map([
+      ...topLevelDeclarationsFor(css, '.set-logged'),
+      ...declarationsForAttrSelector(css, '\\.set-logged', family),
+    ])
 
     const name = animationNameOf(decls)
     expect(name, `.set-logged[data-family='${family}'] must declare an animation`).toBeDefined()
@@ -148,11 +154,15 @@ for (const family of ['push', 'pull', 'legs', 'core'] as const) {
 
     const targetsTint = steps.some((step) => {
       const background = step.get('background') ?? step.get('background-color')
-      return background === `var(--family-${family}-tint)`
+      return background === 'var(--color-primary-tint)'
     })
-    expect(targetsTint, `no step of '${name}' sets its background to var(--family-${family}-tint)`).toBe(
+    expect(targetsTint, `no step of '${name}' sets its background to var(--color-primary-tint)`).toBe(
       true,
     )
+    const familyColours = steps.flatMap((step) =>
+      [...step.values()].filter((value) => /--(family|data)-/.test(value)),
+    )
+    expect(familyColours, `'${name}' still paints a family colour`).toEqual([])
   })
 }
 
