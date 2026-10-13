@@ -144,3 +144,17 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
     </div>
   )
 }
+
+/**
+ * The per-Exercise weight-step control (E16-T11): moved out of the WeightDial so SetScreen can
+ * seat it in `.set-dial-controls` under the Dial pair.
+ *
+ * STUB (E16-T11 test-designer): renders nothing yet.
+ */
+export function WeightStepControl(props: {
+  step: number
+  onStepChange(step: number): void
+}): JSX.Element | null {
+  void props
+  return null
+}

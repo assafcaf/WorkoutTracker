@@ -3051,8 +3051,9 @@ test('O8 the Plate line sits directly under the weight Dial, before the reps Dia
 
   const line = plateLine() as HTMLElement
   expect(line).not.toBeNull()
+  // E16-T11: the Plate line now sits in the controls row under the Dial pair, after both Dials.
   expect(weightReadout().compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(line.compareDocumentPosition(repsReadout()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(repsReadout().compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
 test('O8 a weight entered on the keypad moves the Plate line: 80 kg reads Per side: 20 · 10', async () => {
@@ -3667,4 +3668,73 @@ test('O13 last time 80×8 ×3, Sets 1 and 2 logged at 82.5 × 8: Set 3 opens at 
     expect((await storedEntries()).map((entry) => entry.weightKg)).toEqual([82.5, 82.5]),
   )
   expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['82.5', '8'])
+})
+
+// --- E16-T11 O9: Weight and Reps side by side ----------------------------------------------
+//
+// Layout cannot be measured in jsdom, so the 390 x 844 fit is held as structure and CSS: the two
+// Dials share one `.set-dials` row (two equal columns, stretched to the same height), and the
+// step control and the Plate line share the `.set-dial-controls` row under it.
+
+function dialPair(): HTMLElement {
+  return document.querySelector<HTMLElement>('.set-dials') as HTMLElement
+}
+
+function controlsRow(): HTMLElement {
+  return document.querySelector<HTMLElement>('.set-dial-controls') as HTMLElement
+}
+
+test('O9 the Weight and Reps Dials are the two children of one .set-dials row, Weight first', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  const pair = dialPair()
+  expect(pair).not.toBeNull()
+  const groups = Array.from(pair.children).map((child) => child.getAttribute('aria-label'))
+  expect(groups).toEqual(['Weight (kg)', 'Reps'])
+})
+
+test('O9 the step control and the Plate line sit in one .set-dial-controls row after the Dial pair', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  const row = controlsRow()
+  expect(row).not.toBeNull()
+  expect(row.contains(stepControl(2.5))).toBe(true)
+  expect(row.contains(plateLine())).toBe(true)
+  expect(dialPair().contains(row)).toBe(false)
+  expect(dialPair().compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O9 without a Plate inventory the controls row still holds the step control', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  expect(controlsRow().contains(stepControl(2.5))).toBe(true)
+  expect(plateLine()).toBeNull()
+})
+
+test('O9 a Bodyweight Exercise still has the .set-dial-controls row, without a step control', () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  expect(controlsRow()).not.toBeNull()
+  expect(screen.queryByRole('combobox', { name: /^Step/ })).toBeNull()
+})
+
+test('O9 the Weight Dial no longer holds the step control', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  const weightGroup = screen.getByRole('group', { name: 'Weight (kg)' })
+  expect(within(weightGroup).queryByRole('combobox')).toBeNull()
+})
+
+test('O9 the stylesheet lays .set-dials out as two equal columns stretched to one height', () => {
+  const decls = declarationsFor(restCss(), '.set-dials')
+  expect(decls.get('display')).toBe('grid')
+  expect(decls.get('grid-template-columns')).toMatch(
+    /^(repeat\(\s*2\s*,\s*(minmax\(\s*0\s*,\s*1fr\s*\)|1fr)\s*\)|(minmax\(\s*0\s*,\s*1fr\s*\)|1fr)\s+(minmax\(\s*0\s*,\s*1fr\s*\)|1fr))$/,
+  )
+  expect(['start', 'center', 'end', 'baseline']).not.toContain(decls.get('align-items'))
+})
+
+test('O9 the stylesheet lays .set-dial-controls out as one row', () => {
+  const decls = declarationsFor(restCss(), '.set-dial-controls')
+  expect(decls.get('display')).toMatch(/^(flex|grid)$/)
 })
