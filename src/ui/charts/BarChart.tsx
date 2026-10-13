@@ -1,6 +1,12 @@
 import './BarChart.css'
 
-export type BarChartBar = { at: number; label: string; value: number }
+export type BarChartBar = {
+  at: number
+  label: string
+  value: number
+  /** 'b' marks a bar of the chart's second series (E17-T10, O19). */
+  series?: 'b'
+}
 export type BarChartProps = { bars: BarChartBar[]; title: string }
 
 const VIEW_WIDTH = 100
