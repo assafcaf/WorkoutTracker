@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
+import { applyBodyweight } from '../../domain/bodyweight'
 import type { Muscle } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { HistoryList, summarise } from '../../ui/HistoryList'
@@ -43,6 +44,10 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
     ['programs'],
   )
   const catalogData = useServiceData((services) => services.catalog.load(), [])
+  const bodyweightOverridesData = useServiceData(
+    (services) => services.preferences.bodyweightOverrides().catch((): Record<string, boolean> => ({})),
+    ['preferences'],
+  )
 
   const ready =
     sessionsData.status === 'ready' && programsData.status === 'ready' && catalogData.status === 'ready'
@@ -67,7 +72,13 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
             const programs = programsData.data
             const { catalog, library } = catalogData.data
             const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
-            const resolve = (id: string) => resolveExercise(id, catalog, libraryMap)
+            // E16-T13: every Exercise read with the trainee's Bodyweight override applied.
+            const overrides =
+              bodyweightOverridesData.status === 'ready' ? bodyweightOverridesData.data : {}
+            const resolve = (id: string) => {
+              const exercise = resolveExercise(id, catalog, libraryMap)
+              return exercise && applyBodyweight(exercise, overrides)
+            }
             const summarySession = summarySessionId
               ? sessions.find((session) => session.id === summarySessionId) ?? null
               : null

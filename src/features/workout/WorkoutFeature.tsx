@@ -2,6 +2,7 @@ import { swapPreset } from '../../domain/swapPreset'
 import { useEffect, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
+import { applyBodyweight } from '../../domain/bodyweight'
 import { nextExerciseAfter } from '../../domain/flow'
 import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
@@ -185,6 +186,10 @@ export function WorkoutFeature({
     (s) => orElse(s.preferences.plateInventory(), null),
     ['preferences'],
   )
+  const bodyweightOverridesData = useServiceData(
+    (s) => orElse<Record<string, boolean>>(s.preferences.bodyweightOverrides(), {}),
+    ['preferences'],
+  )
   const sessionsData = useServiceData(
     (s) => orElse<Session[]>(s.sessions.list(), []),
     ['sessions'],
@@ -265,10 +270,16 @@ export function WorkoutFeature({
   const sessions = sessionsData.status === 'ready' ? sessionsData.data : []
 
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
+  const bodyweightOverrides =
+    bodyweightOverridesData.status === 'ready' ? bodyweightOverridesData.data : {}
 
-  /** `ExerciseList.resolve`: a catalog id or a library id (a swap, E5-T12) to its `Exercise`. */
+  /**
+   * `ExerciseList.resolve`: a catalog id or a library id (a swap, E5-T12) to its `Exercise`, with
+   * the trainee's Bodyweight override applied (E16-T13).
+   */
   function resolveListExercise(id: string): Exercise | undefined {
-    return resolveExercise(id, catalog, libraryMap)
+    const exercise = resolveExercise(id, catalog, libraryMap)
+    return exercise && applyBodyweight(exercise, bodyweightOverrides)
   }
 
   /** Adds the last entries of `doneId`, just swapped in, to the list's progression bars. */
@@ -548,6 +559,13 @@ export function WorkoutFeature({
               await services.preferences.setExerciseNote(openSet.exerciseId, text)
               loadExerciseNote(openSet.exerciseId)
             }}
+            onBodyweightChange={(value) =>
+              services.preferences.setBodyweight(
+                openSet.exerciseId,
+                value,
+                resolveExercise(openSet.exerciseId, catalog, libraryMap)?.bodyweight ?? false,
+              )
+            }
             onWeightStepChange={(step) => {
               services.preferences.setWeightStep(openSet.exerciseId, step).catch(() => {
                 // Nothing to recover to here; the screen keeps the step it already has.
