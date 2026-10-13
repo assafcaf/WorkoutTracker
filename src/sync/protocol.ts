@@ -9,6 +9,7 @@ export type SyncedSettingKey =
   | 'exerciseNotes'
   | 'effortTracking'
   | 'plateInventory'
+  | 'bodyweightOverrides'
 export const SYNCED_SETTING_KEYS: readonly SyncedSettingKey[] = [
   'activeProgramId',
   'gymEquipment',

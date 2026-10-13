@@ -40,6 +40,13 @@ export type PreferenceService = {
   plateInventory(): Promise<PlateInventory>
   /** Stores a valid inventory; rejects with the validation message when it is not (E15-T3). */
   setPlateInventory(inventory: PlateInventory): Promise<void>
+  /** Every Bodyweight override by Exercise id; `{}` when none is stored (E16-T1). */
+  bodyweightOverrides(): Promise<Record<string, boolean>>
+  /**
+   * Stores `value` as `exerciseId`'s Bodyweight override, or removes the override when `value`
+   * equals the Exercise's own `defaultValue` (E16-T1).
+   */
+  setBodyweight(exerciseId: string, value: boolean, defaultValue: boolean): Promise<void>
 }
 
 /**
@@ -81,5 +88,8 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       if (!verdict.ok) throw new Error(verdict.error)
       await write(() => storePlateInventory(verdict.inventory, deps.now()))
     },
+    // STUB (E16-T1 test-designer): not implemented yet.
+    bodyweightOverrides: () => Promise.reject(new Error('NotImplementedError: bodyweightOverrides')),
+    setBodyweight: () => Promise.reject(new Error('NotImplementedError: setBodyweight')),
   }
 }

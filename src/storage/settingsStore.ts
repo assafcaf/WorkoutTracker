@@ -142,6 +142,33 @@ export async function setWeightSteps(
   await db.settings.put({ key: WEIGHT_STEPS_KEY, value: steps, updatedAt: now })
 }
 
+/** The `settings` table key every Exercise's Bodyweight override is kept under, in one row (E16-T1). */
+export const BODYWEIGHT_OVERRIDES_KEY = 'bodyweightOverrides'
+
+/**
+ * Every stored Bodyweight override, by Exercise id; `{}` when none is stored or the stored value
+ * is not a record of booleans.
+ *
+ * STUB (E16-T1 test-designer): not implemented yet.
+ */
+export async function getBodyweightOverrides(): Promise<Record<string, boolean>> {
+  throw new Error('NotImplementedError: getBodyweightOverrides')
+}
+
+/**
+ * Replaces every stored Bodyweight override with `overrides`, in the one `bodyweightOverrides` row.
+ *
+ * STUB (E16-T1 test-designer): not implemented yet.
+ */
+export async function setBodyweightOverrides(
+  overrides: Record<string, boolean>,
+  now: number = Date.now(),
+): Promise<void> {
+  void overrides
+  void now
+  throw new Error('NotImplementedError: setBodyweightOverrides')
+}
+
 /** The `settings` table key every Exercise note is kept under, in one row (E14-T3). */
 export const EXERCISE_NOTES_KEY = 'exerciseNotes'
 
