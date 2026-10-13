@@ -145,7 +145,7 @@
 }
 
 .program-page-newuser-name {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .program-page-use-primary,
@@ -157,7 +157,7 @@
   justify-content: center;
   border-radius: var(--radius-sm);
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   cursor: pointer;
 }
 
@@ -174,4 +174,16 @@
   box-shadow: none;
   background: var(--color-surface);
   color: var(--color-text);
+}
+
+/* Headings (E17-T5): the screen's title at xl, sections and workout cards at lg. */
+.program-page-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+
+.program-page-section-heading,
+.program-page-workout-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
 }

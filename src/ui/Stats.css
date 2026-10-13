@@ -21,7 +21,7 @@
 .stats-heading {
   margin: 0;
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
 
@@ -75,8 +75,8 @@
 
 .stats-record-value {
   color: var(--color-text);
-  font-weight: 600;
-  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
 

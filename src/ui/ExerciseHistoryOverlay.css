@@ -43,7 +43,7 @@
 }
 
 .exercise-history-date {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
 

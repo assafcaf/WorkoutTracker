@@ -30,7 +30,7 @@
 
 .exercise-name {
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 /* The progress reads as a count, not as a heading: quiet, and always on the same edge so the

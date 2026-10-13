@@ -41,6 +41,7 @@ body {
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: var(--text-md);
+  font-variant-numeric: tabular-nums lining-nums;
   line-height: 1.4;
   /* The phone's own grey flash on tap would fight the controls' own pressed states. */
   -webkit-tap-highlight-color: transparent;

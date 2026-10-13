@@ -16,12 +16,12 @@
 }
 
 .set-kind-choice[aria-pressed='true'] {
-  font-weight: 700;
+  font-weight: var(--weight-semibold);
   background: var(--color-raised);
 }
 
 .set-kind-marker {
   margin-left: 6px;
-  font-weight: 700;
-  font-size: 0.8em;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-xs);
 }

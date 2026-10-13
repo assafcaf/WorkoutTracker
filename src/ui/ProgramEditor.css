@@ -58,7 +58,7 @@
   padding: 0;
   color: var(--color-text);
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .program-editor-plans {
@@ -83,7 +83,7 @@
   margin: 0;
   color: var(--color-text);
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .program-editor-plan-fields {
@@ -134,13 +134,13 @@
   margin: 0;
   color: var(--color-text);
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 /* `Save`: one of the Action bar's own buttons, given its own class so the control audit
  * (src/styles/controlAudit.test.ts) finds a rule for it. */
 .program-editor-save {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 /* A disabled Save (O16: while `validateProgram` names a fault) must not read the same as an
