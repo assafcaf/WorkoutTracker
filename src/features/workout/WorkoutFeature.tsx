@@ -4,7 +4,6 @@ import { resolveExercise } from '../../data/resolve'
 import { nextExerciseAfter } from '../../domain/flow'
 import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
-import { layTodayOver } from '../../domain/prefill'
 import { latestSet } from '../../domain/rest'
 import { ServiceError } from '../../services'
 import type {
@@ -507,12 +506,8 @@ export function WorkoutFeature({
             plan={plan}
             setIndex={openSet.setIndex}
             sessionId={session.id}
-            // Today's Sets laid over last time's by working position (E14-T8): a `setIndex`
-            // overlay would let a warm-up stand in for a working Set.
-            lastEntries={layTodayOver(
-              openSet.history,
-              session.entries.filter((entry) => entry.exerciseId === openSet.exerciseId),
-            )}
+            // Last time's Sets alone: today's reach the Preset apart, through `logged` (E16-T6).
+            lastEntries={openSet.history}
             lastTime={openSet.history}
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { formatSet, formatSetCompact } from '../domain/setText'
-import { layTodayOver, presetForSet } from '../domain/prefill'
+import { presetForSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { recordsSetBy } from '../domain/records'
 import { formatPlates, platesFor } from '../domain/plates'
@@ -281,7 +281,13 @@ function openSetFor(
       ? setIndex
       : 1 + workingSets(logged).filter((entry) => entry.setIndex < setIndex).length
   const kind = plan.amrapLast === true && position === plan.sets ? 'amrap' : null
-  const { loadKg, ...preset } = presetForSet({ exercise, plan, setIndex, lastEntries, logged })
+  const { loadKg, ...preset } = presetForSet({
+    exercise,
+    plan,
+    setIndex,
+    lastEntries,
+    today: logged,
+  })
   return { setIndex, ...preset, kind, loadKg: exercise.bodyweight ? (loadKg ?? 0) : 0 }
 }
 
@@ -345,8 +351,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     props.onWeightStepChange?.(step)
   }
 
-  // The Sets this screen logs or edits are laid over the history the next one presets from: by
-  // `setIndex` without `logged`, and with it by working position (E14-T8).
+  // What the next Set presets from as last time. Without `logged`, the Sets this screen logs or
+  // edits are laid over it by `setIndex`; with it, it stays last time's alone and today's Sets
+  // go to the Preset apart (E16-T6), so a Set logged today never comes back as last time.
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
     openSetFor(
@@ -574,7 +581,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       const session = await onLog(sessionId, entry)
       const todayAfter = mergeEntry(loggedSets, entry)
       const merged =
-        props.logged === undefined ? mergeEntry(history, entry) : layTodayOver(history, todayAfter)
+        props.logged === undefined ? mergeEntry(history, entry) : history
       const nextSetIndex = open.setIndex + 1
       setError(null)
       clearUndo()
@@ -714,7 +721,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       })
       const merged =
         props.logged !== undefined
-          ? layTodayOver(history, edited)
+          ? history
           : before === undefined
             ? history
             : mergeEntry(history, edited.find((entry) => entry.setIndex === editing) ?? before)

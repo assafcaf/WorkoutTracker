@@ -1627,7 +1627,10 @@ test('O4 after the latest Set is deleted, rest follows the new latest Set', asyn
   await waitFor(() => expect(readoutValue(restReadout())).toBe('03:00'))
   clock = BASE + 100_000
 
-  await user.click(await screen.findByRole('button', { name: '50 × 8' }))
+  // Set 2 opened on today's Set 1 (E16-T6 O11: no last time, so the anchor's 60 × 10), so both
+  // rows read 60 × 10; the second one listed is set 2.
+  await waitFor(() => expect(screen.getAllByRole('button', { name: '60 × 10' })).toHaveLength(2))
+  await user.click(screen.getAllByRole('button', { name: '60 × 10' })[1])
   await user.click(screen.getByRole('button', { name: 'Delete set' }))
 
   await waitFor(() => expect(readoutValue(restReadout())).toBe('01:20'))
@@ -3566,4 +3569,40 @@ test('O10 the over clock is coloured --color-accent by a rule on the rest panel'
       .map((decl) => decl.value.trim()),
   )
   expect(colours).toContain('var(--color-accent)')
+})
+
+// --- E16-T6 O13: the Preset carries today's change -----------------------------------------
+
+/** Last time on back squat: 80×8 · 80×8 · 80×8. */
+const lastTime80x8: SetEntry[] = [
+  historyEntry(1, 80, 8),
+  historyEntry(2, 80, 8),
+  historyEntry(3, 80, 8),
+]
+
+test('O13 last time 80×8 ×3, Set 1 logged at 82.5 × 8: Set 2 opens at 82.5', async () => {
+  const { user } = renderWithLogged([], { lastEntries: lastTime80x8 })
+  expect(readoutValue(weightReadout())).toBe('80')
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  expect(readoutValue(weightReadout())).toBe('82.5')
+  await user.click(logButton())
+
+  expect(await screen.findByText('Set 2 of 4')).toBeVisible()
+  expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['82.5', '8'])
+})
+
+test('O13 last time 80×8 ×3, Sets 1 and 2 logged at 82.5 × 8: Set 3 opens at 82.5', async () => {
+  const { user } = renderWithLogged([], { lastEntries: lastTime80x8 })
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  await user.click(logButton())
+  await screen.findByText('Set 2 of 4')
+  await user.click(await screen.findByRole('button', { name: 'Log set' }))
+
+  expect(await screen.findByText('Set 3 of 4')).toBeVisible()
+  await waitFor(async () =>
+    expect((await storedEntries()).map((entry) => entry.weightKg)).toEqual([82.5, 82.5]),
+  )
+  expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['82.5', '8'])
 })

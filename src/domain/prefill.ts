@@ -1,77 +1,120 @@
 import { workingSets } from './setKind'
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
 
+/** A Preset: the dial values a Set opens with. */
+type Preset = { weightKg: number | null; reps: number; loadKg?: number }
+
+/** The bounds a Preset's value is kept within: a weight, or a Bodyweight Exercise's signed Load. */
+const WEIGHT_BOUNDS = { min: 0, max: 500 }
+const LOAD_BOUNDS = { min: -60, max: 100 }
+
 /** `entries` in `setIndex` order, without mutating them. */
 function bySetIndex(entries: SetEntry[]): SetEntry[] {
   return [...entries].sort((a, b) => a.setIndex - b.setIndex)
 }
 
-/**
- * What the Sets of an Exercise open preset from, once today's are known (E14-T8): today's working
- * Sets stand in for last time's at the same working positions, so the next Set opens on last
- * time's at its position, or, past last time's, on the one before it as it was actually lifted.
- * Warm-ups are dropped, and the answer is renumbered 1..n by working position, which is what
- * `presetForSet` reads it by.
- */
-export function layTodayOver(lastTime: SetEntry[], today: SetEntry[]): SetEntry[] {
-  const todays = bySetIndex(workingSets(today))
-  const lastTimes = bySetIndex(workingSets(lastTime))
-  return [...todays, ...lastTimes.slice(todays.length)].map((entry, at) => ({
-    ...entry,
-    setIndex: at + 1,
-  }))
+/** The weight a loaded Exercise starts at with no history to go on. */
+function startWeightOf(exercise: Exercise, plan: ExercisePlan): number | null {
+  return plan.startWeightKg ?? exercise.startWeight
+}
+
+/** The Preset of `value` (a weight, or the signed Load on a Bodyweight Exercise) and `reps`. */
+function presetOf(exercise: Exercise, value: number | null, reps: number): Preset {
+  if (!exercise.bodyweight) return { weightKg: value, reps }
+  return value === null || value === 0
+    ? { weightKg: null, reps }
+    : { weightKg: null, reps, loadKg: value }
+}
+
+/** A Preset's value: its weight, or its signed Load on a Bodyweight Exercise (`BW` = 0). */
+function valueOf(exercise: Exercise, preset: Preset): number | null {
+  return exercise.bodyweight ? (preset.loadKg ?? 0) : preset.weightKg
+}
+
+function clamp(exercise: Exercise, value: number): number {
+  const { min, max } = exercise.bodyweight ? LOAD_BOUNDS : WEIGHT_BOUNDS
+  return Math.min(max, Math.max(min, value))
+}
+
+/** Whether today's Set can anchor the next one: neither a Warm-up nor a drop Set. */
+function isAnchor(entry: SetEntry): boolean {
+  return entry.kind !== 'warmup' && entry.kind !== 'drop'
 }
 
 /**
- * The dial values a set should open with, derived from the last finished session that
- * contained this exercise.
+ * The dial values a set should open with (E16-T6 O11), from last time's working Sets `L` and
+ * today's Sets so far.
  *
- * `setIndex` is 1-based and numbers every Set, warm-ups included. `lastEntries` are the entries
- * for this exercise from the last finished session that contained it -- the caller supplies them
- * (E1-T3's `getLastEntriesFor`), so this function stays pure and does no storage access.
+ * `setIndex` is 1-based and numbers every Set, warm-ups included. The Set at `setIndex` is working
+ * Set N, N being 1 + today's working Sets below it (or `setIndex` when `today` is omitted).
+ * Warm-ups are skipped on both sides. The caller supplies `lastEntries` (E1-T3's
+ * `getLastEntriesFor`), so this function stays pure and does no storage access.
  *
- * Presets match working Sets by position (E14-T8): the Set at `setIndex` is working Set N, N
- * being 1 + the working Sets in `logged` below it (or `setIndex` when `logged` is omitted), and
- * it opens on working Set N of `lastEntries` in `setIndex` order. Warm-ups are skipped on both
- * sides. `logged` only places the Set; its values come from `lastEntries` alone.
+ * The anchor is today's latest working Set below `setIndex` that is not a drop Set, at working
+ * position p. Rules, in order:
+ * - an anchor, `L[p]` and `L[N]`: `L[N]`'s value shifted by anchor − `L[p]`, with `L[N]`'s reps;
+ * - an anchor alone: the anchor's value and reps;
+ * - no anchor: `L[N]`, else `L`'s last, else `plan.startWeightKg ?? exercise.startWeight` (on a
+ *   Bodyweight Exercise, `exercise.startLoadKg`, absent `BW`) and `plan.repRange[0]`.
  *
- * Rules, in order:
- * - working Set N of `lastEntries` wins;
- * - otherwise its last working Set;
- * - no working Sets -> `plan.startWeightKg ?? exercise.startWeight` and `plan.repRange[0]`.
- *
- * A bodyweight exercise always yields `weightKg: null`.
+ * Value is `weightKg`, or the signed Load on a Bodyweight Exercise (`BW` = 0), kept within 0–500
+ * kg or −60 to +100 kg. Every Set is read in the Exercise's current mode (`presetFromSet`).
  */
 export function presetForSet(args: {
   exercise: Exercise
   plan: ExercisePlan
   setIndex: number
   lastEntries: SetEntry[]
-  /**
-   * This Session's Sets for the Exercise already logged (E14-T8), from which the working
-   * position of the Set at `setIndex` is counted. Omitted: every Set before it was working.
-   */
-  logged?: SetEntry[]
-}): { weightKg: number | null; reps: number; loadKg?: number } {
-  const { exercise, plan, setIndex, lastEntries, logged } = args
+  /** This Session's Sets for the Exercise so far (E16-T6), passed apart from last time's. */
+  today?: SetEntry[]
+}): Preset {
+  const { exercise, plan, setIndex, lastEntries, today } = args
+  const asPreset = (set: SetEntry): Preset => presetFromSet({ exercise, plan, set })
 
-  const position =
-    logged === undefined
-      ? setIndex
-      : 1 + workingSets(logged).filter((entry) => entry.setIndex < setIndex).length
+  const before = bySetIndex(workingSets(today ?? [])).filter(
+    (entry) => entry.setIndex < setIndex,
+  )
+  const position = today === undefined ? setIndex : 1 + before.length
   const sequence = bySetIndex(workingSets(lastEntries))
 
-  const match = sequence[position - 1] ?? sequence[sequence.length - 1]
-  if (match !== undefined) {
-    return {
-      weightKg: exercise.bodyweight ? null : match.weightKg,
-      reps: match.reps,
-      ...(match.loadKg ? { loadKg: match.loadKg } : {}),
-    }
+  const anchorAt = before.map(isAnchor).lastIndexOf(true)
+  if (anchorAt >= 0) {
+    const anchor = asPreset(before[anchorAt])
+    const lastAtAnchor = sequence[anchorAt]
+    const lastAtNext = sequence[position - 1]
+    if (lastAtAnchor === undefined || lastAtNext === undefined) return anchor
+    const next = asPreset(lastAtNext)
+    const from = valueOf(exercise, asPreset(lastAtAnchor))
+    const to = valueOf(exercise, anchor)
+    const value = valueOf(exercise, next)
+    if (from === null || to === null || value === null) return anchor
+    return presetOf(exercise, clamp(exercise, value + (to - from)), next.reps)
   }
 
-  return {
-    weightKg: exercise.bodyweight ? null : (plan.startWeightKg ?? exercise.startWeight),
-    reps: plan.repRange[0],
-  }
+  const match = sequence[position - 1] ?? sequence[sequence.length - 1]
+  if (match !== undefined) return asPreset(match)
+
+  return presetOf(
+    exercise,
+    exercise.bodyweight ? (exercise.startLoadKg ?? 0) : startWeightOf(exercise, plan),
+    plan.repRange[0],
+  )
+}
+
+/**
+ * A Set translated into the Exercise's current mode, as a Preset (E16-T6 O12): a loaded Set on a
+ * Bodyweight Exercise opens on that signed Load (`20 kg` -> `BW+20`, `0 kg` -> `BW`), and a
+ * Bodyweight Set on a loaded Exercise opens on the start weight. A Set already in the current
+ * mode comes back as its Preset. The Set itself is never changed.
+ */
+export function presetFromSet(args: {
+  exercise: Exercise
+  plan: ExercisePlan
+  set: Pick<SetEntry, 'weightKg' | 'reps' | 'loadKg'>
+}): Preset {
+  const { exercise, plan, set } = args
+  const value = exercise.bodyweight
+    ? (set.weightKg ?? set.loadKg ?? 0)
+    : (set.weightKg ?? startWeightOf(exercise, plan))
+  return presetOf(exercise, value, set.reps)
 }

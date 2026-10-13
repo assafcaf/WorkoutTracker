@@ -929,6 +929,65 @@ test('O5 after a warm-up today, lunges opens on last time’s first working Set,
   ).toEqual(['10', '12'])
 })
 
+// --- E16-T6 O13: the Preset carries today's change ------------------------------------------
+//
+// Last time's lunges were 10×12 · 10×12 · 10×12; lunges step by 1 kg.
+
+async function lungesLastTime10x12(services: Services): Promise<void> {
+  const last = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  await logAll(services, last.id, [
+    { exerciseId: 'lunges', setIndex: 1, weightKg: 10, reps: 12 },
+    { exerciseId: 'lunges', setIndex: 2, weightKg: 10, reps: 12 },
+    { exerciseId: 'lunges', setIndex: 3, weightKg: 10, reps: 12 },
+  ])
+  await services.sessions.finish(last.id)
+}
+
+function readoutsNow(): string[] {
+  return [
+    screen.getByRole('button', { name: 'Weight' }),
+    screen.getByRole('button', { name: 'Reps' }),
+  ].map((readout) => (readout.textContent ?? '').replace(/\s+/g, ' ').trim())
+}
+
+test('O13 reopening lunges after Set 1 was logged at 11 × 12 today opens Set 2 at 11, not last time’s 10', async () => {
+  const services = await servicesOnAssafAB()
+  await lungesLastTime10x12(services)
+  const today = await services.sessions.start('assaf-ab-2026', 'workout-a')
+  await logAll(services, today.id, [{ exerciseId: 'lunges', setIndex: 1, weightKg: 11, reps: 12 }])
+
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Lunges')
+
+  expect(await screen.findByText('Set 2 of 3', undefined, SETTLE)).toBeVisible()
+  expect(readoutsNow()).toEqual(['11', '12'])
+})
+
+test('O13 lunges last time 10×12 ×3, Set 1 logged at 11 × 12: Sets 2 and 3 open at 11', async () => {
+  const services = await servicesOnAssafAB()
+  await lungesLastTime10x12(services)
+  await services.sessions.start('assaf-ab-2026', 'workout-a')
+
+  const { user } = renderFeature(services)
+  await openExercise(user, 'Lunges')
+  await screen.findByText('Set 1 of 3', undefined, SETTLE)
+  expect(readoutsNow()).toEqual(['10', '12'])
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  await user.click(screen.getByRole('button', { name: 'Log set' }))
+
+  expect(await screen.findByText('Set 2 of 3', undefined, SETTLE)).toBeVisible()
+  expect(readoutsNow()).toEqual(['11', '12'])
+
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+
+  expect(await screen.findByText('Set 3 of 3', undefined, SETTLE)).toBeVisible()
+  await waitFor(async () => {
+    const stored = await storedActiveSession()
+    expect(stored?.entries.map((entry) => entry.weightKg)).toEqual([11, 11])
+  }, SETTLE)
+  expect(readoutsNow()).toEqual(['11', '12'])
+})
+
 // --- E14-T11: the Exercise note on the set screen ------------------------------------------
 
 test('O11 a saved Exercise note shows on the set screen of a new Session of that Exercise', async () => {
