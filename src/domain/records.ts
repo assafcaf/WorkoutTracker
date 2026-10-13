@@ -6,7 +6,6 @@ export type RecordKind =
   | 'heaviest-set'
   | 'best-e1rm'
   | 'most-reps-at-weight'
-  | 'lowest-assistance'
   | 'most-reps-in-a-set'
   | 'heaviest-load'
   | 'most-reps-at-load'
@@ -24,11 +23,13 @@ const LABELS: Record<RecordKind, string> = {
   'heaviest-set': 'Heaviest set',
   'best-e1rm': 'Best estimated 1RM',
   'most-reps-at-weight': 'Most reps at the heaviest weight',
-  'lowest-assistance': 'Lowest assistance at target reps',
   'most-reps-in-a-set': 'Most reps in a set',
   'heaviest-load': 'Heaviest load',
   'most-reps-at-load': 'Most reps at the heaviest load',
 }
+
+/** `heaviest-load`'s label when the highest signed Load is still an assistance. */
+const LEAST_ASSISTANCE = 'Least assistance'
 
 type Candidate = { weightKg: number | null; reps: number; at: number; value: number }
 
@@ -50,9 +51,10 @@ function toRecord(kind: RecordKind, candidate: Candidate): ExerciseRecord {
   }
 }
 
+/** `_plan` is unused since the target-reps assistance record went (E16-T2); kept for callers. */
 export function recordsFor(
   exercise: Exercise,
-  plan: ExercisePlan,
+  _plan: ExercisePlan,
   sessions: Session[],
 ): ExerciseRecord[] {
   const sets = sessions.flatMap((session) =>
@@ -60,15 +62,6 @@ export function recordsFor(
       .filter((entry) => entry.exerciseId === exercise.id && countsTowardStats(entry))
       .map((entry) => ({ weightKg: entry.weightKg, reps: entry.reps, loadKg: entry.loadKg, at: session.startedAt })),
   )
-
-  if (exercise.invertProgress) {
-    const candidates: Candidate[] = sets
-      .filter((set) => set.weightKg !== null && set.reps >= plan.repRange[1])
-      .map((set) => ({ ...set, value: -(set.weightKg as number) }))
-    const winner = best(candidates)
-    if (!winner) return []
-    return [toRecord('lowest-assistance', { ...winner, value: -winner.value })]
-  }
 
   if (exercise.bodyweight) {
     const candidates: Candidate[] = sets.map((set) => ({ ...set, value: set.reps }))
@@ -83,9 +76,11 @@ export function recordsFor(
         .filter((set) => set.loadKg === heaviestLoad.value)
         .map((set) => ({ ...set, value: set.reps })),
     ) as Candidate
+    const heaviestLoadRecord = toRecord('heaviest-load', heaviestLoad)
+    if (heaviestLoad.value < 0) heaviestLoadRecord.label = LEAST_ASSISTANCE
     return [
       ...records,
-      toRecord('heaviest-load', heaviestLoad),
+      heaviestLoadRecord,
       toRecord('most-reps-at-load', { ...heaviestLoad, value: atLoad.value, reps: atLoad.reps, at: atLoad.at }),
     ]
   }
