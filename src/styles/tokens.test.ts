@@ -4,10 +4,15 @@
 // `var(--…)` under `src/**/*.css` names one of them.
 // [O2] every documented foreground/background pair clears WCAG 2.1's 4.5:1 for text.
 //
+// E17-T1 (Progress Dashboard foundation) rewrites the palette-value bodies: titles are kept
+// verbatim (the weakened-tests gate tracks tests by title), and the bodies assert the spec's
+// 52-token table (.work/specs/2026-10-13-progress-dashboard-foundation.md). The Court-only
+// tokens stay declared until E17-T12 removes them, so the exact-set assertion waits for T12.
+//
 // The expectations here are the design system's documented values, written out by hand from
 // the spec's token table — not read back from the file under test, which would make the audit
 // agree with whatever the palette happened to become.
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from 'vitest'
@@ -48,22 +53,49 @@ function normalise(value: string | undefined): string {
   return (value ?? '(not declared)').trim().toLowerCase()
 }
 
-// The documented set (E10, Court design language): exactly these forty-nine custom
-// properties, and no more -- 10 colour + 8 family + 3 PR + 6 map + 16 scale + 6 others (the two
-// fonts, the two motion tokens and the two safe areas). Written out by hand from the spec's
-// token table. `--color-border`, `--color-on-accent` and `--shadow-card` are gone: cards
-// separate by tint, not by a hairline.
+// The Progress Dashboard palette (E17 spec, Design > Token table), written out by hand.
 const COLOUR_TOKENS: Record<string, string> = {
-  '--color-bg': '#F5F1E8',
+  '--color-bg': '#F6F6F8',
   '--color-surface': '#FFFFFF',
-  '--color-raised': '#ECE6DA',
-  '--color-text': '#24211D',
-  '--color-muted': '#5F5A52',
-  '--color-primary': '#1F4D3A',
-  '--color-on-primary': '#F5F1E8',
-  '--color-accent': '#9E5231',
+  '--color-raised': '#EEEEF2',
+  '--color-hairline': '#E3E3E9',
+  '--color-control': '#CACAD3',
+  '--color-text': '#16161D',
+  '--color-secondary': '#45454F',
+  '--color-muted': '#62626F',
+  '--color-primary': '#4338A8',
+  '--color-primary-pressed': '#362C8C',
+  '--color-primary-tint': '#EEEDF8',
+  '--color-on-primary': '#FFFFFF',
   '--color-warn': '#8A5A12',
-  '--color-danger': '#A33B32',
+  '--color-danger': '#B42318',
+}
+
+// Colour only in data: the four muscle-family marks, the four heat steps and the second
+// chart series.
+const DATA_TOKENS: Record<string, string> = {
+  '--data-push': '#256F91',
+  '--data-pull': '#96506F',
+  '--data-legs': '#4F7A33',
+  '--data-core': '#93611A',
+  '--heat-0': '#E6F1F2',
+  '--heat-1': '#A9D3D6',
+  '--heat-2': '#4E9DA4',
+  '--heat-3': '#1D6970',
+  '--chart-b': '#8A8A97',
+}
+
+// Effects: the sheet scrim and the sheet's shadow. Compared with whitespace removed, since
+// spacing inside rgba() is not the decision.
+const EFFECT_TOKENS: Record<string, string> = {
+  '--scrim': 'rgba(22, 22, 29, 0.4)',
+  '--shadow-sheet': '0 8px 24px rgba(22, 22, 29, 0.12)',
+}
+
+const WEIGHT_TOKENS: Record<string, string> = {
+  '--weight-regular': '400',
+  '--weight-medium': '500',
+  '--weight-semibold': '600',
 }
 
 // The four muscle families' pastel tint and the ink that reads on it.
@@ -103,15 +135,18 @@ const SCALE_TOKENS: Record<string, string> = {
   '--space-4': '16px',
   '--space-5': '24px',
   '--space-6': '32px',
-  '--radius-sm': '12px',
-  '--radius-lg': '20px',
+  '--radius-sm': '6px',
+  '--radius-md': '10px',
+  '--radius-lg': '12px',
   '--radius-pill': '999px',
   '--tap-min': '44px',
+  '--key-min': '64px',
   '--text-xs': '12px',
   '--text-sm': '14px',
   '--text-md': '16px',
   '--text-lg': '20px',
   '--text-xl': '28px',
+  '--text-hero': '60px',
   '--text-display': '64px',
 }
 
@@ -120,44 +155,77 @@ const MOTION_TOKENS: Record<string, string> = {
   '--press-scale': '0.97',
 }
 
-// `--font-sans`, `--font-display`, `--safe-bottom` and `--safe-top` carry values that are not a
-// plain literal, so they are named here and asserted on their own below.
+// The spec's 52-token table, by name. `--font-sans`, `--safe-bottom` and `--safe-top` carry
+// values that are not a plain literal, so they are asserted on their own below.
 const DOCUMENTED_TOKENS = [
   ...Object.keys(COLOUR_TOKENS),
-  ...Object.keys(FAMILY_TOKENS),
-  ...Object.keys(PR_TOKENS),
-  ...Object.keys(MAP_TOKENS),
+  ...Object.keys(DATA_TOKENS),
+  ...Object.keys(EFFECT_TOKENS),
   ...Object.keys(SCALE_TOKENS),
+  ...Object.keys(WEIGHT_TOKENS),
   ...Object.keys(MOTION_TOKENS),
   '--font-sans',
-  '--font-display',
   '--safe-bottom',
   '--safe-top',
 ].sort()
 
+// Court-only tokens still referenced by stylesheets; E17-T12 removes them with their last use.
+const COURT_ONLY_TOKENS = [
+  '--color-accent',
+  '--font-display',
+  ...Object.keys(FAMILY_TOKENS),
+  ...Object.keys(PR_TOKENS),
+  ...Object.keys(MAP_TOKENS),
+]
+
 const REMOVED_TOKENS = ['--color-border', '--color-on-accent', '--shadow-card']
 
-// The pairs [O2] iterates, from the spec's contrast table: every text colour on each of the
-// three surfaces, the primary action's label on it, each family ink on its tint, and the PR ink
-// on its tint. `--pr-ring` and the map shades are non-text fills and are excluded by name.
+// The pairs [O2] iterates, from the E17 spec's O2, by floor.
 const SURFACES = ['--color-bg', '--color-surface', '--color-raised']
-const TEXT_COLOURS = [
+
+// Numerals (7:1): the two ink colours on each surface.
+const NUMERAL_PAIRS: ReadonlyArray<readonly [string, string]> = [
   '--color-text',
-  '--color-muted',
-  '--color-primary',
-  '--color-accent',
-  '--color-warn',
-  '--color-danger',
+  '--color-secondary',
+].flatMap((fg) => SURFACES.map((bg) => [fg, bg] as const))
+
+// Primary label (7:1): the on-primary label at rest and pressed.
+const PRIMARY_LABEL_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ['--color-on-primary', '--color-primary'],
+  ['--color-on-primary', '--color-primary-pressed'],
 ]
+
+// Text (4.5:1).
+const TEXT_COLOURS = ['--color-muted', '--color-primary', '--color-warn', '--color-danger']
 const CONTRAST_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ...TEXT_COLOURS.flatMap((fg) => SURFACES.map((bg) => [fg, bg] as const)),
-  ['--color-on-primary', '--color-primary'],
-  ['--family-push-ink', '--family-push-tint'],
-  ['--family-pull-ink', '--family-pull-tint'],
-  ['--family-legs-ink', '--family-legs-tint'],
-  ['--family-core-ink', '--family-core-tint'],
-  ['--pr-ink', '--pr-tint'],
+  ['--color-primary', '--color-primary-tint'],
+  ['--color-text', '--heat-2'],
+  ['--color-on-primary', '--heat-3'],
 ]
+
+// Marks (3:1): every data colour on a card.
+const MARK_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  '--data-push',
+  '--data-pull',
+  '--data-legs',
+  '--data-core',
+  '--chart-b',
+].map((fg) => [fg, '--color-surface'] as const)
+
+/** Each pair below `floor`, as a readable failure line; empty when every pair clears it. */
+function pairsBelow(pairs: ReadonlyArray<readonly [string, string]>, floor: number): string[] {
+  const declared = tokens()
+  return pairs
+    .map(([foreground, background]) => {
+      const fg = declared.get(foreground)
+      const bg = declared.get(background)
+      if (!fg || !bg) return `${foreground} on ${background}: not declared`
+      const ratio = contrastRatio(fg, bg)
+      return ratio >= floor ? null : `${foreground} on ${background}: ${ratio.toFixed(2)}:1`
+    })
+    .filter((failure): failure is string => failure !== null)
+}
 
 /** `map`'s names read back from tokens.css beside its documented values, both normalised. */
 function compare(map: Record<string, string>): { actual: object; expected: object } {
@@ -173,15 +241,24 @@ function compare(map: Record<string, string>): { actual: object; expected: objec
 }
 
 test('O1 tokens.css declares exactly the forty-nine documented tokens on :root', () => {
-  expect(DOCUMENTED_TOKENS).toHaveLength(49)
-  expect([...tokens().keys()].sort()).toEqual(DOCUMENTED_TOKENS)
+  // Title kept (weakened-tests gate); the body asserts the E17 52-token table is declared.
+  expect(DOCUMENTED_TOKENS).toHaveLength(52)
+  const declared = tokens()
+  expect(
+    DOCUMENTED_TOKENS.filter((name) => !declared.has(name)),
+    'documented tokens tokens.css does not declare',
+  ).toEqual([])
 })
 
 // Gate identifiers (E10-T1): the two tests below keep their pre-Court titles because the merge
 // gate tracks tests by title across an intentional rewrite. Their titles are historical; the
 // bodies assert the Court expectation (49 tokens; no --shadow-card and no --color-border).
 test('O1 tokens.css declares exactly the thirty-six documented tokens on :root', () => {
-  expect([...tokens().keys()].sort()).toHaveLength(49)
+  // Title kept (weakened-tests gate); the body: apart from the Court-only tokens T12 removes,
+  // tokens.css declares the 52 documented tokens and nothing else.
+  const court = new Set(COURT_ONLY_TOKENS)
+  const declared = [...tokens().keys()].filter((name) => !court.has(name)).sort()
+  expect(declared).toEqual(DOCUMENTED_TOKENS)
 })
 
 test('O1 --shadow-card is an inset hairline expressed through --color-border', () => {
@@ -217,6 +294,26 @@ test('O1 the body-map shade and primary/secondary tokens carry the documented va
 
 test('O1 the spacing, radius, tap and type scales carry the documented values', () => {
   const { actual, expected } = compare(SCALE_TOKENS)
+  expect(actual).toEqual(expected)
+})
+
+test('O1 the data, heat and chart tokens carry the documented values', () => {
+  const { actual, expected } = compare(DATA_TOKENS)
+  expect(actual).toEqual(expected)
+})
+
+test('O1 the scrim and sheet-shadow effect tokens carry the documented values', () => {
+  const declared = tokens()
+  const squash = (value: string | undefined) => normalise(value).replace(/\s+/g, '')
+  expect(
+    Object.fromEntries(Object.keys(EFFECT_TOKENS).map((name) => [name, squash(declared.get(name))])),
+  ).toEqual(
+    Object.fromEntries(Object.entries(EFFECT_TOKENS).map(([name, value]) => [name, squash(value)])),
+  )
+})
+
+test('O1 the weight tokens carry 400, 500 and 600', () => {
+  const { actual, expected } = compare(WEIGHT_TOKENS)
   expect(actual).toEqual(expected)
 })
 
@@ -309,17 +406,26 @@ test('O1 every primary action paints --color-primary with a --color-on-primary l
 })
 
 test('O2 every documented foreground/background pair clears 4.5:1', () => {
-  expect(CONTRAST_PAIRS, 'six text colours on three surfaces, on-primary, four families, PR').toHaveLength(24)
-  const declared = tokens()
-  const tooLow = CONTRAST_PAIRS.map(([foreground, background]) => {
-    const fg = declared.get(foreground)
-    const bg = declared.get(background)
-    if (!fg || !bg) return `${foreground} on ${background}: not declared`
-    const ratio = contrastRatio(fg, bg)
-    return ratio >= 4.5 ? null : `${foreground} on ${background}: ${ratio.toFixed(2)}:1`
-  }).filter((failure): failure is string => failure !== null)
+  // Title kept (weakened-tests gate); the body is E17's Text pairs.
+  expect(
+    CONTRAST_PAIRS,
+    'four text colours on three surfaces, primary on tint, text on heat-2, on-primary on heat-3',
+  ).toHaveLength(15)
+  expect(pairsBelow(CONTRAST_PAIRS, 4.5), 'these pairs fall below WCAG 2.1 AA for text').toEqual([])
+})
 
-  expect(tooLow, 'these pairs fall below WCAG 2.1 AA for text').toEqual([])
+test('O2 numerals: --color-text and --color-secondary clear 7:1 on bg, surface and raised', () => {
+  expect(NUMERAL_PAIRS).toHaveLength(6)
+  expect(pairsBelow(NUMERAL_PAIRS, 7), 'these numeral pairs fall below 7:1').toEqual([])
+})
+
+test('O2 primary label: --color-on-primary clears 7:1 on --color-primary and on --color-primary-pressed', () => {
+  expect(pairsBelow(PRIMARY_LABEL_PAIRS, 7), 'the primary label falls below 7:1').toEqual([])
+})
+
+test('O2 marks: every --data-* colour and --chart-b clear 3:1 on --color-surface', () => {
+  expect(MARK_PAIRS).toHaveLength(5)
+  expect(pairsBelow(MARK_PAIRS, 3), 'these data marks fall below 3:1 on a card').toEqual([])
 })
 
 // The two helpers [O2] measures with, against values computed by hand from the WCAG 2.1
@@ -382,4 +488,14 @@ test('O1 referencedVars finds every var() reference, nested or with a fallback, 
     '--space-1',
     '--space-2',
   ])
+})
+
+// E17-T1 Interfaces: components.css is where T6-T10 put the global component rules, and it
+// only reaches the bundle through base.css (cssAudit's O6 holds every stylesheet reachable).
+test('O1 base.css imports components.css, the home of the global component rules', () => {
+  expect(
+    existsSync(join(srcDir, 'styles', 'components.css')),
+    'src/styles/components.css does not exist',
+  ).toBe(true)
+  expect(read('src/styles/base.css')).toMatch(/@import\s+(?:url\()?['"]\.\/components\.css['"]/)
 })
