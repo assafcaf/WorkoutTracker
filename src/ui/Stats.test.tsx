@@ -444,36 +444,47 @@ test('O11 an exercise with no plan shows its series chart but no progression bar
 test('O12 every stats-record contains one aria-hidden pr-medallion', () => {
   renderO11Stats()
 
+  // The medallion is gone: each record carries one `.tag-pr` reading PR.
   const records = within(exerciseProgressSection()).queryAllByRole('listitem')
   expect(records.length).toBeGreaterThan(0)
   for (const record of records) {
-    expect(record.querySelectorAll('.pr-medallion[aria-hidden="true"]')).toHaveLength(1)
+    expect(record.querySelector('.pr-medallion')).toBeNull()
+    const tags = record.querySelectorAll('.tag.tag-pr')
+    expect(tags).toHaveLength(1)
+    expect(tags[0].textContent).toBe('PR')
   }
 })
 
 const here = dirname(fileURLToPath(import.meta.url))
 
 test('O12 the pr-medallion rule paints with --pr-tint, --pr-ink and a --pr-ring border', () => {
-  const css = readFileSync(join(here, 'Stats.css'), 'utf-8')
+  const css = readFileSync(join(here, '..', 'styles', 'components.css'), 'utf-8')
 
-  const declarations = declarationsFor(css, '.pr-medallion')
+  const declarations = declarationsFor(css, '.tag-pr')
   const values = [...declarations.values()].join(' ')
-  expect(values).toMatch(/var\(\s*--pr-tint\s*\)/)
-  expect(values).toMatch(/var\(\s*--pr-ink\s*\)/)
-  expect(values).toMatch(/var\(\s*--pr-ring\s*\)/)
+  expect(values).toMatch(/var\(\s*--color-primary\s*\)/)
+  expect(values).toMatch(/var\(\s*--color-primary-tint\s*\)/)
+  expect(values).toMatch(/var\(\s*--text-xs\s*\)/)
+  expect(values).toMatch(/var\(\s*--weight-semibold\s*\)/)
+  expect(values).not.toMatch(/--pr-/)
+})
+
+test('O12 no screen stylesheet keeps a pr-badge, pr-medallion or --pr-* rule', () => {
+  for (const name of ['SetScreen.css', 'Stats.css', 'SessionSummary.css']) {
+    const css = readFileSync(join(here, name), 'utf-8')
+    expect(css, name).not.toMatch(/pr-badge|pr-medallion|--pr-/)
+  }
 })
 
 test('O13 each pr-medallion contains one decorative court-stripe', () => {
   renderO11Stats()
 
+  // No medallion, so no PR mark carries a court stripe.
   const records = within(exerciseProgressSection()).queryAllByRole('listitem')
   expect(records.length).toBeGreaterThan(0)
   for (const record of records) {
-    const medallion = record.querySelector('.pr-medallion')
-    expect(medallion).not.toBeNull()
-    const stripe = medallion?.querySelector('.court-stripe')
-    expect(stripe).not.toBeNull()
-    expect(stripe).toHaveAttribute('aria-hidden', 'true')
+    expect(record.querySelector('.tag-pr .court-stripe')).toBeNull()
+    expect(record.querySelector('.pr-medallion')).toBeNull()
   }
 })
 
