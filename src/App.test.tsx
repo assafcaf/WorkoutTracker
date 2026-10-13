@@ -239,6 +239,8 @@ async function openExercise(user: UserEvent, exerciseName: string): Promise<void
   await user.click(
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )
+  // The screen changes after the click settles; wait for it so later sync reads do not race it.
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
 }
 
 /** Taps "Log set" and waits for the set after it to be the one on the dials. */
