@@ -14,6 +14,7 @@ import { visiblePrograms } from '../domain/programs'
 import { prescribedWeekly, programGaps } from '../domain/programVolume'
 import { BodyMap } from './body/BodyMap'
 import { BodyMapLegend } from './body/BodyMapLegend'
+import { Segmented } from './controls'
 import './Settings.css'
 import './ProgramPage.css'
 
@@ -137,19 +138,17 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     const confirming = confirmingId === program.id
     return (
       <div key={program.id} data-program-id={program.id} className="program-page-switcher-row">
-        <label className={`settings-action${checked ? ' settings-action-active' : ''}`}>
-          <input
-            type="radio"
-            className="settings-radio"
-            name="program-page-active-program"
-            value={program.id}
-            checked={checked}
-            onChange={() => {
-              if (!checked) onChooseProgram(program.id)
-            }}
-          />
-          <span className="settings-action-label">{program.name}</span>
-        </label>
+        {/* One segment per row, all sharing a name, so the rows still form one native radio
+            group while each keeps its own action buttons beside it. */}
+        <Segmented
+          name="program-page-active-program"
+          label="Active program"
+          value={activeProgramId ?? ''}
+          options={[{ value: program.id, label: program.name }]}
+          onChange={() => {
+            if (!checked) onChooseProgram(program.id)
+          }}
+        />
         <button
           type="button"
           className="program-page-edit btn-secondary"

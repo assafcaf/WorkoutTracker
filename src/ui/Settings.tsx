@@ -3,6 +3,7 @@ import type { PlateInventory, Program, VolumeBaseline } from '../types'
 import type { SyncView } from '../services/syncView'
 import { formatDay } from '../domain/dates'
 import { PlateInventoryEditor } from './PlateInventoryEditor'
+import { Segmented, Select, Switch } from './controls'
 import './Settings.css'
 
 export type { SyncView }
@@ -157,42 +158,24 @@ export function Settings(props: SettingsProps): JSX.Element {
     <div className="settings">
       <fieldset className="settings-group">
         <legend className="settings-legend">Active program</legend>
-        {programs.map((program) => {
-          const checked = program.id === activeProgramId
-          return (
-            <label
-              key={program.id}
-              className={`settings-action${checked ? ' settings-action-active' : ''}`}
-            >
-              <input
-                type="radio"
-                className="settings-radio"
-                name="active-program"
-                value={program.id}
-                checked={checked}
-                onChange={() => {
-                  if (!checked) onActiveProgramChange(program.id)
-                }}
-              />
-              <span className="settings-action-label">{program.name}</span>
-            </label>
-          )
-        })}
+        <Segmented
+          name="active-program"
+          label="Active program"
+          value={activeProgramId ?? ''}
+          options={programs.map((program) => ({ value: program.id, label: program.name }))}
+          onChange={(id) => {
+            if (id !== activeProgramId) onActiveProgramChange(id)
+          }}
+        />
       </fieldset>
       <fieldset className="settings-group">
         <legend className="settings-legend">My gym&apos;s equipment</legend>
         {equipmentTypes.map((type) => {
           const checked = gymEquipment === null || gymEquipment.includes(type)
           return (
-            <label key={type} className="settings-action">
-              <input
-                type="checkbox"
-                className="settings-checkbox"
-                checked={checked}
-                onChange={() => handleEquipmentToggle(type)}
-              />
-              <span className="settings-action-label">{type}</span>
-            </label>
+            <div key={type} className="settings-action">
+              <Switch checked={checked} onChange={() => handleEquipmentToggle(type)} label={type} />
+            </div>
           )
         })}
       </fieldset>
@@ -210,30 +193,22 @@ export function Settings(props: SettingsProps): JSX.Element {
         <legend className="settings-legend">Compare volume</legend>
         <label className="settings-action">
           <span className="settings-action-label">Compare volume with</span>
-          <select
-            className="settings-select"
-            value={volumeBaseline.period}
-            onChange={handleCompareChange}
-          >
+          <Select value={volumeBaseline.period} onChange={handleCompareChange}>
             <option value="last">Last workout</option>
             <option value="1w">Past week</option>
             <option value="1m">Past month</option>
             <option value="3m">Past 3 months</option>
             <option value="6m">Past 6 months</option>
             <option value="since">Since a date</option>
-          </select>
+          </Select>
         </label>
         {volumeBaseline.period !== 'last' ? (
           <label className="settings-action">
             <span className="settings-action-label">Using</span>
-            <select
-              className="settings-select"
-              value={volumeBaseline.aggregate}
-              onChange={handleAggregateChange}
-            >
+            <Select value={volumeBaseline.aggregate} onChange={handleAggregateChange}>
               <option value="avg">Average</option>
               <option value="max">Best</option>
-            </select>
+            </Select>
           </label>
         ) : null}
         {volumeBaseline.period === 'since' ? (
@@ -250,15 +225,13 @@ export function Settings(props: SettingsProps): JSX.Element {
       </fieldset>
       <fieldset className="settings-group">
         <legend className="settings-legend">Effort</legend>
-        <label className="settings-action">
-          <input
-            type="checkbox"
-            className="settings-checkbox"
+        <div className="settings-action">
+          <Switch
             checked={trackEffort}
-            onChange={(event) => onTrackEffortChange?.(event.target.checked)}
+            onChange={(next) => onTrackEffortChange?.(next)}
+            label="Track effort"
           />
-          <span className="settings-action-label">Track effort</span>
-        </label>
+        </div>
       </fieldset>
       <button type="button" className="settings-action btn-secondary" onClick={() => onExport?.()}>
         <span className="settings-action-label">Export</span>

@@ -5,6 +5,7 @@ import { newPlan, validateProgram } from '../domain/programs'
 import type { ProgramFault } from '../domain/programs'
 import { useActionBarSlot } from './actionBarSlot'
 import { LibraryList } from './LibraryList'
+import { Switch } from './controls'
 import './ProgramEditor.css'
 
 export type ProgramEditorProps = {
@@ -363,17 +364,13 @@ export function ProgramEditor({
                         />
                       </label>
                     )}
-                    <label className="program-editor-field">
-                      <input
-                        type="checkbox"
-                        className="program-editor-checkbox"
+                    <div className="program-editor-field program-editor-label">
+                      <Switch
                         checked={plan.amrapLast}
-                        onChange={(event) =>
-                          updatePlan(workout.id, j, { amrapLast: event.target.checked })
-                        }
+                        onChange={(next) => updatePlan(workout.id, j, { amrapLast: next })}
+                        label="Last set AMRAP"
                       />
-                      <span className="program-editor-label">Last set AMRAP</span>
-                    </label>
+                    </div>
                   </div>
                   {repRangeMessage && (
                     <p id={faultId(`${planPath}.repRange`)} className="program-editor-fault">

@@ -143,15 +143,6 @@
   font-size: var(--text-sm);
 }
 
-.dial-step-select {
-  min-height: var(--tap-min);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--color-raised);
-  color: var(--color-text);
-  font-size: var(--text-sm);
-}
-
 /* The rest Dial (E13-T9): the same column, with Set rest and Cancel in place of minus/plus. */
 .rest-dial {
   grid-template-columns: 1fr;

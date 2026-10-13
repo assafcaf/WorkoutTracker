@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { WEIGHT_STEPS, ladderFor, stepWeight } from '../domain/dial'
 import { loadText } from '../domain/setText'
 import { Keypad } from './Keypad'
+import { Select } from './controls'
 import { useCentredRung } from './useCentredRung'
 import { useScrub } from './useScrub'
 import type { DialVariant } from './dialVariant'
@@ -160,9 +161,8 @@ export function WeightStepControl(props: {
   return (
     <label className="dial-step-control">
       {label}
-      <select
+      <Select
         aria-label={label}
-        className="dial-step-select"
         value={props.step}
         onChange={(event) => props.onStepChange(Number(event.target.value))}
       >
@@ -171,7 +171,7 @@ export function WeightStepControl(props: {
             {step}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   )
 }
