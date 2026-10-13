@@ -1,3 +1,5 @@
+import { buildLadder } from './dial'
+import { presetForSet } from './prefill'
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
 
 /**
@@ -14,7 +16,14 @@ export function swapPreset(args: {
   chosenLast: SetEntry[]
   today: SetEntry[]
 }): { weightKg: number | null; reps: number; loadKg?: number } {
-  void args
-  // Stub: the implementation is the code-writer's.
-  return { weightKg: null, reps: 0 }
+  const { planned, chosen, plan, setIndex, plannedLast, chosenLast, today } = args
+  if (chosenLast.length > 0) {
+    return presetForSet({ exercise: chosen, plan, setIndex, lastEntries: chosenLast, today })
+  }
+  const wanted = presetForSet({ exercise: planned, plan, setIndex, lastEntries: plannedLast, today })
+  if (chosen.bodyweight) return { weightKg: null, reps: wanted.reps }
+  const value = wanted.weightKg ?? chosen.startWeight ?? 0
+  const ladder = buildLadder(chosen)
+  const rung = ladder.filter((candidate) => candidate <= value).pop() ?? ladder[0] ?? value
+  return { weightKg: rung, reps: wanted.reps }
 }

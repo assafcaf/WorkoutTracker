@@ -141,7 +141,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
                 <>
                   {' '}
                   <span className="exercise-instead">
-                    {`instead of ${resolve(plan.exerciseId)?.name ?? plan.exerciseId}`}
+                    {`for ${resolve(plan.exerciseId)?.name ?? plan.exerciseId}`}
                   </span>
                 </>
               ) : null}
