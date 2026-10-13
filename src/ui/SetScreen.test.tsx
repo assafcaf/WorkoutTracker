@@ -1627,7 +1627,10 @@ test('O4 after the latest Set is deleted, rest follows the new latest Set', asyn
   await waitFor(() => expect(readoutValue(restReadout())).toBe('03:00'))
   clock = BASE + 100_000
 
-  await user.click(await screen.findByRole('button', { name: '50 × 8' }))
+  // Set 2 opened on today's Set 1 (E16-T6 O11: no last time, so the anchor's 60 × 10), so both
+  // rows read 60 × 10; the second one listed is set 2.
+  await waitFor(() => expect(screen.getAllByRole('button', { name: '60 × 10' })).toHaveLength(2))
+  await user.click(screen.getAllByRole('button', { name: '60 × 10' })[1])
   await user.click(screen.getByRole('button', { name: 'Delete set' }))
 
   await waitFor(() => expect(readoutValue(restReadout())).toBe('01:20'))
