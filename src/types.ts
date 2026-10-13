@@ -5,6 +5,8 @@ export type Exercise = {
   startWeight: number | null
   bodyweight: boolean
   invertProgress: boolean
+  /** The signed Load a Bodyweight Exercise starts at with no history (E16-T6); absent: `BW`. */
+  startLoadKg?: number
   libraryId: string
 }
 

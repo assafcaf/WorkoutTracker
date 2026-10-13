@@ -52,8 +52,14 @@ export function presetForSet(args: {
    * position of the Set at `setIndex` is counted. Omitted: every Set before it was working.
    */
   logged?: SetEntry[]
+  /**
+   * This Session's Sets for the Exercise so far (E16-T6), passed apart from last time's.
+   * STUB (E16-T6 test-designer): only places the Set, as `logged` does; O11/O12 not implemented.
+   */
+  today?: SetEntry[]
 }): { weightKg: number | null; reps: number; loadKg?: number } {
-  const { exercise, plan, setIndex, lastEntries, logged } = args
+  const { exercise, plan, setIndex, lastEntries } = args
+  const logged = args.logged ?? args.today
 
   const position =
     logged === undefined
@@ -74,4 +80,21 @@ export function presetForSet(args: {
     weightKg: exercise.bodyweight ? null : (plan.startWeightKg ?? exercise.startWeight),
     reps: plan.repRange[0],
   }
+}
+
+/**
+ * A Set translated into the Exercise's current mode, as a Preset (E16-T6 O12): a loaded Set on a
+ * Bodyweight Exercise opens on that signed Load (`20 kg` -> `BW+20`, `0 kg` -> `BW`), and a
+ * Bodyweight Set on a loaded Exercise opens on the start weight. A Set already in the current
+ * mode comes back as its Preset. The Set itself is never changed.
+ *
+ * STUB (E16-T6 test-designer).
+ */
+export function presetFromSet(args: {
+  exercise: Exercise
+  plan: ExercisePlan
+  set: Pick<SetEntry, 'weightKg' | 'reps' | 'loadKg'>
+}): { weightKg: number | null; reps: number; loadKg?: number } {
+  void args
+  throw new Error('NotImplemented: presetFromSet (E16-T6)')
 }

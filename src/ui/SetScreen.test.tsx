@@ -3567,3 +3567,39 @@ test('O10 the over clock is coloured --color-accent by a rule on the rest panel'
   )
   expect(colours).toContain('var(--color-accent)')
 })
+
+// --- E16-T6 O13: the Preset carries today's change -----------------------------------------
+
+/** Last time on back squat: 80×8 · 80×8 · 80×8. */
+const lastTime80x8: SetEntry[] = [
+  historyEntry(1, 80, 8),
+  historyEntry(2, 80, 8),
+  historyEntry(3, 80, 8),
+]
+
+test('O13 last time 80×8 ×3, Set 1 logged at 82.5 × 8: Set 2 opens at 82.5', async () => {
+  const { user } = renderWithLogged([], { lastEntries: lastTime80x8 })
+  expect(readoutValue(weightReadout())).toBe('80')
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  expect(readoutValue(weightReadout())).toBe('82.5')
+  await user.click(logButton())
+
+  expect(await screen.findByText('Set 2 of 4')).toBeVisible()
+  expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['82.5', '8'])
+})
+
+test('O13 last time 80×8 ×3, Sets 1 and 2 logged at 82.5 × 8: Set 3 opens at 82.5', async () => {
+  const { user } = renderWithLogged([], { lastEntries: lastTime80x8 })
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  await user.click(logButton())
+  await screen.findByText('Set 2 of 4')
+  await user.click(await screen.findByRole('button', { name: 'Log set' }))
+
+  expect(await screen.findByText('Set 3 of 4')).toBeVisible()
+  await waitFor(async () =>
+    expect((await storedEntries()).map((entry) => entry.weightKg)).toEqual([82.5, 82.5]),
+  )
+  expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['82.5', '8'])
+})
