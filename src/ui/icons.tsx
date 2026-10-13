@@ -28,6 +28,7 @@ export type IconName =
   | 'Search'
   | 'ArrowUp'
   | 'ArrowRight'
+  | 'CloudCheck'
 
 const DRAWINGS: Record<IconName, ReactNode> = {
   ChevronDown: <path d="m6 9 6 6 6-6" />,
@@ -77,6 +78,7 @@ const DRAWINGS: Record<IconName, ReactNode> = {
   ),
   ArrowUp: <path d="m5 12 7-7 7 7M12 19V5" />,
   ArrowRight: <path d="M5 12h14M12 5l7 7-7 7" />,
+  CloudCheck: <path d="m17 15-5.5 5.5L9 18M5 17.743A7 7 0 1 1 15.71 10h1.79a4.5 4.5 0 0 1 1.5 8.742" />,
 }
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }): JSX.Element {
