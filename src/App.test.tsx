@@ -3193,7 +3193,8 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
   await user.click(await screen.findByRole('button', { name: /^Resume Workout A/ }, SETTLE))
 
   const row = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
-  expect(within(row).getByText('Volume vs 3-month average: 50%')).toBeVisible()
+  // The choice reaches the row through the preferences topic, which can land just after Resume.
+  expect(await within(row).findByText('Volume vs 3-month average: 50%', undefined, SETTLE)).toBeVisible()
 })
 
 describe('E8-T8', () => {
