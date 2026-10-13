@@ -41,7 +41,7 @@
   color: var(--color-primary);
 }
 
-.tab-bar-glyph {
+.tab-bar-tab svg {
   display: block;
 }
 

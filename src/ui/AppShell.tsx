@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { ActionBarHostContext } from './actionBarSlot'
 import { CourtStripe } from './CourtStripe'
 import { TabBar } from './TabBar'
+import { Icon } from './icons'
 import './AppShell.css'
 
 /**
@@ -57,26 +58,6 @@ function createActionBarHost(): HTMLElement {
   return host
 }
 
-/** The back control's chevron, drawn inline so the app ships no icon dependency. */
-function BackGlyph(): JSX.Element {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="24"
-      height="24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path d="M15 5l-7 7 7 7" />
-    </svg>
-  )
-}
-
 /**
  * The one shell every screen renders inside: a header carrying the back control, the title and
  * the trailing slot; the screen's own content; an optional sticky action bar; and the tab bar.
@@ -118,7 +99,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
         <header className="app-header">
           {onBack ? (
             <button type="button" className="app-header-back" aria-label="Back" onClick={onBack}>
-              <BackGlyph />
+              <Icon name="ChevronLeft" size={24} />
             </button>
           ) : null}
           <div className="app-header-title-group">
