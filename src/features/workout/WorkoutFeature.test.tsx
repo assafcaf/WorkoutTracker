@@ -96,10 +96,10 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
-  // The swap now stays on the Set screen (E16-T12); the list row is one Back away.
+  // The swap now stays on the Set screen (E16-T12); the list row is one All away.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await screen.findByRole('button', { name: 'Log set' }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
 
@@ -179,7 +179,7 @@ test('O9 backing out of the exercise list shows Resume Workout A on the picker a
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('button', { name: 'Minimise' }))
 
   expect(await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)).toBeVisible()
   await waitFor(() => expect(onInSession).toHaveBeenLastCalledWith(false), SETTLE)
@@ -191,7 +191,7 @@ test('O9 Resume Workout A returns to the same Session in progress', async () => 
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   const before = await storedActiveSession()
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('button', { name: 'Minimise' }))
 
   await user.click(await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE))
 
@@ -256,7 +256,7 @@ test('O9 Back from the set screen shows the exercise list with the logged Set co
   await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
 
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('1/4')
@@ -363,7 +363,7 @@ test('O22 after choosing an Alternative the Workout’s list row names it with "
   await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do this instead' }))
   await screen.findByRole('heading', { level: 1, name: 'Hammer Curls' }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
 
   const row = await screen.findByRole('button', { name: /^Hammer Curls/ }, SETTLE)
   expect(row.querySelector('.exercise-name')).toHaveTextContent('Hammer Curls')
@@ -378,10 +378,10 @@ test('O9 Finish workout finishes the Session and shows the Session summary', asy
   await openExercise(user, 'Back squat')
   await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+  await user.click(screen.getByRole('button', { name: 'Finish' }))
 
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
   expect(await storedActiveSession()).toBeNull()
@@ -393,7 +393,7 @@ test('O9 Done on the Session summary leaves the picker, reporting onInSession(fa
   const { user, onInSession } = renderFeature(await servicesOnAssafAB())
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+  await user.click(screen.getByRole('button', { name: 'Finish' }))
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 
   await user.click(within(summary).getByRole('button', { name: 'Done' }))
@@ -1515,7 +1515,7 @@ test('O16 the session summary reads a pre-epic assisted pull-ups Set as BW−27 
   await seedPreEpicAssisted('pre-epic', 27, false, OCT_6)
   const { user } = renderFeature(await servicesOnAssafAB())
 
-  await user.click(await screen.findByRole('button', { name: 'Finish workout' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
 
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   await waitFor(() => expect(summary.textContent).toMatch(new RegExp(`BW${MINUS}27 ?${TIMES} ?8`)), SETTLE)
@@ -1618,7 +1618,7 @@ test('O6 reopening Back squat after flipping Bodyweight on shows the switch on a
     SETTLE,
   )
 
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await openExercise(user, 'Back squat')
 
   expect(await findBodyweightSwitch()).toBeChecked()

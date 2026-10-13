@@ -5,28 +5,25 @@ import './TabBar.css'
 export type TabBarProps = {
   current: Tab
   onChange(tab: Tab): void
-  settingsBadge?: boolean
 }
 
-/** The five destinations, in the order they sit in the bar. */
+/** The four destinations, in the order they sit in the bar (Progress Dashboard navigation). */
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
-  { id: 'workout', label: 'Workout', icon: 'Dumbbell' },
-  { id: 'program', label: 'Program', icon: 'ListChecks' },
-  { id: 'exercises', label: 'Exercises', icon: 'ChartLine' },
-  { id: 'history', label: 'History', icon: 'History' },
-  { id: 'settings', label: 'Settings', icon: 'Settings' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+  { id: 'sessions', label: 'Sessions', icon: 'Calendar' },
+  { id: 'lifts', label: 'Lifts', icon: 'TrendingUp' },
+  { id: 'program', label: 'Program', icon: 'ClipboardList' },
 ]
 
 /**
- * The bottom tab bar: the only way between Workout, Program, Exercises, History and Settings.
+ * The bottom tab bar: the only way between Dashboard, Sessions, Lifts and Program. Each tab is
+ * an icon over its label, the current one in the primary colour. Settings is not a tab: it
+ * opens from the Dashboard header's gear.
  *
- * Each tab names itself with an `aria-label` rather than leaning on its text, so the
- * backup-due marker the Settings tab can carry never lands in that tab's accessible name —
- * the trainee, and every test that reaches Settings by name, keeps a control called exactly
- * "Settings". The marker announces its own reason instead.
+ * Each tab names itself with an `aria-label`, so its accessible name is exactly its label.
  */
 export function TabBar(props: TabBarProps): JSX.Element {
-  const { current, onChange, settingsBadge } = props
+  const { current, onChange } = props
 
   return (
     <nav className="tab-bar" aria-label="Main">
@@ -41,9 +38,6 @@ export function TabBar(props: TabBarProps): JSX.Element {
         >
           <Icon name={tab.icon} size={24} />
           <span className="tab-bar-label">{tab.label}</span>
-          {tab.id === 'settings' && settingsBadge ? (
-            <span className="tab-bar-badge" role="status" aria-label="A backup is due" />
-          ) : null}
         </button>
       ))}
     </nav>
