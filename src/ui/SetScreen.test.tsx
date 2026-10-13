@@ -1273,6 +1273,10 @@ test('O14 a logged Set that set a record carries a Personal record badge; one th
   expect(badgesOnRow('85 × 5')).toHaveLength(1)
   expect(badgesOnRow('70 × 5')).toHaveLength(0)
   expect(screen.getAllByText('PR')).toHaveLength(1)
+  const tag = badgesOnRow('85 × 5')[0]
+  expect(tag).toHaveClass('tag', 'tag-pr')
+  expect(tag.textContent).toBe('PR')
+  expect(document.querySelector('.pr-badge')).toBeNull()
 })
 
 test('O14 no Set carries a badge without earlier Sessions', () => {

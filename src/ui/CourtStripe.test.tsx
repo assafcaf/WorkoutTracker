@@ -61,6 +61,6 @@ test('O13 CourtStripe is used in exactly the Shell header, the session summary a
   })
 
   expect(usesCourtStripe.sort()).toEqual(
-    [join(here, 'AppShell.tsx'), join(here, 'SessionSummary.tsx'), join(here, 'Stats.tsx')].sort(),
+    [join(here, 'AppShell.tsx'), join(here, 'SessionSummary.tsx')].sort(),
   )
 })

@@ -368,6 +368,23 @@ test('O16 SessionSummary lists a PR set in the Session as Bench press · Heavies
   expect(line.closest('li')).not.toBeNull()
 })
 
+test('O16 SessionSummary marks each listed PR with one .tag-pr reading PR', () => {
+  const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
+  const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
+
+  const item = within(dialog).getByText('Bench press · Heaviest set · 85 kg × 5').closest('li') as HTMLElement
+  const tags = item.querySelectorAll('.tag.tag-pr')
+  expect(tags).toHaveLength(1)
+  expect(tags[0].textContent).toBe('PR')
+})
+
+test('O16 SessionSummary with no PRs shows no .tag-pr', () => {
+  const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 90, 5)
+  const dialog = renderWithStats(benchSession('nopr', BASE, 52, 3, 85, 5), [earlier])
+
+  expect(dialog.querySelector('.tag-pr')).toBeNull()
+})
+
 test('O16 SessionSummary shows duration, volume and PRs above the body map', () => {
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])

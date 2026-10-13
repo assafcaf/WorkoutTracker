@@ -103,7 +103,12 @@ export function SessionSummary({
       {prLines.length > 0 ? (
         <ul className="session-summary-prs">
           {prLines.map((line) => (
-            <li key={line.key}>{line.text}</li>
+            <li key={line.key}>
+              <span>{line.text}</span>{' '}
+              <span className="tag tag-pr" aria-label="Personal record">
+                PR
+              </span>
+            </li>
           ))}
         </ul>
       ) : null}

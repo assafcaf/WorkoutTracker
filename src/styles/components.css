@@ -8,3 +8,17 @@
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-lg);
 }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-pill);
+}
+
+.tag-pr {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  background: var(--color-primary-tint);
+  color: var(--color-primary);
+}
