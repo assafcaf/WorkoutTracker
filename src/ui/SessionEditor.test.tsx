@@ -50,7 +50,6 @@ const exercises: Exercise[] = [
     weightStep: 2.5,
     startWeight: 50,
     bodyweight: false,
-    invertProgress: false,
   },
   {
     id: 'dips',
@@ -59,7 +58,6 @@ const exercises: Exercise[] = [
     weightStep: 2.5,
     startWeight: null,
     bodyweight: true,
-    invertProgress: false,
   },
 ]
 const byId = new Map(exercises.map((exercise) => [exercise.id, exercise] as const))

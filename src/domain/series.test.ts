@@ -9,20 +9,17 @@ function exercise(overrides: Partial<Exercise>): Exercise {
     weightStep: 2.5,
     startWeight: 50,
     bodyweight: false,
-    invertProgress: false,
     libraryId: 'Barbell-Squat',
     ...overrides,
   }
 }
 
-const backSquat = exercise({ id: 'back-squat', bodyweight: false, invertProgress: false })
-const pushUps = exercise({ id: 'push-ups', bodyweight: true, invertProgress: false })
-// Assisted is a Bodyweight Exercise with a negative signed Load. `invertProgress` stays set until
-// E16-T10 removes the field, so these tests also prove seriesFor no longer reads it.
+const backSquat = exercise({ id: 'back-squat', bodyweight: false })
+const pushUps = exercise({ id: 'push-ups', bodyweight: true })
+// Assisted is a Bodyweight Exercise with a negative signed Load (E16-T10 removed invertProgress).
 const assistedPullUps = exercise({
   id: 'assisted-pull-ups',
   bodyweight: true,
-  invertProgress: true,
 })
 
 function session(overrides: Partial<Session>): Session {
@@ -285,6 +282,7 @@ test('O19 an Exercise flagged invertProgress with Loads is a load series, not an
 
   const result = seriesFor(assistedPullUps, sessions)
 
+  expect(assistedPullUps).not.toHaveProperty('invertProgress')
   expect(result.kind).toBe('load')
   expect(result).not.toHaveProperty('inverted')
 })

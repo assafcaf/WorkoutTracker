@@ -5,6 +5,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test } from 'vitest'
 import { Stats } from './Stats'
+import { loadCatalog } from '../data/catalog'
 import { declarationsFor } from '../test/cssAudit'
 import type { Exercise, Program, Session, SetEntry } from '../types'
 
@@ -100,7 +101,6 @@ const squat: Exercise = {
   weightStep: 2.5,
   startWeight: 20,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'back-squat',
 }
 
@@ -110,7 +110,6 @@ const pushup: Exercise = {
   weightStep: 0,
   startWeight: null,
   bodyweight: true,
-  invertProgress: false,
   libraryId: 'push-up',
 }
 
@@ -177,7 +176,6 @@ const o11Squat: Exercise = {
   weightStep: 2.5,
   startWeight: 20,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'back-squat',
 }
 
@@ -187,7 +185,6 @@ const o11Bench: Exercise = {
   weightStep: 2.5,
   startWeight: 20,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'bench-press',
 }
 
@@ -198,7 +195,6 @@ const o11DumbbellPress: Exercise = {
   weightStep: 2,
   startWeight: 10,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'dumbbell-bench-press',
 }
 
@@ -209,7 +205,6 @@ const o11FarmerCarry: Exercise = {
   weightStep: 2,
   startWeight: 20,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'farmers-walk',
 }
 
@@ -466,7 +461,6 @@ const assistedPullUps: Exercise = {
   weightStep: 1,
   startWeight: null,
   bodyweight: true,
-  invertProgress: true,
   libraryId: 'Band_Assisted_Pull-Up',
 }
 
@@ -494,4 +488,56 @@ test('O19 Stats titles a Bodyweight Exercise with Loads <Exercise> load and char
     within(exerciseProgressSection()).getByRole('img', { name: 'Assisted pull-ups load' }),
   ).toBeInTheDocument()
   expect(chartPoints().map((point) => point.value)).toEqual([-27, -20])
+})
+
+// --- E16-T10 (O20): the catalog's assisted pull-ups, logged BW−27 × 8 then BW−20 × 8 ---
+
+const assistedProgram: Program = {
+  id: 'assaf-ab-2026',
+  name: 'A/B Split',
+  units: 'kg',
+  workouts: [
+    {
+      id: 'workout-a',
+      name: 'Workout A',
+      exercises: [{ exerciseId: 'assisted-pull-ups', sets: 1, repRange: [6, 8], restSeconds: 120 }],
+    },
+  ],
+  sessionsPerWeek: 3,
+}
+
+/** The bundled catalog itself, so the test sees assisted pull-ups as the app ships them. */
+function renderCatalogAssistedStats(): void {
+  const catalog = loadCatalog()
+  render(
+    <Stats
+      sessions={[assistedSession('later', 300, -20), assistedSession('earlier', 100, -27)]}
+      resolve={(id) => catalog.get(id)}
+      programs={[assistedProgram]}
+    />,
+  )
+}
+
+test('O20 the catalog assisted pull-ups chart is titled Assisted pull-ups load and rises -27 to -20', () => {
+  renderCatalogAssistedStats()
+
+  expect(
+    within(exerciseProgressSection()).getByRole('img', { name: 'Assisted pull-ups load' }),
+  ).toBeInTheDocument()
+  expect(chartPoints().map((point) => point.value)).toEqual([-27, -20])
+})
+
+test('O20 the catalog assisted pull-ups record reads Least assistance BW−20', () => {
+  renderCatalogAssistedStats()
+
+  const record = recordItem('Least assistance')
+  expect(record, 'the Least assistance record').toBeDefined()
+  expect(within(record as HTMLElement).getByText('BW−20')).toBeVisible()
+  expect(textOf(record as HTMLElement)).not.toMatch(/kg/)
+})
+
+test('O20 the catalog assisted pull-ups progression bar suggests BW−19', () => {
+  renderCatalogAssistedStats()
+
+  expect(within(exerciseProgressSection()).getByText('Next: BW−19')).toBeVisible()
 })

@@ -14,7 +14,6 @@ const exercises: Exercise[] = [
     weightStep: 2.5,
     startWeight: 40,
     bodyweight: false,
-    invertProgress: false,
     libraryId: 'bench',
   },
   {
@@ -23,7 +22,6 @@ const exercises: Exercise[] = [
     weightStep: 2.5,
     startWeight: 60,
     bodyweight: false,
-    invertProgress: false,
     libraryId: 'squat',
   },
 ]

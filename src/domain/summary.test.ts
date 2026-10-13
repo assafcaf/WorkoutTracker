@@ -9,7 +9,6 @@ function exercise(overrides: Partial<Exercise> & { id: string }): Exercise {
     weightStep: 2.5,
     startWeight: 20,
     bodyweight: false,
-    invertProgress: false,
     libraryId: 'fixture-lib',
     ...overrides,
   }

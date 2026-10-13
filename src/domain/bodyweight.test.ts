@@ -11,7 +11,6 @@ const benchPress: Exercise = {
   weightStep: 2.5,
   startWeight: 40,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'Barbell_Bench_Press_-_Medium_Grip',
 }
 
@@ -21,7 +20,6 @@ const pullUps: Exercise = {
   weightStep: 2.5,
   startWeight: null,
   bodyweight: true,
-  invertProgress: false,
   libraryId: 'Pullups',
 }
 
@@ -88,7 +86,6 @@ test('O1 applyBodyweight answers the Exercise with the overridden bodyweight and
     weightStep: 2.5,
     startWeight: 40,
     bodyweight: true,
-    invertProgress: false,
     libraryId: 'Barbell_Bench_Press_-_Medium_Grip',
   })
 })
@@ -100,7 +97,6 @@ test('O1 applyBodyweight answers the Exercise as it is when no override is store
     weightStep: 2.5,
     startWeight: null,
     bodyweight: true,
-    invertProgress: false,
     libraryId: 'Pullups',
   })
 })

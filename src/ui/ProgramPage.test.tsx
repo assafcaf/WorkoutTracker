@@ -212,7 +212,6 @@ test('M13 a workout card draws a body map banding its own exercises, wired to re
         weightStep: 2.5,
         startWeight: 20,
         bodyweight: false,
-        invertProgress: false,
         libraryId: 'Solo_Lib',
       },
     ],
@@ -295,7 +294,6 @@ const quadExercise: Exercise = {
   weightStep: 2.5,
   startWeight: 20,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'Quad_Lib',
 }
 
@@ -386,7 +384,6 @@ const allMusclesCatalog = new Map<string, Exercise>(
       weightStep: 2.5,
       startWeight: 20,
       bodyweight: false,
-      invertProgress: false,
       libraryId: muscleLibraryId(muscle),
     } as Exercise,
   ]),
@@ -482,7 +479,6 @@ const hamstringExercise: Exercise = {
   weightStep: 2.5,
   startWeight: 20,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'Ham_Lib',
 }
 

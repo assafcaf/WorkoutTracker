@@ -74,6 +74,7 @@ test('S4 trainingFieldsFor marks a null-equipment exercise not bodyweight with a
 })
 
 test('S4 trainingFieldsFor never inverts progress', () => {
-  expect(trainingFieldsFor(fixtureLibraryEntry('barbell')).invertProgress).toBe(false)
-  expect(trainingFieldsFor(fixtureLibraryEntry('body only')).invertProgress).toBe(false)
+  // E16-T10: no Exercise carries invertProgress, so the derived fields do not either.
+  expect(trainingFieldsFor(fixtureLibraryEntry('barbell'))).not.toHaveProperty('invertProgress')
+  expect(trainingFieldsFor(fixtureLibraryEntry('body only'))).not.toHaveProperty('invertProgress')
 })

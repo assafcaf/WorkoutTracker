@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { render, screen } from '@testing-library/react'
 import { expect, test } from 'vitest'
 import { ProgressionBar } from './ProgressionBar'
-import type { Progression } from '../domain/progression'
+import type { Progression, SuggestionKind } from '../domain/progression'
 
 // ProgressionBar draws a Progression it is handed; it derives nothing. Every Progression below
 // is written by hand, in the shape `progression()` (E4-T1) returns, so the expected text is a
@@ -65,27 +65,34 @@ test('O12 a full bar suggesting more weight shows Next: 67.5 kg beside it', () =
 })
 
 test('O12 a full bar suggesting less assistance shows Next: 26 kg assist beside it', () => {
+  // E16-T10: less assistance is a higher signed Load, so it reads as one (BW−26, true minus).
+  // reduce-assistance is no longer a SuggestionKind at all.
+  // @ts-expect-error -- E16-T10 removed 'reduce-assistance' from SuggestionKind
+  const removed: SuggestionKind = 'reduce-assistance'
+  void removed
   renderBar({
-    workingWeightKg: 27,
+    workingWeightKg: null,
     achievedReps: 32,
     targetReps: 32,
     isFull: true,
-    suggestion: { kind: 'reduce-assistance', nextWeightKg: 26 },
+    suggestion: { kind: 'add-load', nextLoadKg: -26 },
   })
 
-  expect(screen.getByText('Next: 26 kg assist')).toBeVisible()
+  expect(screen.getByText('Next: BW−26')).toBeVisible()
+  expect(screen.queryByText(/assist/)).toBeNull()
 })
 
 test('O12 a full assistance bar down to 0 kg shows Next: 0 kg assist, not an empty weight', () => {
+  // E16-T10: assistance down to nothing is a signed Load of 0, which reads as plain BW.
   renderBar({
-    workingWeightKg: 1,
+    workingWeightKg: null,
     achievedReps: 32,
     targetReps: 32,
     isFull: true,
-    suggestion: { kind: 'reduce-assistance', nextWeightKg: 0 },
+    suggestion: { kind: 'add-load', nextLoadKg: 0 },
   })
 
-  expect(screen.getByText('Next: 0 kg assist')).toBeVisible()
+  expect(screen.getByText('Next: BW')).toBeVisible()
 })
 
 test('O12 a full bodyweight bar suggesting another set shows Add a set beside it', () => {

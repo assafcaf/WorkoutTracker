@@ -20,7 +20,6 @@ const bench: Exercise = {
   weightStep: 2.5,
   startWeight: 20,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'Lib_Bench',
 }
 const resolve = (id: string): Exercise | undefined => (id === 'bench' ? bench : undefined)

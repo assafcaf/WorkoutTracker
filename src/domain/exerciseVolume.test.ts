@@ -9,7 +9,6 @@ function exercise(overrides: Partial<Exercise> & { id: string }): Exercise {
     weightStep: 2.5,
     startWeight: 20,
     bodyweight: false,
-    invertProgress: false,
     libraryId: 'fixture-lib',
     ...overrides,
   }
@@ -35,9 +34,10 @@ function session(overrides: Partial<Session> & { id: string; entries: SetEntry[]
   }
 }
 
-const squat = exercise({ id: 'back-squat', bodyweight: false, invertProgress: false })
-const pushup = exercise({ id: 'push-up', bodyweight: true, invertProgress: false })
-const assistedDip = exercise({ id: 'assisted-dip', bodyweight: false, invertProgress: true })
+const squat = exercise({ id: 'back-squat', bodyweight: false })
+const pushup = exercise({ id: 'push-up', bodyweight: true })
+// Assisted is a Bodyweight Exercise at a negative signed Load (E16-T10 removed invertProgress).
+const assistedDip = exercise({ id: 'assisted-dip', bodyweight: true, startWeight: null })
 
 // O1: exerciseVolume ----------------------------------------------------------------------------
 
@@ -65,10 +65,11 @@ describe('exerciseVolume (O1)', () => {
 
   test('an invertProgress Exercise sums reps only, the same split as volumeSeries', () => {
     const entries = [
-      setEntry({ exerciseId: 'assisted-dip', reps: 8, weightKg: 15 }),
-      setEntry({ exerciseId: 'assisted-dip', reps: 6, weightKg: 15 }),
+      setEntry({ exerciseId: 'assisted-dip', reps: 8, weightKg: null, loadKg: -15 }),
+      setEntry({ exerciseId: 'assisted-dip', reps: 6, weightKg: null, loadKg: -15 }),
     ]
 
+    expect(assistedDip).not.toHaveProperty('invertProgress')
     expect(exerciseVolume(assistedDip, entries)).toEqual({ amount: 14, unit: 'reps' })
   })
 })

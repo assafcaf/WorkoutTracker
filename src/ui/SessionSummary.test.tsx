@@ -53,7 +53,6 @@ function catalogEntry(id: string, name: string, libraryId: string): Exercise {
     weightStep: 2.5,
     startWeight: 20,
     bodyweight: false,
-    invertProgress: false,
     libraryId,
   }
 }
