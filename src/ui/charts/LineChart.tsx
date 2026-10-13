@@ -1,8 +1,23 @@
 import './LineChart.css'
 import type { Series, SeriesKind } from '../../domain/series'
-import { dateLabel, formatValue, labelledIndexes, ticksFor } from './axis'
+import { shortDay } from '../../domain/lifts'
+import { dateLabel, formatValue, labelledIndexes, spacedIndexes, ticksFor } from './axis'
 
-export type LineChartProps = { series: Series; title: string }
+export type LineChartProps = {
+  series: Series
+  title: string
+  /**
+   * The `at` of each point that set a record. When given, those points wear the record marker
+   * (`.line-chart-record`, the primary fill) and the rest and the line read in the secondary ink,
+   * so the records stand out (the Lifts tab, S6b). Omitted, every point is drawn alike.
+   */
+  recordAts?: number[]
+  /**
+   * Dates on the x-axis read `21 Sep` rather than `Mon 21 Sep`, and only as many as fit without
+   * touching are labelled (always the first and the last).
+   */
+  compactDates?: boolean
+}
 
 const VIEW_WIDTH = 320
 const VIEW_HEIGHT = 180
@@ -12,6 +27,8 @@ const PAD_TOP = 24
 const PAD_BOTTOM = 28
 const POINT_RADIUS = 4
 const X_LABEL_OFFSET = 18
+/** The least distance, in view units, between two compact date labels' anchors. */
+const COMPACT_LABEL_GAP = 64
 
 const UNITS: Record<SeriesKind, string> = {
   e1rm: 'kg',
@@ -27,7 +44,7 @@ const UNITS: Record<SeriesKind, string> = {
  * A `[data-axis="y"]` group labels the value ticks and a `[data-axis="x"]` group labels the
  * points' dates (E17-T10, O19). No points renders no `<svg>`.
  */
-export function LineChart({ series, title }: LineChartProps): JSX.Element {
+export function LineChart({ series, title, recordAts, compactDates }: LineChartProps): JSX.Element {
   const { points, kind } = series
   if (points.length === 0) {
     return <div className="line-chart" />
@@ -54,7 +71,7 @@ export function LineChart({ series, title }: LineChartProps): JSX.Element {
   const lastIndex = placed.length - 1
 
   return (
-    <div className="line-chart">
+    <div className="line-chart" data-records={recordAts ? '' : undefined}>
       <svg className="line-chart-svg" role="img" aria-label={title} viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}>
         <text className="line-chart-unit" x={0} y={12}>
           {`${unit} `}
@@ -84,7 +101,10 @@ export function LineChart({ series, title }: LineChartProps): JSX.Element {
           ))}
         </g>
         <g data-axis="x">
-          {labelledIndexes(placed.length).map((index) => (
+          {(compactDates
+            ? spacedIndexes(placed.map((point) => point.x), COMPACT_LABEL_GAP)
+            : labelledIndexes(placed.length)
+          ).map((index) => (
             <text
               key={index}
               className="line-chart-axis-label"
@@ -92,7 +112,7 @@ export function LineChart({ series, title }: LineChartProps): JSX.Element {
               y={VIEW_HEIGHT - PAD_BOTTOM + X_LABEL_OFFSET}
               textAnchor={placed.length === 1 ? 'middle' : index === 0 ? 'start' : index === lastIndex ? 'end' : 'middle'}
             >
-              {dateLabel(placed[index].at, now)}
+              {compactDates ? shortDay(placed[index].at, now) : dateLabel(placed[index].at, now)}
             </text>
           ))}
         </g>
@@ -102,7 +122,13 @@ export function LineChart({ series, title }: LineChartProps): JSX.Element {
         {placed.map((point, index) => (
           <circle
             key={`${point.at}-${index}`}
-            className="line-chart-point"
+            className={
+              recordAts === undefined
+                ? 'line-chart-point'
+                : recordAts.includes(point.at)
+                  ? 'line-chart-point line-chart-record'
+                  : 'line-chart-point line-chart-plain'
+            }
             data-at={point.at}
             data-value={point.value}
             cx={point.x}

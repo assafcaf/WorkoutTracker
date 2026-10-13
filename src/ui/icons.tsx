@@ -25,6 +25,9 @@ export type IconName =
   | 'Dumbbell'
   | 'ChartLine'
   | 'ListChecks'
+  | 'Search'
+  | 'ArrowUp'
+  | 'ArrowRight'
 
 const DRAWINGS: Record<IconName, ReactNode> = {
   ChevronDown: <path d="m6 9 6 6 6-6" />,
@@ -66,6 +69,14 @@ const DRAWINGS: Record<IconName, ReactNode> = {
   Dumbbell: <path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10" />,
   ChartLine: <path d="M3 3v16a2 2 0 0 0 2 2h16M19 9l-5 5-4-4-3 3" />,
   ListChecks: <path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8" />,
+  Search: (
+    <>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </>
+  ),
+  ArrowUp: <path d="m5 12 7-7 7 7M12 19V5" />,
+  ArrowRight: <path d="M5 12h14M12 5l7 7-7 7" />,
 }
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }): JSX.Element {
