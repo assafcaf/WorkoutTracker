@@ -1,5 +1,6 @@
 /* BarChart (E4-T8): every colour comes through a `var(--…)` from src/styles/tokens.css. No
- * literal colour and no token added here.
+ * literal colour and no token added here. Bars are --color-secondary, a second series --chart-b;
+ * gridlines are the hairline; axis labels are --text-xs in --color-muted (E17-T10, O19).
  */
 
 .bar-chart {
@@ -11,9 +12,25 @@
 .bar-chart-svg {
   width: 100%;
   height: auto;
+  overflow: visible;
+}
+
+.bar-chart-grid {
+  stroke: var(--color-hairline);
+  stroke-width: 1px;
+  shape-rendering: crispEdges;
 }
 
 .bar-chart-bar {
-  fill: var(--color-accent);
-  color: var(--color-on-primary);
+  fill: var(--color-secondary);
+}
+
+.bar-chart-bar[data-series='b'] {
+  fill: var(--chart-b);
+}
+
+.bar-chart-axis-label {
+  fill: var(--color-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
 }

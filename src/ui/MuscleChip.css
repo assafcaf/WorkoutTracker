@@ -1,29 +1,30 @@
-/* The muscle chip (E10-T3): a family-tinted pill showing one muscle's name. */
+/* The muscle chip (E10-T3, E17-T10): a neutral pill showing one muscle's name, its family shown
+ * only as data, by the `.muscle-dot` (src/styles/components.css) it holds. */
 
 .muscle-chip {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: 0.125rem 0.5rem;
   border-radius: var(--radius-pill);
+  background: var(--color-raised);
+  color: var(--color-text);
   font-size: var(--text-xs);
   text-transform: capitalize;
 }
 
-.muscle-chip[data-family='push'] {
-  background: var(--family-push-tint);
-  color: var(--family-push-ink);
+.muscle-chip[data-family='push'] .muscle-dot {
+  background: var(--data-push);
 }
 
-.muscle-chip[data-family='pull'] {
-  background: var(--family-pull-tint);
-  color: var(--family-pull-ink);
+.muscle-chip[data-family='pull'] .muscle-dot {
+  background: var(--data-pull);
 }
 
-.muscle-chip[data-family='legs'] {
-  background: var(--family-legs-tint);
-  color: var(--family-legs-ink);
+.muscle-chip[data-family='legs'] .muscle-dot {
+  background: var(--data-legs);
 }
 
-.muscle-chip[data-family='core'] {
-  background: var(--family-core-tint);
-  color: var(--family-core-ink);
+.muscle-chip[data-family='core'] .muscle-dot {
+  background: var(--data-core);
 }
