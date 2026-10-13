@@ -1,9 +1,9 @@
 import type { Exercise, Session } from '../types'
 import { countsTowardStats } from './setKind'
 
-export type SeriesKind = 'e1rm' | 'reps' | 'assistance'
+export type SeriesKind = 'e1rm' | 'reps' | 'load'
 export type SeriesPoint = { at: number; value: number }
-export type Series = { kind: SeriesKind; inverted: boolean; points: SeriesPoint[] }
+export type Series = { kind: SeriesKind; points: SeriesPoint[] }
 
 export function epley(weightKg: number, reps: number): number {
   return weightKg * (1 + reps / 30)
