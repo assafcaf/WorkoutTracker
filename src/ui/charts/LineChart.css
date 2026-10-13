@@ -39,6 +39,21 @@
   stroke-width: 2px;
 }
 
+/* With records marked (the Lifts tab): the line and the plain points step back to the secondary
+ * ink, and only the record points keep the primary fill. */
+.line-chart[data-records] .line-chart-line {
+  stroke: var(--color-secondary);
+}
+
+.line-chart-plain {
+  fill: var(--color-secondary);
+}
+
+.line-chart-record {
+  fill: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
 .line-chart-axis-label,
 .line-chart-unit {
   fill: var(--color-muted);

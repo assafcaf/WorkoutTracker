@@ -42,3 +42,19 @@ export function labelledIndexes(count: number): number[] {
 export function dateLabel(at: number, now: Date): string {
   return formatDay(new Date(at), now)
 }
+
+/**
+ * The indexes, of points at x positions `xs` (left to right), whose labels fit: the first and
+ * the last always, and each one between that is at least `minGap` from the last one kept and
+ * from the last point.
+ */
+export function spacedIndexes(xs: number[], minGap: number): number[] {
+  if (xs.length <= 1) return xs.map((_, index) => index)
+  const last = xs.length - 1
+  const kept = [0]
+  for (let index = 1; index < last; index++) {
+    if (xs[index] - xs[kept[kept.length - 1]] >= minGap && xs[last] - xs[index] >= minGap) kept.push(index)
+  }
+  kept.push(last)
+  return kept
+}

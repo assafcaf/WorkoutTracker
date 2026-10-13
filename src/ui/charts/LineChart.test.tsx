@@ -245,3 +245,40 @@ test('O19 LineChart gridlines are stroked --color-hairline', () => {
 test('O19 LineChart.css references no --color-accent token', () => {
   expect([...referencedVars(readFileSync(cssPath, 'utf-8'))]).not.toContain('--color-accent')
 })
+
+test('Lifts LineChart marks the points given as records and draws the rest plain', () => {
+  const { container } = render(
+    <LineChart series={series('e1rm', [[1, 60], [2, 58], [3, 66]])} title="Fixture chart" recordAts={[1, 3]} />,
+  )
+
+  expect(circles(container).map((c) => c.getAttribute('class'))).toEqual([
+    'line-chart-point line-chart-record',
+    'line-chart-point line-chart-plain',
+    'line-chart-point line-chart-record',
+  ])
+  expect(declarationsMatching(circles(container)[0]).get('fill')).toBe('var(--color-primary)')
+  expect(declarationsMatching(circles(container)[1]).get('fill')).toBe('var(--color-secondary)')
+})
+
+test('Lifts LineChart without records draws every point alike', () => {
+  const { container } = render(<LineChart series={series('e1rm', [[1, 60], [2, 66]])} title="Fixture chart" />)
+
+  expect(circles(container).map((c) => c.getAttribute('class'))).toEqual(['line-chart-point', 'line-chart-point'])
+})
+
+test('Lifts LineChart with compact dates labels day and month, only as many as fit', () => {
+  const day = (date: number): number => new Date(new Date().getFullYear(), 0, date, 9).getTime()
+  const { container } = render(
+    <LineChart
+      series={series('e1rm', [[day(1), 60], [day(2), 61], [day(3), 62], [day(10), 63], [day(12), 63], [day(14), 63], [day(20), 64], [day(21), 65]])}
+      title="Fixture chart"
+      compactDates
+    />,
+  )
+
+  const labels = [...container.querySelectorAll('[data-axis="x"] text')].map((text) => text.textContent)
+  expect(labels[0]).toBe('1 Jan')
+  expect(labels[labels.length - 1]).toBe('21 Jan')
+  expect(labels.length).toBeLessThan(8)
+  expect(labels.length).toBeGreaterThanOrEqual(2)
+})
