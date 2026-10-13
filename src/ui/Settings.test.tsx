@@ -294,9 +294,29 @@ test('O12 Settings shows "Never synced" when sync.lastSyncedAt is null', () => {
 
 test('O12 Settings shows the last synced time as a local date and time when lastSyncedAt is set', () => {
   const lastSyncedAt = 1700000000000
-  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt, status: 'ok' })
+  process.env.TZ = 'UTC'
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(Date.UTC(2023, 11, 1, 12, 0)))
+  try {
+    renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt, status: 'ok' })
 
-  expect(screen.getByText(new Date(lastSyncedAt).toLocaleString())).toBeInTheDocument()
+    expect(screen.getByText('Tue 14 Nov')).toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+test('O21 Settings shows a last synced day in another year with its year', () => {
+  process.env.TZ = 'UTC'
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(Date.UTC(2026, 9, 13, 12, 0)))
+  try {
+    renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: 1700000000000, status: 'ok' })
+
+    expect(screen.getByText('14 Nov 2023')).toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 test('O12 clicking "Sync now" calls onSyncNow', async () => {
