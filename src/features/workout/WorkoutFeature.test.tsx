@@ -443,7 +443,7 @@ test("O4 a set screen opened from the list shows the rest of the Session's lates
   await openExercise(user, 'Lunges')
 
   // Back squat's 180 s from T0, 100 s gone -- not lunges' own 90 s.
-  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('01:20'), SETTLE)
 })
 
 test('O4 +15 s on the set screen stores the Set with a 195 s rest through services.sessions.setRest', async () => {
@@ -473,7 +473,7 @@ test('O4 +15 s on the set screen moves the rest readout from 1:20 to 1:35', asyn
 
   await user.click(await screen.findByRole('button', { name: '+15 s' }, SETTLE))
 
-  await waitFor(async () => expect(await restReadoutText()).toBe('1:35'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('01:35'), SETTLE)
 })
 
 test('O4 after +15 s and a reload the set screen shows the same rest', async () => {
@@ -493,7 +493,7 @@ test('O4 after +15 s and a reload the set screen shows the same rest', async () 
   const { user } = renderFeature(await servicesOnAssafAB())
   await openExercise(user, 'Lunges')
 
-  await waitFor(async () => expect(await restReadoutText()).toBe('1:35'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('01:35'), SETTLE)
 })
 
 test('O4 after Skip and a reload the set screen reads +0:00 over', async () => {
@@ -513,7 +513,7 @@ test('O4 after Skip and a reload the set screen reads +0:00 over', async () => {
   const { user } = renderFeature(await servicesOnAssafAB())
   await openExercise(user, 'Lunges')
 
-  await waitFor(async () => expect(await restReadoutText()).toBe('+0:00 over'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('+00:00'), SETTLE)
 })
 
 test('O4 after the latest Set is deleted, rest follows the new latest Set', async () => {
@@ -526,12 +526,12 @@ test('O4 after the latest Set is deleted, rest follows the new latest Set', asyn
   ])
   const { user } = renderFeature(services)
   await openExercise(user, 'Lunges')
-  await waitFor(async () => expect(await restReadoutText()).toBe('0:50'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('00:50'), SETTLE)
 
   await user.click(await screen.findByRole('button', { name: '20 × 10' }, SETTLE))
   await user.click(screen.getByRole('button', { name: 'Delete set' }))
 
-  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('01:20'), SETTLE)
 })
 
 // --- E13-T12 O11: Finish exercise leads on to the next unfinished Exercise --------------------
@@ -574,7 +574,7 @@ test('O11 after Finish exercise the next set screen still counts the rest from t
   await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
 
   // Back squat's 180 s from T0, 100 s gone.
-  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('01:20'), SETTLE)
 })
 
 test('O11 Finish exercise skips a next Exercise whose Sets are all logged', async () => {
@@ -662,7 +662,7 @@ test('O5 Set rest 2:30 on the rest Dial stores the Set with a 150 s rest through
 
   await waitFor(() => expect(setRest).toHaveBeenCalledTimes(1), SETTLE)
   expect(setRest).toHaveBeenCalledWith(sessionId, 'back-squat', 1, 150)
-  await waitFor(async () => expect(await restReadoutText()).toBe('0:50'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('00:50'), SETTLE)
 })
 
 test('O6 Use 2:30 for Back squat saves A/B Split with the back squat Plan resting 150 s', async () => {
@@ -729,7 +729,7 @@ test("O6 after Use 2:30 for Back squat, the next Session's back squat rest is 2:
   await openExercise(user, 'Back squat')
 
   // 150 s from T0 + 40 s, 60 s gone -- not the bundled 180 s's 2:00.
-  await waitFor(async () => expect(await restReadoutText()).toBe('1:30'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('01:30'), SETTLE)
 })
 
 test('O6 a swapped-in Hammer Curls writes its rest to the Seated biceps curls Plan it was swapped under', async () => {
