@@ -76,7 +76,7 @@ export function ExerciseHistoryOverlay({
                   ),
                 )}
                 {entries.some(isRecord) ? (
-                  <span className="pr-badge" aria-label="Personal record">
+                  <span className="tag tag-pr" aria-label="Personal record">
                     PR
                   </span>
                 ) : null}

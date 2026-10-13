@@ -955,7 +955,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 </span>
               )}
               {isRecordSet(entry) ? (
-                <span className="pr-badge" aria-label="Personal record">
+                <span className="tag tag-pr" aria-label="Personal record">
                   PR
                 </span>
               ) : null}
