@@ -1,23 +1,23 @@
+/* The five Set kind chips in one even row (S2b's `.kchips`): 56 px tall, the chosen one outlined
+ * in the accent through `.chip[aria-pressed]`. */
 .set-kind-row {
-  display: flex;
-  gap: 4px;
-  margin: 12px 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+  margin-top: 6px;
 }
 
 .set-kind-choice {
-  flex: 1;
-  min-height: 44px;
-  padding: 0 4px;
-  border: 1px solid currentColor;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: inherit;
-  font: inherit;
+  min-width: 0;
+  min-height: 56px;
+  padding: 0;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
 }
 
 .set-kind-choice[aria-pressed='true'] {
   font-weight: var(--weight-semibold);
-  background: var(--color-raised);
 }
 
 .set-kind-marker {

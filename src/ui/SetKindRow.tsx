@@ -8,14 +8,19 @@ export type SetKindRowProps = {
 }
 
 const CHOICES: { label: string; kind: SetKind | null }[] = [
-  { label: 'W-up', kind: 'warmup' },
+  { label: 'Warm-up', kind: 'warmup' },
   { label: 'Working', kind: null },
   { label: 'Drop', kind: 'drop' },
-  { label: 'Fail', kind: 'failure' },
+  { label: 'Failure', kind: 'failure' },
   { label: 'AMRAP', kind: 'amrap' },
 ]
 
-/** The segmented row `W-up | Working | Drop | Fail | AMRAP` under the Dials (E14-T9). */
+/** A kind's name as the chips and the tools sheet's Set type row read it. */
+export function setKindLabel(kind: SetKind | null): string {
+  return CHOICES.find((choice) => choice.kind === kind)?.label ?? 'Working'
+}
+
+/** The Set kind chips `Warm-up · Working · Drop · Failure · AMRAP` (E14-T9, S2b). */
 export function SetKindRow({ value, onChange }: SetKindRowProps): JSX.Element {
   return (
     <div className="set-kind-row" role="group" aria-label="Set kind">
