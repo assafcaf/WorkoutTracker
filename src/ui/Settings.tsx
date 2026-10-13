@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react'
 import type { PlateInventory, Program, VolumeBaseline } from '../types'
 import type { SyncView } from '../services/syncView'
+import { formatDay } from '../domain/dates'
 import { PlateInventoryEditor } from './PlateInventoryEditor'
 import './Settings.css'
 
@@ -280,7 +281,7 @@ export function Settings(props: SettingsProps): JSX.Element {
           <p className="settings-account-synced">
             {sync.lastSyncedAt === null
               ? 'Never synced'
-              : new Date(sync.lastSyncedAt).toLocaleString()}
+              : formatDay(new Date(sync.lastSyncedAt), new Date())}
           </p>
           <button
             type="button"
