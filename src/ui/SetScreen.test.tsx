@@ -2623,8 +2623,8 @@ test('O14 the AMRAP Set is stored with kind amrap and reps above the range', asy
 
 // --- E14-T14: the Load Dial on a Bodyweight Exercise (O17) ------------------------------------
 
-// Push-ups is Bodyweight with a 1 kg weight step; Assisted pull-ups is not Bodyweight -- it keeps
-// its inverted weight on the Weight Dial (a spec non-goal to move it onto a signed Load).
+// Push-ups is Bodyweight with a 1 kg weight step; Assisted pull-ups is Bodyweight too (E16-T10),
+// starting at a Load of -27.
 const assistedPullUps = catalog.get('assisted-pull-ups') as Exercise
 const assistedPullUpPlan: ExercisePlan = {
   exerciseId: 'assisted-pull-ups',
@@ -2667,17 +2667,22 @@ test('O17 a Bodyweight Exercise shows the Load Dial under the reps Dial', () => 
 })
 
 test('O17 Assisted pull-ups, not a Bodyweight Exercise, shows no Load Dial', () => {
-  // E16-T10: the catalog's assisted pull-ups are now a Bodyweight Exercise at a negative Load, so
-  // they get the Load Dial; only a genuinely loaded Exercise (back-squat) shows none.
+  // E16-T10: the catalog's assisted pull-ups are a Bodyweight Exercise at a start Load of -27.
+  // E16-T4: their Load rides the single Weight Dial, reading BW−27; no separate Load Dial shows,
+  // and a loaded Exercise (back-squat) keeps its kg Weight Dial, with no Load Dial either.
   const { unmount } = renderSetScreen({ exercise: assistedPullUps, plan: assistedPullUpPlan })
 
   expect(screen.getByRole('group', { name: 'Reps' })).toBeInTheDocument()
-  expect(loadGroup()).not.toBeNull()
+  expect(loadGroup()).toBeNull()
+  expect(screen.getAllByRole('group', { name: /^Weight/ })).toHaveLength(1)
+  expect(screen.getByRole('listbox', { name: 'Weight ladder' })).toBeInTheDocument()
+  expect(readoutValue(weightReadout())).toBe('BW−27')
   unmount()
 
   renderSetScreen({ exercise: backSquat, plan: squatPlan })
   expect(screen.getByRole('group', { name: 'Reps' })).toBeInTheDocument()
   expect(loadGroup()).toBeNull()
+  expect(readoutValue(weightReadout())).not.toMatch(/^BW/)
 })
 
 test('O17 with no Load in its Preset the Load Dial opens on BW', () => {
