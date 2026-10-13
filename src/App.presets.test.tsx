@@ -66,7 +66,7 @@ test('O21 pressing Use this on A/B Split makes it active and the Workout tab off
   await openProgramTab(user)
   await user.click(await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE))
 
-  await user.click(await screen.findByRole('button', { name: 'Workout' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Dashboard' }, SETTLE))
 
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeVisible()

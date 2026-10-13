@@ -1,12 +1,14 @@
 import { swapPreset } from '../../domain/swapPreset'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { nextExerciseAfter } from '../../domain/flow'
 import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
-import { latestSet } from '../../domain/rest'
+import { latestSet, restLengthOf } from '../../domain/rest'
+import { countsTowardStats } from '../../domain/setKind'
+import { formatDay } from '../../domain/dates'
 import { ServiceError } from '../../services'
 import type {
   Exercise,
@@ -17,9 +19,11 @@ import type {
   VolumeBaseline,
   Workout,
 } from '../../types'
-import { ActionBarSlot, AppShell } from '../../ui/AppShell'
+import { ActionBarSlot, AppShell, SettingsButton } from '../../ui/AppShell'
+import { Segmented } from '../../ui/controls'
+import { LiveHeader } from '../../ui/LiveHeader'
+import type { LiveStatus } from '../../ui/LiveStrip'
 import { BackupBadge } from '../../ui/BackupBadge'
-import { ElapsedTime } from '../../ui/ElapsedTime'
 import { ExerciseList } from '../../ui/ExerciseList'
 import { NoProgram } from '../../ui/NoProgram'
 import { ResumeCard } from '../../ui/ResumeCard'
@@ -44,6 +48,23 @@ export type WorkoutFeatureProps = {
    * the picker offers resuming it (the tab reached again later). Defaults to `true`.
    */
   landInSession?: boolean
+  /**
+   * Whether the Dashboard is the screen showing (default `true`). `false` draws nothing while
+   * no Live session is on screen, but keeps the session's place -- the exercise, the set --
+   * for when the trainee returns to it.
+   */
+  shown?: boolean
+  /** Whether the Live session is minimised to the app root's live strip (default `false`). */
+  minimised?: boolean
+  /**
+   * The Live session header's chevron. Unset -- no app root to hold a live strip -- minimising
+   * returns to the Dashboard's picker, which offers resuming the session.
+   */
+  onMinimise?(): void
+  /** Brings a minimised Live session back on screen: resuming it, or starting a workout. */
+  onRestore?(): void
+  /** Told what the live strip shows while a session is in progress, and `null` once none is. */
+  onLive?(status: LiveStatus | null): void
 }
 
 type View = 'picker' | 'list' | 'set'
@@ -105,6 +126,24 @@ function plannedExerciseIdFor(session: Session, exerciseId: string): string {
 }
 
 /**
+ * The done id of the exercise the Live session is on: `current` while it still has planned
+ * working Sets to log, else the next Plan after it with some left (`nextExerciseAfter`), else
+ * null once every planned Set is in.
+ */
+function currentExerciseOf(workout: Workout, session: Session, current: string | null): string | null {
+  if (current !== null) {
+    const plan = workout.exercises.find(
+      (candidate) => candidate.exerciseId === plannedExerciseIdFor(session, current),
+    )
+    const logged = session.entries.filter(
+      (entry) => entry.exerciseId === current && countsTowardStats(entry),
+    ).length
+    if (plan !== undefined && logged < plan.sets) return current
+  }
+  return nextExerciseAfter(workout, session, current ?? '')
+}
+
+/**
  * `catalog` plus every library Exercise a Program's Plan points at (E9-T9), so a Program built
  * from the library passes `assertPlansAreInCatalog`.
  */
@@ -140,7 +179,12 @@ export function WorkoutFeature({
   navigate,
   onInSession,
   landInSession = true,
-}: WorkoutFeatureProps): JSX.Element {
+  shown = true,
+  minimised = false,
+  onMinimise,
+  onRestore,
+  onLive,
+}: WorkoutFeatureProps): JSX.Element | null {
   const services = useServices()
   const { syncNow } = useSyncControls()
 
@@ -247,6 +291,50 @@ export function WorkoutFeature({
   useEffect(() => {
     onInSession(inSession)
   }, [inSession, onInSession])
+
+  // Minimising takes the set screen down; it comes back on the Set it had moved on to by
+  // logging, not the one it was first opened on.
+  useEffect(() => {
+    if (!minimised) return
+    setOpenSet((current) =>
+      current && current.liveSetIndex !== undefined
+        ? { ...current, setIndex: current.liveSetIndex, liveSetIndex: undefined, extra: false }
+        : current,
+    )
+  }, [minimised])
+
+  // What the live strip says, reported whenever it changes: the workout, its clock, the rest
+  // after the latest Set and the set due next.
+  let liveStatus: LiveStatus | null = null
+  if (inSession && session && located && catalogData.status === 'ready') {
+    const { catalog, library } = catalogData.data
+    const libraryById = new Map(library.map((entry) => [entry.id, entry] as const))
+    const latest = latestSet(session.entries)
+    const latestPlan =
+      latest === null
+        ? undefined
+        : located.workout.exercises.find(
+            (candidate) => candidate.exerciseId === plannedExerciseIdFor(session, latest.exerciseId),
+          )
+    const nextId = currentExerciseOf(located.workout, session, openSet?.exerciseId ?? null)
+    const nextName = nextId === null ? null : (resolveExercise(nextId, catalog, libraryById)?.name ?? nextId)
+    const nextSet = session.entries.filter((entry) => entry.exerciseId === nextId).length + 1
+    liveStatus = {
+      workoutName: located.workout.name,
+      startedAt: session.startedAt,
+      restEndsAt:
+        latest === null || latestPlan === undefined
+          ? null
+          : latest.loggedAt + restLengthOf(latest, latestPlan.restSeconds) * 1000,
+      next: nextName === null ? null : `${nextName} · set ${nextSet}`,
+    }
+  }
+  const liveKey = liveStatus === null ? '' : JSON.stringify(liveStatus)
+  const latestLiveStatus = useRef(liveStatus)
+  latestLiveStatus.current = liveStatus
+  useEffect(() => {
+    onLive?.(latestLiveStatus.current)
+  }, [liveKey, onLive])
 
   if (catalogData.status === 'error' || programsData.status === 'error') {
     const error = catalogData.status === 'error' ? catalogData.error : programsData.error
@@ -390,6 +478,7 @@ export function WorkoutFeature({
         setLastEntries(startedLastEntries)
         setOpenSet(null)
         setView('list')
+        onRestore?.()
       })
       .catch(() => {
         // The picker stays up; nothing was started, so there is nothing to undo.
@@ -514,9 +603,59 @@ export function WorkoutFeature({
     }
   }
 
+  // The Live session is on screen unless the trainee minimised it to the live strip.
+  const liveOnScreen = inSession && !minimised
+
+  /** The chevron: to the app root's live strip, or with no root to hold one, to the picker. */
+  function handleMinimise(): void {
+    if (onMinimise) onMinimise()
+    else setView('picker')
+  }
+
+  /** "Now": the set the session is on -- the open exercise while it has sets left, else the next. */
+  function handleNow(): void {
+    if (!session || !located) return
+    const current = openSet?.exerciseId ?? null
+    const target =
+      currentExerciseOf(located.workout, session, current) ??
+      current ??
+      located.workout.exercises[0]?.exerciseId ??
+      null
+    if (target === null) return
+    const logged = session.entries.filter((entry) => entry.exerciseId === target).length
+    handleOpenSet(target, logged + 1)
+  }
+
+  /** The Live session's header (S2/S3), with its Now | All switch under the row. */
+  function liveHeader(liveSession: Session, workoutName: string, heading = true): JSX.Element {
+    return (
+      <LiveHeader
+        workoutName={workoutName}
+        heading={heading}
+        startedAt={liveSession.startedAt}
+        onMinimise={handleMinimise}
+        onFinish={handleFinish}
+      >
+        <Segmented
+          name="live-view"
+          label="Live session view"
+          value={view === 'set' ? 'now' : 'all'}
+          options={[
+            { value: 'now', label: 'Now' },
+            { value: 'all', label: 'All' },
+          ]}
+          onChange={(next) => {
+            if (next === 'all') setView('list')
+            else handleNow()
+          }}
+        />
+      </LiveHeader>
+    )
+  }
+
   let content: JSX.Element | null = null
 
-  if (view === 'set' && session && located && openSet) {
+  if (liveOnScreen && view === 'set' && session && located && openSet) {
     const plannedId = plannedExerciseIdFor(session, openSet.exerciseId)
     const plan = located.workout.exercises.find((candidate) => candidate.exerciseId === plannedId)
     const exercise = resolveListExercise(openSet.exerciseId)
@@ -539,10 +678,12 @@ export function WorkoutFeature({
       const nextId = nextExerciseAfter(located.workout, session, openSet.exerciseId)
       const nextName = nextId === null ? null : (resolveListExercise(nextId)?.name ?? null)
       content = (
-        <AppShell title={exercise.name} onBack={() => setView('list')} action={<ActionBarSlot />}>
-          <p className="workout-time">
-            Workout <ElapsedTime startedAt={session.startedAt} />
-          </p>
+        <AppShell
+          title={exercise.name}
+          header={liveHeader(session, located.workout.name, false)}
+          action={<ActionBarSlot />}
+        >
+          <h1 className="live-exercise-title">{exercise.name}</h1>
           <SetScreen
             key={`${openSet.exerciseId}#${openSet.setIndex}`}
             exercise={exercise}
@@ -665,18 +806,9 @@ export function WorkoutFeature({
     }
   }
 
-  if (content === null && view === 'list' && session && located) {
+  if (content === null && liveOnScreen && view === 'list' && session && located) {
     content = (
-      <AppShell
-        title={located.workout.name}
-        onBack={() => setView('picker')}
-        action={
-          <button type="button" className="finish-workout btn-primary" onClick={handleFinish}>
-            Finish workout
-          </button>
-        }
-      >
-        <ElapsedTime startedAt={session.startedAt} />
+      <AppShell title={located.workout.name} header={liveHeader(session, located.workout.name)}>
         <ExerciseList
           program={located.program}
           workout={located.workout}
@@ -698,6 +830,10 @@ export function WorkoutFeature({
     )
   }
 
+  // Off the Dashboard with no Live session on screen, nothing is drawn; the session's place is
+  // kept for the live strip to return to.
+  if (content === null && !shown) return null
+
   if (content === null) {
     // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
     // half-built Workout tab behind.
@@ -710,7 +846,11 @@ export function WorkoutFeature({
     }
 
     content = (
-      <AppShell title="Workout">
+      <AppShell
+        title="Dashboard"
+        subtitle={formatDay(new Date(), new Date())}
+        actions={<SettingsButton />}
+      >
         {!storageAvailable ? <StorageUnavailableBanner /> : null}
         {staleActiveProgramNotice ? (
           <p>The saved active program no longer exists; showing the first program instead.</p>
@@ -720,7 +860,11 @@ export function WorkoutFeature({
           <ResumeCard
             programName={located.program.name}
             workoutName={located.workout.name}
-            onResume={() => handleChoose(session.programId, session.workoutId)}
+            onResume={() =>
+              minimised && onRestore
+                ? onRestore()
+                : handleChoose(session.programId, session.workoutId)
+            }
           />
         ) : null}
         {activeProgram === null ? (
@@ -740,7 +884,7 @@ export function WorkoutFeature({
   return (
     <>
       {content}
-      {overlay?.kind === 'detail' ? (
+      {liveOnScreen && overlay?.kind === 'detail' ? (
         <DetailOverlay
           libraryId={overlay.libraryId}
           heading={overlay.heading}
@@ -782,8 +926,8 @@ export function WorkoutFeature({
           }}
         />
       ) : null}
-      {historyOverlay}
-      {overlay?.kind === 'alternatives' ? (
+      {liveOnScreen ? historyOverlay : null}
+      {liveOnScreen && overlay?.kind === 'alternatives' ? (
         <AlternativesOverlay
           plannedId={overlay.plannedId}
           catalog={catalog}

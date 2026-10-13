@@ -1,44 +1,46 @@
-/* The top tab bar (fix-layout, G3: the operator's phone had it pinned to the bottom).
+/* The bottom tab bar (Progress Dashboard): four tabs, icon over label, on the surface with a
+ * hairline above it, pinned to the bottom of the viewport and padded clear of the home
+ * indicator.
  *
  * Colours come through `var(--…)` only, and `.tab-bar-tab` carries `min-height:
  * var(--tap-min)` on its bare selector, which is where E3-T8's tap-target audit reads it.
- * `position: fixed` (not `sticky`) pins it to the very top of the viewport from the first
- * frame regardless of where it sits in the DOM -- src/ui/AppShell.tsx renders it last, so a
- * sticky bar would not behave the same way. Because that takes it out of document flow,
- * `.app-shell` (src/ui/AppShell.css) reserves top clearance of its own.
+ * `position: fixed` takes the bar out of document flow, so a shell that holds it
+ * (`.app-shell-tabbed`, src/ui/AppShell.css) reserves the same height at its bottom.
  */
 
 .tab-bar {
   position: fixed;
-  top: 0;
   left: 0;
   right: 0;
+  bottom: 0;
   z-index: 10;
   display: flex;
-  padding-top: var(--safe-top);
+  padding: 0 var(--space-2) var(--safe-bottom);
+  border-top: 1px solid var(--color-hairline);
   background: var(--color-surface);
 }
 
 .tab-bar-tab {
-  position: relative;
   display: flex;
-  height: calc(var(--tap-min) + var(--space-3));
+  height: calc(var(--tap-min) + var(--space-1));
   min-height: var(--tap-min);
   flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-1);
+  gap: 3px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--color-muted);
   font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
 }
 
 /* The current tab is the one thing in the bar that carries the indigo primary. */
 .tab-bar-tab[aria-current='page'] {
   color: var(--color-primary);
+  font-weight: var(--weight-semibold);
 }
 
 .tab-bar-tab svg {
@@ -46,17 +48,5 @@
 }
 
 .tab-bar-label {
-  line-height: 1;
-}
-
-/* The backup-due marker: a dot on the Settings tab, which announces itself to a screen
- * reader rather than leaning on the tab's own name. */
-.tab-bar-badge {
-  position: absolute;
-  top: var(--space-1);
-  right: calc(50% - var(--space-5));
-  width: var(--space-2);
-  height: var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--color-warn);
+  line-height: 1.2;
 }
