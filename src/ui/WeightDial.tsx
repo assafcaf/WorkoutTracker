@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { WEIGHT_STEPS, ladderFor, stepWeight } from '../domain/dial'
 import { loadText } from '../domain/setText'
+import { Icon } from './icons'
 import { Keypad } from './Keypad'
 import { Select } from './controls'
 import { useCentredRung } from './useCentredRung'
@@ -85,7 +86,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
         className="dial-step icon-btn"
         onClick={() => step(-1)}
       >
-        &minus;
+        <Icon name="Minus" size={24} />
       </button>
       <div className="dial-body" {...(scrub && adjustable ? drag.handlers : {})}>
         {scrub ? (
@@ -134,7 +135,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
         className="dial-step icon-btn"
         onClick={() => step(1)}
       >
-        +
+        <Icon name="Plus" size={24} />
       </button>
       {keypadOpen ? (
         <Keypad

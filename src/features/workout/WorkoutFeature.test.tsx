@@ -1182,7 +1182,7 @@ test('O9 a Set with rir reads RIR n in the logged-set list', async () => {
   await user.click(within(chips).getByRole('button', { name: '1' }))
 
   const list = screen.getByRole('list', { name: 'Sets logged' })
-  await waitFor(() => expect(list.textContent).toMatch(/× \d+\s*· RIR 1$/), SETTLE)
+  await waitFor(() => expect(list.textContent).toMatch(/RIR 1$/), SETTLE)
 })
 
 // --- E14-T14: the Load Dial and the tap budget (O17, O19) ------------------------------------
@@ -1493,7 +1493,7 @@ test('O16 a pre-epic assisted pull-ups Set reads BW−27 × 8 on the Last time l
   await openExercise(user, 'Assisted pull-ups')
 
   expect(
-    await screen.findByText(new RegExp(`^Last time: BW${MINUS}27 ?${TIMES} ?8$`), undefined, SETTLE),
+    await screen.findByText(new RegExp(`^Last time BW${MINUS}27 ?${TIMES} ?8 · `), undefined, SETTLE),
   ).toBeVisible()
   expect(loadReadoutValue()).toBe(`BW${MINUS}27`)
 })

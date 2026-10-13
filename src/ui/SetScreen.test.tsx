@@ -10,6 +10,7 @@ import postcss from 'postcss'
 import type { Declaration, Rule } from 'postcss'
 import { declarationsFor } from '../test/cssAudit'
 import { loadCatalog } from '../data/catalog'
+import { formatDay } from '../domain/dates'
 import { SetScreen, loggedText, setCounterText } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
 import { playRestOver, unlockRestSound } from './restSound'
@@ -826,11 +827,15 @@ test('O9 an onLog that rejects shows its message inline and leaves the same set 
 })
 
 test('O10 lastTime shows the last finished session as one "Last time" line', () => {
+  // The Live session's line: last time's Set at this Set's place, and the day it was lifted.
   renderSetScreen({
+    setIndex: 3,
     lastTime: [historyEntry(1, 80, 8), historyEntry(2, 80, 8), historyEntry(3, 80, 7)],
   })
 
-  expect(screen.getByText('Last time: 80×8 · 80×8 · 80×7')).toBeVisible()
+  const day = formatDay(new Date(BASE), new Date())
+  expect(screen.getByText(`Last time 80 × 7 · ${day}`)).toBeVisible()
+  expect(screen.getAllByText(/^Last time/)).toHaveLength(1)
 })
 
 test('O10 a bodyweight set in lastTime reads BW×8', () => {
@@ -840,7 +845,7 @@ test('O10 a bodyweight set in lastTime reads BW×8', () => {
     lastTime: [{ exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 8, loggedAt: BASE }],
   })
 
-  expect(screen.getByText('Last time: BW×8')).toBeVisible()
+  expect(screen.getByText(`Last time BW × 8 · ${formatDay(new Date(BASE), new Date())}`)).toBeVisible()
 })
 
 test('O10 with no lastTime there is no Last time line', () => {
@@ -855,7 +860,7 @@ test('O10 sets logged today never change the Last time line', async () => {
   await user.click(logButton())
   await screen.findByText('Set 2 of 4')
 
-  expect(screen.getByText('Last time: 80×8')).toBeVisible()
+  expect(screen.getByText(`Last time 80 × 8 · ${formatDay(new Date(BASE), new Date())}`)).toBeVisible()
 })
 
 test('O11 a preset set is logged by one tap on Log set', async () => {
@@ -973,7 +978,7 @@ function loggedEntry(
 function loggedSetNames(): string[] {
   return screen
     .queryAllByRole('button', { name: /^(\d+(\.\d+)?|BW) × \d+$/ })
-    .map((button) => (button.textContent ?? '').replace(/\s+/g, ' ').trim())
+    .map((button) => button.getAttribute('aria-label') ?? '')
 }
 
 /** A tap under fake timers, where userEvent hangs: fires the click and flushes the promises. */
@@ -1711,7 +1716,7 @@ test('O7 with 1:24 of rest left the rest bar reads 01:24 and the Log set button 
   })
 
   expect(readoutValue(restReadout())).toBe('01:24')
-  expect(readoutValue(logButton())).toBe('Log set')
+  expect(readoutValue(logButton())).toBe('Log set 2 · 50 × 8')
 })
 
 test('O7 once the rest is over 42 s ago the rest bar reads +00:42 and the Log set button still reads Log set', () => {
@@ -1722,7 +1727,7 @@ test('O7 once the rest is over 42 s ago the rest bar reads +00:42 and the Log se
   })
 
   expect(readoutValue(restReadout())).toBe('+00:42')
-  expect(readoutValue(logButton())).toBe('Log set')
+  expect(readoutValue(logButton())).toBe('Log set 2 · 50 × 8')
 })
 
 test('O7 the rest bar counts down with the clock while the Log set button keeps reading Log set', async () => {
@@ -1737,7 +1742,7 @@ test('O7 the rest bar counts down with the clock while the Log set button keeps 
   await vi.advanceTimersByTimeAsync(10_000)
 
   expect(readoutValue(restReadout())).toBe('01:14')
-  expect(readoutValue(logButton())).toBe('Log set')
+  expect(readoutValue(logButton())).toBe('Log set 2 · 50 × 8')
 })
 
 test('O7 a Set that matches its Preset logs with one tap on the Log set button while rest runs', async () => {
@@ -1761,7 +1766,7 @@ test('O8 tapping Log set shows "Logged ✓" with class log-set--confirmed, named
   vi.useFakeTimers()
   vi.setSystemTime(BASE)
   renderWithSessionRest([])
-  expect(readoutValue(logButton())).toBe('Log set')
+  expect(readoutValue(logButton())).toBe('Log set 1 · 50 × 8')
 
   await tapWithFakeTimers(logButton())
 
@@ -1781,7 +1786,7 @@ test('O8 the confirmed state ends after 1.5 s: the button reads Log set again wi
   await vi.advanceTimersByTimeAsync(200)
 
   expect(logButton()).not.toHaveClass('log-set--confirmed')
-  expect(readoutValue(logButton())).toBe('Log set')
+  expect(readoutValue(logButton())).toBe('Log set 2 · 50 × 8')
   expect(screen.getByText('Set 1 logged · 50 kg × 8')).toBeVisible()
 })
 
@@ -2579,12 +2584,10 @@ test('O9 a logged Set with rir reads "weight × reps · RIR n", RIR 0 included, 
     loggedEntry(4, 80, 8),
   ])
 
+  // Each Set is a cell named "weight × reps"; its RIR sits in the cell's corner, beside it.
   const rows = within(screen.getByRole('list', { name: 'Sets logged' })).getAllByRole('listitem')
-  const texts = rows.map((row) => (row.textContent ?? '').replace(/\s+/g, ' ').trim())
-  expect(texts[0]).toBe('80 × 8 · RIR 2')
-  expect(texts[1]).toBe('80 × 8 · RIR 0')
-  expect(texts[2]).toBe('80 × 8 · RIR 3+')
-  expect(texts[3]).toBe('80 × 8')
+  const rir = rows.map((row) => row.querySelector('.logged-set-rir')?.textContent ?? null)
+  expect(rir).toEqual(['RIR 2', 'RIR 0', 'RIR 3+', null])
   // The RIR text sits beside the tappable Set, not inside its name.
   expect(loggedSetNames()).toEqual(['80 × 8', '80 × 8', '80 × 8', '80 × 8'])
 })
@@ -2917,7 +2920,7 @@ test('O12 a Warm-up rest is over after 60 s: the readout reads +0:10 over at 70 
   renderWithSessionRest([warmupSquat(1, BASE)])
 
   expect(readoutValue(restReadout())).toBe('+00:10')
-  expect(logButton().textContent).toBe('Log set')
+  expect(logButton().textContent).toBe('Log set 1 · 50 × 8')
 })
 
 test('O12 a working Set rests the Plan length: 3:00 at once', () => {
@@ -3599,14 +3602,14 @@ test('O10 the Action bar button reads Log set while the clock reads 01:27: one c
   renderWithSessionRest([squatEntry(1, BASE)])
 
   expect(readoutValue(restReadout())).toBe('01:27')
-  expect(readoutValue(logButton())).toBe('Log set')
+  expect(readoutValue(logButton())).toBe('Log set 2 · 60 × 10')
 })
 
 test('O10 the Action bar button reads Log set once the rest is over', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 222_000)
   renderWithSessionRest([squatEntry(1, BASE)])
 
-  expect(readoutValue(logButton())).toBe('Log set')
+  expect(readoutValue(logButton())).toBe('Log set 2 · 60 × 10')
 })
 
 test('O10 +15 s still stores a rest of 195 s through onSetRest', async () => {
@@ -3741,12 +3744,12 @@ test('O9 the Weight Dial no longer holds the step control', () => {
 })
 
 test('O9 the stylesheet lays .set-dials out as one row: two equal columns with the × between them', () => {
+  // The Live session (Progress Dashboard S3) stacks the two steppers, weight over reps, each one
+  // row of minus, the number and plus; no × sits between them any more.
   const decls = declarationsFor(restCss(), '.set-dials')
-  expect(decls.get('display')).toBe('grid')
-  expect(decls.get('grid-template-columns')).toMatch(
-    /^minmax\(\s*0\s*,\s*1fr\s*\)\s+auto\s+minmax\(\s*0\s*,\s*1fr\s*\)$/,
-  )
-  expect(declarationsFor(restCss(), '.set-dials::after').get('content')).toBe("'×'")
+  expect(decls.get('display')).toBe('flex')
+  expect(decls.get('flex-direction')).toBe('column')
+  expect(declarationsFor(restCss(), '.set-dials::after').get('content')).toBeUndefined()
 })
 
 test('O9 the stylesheet lays .set-dial-controls out as one row', () => {
@@ -3897,4 +3900,79 @@ test('E17 O11 Delete set on the Set screen wears btn-danger and no other role', 
   await user.click(loggedSetButton('80 × 8'))
 
   expect(rolesOf(screen.getByRole('button', { name: 'Delete set' }))).toEqual(['btn-danger'])
+})
+
+// --- Progress Dashboard S3: the Live session's Now view ----------------------------------------
+
+/** The cells after the logged ones: the open Set and the planned Sets still to come. */
+function plannedCells(): { current: boolean; text: string }[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('.set-cells .set-cell')).map((cell) => ({
+    current: cell.classList.contains('set-cell--current'),
+    text: (cell.textContent ?? '').replace(/\s+/g, ' ').trim(),
+  }))
+}
+
+test('Live S3 the counter carries the Plan target and the name sits over it', () => {
+  renderSetScreen({ setIndex: 3 })
+
+  expect(screen.getByText('Set 3 of 4')).toBeVisible()
+  expect(screen.getByText(/target 8.10$/)).toBeVisible()
+  expect(document.querySelector('.set-exercise-name')?.textContent).toBe(backSquat.name)
+})
+
+test('Live S3 after two logged Sets the open third is outlined and the fourth is still to come', () => {
+  renderWithLogged([loggedEntry(1, 60, 10), loggedEntry(2, 60, 9)])
+
+  expect(loggedSetNames()).toHaveLength(2)
+  const cells = plannedCells()
+  expect(cells.map((cell) => cell.current)).toEqual([true, false])
+  expect(cells[0].text.startsWith('3')).toBe(true)
+  expect(cells[1].text.startsWith('4')).toBe(true)
+})
+
+test('Live S3 the open cell and the Log label follow the steppers', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  await user.click(screen.getByRole('button', { name: 'Decrease reps' }))
+
+  expect(plannedCells()[0].text).toMatch(/62\.5.9$/)
+  expect(logButton().textContent).toMatch(/^Log set 1 . 62\.5 . 9$/)
+})
+
+test('Live S3 a Set heavier than every record reads e1RM, the record and PR if logged', async () => {
+  const { user } = renderSetScreen({
+    earlierSessions: [earlierSession],
+    lastEntries: [historyEntry(1, 80, 8)],
+  })
+
+  // 80 x 8 ties the record: no PR at this load.
+  const line = (): string => (document.querySelector('.set-projection')?.textContent ?? '').replace(/\s+/g, ' ')
+  expect(line()).toMatch(/^e1RM 101\.3 . record 101\.3 . no PR at this load$/)
+  expect(screen.queryByText('PR if logged')).toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+
+  expect(line()).toMatch(/^e1RM 104\.5 . record 101\.3/)
+  const tag = screen.getByText('PR if logged')
+  expect(tag).toHaveClass('tag', 'tag-pr')
+})
+
+test('Live S3 the rest of the Workout is shown under the projection, above the tools', () => {
+  renderSetScreen({ upcoming: <p>Lunges row</p>, onOpenInfo: vi.fn() })
+
+  const rows = screen.getByText('Lunges row')
+  expect(weightReadout().compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(
+    rows.compareDocumentPosition(screen.getByRole('button', { name: 'Alternatives' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy()
+})
+
+test('Live S2 a done cell tapped in All opens the screen on that Set, ready to edit', () => {
+  renderWithLogged([loggedEntry(1, 60, 10), loggedEntry(2, 60, 9)], { editSetIndex: 2 })
+
+  expect(screen.getByRole('button', { name: 'Save set' })).toBeVisible()
+  expect(readoutValue(weightReadout())).toBe('60')
+  expect(readoutValue(repsReadout())).toBe('9')
 })
