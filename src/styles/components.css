@@ -2,3 +2,9 @@
  * `.switch`, `.segmented`, `.select`, `.icon-btn` and `.muscle-dot`. Screen stylesheets compose
  * these classes; they do not restyle them. Imported by base.css, so it reaches every screen.
  */
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+}

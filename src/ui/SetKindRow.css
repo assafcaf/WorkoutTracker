@@ -9,7 +9,7 @@
   min-height: 44px;
   padding: 0 4px;
   border: 1px solid currentColor;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: inherit;
   font: inherit;

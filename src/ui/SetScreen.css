@@ -181,7 +181,7 @@
   min-height: 44px;
   padding: 0 0.9rem;
   border: 1px solid currentColor;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -206,7 +206,7 @@
 
 .pr-badge {
   padding: 0.1rem 0.45rem;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--color-accent);
   color: var(--color-surface);
   font-size: 0.75rem;
@@ -220,7 +220,7 @@
   transform: translateX(-50%);
   margin: 0;
   padding: 0.6rem 1rem;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   background: var(--color-accent);
   color: var(--color-surface);
   font-weight: 600;
@@ -233,7 +233,8 @@
 
 .logged-sets li.just-logged {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  box-shadow: none;
 }
 
 .set-note-text,
