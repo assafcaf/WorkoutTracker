@@ -6,8 +6,9 @@
 //
 // E17-T1 (Progress Dashboard foundation) rewrites the palette-value bodies: titles are kept
 // verbatim (the weakened-tests gate tracks tests by title), and the bodies assert the spec's
-// 52-token table (.work/specs/2026-10-13-progress-dashboard-foundation.md). The Court-only
-// tokens stay declared until E17-T12 removes them, so the exact-set assertion waits for T12.
+// 52-token table (.work/specs/2026-10-13-progress-dashboard-foundation.md). E17-T12 [O1]
+// removes the Court-only tokens, so the set is now exactly those 52; the Court value tests keep
+// their titles and assert each Court token is gone.
 //
 // The expectations here are the design system's documented values, written out by hand from
 // the spec's token table — not read back from the file under test, which would make the audit
@@ -170,7 +171,7 @@ const DOCUMENTED_TOKENS = [
   '--safe-top',
 ].sort()
 
-// Court-only tokens still referenced by stylesheets; E17-T12 removes them with their last use.
+// The Court-only tokens E17-T12 removes, with their last use.
 const COURT_ONLY_TOKENS = [
   '--color-accent',
   '--font-display',
@@ -242,24 +243,25 @@ function compare(map: Record<string, string>): { actual: object; expected: objec
 }
 
 test('O1 tokens.css declares exactly the forty-nine documented tokens on :root', () => {
-  // Title kept (weakened-tests gate); the body asserts the E17 52-token table is declared.
+  // Title kept (weakened-tests gate); the body asserts tokens.css declares the E17 52-token
+  // table exactly: every documented token, and nothing else (E17-T12 [O1]).
   expect(DOCUMENTED_TOKENS).toHaveLength(52)
-  const declared = tokens()
-  expect(
-    DOCUMENTED_TOKENS.filter((name) => !declared.has(name)),
-    'documented tokens tokens.css does not declare',
-  ).toEqual([])
+  expect([...tokens().keys()].sort()).toEqual(DOCUMENTED_TOKENS)
 })
 
 // Gate identifiers (E10-T1): the two tests below keep their pre-Court titles because the merge
 // gate tracks tests by title across an intentional rewrite. Their titles are historical; the
 // bodies assert the Court expectation (49 tokens; no --shadow-card and no --color-border).
 test('O1 tokens.css declares exactly the thirty-six documented tokens on :root', () => {
-  // Title kept (weakened-tests gate); the body: apart from the Court-only tokens T12 removes,
-  // tokens.css declares the 52 documented tokens and nothing else.
-  const court = new Set(COURT_ONLY_TOKENS)
-  const declared = [...tokens().keys()].filter((name) => !court.has(name)).sort()
-  expect(declared).toEqual(DOCUMENTED_TOKENS)
+  // Title kept (weakened-tests gate); the body (E17-T12 [O1]): tokens.css declares no token
+  // outside the 52-token table, the Court-only ones included, and declares 52 in all.
+  const documented = new Set(DOCUMENTED_TOKENS)
+  const declared = [...tokens().keys()]
+  expect(declared.filter((name) => !documented.has(name)), 'tokens outside the table').toEqual([])
+  expect(declared.filter((name) => COURT_ONLY_TOKENS.includes(name)), 'Court-only tokens').toEqual(
+    [],
+  )
+  expect(new Set(declared).size).toBe(52)
 })
 
 test('O1 --shadow-card is an inset hairline expressed through --color-border', () => {
@@ -279,18 +281,21 @@ test('O1 the colour tokens carry the documented palette values', () => {
 })
 
 test('O1 the four muscle-family tint and ink tokens carry the documented values', () => {
-  const { actual, expected } = compare(FAMILY_TOKENS)
-  expect(actual).toEqual(expected)
+  // Title kept (weakened-tests gate); E17-T12 [O1] drops these Court tokens from the table.
+  const declared = tokens()
+  expect(Object.keys(FAMILY_TOKENS).filter((name) => declared.has(name))).toEqual([])
 })
 
 test('O1 the personal-record tint, ink and ring tokens carry the documented values', () => {
-  const { actual, expected } = compare(PR_TOKENS)
-  expect(actual).toEqual(expected)
+  // Title kept (weakened-tests gate); E17-T12 [O1] drops these Court tokens from the table.
+  const declared = tokens()
+  expect(Object.keys(PR_TOKENS).filter((name) => declared.has(name))).toEqual([])
 })
 
 test('O1 the body-map shade and primary/secondary tokens carry the documented values', () => {
-  const { actual, expected } = compare(MAP_TOKENS)
-  expect(actual).toEqual(expected)
+  // Title kept (weakened-tests gate); E17-T12 [O1] drops these Court tokens from the table.
+  const declared = tokens()
+  expect(Object.keys(MAP_TOKENS).filter((name) => declared.has(name))).toEqual([])
 })
 
 test('O1 the spacing, radius, tap and type scales carry the documented values', () => {
@@ -334,11 +339,10 @@ test('O1 --font-sans is a system stack, so no web font has to reach the phone', 
 })
 
 test('O1 --font-display names Barlow Semi-Condensed first, then the system stack', () => {
-  // Body now asserts --font-display aliases --font-sans until T12 drops it (E17-T2).
-  const fontDisplay = normalise(tokens().get('--font-display'))
-
-  expect(fontDisplay).toBe('var(--font-sans)')
-  expect(fontDisplay).not.toMatch(/barlow/)
+  // Title kept (weakened-tests gate); E17-T12 [O1] drops --font-display: one family, Geist,
+  // through --font-sans.
+  expect(tokens().has('--font-display'), '--font-display is still declared').toBe(false)
+  expect(readFileSync(tokensPath, 'utf-8')).not.toMatch(/barlow/i)
 })
 
 test('O1 tokens.css declares no @font-face, so the display font is loaded elsewhere', () => {

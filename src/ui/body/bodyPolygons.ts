@@ -6,7 +6,7 @@
 // verbatim, plus 4 the app has no `Region` for: `head`, `knees`, `left-soleus`,
 // `right-soleus`. Those 4 are kept as filler (`region: null`) rather than omitted: dropping
 // them would leave holes in the silhouette where a head or a knee should be. Filler polygons are
-// non-interactive -- `BodyMap` renders them in the map's empty shade (`--map-shade-0`) and
+// non-interactive -- `BodyMap` renders them in the map's empty heat step (`--heat-0`) and
 // gives them neither `data-region` nor `data-band`/`data-shade`.
 //
 // A muscle slug that covers more than one drawn shape (e.g. `chest` is two pectoral shapes, one

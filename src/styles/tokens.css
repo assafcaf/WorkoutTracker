@@ -3,7 +3,7 @@
  * Every colour, space, radius, size, font and motion value the app draws with is declared here
  * and used through `var(--…)` everywhere else, so the palette can only change in one place. The
  * set is closed: src/styles/tokens.test.ts holds this file to the 52 tokens of the spec's token
- * table, with their values, plus the Court-only tokens still referenced (E17-T12 removes them).
+ * table, with their values, and nothing else.
  *
  * The palette is light-only: a cool grey field, white cards, near-black ink, one indigo accent
  * for the primary action, and colour otherwise only in data. Every documented text/background
@@ -47,37 +47,6 @@
   --scrim: rgba(22, 22, 29, 0.4);
   --shadow-sheet: 0 8px 24px rgba(22, 22, 29, 0.12);
 
-  /* Court-only (E17-T12 removes each with its last use). Clay: chart lines and bars, progress
-   * fills and highlighted numbers. */
-  --color-accent: #9E5231;
-
-  /* The four muscle families: a pastel tint and an ink in the same hue that reads on it. */
-  --family-push-tint: #F3DDD0;
-  --family-push-ink: #7A3A20;
-  --family-pull-tint: #DCE5F0;
-  --family-pull-ink: #2E4A6B;
-  --family-legs-tint: #DDE7DA;
-  --family-legs-ink: #34503A;
-  --family-core-tint: #E6DFEE;
-  --family-core-ink: #4F3D68;
-
-  /* The personal-record medallion. */
-  --pr-tint: #F2E3B8;
-  --pr-ink: #6B4E0E;
-  --pr-ring: #B08A2E;
-
-  /* BodyMap's four shade bands, a single-hue ramp from --color-raised to clay, so the steps
-   * survive every colour-vision deficiency. --map-shade-0 is the "nothing counted" shade. Plus
-   * the exercise-scale pair: --map-primary for a primary muscle, --map-secondary for a
-   * secondary one. None is a text/background pair; the map strokes every region in
-   * --color-muted instead, because the light steps sit close to the surface. */
-  --map-shade-0: #EEEEF2;
-  --map-shade-1: #EBC7B0;
-  --map-shade-2: #D0906C;
-  --map-shade-3: #9E5231;
-  --map-primary: #9E5231;
-  --map-secondary: #D0906C;
-
   /* Spacing scale, in 4px steps that widen as they grow. */
   --space-1: 4px;
   --space-2: 8px;
@@ -99,10 +68,6 @@
 
   /* The system stack for body text: it paints on the first frame. */
   --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-
-  /* The display face for numbers and headings, falling back to the system stack until it
-   * loads. The font file is declared outside this file. */
-  --font-display: var(--font-sans);
 
   /* Type scale. */
   --text-xs: 12px;

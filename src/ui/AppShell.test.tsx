@@ -8,6 +8,9 @@
 //
 // Nothing is mocked: AppShell and TabBar are presentational and hold no state, so these tests
 // render the real components and read what a trainee would see.
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
@@ -328,13 +331,56 @@ test('O13 AppShell renders a decorative court-stripe under the header title', ()
     </AppShell>,
   )
 
+  // Title kept (weakened-tests gate); E17-T12 [O15]: the Court stripe is gone, so the header
+  // holds its title and no stripe, decorative or otherwise.
   const header = container.querySelector('header.app-header') as HTMLElement
-  const title = header.querySelector('.app-header-title') as HTMLElement
-  const stripe = header.querySelector('.court-stripe')
-  expect(stripe).not.toBeNull()
-  expect(stripe).toHaveAttribute('aria-hidden', 'true')
-  // "under" the title: it comes after the title in the header's document order.
-  expect(
-    title.compareDocumentPosition(stripe as Element) & Node.DOCUMENT_POSITION_FOLLOWING,
-  ).toBeTruthy()
+  expect(header.querySelector('.app-header-title')).toHaveTextContent('Workout')
+  expect(container.querySelector('.court-stripe')).toBeNull()
+  expect(container.querySelector('[data-stripe]')).toBeNull()
+})
+
+// --- E17-T12 (O15): CourtStripe's own tests, moved here when the component was deleted ------
+// Titles kept verbatim (weakened-tests gate); each body asserts that part of the stripe is gone.
+
+/** Every file under `dir` whose name matches, recursively, test files and test helpers excluded. */
+function productionFilesUnder(dir: string, matches: RegExp): string[] {
+  const found: string[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      if (entry.name !== 'test') found.push(...productionFilesUnder(path, matches))
+    } else if (matches.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+      found.push(path)
+    }
+  }
+  return found
+}
+
+const uiDir = dirname(fileURLToPath(import.meta.url))
+const srcDir = join(uiDir, '..')
+
+test('O13 CourtStripe renders one decorative, aria-hidden court-stripe span', () => {
+  expect(existsSync(join(uiDir, 'CourtStripe.tsx')), 'src/ui/CourtStripe.tsx still exists').toBe(false)
+})
+
+test('O13 the court-stripe rule draws its bands via linear-gradient of --color-primary over --color-accent, with no literal colour', () => {
+  expect(existsSync(join(uiDir, 'CourtStripe.css')), 'src/ui/CourtStripe.css still exists').toBe(false)
+  const withRule = productionFilesUnder(srcDir, /\.css$/).filter((path) =>
+    /\.court-stripe\b/.test(readFileSync(path, 'utf-8')),
+  )
+  expect(withRule, 'stylesheets still declaring a .court-stripe rule').toEqual([])
+})
+
+test('O13 the court-stripe rule draws each band 2px thick', () => {
+  const withStripe = productionFilesUnder(srcDir, /\.(css|tsx?)$/).filter((path) =>
+    /court-stripe|data-stripe/.test(readFileSync(path, 'utf-8')),
+  )
+  expect(withStripe, 'files still naming court-stripe or data-stripe').toEqual([])
+})
+
+test('O13 CourtStripe is used in exactly the Shell header, the session summary and the PR medallion', () => {
+  const usesCourtStripe = productionFilesUnder(srcDir, /\.tsx?$/).filter((path) =>
+    /\bCourtStripe\b/.test(readFileSync(path, 'utf-8')),
+  )
+  expect(usesCourtStripe, 'components still importing or rendering CourtStripe').toEqual([])
 })

@@ -88,7 +88,7 @@
 }
 
 .rest-timer[data-over='true'] .rest-readout {
-  color: var(--color-accent);
+  color: var(--color-warn);
 }
 
 /* −15 s, +15 s and Skip, offered only while rest runs. */
@@ -128,7 +128,7 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-text);
   font: inherit;
 }
 
@@ -163,7 +163,7 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-text);
   font-size: var(--text-sm);
 }
 
@@ -212,7 +212,7 @@
   margin: 0;
   padding: 0.6rem 1rem;
   border-radius: var(--radius-md);
-  background: var(--color-accent);
+  background: var(--color-text);
   color: var(--color-surface);
   font-weight: var(--weight-semibold);
 }
@@ -246,7 +246,7 @@
 .set-note-add,
 .add-warmups,
 .set-note-save {
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .set-note-editor {

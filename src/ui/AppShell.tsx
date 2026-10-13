@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ActionBarHostContext } from './actionBarSlot'
-import { CourtStripe } from './CourtStripe'
 import { TabBar } from './TabBar'
 import { Icon } from './icons'
 import './AppShell.css'
@@ -104,7 +103,6 @@ export function AppShell(props: AppShellProps): JSX.Element {
           ) : null}
           <div className="app-header-title-group">
             <h1 className="app-header-title">{title}</h1>
-            <CourtStripe />
           </div>
           {trailing ? <div className="app-header-trailing">{trailing}</div> : null}
         </header>

@@ -118,7 +118,7 @@
 }
 
 /* fix-newuser-chooser: the no-active-Program chooser, styled like the active-program radio
- * cards above and the Workout tab's court-green `.start-workout` primary button.
+ * cards above and the Workout tab's indigo `.start-workout` primary button.
  */
 .program-page-newuser {
   display: flex;

@@ -140,7 +140,7 @@
 
 /* A disabled Save (O16: while `validateProgram` names a fault) must not read the same as an
  * enabled one -- muted background, reduced opacity, and a `not-allowed` cursor, restoring the
- * court-green style the moment the fault is fixed and `disabled` drops off. */
+ * primary style the moment the fault is fixed and `disabled` drops off. */
 .program-editor-save:disabled {
   opacity: 0.5;
   background: var(--color-muted);

@@ -36,7 +36,7 @@
   font-size: var(--text-xs);
 }
 
-/* The current tab is the one thing in the bar that carries court green. */
+/* The current tab is the one thing in the bar that carries the indigo primary. */
 .tab-bar-tab[aria-current='page'] {
   color: var(--color-primary);
 }

@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/react'
 import { expect, test } from 'vitest'
 import { ProgressionBar } from './ProgressionBar'
 import type { Progression, SuggestionKind } from '../domain/progression'
+import { declarationsFor } from '../test/cssAudit'
 
 // ProgressionBar draws a Progression it is handed; it derives nothing. Every Progression below
 // is written by hand, in the shape `progression()` (E4-T1) returns, so the expected text is a
@@ -137,7 +138,11 @@ const here = dirname(fileURLToPath(import.meta.url))
 test('O12 the progression bar stylesheet fills with --color-accent on a --color-raised or --color-border track', () => {
   const css = readFileSync(join(here, 'ProgressionBar.css'), 'utf-8')
 
-  expect(css).toMatch(/var\(\s*--color-accent\s*\)/)
+  // Title kept (weakened-tests gate); E17-T12 [O1] drops --color-accent: the fill is a data
+  // bar, so it paints --color-secondary (the Design's bar colour) on the raised track.
+  expect(css).not.toMatch(/var\(\s*--color-accent\s*\)/)
+  const fill = declarationsFor(css, '.progression-fill')
+  expect(fill.get('background') ?? fill.get('background-color')).toBe('var(--color-secondary)')
   expect(css).toMatch(/var\(\s*--color-raised\s*\)/)
   expect(css).not.toMatch(/var\(\s*--color-border\s*\)/)
 })

@@ -49,18 +49,18 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
-/* A swapped-in row: clay edge and an "instead of" line, so the swap reads without colour too.
- * Clay (--color-accent), never court green, which is reserved for the primary action. */
+/* A swapped-in row: a neutral edge and an "instead of" line, so the swap reads without colour
+ * too. Indigo is reserved for the primary action, so the edge stays grey. */
 .exercise-row.swapped {
-  border-left: var(--space-1) solid var(--color-accent);
+  border-left: var(--space-1) solid var(--color-control);
 }
 
 .exercise-instead {
   display: block;
-  color: var(--color-accent);
+  color: var(--color-secondary);
   font-size: var(--text-sm);
 }
 
@@ -78,7 +78,7 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .exercise-discard-confirm {
@@ -127,5 +127,5 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-text);
 }
