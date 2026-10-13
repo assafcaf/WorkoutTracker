@@ -23,7 +23,6 @@ const machineCurl: Exercise = {
   weightStep: 5,
   startWeight: 0,
   bodyweight: false,
-  invertProgress: false,
   libraryId: 'Machine_Curl',
 }
 
