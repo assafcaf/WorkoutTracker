@@ -1,6 +1,8 @@
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
 import { workingSets as excludeWarmups } from './setKind'
 
+// `reduce-assistance` is no longer produced (an assisted Set is a negative Load, so it suggests
+// `add-load`); the member stays only until E16-T10 removes ProgressionBar's case for it.
 export type SuggestionKind = 'add-weight' | 'reduce-assistance' | 'add-set' | 'add-load'
 export type Suggestion = { kind: SuggestionKind; nextWeightKg?: number; nextLoadKg?: number }
 export type Progression = {
@@ -36,9 +38,9 @@ const sumReps = (entries: SetEntry[]): number =>
  *
  * - Loaded: only the sets at the working (highest) weight count; full when each reached the
  *   top of the range -> add one `weightStep`.
- * - Inverted (`invertProgress`): the same, at the working (lowest) assistance -> reduce it by
- *   one `weightStep`, never below 0.
- * - Bodyweight: every entry counts against `plan.sets` x top of range -> add a set.
+ * - Bodyweight with Loads: the same, at the highest signed Load -> add one `weightStep` to it.
+ *   An assisted Set is a negative Load, so less assistance is simply a higher Load.
+ * - Bodyweight without Loads: every entry counts against `plan.sets` x top of range -> add a set.
  *
  * `nextWeightKg` is exact arithmetic, not snapped to a rung.
  */
@@ -89,17 +91,13 @@ export function progression(
     }
   }
 
-  const working = exercise.invertProgress
-    ? workingAssistance(lastEntries)
-    : workingWeight(lastEntries)
+  const working = workingWeight(lastEntries)
   const workingSets = lastEntries.filter((entry) => entry.weightKg === working)
   const isFull = workingSets.every((entry) => entry.reps >= topReps)
 
   let suggestion: Suggestion | null = null
   if (isFull && working !== null) {
-    suggestion = exercise.invertProgress
-      ? { kind: 'reduce-assistance', nextWeightKg: Math.max(0, working - exercise.weightStep) }
-      : { kind: 'add-weight', nextWeightKg: working + exercise.weightStep }
+    suggestion = { kind: 'add-weight', nextWeightKg: working + exercise.weightStep }
   }
 
   return {

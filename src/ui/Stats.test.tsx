@@ -457,3 +457,41 @@ test('O13 each pr-medallion contains one decorative court-stripe', () => {
     expect(stripe).toHaveAttribute('aria-hidden', 'true')
   }
 })
+
+// --- E16-T2 (O19): a Bodyweight Exercise with Loads charts its signed Load ---
+
+const assistedPullUps: Exercise = {
+  id: 'assisted-pull-ups',
+  name: 'Assisted pull-ups',
+  weightStep: 1,
+  startWeight: null,
+  bodyweight: true,
+  invertProgress: true,
+  libraryId: 'Band_Assisted_Pull-Up',
+}
+
+function assistedSession(id: string, startedAt: number, loadKg: number): Session {
+  return {
+    id,
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt,
+    finishedAt: startedAt + 90,
+    entries: [{ exerciseId: 'assisted-pull-ups', setIndex: 0, weightKg: null, reps: 8, loggedAt: startedAt, loadKg }],
+  }
+}
+
+test('O19 Stats titles a Bodyweight Exercise with Loads <Exercise> load and charts its signed Loads', () => {
+  render(
+    <Stats
+      sessions={[assistedSession('later', 300, -20), assistedSession('earlier', 100, -27)]}
+      resolve={(id) => (id === assistedPullUps.id ? assistedPullUps : undefined)}
+      programs={[assaf]}
+    />,
+  )
+
+  expect(
+    within(exerciseProgressSection()).getByRole('img', { name: 'Assisted pull-ups load' }),
+  ).toBeInTheDocument()
+  expect(chartPoints().map((point) => point.value)).toEqual([-27, -20])
+})

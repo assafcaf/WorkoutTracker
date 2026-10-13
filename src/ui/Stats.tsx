@@ -60,7 +60,7 @@ function planFor(exerciseId: string, sessions: Session[], programs: Program[]): 
 const SERIES_TITLES: Record<SeriesKind, string> = {
   e1rm: 'estimated 1RM',
   reps: 'reps per session',
-  assistance: 'assistance',
+  load: 'load',
 }
 
 function recordUnit(record: ExerciseRecord): string {
@@ -69,8 +69,6 @@ function recordUnit(record: ExerciseRecord): string {
     case 'best-e1rm':
     case 'heaviest-load':
       return 'kg'
-    case 'lowest-assistance':
-      return 'kg assist'
     case 'most-reps-at-weight':
     case 'most-reps-in-a-set':
     case 'most-reps-at-load':

@@ -43,9 +43,12 @@ function session(overrides: Partial<Session>): Session {
 const backSquat = exercise({ id: 'back-squat', bodyweight: false, invertProgress: false })
 const squatPlan = plan({ exerciseId: 'back-squat', repRange: [8, 10] })
 
+// Assisted is a Bodyweight Exercise with a negative signed Load. `invertProgress` stays set until
+// E16-T10 removes the field, so these tests also prove no domain rule reads it any more.
 const assistedPullUps = exercise({
   id: 'assisted-pull-ups',
-  bodyweight: false,
+  name: 'Assisted pull-ups',
+  bodyweight: true,
   invertProgress: true,
 })
 const pullUpsPlan = plan({ exerciseId: 'assisted-pull-ups', repRange: [5, 8] })
@@ -211,56 +214,65 @@ test('O9 back-squat ignores sets logged for a different exercise', () => {
 // --- Inverted: assisted-pull-ups ---
 
 test('O9 assisted-pull-ups gives a lowest-assistance record among sets that reached the target reps', () => {
+  // The signed Load now decides: BW-20 beats BW-27 and BW-30, whatever the reps.
   const sessions: Session[] = [
     session({
       id: 's1',
       startedAt: 10,
       entries: [
-        { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: 30, reps: 8, loggedAt: 10 },
+        { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: null, reps: 8, loggedAt: 10, loadKg: -30 },
       ],
     }),
     session({
       id: 's2',
       startedAt: 20,
       entries: [
-        { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: 27, reps: 8, loggedAt: 20 },
+        { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: null, reps: 8, loggedAt: 20, loadKg: -27 },
       ],
     }),
     session({
       id: 's3',
       startedAt: 15,
       entries: [
-        { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: 25, reps: 6, loggedAt: 15 },
+        { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: null, reps: 6, loggedAt: 15, loadKg: -20 },
       ],
     }),
   ]
 
   const result = recordsFor(assistedPullUps, pullUpsPlan, sessions)
 
-  expect(result).toEqual([
-    {
-      kind: 'lowest-assistance',
-      label: 'Lowest assistance at target reps',
-      value: 27,
-      weightKg: 27,
-      reps: 8,
-      at: 20,
-    },
-  ])
+  expect(result.map((r) => r.kind)).not.toContain('lowest-assistance')
+  expect(result.find((r) => r.kind === 'heaviest-load')).toEqual({
+    kind: 'heaviest-load',
+    label: 'Least assistance',
+    value: -20,
+    weightKg: null,
+    reps: 6,
+    at: 15,
+  })
 })
 
 test('O9 assisted-pull-ups gives no record when no set reaches the target reps', () => {
+  // No lowest-assistance record any more: a Set short of the top still sets the Load record.
   const sessions: Session[] = [
     session({
       id: 's1',
       startedAt: 10,
       entries: [
-        { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: 30, reps: 6, loggedAt: 10 },
+        { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: null, reps: 6, loggedAt: 10, loadKg: -30 },
       ],
     }),
   ]
 
-  expect(recordsFor(assistedPullUps, pullUpsPlan, sessions)).toEqual([])
+  const result = recordsFor(assistedPullUps, pullUpsPlan, sessions)
+
+  expect(result.map((r) => r.kind)).not.toContain('lowest-assistance')
+  expect(result.find((r) => r.kind === 'heaviest-load')).toMatchObject({
+    label: 'Least assistance',
+    value: -30,
+    reps: 6,
+    at: 10,
+  })
 })
 
 // --- Bodyweight: push-ups ---
@@ -450,30 +462,32 @@ test("O13 this Session's later Sets do not count as logged before", () => {
 })
 
 test('O13 an assisted Exercise sets lowest-assistance only with less assistance at the target reps', () => {
-  const earlier = [
-    session({ id: 'e1', startedAt: 10, entries: [set('assisted-pull-ups', 27, 8, 10)] }),
-  ]
-  const better = set('assisted-pull-ups', 25, 8, 105)
-  const tie = set('assisted-pull-ups', 27, 8, 105)
-  const belowTarget = set('assisted-pull-ups', 20, 5, 105)
-  const cur = (entry: ReturnType<typeof set>) =>
+  // Now the heaviest-load record, by signed Load: BW-25 beats BW-27; a tie or BW-30 sets nothing.
+  const assisted = (loadKg: number, reps: number, loggedAt: number) => ({
+    ...set('assisted-pull-ups', null, reps, loggedAt),
+    loadKg,
+  })
+  const earlier = [session({ id: 'e1', startedAt: 10, entries: [assisted(-27, 8, 10)] })]
+  const better = assisted(-25, 8, 105)
+  const tie = assisted(-27, 8, 105)
+  const moreAssistance = assisted(-30, 8, 105)
+  const cur = (entry: ReturnType<typeof assisted>) =>
     session({ id: 'cur', startedAt: 100, finishedAt: null, entries: [entry] })
 
   const result = recordsSetBy(assistedPullUps, pullUpsPlan, earlier, cur(better), better)
 
-  expect(result).toEqual([
-    {
-      kind: 'lowest-assistance',
-      label: 'Lowest assistance at target reps',
-      value: 25,
-      weightKg: 25,
-      reps: 8,
-      at: 100,
-    },
-  ])
+  expect(result.map((r) => r.kind)).not.toContain('lowest-assistance')
+  expect(result.find((r) => r.kind === 'heaviest-load')).toEqual({
+    kind: 'heaviest-load',
+    label: 'Least assistance',
+    value: -25,
+    weightKg: null,
+    reps: 8,
+    at: 100,
+  })
   expect(recordsSetBy(assistedPullUps, pullUpsPlan, earlier, cur(tie), tie)).toEqual([])
   expect(
-    recordsSetBy(assistedPullUps, pullUpsPlan, earlier, cur(belowTarget), belowTarget),
+    recordsSetBy(assistedPullUps, pullUpsPlan, earlier, cur(moreAssistance), moreAssistance),
   ).toEqual([])
 })
 
@@ -593,4 +607,65 @@ test('O16 warm-up Sets with a load do not set a load record', () => {
   ]
   const records = recordsFor(pushUps, pushUpsPlan, sessions)
   expect(records.find((r) => r.kind === 'heaviest-load')?.value).toBe(5)
+})
+
+// --- O17: a Bodyweight Exercise's Load record is its highest signed Load ---
+
+test('O17 heaviest-load on a Bodyweight Exercise is the highest signed Load, so BW-20 beats BW-27', () => {
+  const sessions = [
+    session({
+      startedAt: 100,
+      entries: [
+        { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 8, loggedAt: 1, loadKg: -27 },
+      ],
+    }),
+    session({
+      startedAt: 200,
+      entries: [
+        { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 7, loggedAt: 2, loadKg: -20 },
+      ],
+    }),
+  ]
+
+  const record = recordsFor(pushUps, pushUpsPlan, sessions).find((r) => r.kind === 'heaviest-load')
+
+  expect(record).toEqual({
+    kind: 'heaviest-load',
+    label: 'Least assistance',
+    value: -20,
+    weightKg: null,
+    reps: 7,
+    at: 200,
+  })
+})
+
+test('O17 a negative heaviest-load is labelled Least assistance', () => {
+  const sessions = [
+    session({
+      entries: [
+        { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 8, loggedAt: 1, loadKg: -27 },
+        { exerciseId: 'push-ups', setIndex: 2, weightKg: null, reps: 8, loggedAt: 2, loadKg: -20 },
+      ],
+    }),
+  ]
+
+  const record = recordsFor(pushUps, pushUpsPlan, sessions).find((r) => r.kind === 'heaviest-load')
+
+  expect(record?.label).toBe('Least assistance')
+})
+
+test('O17 an Exercise flagged invertProgress is judged by its signed Load like any Bodyweight Exercise', () => {
+  const entries = [
+    { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: null, reps: 8, loggedAt: 1, loadKg: -27 },
+    { exerciseId: 'assisted-pull-ups', setIndex: 2, weightKg: null, reps: 10, loggedAt: 2, loadKg: -27 },
+  ]
+  const flagged = recordsFor(assistedPullUps, pullUpsPlan, [session({ entries })])
+  const unflagged = recordsFor(
+    { ...assistedPullUps, invertProgress: false },
+    pullUpsPlan,
+    [session({ entries })],
+  )
+
+  expect(flagged).toEqual(unflagged)
+  expect(flagged.map((r) => r.kind)).toEqual(['most-reps-in-a-set', 'heaviest-load', 'most-reps-at-load'])
 })
