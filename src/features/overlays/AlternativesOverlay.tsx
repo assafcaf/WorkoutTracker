@@ -40,12 +40,14 @@ export function AlternativesOverlay({
       aria-labelledby="alternatives-heading"
       className="overlay-panel alternatives-overlay"
     >
-      <h2 id="alternatives-heading" className="alternatives-overlay-heading">
-        Alternatives to {planned.name}
-      </h2>
-      <button type="button" className="alternatives-overlay-close" onClick={onClose}>
-        Close
-      </button>
+      <div className="alternatives-overlay-header">
+        <h2 id="alternatives-heading" className="alternatives-overlay-heading">
+          Alternatives to {planned.name}
+        </h2>
+        <button type="button" className="alternatives-overlay-close" onClick={onClose}>
+          Close
+        </button>
+      </div>
       <AlternativesList
         target={target}
         library={libraryMap}

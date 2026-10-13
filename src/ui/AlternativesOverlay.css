@@ -5,16 +5,25 @@
  * one definition site.
  */
 
+.alternatives-overlay-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg);
+}
+
 .alternatives-overlay-heading {
   margin: 0;
-  padding: var(--space-4) var(--space-4) 0;
   font-size: var(--text-xl);
   color: var(--color-text);
 }
 
 .alternatives-overlay-close {
   min-height: var(--tap-min);
-  margin: var(--space-3) var(--space-4) 0;
   padding: 0 var(--space-3);
   border: none;
   border-radius: var(--radius-sm);
