@@ -142,7 +142,8 @@
 }
 
 .exercise-info,
-.open-alternatives {
+.open-alternatives,
+.open-history {
   min-height: var(--tap-min);
   padding: var(--space-2) var(--space-3);
   border: 0;

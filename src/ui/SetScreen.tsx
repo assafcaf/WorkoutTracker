@@ -88,6 +88,8 @@ export type SetScreenProps = {
    * STUB (E5-T12 test-designer): accepted but not yet wired to the "Alternatives" button.
    */
   onOpenAlternatives?(exerciseId: string): void
+  /** Told that "History" was tapped for the exercise on screen (E16-T7). */
+  onOpenHistory?(exerciseId: string): void
   /**
    * Told that "Finish exercise" was tapped from the done state, so the caller can return to the
    * Workout's exercise list (E8-T4). Optional so a caller with nothing to return to -- every
@@ -324,6 +326,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     onAddSet,
     onOpenInfo,
     onOpenAlternatives,
+    onOpenHistory,
     onFinishExercise,
     upNext,
     family,
@@ -873,6 +876,13 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           onClick={() => onOpenAlternatives?.(exercise.id)}
         >
           Alternatives
+        </button>
+        <button
+          type="button"
+          className="open-history"
+          onClick={() => onOpenHistory?.(exercise.id)}
+        >
+          History
         </button>
       </div>
       <p className="set-counter">{setCounterText(
