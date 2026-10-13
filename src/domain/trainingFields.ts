@@ -5,8 +5,7 @@ import type { Exercise, LibraryExercise } from '../types'
  * `weightStep` from its equipment (barbell/cable 2.5, dumbbell 1, machine 5, kettlebells 4,
  * anything else 1), `bodyweight`/`startWeight` from whether it needs no equipment
  * ("body only" -> bodyweight true, no start weight; anything else -> bodyweight false, starting
- * at 0), and `invertProgress` always false (only the catalog's assisted-pull-ups inverts, and
- * that is not derived from the library).
+ * at 0).
  */
 const WEIGHT_STEP_BY_EQUIPMENT: Record<string, number> = {
   barbell: 2.5,
@@ -18,13 +17,12 @@ const WEIGHT_STEP_BY_EQUIPMENT: Record<string, number> = {
 
 export function trainingFieldsFor(
   entry: LibraryExercise,
-): Pick<Exercise, 'weightStep' | 'startWeight' | 'bodyweight' | 'invertProgress'> {
+): Pick<Exercise, 'weightStep' | 'startWeight' | 'bodyweight'> {
   const bodyweight = entry.equipment === 'body only'
 
   return {
     weightStep: entry.equipment ? (WEIGHT_STEP_BY_EQUIPMENT[entry.equipment] ?? 1) : 1,
     startWeight: bodyweight ? null : 0,
     bodyweight,
-    invertProgress: false,
   }
 }

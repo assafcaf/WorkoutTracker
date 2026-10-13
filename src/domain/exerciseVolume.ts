@@ -5,13 +5,13 @@ export type ExerciseVolume = { amount: number; unit: 'kg' | 'reps' }
 
 /**
  * An Exercise's volume over a set of entries (O1): `Σ reps × weightKg` for a loaded Exercise, or
- * `Σ reps` for a Bodyweight or `invertProgress` one -- the same split as `volumeSeries`. Sums
+ * `Σ reps` for a Bodyweight one (assisted included) -- the same split as `volumeSeries`. Sums
  * only entries whose `exerciseId` matches `exercise.id`.
  */
 export function exerciseVolume(exercise: Exercise, entries: SetEntry[]): ExerciseVolume {
   const own = workingSets(entries).filter((entry) => entry.exerciseId === exercise.id)
 
-  if (!exercise.bodyweight && !exercise.invertProgress) {
+  if (!exercise.bodyweight) {
     const amount = own.reduce((sum, entry) => sum + entry.reps * (entry.weightKg ?? 0), 0)
     return { amount, unit: 'kg' }
   }

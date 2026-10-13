@@ -12,7 +12,6 @@ function exercise(overrides: Partial<Exercise>): Exercise {
     weightStep: 2.5,
     startWeight: 50,
     bodyweight: false,
-    invertProgress: false,
     libraryId: 'Barbell-Squat',
     ...overrides,
   }
@@ -40,20 +39,18 @@ function session(overrides: Partial<Session>): Session {
   }
 }
 
-const backSquat = exercise({ id: 'back-squat', bodyweight: false, invertProgress: false })
+const backSquat = exercise({ id: 'back-squat', bodyweight: false })
 const squatPlan = plan({ exerciseId: 'back-squat', repRange: [8, 10] })
 
-// Assisted is a Bodyweight Exercise with a negative signed Load. `invertProgress` stays set until
-// E16-T10 removes the field, so these tests also prove no domain rule reads it any more.
+// Assisted is a Bodyweight Exercise with a negative signed Load (E16-T10 removed invertProgress).
 const assistedPullUps = exercise({
   id: 'assisted-pull-ups',
   name: 'Assisted pull-ups',
   bodyweight: true,
-  invertProgress: true,
 })
 const pullUpsPlan = plan({ exerciseId: 'assisted-pull-ups', repRange: [5, 8] })
 
-const pushUps = exercise({ id: 'push-ups', bodyweight: true, invertProgress: false })
+const pushUps = exercise({ id: 'push-ups', bodyweight: true })
 const pushUpsPlan = plan({ exerciseId: 'push-ups', repRange: [10, 15] })
 
 // --- Loaded: back-squat ---
@@ -659,13 +656,10 @@ test('O17 an Exercise flagged invertProgress is judged by its signed Load like a
     { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: null, reps: 8, loggedAt: 1, loadKg: -27 },
     { exerciseId: 'assisted-pull-ups', setIndex: 2, weightKg: null, reps: 10, loggedAt: 2, loadKg: -27 },
   ]
-  const flagged = recordsFor(assistedPullUps, pullUpsPlan, [session({ entries })])
-  const unflagged = recordsFor(
-    { ...assistedPullUps, invertProgress: false },
-    pullUpsPlan,
-    [session({ entries })],
-  )
+  // No Exercise carries invertProgress any more (E16-T10); assisted is judged by its signed Load.
+  const records = recordsFor(assistedPullUps, pullUpsPlan, [session({ entries })])
 
-  expect(flagged).toEqual(unflagged)
-  expect(flagged.map((r) => r.kind)).toEqual(['most-reps-in-a-set', 'heaviest-load', 'most-reps-at-load'])
+  expect(assistedPullUps).not.toHaveProperty('invertProgress')
+  expect(records.map((r) => r.kind)).toEqual(['most-reps-in-a-set', 'heaviest-load', 'most-reps-at-load'])
+  expect(records.find((r) => r.kind === 'heaviest-load')?.value).toBe(-27)
 })

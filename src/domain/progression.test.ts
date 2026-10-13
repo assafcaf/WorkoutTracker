@@ -148,9 +148,8 @@ test('O2 surplus reps on one set do not make up for a set short of the top', () 
 
 // --- O3: assisted is a negative signed Load on a Bodyweight Exercise ---
 
-// The catalog still marks assisted-pull-ups loaded and inverted until E16-T10; the signed-Load
-// rule must hold on the Bodyweight shape whatever `invertProgress` says.
-const assistedPullUps: Exercise = { ...pullUps, bodyweight: true, invertProgress: true }
+// Assisted pull-ups are a Bodyweight Exercise at a negative signed Load (E16-T10).
+const assistedPullUps: Exercise = { ...pullUps, bodyweight: true }
 
 function assisted(logged: Array<[number, number]>): SetEntry[] {
   return logged.map(([loadKg, reps], i) => ({
@@ -212,18 +211,19 @@ test('O3 no history for assisted-pull-ups gives an empty bar over the planned se
 // --- O18: no inverted rule left in progression ---
 
 test('O18 a loaded Exercise flagged invertProgress still adds weight from its highest weight', () => {
-  // back-squat 65 x 10 three times, top of 8-10 reached -> add-weight 67.5, never reduce-assistance.
-  const flagged: Exercise = { ...squat, invertProgress: true }
+  // No Exercise carries invertProgress any more (E16-T10): a loaded Exercise adds weight from
+  // its highest weight. back-squat 65 x 10 twice, top of 8-10 reached -> add-weight 67.5.
   const last = sets('back-squat', [[60, 10], [65, 10], [65, 10]])
-  const result = progression(flagged, squatPlan, last)
+  const result = progression(squat, squatPlan, last)
+  expect(squat).not.toHaveProperty('invertProgress')
   expect(result.workingWeightKg).toBe(65)
   expect(result.suggestion).toEqual({ kind: 'add-weight', nextWeightKg: 67.5 })
 })
 
 test('O18 a loaded Exercise flagged invertProgress counts only the sets at its highest weight', () => {
-  const flagged: Exercise = { ...squat, invertProgress: true }
+  // No Exercise carries invertProgress any more (E16-T10); only the sets at 65 count.
   const last = sets('back-squat', [[50, 6], [65, 10], [65, 10]])
-  const result = progression(flagged, squatPlan, last)
+  const result = progression(squat, squatPlan, last)
   expect(result.achievedReps).toBe(20)
   expect(result.targetReps).toBe(20)
   expect(result.isFull).toBe(true)

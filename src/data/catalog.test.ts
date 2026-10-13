@@ -56,7 +56,6 @@ test('O1 loadCatalog keeps each exercise its own weight step and start weight', 
     weightStep: 2.5,
     startWeight: 50,
     bodyweight: false,
-    invertProgress: false,
     // libraryId is E5-T1's addition to Exercise; back-squat maps to Barbell_Squat per the
     // mapping table in .work/plans/exercise-library.md.
     libraryId: 'Barbell_Squat',
@@ -69,17 +68,22 @@ test('O1 loadCatalog keeps each exercise its own weight step and start weight', 
 test('O1 loadCatalog gives the bodyweight exercises no start weight', () => {
   const catalog = loadCatalog()
 
+  // E16-T10: assisted-pull-ups is Bodyweight too, at a negative Load.
   const bodyweight = [...catalog.values()].filter((e) => e.bodyweight)
-  expect(bodyweight.map((e) => e.id).sort()).toEqual(['hyper-extension', 'push-ups'])
-  expect(bodyweight.map((e) => e.startWeight)).toEqual([null, null])
+  expect(bodyweight.map((e) => e.id).sort()).toEqual(['assisted-pull-ups', 'hyper-extension', 'push-ups'])
+  expect(bodyweight.map((e) => e.startWeight)).toEqual([null, null, null])
 })
 
 test('O1 loadCatalog inverts progress only for the assisted pull-up', () => {
   const catalog = loadCatalog()
 
-  const inverted = [...catalog.values()].filter((e) => e.invertProgress)
-  expect(inverted.map((e) => e.id)).toEqual(['assisted-pull-ups'])
-  expect(catalog.get('assisted-pull-ups')?.startWeight).toBe(27)
+  // E16-T10: nothing inverts progress any more. The assisted pull-up is a Bodyweight Exercise
+  // that starts at a negative signed Load, and no Exercise carries invertProgress at all.
+  const stillCarrying = [...catalog.values()].filter((e) =>
+    Object.prototype.hasOwnProperty.call(e, 'invertProgress'),
+  )
+  expect(stillCarrying.map((e) => e.id)).toEqual([])
+  expect(catalog.get('assisted-pull-ups')).toMatchObject({ bodyweight: true, startLoadKg: -27 })
 })
 
 // Every catalog exercise's libraryId already resolves in the real library (L3, proven in

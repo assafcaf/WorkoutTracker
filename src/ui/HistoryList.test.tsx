@@ -154,7 +154,6 @@ function resolveFixture(id: string): Exercise | undefined {
       weightStep: 2.5,
       startWeight: null,
       bodyweight: false,
-      invertProgress: false,
     }
   }
   if (id === 'back-squat') {
@@ -165,7 +164,6 @@ function resolveFixture(id: string): Exercise | undefined {
       weightStep: 2.5,
       startWeight: null,
       bodyweight: false,
-      invertProgress: false,
     }
   }
   return undefined

@@ -5,7 +5,6 @@
     "weightStep": 2.5,
     "startWeight": 50,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Barbell_Squat"
   },
   {
@@ -14,7 +13,6 @@
     "weightStep": 1,
     "startWeight": 7,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Dumbbell_Lunges"
   },
   {
@@ -23,7 +21,6 @@
     "weightStep": 1,
     "startWeight": 10,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Dumbbell_Bench_Press"
   },
   {
@@ -32,7 +29,6 @@
     "weightStep": 1,
     "startWeight": null,
     "bodyweight": true,
-    "invertProgress": false,
     "libraryId": "Pushups"
   },
   {
@@ -41,7 +37,6 @@
     "weightStep": 1.25,
     "startWeight": 5,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Machine_Shoulder_Military_Press"
   },
   {
@@ -50,7 +45,6 @@
     "weightStep": 1,
     "startWeight": 3,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Side_Lateral_Raise"
   },
   {
@@ -59,7 +53,6 @@
     "weightStep": 2.5,
     "startWeight": 17.5,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Triceps_Pushdown"
   },
   {
@@ -68,16 +61,15 @@
     "weightStep": 2.5,
     "startWeight": 55,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Barbell_Deadlift"
   },
   {
     "id": "assisted-pull-ups",
     "name": "Assisted pull-ups",
     "weightStep": 1,
-    "startWeight": 27,
-    "bodyweight": false,
-    "invertProgress": true,
+    "startWeight": null,
+    "bodyweight": true,
+    "startLoadKg": -27,
     "libraryId": "Band_Assisted_Pull-Up"
   },
   {
@@ -86,7 +78,6 @@
     "weightStep": 1.25,
     "startWeight": 41.25,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Close-Grip_Front_Lat_Pulldown"
   },
   {
@@ -95,7 +86,6 @@
     "weightStep": 5,
     "startWeight": 50,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Leverage_Iso_Row"
   },
   {
@@ -104,7 +94,6 @@
     "weightStep": 2.5,
     "startWeight": 15,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Face_Pull"
   },
   {
@@ -113,7 +102,6 @@
     "weightStep": 1,
     "startWeight": null,
     "bodyweight": true,
-    "invertProgress": false,
     "libraryId": "Hyperextensions_Back_Extensions"
   },
   {
@@ -122,7 +110,6 @@
     "weightStep": 1,
     "startWeight": 8,
     "bodyweight": false,
-    "invertProgress": false,
     "libraryId": "Seated_Dumbbell_Curl"
   }
 ]

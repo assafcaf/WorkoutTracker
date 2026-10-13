@@ -9,8 +9,6 @@ function suggestionText(suggestion: Suggestion): string {
   switch (suggestion.kind) {
     case 'add-weight':
       return `Next: ${String(suggestion.nextWeightKg)} kg`
-    case 'reduce-assistance':
-      return `Next: ${String(suggestion.nextWeightKg)} kg assist`
     case 'add-set':
       return 'Add a set'
     case 'add-load':
