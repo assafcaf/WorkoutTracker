@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { Services } from './services'
 import type { Muscle } from './types'
 import { ExercisesFeature } from './features/exercises/ExercisesFeature'
@@ -14,25 +14,31 @@ import { useServiceWorkerUpdate } from './pwa/registerSW'
 import { AppShell, ShellChromeContext } from './ui/AppShell'
 import type { Tab } from './ui/AppShell'
 import { isBackupDue } from './ui/BackupBadge'
+import { Segmented } from './ui/controls'
+import { LiveStrip, type LiveStatus } from './ui/LiveStrip'
 import { UpdatePill } from './ui/UpdatePill'
 import { useLandOnWorkout } from './ui/useLandOnWorkout'
 
+/** The Program tab's two sides (S7a): the program itself, and the exercise library. */
+type ProgramSide = 'program' | 'exercises'
+
 /**
- * The tab on screen, and for Exercises the muscles a region panel's "Browse exercises" opened it
- * on (M9) -- `null` when the tab was reached any other way.
+ * The tab on screen; on the Program tab the side showing, and for Exercises the muscles a
+ * region panel's "Browse exercises" opened it on (M9) -- `null` when reached any other way.
  */
-type Shown = { tab: Tab; muscles: Muscle[] | null }
+type Shown = { tab: Tab; side: ProgramSide; muscles: Muscle[] | null }
 
 /**
  * What a screen group reports about being inside a session or an editor. The shell needs no
- * report: a screen with a back control or an action bar is drawn without the tab bar.
+ * report: a screen with a back control, an action bar or a header of its own is drawn without
+ * the tab bar.
  */
 function ignoreInSession(): void {}
 
 /**
  * The whole app (E11-T15): the services every screen group reads through, and the tab on
  * screen. Each tab is its own screen group; this component only chooses which one shows and
- * carries what every shell shares -- the tab bar, the Settings tab's backup marker and the
+ * carries what every shell shares -- the tab bar, the Settings gear's backup marker and the
  * "Update ready" control.
  *
  * The control lives here rather than in a screen group because a new deployment must never
@@ -50,82 +56,163 @@ export function App({ services }: { services: Services }): JSX.Element {
   )
 }
 
-/** The tab on screen, its screen group, and the chrome every shell below it shares. */
+/** Where a screen group's route lands: its tab, and on the Program tab its side. */
+function destinationOf(to: AppRoute): Shown {
+  switch (to.tab) {
+    case 'exercises':
+      return { tab: 'program', side: 'exercises', muscles: to.muscles }
+    case 'history':
+      return { tab: 'sessions', side: 'program', muscles: null }
+    case 'program':
+      return { tab: 'program', side: 'program', muscles: null }
+    case 'workout':
+      return { tab: 'dashboard', side: 'program', muscles: null }
+  }
+}
+
+/**
+ * The four tabs (Dashboard, Sessions, Lifts, Program), the full-screen Settings page off the
+ * Dashboard's gear, and the Live session.
+ *
+ * A workout in progress is a full-screen Live session with the tabs hidden. Its chevron
+ * minimises it: the tabs come back with a live strip pinned to the top of every one, and the
+ * strip brings the session back where it was -- the Dashboard's screen group stays mounted
+ * across tabs while a session is live, so its exercise and set are never lost.
+ */
 function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
-  const [shown, setShown] = useState<Shown>({ tab: 'workout', muscles: null })
+  const [shown, setShown] = useState<Shown>({ tab: 'dashboard', side: 'program', muscles: null })
+  const [settingsOpen, setSettingsOpen] = useState(false)
   // True until the trainee first moves: only the app's launch opens a Session in progress
-  // straight into its exercise list; the Workout tab reached again offers resuming it.
+  // straight into its Live session; the Dashboard reached again offers resuming it.
   const [launching, setLaunching] = useState(true)
-  // Counts every move, so pressing the tab already on screen opens it afresh (History, not
-  // Stats; the Program tab without a refused Delete's line), as it always has.
+  // Counts every move, so pressing the tab already on screen opens it afresh (the Program tab
+  // without a refused Delete's line), as it always has.
   const [visit, setVisit] = useState(0)
+  // The Dashboard's own count: it only opens afresh while no session is live, so a minimised
+  // session keeps its place however the trainee moves between tabs.
+  const [dashboardVisit, setDashboardVisit] = useState(0)
   // The Exercises search and filters, kept here so a visit to another tab leaves them as they were.
   const [libraryFilters, setLibraryFilters] = useState<LibraryFilters>({ search: '', muscle: '', equipment: '' })
+  const [live, setLive] = useState<LiveStatus | null>(null)
+  const [minimised, setMinimised] = useState(false)
+  const liveRef = useRef<LiveStatus | null>(null)
   const lastExportedAt = useServiceData((s) => s.preferences.lastExportedAt(), ['preferences'])
 
-  // Returning to the app outside a workout lands on the Workout tab (E8-T7); on that tab the
-  // picker, or mid-session the exercise list or set screen, stays put.
+  // Returning to the app with no workout in progress lands on the Dashboard (E8-T7); with one,
+  // the Live session -- or the tab it was minimised over -- stays put.
   useLandOnWorkout(() => {
-    if (shown.tab !== 'workout') show('workout')
+    if (liveRef.current === null && (shown.tab !== 'dashboard' || settingsOpen)) show(destinationOf({ tab: 'workout' }))
   })
 
-  /** Shows `tab`, and for Exercises the muscles it opens filtered to. */
-  function show(tab: Tab, muscles: Muscle[] | null = null): void {
+  /** Shows a tab (closing Settings), and on the Program tab a side. */
+  function show(next: Shown): void {
     setLaunching(false)
+    setSettingsOpen(false)
     setVisit((count) => count + 1)
-    setShown({ tab, muscles })
+    if (liveRef.current === null) setDashboardVisit((count) => count + 1)
+    setShown(next)
   }
 
   /** Moves to a tab or route a screen group asked for, e.g. Exercises filtered to muscles. */
   function navigate(to: AppRoute): void {
-    show(to.tab, to.tab === 'exercises' ? to.muscles : null)
+    show(destinationOf(to))
   }
 
-  // The backup-due marker the Settings tab carries in the nav: none while the last export is
-  // still being read, and due when storage cannot say, as before.
+  /** The Live session's report: what the strip shows, and `null` once the session is over. */
+  const handleLive = useCallback((status: LiveStatus | null) => {
+    const ended = liveRef.current !== null && status === null
+    liveRef.current = status
+    setLive(status)
+    if (ended) {
+      // Finished or discarded: back on the Dashboard, where the summary opens.
+      setMinimised(false)
+      setSettingsOpen(false)
+      setShown((current) => ({ ...current, tab: 'dashboard' }))
+    }
+  }, [])
+
+  const handleMinimise = useCallback(() => {
+    setLaunching(false)
+    setMinimised(true)
+  }, [])
+  const handleRestore = useCallback(() => setMinimised(false), [])
+
+  // The backup-due marker the Settings gear carries: none while the last export is still being
+  // read, and due when storage cannot say, as before.
   const settingsBadge =
     lastExportedAt.status === 'loading'
       ? false
       : isBackupDue(lastExportedAt.status === 'ready' ? lastExportedAt.data : null, Date.now())
 
+  const liveOnScreen = live !== null && !minimised
+  const onDashboard = shown.tab === 'dashboard' && !settingsOpen
+
+  const programSwitch = (
+    <Segmented
+      name="program-side"
+      label="Program view"
+      value={shown.side}
+      options={[
+        { value: 'program', label: 'Program' },
+        { value: 'exercises', label: 'Exercises' },
+      ]}
+      onChange={(side) => show({ tab: 'program', side, muscles: null })}
+    />
+  )
+
   return (
     <ShellChromeContext.Provider
       value={{
         tab: shown.tab,
-        onTabChange: (tab) => show(tab),
+        onTabChange: (tab) => show({ tab, side: 'program', muscles: null }),
         trailing,
+        lead: shown.tab === 'program' && !settingsOpen ? programSwitch : undefined,
+        onOpenSettings: () => {
+          setLaunching(false)
+          setSettingsOpen(true)
+        },
         settingsBadge,
       }}
     >
-      {shown.tab === 'workout' ? (
-        <WorkoutFeature
-          key={visit}
-          navigate={navigate}
-          onInSession={ignoreInSession}
-          landInSession={launching}
-        />
-      ) : null}
-      {shown.tab === 'program' ? (
-        <ProgramFeature key={visit} navigate={navigate} onInSession={ignoreInSession} />
-      ) : null}
-      {shown.tab === 'exercises' ? (
-        <AppShell key={visit} title="Exercises">
-          <ExercisesFeature
-            initialMuscles={shown.muscles}
-            navigate={navigate}
-            filters={libraryFilters}
-            onFiltersChange={setLibraryFilters}
-          />
-        </AppShell>
-      ) : null}
-      {shown.tab === 'history' ? (
-        <HistoryFeature key={visit} navigate={navigate} onInSession={ignoreInSession} />
-      ) : null}
-      {shown.tab === 'settings' ? (
-        <AppShell key={visit} title="Settings">
+      {live !== null && minimised ? <LiveStrip status={live} onReturn={handleRestore} /> : null}
+      <WorkoutFeature
+        key={dashboardVisit}
+        navigate={navigate}
+        onInSession={ignoreInSession}
+        landInSession={launching}
+        shown={onDashboard}
+        minimised={minimised}
+        onMinimise={handleMinimise}
+        onRestore={handleRestore}
+        onLive={handleLive}
+      />
+      {liveOnScreen ? null : settingsOpen ? (
+        <AppShell title="Settings" onBack={() => setSettingsOpen(false)}>
           <SettingsFeature navigate={navigate} onInSession={ignoreInSession} />
         </AppShell>
-      ) : null}
+      ) : (
+        <>
+          {shown.tab === 'sessions' ? (
+            <HistoryFeature key={visit} navigate={navigate} onInSession={ignoreInSession} only="history" />
+          ) : null}
+          {shown.tab === 'lifts' ? (
+            <HistoryFeature key={visit} navigate={navigate} onInSession={ignoreInSession} only="stats" />
+          ) : null}
+          {shown.tab === 'program' && shown.side === 'program' ? (
+            <ProgramFeature key={visit} navigate={navigate} onInSession={ignoreInSession} />
+          ) : null}
+          {shown.tab === 'program' && shown.side === 'exercises' ? (
+            <AppShell key={visit} title="Exercises">
+              <ExercisesFeature
+                initialMuscles={shown.muscles}
+                navigate={navigate}
+                filters={libraryFilters}
+                onFiltersChange={setLibraryFilters}
+              />
+            </AppShell>
+          ) : null}
+        </>
+      )}
     </ShellChromeContext.Provider>
   )
 }

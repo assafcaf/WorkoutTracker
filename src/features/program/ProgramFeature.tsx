@@ -7,6 +7,8 @@ import { IN_PROGRESS_MESSAGE } from '../../services/programs'
 import { AppShell } from '../../ui/AppShell'
 import { ProgramEditor } from '../../ui/ProgramEditor'
 import { ProgramPage } from '../../ui/ProgramPage'
+import { ProgramHeadActions } from '../../ui/program/ProgramHead'
+import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
 import { useServiceData } from '../useServiceData'
 import { useServices } from '../ServicesProvider'
 import type { AppRoute } from '../routes'
@@ -196,9 +198,26 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
     )
   }
 
+  // S7a: the shell's large page title is the active Program itself, with its size line and the
+  // head's Edit and overflow beside it; the page below draws no head of its own.
+  const active = offeredPrograms.find((program) => program.id === activeProgramId) ?? null
   return (
-    <AppShell title="Program">
+    <AppShell
+      title={active ? active.name : CHOOSE_TITLE}
+      subtitle={active ? programSizeLine(active) : CHOOSE_LINE}
+      actions={
+        active ? (
+          <ProgramHeadActions
+            name={active.name}
+            onEdit={() => handleEditProgram(active.id)}
+            programsOpen={programsOpen}
+            onOpenPrograms={() => setProgramsOpen(true)}
+          />
+        ) : undefined
+      }
+    >
       <ProgramPage
+        head="none"
         programs={offeredPrograms}
         activeProgramId={activeProgramId}
         catalog={programCatalog}

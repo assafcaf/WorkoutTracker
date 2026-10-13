@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Icon } from './icons'
 import { Keypad } from './Keypad'
 import { useCentredRung } from './useCentredRung'
 import { useScrub } from './useScrub'
@@ -53,7 +54,7 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
         className="dial-step icon-btn"
         onClick={() => step(-1)}
       >
-        &minus;
+        <Icon name="Minus" size={24} />
       </button>
       <div className="dial-body" {...(scrub ? drag.handlers : {})}>
         {scrub ? (
@@ -98,7 +99,7 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
         className="dial-step icon-btn"
         onClick={() => step(1)}
       >
-        +
+        <Icon name="Plus" size={24} />
       </button>
       {keypadOpen ? (
         <Keypad

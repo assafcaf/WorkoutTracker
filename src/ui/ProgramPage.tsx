@@ -16,8 +16,17 @@ import { formatRest } from '../domain/rest'
 import { BodyMap } from './body/BodyMap'
 import { BodyMapLegend } from './body/BodyMapLegend'
 import { Segmented } from './controls'
-import { Icon } from './icons'
-import { FAMILY_LABELS, plural, setsRepsText, wholeCount, wholeCounts } from './program/planText'
+import { ProgramHeadActions } from './program/ProgramHead'
+import {
+  CHOOSE_LINE,
+  CHOOSE_TITLE,
+  FAMILY_LABELS,
+  plural,
+  programSizeLine,
+  setsRepsText,
+  wholeCount,
+  wholeCounts,
+} from './program/planText'
 import './Settings.css'
 import './program/ProgramFamily.css'
 import './ProgramPage.css'
@@ -57,6 +66,12 @@ export type ProgramPageProps = {
    */
   programsOpen?: boolean
   onProgramsOpenChange?(open: boolean): void
+  /**
+   * Where the head (the title, its size line, Edit and the overflow) goes: `inline` draws it at
+   * the top of the page; `none` leaves it to the caller -- the Program tab hands it to the
+   * shell's large page title (`ProgramHeadActions`, `programSizeLine`). Defaults to `inline`.
+   */
+  head?: 'inline' | 'none'
 }
 
 /**
@@ -86,6 +101,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     userProgramIds = new Set<string>(),
     bundledProgramIds = new Set<string>(),
     programMessage = null,
+    head = 'inline',
   } = props
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [ownProgramsOpen, setOwnProgramsOpen] = useState(false)
@@ -120,15 +136,6 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const doneMuscleCounts = weekSets(sessions, now, resolve, library)
   const doneRegionCounts = toRegionCounts(doneMuscleCounts)
   const noSetsThisWeek = doneMuscleCounts.size === 0
-
-  function renderSummary(program: Program): string {
-    const exercises = new Set(workouts.flatMap((workout) => workout.exercises.map((plan) => plan.exerciseId)))
-    return [
-      `${program.sessionsPerWeek}× per week`,
-      plural(workouts.length, 'workout', 'workouts'),
-      plural(exercises.size, 'exercise', 'exercises'),
-    ].join(' · ')
-  }
 
   function renderWeeklySets(program: Program): JSX.Element {
     const { total, families } = familyWeekly(program, lookup, library)
@@ -299,31 +306,19 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 
   return (
     <div className="program-page">
-      {active && (
+      {active && head === 'inline' && (
         <div className="program-page-head">
           <div className="program-page-head-text">
             <h2 className="program-page-title">{active.name}</h2>
-            <p className="program-page-subtitle">{renderSummary(active)}</p>
+            <p className="program-page-subtitle">{programSizeLine(active)}</p>
           </div>
           <div className="program-page-head-actions">
-            <button
-              type="button"
-              className="program-page-head-edit btn-quiet"
-              aria-label={`Edit ${active.name}`}
-              onClick={() => onEditProgram?.(active.id)}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="program-page-more icon-btn"
-              aria-label="Programs"
-              aria-haspopup="dialog"
-              aria-expanded={programsOpen}
-              onClick={() => setProgramsOpen(true)}
-            >
-              <Icon name="Ellipsis" size={22} />
-            </button>
+            <ProgramHeadActions
+              name={active.name}
+              onEdit={() => onEditProgram?.(active.id)}
+              programsOpen={programsOpen}
+              onOpenPrograms={() => setProgramsOpen(true)}
+            />
           </div>
         </div>
       )}
@@ -400,8 +395,12 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 
       {activeProgramId === null && (
         <section className="program-page-newuser">
-          <h2 className="program-page-title">Choose a program</h2>
-          <p className="program-page-subtitle">Pick a program to get a plan for every session.</p>
+          {head === 'inline' && (
+            <>
+              <h2 className="program-page-title">{CHOOSE_TITLE}</h2>
+              <p className="program-page-subtitle">{CHOOSE_LINE}</p>
+            </>
+          )}
           <div className="program-page-newuser-list">
             {visiblePrograms(programs).map((program) => (
               <div key={program.id} className="program-page-newuser-card card">

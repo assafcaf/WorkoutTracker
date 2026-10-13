@@ -1,5 +1,5 @@
 import type { MuscleFamily } from '../../domain/muscles'
-import type { ExercisePlan } from '../../types'
+import type { ExercisePlan, Program } from '../../types'
 
 /** A muscle family's name as the Program tab writes it. */
 export const FAMILY_LABELS: Record<MuscleFamily, string> = {
@@ -48,3 +48,18 @@ export function wholeCounts(values: number[]): number[] {
 export function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`
 }
+
+/** The Program tab's size line under its title: `3× per week · 2 workouts · 14 exercises`. */
+export function programSizeLine(program: Program): string {
+  const workouts = program.workouts.filter((workout) => !workout.hidden)
+  const exercises = new Set(workouts.flatMap((workout) => workout.exercises.map((plan) => plan.exerciseId)))
+  return [
+    `${program.sessionsPerWeek}× per week`,
+    plural(workouts.length, 'workout', 'workouts'),
+    plural(exercises.size, 'exercise', 'exercises'),
+  ].join(' · ')
+}
+
+/** The new-user chooser's title and line, when no Program is active yet. */
+export const CHOOSE_TITLE = 'Choose a program'
+export const CHOOSE_LINE = 'Pick a program to get a plan for every session.'

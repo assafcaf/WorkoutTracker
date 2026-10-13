@@ -289,3 +289,14 @@ test('S7b ProgramFeature titles a copy Copy program', async () => {
 
   expect(await screen.findByRole('heading', { level: 1, name: 'Copy program' }, SETTLE)).toBeVisible()
 })
+
+test('S7a ProgramFeature makes the active Program the one large title, its size line and Edit beside it', async () => {
+  renderFeature()
+
+  expect(await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)).toBeVisible()
+  expect(screen.getAllByRole('heading', { name: 'A/B Split' })).toHaveLength(1)
+  expect(screen.queryByRole('heading', { name: 'Program' })).toBeNull()
+  expect(screen.getByText('3× per week · 2 workouts · 14 exercises')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Edit A/B Split' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Programs' })).toBeVisible()
+})

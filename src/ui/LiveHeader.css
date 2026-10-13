@@ -1,0 +1,70 @@
+/* The Live session's header (S2/S3): sticky on the surface with a hairline under it, clearing
+ * the notch itself because a full-screen shell has no padding of its own at the top. */
+
+.live-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-top: var(--safe-top);
+  border-bottom: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+}
+
+.live-header-row {
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding-right: var(--space-2);
+}
+
+.live-header-minimise {
+  display: inline-flex;
+  width: 56px;
+  min-height: var(--tap-min);
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+}
+
+.live-header-title {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.live-header-name {
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-header-title .elapsed-time {
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+}
+
+.live-header-trailing {
+  display: flex;
+  align-items: center;
+  margin-right: var(--space-2);
+}
+
+/* Whatever rides under the header row (the Now | All switch) keeps the screen's side padding. */
+.live-header > :not(.live-header-row) {
+  margin: 0 var(--space-4) var(--space-3);
+}
+
+/* The exercise the Now view is on, heading the set screen under the header (S3). */
+.live-exercise-title {
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+}

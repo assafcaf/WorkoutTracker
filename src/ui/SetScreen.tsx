@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
+import { formatDay } from '../domain/dates'
+import { projectSet } from '../domain/liveProgress'
 import { formatSet, formatSetCompact } from '../domain/setText'
 import { presetForSet, presetFromSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
@@ -12,6 +15,7 @@ import { adjustRest, formatClock, formatRest, restAfter, restLengthOf } from '..
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
+import { Icon } from './icons'
 import { playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
 import { RestDial } from './RestDial'
@@ -171,6 +175,13 @@ export type SetScreenProps = {
   trackEffort?: boolean
   /** Stores (or with `null` clears) the RIR of logged Set `setIndex` (E14-T10). */
   onSetEffort?(setIndex: number, rir: 0 | 1 | 2 | 3 | null): Promise<void>
+  /**
+   * The rest of the Workout, shown under the projection line (the Live session's "Now" view,
+   * Progress Dashboard S3): its compact rows. Omitted shows none.
+   */
+  upcoming?: ReactNode
+  /** A logged Set to open for editing as the screen opens: a done cell tapped in "All". */
+  editSetIndex?: number
 }
 
 /**
@@ -195,13 +206,22 @@ export function setCounterText(
   return amrapFloor === undefined ? text : `${text} · ${amrapFloor}+ reps`
 }
 
-/** "80×8 · 80×8 · 80×7", in set order; a Bodyweight Set reads "BW×8". */
-function lastTimeText(exerciseId: string, entries: SetEntry[]): string {
-  return entries
-    .filter((entry) => entry.exerciseId === exerciseId)
-    .sort((a, b) => a.setIndex - b.setIndex)
-    .map(formatSetCompact)
-    .join(' · ')
+/**
+ * "Last time 60 × 9 · Fri 9 Oct": last time's working Set at the open Set's working `position`
+ * (its last one past it), and the day it was lifted. Empty with no working Set last time.
+ */
+function lastTimeText(exerciseId: string, entries: SetEntry[], position: number): string {
+  const sets = workingSets(entries.filter((entry) => entry.exerciseId === exerciseId)).sort(
+    (a, b) => a.setIndex - b.setIndex,
+  )
+  if (sets.length === 0) return ''
+  const set = sets[Math.min(Math.max(position, 1), sets.length) - 1]
+  return `Last time ${formatSet(set)} · ${formatDay(new Date(set.loggedAt), new Date())}`
+}
+
+/** A Set's load as a cell shows it: `62.5`, `BW`, `BW+10`. */
+function cellText(set: { weightKg: number | null; reps: number; loadKg?: number }): string {
+  return formatSetCompact(set)
 }
 
 /** "New PR · Heaviest set, Best estimated 1RM · 85 kg × 5": every record's label, then the Set. */
@@ -352,7 +372,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
   // and otherwise the catalog's own; the Dial and Ladder both follow it via `effectiveExercise`.
-  const lastTime = lastTimeText(exercise.id, props.lastTime ?? [])
   const [weightStep, setWeightStep] = useState<number>(
     props.weightStep ?? exercise.weightStep,
   )
@@ -430,6 +449,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     props.logged === undefined
       ? open.setIndex
       : 1 + carried + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
+
+  const lastTime = lastTimeText(exercise.id, props.lastTime ?? [], position)
 
   /** Today's Sets to preset from once they are `entries`: none when the caller gives no `logged`. */
   function today(entries: SetEntry[]): SetEntry[] | undefined {
@@ -727,6 +748,14 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     })
   }
 
+  // A done cell tapped in "All" opens the screen on that Set, ready to edit.
+  useEffect(() => {
+    if (props.editSetIndex === undefined) return
+    const entry = loggedSets.find((candidate) => candidate.setIndex === props.editSetIndex)
+    if (entry !== undefined) openLogged(entry)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the screen opens
+  }, [])
+
   /** Back to the next Set to log, `next` being its index and `sets` today's Sets by then. */
   function returnToLogging(next: number, sets: SetEntry[], from: SetEntry[] = history): void {
     setError(null)
@@ -826,6 +855,58 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     add(exercise.id, open.setIndex)
   }
 
+  // Each logged working Set's place among the working Sets, for its cell; a warm-up has none.
+  const ordinals = new Map<number, number>()
+  {
+    let n = carried
+    for (const entry of loggedSets) {
+      if (entry.kind === 'warmup') continue
+      n += 1
+      ordinals.set(entry.setIndex, n)
+    }
+  }
+
+  // The cells after the logged ones: the Set on the steppers (while not editing), then every
+  // planned Set still to come at its Preset. Editing, the next Set shows as one still to come.
+  const nextPosition = 1 + carried + workingSets(loggedSets).length
+  const cells: { position: number; current: boolean; weightKg: number | null; reps: number; loadKg: number }[] = []
+  {
+    const from = editing === null ? position : nextPosition
+    const fromIndex = editing === null ? open.setIndex : loggedSets.length + 1
+    const last = Math.max(plan.sets, editing === null && extraOpen ? position : 0)
+    for (let at = from; at <= last && !done; at += 1) {
+      if (at === position && editing === null) {
+        cells.push({ position: at, current: true, weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })
+        continue
+      }
+      const preset = presetForSet({
+        exercise,
+        plan,
+        setIndex: fromIndex + (at - from),
+        lastEntries: history,
+        today: today(loggedSets),
+      })
+      cells.push({ position: at, current: false, weightKg: preset.weightKg, reps: preset.reps, loadKg: preset.loadKg ?? 0 })
+    }
+  }
+
+  // What the Set on the steppers would mean if logged: its e1RM, the record, PR if logged.
+  const projection =
+    editing === null && !done
+      ? projectSet({
+          exercise,
+          plan,
+          earlier,
+          session: thisSession,
+          set: {
+            weightKg: open.weightKg,
+            reps: open.reps,
+            ...(open.loadKg === 0 ? {} : { loadKg: open.loadKg }),
+            ...(open.kind === null ? {} : { kind: open.kind }),
+          },
+        })
+      : null
+
   // Past the plan the screen is done: every planned set is logged, so "Log set" is withheld and
   // only an extra set is offered -- and only to a caller that knows what to do with it.
   const actions = editing !== null ? (
@@ -855,9 +936,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         Logged ✓
       </button>
     ) : (
-      // The rest clock has its own bar at the top of the screen; the button only logs.
+      // The label follows the steppers: "Log set 3 · 62.5 × 8". Its name stays "Log set".
       <button type="button" className="log-set btn-primary" aria-label="Log set" onClick={() => void log()}>
-        Log set
+        Log set {position} · {formatSet({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })}
       </button>
     )
   ) : (
@@ -916,53 +997,85 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </div>
       )}
 
-      {/* The exercise's name is the shell's own header title (`AppShell`'s `<h1>`, set by every
-          caller to `exercise.name`); a second heading here would duplicate it verbatim, which
-          collides for a caller matching an exercise's set screen by its accessible name alone
-          (E5-T12's S7, opening a swapped-in exercise's set screen). */}
-      <p className="set-counter">{setCounterText(
-          position,
-          plan.sets,
-          loggedCount,
-          done,
-          open.kind === 'amrap' ? plan.repRange[0] : undefined,
-        )}</p>
+      {/* The exercise's name is the screen's one heading: the Live header names the workout as
+          plain text on the set view (`LiveHeader`'s `heading={false}`), so only one heading
+          ever names the Exercise (E5-T12's S7 matches a screen by it). */}
+      <div className="set-head">
+        <h1 className="set-exercise-name">{exercise.name}</h1>
+        <p className="set-counter">
+          <span>
+            {setCounterText(
+              position,
+              plan.sets,
+              loggedCount,
+              done,
+              open.kind === 'amrap' ? plan.repRange[0] : undefined,
+            )}
+          </span>
+          {done || open.kind === 'amrap' ? null : (
+            <span className="set-counter-target">
+              {` · target ${plan.repRange[0]}–${plan.repRange[1]}`}
+            </span>
+          )}
+        </p>
+      </div>
 
-      {lastTime === '' ? null : <p className="set-last-time">Last time: {lastTime}</p>}
-
-      {loggedSets.length === 0 ? null : (
-        <ul className="logged-sets" aria-label="Sets logged">
-          {loggedSets.map((entry) => (
-            <li
-              key={entry.setIndex}
-              className={justLogged === entry.setIndex ? 'just-logged' : undefined}
-            >
-              <button
-                type="button"
-                className="logged-set cell"
-                data-editing={editing === entry.setIndex ? 'true' : undefined}
-                onClick={() => openLogged(entry)}
+      {/* The set cells: today's logged Sets (tap one to edit it), the Set on the steppers
+          outlined, and the planned Sets still to come, dashed. */}
+      <div className="set-cells">
+        {loggedSets.length === 0 ? null : (
+          <ul className="logged-sets" aria-label="Sets logged">
+            {loggedSets.map((entry) => (
+              <li
+                key={entry.setIndex}
+                className={justLogged === entry.setIndex ? 'just-logged' : undefined}
               >
-                {formatSet(entry)}
-              </button>
-              {entry.kind === undefined ? null : (
-                <span className="set-kind-marker">{KIND_MARKERS[entry.kind]}</span>
-              )}
-              {entry.rir === undefined ? null : (
-                <span className="logged-set-rir">
-                  {' · RIR '}
-                  {entry.rir === 3 ? '3+' : entry.rir}
-                </span>
-              )}
-              {isRecordSet(entry) ? (
-                <span className="tag tag-pr" aria-label="Personal record">
-                  PR
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
+                <button
+                  type="button"
+                  className="logged-set cell"
+                  aria-label={formatSet(entry)}
+                  data-editing={editing === entry.setIndex ? 'true' : undefined}
+                  data-kind={entry.kind}
+                  onClick={() => openLogged(entry)}
+                >
+                  <span className="set-cell-index">
+                    <span>{ordinals.get(entry.setIndex) ?? ''}</span>
+                    {entry.kind === undefined ? null : (
+                      <span className="set-kind-marker">{KIND_MARKERS[entry.kind]}</span>
+                    )}
+                    {isRecordSet(entry) ? (
+                      <span className="tag tag-pr" aria-label="Personal record">
+                        PR
+                      </span>
+                    ) : entry.rir === undefined ? (
+                      <Icon name="Check" size={12} />
+                    ) : null}
+                  </span>
+                  <span className="set-cell-value">{cellText(entry)}</span>
+                </button>
+                {entry.rir === undefined ? null : (
+                  <span className="logged-set-rir">
+                    {'RIR '}
+                    {entry.rir === 3 ? '3+' : entry.rir}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {cells.map((cell) => (
+          <div
+            key={cell.position}
+            className={cell.current ? 'set-cell set-cell--current' : 'set-cell set-cell--future'}
+            aria-hidden="true"
+          >
+            <span className="set-cell-index">{cell.position}</span>
+            <span className="set-cell-value">{cellText(cell)}</span>
+          </div>
+        ))}
+      </div>
+
+      {lastTime === '' ? null : <p className="set-last-time">{lastTime}</p>}
 
       <div className="set-dials">
         {exercise.bodyweight ? (
@@ -983,6 +1096,36 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         )}
         <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
       </div>
+
+      {projection === null || (projection.e1rm === null && !projection.isPr) ? null : (
+        <p className="set-projection">
+          {projection.e1rm === null ? null : (
+            <>
+              {'e1RM '}
+              <b className="set-projection-value">{projection.e1rm.toFixed(1)}</b>
+            </>
+          )}
+          {projection.record === null ? null : ` · record ${projection.record.toFixed(1)}`}
+          {projection.isPr ? (
+            <>
+              {projection.e1rm === null ? null : ' → '}
+              <span className="tag tag-pr">PR if logged</span>
+            </>
+          ) : projection.record === null ? null : (
+            ' · no PR at this load'
+          )}
+        </p>
+      )}
+
+      {error === null ? null : (
+        <p className="set-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {props.upcoming === undefined ? null : <div className="set-upcoming">{props.upcoming}</div>}
+
+      <div className="set-tools">
       <div className="set-dial-controls">
         {exercise.bodyweight ? null : (
           <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
@@ -1088,12 +1231,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           {props.exerciseNote}
         </button>
       )}
-
-      {error === null ? null : (
-        <p className="set-error" role="alert">
-          {error}
-        </p>
-      )}
+      </div>
 
       {actionBar === null ? actions : createPortal(actions, actionBar)}
 

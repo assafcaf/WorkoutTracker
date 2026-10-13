@@ -251,7 +251,7 @@ test(
     await waitFor(async () => {
       expect((await db.settings.get('activeProgramId'))?.value).toBe(stored.id)
     }, SETTLE)
-    await user.click(screen.getByRole('button', { name: 'Workout' }))
+    await user.click(screen.getByRole('button', { name: 'Dashboard' }))
     expect(await screen.findByRole('button', { name: 'Start Push' }, SETTLE)).toBeVisible()
     expect(screen.getByRole('button', { name: 'Start Pull' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Start Legs' })).toBeVisible()
@@ -269,7 +269,7 @@ test(
     await buildPushPullLegs(user)
     await openProgramTab(user)
     await user.click(screen.getByRole('radio', { name: 'Push Pull Legs' }))
-    await user.click(screen.getByRole('button', { name: 'Workout' }))
+    await user.click(screen.getByRole('button', { name: 'Dashboard' }))
     await user.click(await screen.findByRole('button', { name: 'Start Push' }, SETTLE))
     await user.click(await screen.findByRole('button', { name: /^Barbell Bench Press - Medium Grip/ }, SETTLE))
 

@@ -179,9 +179,9 @@ async function openProgramsPanel(user: User): Promise<void> {
   await screen.findByRole('button', { name: 'New program' }, SETTLE)
 }
 
-/** From the exercise list of the Session in progress, back to the picker, then the Program tab. */
+/** From the exercise list of the Session in progress, minimised to the live strip, then the Program tab. */
 async function openProgramTabFromSession(user: User): Promise<void> {
-  await user.click(await screen.findByRole('button', { name: 'Back' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Minimise' }, SETTLE))
   await openProgramTab(user)
 }
 
@@ -326,7 +326,7 @@ test('O10 deleting a user Program keeps its finished Sessions, listed in History
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
   await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
-  await user.click(screen.getByRole('button', { name: 'History' }))
+  await user.click(screen.getByRole('button', { name: 'Sessions' }))
 
   await waitFor(() => expect(document.body.querySelectorAll('.history-row')).toHaveLength(2), SETTLE)
   const workoutNames = [...document.body.querySelectorAll<HTMLElement>('.history-workout')].map(text)
@@ -347,7 +347,7 @@ test('O10 deleting the active user Program falls back to the first visible Progr
 
   await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
   expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeChecked()
-  expect(screen.getByRole('heading', { level: 2, name: 'A/B Split' })).toBeVisible()
+  expect(screen.getByRole('heading', { level: 1, name: 'A/B Split' })).toBeVisible()
 }, LONG)
 
 test('O10 deleting the active user Program leaves the workout picker offering the first visible Program’s Workouts', async () => {
@@ -361,7 +361,7 @@ test('O10 deleting the active user Program leaves the workout picker offering th
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
   await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Workout' }))
+  await user.click(screen.getByRole('button', { name: 'Dashboard' }))
 
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Push' })).toBeNull()
@@ -554,7 +554,7 @@ test('O11 with a Session in progress, editing its Workout’s Plans and saving i
     })
   }, SETTLE)
 
-  await user.click(await screen.findByRole('button', { name: 'Workout' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Dashboard' }, SETTLE))
   await waitFor(() => expect(document.body.querySelector('button.resume-workout')).not.toBeNull(), SETTLE)
   await user.click(document.body.querySelector('button.resume-workout') as HTMLElement)
   await user.click(await screen.findByRole('button', { name: /^Barbell Bench Press - Medium Grip/ }, SETTLE))
@@ -626,7 +626,7 @@ test('O12 after Reset to original a set screen on Workout A uses the bundled num
   await openProgramTab(user)
   await resetAndConfirm(user, 'A/B Split')
   await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00 \| /), SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Workout' }))
+  await user.click(screen.getByRole('button', { name: 'Dashboard' }))
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
   await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
 
