@@ -1913,3 +1913,100 @@ describe('E14-T14 updateSet edits a logged Bodyweight Set Load', () => {
     expect(stored?.updatedAt).toBe(BASE + 400 * SECOND)
   })
 })
+
+describe('E16-T3 old assisted-pull-up Sets read back normalised', () => {
+  // Stored the way a build before E16 wrote them: the assistance as a positive weightKg.
+  const oldPullUp = entry('assisted-pull-ups', 1, 27, 8, BASE + 100 * SECOND)
+  const oldPullUpAtZero = entry('assisted-pull-ups', 2, 0, 6, BASE + 200 * SECOND)
+  const deadlift = entry('deadlift', 1, 80, 8, BASE + 300 * SECOND)
+  const STAMP = BASE + 4000 * SECOND
+
+  // Hand-written: the same Sets in Bodyweight shape.
+  const normalisedEntries: SetEntry[] = [
+    { exerciseId: 'assisted-pull-ups', setIndex: 1, weightKg: null, reps: 8, loggedAt: BASE + 100 * SECOND, loadKg: -27 },
+    { exerciseId: 'assisted-pull-ups', setIndex: 2, weightKg: null, reps: 6, loggedAt: BASE + 200 * SECOND },
+    { exerciseId: 'deadlift', setIndex: 1, weightKg: 80, reps: 8, loggedAt: BASE + 300 * SECOND },
+  ]
+
+  function oldSession(over: Partial<Session> = {}): Session {
+    return storedSession({
+      id: 'old-pull-ups',
+      workoutId: 'workout-b',
+      entries: [oldPullUp, oldPullUpAtZero, deadlift],
+      updatedAt: STAMP,
+      ...over,
+    })
+  }
+
+  test('O15 listSessions answers an old Session with every Set normalised and updatedAt unchanged', async () => {
+    await db.sessions.put(oldSession())
+
+    expect(await listSessions()).toEqual([oldSession({ entries: normalisedEntries })])
+  })
+
+  test('O15 getActiveSession answers an old Session in progress with every Set normalised', async () => {
+    await db.sessions.put(oldSession({ finishedAt: null }))
+
+    expect(await getActiveSession()).toEqual(oldSession({ finishedAt: null, entries: normalisedEntries }))
+  })
+
+  test('O15 startOrResumeSession resumes an old Session in progress with every Set normalised', async () => {
+    await db.sessions.put(oldSession({ finishedAt: null }))
+
+    const resumed = await startOrResumeSession('assaf-ab-2026', 'workout-b', BASE + 600 * SECOND)
+
+    expect(resumed).toEqual(oldSession({ finishedAt: null, entries: normalisedEntries }))
+  })
+
+  test('O15 getLastEntriesFor answers old assisted pull-ups in Bodyweight shape', async () => {
+    await db.sessions.put(oldSession())
+
+    expect(await getLastEntriesFor('assisted-pull-ups')).toEqual([normalisedEntries[0], normalisedEntries[1]])
+  })
+
+  test('O15 allSessions, which backup export reads, answers old Sets normalised', async () => {
+    await db.sessions.put(oldSession())
+
+    expect(await allSessions()).toEqual([oldSession({ entries: normalisedEntries })])
+  })
+
+  test('O15 sessionsChangedSince, which sync push reads, answers old Sets normalised with updatedAt unchanged', async () => {
+    await db.sessions.put(oldSession())
+
+    expect(await sessionsChangedSince(STAMP - 1)).toEqual([oldSession({ entries: normalisedEntries })])
+  })
+
+  test('O15 a read neither rewrites the stored row nor makes the Session look changed to sync', async () => {
+    await db.sessions.put(oldSession())
+
+    expect(await listSessions()).toEqual([oldSession({ entries: normalisedEntries })])
+    await getLastEntriesFor('assisted-pull-ups')
+    await allSessions()
+
+    expect(await db.sessions.get('old-pull-ups')).toEqual(oldSession())
+    expect(await sessionsChangedSince(STAMP)).toEqual([])
+  })
+
+  test('O15 an old Session stored by a sync pull reads back normalised', async () => {
+    await putSessions([oldSession()])
+
+    expect(await listSessions()).toEqual([oldSession({ entries: normalisedEntries })])
+  })
+
+  test('O15 an old Session stored by a backup import reads back normalised', async () => {
+    await replaceAllSessions([oldSession()])
+
+    expect(await listSessions()).toEqual([oldSession({ entries: normalisedEntries })])
+  })
+
+  test('O15 an old Session never stamped reads back normalised and still without updatedAt', async () => {
+    const { updatedAt: _stamp, ...unstamped } = oldSession()
+    void _stamp
+    await db.sessions.put(unstamped)
+
+    const [read] = await allSessions()
+
+    expect(read.entries).toEqual(normalisedEntries)
+    expect('updatedAt' in read).toBe(false)
+  })
+})
