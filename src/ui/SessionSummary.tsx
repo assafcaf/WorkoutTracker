@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatSet } from '../domain/setText'
 import { summarize } from '../domain/summary'
 import { contributors, muscleSets, toRegionCounts } from '../domain/muscles'
 import type { ExerciseRecord } from '../domain/records'
@@ -31,8 +32,11 @@ function formatDuration(ms: number): string {
   return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')} min`
 }
 
-/** A record's set as `85 kg × 5`, or `12 reps` for a bodyweight one. */
+/** A record's set as `85 kg × 5`, `BW−27 × 8` for a Load record, or `12 reps` for a bodyweight one. */
 function recordValue(record: ExerciseRecord): string {
+  if (record.kind === 'heaviest-load' || record.kind === 'most-reps-at-load') {
+    return formatSet({ weightKg: null, loadKg: record.value, reps: record.reps })
+  }
   return record.weightKg === null ? `${record.reps} reps` : `${record.weightKg} kg × ${record.reps}`
 }
 

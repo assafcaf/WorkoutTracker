@@ -309,7 +309,7 @@ export async function finishSession(sessionId: string, now: number): Promise<Ses
     const session = await requireSession(sessionId)
     const finished: Session = { ...session, finishedAt: now, updatedAt: now }
     await db.sessions.put(finished)
-    return finished
+    return normalizeLegacySession(finished)
   })
 }
 
