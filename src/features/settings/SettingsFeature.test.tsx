@@ -169,9 +169,9 @@ test('O13 SettingsFeature saves the next gym equipment list when a type is untic
   const services = buildServices(fakeSync())
   renderFeature(services)
   await waitFor(() => {
-    expect(within(gymEquipmentGroup()).getAllByRole('checkbox').length).toBeGreaterThan(0)
+    expect(within(gymEquipmentGroup()).getAllByRole('switch').length).toBeGreaterThan(0)
   }, SETTLE)
-  const firstCheckbox = within(gymEquipmentGroup()).getAllByRole('checkbox')[0]
+  const firstCheckbox = within(gymEquipmentGroup()).getAllByRole('switch')[0]
   const label = firstCheckbox.closest('label')
   const typeName = label?.textContent ?? ''
   expect(firstCheckbox).toBeChecked()
@@ -301,7 +301,7 @@ test('O13 SettingsFeature pressing Sync now runs the sync service', async () => 
 test('O9 SettingsFeature shows Track effort unticked when nothing is stored', async () => {
   renderFeature(buildServices(fakeSync()))
 
-  const box = await screen.findByRole('checkbox', { name: 'Track effort' }, SETTLE)
+  const box = await screen.findByRole('switch', { name: 'Track effort' }, SETTLE)
   expect(box).not.toBeChecked()
 })
 
@@ -310,20 +310,20 @@ test('O9 SettingsFeature shows Track effort ticked when it is stored on', async 
   renderFeature(buildServices(fakeSync()))
 
   await waitFor(() => {
-    expect(screen.getByRole('checkbox', { name: 'Track effort' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Track effort' })).toBeChecked()
   }, SETTLE)
 })
 
 test('O9 ticking Track effort stores true under effortTracking and shows it ticked', async () => {
   const user = userEvent.setup()
   renderFeature(buildServices(fakeSync()))
-  await user.click(await screen.findByRole('checkbox', { name: 'Track effort' }, SETTLE))
+  await user.click(await screen.findByRole('switch', { name: 'Track effort' }, SETTLE))
 
   await waitFor(async () => {
     expect((await db.settings.get('effortTracking'))?.value).toBe(true)
   }, SETTLE)
   await waitFor(() => {
-    expect(screen.getByRole('checkbox', { name: 'Track effort' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Track effort' })).toBeChecked()
   }, SETTLE)
 })
 
@@ -426,10 +426,10 @@ test('O9 unticking Track effort stores false under effortTracking', async () => 
   await db.settings.put({ key: 'effortTracking', value: true, updatedAt: NOW })
   renderFeature(buildServices(fakeSync()))
   await waitFor(() => {
-    expect(screen.getByRole('checkbox', { name: 'Track effort' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Track effort' })).toBeChecked()
   }, SETTLE)
 
-  await user.click(screen.getByRole('checkbox', { name: 'Track effort' }))
+  await user.click(screen.getByRole('switch', { name: 'Track effort' }))
 
   await waitFor(async () => {
     expect((await db.settings.get('effortTracking'))?.value).toBe(false)

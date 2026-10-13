@@ -1859,9 +1859,9 @@ test('S14 opening Settings with no saved gym equipment lists every library equip
   await openSettings(user)
 
   for (const equipment of EQUIPMENT_TYPES) {
-    expect(await screen.findByRole('checkbox', { name: equipment }, SETTLE)).toBeChecked()
+    expect(await screen.findByRole('switch', { name: equipment }, SETTLE)).toBeChecked()
   }
-  expect(screen.queryByRole('checkbox', { name: 'body only' })).toBeNull()
+  expect(screen.queryByRole('switch', { name: 'body only' })).toBeNull()
 })
 
 test('S14 unticking machine in Settings persists across a reload', async () => {
@@ -1870,7 +1870,7 @@ test('S14 unticking machine in Settings persists across a reload', async () => {
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await openSettings(user)
 
-  await user.click(await screen.findByRole('checkbox', { name: 'machine' }, SETTLE))
+  await user.click(await screen.findByRole('switch', { name: 'machine' }, SETTLE))
   await waitFor(async () => {
     expect(await getGymEquipment()).not.toBeNull()
   }, SETTLE)
@@ -1885,8 +1885,8 @@ test('S14 unticking machine in Settings persists across a reload', async () => {
   await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
   await openSettings(user)
 
-  expect(await screen.findByRole('checkbox', { name: 'machine' }, SETTLE)).not.toBeChecked()
-  expect(screen.getByRole('checkbox', { name: 'barbell' })).toBeChecked()
+  expect(await screen.findByRole('switch', { name: 'machine' }, SETTLE)).not.toBeChecked()
+  expect(screen.getByRole('switch', { name: 'barbell' })).toBeChecked()
 })
 
 test('S15 with machine unticked, the Exercises tab opens with the My gym only chip on and no machine exercises listed', async () => {
