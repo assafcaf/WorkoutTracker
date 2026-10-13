@@ -71,7 +71,7 @@
    * the exercise-scale pair: --map-primary for a primary muscle, --map-secondary for a
    * secondary one. None is a text/background pair; the map strokes every region in
    * --color-muted instead, because the light steps sit close to the surface. */
-  --map-shade-0: #ECE6DA;
+  --map-shade-0: #EEEEF2;
   --map-shade-1: #EBC7B0;
   --map-shade-2: #D0906C;
   --map-shade-3: #9E5231;
