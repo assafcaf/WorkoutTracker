@@ -1,0 +1,4 @@
+/* The global component rules (E17): `.card`, the `btn-*` roles, `.chip`, `.tag`, `.tag-pr`,
+ * `.switch`, `.segmented`, `.select`, `.icon-btn` and `.muscle-dot`. Screen stylesheets compose
+ * these classes; they do not restyle them. Imported by base.css, so it reaches every screen.
+ */

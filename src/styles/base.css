@@ -8,6 +8,7 @@
 @import './tokens.css';
 @import './overlay.css';
 @import './fonts.css';
+@import './components.css';
 
 *,
 *::before,

@@ -9,6 +9,11 @@
 // own). This holds every CSS rule under src/ that paints a background or an SVG fill with one
 // of those tokens to declaring its own text colour, at WCAG 2.1's 4.5:1 or better against that
 // background.
+//
+// E17-T1 [O3] (Progress Dashboard foundation) generalises G1 with the same helper: the coloured
+// tokens are now --color-primary, --color-primary-pressed, --color-danger, --heat-2 and
+// --heat-3, and every stylesheet under src/ is held to it. G1's titles are kept verbatim (the
+// weakened-tests gate tracks tests by title); their bodies assert the new set.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -37,21 +42,13 @@ function rel(absolute: string): string {
   return absolute.slice(repoRoot.length + 1).split(sep).join('/')
 }
 
-// Every coloured token E10-T2's [O3] names. --map-shade-0 (the "nothing counted" empty shade)
-// is deliberately excluded -- it carries no hue of its own.
+// Every coloured token E17's [O3] names: the fills a label sits directly on.
 const GREEN_TOKENS = new Set([
   '--color-primary',
-  '--color-accent',
-  '--family-push-tint',
-  '--family-pull-tint',
-  '--family-legs-tint',
-  '--family-core-tint',
-  '--pr-tint',
-  '--map-shade-1',
-  '--map-shade-2',
-  '--map-shade-3',
-  '--map-primary',
-  '--map-secondary',
+  '--color-primary-pressed',
+  '--color-danger',
+  '--heat-2',
+  '--heat-3',
 ])
 
 const PAINT_PROPS = new Set(['background', 'background-color', 'fill'])
@@ -99,16 +96,14 @@ function resolveColour(value: string | undefined, tokens: Map<string, string>): 
   return match ? tokens.get(match[1]) : value
 }
 
-test('G1 every CSS rule that paints a green background declares its own text colour at 4.5:1 or better, never bare --color-text', () => {
-  const tokens = readTokens(readFileSync(tokensPath, 'utf-8'))
-  const rules = greenBackgroundRules()
+type FiledRule = PaintedRule & { file: string }
 
-  expect(
-    rules.length,
-    'no stylesheet under src paints a coloured background at all, so this audit would pass vacuously',
-  ).toBeGreaterThan(0)
-
-  const offenders = rules
+/**
+ * Each rule whose own `color` is missing, unresolvable or under 4.5:1 against the coloured
+ * token it paints, as a readable failure line. Pure, so it is checked against literals below.
+ */
+function colourOffenders(rules: FiledRule[], tokens: Map<string, string>): string[] {
+  return rules
     .map((rule) => {
       const bg = tokens.get(rule.token)
       if (!bg) return `${rule.file} ${rule.selector}: ${rule.token} is not a declared token`
@@ -125,9 +120,23 @@ test('G1 every CSS rule that paints a green background declares its own text col
         : `${rule.file} ${rule.selector}: ${rule.color} on ${rule.token} is only ${ratio.toFixed(2)}:1`
     })
     .filter((offender): offender is string => offender !== null)
+}
 
-  expect(offenders, 'these rules pair a coloured background with unreadable or undeclared text').toEqual([])
+test('G1 every CSS rule that paints a green background declares its own text colour at 4.5:1 or better, never bare --color-text', () => {
+  const tokens = readTokens(readFileSync(tokensPath, 'utf-8'))
+  const rules = greenBackgroundRules()
+
+  expect(
+    rules.length,
+    'no stylesheet under src paints a coloured background at all, so this audit would pass vacuously',
+  ).toBeGreaterThan(0)
+
+  expect(
+    colourOffenders(rules, tokens),
+    'these rules pair a coloured background with unreadable or undeclared text',
+  ).toEqual([])
 })
+
 
 // The helper [G1] measures with, against a hand-built literal fixture -- mirrors how
 // src/styles/tokens.test.ts and src/styles/cssAudit.test.ts test their own local helpers,
@@ -135,34 +144,57 @@ test('G1 every CSS rule that paints a green background declares its own text col
 
 test('G1 rulesPaintingGreen finds a rule painting a green token and reports its declared colour, or undefined when it declares none', () => {
   const css = [
-    '.offender { background: var(--color-accent); border: 0; }',
-    '.fixed { background: var(--color-accent); color: var(--color-on-primary); }',
-    '.map-fill { fill: var(--map-shade-2); }',
-    '.family-fill { background: var(--family-push-tint); color: var(--family-push-ink); }',
+    '.offender { background: var(--color-danger); border: 0; }',
+    '.fixed { background: var(--color-primary-pressed); color: var(--color-on-primary); }',
+    '.heat-fill { fill: var(--heat-3); }',
+    '.heat-cell { background-color: var(--heat-2); color: var(--color-text); }',
+    '.court { background: var(--color-accent); }',
     '.unrelated { background: var(--color-surface); color: var(--color-text); }',
   ].join('\n')
 
   const rules = rulesPaintingGreen(css)
 
-  expect(rules.find((rule) => rule.selector === '.offender')).toEqual({
-    selector: '.offender',
-    token: '--color-accent',
-    color: undefined,
+  expect(rules).toEqual([
+    { selector: '.offender', token: '--color-danger', color: undefined },
+    { selector: '.fixed', token: '--color-primary-pressed', color: 'var(--color-on-primary)' },
+    { selector: '.heat-fill', token: '--heat-3', color: undefined },
+    { selector: '.heat-cell', token: '--heat-2', color: 'var(--color-text)' },
+  ])
+})
+
+test('O3 every coloured token the audit measures is declared in tokens.css, so a rule painting it can be measured', () => {
+  // A rule painting an undeclared token would be reported, but only once a rule paints it; the
+  // five coloured tokens must resolve before T6-T10 start painting with them.
+  const tokens = readTokens(readFileSync(tokensPath, 'utf-8'))
+  expect([...GREEN_TOKENS].filter((name) => !/^#[0-9a-f]{6}$/i.test(tokens.get(name) ?? ''))).toEqual([])
+})
+
+test('O3 colourOffenders reports a missing, an unresolvable and a too-faint label, and passes a legible one', () => {
+  // Hand-checked: white on #4338A8 is about 8.3:1; white on #4E9DA4 is about 3.2:1.
+  const tokens = new Map([
+    ['--color-primary', '#4338A8'],
+    ['--heat-2', '#4E9DA4'],
+    ['--color-on-primary', '#FFFFFF'],
+  ])
+  const rule = (selector: string, token: string, color: string | undefined): FiledRule => ({
+    file: 'src/x.css',
+    selector,
+    token,
+    color,
   })
-  expect(rules.find((rule) => rule.selector === '.fixed')).toEqual({
-    selector: '.fixed',
-    token: '--color-accent',
-    color: 'var(--color-on-primary)',
-  })
-  expect(rules.find((rule) => rule.selector === '.map-fill')).toEqual({
-    selector: '.map-fill',
-    token: '--map-shade-2',
-    color: undefined,
-  })
-  expect(rules.find((rule) => rule.selector === '.family-fill')).toEqual({
-    selector: '.family-fill',
-    token: '--family-push-tint',
-    color: 'var(--family-push-ink)',
-  })
-  expect(rules.find((rule) => rule.selector === '.unrelated'), '.unrelated paints no green token').toBeUndefined()
+
+  const offenders = colourOffenders(
+    [
+      rule('.ok', '--color-primary', 'var(--color-on-primary)'),
+      rule('.inherits', '--color-primary', undefined),
+      rule('.unknown', '--color-primary', 'var(--no-such-token)'),
+      rule('.faint', '--heat-2', 'var(--color-on-primary)'),
+    ],
+    tokens,
+  )
+
+  expect(offenders).toHaveLength(3)
+  expect(offenders[0]).toMatch(/^src\/x\.css \.inherits: .*no colour declared/)
+  expect(offenders[1]).toMatch(/^src\/x\.css \.unknown: .*resolves to no declared token/)
+  expect(offenders[2]).toMatch(/^src\/x\.css \.faint: var\(--color-on-primary\) on --heat-2 is only 3\.\d\d:1$/)
 })
