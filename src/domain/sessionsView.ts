@@ -118,12 +118,16 @@ export function sessionsByWeek(sessions: Session[], now: number): SessionWeek[] 
 
 export type HeatRow = { label: string; region: Region }
 
-/** The rows every region heat table shows, in the mock's order. */
+/**
+ * The rows every region heat table shows, in the mock's order and with its names: the
+ * `upper-back` region (lats and middle back, one area on the body map) reads "Lats", as in S5b
+ * and S6a.
+ */
 export const HEAT_ROWS: HeatRow[] = [
   { label: 'Chest', region: 'chest' },
   { label: 'Shoulders', region: 'front-deltoids' },
   { label: 'Triceps', region: 'triceps' },
-  { label: 'Upper back', region: 'upper-back' },
+  { label: 'Lats', region: 'upper-back' },
   { label: 'Biceps', region: 'biceps' },
   { label: 'Quads', region: 'quadriceps' },
   { label: 'Lower back', region: 'lower-back' },

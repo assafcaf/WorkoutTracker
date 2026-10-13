@@ -90,7 +90,24 @@ describe('DashboardView S1', () => {
 
   test('more than two gaps read as one list', () => {
     renderView({ data: { ...READY, gaps: ['middle back', 'glutes', 'calves'] } })
-    expect(screen.getByText('No direct work: mid back, glutes, calves')).toBeTruthy()
+    const notes = ['No direct middle back work', 'No direct glutes work', 'No direct calves work'].map((text) =>
+      screen.getByText(text),
+    )
+    const list = notes[0].parentElement as HTMLElement
+    expect(list).toHaveClass('dashboard-gaps')
+    for (const note of notes) expect(note.parentElement).toBe(list)
+  })
+
+  test('a gap muscle the program still plans sets for gets no note', () => {
+    renderView({
+      data: {
+        ...READY,
+        muscles: [...READY.muscles, { muscle: 'hamstrings', done: 7, planned: 10 }],
+        gaps: ['hamstrings', 'calves'],
+      },
+    })
+    expect(screen.queryByText(/hamstrings/)).toBeNull()
+    expect(screen.getByText('No direct calves work')).toBeTruthy()
   })
 
   test('the lifts card hints the next weight and lists each lift with its trend and change', () => {

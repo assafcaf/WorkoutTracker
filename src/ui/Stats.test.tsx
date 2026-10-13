@@ -464,7 +464,9 @@ test('O12 the pr-medallion rule paints with --pr-tint, --pr-ink and a --pr-ring 
   const declarations = declarationsFor(css, '.tag-pr')
   const values = [...declarations.values()].join(' ')
   expect(values).toMatch(/var\(\s*--color-primary\s*\)/)
-  expect(values).toMatch(/var\(\s*--color-primary-tint\s*\)/)
+  // The mock's PR tag (S5b, S6a): an accent ring on the surface, no tint.
+  expect(declarations.get('border')).toMatch(/var\(\s*--color-primary\s*\)/)
+  expect(declarations.get('background')).toBe('var(--color-surface)')
   expect(values).toMatch(/var\(\s*--text-xs\s*\)/)
   expect(values).toMatch(/var\(\s*--weight-semibold\s*\)/)
   expect(values).not.toMatch(/--pr-/)

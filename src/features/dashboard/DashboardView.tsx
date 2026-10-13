@@ -142,6 +142,9 @@ const LEGEND = ['0', '1–9', '10–20', '21+']
 
 function MuscleWeek({ rows, gaps }: { rows: MuscleWeekRow[]; gaps: Muscle[] }): JSX.Element {
   const half = Math.ceil(rows.length / 2)
+  // A note only where the card's own numbers agree (S1): a gap muscle the program still plans
+  // sets for, through a secondary muscle, reads "of N" above and gets no "No direct" note.
+  const unplanned = gaps.filter((muscle) => (rows.find((row) => row.muscle === muscle)?.planned ?? 0) === 0)
   return (
     <section className="card dashboard-card" aria-labelledby="dashboard-muscle-week">
       <div className="dashboard-card-head">
@@ -171,14 +174,11 @@ function MuscleWeek({ rows, gaps }: { rows: MuscleWeekRow[]; gaps: Muscle[] }): 
         ))}
         <span className="dashboard-legend-unit">sets / week</span>
       </div>
-      {gaps.length > 0 ? (
+      {unplanned.length > 0 ? (
         <div className="dashboard-gaps">
-          {/* Two notes fit one line; more read as one list rather than a wall of notes. */}
-          {gaps.length <= 2 ? (
-            gaps.map((muscle) => <span key={muscle}>{`No direct ${muscle} work`}</span>)
-          ) : (
-            <span>{`No direct work: ${gaps.map((muscle) => muscleLabel(muscle).toLowerCase()).join(', ')}`}</span>
-          )}
+          {unplanned.map((muscle) => (
+            <span key={muscle}>{`No direct ${muscle} work`}</span>
+          ))}
         </div>
       ) : null}
     </section>
