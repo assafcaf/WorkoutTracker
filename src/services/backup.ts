@@ -20,6 +20,8 @@ import {
   getTrackEffort,
   VOLUME_BASELINE_KEY,
   WEIGHT_STEPS_KEY,
+  BODYWEIGHT_OVERRIDES_KEY,
+  getBodyweightOverrides,
   deleteKeys,
   getGymEquipment,
   getLastExportedAt,
@@ -62,6 +64,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     exerciseNotes,
     effortTracking,
     plateInventoryRow,
+    bodyweightOverrides,
   ] = await Promise.all([
     listSessions(),
     readRow(ACTIVE_PROGRAM_ID_KEY),
@@ -73,6 +76,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     getExerciseNotes(),
     getTrackEffort(),
     readRow(PLATE_INVENTORY_KEY),
+    getBodyweightOverrides(),
   ])
   const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
 
@@ -89,6 +93,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
       userPrograms,
       ...(Object.keys(exerciseNotes).length > 0 ? { exerciseNotes } : {}),
       ...(effortTracking ? { effortTracking } : {}),
+      ...(Object.keys(bodyweightOverrides).length > 0 ? { bodyweightOverrides } : {}),
       ...(plateInventoryRow ? { plateInventory: plateInventoryRow.value as PlateInventory } : {}),
     },
   }
@@ -211,6 +216,11 @@ export function createBackupService(
 
             if (file.settings.plateInventory === undefined) toDelete.push(PLATE_INVENTORY_KEY)
             else toPut.push({ key: PLATE_INVENTORY_KEY, value: file.settings.plateInventory, updatedAt: now })
+
+            if (file.settings.bodyweightOverrides === undefined) toDelete.push(BODYWEIGHT_OVERRIDES_KEY)
+            else {
+              toPut.push({ key: BODYWEIGHT_OVERRIDES_KEY, value: file.settings.bodyweightOverrides, updatedAt: now })
+            }
 
             if (toPut.length > 0) await putRows(toPut)
             if (toDelete.length > 0) await deleteKeys(toDelete)
