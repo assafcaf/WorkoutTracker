@@ -4158,3 +4158,156 @@ test('Live S2 a done cell tapped in All opens the screen on that Set, ready to e
   expect(readoutValue(weightReadout())).toBe('60')
   expect(readoutValue(repsReadout())).toBe('9')
 })
+
+// --- Progress Dashboard S4/F2/F3, S3b, S2b: the logging flow around the live screen -----------
+
+/** Three earlier back squat Sessions resting 160 s between Sets: "you usually rest 2:40". */
+const restfulSessions: Session[] = [1, 2, 3].map((n) => ({
+  id: `restful-${n}`,
+  programId: 'assaf-ab-2026',
+  workoutId: 'workout-a',
+  startedAt: BASE - n * 86_400_000,
+  finishedAt: BASE - n * 86_400_000 + 3_600_000,
+  entries: [1, 2].map((setIndex) => ({
+    exerciseId: 'back-squat',
+    setIndex,
+    weightKg: 60,
+    reps: 8,
+    loggedAt: BASE - n * 86_400_000 + (setIndex - 1) * 160_000,
+  })),
+}))
+
+test('S4 the rest panel counts down against the rest length, with the usual rest marked', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 12_000)
+  renderSetScreen({
+    setIndex: 2,
+    earlierSessions: restfulSessions,
+    onUseRestForExercise: vi.fn(async () => undefined),
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  const panel = document.querySelector('.rest-panel') as HTMLElement
+  expect(readoutValue(restReadout())).toBe('2:48')
+  expect(panel.textContent).toContain('of 3:00')
+  expect(panel.textContent).toContain('you usually rest 2:40')
+  expect(screen.getByRole('button', { name: 'Use 2:40 for Back squat' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Skip rest' })).toHaveClass('btn-secondary')
+})
+
+test('S4 Use 2:40 for Back squat saves the usual rest as the Plan rest', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 12_000)
+  const onUseRestForExercise = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({
+    setIndex: 2,
+    earlierSessions: restfulSessions,
+    programName: 'A/B Split',
+    onUseRestForExercise,
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  await user.click(screen.getByRole('button', { name: 'Use 2:40 for Back squat' }))
+
+  expect(onUseRestForExercise).toHaveBeenCalledWith(160)
+  expect(await screen.findByText('Saved to A/B Split')).toBeVisible()
+})
+
+test('F3 at 0:00 the panel gives way to Log set, with the overtime quietly over it', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(BASE + 170_000)
+  renderSetScreen({ setIndex: 2, restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 } })
+  expect(readoutValue(restReadout())).toBe('0:10')
+
+  await vi.advanceTimersByTimeAsync(22_000)
+
+  expect(screen.queryByRole('button', { name: 'Skip rest' })).toBeNull()
+  expect(readoutValue(logButton())).toBe('Log set 2 · 50 × 8')
+  expect(document.querySelector('.rest-over')?.textContent).toMatch(/^Over rest · \+0:1\d$/)
+})
+
+test('S4 while rest runs the effort chips name the Set just logged', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 60, 10)], {
+    trackEffort: true,
+    onSetEffort: vi.fn(async () => undefined),
+  })
+
+  await user.click(logButton())
+
+  const group = await screen.findByRole('group', { name: 'Reps in reserve' })
+  const row = group.closest('.effort-row') as HTMLElement
+  expect(row.textContent).toMatch(/^Set 2\s*effort/)
+})
+
+test('S5a a record shows a toast pinned at the top with the PR tag, and goes in 3 s', async () => {
+  vi.useFakeTimers()
+  renderSetScreen({ earlierSessions: [earlierSession], lastEntries: [historyEntry(1, 85, 5)] })
+
+  await tapWithFakeTimers(logButton())
+
+  const toast = document.querySelector('.toast') as HTMLElement
+  expect(toast).not.toBeNull()
+  expect(within(toast).getByText('PR')).toHaveClass('tag-pr')
+  expect(within(toast).getByRole('img', { name: 'Heaviest set history' })).toBeInTheDocument()
+  await vi.advanceTimersByTimeAsync(3100)
+  expect(document.querySelector('.toast')).toBeNull()
+})
+
+test('S3b the ⋯ button opens the tools sheet: name, Close, and every tool as a row', async () => {
+  const onOpenHistory = vi.fn()
+  const { user } = renderSetScreen({
+    plates: RACK,
+    onOpenHistory,
+    onSaveExerciseNote: vi.fn(async () => undefined),
+  })
+
+  const sheet = await openTools(user)
+
+  expect(within(sheet).getByRole('heading', { name: 'Back squat' })).toBeVisible()
+  expect(within(sheet).getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual([
+    'plates',
+    'warmup',
+    'notes',
+  ])
+  for (const row of ['Set type', 'Rest time', 'Swap exercise', 'Exercise info', 'Lift history']) {
+    expect(within(sheet).getByRole('button', { name: new RegExp(`^${row}`) })).toBeVisible()
+  }
+  expect(within(sheet).getByRole('button', { name: /^Rest time\s*3:00/ })).toBeVisible()
+  await user.click(within(sheet).getByRole('button', { name: 'Lift history' }))
+  expect(onOpenHistory).toHaveBeenCalledWith('back-squat')
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+test('S3b Close and Escape put the tools sheet away', async () => {
+  const { user } = renderSetScreen()
+
+  await openTools(user)
+  await user.click(screen.getByRole('button', { name: 'Close' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
+
+  await openTools(user)
+  await closeSheet(user)
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+test('S2b the edit sheet stores a changed effort with Save set', async () => {
+  const onSetEffort = vi.fn(async () => undefined)
+  const { user, onEditSet } = renderWithLogged([loggedEntry(1, 80, 8)], { trackEffort: true, onSetEffort })
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(chip('2'))
+  await user.click(screen.getByRole('button', { name: 'Save set' }))
+
+  await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
+  expect(onSetEffort).toHaveBeenCalledWith(1, 2)
+})
+
+test('S2b Delete set shows the dark Set deleted · Undo snackbar', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(document.querySelector('.snackbar')).not.toBeNull())
+  const snackbar = document.querySelector('.snackbar') as HTMLElement
+  expect(snackbar).toHaveTextContent('Set deleted')
+  expect(within(snackbar).getByRole('button', { name: 'Undo' })).toBeVisible()
+})

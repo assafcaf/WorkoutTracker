@@ -1214,32 +1214,32 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </button>
         {/* How the steppers count: the weight step, and Bodyweight (E8-T8, E16-T13). */}
         <div className="set-dial-controls">
-        {exercise.bodyweight ? null : (
-          <div className="sheet-row tools-step">
-            <span className="sheet-row-icon"><Icon name="Settings" /></span>
-            <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
-          </div>
-        )}
-        {props.onBodyweightChange === undefined ? null : (
-          <div className="sheet-row tools-bodyweight">
-            <span className="sheet-row-icon"><Icon name="Dumbbell" /></span>
-            <span className="sheet-row-label">Bodyweight exercise</span>
-            <button
-              type="button"
-              role="switch"
-              className="bodyweight-switch chip"
-              aria-checked={bodyweight}
-              onClick={() => handleBodyweightChange(!bodyweight)}
-            >
-              Bodyweight
-            </button>
-          </div>
-        )}
-        {bodyweightError === null ? null : (
-          <p className="bodyweight-error" role="alert">
-            {bodyweightError}
-          </p>
-        )}
+          {exercise.bodyweight ? null : (
+            <div className="sheet-row tools-step">
+              <span className="sheet-row-icon"><Icon name="Settings" /></span>
+              <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
+            </div>
+          )}
+          {props.onBodyweightChange === undefined ? null : (
+            <div className="sheet-row tools-bodyweight">
+              <span className="sheet-row-icon"><Icon name="Dumbbell" /></span>
+              <span className="sheet-row-label">Bodyweight exercise</span>
+              <button
+                type="button"
+                role="switch"
+                className="bodyweight-switch chip"
+                aria-checked={bodyweight}
+                onClick={() => handleBodyweightChange(!bodyweight)}
+              >
+                Bodyweight
+              </button>
+            </div>
+          )}
+          {bodyweightError === null ? null : (
+            <p className="bodyweight-error" role="alert">
+              {bodyweightError}
+            </p>
+          )}
         </div>
         <button type="button" className="sheet-row cell" onClick={() => handOff(() => onOpenAlternatives?.(exercise.id))}>
           <span className="sheet-row-icon"><Icon name="Swap" /></span>
