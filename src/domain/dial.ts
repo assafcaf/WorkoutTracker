@@ -33,12 +33,12 @@ export function buildLadder(exercise: Exercise): number[] {
 }
 
 /**
- * Steps `value` one notch along `exercise`'s ladder in `dir`. A value already on the ladder
- * moves to the adjacent rung; a value off the ladder is first snapped down to the nearest rung
- * at or below it, then that rung is stepped by one position in `dir`.
+ * Steps `value` one notch along `exercise`'s ladder (`ladderFor`) in `dir`. A value already on
+ * the ladder moves to the adjacent rung; a value off the ladder is first snapped down to the
+ * nearest rung at or below it, then that rung is stepped by one position in `dir`.
  */
 export function stepWeight(value: number, dir: 1 | -1, exercise: Exercise): number {
-  const ladder = buildLadder(exercise)
+  const ladder = ladderFor(exercise)
   if (ladder.length === 0) return value
 
   let floorIndex = -1
@@ -51,6 +51,14 @@ export function stepWeight(value: number, dir: 1 | -1, exercise: Exercise): numb
   if (newIndex < 0) return ladder[0]
   if (newIndex >= ladder.length) return ladder[ladder.length - 1]
   return ladder[newIndex]
+}
+
+/**
+ * The Weight Dial's Rungs for `exercise` (E16-T4): `loadLadder(weightStep)` -- signed Loads from
+ * -60 to +100 kg through 0 -- on a Bodyweight Exercise, else its weight Ladder (`buildLadder`).
+ */
+export function ladderFor(exercise: Exercise): number[] {
+  return exercise.bodyweight ? loadLadder(exercise.weightStep) : buildLadder(exercise)
 }
 
 export type EntryValidation = { ok: true } | { ok: false; error: string }
