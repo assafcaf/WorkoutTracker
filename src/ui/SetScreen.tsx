@@ -8,7 +8,7 @@ import { recordsSetBy } from '../domain/records'
 import { formatPlates, platesFor } from '../domain/plates'
 import { warmupRamp } from '../domain/warmup'
 import type { WarmupStep } from '../domain/warmup'
-import { adjustRest, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
+import { adjustRest, formatClock, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
@@ -834,9 +834,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             onClick={() => setRestDialOpen(true)}
           >
             <span role="timer" aria-label="Rest remaining">
-              {rest.isOver ? formatOver(rest.overSeconds) : formatRest(rest.remainingSeconds)}
+              {formatClock(rest)}
             </span>
-            {rest.isOver ? ' over' : null}
           </button>
           {rest.isOver ? null : (
             <div className="rest-controls">

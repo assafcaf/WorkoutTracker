@@ -73,7 +73,13 @@
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
+  font-family: var(--font-display);
+  font-size: var(--text-display);
   font-variant-numeric: tabular-nums;
+}
+
+.rest-timer[data-over='true'] .rest-readout {
+  color: var(--color-accent);
 }
 
 /* −15 s, +15 s and Skip, offered only while rest runs. */
