@@ -1265,3 +1265,55 @@ test('O10 after a reload with one Warm-up logged for Back squat, Add warm-ups co
     SETTLE,
   )
 })
+
+/** A finished Session of Tue 6 Oct 2026 that logged Back squat 80×8 twice, put straight in the store. */
+async function seedFinishedSquatSession(): Promise<void> {
+  const startedAt = Date.UTC(2026, 9, 6, 12)
+  await db.sessions.put({
+    id: 'history-seed',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt,
+    finishedAt: startedAt + 3600_000,
+    entries: [1, 2].map((setIndex) => ({
+      exerciseId: 'back-squat',
+      setIndex,
+      weightKg: 80,
+      reps: 8,
+      loggedAt: startedAt + setIndex,
+    })),
+  } as Session)
+}
+
+test('O21 the History link on the set screen opens History · Back squat listing the earlier Session', async () => {
+  await seedFinishedSquatSession()
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+
+  await user.click(await screen.findByRole('button', { name: 'History' }, SETTLE))
+
+  const dialog = await screen.findByRole('dialog', { name: 'History · Back squat' }, SETTLE)
+  expect(within(dialog).getByText('Tue 6 Oct')).toBeVisible()
+  expect(within(dialog).getByText('80×8 · 80×8')).toBeVisible()
+})
+
+test('O21 closing History returns to the same open Set with its logged Set and rest intact', async () => {
+  await seedFinishedSquatSession()
+  const { user } = renderFeature(await servicesOnAssafAB())
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await screen.findByText('Set 2 of 4', undefined, SETTLE)
+  const restBefore = await restReadoutText()
+
+  await user.click(await screen.findByRole('button', { name: 'History' }, SETTLE))
+  const dialog = await screen.findByRole('dialog', { name: 'History · Back squat' }, SETTLE)
+  await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+
+  expect(screen.queryByRole('dialog', { name: 'History · Back squat' })).toBeNull()
+  expect(screen.getByText('Set 2 of 4')).toBeVisible()
+  expect(screen.getByRole('list', { name: 'Sets logged' }).querySelectorAll('li')).toHaveLength(1)
+  expect((await restReadoutText()).slice(0, 2)).toBe(restBefore.slice(0, 2))
+  expect((await storedActiveSession())?.entries).toHaveLength(1)
+})
