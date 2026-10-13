@@ -38,6 +38,7 @@ function renderPage(programMessage: string | null) {
       onDeleteProgram={vi.fn()}
       onResetProgram={vi.fn()}
       programMessage={programMessage}
+      programsOpen
     />,
   )
 }

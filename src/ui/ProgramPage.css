@@ -1,6 +1,7 @@
-/* The Program tab (E5-T18): the active program's name, a card per workout with
- * its own small body map, and a program switcher styled like Settings' "Active program"
- * radio group (`.settings-action`, from Settings.css).
+/* The Program tab (Progress Dashboard S7a): the active program's name and size, its weekly sets
+ * by muscle family, a card per workout with its exercise table, then the planned muscle map
+ * and "This week". The Programs panel (the header's overflow) holds the program switcher,
+ * styled like Settings' "Active program" radio group (`.settings-group`, from Settings.css).
  *
  * Every colour comes through a var(--…) from src/styles/tokens.css.
  */
@@ -8,42 +9,210 @@
 .program-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
-.program-page .workout-card {
+/* ---- Head: title, size line, Edit and the overflow ---- */
+
+.program-page-head {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
 }
 
-.program-page .workout-card ul {
+.program-page-head-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.program-page-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: 34px;
+  letter-spacing: -0.01em;
+}
+
+.program-page-subtitle {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.program-page-head-actions {
+  display: flex;
+  align-items: center;
+  margin-right: calc(var(--space-3) * -1);
+}
+
+.program-page-head-edit {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-1);
+  border: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.program-page-more {
+  display: grid;
+  width: var(--tap-min);
+  min-height: var(--tap-min);
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+/* ---- Cards ---- */
+
+.program-page .card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: 0;
+  padding: var(--space-3);
+}
+
+.program-page-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.program-page-volume .program-page-card-head {
+  margin-bottom: 10px;
+}
+
+.program-page-card-title,
+.program-page-workout-title,
+.program-page-section-heading {
   margin: 0;
-  list-style: none;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 22px;
+}
+
+.program-page-card-total {
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+}
+
+.program-page-card-note {
   color: var(--color-muted);
   font-size: var(--text-sm);
 }
 
-/* A workout's own body map: small, so the card stays a card. */
-.program-page-map {
-  max-width: calc(var(--space-6) * 6);
+/* ---- Weekly sets, planned: a stacked bar by family and its legend ---- */
+
+.program-page-volume-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
 }
 
-/* E5-T19: the prescribed weekly body map and its gap list (M14). */
-.program-page-weekly {
+.program-page-volume-segment {
+  flex-basis: 0;
+  min-width: 2px;
+}
+
+.program-page-legend {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: var(--space-1) 14px;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}
+
+.program-page-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.program-page-legend-count {
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+
+/* ---- A workout's exercise table ---- */
+
+.program-page .workout-card {
+  padding-bottom: var(--space-1);
+}
+
+.program-page-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.program-page-th {
+  height: 24px;
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.program-page-row td {
+  height: 36px;
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.program-page-row:last-child td {
+  border-bottom: 0;
+}
+
+.program-page-exercise {
+  overflow: hidden;
+  max-width: 0;
+  width: 100%;
+  text-overflow: ellipsis;
+}
+
+.program-page-exercise .muscle-dot {
+  margin-right: var(--space-2);
+  vertical-align: 1px;
+}
+
+.program-page-num {
+  padding-left: var(--space-3);
+  text-align: right;
+}
+
+.program-page-rest {
+  color: var(--color-secondary);
+}
+
+.program-page-kg {
+  font-weight: var(--weight-semibold);
+}
+
+/* ---- Planned muscle map (M14) and "This week" (M15), below the workouts ---- */
+
+.program-page-weekly,
+.program-page-thisweek {
   gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+}
+
+.program-page-map {
+  max-width: calc(var(--space-6) * 6);
+  margin: 0;
 }
 
 .program-page-gaps {
@@ -57,14 +226,8 @@
   font-size: var(--text-sm);
 }
 
-/* E5-T19: "This week"'s prescribed-vs-done comparison (M15). */
-.program-page-thisweek {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+.program-page-gap {
+  line-height: 20px;
 }
 
 .program-page-thisweek-maps {
@@ -77,49 +240,105 @@
   flex: 1;
 }
 
-/* fix-actions-placement: the "Active program" switcher now carries New program plus each
- * Program's Edit/Copy/Delete/Reset, in place at the top of the page (E9-T3's actions moved off
- * the separate bottom list, `.program-page-actions`, onto each radio card below).
- */
+.program-page-caption {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.program-page-empty {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---- The Programs panel (the head's overflow) ---- */
+
+.program-page-programs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-right: var(--space-4);
+  padding-left: var(--space-4);
+}
+
+.program-page-programs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+}
+
+.program-page-programs-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.program-page-programs-done {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-1);
+  border: 0;
+  color: var(--color-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
 .program-page-switcher {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
+/* A Program's card: its radio across the top, its actions in a row under it. */
+.program-page-switcher-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.program-page-switcher-row .segmented {
+  flex: 1 1 100%;
+}
+
 .program-page-message {
+  margin: 0;
   color: var(--color-danger);
+  font-size: var(--text-sm);
 }
 
 .program-page-new,
-.program-page-use,
 .program-page-edit,
 .program-page-copy,
 .program-page-delete,
 .program-page-reset,
 .program-page-confirm {
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  border: none;
-  background: var(--color-surface);
-  color: var(--color-text);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 
-.program-page-switcher-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-2);
+.program-page-edit,
+.program-page-copy {
+  border-radius: var(--radius-md);
 }
 
-.program-page-switcher-row .segmented {
-  flex: 1;
+.program-page-delete,
+.program-page-reset,
+.program-page-confirm {
+  margin-left: auto;
+  border: 0;
 }
 
-/* fix-newuser-chooser: the no-active-Program chooser, styled like the active-program radio
- * cards above and the Workout tab's indigo `.start-workout` primary button.
- */
+/* ---- New user: choose a program ---- */
+
 .program-page-newuser {
   display: flex;
   flex-direction: column;
@@ -129,25 +348,28 @@
 .program-page-newuser-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  list-style: none;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
   padding: 0;
-  margin: 0;
+  list-style: none;
 }
 
 .program-page-newuser-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  gap: var(--space-1);
 }
 
 .program-page-newuser-name {
+  font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
 }
 
+.program-page-newuser-size {
+  margin-bottom: var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.program-page-use,
 .program-page-use-primary,
 .program-page-new-secondary {
   display: flex;
@@ -155,7 +377,6 @@
   min-height: var(--tap-min);
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   cursor: pointer;
@@ -163,27 +384,4 @@
 
 .program-page-use-primary {
   border: 0;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.program-page-new-secondary {
-  border: 0;
-  outline: 1px solid var(--color-muted);
-  outline-offset: -1px;
-  box-shadow: none;
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-/* Headings (E17-T5): the screen's title at xl, sections and workout cards at lg. */
-.program-page-title {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-}
-
-.program-page-section-heading,
-.program-page-workout-title {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
 }
