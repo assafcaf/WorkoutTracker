@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import {
@@ -17,7 +17,14 @@ import { ServiceError, type Services, type SyncView } from '../../services'
 import type { Exercise, LibraryExercise, Program, Session, Workout } from '../../types'
 import { useServices, useSyncControls } from '../ServicesProvider'
 import { useServiceData } from '../useServiceData'
-import { DashboardView, type DashboardData, type DashboardSync, type ProgramOption } from './DashboardView'
+import {
+  DashboardView,
+  type DashboardData,
+  type DashboardResume,
+  type DashboardSync,
+  type DockWorkout,
+  type ProgramOption,
+} from './DashboardView'
 
 export type DashboardScreenProps = {
   /** Starts (or resumes) `workoutId` of the active Program. */
@@ -25,6 +32,10 @@ export type DashboardScreenProps = {
   onOpenSettings(): void
   /** The clock; `Date.now` unless a test fixes it. */
   now?: () => number
+  /** Notes drawn under the header (storage unavailable, a backup due). */
+  notices?: ReactNode
+  /** A Session in progress: the dock resumes it rather than starting another. */
+  resume?: DashboardResume | null
 }
 
 type Loaded = {
@@ -90,7 +101,13 @@ function syncOf(view: SyncView, now: number): DashboardSync {
  * pure functions in `src/domain/dashboard.ts`, and renders `DashboardView`. Picking a Program
  * here (a new trainee) makes it the active one through `programs.setActive`.
  */
-export function DashboardScreen({ onStartWorkout, onOpenSettings, now = Date.now }: DashboardScreenProps): JSX.Element {
+export function DashboardScreen({
+  onStartWorkout,
+  onOpenSettings,
+  now = Date.now,
+  notices,
+  resume,
+}: DashboardScreenProps): JSX.Element {
   const services = useServices()
   const { sync, syncNow } = useSyncControls()
   const loaded = useServiceData(load, ['programs', 'sessions', 'preferences'])
@@ -134,6 +151,18 @@ export function DashboardScreen({ onStartWorkout, onOpenSettings, now = Date.now
       const { rows, gaps } = muscleWeek(sessions, at, program, resolve, library)
       const hint = progressionHint(sessions, program, resolve)
       const due = dueWorkout(program, sessions)
+      const dockWorkout = (workout: Workout): DockWorkout => {
+        const done = sessions
+          .filter((session) => session.programId === program.id && session.workoutId === workout.id)
+          .map((session) => session.startedAt)
+        const last = done.length > 0 ? Math.max(...done) : null
+        return {
+          workoutId: workout.id,
+          name: workout.name,
+          last: last === null ? null : formatDay(new Date(last), new Date(at)),
+          summary: workoutSummary(workout),
+        }
+      }
       data = {
         kind: 'ready',
         sessionsPerWeek: program.sessionsPerWeek,
@@ -151,6 +180,7 @@ export function DashboardScreen({ onStartWorkout, onOpenSettings, now = Date.now
               summary: workoutSummary(due.workout),
             }
           : null,
+        workouts: program.workouts.filter((workout) => !workout.hidden).map(dockWorkout),
       }
     }
   }
@@ -163,6 +193,8 @@ export function DashboardScreen({ onStartWorkout, onOpenSettings, now = Date.now
       onSync={() => void syncNow()}
       onOpenSettings={onOpenSettings}
       onStartWorkout={onStartWorkout}
+      notices={notices}
+      resume={resume}
     />
   )
 }

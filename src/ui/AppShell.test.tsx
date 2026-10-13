@@ -389,3 +389,17 @@ test('O13 CourtStripe is used in exactly the Shell header, the session summary a
   )
   expect(usesCourtStripe, 'components still importing or rendering CourtStripe').toEqual([])
 })
+
+// --- Progress Dashboard: a tab screen that draws its own large title (the Dashboard) ----------
+
+test('AppShell given ownHeader draws no header of its own, an unpadded main region, and keeps the tab bar', () => {
+  const { container } = render(
+    <AppShell title="Dashboard" ownHeader tab="dashboard" onTabChange={vi.fn()}>
+      <p>the screen with its own header</p>
+    </AppShell>,
+  )
+
+  expect(container.querySelector('header')).toBeNull()
+  expect(container.querySelector('main.app-main')).toHaveClass('app-main-flush')
+  expect(screen.getByRole('navigation', { name: 'Main' })).toBeVisible()
+})

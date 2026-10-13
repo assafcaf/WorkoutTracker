@@ -2,6 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
+import { workoutsOffered } from './test/dashboard'
 import abSplitJson from './data/programs/assaf-ab-2026.json'
 import { db } from './storage/db'
 import { USER_PROGRAMS_KEY } from './storage/settingsStore'
@@ -299,8 +300,8 @@ test('O10 deleting a user Program keeps its finished Sessions, listed in History
   await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
   await user.click(screen.getByRole('button', { name: 'Sessions' }))
 
-  await waitFor(() => expect(document.body.querySelectorAll('.history-row')).toHaveLength(2), SETTLE)
-  const workoutNames = [...document.body.querySelectorAll<HTMLElement>('.history-workout')].map(text)
+  await waitFor(() => expect(document.body.querySelectorAll('.session-row')).toHaveLength(2), SETTLE)
+  const workoutNames = [...document.body.querySelectorAll<HTMLElement>('.session-row-workout')].map(text)
   expect(workoutNames.sort()).toEqual(['Pull', 'Push'])
   expect((await db.sessions.toArray()).map((s) => s.id).sort()).toEqual(['ppl-pull-done', 'ppl-push-done'])
 }, LONG)
@@ -328,7 +329,8 @@ test('O10 deleting the active user Program leaves the workout picker offering th
   for (const session of finishedPplSessions()) await db.sessions.put(session)
   await renderApp()
 
-  expect(await screen.findByRole('button', { name: 'Start Push' }, SETTLE)).toBeVisible()
+  // The Dashboard's dock offers Push Pull Legs' Workouts, stepping through them with Change.
+  expect(await workoutsOffered(user)).toContain('Push')
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
   await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)

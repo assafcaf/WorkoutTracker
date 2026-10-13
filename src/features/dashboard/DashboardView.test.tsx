@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
+import { ShellChromeContext } from '../../ui/AppShell'
 import { DashboardView, type DashboardData, type DashboardViewProps } from './DashboardView'
 
 const READY: DashboardData = {
@@ -155,5 +156,81 @@ describe('DashboardView S8', () => {
       data: { kind: 'no-program', options, selectedId: 'ab', canUse: false, onSelect: vi.fn(), onUse: vi.fn() },
     })
     expect((screen.getByRole('button', { name: 'Use A/B Split' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+})
+
+describe('DashboardView in the app shell', () => {
+  const WORKOUTS = [
+    { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', summary: '7 exercises · 23 sets · ~53 min' },
+    { workoutId: 'workout-b', name: 'Workout B', last: null, summary: '7 exercises · 23 sets · ~48 min' },
+  ]
+
+  test('Change steps the dock through the program’s workouts, and Start starts the one offered', () => {
+    const props = renderView({ data: { ...READY, workouts: WORKOUTS } })
+    expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+
+    // Any workout but the one due drops "due" from its line.
+    expect(screen.getByText('Workout B')).toBeTruthy()
+    expect(screen.getByText('7 exercises · 23 sets · ~48 min')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Start Workout B' }))
+    expect(props.onStartWorkout).toHaveBeenCalledWith('workout-b')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    expect(screen.getByText('Workout A due')).toBeTruthy()
+  })
+
+  test('a program of one workout offers no Change', () => {
+    renderView({ data: { ...READY, workouts: [WORKOUTS[0]] } })
+    expect(screen.queryByRole('button', { name: 'Choose another workout' })).toBeNull()
+  })
+
+  test('a Session in progress turns the dock into Resume, even before the week is worked out', () => {
+    const onResume = vi.fn()
+    const resume = { workoutName: 'Workout A', programName: 'A/B Split', onResume }
+    const base = {
+      today: 'Tue 13 Oct',
+      sync: { kind: 'local' } as const,
+      onSync: vi.fn(),
+      onOpenSettings: vi.fn(),
+      onStartWorkout: vi.fn(),
+      resume,
+    }
+    const { rerender } = render(<DashboardView {...base} data={{ kind: 'loading' }} />)
+    const button = screen.getByRole('button', { name: 'Resume Workout A' })
+
+    rerender(<DashboardView {...base} data={READY} />)
+
+    // The same button, kept in place as the data arrives, and no Start beside it.
+    expect(screen.getByRole('button', { name: 'Resume Workout A' })).toBe(button)
+    expect(screen.getByText('Workout A in progress')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Start / })).toBeNull()
+    fireEvent.click(button)
+    expect(onResume).toHaveBeenCalledTimes(1)
+  })
+
+  test('the gear carries the shell’s backup-due marker and the header the shell’s trailing slot', () => {
+    render(
+      <ShellChromeContext.Provider value={{ settingsBadge: true, trailing: <button type="button">Update ready</button> }}>
+        <DashboardView
+          today="Tue 13 Oct"
+          sync={{ kind: 'local' }}
+          data={READY}
+          onSync={vi.fn()}
+          onOpenSettings={vi.fn()}
+          onStartWorkout={vi.fn()}
+        />
+      </ShellChromeContext.Provider>,
+    )
+    const header = screen.getByRole('banner')
+    const gear = within(header).getByRole('button', { name: 'Settings' })
+    expect(within(gear).getByRole('status', { name: 'A backup is due' })).toBeTruthy()
+    expect(within(header).getByRole('button', { name: 'Update ready' })).toBeTruthy()
+  })
+
+  test('notices are drawn under the header', () => {
+    renderView({ notices: <p>Nothing can be saved on this phone.</p> })
+    expect(screen.getByText('Nothing can be saved on this phone.').closest('.dashboard-notices')).not.toBeNull()
   })
 })

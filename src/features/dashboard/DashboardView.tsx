@@ -1,6 +1,8 @@
+import { useContext, useState, type ReactNode } from 'react'
 import { band } from '../../domain/band'
 import type { LiftTrend, MuscleWeekRow, WeekTotals } from '../../domain/dashboard'
 import type { Muscle } from '../../types'
+import { SettingsButton, ShellChromeContext } from '../../ui/AppShell'
 import { Sparkline } from '../../ui/charts/Sparkline'
 import { Icon } from '../../ui/icons'
 import './DashboardScreen.css'
@@ -40,8 +42,19 @@ export type DashboardData =
       gaps: Muscle[]
       lifts: LiftTrend[]
       hint: { name: string; nextWeightKg: number } | null
-      due: { workoutId: string; name: string; last: string | null; summary: string } | null
+      due: DockWorkout | null
+      /**
+       * Every workout of the Program the dock can offer in place of the one due, in Program
+       * order (the due one among them). Omitted or one long: the dock offers the due one only.
+       */
+      workouts?: DockWorkout[]
     }
+
+/** A workout the dock offers to start: its name, when it was last done and its size. */
+export type DockWorkout = { workoutId: string; name: string; last: string | null; summary: string }
+
+/** The Session in progress the dock offers to resume in place of a start. */
+export type DashboardResume = { workoutName: string; programName: string; onResume(): void }
 
 export type DashboardViewProps = {
   /** Today, as `formatDay` reads it: `Tue 13 Oct`. */
@@ -51,6 +64,10 @@ export type DashboardViewProps = {
   onSync(): void
   onOpenSettings(): void
   onStartWorkout(workoutId: string): void
+  /** Notes drawn under the header (storage unavailable, a backup due). */
+  notices?: ReactNode
+  /** A Session in progress: the dock resumes it rather than starting another. */
+  resume?: DashboardResume | null
 }
 
 const MUSCLE_LABELS: Partial<Record<Muscle, string>> = {
@@ -211,23 +228,85 @@ function Header({
   onSync,
   onOpenSettings,
 }: Pick<DashboardViewProps, 'today' | 'sync' | 'onSync' | 'onOpenSettings'>): JSX.Element {
+  // The app root's header slot ("Update ready") rides beside the Dashboard's own buttons.
+  const { trailing } = useContext(ShellChromeContext)
   return (
-    <header className="dashboard-header">
+    // The tab's one header: the shell around the Dashboard draws none of its own (`ownHeader`),
+    // so this one carries the shell header's classes too.
+    <header className="dashboard-header app-header">
       <div className="dashboard-heading">
         <h1 className="dashboard-title">Dashboard</h1>
         <SyncLine today={today} sync={sync} />
       </div>
+      {trailing ? <div className="dashboard-header-trailing app-header-trailing">{trailing}</div> : null}
       <div className="dashboard-header-actions">
         {sync.kind === 'offline' ? null : (
           <button type="button" className="icon-btn dashboard-icon-btn" aria-label="Sync now" onClick={onSync}>
             <Icon name={sync.kind === 'synced' ? 'CloudCheck' : 'Cloud'} size={22} />
           </button>
         )}
-        <button type="button" className="icon-btn dashboard-icon-btn" aria-label="Settings" onClick={onOpenSettings}>
-          <Icon name="Settings" size={22} />
-        </button>
+        {/* The shell's gear, which carries the backup-due marker when a backup is due. */}
+        <SettingsButton onOpen={onOpenSettings} />
       </div>
     </header>
+  )
+}
+
+/** The dock while a Session is in progress: its workout, and the way back into it. */
+function ResumeDock({ resume }: { resume: DashboardResume }): JSX.Element {
+  return (
+    <div className="dashboard-dock">
+      <p className="dashboard-due">
+        <span className="dashboard-due-name">{`${resume.workoutName} in progress`}</span>
+      </p>
+      <p className="dashboard-due-size">{resume.programName}</p>
+      <button type="button" className="btn-primary dashboard-start resume-workout" onClick={resume.onResume}>
+        {`Resume ${resume.workoutName}`}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * The dock with the workout due and its start button. A Program of several workouts can offer
+ * another in its place: "Change" steps through them, and the line drops "due" off any other.
+ */
+function StartDock({
+  due,
+  workouts,
+  onStart,
+}: {
+  due: DockWorkout
+  workouts: DockWorkout[]
+  onStart(workoutId: string): void
+}): JSX.Element {
+  const [chosenId, setChosenId] = useState(due.workoutId)
+  const offered = workouts.find((workout) => workout.workoutId === chosenId) ?? due
+  const isDue = offered.workoutId === due.workoutId
+
+  function next(): void {
+    const index = workouts.findIndex((workout) => workout.workoutId === offered.workoutId)
+    setChosenId(workouts[(index + 1) % workouts.length].workoutId)
+  }
+
+  return (
+    <div className="dashboard-dock">
+      <div className="dashboard-due-row">
+        <p className="dashboard-due">
+          <span className="dashboard-due-name">{isDue ? `${offered.name} due` : offered.name}</span>
+          {offered.last ? <span className="dashboard-due-last">{` · last ${offered.last}`}</span> : null}
+        </p>
+        {workouts.length > 1 ? (
+          <button type="button" className="btn-quiet dashboard-change" aria-label="Choose another workout" onClick={next}>
+            Change
+          </button>
+        ) : null}
+      </div>
+      <p className="dashboard-due-size">{offered.summary}</p>
+      <button type="button" className="btn-primary dashboard-start" onClick={() => onStart(offered.workoutId)}>
+        {`Start ${offered.name}`}
+      </button>
+    </div>
   )
 }
 
@@ -238,17 +317,15 @@ function Header({
  */
 export function DashboardView(props: DashboardViewProps): JSX.Element {
   const { data } = props
-  const header = <Header {...props} />
-
-  if (data.kind === 'loading') {
-    return <div className="dashboard">{header}</div>
-  }
+  let body: JSX.Element | null = null
+  // A Session in progress is resumable whatever else the Dashboard is still working out. The
+  // dock keeps its place in the tree as the data arrives, so a press on it is never lost.
+  let dock: JSX.Element | null = props.resume ? <ResumeDock resume={props.resume} /> : null
 
   if (data.kind === 'no-program') {
     const selected = data.options.find((option) => option.id === data.selectedId) ?? null
-    return (
-      <div className="dashboard">
-        {header}
+    body = (
+      <>
         <section className="card dashboard-pick" aria-labelledby="dashboard-pick-title">
           <h2 className="dashboard-pick-title" id="dashboard-pick-title">
             No program yet
@@ -285,51 +362,52 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
         <p className="dashboard-new-note">
           Sessions, lifts and muscle balance fill this page after your first workout.
         </p>
-        <div className="dashboard-dock">
-          <button
-            type="button"
-            className="btn-primary dashboard-start"
-            disabled={!selected || !data.canUse}
-            onClick={() => selected && data.onUse(selected.id)}
-          >
-            {selected ? `Use ${selected.name}` : 'Pick a program'}
-          </button>
-        </div>
+      </>
+    )
+    dock = (
+      <div className="dashboard-dock">
+        <button
+          type="button"
+          className="btn-primary dashboard-start"
+          disabled={!selected || !data.canUse}
+          onClick={() => selected && data.onUse(selected.id)}
+        >
+          {selected ? `Use ${selected.name}` : 'Pick a program'}
+        </button>
       </div>
     )
+  } else if (data.kind === 'ready') {
+    const { thisWeek, lastWeek, due } = data
+    body = (
+      <>
+        <div className="dashboard-week-head">
+          <h2 className="dashboard-caption">This week</h2>
+          <span className="dashboard-card-note">vs last week</span>
+        </div>
+        <div className="dashboard-kpis">
+          <Kpi
+            label="Sessions"
+            value={`${thisWeek.sessions}/${data.sessionsPerWeek}`}
+            was={String(lastWeek.sessions)}
+          />
+          <Kpi label="Sets" value={String(thisWeek.sets)} was={String(lastWeek.sets)} />
+          <Kpi label="Volume, kg" value={kg(thisWeek.volumeKg)} was={kg(lastWeek.volumeKg)} />
+        </div>
+        <MuscleWeek rows={data.muscles} gaps={data.gaps} />
+        <Lifts lifts={data.lifts} hint={data.hint} />
+      </>
+    )
+    if (!dock && due) {
+      dock = <StartDock key={due.workoutId} due={due} workouts={data.workouts ?? [due]} onStart={props.onStartWorkout} />
+    }
   }
 
-  const { thisWeek, lastWeek, due } = data
   return (
     <div className="dashboard">
-      {header}
-      <div className="dashboard-week-head">
-        <h2 className="dashboard-caption">This week</h2>
-        <span className="dashboard-card-note">vs last week</span>
-      </div>
-      <div className="dashboard-kpis">
-        <Kpi
-          label="Sessions"
-          value={`${thisWeek.sessions}/${data.sessionsPerWeek}`}
-          was={String(lastWeek.sessions)}
-        />
-        <Kpi label="Sets" value={String(thisWeek.sets)} was={String(lastWeek.sets)} />
-        <Kpi label="Volume, kg" value={kg(thisWeek.volumeKg)} was={kg(lastWeek.volumeKg)} />
-      </div>
-      <MuscleWeek rows={data.muscles} gaps={data.gaps} />
-      <Lifts lifts={data.lifts} hint={data.hint} />
-      {due ? (
-        <div className="dashboard-dock">
-          <p className="dashboard-due">
-            <span className="dashboard-due-name">{`${due.name} due`}</span>
-            {due.last ? <span className="dashboard-due-last">{` · last ${due.last}`}</span> : null}
-          </p>
-          <p className="dashboard-due-size">{due.summary}</p>
-          <button type="button" className="btn-primary dashboard-start" onClick={() => props.onStartWorkout(due.workoutId)}>
-            {`Start ${due.name}`}
-          </button>
-        </div>
-      ) : null}
+      <Header {...props} />
+      {props.notices ? <div className="dashboard-notices">{props.notices}</div> : null}
+      {body}
+      {dock}
     </div>
   )
 }

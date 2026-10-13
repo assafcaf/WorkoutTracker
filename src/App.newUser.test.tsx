@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
@@ -82,7 +82,10 @@ test('O19 with an empty database Choose a program opens the Program tab', async 
   const user = userEvent.setup()
   await renderApp()
 
-  await user.click(await screen.findByRole('button', { name: 'Choose a program' }, SETTLE))
+  // The Dashboard (S8) offers the Programs to pick from in place, with "Use <program>" in its
+  // dock; the Program tab, with every Program's plan, is the tab bar's Program tab.
+  expect(await screen.findByRole('button', { name: 'Use A/B Split' }, SETTLE)).toBeVisible()
+  await user.click(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('button', { name: 'Program' }))
 
   expect(screen.getByRole('button', { name: 'Program' })).toHaveAttribute('aria-current', 'page')
   expect(screen.getByRole('heading', { level: 1, name: 'Program' })).toBeVisible()
