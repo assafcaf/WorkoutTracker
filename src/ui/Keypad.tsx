@@ -6,6 +6,11 @@ export type KeypadProps = {
   value: number | null
   onCommit(value: number): void
   onCancel(): void
+  /**
+   * Offers a "−" key that flips the entry's sign (E16-T4): a Bodyweight Load is signed. Withheld
+   * unless set, so a weight or reps entry stays unsigned.
+   */
+  signed?: boolean
 }
 
 /** The keys, laid out as the three-by-four grid a thumb expects. */
@@ -19,8 +24,9 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0']
  * an empty entry has nothing to commit and cancels instead.
  */
 export function Keypad(props: KeypadProps): JSX.Element {
-  const { label, value, onCommit, onCancel } = props
+  const { label, value, onCommit, onCancel, signed = false } = props
   const [entry, setEntry] = useState('')
+  const [negative, setNegative] = useState(false)
 
   function append(key: string): void {
     // One decimal point at most; the dials all read in tenths of a kg or half reps.
@@ -34,10 +40,11 @@ export function Keypad(props: KeypadProps): JSX.Element {
       onCancel()
       return
     }
-    onCommit(entered)
+    onCommit(negative ? -entered : entered)
   }
 
-  const shown = entry === '' ? (value === null ? '' : String(value)) : entry
+  const hint = value === null ? '' : String(value)
+  const shown = negative ? `−${entry}` : entry === '' ? hint : entry
 
   return (
     <div className="keypad" role="group" aria-label={`${label} keypad`}>
@@ -48,6 +55,11 @@ export function Keypad(props: KeypadProps): JSX.Element {
             {key}
           </button>
         ))}
+        {signed ? (
+          <button type="button" className="keypad-key" onClick={() => setNegative(!negative)}>
+            &minus;
+          </button>
+        ) : null}
       </div>
       <div className="keypad-actions">
         <button type="button" className="keypad-cancel" onClick={onCancel}>

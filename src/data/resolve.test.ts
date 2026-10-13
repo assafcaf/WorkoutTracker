@@ -56,7 +56,6 @@ test('S5 resolveExercise builds an Exercise from a library entry, with id and li
     weightStep: 1,
     startWeight: 0,
     bodyweight: false,
-    invertProgress: false,
   })
 })
 

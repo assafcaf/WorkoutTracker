@@ -11,7 +11,6 @@ function exercise(overrides: Partial<Exercise> & { id: string }): Exercise {
     weightStep: 2.5,
     startWeight: 20,
     bodyweight: false,
-    invertProgress: false,
     libraryId: 'fixture-lib',
     ...overrides,
   }
@@ -55,9 +54,10 @@ function session(overrides: Partial<Session> & { id: string; entries: SetEntry[]
 
 // O8: mixed loaded and bodyweight work ---------------------------------------------------------
 
-const squat = exercise({ id: 'back-squat', bodyweight: false, invertProgress: false })
-const pushup = exercise({ id: 'push-up', bodyweight: true, invertProgress: false })
-const assistedDip = exercise({ id: 'assisted-dip', bodyweight: false, invertProgress: true })
+const squat = exercise({ id: 'back-squat', bodyweight: false })
+const pushup = exercise({ id: 'push-up', bodyweight: true })
+// Assisted is a Bodyweight Exercise at a negative signed Load (E16-T10 removed invertProgress).
+const assistedDip = exercise({ id: 'assisted-dip', bodyweight: true, startWeight: null })
 
 const catalog = new Map<string, Exercise>([
   [squat.id, squat],
@@ -110,11 +110,12 @@ test('O8 an assisted set with invertProgress true contributes its reps to bodywe
   const assistedSession = session({
     id: 'session-2',
     startedAt: 100,
-    entries: [setEntry({ exerciseId: 'assisted-dip', weightKg: 15, reps: 8 })],
+    entries: [setEntry({ exerciseId: 'assisted-dip', weightKg: null, loadKg: -15, reps: 8 })],
   })
 
   const [point] = volumeSeries([assistedSession], resolve, [fixtureProgram])
 
+  expect(assistedDip).not.toHaveProperty('invertProgress')
   expect(point.kg).toBe(0)
   expect(point.bodyweightReps).toBe(8)
 })

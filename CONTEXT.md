@@ -57,7 +57,7 @@ A Set of kind `warmup`. It is logged and shown, but does not count toward stats:
 e1RM series and progression ignore it (`countsTowardStats`).
 
 **Rest**:
-The time after a Set before the next, derived from the Set's `loggedAt` and its rest length (its own `restSeconds`, else the Plan's).
+The time after a Set before the next, derived from the Set's `loggedAt` and its rest length (its own `restSeconds`, else the Plan's). The **rest timer** shows it.
 
 **Record**:
 The best Set of one kind for an Exercise (heaviest, best estimated 1RM, and so on), as
@@ -77,17 +77,22 @@ The scroll-snap column the trainee sets reps or weight with; a keypad covers val
 _Avoid_: Picker, spinner, wheel, slider
 
 **Preset**:
-The weight and reps a Set opens with, carried forward from the last finished Session or, when
-there is none, from the Exercise's own defaults.
+What a Set opens with: last time's Set at this position, shifted by today's change; else the
+Exercise's defaults (a Swap's: the planned Exercise's).
 _Avoid_: Default, prefill, seed, suggestion
 
+**Swap**:
+An Alternative standing in for a planned Exercise for one Session.
+
 **Bodyweight**:
-An Exercise carrying no weight: its weight is absent, not `0`.
+An Exercise logged with no weight (absent, not `0`), only an optional Load. The catalog sets
+the default; the trainee's synced override wins.
 _Avoid_: Unweighted, freeweight, no-load
 
 **Load**:
 The signed weight on a Bodyweight Set, in kg: positive when added (a belt), negative when assisted
-(a band or machine). Never `0`; absent on a plain Bodyweight Set and on loaded Sets.
+(a band or machine). Never `0`; absent on a plain Bodyweight Set and on loaded Sets. The Weight
+Dial sets it on a Bodyweight Exercise; its `BW` Rung means no Load.
 _Avoid_: Offset, modifier
 
 **Region**:

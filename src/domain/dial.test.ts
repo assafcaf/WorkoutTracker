@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { loadCatalog } from '../data/catalog'
-import { buildLadder, loadLadder, stepWeight, validateEntry } from './dial'
+import { buildLadder, ladderFor, loadLadder, stepWeight, validateEntry } from './dial'
 import type { Exercise } from '../types'
 
 // Real catalog fixtures, per the ticket's guidance: prefer the real 14-exercise catalog over
@@ -156,4 +156,42 @@ test('O17 validateEntry rejects a Load just above +100', () => {
 
 test('O17 validateEntry rejects a Load just below -60', () => {
   expect(validateEntry(null, 8, -60.5).ok).toBe(false)
+})
+
+// --- E16-T4 O7: the Weight Dial's Rungs, through zero on a Bodyweight Exercise ----------------
+
+test('O7 ladderFor a Bodyweight Exercise with a 1 kg step runs -60 to +100 through 0: 161 Rungs', () => {
+  const ladder = ladderFor(pushUps)
+
+  expect(ladder).toHaveLength(161)
+  expect(ladder.slice(0, 2)).toEqual([-60, -59])
+  expect(ladder[40]).toBe(-20)
+  expect(ladder[60]).toBe(0)
+  expect(ladder[70]).toBe(10)
+  expect(ladder[160]).toBe(100)
+})
+
+test('O7 ladderFor a Bodyweight Exercise follows its step: 2.5 kg gives 65 Rungs, -2.5, 0, +2.5 among them', () => {
+  const ladder = ladderFor({ ...pushUps, weightStep: 2.5 })
+
+  expect(ladder).toHaveLength(65)
+  expect(ladder[0]).toBe(-60)
+  expect(ladder.slice(23, 26)).toEqual([-2.5, 0, 2.5])
+  expect(ladder[64]).toBe(100)
+})
+
+test('O7 ladderFor reads Bodyweight from the bodyweight flag, even on an Exercise with a start weight', () => {
+  const ladder = ladderFor({ ...backSquat, bodyweight: true })
+
+  expect(ladder).toHaveLength(65)
+  expect(ladder.slice(23, 26)).toEqual([-2.5, 0, 2.5])
+})
+
+test('O7 ladderFor a loaded Exercise is its weight Ladder, unchanged: 2.5 kg from 2.5 to 500', () => {
+  const ladder = ladderFor(backSquat)
+
+  expect(ladder.slice(0, 5)).toEqual([2.5, 5, 7.5, 10, 12.5])
+  expect(ladder).toHaveLength(200)
+  expect(ladder[199]).toBe(500)
+  expect(ladder.every((rung) => rung > 0)).toBe(true)
 })

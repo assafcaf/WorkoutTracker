@@ -3,6 +3,7 @@ import type { PlateInventory, VolumeBaseline } from '../types'
 import { validatePlateInventory } from '../domain/plates'
 import { callStorage } from './errors'
 import {
+  getBodyweightOverrides,
   getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
@@ -10,6 +11,7 @@ import {
   getTrackEffort,
   getVolumeBaseline,
   getWeightStep,
+  setBodyweightOverrides,
   setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
   setPlateInventory as storePlateInventory,
@@ -40,6 +42,13 @@ export type PreferenceService = {
   plateInventory(): Promise<PlateInventory>
   /** Stores a valid inventory; rejects with the validation message when it is not (E15-T3). */
   setPlateInventory(inventory: PlateInventory): Promise<void>
+  /** Every Bodyweight override by Exercise id; `{}` when none is stored (E16-T1). */
+  bodyweightOverrides(): Promise<Record<string, boolean>>
+  /**
+   * Stores `value` as `exerciseId`'s Bodyweight override, or removes the override when `value`
+   * equals the Exercise's own `defaultValue` (E16-T1).
+   */
+  setBodyweight(exerciseId: string, value: boolean, defaultValue: boolean): Promise<void>
 }
 
 /**
@@ -81,5 +90,14 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       if (!verdict.ok) throw new Error(verdict.error)
       await write(() => storePlateInventory(verdict.inventory, deps.now()))
     },
+    bodyweightOverrides: () =>
+      callStorage(deps, getBodyweightOverrides, 'bodyweightOverrides read failed'),
+    setBodyweight: (exerciseId, value, defaultValue) =>
+      write(async () => {
+        const overrides = await getBodyweightOverrides()
+        if (value === defaultValue) delete overrides[exerciseId]
+        else overrides[exerciseId] = value
+        await setBodyweightOverrides(overrides, deps.now())
+      }),
   }
 }

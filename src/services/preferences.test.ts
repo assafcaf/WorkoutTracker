@@ -31,10 +31,12 @@ test('O5 createPreferenceService exposes exactly the preference operations', () 
 
   expect(Object.keys(service).sort()).toEqual(
     [
+      'bodyweightOverrides',
       'exerciseNote',
       'gymEquipment',
       'lastExportedAt',
       'plateInventory',
+      'setBodyweight',
       'setExerciseNote',
       'setGymEquipment',
       'setPlateInventory',
@@ -357,4 +359,106 @@ test('O4 plateInventory answers the default when the stored value is not a valid
   await db.settings.put({ key: 'plateInventory', value: { barKg: 99, plates: [] }, updatedAt: 1 })
 
   expect(await createPreferenceService(deps()).plateInventory()).toEqual(DEFAULT_PLATE_INVENTORY)
+})
+
+// --- E16-T1 O2: Bodyweight overrides ---
+
+test('E16-T1 O2 bodyweightOverrides answers {} when nothing is stored', async () => {
+  expect(await createPreferenceService(deps()).bodyweightOverrides()).toEqual({})
+})
+
+test('E16-T1 O2 setBodyweight then bodyweightOverrides answers the override for that Exercise', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setBodyweight('bench-press', true, false)
+
+  expect(await service.bodyweightOverrides()).toEqual({ 'bench-press': true })
+})
+
+test('E16-T1 O2 setBodyweight keeps the overrides stored for other Exercises', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setBodyweight('bench-press', true, false)
+  await service.setBodyweight('pull-ups', false, true)
+
+  expect(await service.bodyweightOverrides()).toEqual({ 'bench-press': true, 'pull-ups': false })
+})
+
+test('E16-T1 O2 setBodyweight writes one bodyweightOverrides row stamped with now and notifies the preferences topic once', async () => {
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+  const service = createPreferenceService(deps({ bus }))
+
+  await service.setBodyweight('pull-ups', false, true)
+
+  expect(await db.settings.get('bodyweightOverrides')).toEqual({
+    key: 'bodyweightOverrides',
+    value: { 'pull-ups': false },
+    updatedAt: 1_700_000_000_000,
+  })
+  expect(listener).toHaveBeenCalledTimes(1)
+})
+
+test('E16-T1 O2 setBodyweight back to the default removes that Exercise override, keeping the others', async () => {
+  const service = createPreferenceService(deps())
+  await service.setBodyweight('bench-press', true, false)
+  await service.setBodyweight('pull-ups', false, true)
+
+  await service.setBodyweight('bench-press', false, false)
+
+  expect(await service.bodyweightOverrides()).toEqual({ 'pull-ups': false })
+  expect((await db.settings.get('bodyweightOverrides'))?.value).toEqual({ 'pull-ups': false })
+})
+
+test('E16-T1 O2 setBodyweight to the default stores no override when none was stored', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setBodyweight('pull-ups', true, true)
+
+  expect(await service.bodyweightOverrides()).toEqual({})
+})
+
+test('E16-T1 O2 a failed setBodyweight write rejects with ServiceError storage-failed and does not notify', async () => {
+  vi.spyOn(db.settings, 'put').mockRejectedValueOnce(new Error('disk full'))
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+  const service = createPreferenceService(deps({ bus }))
+
+  await expect(service.setBodyweight('bench-press', true, false)).rejects.toMatchObject({
+    code: 'storage-failed',
+  })
+  expect(listener).not.toHaveBeenCalled()
+})
+
+test.each([
+  ['an array', [true, false]],
+  ['a string', 'bench-press'],
+  ['a number', 1],
+  ['a boolean', true],
+  ['null', null],
+])('E16-T1 O2 bodyweightOverrides answers {} when the stored value is %s', async (_label, value) => {
+  await db.settings.put({ key: 'bodyweightOverrides', value, updatedAt: 1 })
+
+  expect(await createPreferenceService(deps()).bodyweightOverrides()).toEqual({})
+})
+
+test('E16-T1 O2 bodyweightOverrides never answers an entry whose value is not a boolean', async () => {
+  await db.settings.put({
+    key: 'bodyweightOverrides',
+    value: { 'bench-press': 'yes', squat: 1, 'pull-ups': null },
+    updatedAt: 1,
+  })
+
+  const overrides = await createPreferenceService(deps()).bodyweightOverrides()
+
+  expect(Object.values(overrides).every((value) => typeof value === 'boolean')).toBe(true)
+  expect(overrides).toEqual({})
+})
+
+test('E16-T1 O3 bodyweightOverrides is a synced setting on the preferences topic', () => {
+  expect(syncedSettingKeys()).toContain('bodyweightOverrides')
+  expect(topicOfSetting('bodyweightOverrides')).toBe('preferences')
+  expect([...SYNCED_SETTING_KEYS] as string[]).toContain('bodyweightOverrides')
 })

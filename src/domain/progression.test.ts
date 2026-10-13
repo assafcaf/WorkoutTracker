@@ -146,23 +146,38 @@ test('O2 surplus reps on one set do not make up for a set short of the top', () 
   expect(result.suggestion).toBeNull()
 })
 
-// --- O3: inverted, less assistance ---
+// --- O3: assisted is a negative signed Load on a Bodyweight Exercise ---
+
+// Assisted pull-ups are a Bodyweight Exercise at a negative signed Load (E16-T10).
+const assistedPullUps: Exercise = { ...pullUps, bodyweight: true }
+
+function assisted(logged: Array<[number, number]>): SetEntry[] {
+  return logged.map(([loadKg, reps], i) => ({
+    exerciseId: 'assisted-pull-ups',
+    setIndex: i + 1,
+    weightKg: null,
+    reps,
+    loggedAt: 1000 + i,
+    loadKg,
+  }))
+}
 
 test('O3 assisted-pull-ups with every set at 8 reps on 27 kg suggests reducing assistance to 26 kg', () => {
-  const last = sets('assisted-pull-ups', [[27, 8], [27, 8], [27, 8], [27, 8]])
-  expect(progression(pullUps, pullUpsPlan, last)).toEqual({
-    workingWeightKg: 27,
+  // BW-27 x 8 four times, full -> add-load to BW-26 (weightStep 1).
+  const last = assisted([[-27, 8], [-27, 8], [-27, 8], [-27, 8]])
+  expect(progression(assistedPullUps, pullUpsPlan, last)).toEqual({
+    workingWeightKg: null,
     achievedReps: 32,
     targetReps: 32,
     isFull: true,
-    suggestion: { kind: 'reduce-assistance', nextWeightKg: 26 },
+    suggestion: { kind: 'add-load', nextLoadKg: -26 },
   })
 })
 
 test('O3 assisted-pull-ups counts only the sets at the lowest assistance', () => {
-  const last = sets('assisted-pull-ups', [[30, 8], [28, 8], [27, 8], [27, 6]])
-  const result = progression(pullUps, pullUpsPlan, last)
-  expect(result.workingWeightKg).toBe(27)
+  // The lowest assistance is the highest signed Load, BW-27.
+  const last = assisted([[-30, 8], [-28, 8], [-27, 8], [-27, 6]])
+  const result = progression(assistedPullUps, pullUpsPlan, last)
   expect(result.targetReps).toBe(16)
   expect(result.achievedReps).toBe(14)
   expect(result.isFull).toBe(false)
@@ -170,26 +185,48 @@ test('O3 assisted-pull-ups counts only the sets at the lowest assistance', () =>
 })
 
 test('O3 heavier-assistance sets short of the top do not stop the working sets filling the bar', () => {
-  const last = sets('assisted-pull-ups', [[30, 5], [27, 8], [27, 8]])
-  const result = progression(pullUps, pullUpsPlan, last)
+  const last = assisted([[-30, 5], [-27, 8], [-27, 8]])
+  const result = progression(assistedPullUps, pullUpsPlan, last)
   expect(result.isFull).toBe(true)
-  expect(result.suggestion).toEqual({ kind: 'reduce-assistance', nextWeightKg: 26 })
+  expect(result.suggestion).toEqual({ kind: 'add-load', nextLoadKg: -26 })
 })
 
 test('O3 reducing assistance never goes below 0 kg', () => {
-  const last = sets('assisted-pull-ups', [[0.5, 8], [0.5, 8]])
-  const result = progression(pullUps, pullUpsPlan, last)
-  expect(result.suggestion).toEqual({ kind: 'reduce-assistance', nextWeightKg: 0 })
+  // A signed Load has no floor at 0: BW-0.5 full -> BW+0.5, an added Load.
+  const last = assisted([[-0.5, 8], [-0.5, 8]])
+  const result = progression(assistedPullUps, pullUpsPlan, last)
+  expect(result.suggestion).toEqual({ kind: 'add-load', nextLoadKg: 0.5 })
 })
 
 test('O3 no history for assisted-pull-ups gives an empty bar over the planned sets', () => {
-  expect(progression(pullUps, pullUpsPlan, [])).toEqual({
+  expect(progression(assistedPullUps, pullUpsPlan, [])).toEqual({
     workingWeightKg: null,
     achievedReps: 0,
     targetReps: 32,
     isFull: false,
     suggestion: null,
   })
+})
+
+// --- O18: no inverted rule left in progression ---
+
+test('O18 a loaded Exercise flagged invertProgress still adds weight from its highest weight', () => {
+  // No Exercise carries invertProgress any more (E16-T10): a loaded Exercise adds weight from
+  // its highest weight. back-squat 65 x 10 twice, top of 8-10 reached -> add-weight 67.5.
+  const last = sets('back-squat', [[60, 10], [65, 10], [65, 10]])
+  const result = progression(squat, squatPlan, last)
+  expect(squat).not.toHaveProperty('invertProgress')
+  expect(result.workingWeightKg).toBe(65)
+  expect(result.suggestion).toEqual({ kind: 'add-weight', nextWeightKg: 67.5 })
+})
+
+test('O18 a loaded Exercise flagged invertProgress counts only the sets at its highest weight', () => {
+  // No Exercise carries invertProgress any more (E16-T10); only the sets at 65 count.
+  const last = sets('back-squat', [[50, 6], [65, 10], [65, 10]])
+  const result = progression(squat, squatPlan, last)
+  expect(result.achievedReps).toBe(20)
+  expect(result.targetReps).toBe(20)
+  expect(result.isFull).toBe(true)
 })
 
 // --- O4: bodyweight, add a set ---

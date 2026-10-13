@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { WEIGHT_STEPS, buildLadder, stepWeight } from '../domain/dial'
+import { WEIGHT_STEPS, ladderFor, stepWeight } from '../domain/dial'
+import { loadText } from '../domain/setText'
 import { Keypad } from './Keypad'
 import { useCentredRung } from './useCentredRung'
 import type { Exercise } from '../types'
@@ -7,18 +8,18 @@ import './dial.css'
 
 export type WeightDialProps = {
   exercise: Exercise
-  value: number | null
-  onChange(value: number | null): void
   /**
-   * Told the weight step just chosen from the step control (E8-T8). Optional -- and, when
-   * given but the Exercise is Bodyweight, ignored -- so the step control itself only renders
-   * for a loaded Exercise when a caller offers somewhere to send it.
+   * The weight in kg on a loaded Exercise. On a Bodyweight Exercise (E16-T4) it is the signed
+   * Load in kg instead: 0 is plain bodyweight and reads "BW", and null reads as 0.
    */
-  onStepChange?(step: number): void
+  value: number | null
+  /** Told the weight chosen; on a Bodyweight Exercise, the signed Load. */
+  onChange(value: number | null): void
 }
 
-/** What the readout shows: the weight in kg, or "BW" when the exercise carries no plate. */
-function readWeight(value: number | null): string {
+/** What a value reads: the weight in kg, or on a Bodyweight Exercise `BW`, `BW+10`, `BW−20`. */
+function readValue(value: number | null, bodyweight: boolean): string {
+  if (bodyweight) return loadText({ weightKg: null, loadKg: value ?? 0 })
   return value === null ? 'BW' : String(value)
 }
 
@@ -26,17 +27,21 @@ function readWeight(value: number | null): string {
  * The weight scroll-snap column with its minus/plus buttons and its readout.
  *
  * Three ways into the same value: the column snaps to a rung, the minus/plus buttons step one
- * rung along it, and the readout opens a keypad for a weight off the ladder. A bodyweight
- * exercise has no ladder, so it reads "BW" and none of the three moves it.
+ * rung along it, and the readout opens a keypad for a weight off the ladder. On a Bodyweight
+ * Exercise the same Dial carries the signed Load, its Rungs running from BW−60 to BW+100
+ * through BW (E16-T4), and its keypad takes a sign.
  */
 export function WeightDial(props: WeightDialProps): JSX.Element {
-  const { exercise, value, onChange, onStepChange } = props
+  const { exercise, onChange } = props
+  const bodyweight = exercise.bodyweight
+  const value = bodyweight ? (props.value ?? 0) : props.value
   const [keypadOpen, setKeypadOpen] = useState(false)
   const columnRef = useCentredRung(value)
-  const ladder = buildLadder(exercise)
+  const ladder = ladderFor(exercise)
+  const loaded = !bodyweight && ladder.length > 0
   const adjustable = ladder.length > 0 && value !== null
-  const groupLabel = ladder.length > 0 ? 'Weight (kg)' : 'Weight'
-  const stepLabel = `Step ${exercise.weightStep} kg`
+  const groupLabel = loaded ? 'Weight (kg)' : 'Weight'
+  const unit = value === null || (bodyweight && value === 0) ? '' : 'kg'
 
   function step(dir: 1 | -1): void {
     if (value === null || ladder.length === 0) return
@@ -62,10 +67,10 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
           disabled={!adjustable}
           onClick={() => setKeypadOpen(true)}
         >
-          {readWeight(value)}
+          {readValue(value, bodyweight)}
         </button>
-        <span className="dial-unit">{value === null ? '' : 'kg'}</span>
-        {ladder.length > 0 ? (
+        <span className="dial-unit">{unit}</span>
+        {loaded ? (
           <button
             type="button"
             aria-label="Type weight"
@@ -86,7 +91,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
                 className="dial-rung"
                 onClick={() => onChange(rung)}
               >
-                {rung}
+                {readValue(rung, bodyweight)}
               </li>
             ))}
           </ul>
@@ -104,6 +109,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
         <Keypad
           label="Weight"
           value={value}
+          signed={bodyweight}
           onCommit={(entered) => {
             onChange(entered)
             setKeypadOpen(false)
@@ -111,23 +117,31 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
           onCancel={() => setKeypadOpen(false)}
         />
       ) : null}
-      {ladder.length > 0 && onStepChange !== undefined ? (
-        <label className="dial-step-control">
-          {stepLabel}
-          <select
-            aria-label={stepLabel}
-            className="dial-step-select"
-            value={exercise.weightStep}
-            onChange={(event) => onStepChange(Number(event.target.value))}
-          >
-            {WEIGHT_STEPS.map((step) => (
-              <option key={step} value={step}>
-                {step}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
     </div>
+  )
+}
+
+/** The per-Exercise weight-step control (E16-T11), seated by SetScreen in `.set-dial-controls`. */
+export function WeightStepControl(props: {
+  step: number
+  onStepChange(step: number): void
+}): JSX.Element {
+  const label = `Step ${props.step} kg`
+  return (
+    <label className="dial-step-control">
+      {label}
+      <select
+        aria-label={label}
+        className="dial-step-select"
+        value={props.step}
+        onChange={(event) => props.onStepChange(Number(event.target.value))}
+      >
+        {WEIGHT_STEPS.map((step) => (
+          <option key={step} value={step}>
+            {step}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }

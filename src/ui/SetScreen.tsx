@@ -2,24 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { formatSet, formatSetCompact } from '../domain/setText'
-import { layTodayOver, presetForSet } from '../domain/prefill'
+import { presetForSet, presetFromSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { recordsSetBy } from '../domain/records'
 import { formatPlates, platesFor } from '../domain/plates'
 import { warmupRamp } from '../domain/warmup'
 import type { WarmupStep } from '../domain/warmup'
-import { adjustRest, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
+import { adjustRest, formatClock, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
-import { LoadDial } from './LoadDial'
 import { RepsDial } from './RepsDial'
 import { RestDial } from './RestDial'
 import { SetKindRow } from './SetKindRow'
 import { Toast } from './Toast'
 import { useWakeLock } from './useWakeLock'
-import { WeightDial } from './WeightDial'
+import { WeightDial, WeightStepControl } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
 import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind } from '../types'
@@ -88,6 +87,8 @@ export type SetScreenProps = {
    * STUB (E5-T12 test-designer): accepted but not yet wired to the "Alternatives" button.
    */
   onOpenAlternatives?(exerciseId: string): void
+  /** Told that "History" was tapped for the exercise on screen (E16-T7). */
+  onOpenHistory?(exerciseId: string): void
   /**
    * Told that "Finish exercise" was tapped from the done state, so the caller can return to the
    * Workout's exercise list (E8-T4). Optional so a caller with nothing to return to -- every
@@ -124,6 +125,12 @@ export type SetScreenProps = {
    * it for this Exercise. Optional; the screen keeps using the new step for itself either way.
    */
   onWeightStepChange?(step: number): void
+  /**
+   * Told the Bodyweight setting just chosen from the Bodyweight switch (E16-T13 O6), so the caller
+   * can store the override for this Exercise. A rejection's message shows under the switch, and
+   * the switch returns to the setting it had. Without it the screen shows no switch.
+   */
+  onBodyweightChange?(value: boolean): Promise<void>
   /**
    * The current Exercise's first primary muscle's family (E10-T8), already resolved by the
    * caller (App.tsx, via the Library and `familyOf`) -- this component treats it as a plain
@@ -279,7 +286,13 @@ function openSetFor(
       ? setIndex
       : 1 + workingSets(logged).filter((entry) => entry.setIndex < setIndex).length
   const kind = plan.amrapLast === true && position === plan.sets ? 'amrap' : null
-  const { loadKg, ...preset } = presetForSet({ exercise, plan, setIndex, lastEntries, logged })
+  const { loadKg, ...preset } = presetForSet({
+    exercise,
+    plan,
+    setIndex,
+    lastEntries,
+    today: logged,
+  })
   return { setIndex, ...preset, kind, loadKg: exercise.bodyweight ? (loadKg ?? 0) : 0 }
 }
 
@@ -316,7 +329,7 @@ function restKey(from: RestFrom | null): string | null {
  */
 export function SetScreen(props: SetScreenProps): JSX.Element {
   const {
-    exercise,
+    exercise: givenExercise,
     plan,
     sessionId,
     onLog,
@@ -324,10 +337,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     onAddSet,
     onOpenInfo,
     onOpenAlternatives,
+    onOpenHistory,
     onFinishExercise,
     upNext,
     family,
   } = props
+
+  // The Bodyweight setting chosen from the Bodyweight switch (E16-T13 O6), read once on open from
+  // the caller's resolved Exercise; every part of the screen follows it through `exercise`.
+  const [bodyweight, setBodyweight] = useState<boolean>(givenExercise.bodyweight)
+  const [bodyweightError, setBodyweightError] = useState<string | null>(null)
+  const exercise: Exercise =
+    bodyweight === givenExercise.bodyweight ? givenExercise : { ...givenExercise, bodyweight }
 
   // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
   // and otherwise the catalog's own; the Dial and Ladder both follow it via `effectiveExercise`.
@@ -342,8 +363,31 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     props.onWeightStepChange?.(step)
   }
 
-  // The Sets this screen logs or edits are laid over the history the next one presets from: by
-  // `setIndex` without `logged`, and with it by working position (E14-T8).
+  /**
+   * The Bodyweight switch flipped to `value`: the Dial changes mode at once, the open Set's value
+   * translated into it (`presetFromSet`), and the caller stores it. A rejection puts both back.
+   */
+  function handleBodyweightChange(value: boolean): void {
+    const before = { bodyweight, open }
+    const preset = presetFromSet({
+      exercise: { ...exercise, bodyweight: value },
+      plan,
+      set: { weightKg: open.weightKg, reps: open.reps, loadKg: exercise.bodyweight ? open.loadKg : undefined },
+    })
+    setRamp(null)
+    setBodyweightError(null)
+    setBodyweight(value)
+    setOpen({ ...open, weightKg: preset.weightKg, reps: preset.reps, loadKg: value ? (preset.loadKg ?? 0) : 0 })
+    props.onBodyweightChange?.(value).catch((reason: unknown) => {
+      setBodyweight(before.bodyweight)
+      setOpen(before.open)
+      setBodyweightError(reason instanceof Error ? reason.message : String(reason))
+    })
+  }
+
+  // What the next Set presets from as last time. Without `logged`, the Sets this screen logs or
+  // edits are laid over it by `setIndex`; with it, it stays last time's alone and today's Sets
+  // go to the Preset apart (E16-T6), so a Set logged today never comes back as last time.
   const [history, setHistory] = useState<SetEntry[]>(props.lastEntries)
   const [open, setOpen] = useState<OpenSet>(() =>
     openSetFor(
@@ -360,18 +404,32 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // Sets are opened in order, so the ones before the opened set are this session's so far;
   // every log then recounts from the session it was written to.
   const [loggedCountState, setLoggedCount] = useState<number>(props.setIndex - 1)
+  // Sets already done before this screen opened that are not among `logged`: an Exercise swapped
+  // in mid-way is opened at the Set the planned one reached (E16-T12). Zero when opened in order.
+  const [carried] = useState<number>(() =>
+    props.logged === undefined
+      ? 0
+      : Math.max(
+          0,
+          props.setIndex -
+            1 -
+            props.logged.filter(
+              (entry) => entry.exerciseId === exercise.id && entry.setIndex < props.setIndex,
+            ).length,
+        ),
+  )
   // Given `logged`, the caller's Sets are the count: it follows edits, deletes and restores.
   const loggedSets = (props.logged ?? [])
     .filter((entry) => entry.exerciseId === exercise.id)
     .sort((a, b) => a.setIndex - b.setIndex)
   const loggedCount =
-    props.logged === undefined ? loggedCountState : workingSets(loggedSets).length
+    props.logged === undefined ? loggedCountState : carried + workingSets(loggedSets).length
   // The open Set's place among the working Sets (E14-T8): warm-ups take a `setIndex` but don't use
   // up the Plan. Without `logged`, every Set before it was working.
   const position =
     props.logged === undefined
       ? open.setIndex
-      : 1 + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
+      : 1 + carried + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
 
   /** Today's Sets to preset from once they are `entries`: none when the caller gives no `logged`. */
   function today(entries: SetEntry[]): SetEntry[] | undefined {
@@ -571,7 +629,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       const session = await onLog(sessionId, entry)
       const todayAfter = mergeEntry(loggedSets, entry)
       const merged =
-        props.logged === undefined ? mergeEntry(history, entry) : layTodayOver(history, todayAfter)
+        props.logged === undefined ? mergeEntry(history, entry) : history
       const nextSetIndex = open.setIndex + 1
       setError(null)
       clearUndo()
@@ -711,7 +769,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       })
       const merged =
         props.logged !== undefined
-          ? layTodayOver(history, edited)
+          ? history
           : before === undefined
             ? history
             : mergeEntry(history, edited.find((entry) => entry.setIndex === editing) ?? before)
@@ -834,9 +892,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             onClick={() => setRestDialOpen(true)}
           >
             <span role="timer" aria-label="Rest remaining">
-              {rest.isOver ? formatOver(rest.overSeconds) : formatRest(rest.remainingSeconds)}
+              {formatClock(rest)}
             </span>
-            {rest.isOver ? ' over' : null}
           </button>
           {rest.isOver ? null : (
             <div className="rest-controls">
@@ -874,6 +931,13 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           onClick={() => onOpenAlternatives?.(exercise.id)}
         >
           Alternatives
+        </button>
+        <button
+          type="button"
+          className="open-history"
+          onClick={() => onOpenHistory?.(exercise.id)}
+        >
+          History
         </button>
       </div>
       <p className="set-counter">{setCounterText(
@@ -972,19 +1036,47 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </button>
       )}
 
-      <WeightDial
-        exercise={effectiveExercise}
-        value={open.weightKg}
-        onChange={(weightKg) => setOpen({ ...open, weightKg })}
-        onStepChange={handleStepChange}
-      />
-      {props.plates && open.weightKg !== null ? (
-        <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
-      ) : null}
-      <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
-      {exercise.bodyweight ? (
-        <LoadDial step={weightStep} value={open.loadKg} onChange={(loadKg) => setOpen({ ...open, loadKg })} />
-      ) : null}
+      <div className="set-dials">
+        {exercise.bodyweight ? (
+          // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
+          <WeightDial
+            exercise={effectiveExercise}
+            value={open.loadKg}
+            onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
+          />
+        ) : (
+          <WeightDial
+            exercise={effectiveExercise}
+            value={open.weightKg}
+            onChange={(weightKg) => setOpen({ ...open, weightKg })}
+          />
+        )}
+        <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+      </div>
+      <div className="set-dial-controls">
+        {exercise.bodyweight ? null : (
+          <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
+        )}
+        {props.plates && open.weightKg !== null ? (
+          <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
+        ) : null}
+        {props.onBodyweightChange === undefined ? null : (
+          <button
+            type="button"
+            role="switch"
+            className="bodyweight-switch"
+            aria-checked={bodyweight}
+            onClick={() => handleBodyweightChange(!bodyweight)}
+          >
+            Bodyweight
+          </button>
+        )}
+      </div>
+      {bodyweightError === null ? null : (
+        <p className="bodyweight-error" role="alert">
+          {bodyweightError}
+        </p>
+      )}
       <SetKindRow value={open.kind} onChange={chooseKind} />
       {ramp !== null && rampStep !== undefined ? (
         <p className="warmup-ramp">

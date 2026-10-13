@@ -19,7 +19,6 @@ function exercise(overrides: Partial<Exercise> & { id: string; name: string }): 
     weightStep: 2.5,
     startWeight: 20,
     bodyweight: false,
-    invertProgress: false,
     libraryId: overrides.id,
     ...overrides,
   }

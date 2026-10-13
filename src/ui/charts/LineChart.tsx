@@ -15,7 +15,7 @@ const TICK_TARGET = 4
 const UNITS: Record<SeriesKind, string> = {
   e1rm: 'kg',
   reps: 'reps',
-  assistance: 'kg assist',
+  load: 'kg',
 }
 
 /** A clean step (1, 2 or 5 times a power of ten) giving about `TICK_TARGET` ticks over `span`. */
@@ -47,12 +47,12 @@ function formatValue(value: number): string {
 /**
  * Hand-drawn SVG line chart for one exercise's series (E4-T7). One `<circle>` per point, in the
  * order given, each carrying the raw `data-at` and `data-value`; one `<polyline>` joins two or
- * more points. Time runs left to right by index; the value axis is reversed for an inverted
- * series, so less assistance reads as higher. Only the latest value is labelled directly.
+ * more points. Time runs left to right by index and a larger value is drawn higher; a load
+ * series is signed, so less assistance reads as higher. Only the latest value is labelled directly.
  * No points renders no `<svg>`.
  */
 export function LineChart({ series, title }: LineChartProps): JSX.Element {
-  const { points, kind, inverted } = series
+  const { points, kind } = series
   if (points.length === 0) {
     return <div className="line-chart" />
   }
@@ -66,7 +66,7 @@ export function LineChart({ series, title }: LineChartProps): JSX.Element {
 
   const yOf = (value: number): number => {
     const fraction = (value - low) / (high - low)
-    return PAD_TOP + (inverted ? fraction : 1 - fraction) * plotHeight
+    return PAD_TOP + (1 - fraction) * plotHeight
   }
   const xOf = (index: number): number =>
     points.length === 1 ? PAD_LEFT + plotWidth / 2 : PAD_LEFT + (index / (points.length - 1)) * plotWidth

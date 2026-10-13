@@ -1,10 +1,11 @@
+import { swapPreset } from '../../domain/swapPreset'
 import { useEffect, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
+import { applyBodyweight } from '../../domain/bodyweight'
 import { nextExerciseAfter } from '../../domain/flow'
 import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
-import { layTodayOver } from '../../domain/prefill'
 import { latestSet } from '../../domain/rest'
 import { ServiceError } from '../../services'
 import type {
@@ -26,6 +27,7 @@ import { SessionSummary } from '../../ui/SessionSummary'
 import { SetScreen } from '../../ui/SetScreen'
 import { StorageUnavailableBanner } from '../../ui/StorageUnavailableBanner'
 import { WorkoutStartButtons } from '../../ui/WorkoutStartButtons'
+import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
@@ -57,6 +59,10 @@ type OpenSet = {
   extra: boolean
   weightStep: number | null
   exerciseNote: string | null
+  /** What the Set presets from instead of `history`, for a swapped-in Exercise never logged. */
+  seed?: SetEntry[]
+  /** The Set the screen is on after logging, which its key (`setIndex`) does not follow. */
+  liveSetIndex?: number
 }
 
 /** The detail overlay (E5-T8, E5-T15) or the ranked alternatives overlay (E5-T12). */
@@ -180,6 +186,10 @@ export function WorkoutFeature({
     (s) => orElse(s.preferences.plateInventory(), null),
     ['preferences'],
   )
+  const bodyweightOverridesData = useServiceData(
+    (s) => orElse<Record<string, boolean>>(s.preferences.bodyweightOverrides(), {}),
+    ['preferences'],
+  )
   const sessionsData = useServiceData(
     (s) => orElse<Session[]>(s.sessions.list(), []),
     ['sessions'],
@@ -190,6 +200,7 @@ export function WorkoutFeature({
   const [session, setSession] = useState<Session | null>(null)
   const [openSet, setOpenSet] = useState<OpenSet | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
+  const [historyFor, setHistoryFor] = useState<string | null>(null)
   const [summarySession, setSummarySession] = useState<Session | null>(null)
   const [lastSwaps, setLastSwaps] = useState<Record<string, string>>({})
   const [lastEntries, setLastEntries] = useState<Map<string, SetEntry[]>>(new Map())
@@ -259,10 +270,16 @@ export function WorkoutFeature({
   const sessions = sessionsData.status === 'ready' ? sessionsData.data : []
 
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
+  const bodyweightOverrides =
+    bodyweightOverridesData.status === 'ready' ? bodyweightOverridesData.data : {}
 
-  /** `ExerciseList.resolve`: a catalog id or a library id (a swap, E5-T12) to its `Exercise`. */
+  /**
+   * `ExerciseList.resolve`: a catalog id or a library id (a swap, E5-T12) to its `Exercise`, with
+   * the trainee's Bodyweight override applied (E16-T13).
+   */
   function resolveListExercise(id: string): Exercise | undefined {
-    return resolveExercise(id, catalog, libraryMap)
+    const exercise = resolveExercise(id, catalog, libraryMap)
+    return exercise && applyBodyweight(exercise, bodyweightOverrides)
   }
 
   /** Adds the last entries of `doneId`, just swapped in, to the list's progression bars. */
@@ -288,26 +305,52 @@ export function WorkoutFeature({
     })
   }
 
-  /** `AlternativesOverlay.onPick`: swaps, closes the overlay and returns to the exercise list. */
-  function handleChooseAlternative(plannedId: string, chosenId: string): void {
-    applySwap(plannedId, chosenId)
-      .then(() => {
+  /** Swaps, then opens the chosen Exercise's Set `setIndex` (E16-T12), keeping the trainee logging. */
+  function swapAndOpen(plannedId: string, chosenId: string): void {
+    const setIndex = openSet?.liveSetIndex ?? openSet?.setIndex ?? 1
+    const planned = resolveListExercise(plannedId)
+    const chosen = resolveListExercise(chosenId)
+    const plan = located?.workout.exercises.find((candidate) => candidate.exerciseId === plannedId)
+    if (!session || !planned || !chosen || !plan) return
+    const today = session.entries.filter((entry) => entry.exerciseId === plannedId)
+    Promise.all([
+      services.sessions.lastEntriesFor(plannedId),
+      services.sessions.lastEntriesFor(chosenId),
+      services.preferences.weightStep(chosenId),
+    ])
+      .then(async ([plannedLast, chosenLast, weightStep]) => {
+        await applySwap(plannedId, chosenId)
+        const preset = swapPreset({ planned, chosen, plan, setIndex, plannedLast, chosenLast, today })
+        const seed: SetEntry[] | undefined =
+          chosenLast.length > 0
+            ? undefined
+            : [{ exerciseId: chosenId, setIndex: 1, ...preset, loggedAt: 0 }]
         setOverlay(null)
-        setOpenSet(null)
-        setView('list')
+        setOpenSet({
+          exerciseId: chosenId,
+          setIndex,
+          history: chosenLast,
+          extra: false,
+          weightStep,
+          exerciseNote: null,
+          seed,
+        })
+        setView('set')
+        loadExerciseNote(chosenId)
       })
       .catch(() => {
         // Nothing was recorded; the overlay stays open so the trainee can try again.
       })
   }
 
-  /** `DetailOverlay.onSwap`, opened from a live set (E5-T15): swaps and closes the overlay. */
+  /** `AlternativesOverlay.onPick`: swaps and opens the chosen Exercise at the same Set. */
+  function handleChooseAlternative(plannedId: string, chosenId: string): void {
+    swapAndOpen(plannedId, chosenId)
+  }
+
+  /** `DetailOverlay.onSwap`, opened from a live set (E5-T15): swaps and opens it at the same Set. */
   function handleChooseFromDetail(plannedId: string, chosenId: string): void {
-    applySwap(plannedId, chosenId)
-      .then(() => setOverlay(null))
-      .catch(() => {
-        // Nothing was recorded; the overlay stays open so the trainee can try again.
-      })
+    swapAndOpen(plannedId, chosenId)
   }
 
   /** `ExerciseList.onApplySwap`: applies last time's swap of `plannedId` to this session. */
@@ -452,6 +495,25 @@ export function WorkoutFeature({
     setOverlay({ kind: 'detail', libraryId })
   }
 
+  // The Exercise History overlay (E16-T7), over the Set screen; closing it changes nothing under it.
+  let historyOverlay: JSX.Element | null = null
+  if (historyFor !== null && session && located) {
+    const historyPlan = located.workout.exercises.find(
+      (candidate) => candidate.exerciseId === plannedExerciseIdFor(session, historyFor),
+    )
+    const historyExercise = resolveListExercise(historyFor)
+    if (historyPlan && historyExercise) {
+      historyOverlay = (
+        <ExerciseHistoryOverlay
+          exercise={historyExercise}
+          sessions={sessions}
+          plan={historyPlan}
+          onClose={() => setHistoryFor(null)}
+        />
+      )
+    }
+  }
+
   let content: JSX.Element | null = null
 
   if (view === 'set' && session && located && openSet) {
@@ -486,12 +548,8 @@ export function WorkoutFeature({
             plan={plan}
             setIndex={openSet.setIndex}
             sessionId={session.id}
-            // Today's Sets laid over last time's by working position (E14-T8): a `setIndex`
-            // overlay would let a warm-up stand in for a working Set.
-            lastEntries={layTodayOver(
-              openSet.history,
-              session.entries.filter((entry) => entry.exerciseId === openSet.exerciseId),
-            )}
+            // Last time's Sets alone: today's reach the Preset apart, through `logged` (E16-T6).
+            lastEntries={openSet.seed ?? openSet.history}
             lastTime={openSet.history}
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}
@@ -501,6 +559,13 @@ export function WorkoutFeature({
               await services.preferences.setExerciseNote(openSet.exerciseId, text)
               loadExerciseNote(openSet.exerciseId)
             }}
+            onBodyweightChange={(value) =>
+              services.preferences.setBodyweight(
+                openSet.exerciseId,
+                value,
+                resolveExercise(openSet.exerciseId, catalog, libraryMap)?.bodyweight ?? false,
+              )
+            }
             onWeightStepChange={(step) => {
               services.preferences.setWeightStep(openSet.exerciseId, step).catch(() => {
                 // Nothing to recover to here; the screen keeps the step it already has.
@@ -571,13 +636,16 @@ export function WorkoutFeature({
               })
             }}
             onLog={(id, entry) => services.sessions.logSet(id, entry)}
-            onLogged={(logged) => {
+            onLogged={(logged, nextSetIndex) => {
               setSession(logged)
-              setOpenSet((current) => (current ? { ...current, extra: false } : current))
+              setOpenSet((current) =>
+                current ? { ...current, extra: false, liveSetIndex: nextSetIndex } : current,
+              )
             }}
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}
+            onOpenHistory={setHistoryFor}
             upNext={nextName}
             onFinishExercise={() => {
               if (nextId === null) {
@@ -712,6 +780,7 @@ export function WorkoutFeature({
           }}
         />
       ) : null}
+      {historyOverlay}
       {overlay?.kind === 'alternatives' ? (
         <AlternativesOverlay
           plannedId={overlay.plannedId}

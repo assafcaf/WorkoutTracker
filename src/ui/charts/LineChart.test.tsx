@@ -10,8 +10,8 @@ import type { Series, SeriesKind } from '../../domain/series'
 // Hand-rolled fixtures -- LineChart depends on nothing beyond its own props. jsdom has no
 // layout, so geometry is read from the attributes the chart writes, never from a bounding box.
 
-function series(kind: SeriesKind, values: Array<[number, number]>, inverted = false): Series {
-  return { kind, inverted, points: values.map(([at, value]) => ({ at, value })) }
+function series(kind: SeriesKind, values: Array<[number, number]>): Series {
+  return { kind, points: values.map(([at, value]) => ({ at, value })) }
 }
 
 function circles(container: Element): Element[] {
@@ -77,19 +77,22 @@ test('O11 LineChart draws a larger value higher on a normal series', () => {
 })
 
 test('O11 LineChart reverses the value axis on an inverted series, drawing the smallest value highest', () => {
+  // No inverted series any more: a load series of signed Loads draws the higher Load (-20,
+  // less assistance) above the lower one (-30).
   const { container } = render(
-    <LineChart series={series('assistance', [[1, 30], [2, 20]], true)} title="Fixture chart" />,
+    <LineChart series={series('load', [[1, -30], [2, -20]])} title="Fixture chart" />,
   )
 
-  expect(cyOf(container, '20')).toBeLessThan(cyOf(container, '30'))
+  expect(cyOf(container, '-20')).toBeLessThan(cyOf(container, '-30'))
 })
 
 test('O11 LineChart keeps data-value positive on an inverted series', () => {
+  // No inverted series any more: data-value carries the signed Load as given.
   const { container } = render(
-    <LineChart series={series('assistance', [[1, 30], [2, 20]], true)} title="Fixture chart" />,
+    <LineChart series={series('load', [[1, -30], [2, -20]])} title="Fixture chart" />,
   )
 
-  expect(circles(container).map((c) => c.getAttribute('data-value'))).toEqual(['30', '20'])
+  expect(circles(container).map((c) => c.getAttribute('data-value'))).toEqual(['-30', '-20'])
 })
 
 test('O11 LineChart labels an e1rm series in kg', () => {
@@ -113,11 +116,14 @@ test('O11 LineChart labels a reps series in reps', () => {
 })
 
 test('O11 LineChart labels an assistance series in kg assist', () => {
+  // No assistance series any more: a load series, assisted or not, is labelled in kg.
   const { container } = render(
-    <LineChart series={series('assistance', [[1, 30], [2, 20]], true)} title="Fixture chart" />,
+    <LineChart series={series('load', [[1, -30], [2, -20]])} title="Fixture chart" />,
   )
 
-  expect(svgText(container)).toMatch(/kg assist/)
+  const text = svgText(container)
+  expect(text).toMatch(/\bkg\b/)
+  expect(text).not.toMatch(/kg assist/)
 })
 
 test('O11 LineChart point markers are at least 8px across', () => {

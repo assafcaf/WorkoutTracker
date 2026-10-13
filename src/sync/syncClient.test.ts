@@ -708,6 +708,7 @@ test('O11 the sync after adopting b@x pulls all of b@x data from since 0 and pus
 test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides activeProgramId and gymEquipment', () => {
   expect([...SYNCED_SETTING_KEYS].sort()).toEqual([
     'activeProgramId',
+    'bodyweightOverrides',
     'effortTracking',
     'exerciseNotes',
     'gymEquipment',
@@ -995,4 +996,23 @@ test('O5 a Plate inventory device A stores is answered by PreferenceService.plat
     updatedAt: T0 + 500,
   })
   expect(await preferencesAt(T0 + 900).plateInventory()).toEqual(mine)
+})
+
+// --- E16-T1 O3: a Bodyweight override reaches the other device through sync ------------------
+
+test('E16-T1 O3 a Bodyweight override device A sets is answered by PreferenceService.bodyweightOverrides on device B after A syncs and B syncs', async () => {
+  await preferencesAt(T0 + 500).setBodyweight('bench-press', true, false)
+  await syncNow({ fetch: server.fetch })
+  // Device B: a fresh store, same account, never synced.
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(server.syncRequests()[0].settings).toContainEqual({
+    key: 'bodyweightOverrides',
+    value: { 'bench-press': true },
+    updatedAt: T0 + 500,
+  })
+  expect(await preferencesAt(T0 + 900).bodyweightOverrides()).toEqual({ 'bench-press': true })
 })

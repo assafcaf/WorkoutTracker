@@ -2,6 +2,7 @@ import type { Session, SetEntry, SetKind } from '../types'
 import { db } from './db'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 import { validateEntry } from '../domain/dial'
+import { normalizeLegacySession, normalizeLegacySet } from '../domain/legacySets'
 
 /** How many finished sessions a history lookup walks before it gives up. */
 const HISTORY_SCAN_LIMIT = 200
@@ -124,7 +125,7 @@ export async function getActiveSession(): Promise<Session | null> {
     .reverse()
     .filter((session) => !isFinished(session) && isLive(session))
     .first()
-  return active ?? null
+  return active ? normalizeLegacySession(active) : null
 }
 
 /**
@@ -308,7 +309,7 @@ export async function finishSession(sessionId: string, now: number): Promise<Ses
     const session = await requireSession(sessionId)
     const finished: Session = { ...session, finishedAt: now, updatedAt: now }
     await db.sessions.put(finished)
-    return finished
+    return normalizeLegacySession(finished)
   })
 }
 
@@ -320,7 +321,9 @@ export async function getLastEntriesFor(exerciseId: string): Promise<SetEntry[]>
   for (const session of await finishedSessionsNewestFirst(HISTORY_SCAN_LIMIT)) {
     const entries = session.entries.filter((entry) => entry.exerciseId === exerciseId)
     // The first session holding the exercise is the answer; older ones are not merged in.
-    if (entries.length > 0) return entries.sort((one, other) => one.setIndex - other.setIndex)
+    if (entries.length > 0) {
+      return entries.map(normalizeLegacySet).sort((one, other) => one.setIndex - other.setIndex)
+    }
   }
   return []
 }
@@ -329,7 +332,7 @@ export async function getLastEntriesFor(exerciseId: string): Promise<SetEntry[]>
  * Every finished session, newest first.
  */
 export async function listSessions(): Promise<Session[]> {
-  return finishedSessionsNewestFirst()
+  return (await finishedSessionsNewestFirst()).map(normalizeLegacySession)
 }
 
 // --- whole-table reads and writes for sync and backup (E11-T2) ------------------------------
@@ -340,13 +343,13 @@ export async function sessionsChangedSince(since: number): Promise<Session[]> {
     const changed = await db.sessions.where('updatedAt').above(since).toArray()
     // A session from before E7 has no stamp, so the `updatedAt` index never lists it.
     const unstamped = await db.sessions.filter((session) => session.updatedAt === undefined).toArray()
-    return [...changed, ...unstamped]
+    return [...changed, ...unstamped].map(normalizeLegacySession)
   })
 }
 
 /** Every stored session, finished or in progress. */
 export async function allSessions(): Promise<Session[]> {
-  return db.sessions.toArray()
+  return (await db.sessions.toArray()).map(normalizeLegacySession)
 }
 
 /** Writes each session as given, replacing any stored one with the same id. */

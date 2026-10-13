@@ -11,7 +11,7 @@ export function sessionVolume(session: Session, resolve: Resolve): { kg: number;
     const exercise = resolve(entry.exerciseId)
     if (!exercise) continue
 
-    if (!exercise.bodyweight && !exercise.invertProgress && entry.weightKg !== null) {
+    if (!exercise.bodyweight && entry.weightKg !== null) {
       kg += entry.reps * entry.weightKg
     } else {
       bodyweightReps += entry.reps
@@ -25,9 +25,9 @@ export type VolumePoint ={ at: number; workoutName: string; kg: number; bodyweig
 
 /**
  * One `VolumePoint` per session, ascending by `at` (`session.startedAt`). `kg` sums
- * `reps * weightKg` over sets whose resolved exercise is loaded (`bodyweight: false`,
- * `invertProgress: false`, non-null `weightKg`); `bodyweightReps` sums `reps` over every other
- * set that resolves (bodyweight and assisted sets). A set `resolve` does not answer counts in
+ * `reps * weightKg` over sets whose resolved exercise is loaded (`bodyweight: false`, non-null
+ * `weightKg`); `bodyweightReps` sums `reps` over every other set that resolves (Bodyweight Sets,
+ * assisted ones included). A set `resolve` does not answer counts in
  * neither total. `workoutName` falls back to `session.workoutId` when the program or workout is
  * gone, as `summarise` in `src/ui/HistoryList.tsx` does.
  */

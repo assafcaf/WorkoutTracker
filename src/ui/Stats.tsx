@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { progression } from '../domain/progression'
 import { recordsFor, type ExerciseRecord } from '../domain/records'
 import { seriesFor, type SeriesKind } from '../domain/series'
+import { loadText } from '../domain/setText'
 import { volumeSeries } from '../domain/volume'
 import type { Resolve } from '../domain/muscles'
 import type { Exercise, ExercisePlan, Program, Session } from '../types'
@@ -60,17 +61,22 @@ function planFor(exerciseId: string, sessions: Session[], programs: Program[]): 
 const SERIES_TITLES: Record<SeriesKind, string> = {
   e1rm: 'estimated 1RM',
   reps: 'reps per session',
-  assistance: 'assistance',
+  load: 'load',
+}
+
+/** A record's value as text: a signed Load reads as one (`BW−20`), anything else with its unit. */
+function recordValueText(record: ExerciseRecord): string {
+  if (record.kind === 'heaviest-load') return loadText({ weightKg: null, loadKg: record.value })
+  return `${Math.round(record.value * 10) / 10} ${recordUnit(record)}`
 }
 
 function recordUnit(record: ExerciseRecord): string {
   switch (record.kind) {
+    case 'heaviest-load':
+      return ''
     case 'heaviest-set':
     case 'best-e1rm':
-    case 'heaviest-load':
       return 'kg'
-    case 'lowest-assistance':
-      return 'kg assist'
     case 'most-reps-at-weight':
     case 'most-reps-in-a-set':
     case 'most-reps-at-load':
@@ -124,7 +130,7 @@ function ExerciseProgress({ sessions, resolve, programs }: StatsProps): JSX.Elem
                 <CourtStripe />
               </span>{' '}
               <span className="stats-record-label">{record.label}</span>{' '}
-              <span className="stats-record-value">{`${Math.round(record.value * 10) / 10} ${recordUnit(record)}`}</span>{' '}
+              <span className="stats-record-value">{recordValueText(record)}</span>{' '}
               <span className="stats-record-date">{calendarDate(record.at)}</span>
             </li>
           ))}

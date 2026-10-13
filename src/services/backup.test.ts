@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../storage/db'
-import { getPlateInventory, readRow } from '../storage/settingsStore'
+import { getBodyweightOverrides, setBodyweightOverrides, getPlateInventory, readRow } from '../storage/settingsStore'
 import { DEFAULT_PLATE_INVENTORY } from '../domain/plates'
 import { LAST_EXPORTED_AT_KEY, setActiveProgramId } from '../storage/settingsStore'
 import { BACKUP_SCHEMA_VERSION, type BackupFile } from '../storage/backup'
@@ -422,4 +422,56 @@ test('E15-T4 O6 a changed Plate inventory survives export and import, an unchang
   await db.settings.clear()
   await service.confirmImport(await service.read(second))
   expect(await getPlateInventory()).toEqual(changed)
+})
+
+// --- E16-T9 O4: Bodyweight overrides travel in the backup -----------------------------------
+
+async function exportedFile(): Promise<BackupFile> {
+  const { clickedAnchors } = installDownloadFallback()
+  await createBackupService(makeDeps()).export()
+  expect(clickedAnchors).toHaveLength(1)
+  const createObjectURL = URL.createObjectURL as ReturnType<typeof vi.fn>
+  const blobArg = createObjectURL.mock.calls[0][0] as Blob
+  return JSON.parse(await blobArg.text()) as BackupFile
+}
+
+test('E16-T9 O4 export writes the overrides when set and leaves the key out when none', async () => {
+  const empty = await exportedFile()
+  expect('bodyweightOverrides' in empty.settings).toBe(false)
+  expect(empty.schemaVersion).toBe(1)
+
+  vi.restoreAllMocks()
+  await setBodyweightOverrides({ 'pull-up': true, row: false }, BASE)
+  const file = await exportedFile()
+  expect(file.settings.bodyweightOverrides).toEqual({ 'pull-up': true, row: false })
+  expect(file.schemaVersion).toBe(1)
+})
+
+test('E16-T9 O4 an override set survives export then import into an empty app', async () => {
+  await setBodyweightOverrides({ 'pull-up': true }, BASE)
+  const file = await exportedFile()
+  vi.restoreAllMocks()
+  await db.settings.clear()
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(file)))
+
+  expect(await getBodyweightOverrides()).toEqual({ 'pull-up': true })
+})
+
+test('E16-T9 O4 a backup made before this epic imports with overrides reading as {}', async () => {
+  await setBodyweightOverrides({ 'pull-up': true }, BASE)
+  installDownloadFallback()
+  const old = {
+    schemaVersion: 1,
+    exportedAt: BASE,
+    sessions: [],
+    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+  }
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(old)))
+
+  expect(await getBodyweightOverrides()).toEqual({})
 })
