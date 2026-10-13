@@ -13,7 +13,6 @@ import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { ExerciseInfoLink } from './ExerciseInfoLink'
 import { playRestOver, unlockRestSound } from './restSound'
-import { LoadDial } from './LoadDial'
 import { RepsDial } from './RepsDial'
 import { RestDial } from './RestDial'
 import { SetKindRow } from './SetKindRow'
@@ -988,19 +987,25 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </button>
       )}
 
-      <WeightDial
-        exercise={effectiveExercise}
-        value={open.weightKg}
-        onChange={(weightKg) => setOpen({ ...open, weightKg })}
-        onStepChange={handleStepChange}
-      />
+      {exercise.bodyweight ? (
+        // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
+        <WeightDial
+          exercise={effectiveExercise}
+          value={open.loadKg}
+          onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
+        />
+      ) : (
+        <WeightDial
+          exercise={effectiveExercise}
+          value={open.weightKg}
+          onChange={(weightKg) => setOpen({ ...open, weightKg })}
+          onStepChange={handleStepChange}
+        />
+      )}
       {props.plates && open.weightKg !== null ? (
         <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
       ) : null}
       <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
-      {exercise.bodyweight ? (
-        <LoadDial step={weightStep} value={open.loadKg} onChange={(loadKg) => setOpen({ ...open, loadKg })} />
-      ) : null}
       <SetKindRow value={open.kind} onChange={chooseKind} />
       {ramp !== null && rampStep !== undefined ? (
         <p className="warmup-ramp">

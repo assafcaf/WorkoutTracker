@@ -108,7 +108,10 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
     setDraft(text === '' ? rest : { ...rest, note: text })
   }
 
-  function changeSet(target: OpenSet, values: Partial<Pick<SetEntry, 'weightKg' | 'reps'>>): void {
+  function changeSet(
+    target: OpenSet,
+    values: Partial<Pick<SetEntry, 'weightKg' | 'reps' | 'loadKg'>>,
+  ): void {
     setDraft({
       ...draft,
       entries: draft.entries.map((entry) =>
@@ -178,6 +181,7 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
       {groupByExercise(draft.entries).map(({ exerciseId, entries }) => {
         const exercise = resolve(exerciseId)
         const name = exercise?.name ?? exerciseId
+        const dialExercise = exercise ?? fallbackExercise(exerciseId, entries)
         const headingId = `session-editor-${exerciseId}`
         return (
           <section
@@ -217,13 +221,27 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
                     </button>
                     {isOpen ? (
                       <div className="session-editor-dials">
-                        <WeightDial
-                          exercise={exercise ?? fallbackExercise(exerciseId, entries)}
-                          value={entry.weightKg}
-                          onChange={(weightKg) =>
-                            changeSet({ exerciseId, setIndex: entry.setIndex }, { weightKg })
-                          }
-                        />
+                        {dialExercise.bodyweight ? (
+                          // E16-T4: a Bodyweight Exercise's Weight Dial carries the signed Load.
+                          <WeightDial
+                            exercise={dialExercise}
+                            value={entry.loadKg ?? 0}
+                            onChange={(loadKg) =>
+                              changeSet(
+                                { exerciseId, setIndex: entry.setIndex },
+                                { loadKg: loadKg ? loadKg : undefined },
+                              )
+                            }
+                          />
+                        ) : (
+                          <WeightDial
+                            exercise={dialExercise}
+                            value={entry.weightKg}
+                            onChange={(weightKg) =>
+                              changeSet({ exerciseId, setIndex: entry.setIndex }, { weightKg })
+                            }
+                          />
+                        )}
                         <RepsDial
                           value={entry.reps}
                           onChange={(reps) =>
