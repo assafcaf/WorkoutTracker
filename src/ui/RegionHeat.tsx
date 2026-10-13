@@ -7,9 +7,10 @@ export type HeatScale = 'session' | 'week'
 
 /** One heat square: the count, shaded by its band on `scale`. */
 export function HeatCell({ count, scale, title }: { count: number; scale: HeatScale; title?: string }): JSX.Element {
+  // A week's square is too narrow for a half set: it reads whole sets, banded on the true count.
   return (
     <span className="heat-cell" data-band={band(count, scale)} title={title}>
-      {formatSetCount(count)}
+      {scale === 'week' ? String(Math.round(count)) : formatSetCount(count)}
     </span>
   )
 }

@@ -6,6 +6,7 @@ import type { Resolve } from '../../domain/muscles'
 import {
   calendarWeeks,
   dayMonth,
+  formatSetCount,
   heatRowsFor,
   sessionRowStats,
   sessionsByWeek,
@@ -122,7 +123,7 @@ function WeekHeatHalf({ rows, weeks }: { rows: HeatRow[]; weeks: WeekRegionSets[
               const count = week.counts.get(row.region) ?? 0
               return (
                 <td key={week.start}>
-                  <HeatCell count={count} scale="week" title={`${row.label} ${count} sets`} />
+                  <HeatCell count={count} scale="week" title={`${row.label} ${formatSetCount(count)} sets`} />
                 </td>
               )
             })}
