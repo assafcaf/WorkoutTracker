@@ -245,9 +245,12 @@ test('O10 a bodyweight exercise reads BW rather than a weight of 0', () => {
 test('O10 the plus button leaves a bodyweight exercise reading BW', async () => {
   const { user } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
 
+  expect(readoutValue(weightReadout())).toBe('BW')
+
+  // E16-T4 O7: + steps one Rung of the signed Load, through BW: push-ups' 1 kg step reads BW+1.
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 
-  expect(readoutValue(weightReadout())).toBe('BW')
+  expect(readoutValue(weightReadout())).toBe('BW+1')
 })
 
 test('O10 logging a bodyweight set stores a null weight and its fractional reps', async () => {
