@@ -72,7 +72,6 @@ function fallbackExercise(exerciseId: string, entries: SetEntry[]): Exercise {
     weightStep: 2.5,
     startWeight: bodyweight ? null : entries[0]?.weightKg ?? 0,
     bodyweight,
-    invertProgress: false,
   }
 }
 

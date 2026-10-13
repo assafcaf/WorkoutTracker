@@ -1,9 +1,8 @@
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
 import { workingSets as excludeWarmups } from './setKind'
 
-// `reduce-assistance` is no longer produced (an assisted Set is a negative Load, so it suggests
-// `add-load`); the member stays only until E16-T10 removes ProgressionBar's case for it.
-export type SuggestionKind = 'add-weight' | 'reduce-assistance' | 'add-set' | 'add-load'
+// An assisted Set is a negative Load on a Bodyweight Exercise, so less assistance is `add-load`.
+export type SuggestionKind = 'add-weight' | 'add-set' | 'add-load'
 export type Suggestion = { kind: SuggestionKind; nextWeightKg?: number; nextLoadKg?: number }
 export type Progression = {
   workingWeightKg: number | null
