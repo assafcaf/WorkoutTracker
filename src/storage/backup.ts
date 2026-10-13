@@ -31,6 +31,8 @@ export type BackupFile = {
     effortTracking?: boolean
     /** The trainee's bar and plates (E15). Absent when never changed, and on a backup made before E15. */
     plateInventory?: PlateInventory
+    /** Per-Exercise Bodyweight overrides (E16). Absent when none are set, and on a backup made before E16. */
+    bodyweightOverrides?: Record<string, boolean>
   }
 }
 
