@@ -18,7 +18,7 @@ import { RestDial } from './RestDial'
 import { SetKindRow } from './SetKindRow'
 import { Toast } from './Toast'
 import { useWakeLock } from './useWakeLock'
-import { WeightDial } from './WeightDial'
+import { WeightDial, WeightStepControl } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
 import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind } from '../types'
@@ -1001,25 +1001,31 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </button>
       )}
 
-      {exercise.bodyweight ? (
-        // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
-        <WeightDial
-          exercise={effectiveExercise}
-          value={open.loadKg}
-          onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
-        />
-      ) : (
-        <WeightDial
-          exercise={effectiveExercise}
-          value={open.weightKg}
-          onChange={(weightKg) => setOpen({ ...open, weightKg })}
-          onStepChange={handleStepChange}
-        />
-      )}
-      {props.plates && open.weightKg !== null ? (
-        <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
-      ) : null}
-      <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+      <div className="set-dials">
+        {exercise.bodyweight ? (
+          // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
+          <WeightDial
+            exercise={effectiveExercise}
+            value={open.loadKg}
+            onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
+          />
+        ) : (
+          <WeightDial
+            exercise={effectiveExercise}
+            value={open.weightKg}
+            onChange={(weightKg) => setOpen({ ...open, weightKg })}
+          />
+        )}
+        <RepsDial value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+      </div>
+      <div className="set-dial-controls">
+        {exercise.bodyweight ? null : (
+          <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
+        )}
+        {props.plates && open.weightKg !== null ? (
+          <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
+        ) : null}
+      </div>
       <SetKindRow value={open.kind} onChange={chooseKind} />
       {ramp !== null && rampStep !== undefined ? (
         <p className="warmup-ramp">

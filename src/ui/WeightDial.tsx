@@ -15,12 +15,6 @@ export type WeightDialProps = {
   value: number | null
   /** Told the weight chosen; on a Bodyweight Exercise, the signed Load. */
   onChange(value: number | null): void
-  /**
-   * Told the weight step just chosen from the step control (E8-T8). Optional -- and, when
-   * given but the Exercise is Bodyweight, ignored -- so the step control itself only renders
-   * for a loaded Exercise when a caller offers somewhere to send it.
-   */
-  onStepChange?(step: number): void
 }
 
 /** What a value reads: the weight in kg, or on a Bodyweight Exercise `BW`, `BW+10`, `BW−20`. */
@@ -38,7 +32,7 @@ function readValue(value: number | null, bodyweight: boolean): string {
  * through BW (E16-T4), and its keypad takes a sign.
  */
 export function WeightDial(props: WeightDialProps): JSX.Element {
-  const { exercise, onChange, onStepChange } = props
+  const { exercise, onChange } = props
   const bodyweight = exercise.bodyweight
   const value = bodyweight ? (props.value ?? 0) : props.value
   const [keypadOpen, setKeypadOpen] = useState(false)
@@ -47,7 +41,6 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
   const loaded = !bodyweight && ladder.length > 0
   const adjustable = ladder.length > 0 && value !== null
   const groupLabel = loaded ? 'Weight (kg)' : 'Weight'
-  const stepLabel = `Step ${exercise.weightStep} kg`
   const unit = value === null || (bodyweight && value === 0) ? '' : 'kg'
 
   function step(dir: 1 | -1): void {
@@ -124,23 +117,31 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
           onCancel={() => setKeypadOpen(false)}
         />
       ) : null}
-      {loaded && onStepChange !== undefined ? (
-        <label className="dial-step-control">
-          {stepLabel}
-          <select
-            aria-label={stepLabel}
-            className="dial-step-select"
-            value={exercise.weightStep}
-            onChange={(event) => onStepChange(Number(event.target.value))}
-          >
-            {WEIGHT_STEPS.map((step) => (
-              <option key={step} value={step}>
-                {step}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
     </div>
+  )
+}
+
+/** The per-Exercise weight-step control (E16-T11), seated by SetScreen in `.set-dial-controls`. */
+export function WeightStepControl(props: {
+  step: number
+  onStepChange(step: number): void
+}): JSX.Element {
+  const label = `Step ${props.step} kg`
+  return (
+    <label className="dial-step-control">
+      {label}
+      <select
+        aria-label={label}
+        className="dial-step-select"
+        value={props.step}
+        onChange={(event) => props.onStepChange(Number(event.target.value))}
+      >
+        {WEIGHT_STEPS.map((step) => (
+          <option key={step} value={step}>
+            {step}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
