@@ -26,6 +26,7 @@ import { SessionSummary } from '../../ui/SessionSummary'
 import { SetScreen } from '../../ui/SetScreen'
 import { StorageUnavailableBanner } from '../../ui/StorageUnavailableBanner'
 import { WorkoutStartButtons } from '../../ui/WorkoutStartButtons'
+import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
@@ -190,6 +191,7 @@ export function WorkoutFeature({
   const [session, setSession] = useState<Session | null>(null)
   const [openSet, setOpenSet] = useState<OpenSet | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
+  const [historyFor, setHistoryFor] = useState<string | null>(null)
   const [summarySession, setSummarySession] = useState<Session | null>(null)
   const [lastSwaps, setLastSwaps] = useState<Record<string, string>>({})
   const [lastEntries, setLastEntries] = useState<Map<string, SetEntry[]>>(new Map())
@@ -452,6 +454,25 @@ export function WorkoutFeature({
     setOverlay({ kind: 'detail', libraryId })
   }
 
+  // The Exercise History overlay (E16-T7), over the Set screen; closing it changes nothing under it.
+  let historyOverlay: JSX.Element | null = null
+  if (historyFor !== null && session && located) {
+    const historyPlan = located.workout.exercises.find(
+      (candidate) => candidate.exerciseId === plannedExerciseIdFor(session, historyFor),
+    )
+    const historyExercise = resolveListExercise(historyFor)
+    if (historyPlan && historyExercise) {
+      historyOverlay = (
+        <ExerciseHistoryOverlay
+          exercise={historyExercise}
+          sessions={sessions}
+          plan={historyPlan}
+          onClose={() => setHistoryFor(null)}
+        />
+      )
+    }
+  }
+
   let content: JSX.Element | null = null
 
   if (view === 'set' && session && located && openSet) {
@@ -578,6 +599,7 @@ export function WorkoutFeature({
             onAddSet={handleAddSet}
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}
+            onOpenHistory={setHistoryFor}
             upNext={nextName}
             onFinishExercise={() => {
               if (nextId === null) {
@@ -712,6 +734,7 @@ export function WorkoutFeature({
           }}
         />
       ) : null}
+      {historyOverlay}
       {overlay?.kind === 'alternatives' ? (
         <AlternativesOverlay
           plannedId={overlay.plannedId}
