@@ -2634,13 +2634,14 @@ function loadGroup(): HTMLElement | null {
   return screen.queryByRole('group', { name: 'Load' })
 }
 
+/** The Load's readout: since E16-T4, the Weight Dial's readout on a Bodyweight Exercise. */
 function loadReadout(): HTMLElement {
-  return screen.getByRole('button', { name: 'Load' })
+  return screen.getByRole('button', { name: 'Weight' })
 }
 
-/** Taps the Load Dial's Rung reading `label`: "BW+10", "BW−20". */
+/** Taps the Weight Dial's Rung reading `label` on a Bodyweight Exercise: "BW+10", "BW−20". */
 async function chooseLoad(user: UserEvent, label: string): Promise<void> {
-  const ladder = screen.getByRole('listbox', { name: 'Load ladder' })
+  const ladder = screen.getByRole('listbox', { name: 'Weight ladder' })
   await user.click(within(ladder).getByRole('option', { name: label }))
 }
 
@@ -2655,10 +2656,11 @@ function pushUpSet(setIndex: number, reps: number, loadKg?: number): SetEntry {
 test('O17 a Bodyweight Exercise shows the Load Dial under the reps Dial', () => {
   renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
 
-  const load = loadGroup()
-  expect(load).not.toBeNull()
-  const reps = screen.getByRole('group', { name: 'Reps' })
-  expect(reps.compareDocumentPosition(load as HTMLElement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // E16-T4: the Load is the Weight Dial's value now; there is no separate Load Dial.
+  expect(loadGroup()).toBeNull()
+  const weight = screen.getByRole('group', { name: 'Weight' })
+  expect(within(weight).getByRole('listbox', { name: 'Weight ladder' })).toBeInTheDocument()
+  expect(readoutValue(loadReadout())).toBe('BW')
 })
 
 test('O17 Assisted pull-ups, not a Bodyweight Exercise, shows no Load Dial', () => {
@@ -2684,7 +2686,7 @@ test('O17 with no Load in its Preset the Load Dial opens on BW', () => {
 test("O17 the Load Dial's Rungs follow the Exercise's stored weight step", () => {
   renderSetScreen({ exercise: pushUps, plan: pushUpPlan, weightStep: 2.5 })
 
-  const ladder = screen.getByRole('listbox', { name: 'Load ladder' })
+  const ladder = screen.getByRole('listbox', { name: 'Weight ladder' })
   const shown = within(ladder).getAllByRole('option').map((option) => option.textContent)
   expect(shown).toHaveLength(65)
   expect(shown).toContain('BW+2.5')
@@ -2694,7 +2696,8 @@ test("O17 the Load Dial's Rungs follow the Exercise's stored weight step", () =>
 test('O17 left at BW, the Set logs exactly as today, with no loadKg', async () => {
   const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
 
-  await screen.findByRole('group', { name: 'Load' })
+  await screen.findByRole('listbox', { name: 'Weight ladder' })
+  expect(readoutValue(loadReadout())).toBe('BW')
   await user.click(logButton())
 
   await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
@@ -2826,6 +2829,50 @@ test('O17 Save set at BW on a loaded Set removes its Load with loadKg null', asy
 
   await waitFor(() => expect(onEditSet).toHaveBeenCalledTimes(1))
   expect(onEditSet.mock.calls[0][1].loadKg).toBeNull()
+})
+
+// --- E16-T4 O8: one weight Dial on a Bodyweight Exercise's Set screen ---------------------------
+
+test('O8 a Bodyweight Exercise shows exactly one weight Dial, reading BW, and no Load Dial', () => {
+  renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  expect(screen.getAllByRole('group', { name: /^Weight/ })).toHaveLength(1)
+  expect(screen.getByRole('listbox', { name: 'Weight ladder' })).toBeInTheDocument()
+  expect(screen.queryByRole('group', { name: 'Load' })).toBeNull()
+  expect(screen.queryByRole('listbox', { name: 'Load ladder' })).toBeNull()
+  expect(readoutValue(weightReadout())).toBe('BW')
+})
+
+test("O8 a Bodyweight Exercise's weight Dial opens on the Preset's Load, reading BW+10", () => {
+  renderSetScreen({
+    exercise: pushUps,
+    plan: pushUpPlan,
+    lastEntries: [{ exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 12, loadKg: 10, loggedAt: BASE }],
+  })
+
+  expect(readoutValue(weightReadout())).toBe('BW+10')
+})
+
+test('O8 a Bodyweight Set typed as −27 on the weight keypad reads BW−27 and logs weightKg null, loadKg -27', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await enterOnKeypad(user, weightReadout(), ['−', '2', '7'])
+  expect(readoutValue(weightReadout())).toBe('BW−27')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1]).toMatchObject({ exerciseId: 'push-ups', weightKg: null, reps: 10, loadKg: -27 })
+})
+
+test('O8 a Bodyweight Set stepped up one Rung from BW logs weightKg null and loadKg +1', async () => {
+  const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  expect(readoutValue(weightReadout())).toBe('BW+1')
+  await user.click(logButton())
+
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  expect(onLog.mock.calls[0][1]).toMatchObject({ weightKg: null, loadKg: 1 })
 })
 
 // --- E15-T2 O12: 1:00 of rest after a Warm-up --------------------------------------------------

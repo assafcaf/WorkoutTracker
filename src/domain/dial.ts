@@ -53,6 +53,15 @@ export function stepWeight(value: number, dir: 1 | -1, exercise: Exercise): numb
   return ladder[newIndex]
 }
 
+/**
+ * The Weight Dial's Rungs for `exercise` (E16-T4): `loadLadder(weightStep)` -- signed Loads from
+ * -60 to +100 kg through 0 -- on a Bodyweight Exercise, else its weight Ladder (`buildLadder`).
+ */
+export function ladderFor(exercise: Exercise): number[] {
+  void exercise
+  throw new Error('not implemented: ladderFor (E16-T4)')
+}
+
 export type EntryValidation = { ok: true } | { ok: false; error: string }
 
 /**

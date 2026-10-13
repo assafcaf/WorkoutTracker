@@ -1128,8 +1128,9 @@ async function pushUpsLastTimeAtBwPlus10(today: SetEntry[] = []): Promise<Servic
   return services
 }
 
+/** The Load's readout: since E16-T4, the Weight Dial's readout on a Bodyweight Exercise. */
 function loadReadoutValue(): string {
-  const readout = screen.getByRole('button', { name: 'Load' })
+  const readout = screen.getByRole('button', { name: 'Weight' })
   return (readout.textContent ?? '').replace(/\s+/g, ' ').trim()
 }
 
@@ -1141,7 +1142,7 @@ test('O19 with the kind row, the Load Dial, a note and effort on, a Set matching
   await openExercise(user, 'Push-ups')
 
   // Every R3 control is on screen before the tap.
-  await screen.findByRole('group', { name: 'Load' }, SETTLE)
+  await screen.findByRole('listbox', { name: 'Weight ladder' }, SETTLE)
   expect(loadReadoutValue()).toBe('BW+10')
   expect(screen.getByRole('group', { name: 'Set kind' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute('aria-pressed', 'true')
@@ -1168,7 +1169,7 @@ test('O17 a push-ups Set logged at BW−20 on the Load Dial is stored with loadK
   const { user } = renderFeature(await pushUpsLastTimeAtBwPlus10())
   await openExercise(user, 'Push-ups')
 
-  const ladder = await screen.findByRole('listbox', { name: 'Load ladder' }, SETTLE)
+  const ladder = await screen.findByRole('listbox', { name: 'Weight ladder' }, SETTLE)
   await user.click(within(ladder).getByRole('option', { name: 'BW−20' }))
   await user.click(screen.getByRole('button', { name: 'Log set' }))
 
@@ -1192,7 +1193,7 @@ test('O17 editing a logged BW+10 Set to BW+12 stores loadKg 12 through services.
   await user.click(await screen.findByRole('button', { name: 'BW+10 × 12' }, SETTLE))
   expect(loadReadoutValue()).toBe('BW+10')
   await user.click(
-    within(screen.getByRole('listbox', { name: 'Load ladder' })).getByRole('option', { name: 'BW+12' }),
+    within(screen.getByRole('listbox', { name: 'Weight ladder' })).getByRole('option', { name: 'BW+12' }),
   )
   await user.click(screen.getByRole('button', { name: 'Save set' }))
 
