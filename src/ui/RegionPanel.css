@@ -22,7 +22,7 @@
 .region-panel-count {
   margin: 0;
   font-size: var(--text-md);
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .region-panel-contributors {

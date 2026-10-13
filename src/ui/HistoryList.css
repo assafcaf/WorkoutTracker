@@ -79,7 +79,7 @@
 
 .history-volume {
   margin-left: auto;
-  color: var(--color-accent);
+  color: var(--color-text);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
 }

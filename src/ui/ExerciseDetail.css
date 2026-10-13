@@ -41,7 +41,7 @@
 }
 
 .exercise-detail-video a {
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .exercise-detail-instructions {

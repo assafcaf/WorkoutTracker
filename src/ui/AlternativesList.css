@@ -74,5 +74,5 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-text);
 }

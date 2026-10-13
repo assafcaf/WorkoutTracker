@@ -7,7 +7,6 @@ import type { Region, Resolve } from '../domain/muscles'
 import type { ExercisePlan, LibraryExercise, Muscle, Session } from '../types'
 import { BodyMap } from './body/BodyMap'
 import { BodyMapLegend } from './body/BodyMapLegend'
-import { CourtStripe } from './CourtStripe'
 import { RegionPanel } from './RegionPanel'
 import { musclesForRegion } from './regionMuscles'
 import './SessionSummary.css'
@@ -96,7 +95,6 @@ export function SessionSummary({
       aria-label="Session summary"
       className="session-summary overlay-panel"
     >
-      <CourtStripe />
       <h2 className="session-summary-heading">Session summary</h2>
       <p className="session-summary-stat">{formatDuration(stats.durationMs)}</p>
       <p className="session-summary-stat">{volume}</p>
