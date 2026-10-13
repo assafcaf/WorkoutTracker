@@ -81,3 +81,13 @@ export function formatRest(seconds: number): string {
 export function formatOver(seconds: number): string {
   return `+${mss(seconds)}`
 }
+
+function clockMmSs(seconds: number): string {
+  const total = Math.ceil(seconds)
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+/** The rest clock as "mm:ss" while running, "+mm:ss" once over. */
+export function formatClock(rest: RestState): string {
+  return rest.isOver ? `+${clockMmSs(rest.overSeconds)}` : clockMmSs(rest.remainingSeconds)
+}

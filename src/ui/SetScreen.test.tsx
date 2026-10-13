@@ -6,6 +6,9 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import postcss from 'postcss'
+import type { Declaration, Rule } from 'postcss'
+import { declarationsFor } from '../test/cssAudit'
 import { loadCatalog } from '../data/catalog'
 import { SetScreen, loggedText, setCounterText } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
@@ -373,7 +376,7 @@ test('O12 the rest timer reads 0:00 before any set is logged', () => {
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(readoutValue(restReadout())).toBe('+0:00 over')
+  expect(readoutValue(restReadout())).toBe('+00:00')
 })
 
 test('O12 the rest timer formats the remaining rest as minutes and seconds', async () => {
@@ -389,7 +392,7 @@ test('O12 the rest timer formats the remaining rest as minutes and seconds', asy
   await user.click(logButton())
 
   await waitFor(() => {
-    expect(readoutValue(screen.getByRole('timer'))).toBe('1:20')
+    expect(readoutValue(screen.getByRole('timer'))).toBe('01:20')
   })
 })
 
@@ -625,7 +628,7 @@ test('O7 opening back-squat whose latest Set in this Session was logged 100 s ag
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(readoutValue(screen.getByRole('timer'))).toBe('1:20')
+  expect(readoutValue(screen.getByRole('timer'))).toBe('01:20')
 })
 
 // --- E8-T5's O1: playRestOver fires once, exactly when the rest period this Session's Set
@@ -1391,11 +1394,11 @@ function skip(): HTMLElement {
 test('O4 tapping +15 s with 1:20 of rest left makes the rest readout read 1:35', async () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
   const { user } = renderWithSessionRest([squatEntry(1, BASE)])
-  expect(readoutValue(restReadout())).toBe('1:20')
+  expect(readoutValue(restReadout())).toBe('01:20')
 
   await user.click(plus15())
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:35'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('01:35'))
 })
 
 test('O4 tapping +15 s tells onSetRest the Set with a rest of 195 s', async () => {
@@ -1417,7 +1420,7 @@ test('O4 tapping −15 s with 1:20 of rest left makes the rest readout read 1:05
 
   await user.click(minus15())
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:05'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('01:05'))
 })
 
 test('O4 tapping −15 s tells onSetRest the Set with a rest of 165 s', async () => {
@@ -1436,11 +1439,11 @@ test('O4 tapping −15 s tells onSetRest the Set with a rest of 165 s', async ()
 test('O4 tapping −15 s with 10 s of rest left ends the rest at +0:00 over, never below zero', async () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 170_000)
   const { user } = renderWithSessionRest([squatEntry(1, BASE)])
-  expect(readoutValue(restReadout())).toBe('0:10')
+  expect(readoutValue(restReadout())).toBe('00:10')
 
   await user.click(minus15())
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:00 over'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('+00:00'))
 })
 
 test('O4 tapping −15 s with 10 s of rest left stores the 170 s already rested', async () => {
@@ -1459,7 +1462,7 @@ test('O4 tapping Skip makes the rest readout read +0:00 over', async () => {
 
   await user.click(skip())
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:00 over'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('+00:00'))
 })
 
 test('O4 tapping Skip tells onSetRest the Set with the 100 s already rested', async () => {
@@ -1480,11 +1483,11 @@ test('O4 after Skip the rest readout counts up: 42 s later it reads +0:42 over',
   vi.setSystemTime(BASE + 100_000)
   renderWithSessionRest([squatEntry(1, BASE)])
   await tapWithFakeTimers(skip())
-  expect(readoutValue(restReadout())).toBe('+0:00 over')
+  expect(readoutValue(restReadout())).toBe('+00:00')
 
   await vi.advanceTimersByTimeAsync(42_000)
 
-  expect(readoutValue(restReadout())).toBe('+0:42 over')
+  expect(readoutValue(restReadout())).toBe('+00:42')
 })
 
 test('O4 Skip ends the rest silently: playRestOver is never called', async () => {
@@ -1543,7 +1546,7 @@ test("O4 a set screen opened on a Set whose rest was changed to 195 s shows that
     restFrom: { entry: { ...historyEntry(1, 60, 10), restSeconds: 195 }, planRestSeconds: 180 },
   })
 
-  expect(readoutValue(restReadout())).toBe('1:35')
+  expect(readoutValue(restReadout())).toBe('01:35')
 })
 
 test("O4 the rest follows the Session's latest Set of another Exercise, by that Exercise's Plan rest", () => {
@@ -1554,7 +1557,7 @@ test("O4 the rest follows the Session's latest Set of another Exercise, by that 
     restFrom: { entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 },
   })
 
-  expect(readoutValue(restReadout())).toBe('1:00')
+  expect(readoutValue(restReadout())).toBe('01:00')
 })
 
 test('O4 with restFrom null no rest shows, even when lastEntries hold a Set of this Session', () => {
@@ -1572,11 +1575,11 @@ test('O4 after a log the rest follows the Set just logged, not the earlier restF
     setIndex: 1,
     restFrom: { entry: pushUpEntry(1, 12, BASE + 50_000), planRestSeconds: 90 },
   })
-  expect(readoutValue(restReadout())).toBe('0:40')
+  expect(readoutValue(restReadout())).toBe('00:40')
 
   await user.click(logButton())
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('3:00'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('03:00'))
 })
 
 test('O4 once rest is over, −15 s, +15 s and Skip are not offered', () => {
@@ -1611,7 +1614,7 @@ test('O4 a rest that ran out 20 s ago reads +0:20 over', () => {
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(readoutValue(restReadout())).toBe('+0:20 over')
+  expect(readoutValue(restReadout())).toBe('+00:20')
 })
 
 test('O4 after the latest Set is deleted, rest follows the new latest Set', async () => {
@@ -1621,13 +1624,13 @@ test('O4 after the latest Set is deleted, rest follows the new latest Set', asyn
   vi.spyOn(Date, 'now').mockImplementation(() => clock)
   const { user } = renderWithSessionRest([squatEntry(1, BASE)])
   await user.click(logButton())
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('3:00'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('03:00'))
   clock = BASE + 100_000
 
   await user.click(await screen.findByRole('button', { name: '50 × 8' }))
   await user.click(screen.getByRole('button', { name: 'Delete set' }))
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:20'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('01:20'))
 })
 
 // E13-T11: the Next Set line while rest is showing.
@@ -1883,7 +1886,7 @@ test('O5 the rest Dial offers Set rest and Cancel', async () => {
 test('O5 tapping a rest readout that is over opens the rest Dial too', async () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 200_000)
   const { user } = renderWithSessionRest([squatEntry(1, BASE)])
-  expect(readoutValue(restReadout())).toBe('+0:20 over')
+  expect(readoutValue(restReadout())).toBe('+00:20')
 
   const ladder = await openRestDial(user)
 
@@ -1897,7 +1900,7 @@ test('O5 Set rest 2:30 with 100 s gone restarts the rest from loggedAt: the read
 
   await setRestOnDial(user, '2:30')
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('0:50'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('00:50'))
 })
 
 test('O5 Set rest 2:30 tells onSetRest the Set with a rest of 150 s', async () => {
@@ -1919,7 +1922,7 @@ test('O5 Set rest 1:30 with 100 s gone reads as over: +0:10 over', async () => {
 
   await setRestOnDial(user, '1:30')
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:10 over'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('+00:10'))
 })
 
 test('O5 Set rest 4:00 on a rest over by 0:20 runs it again: the readout reads 0:40', async () => {
@@ -1928,7 +1931,7 @@ test('O5 Set rest 4:00 on a rest over by 0:20 runs it again: the readout reads 0
 
   await setRestOnDial(user, '4:00')
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('0:40'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('00:40'))
 })
 
 test('O5 Set rest closes the rest Dial', async () => {
@@ -1949,7 +1952,7 @@ test('O5 Cancel on the rest Dial closes it and changes nothing', async () => {
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
   await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Rest ladder' })).toBeNull())
-  expect(readoutValue(restReadout())).toBe('1:20')
+  expect(readoutValue(restReadout())).toBe('01:20')
   expect(onSetRest).not.toHaveBeenCalled()
 })
 
@@ -2036,7 +2039,7 @@ test('O6 +15 s after Set rest withdraws the Use offer: ±15 s never offers it', 
 
   await user.click(plus15())
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:05'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('01:05'))
   expect(screen.queryByRole('button', { name: /^Use .* for / })).toBeNull()
 })
 
@@ -2051,7 +2054,7 @@ test('O6 Skip after Set rest withdraws the Use offer: Skip never offers it', asy
 
   await user.click(skip())
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:00 over'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('+00:00'))
   expect(screen.queryByRole('button', { name: /^Use .* for / })).toBeNull()
 })
 
@@ -2827,7 +2830,7 @@ test('O12 the Rest readout starts from 1:00 after a Warm-up on a 180 s Plan', ()
   vi.spyOn(Date, 'now').mockReturnValue(BASE)
   renderWithSessionRest([warmupSquat(1, BASE)])
 
-  expect(readoutValue(restReadout())).toBe('1:00')
+  expect(readoutValue(restReadout())).toBe('01:00')
 })
 
 test('O12 the Log set button reads Rest 0:50 ten seconds after a Warm-up', () => {
@@ -2841,7 +2844,7 @@ test('O12 a Warm-up rest is over after 60 s: the readout reads +0:10 over at 70 
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 70_000)
   renderWithSessionRest([warmupSquat(1, BASE)])
 
-  expect(readoutValue(restReadout())).toBe('+0:10 over')
+  expect(readoutValue(restReadout())).toBe('+00:10')
   expect(logButton().textContent).toBe('Rest +0:10')
 })
 
@@ -2849,14 +2852,14 @@ test('O12 a working Set rests the Plan length: 3:00 at once', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE)
   renderWithSessionRest([squatEntry(1, BASE)])
 
-  expect(readoutValue(restReadout())).toBe('3:00')
+  expect(readoutValue(restReadout())).toBe('03:00')
 })
 
 test('O12 a Warm-up whose rest was adjusted keeps its stored rest: 2:30 stays 2:20 at 10 s', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 10_000)
   renderWithSessionRest([warmupSquat(1, BASE, 150)])
 
-  expect(readoutValue(restReadout())).toBe('2:20')
+  expect(readoutValue(restReadout())).toBe('02:20')
 })
 
 test('O12 +15 s at 10 s into a Warm-up rest makes the readout 1:05 and stores 75', async () => {
@@ -2865,7 +2868,7 @@ test('O12 +15 s at 10 s into a Warm-up rest makes the readout 1:05 and stores 75
 
   await user.click(plus15())
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('1:05'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('01:05'))
   expect(onSetRest).toHaveBeenCalledWith(expect.objectContaining({ setIndex: 1 }), 75)
 })
 
@@ -2875,7 +2878,7 @@ test('O12 -15 s at 10 s into a Warm-up rest makes the readout 0:35 and stores 45
 
   await user.click(minus15())
 
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('0:35'))
+  await waitFor(() => expect(readoutValue(restReadout())).toBe('00:35'))
   expect(onSetRest).toHaveBeenCalledWith(expect.objectContaining({ setIndex: 1 }), 45)
 })
 
@@ -2944,11 +2947,11 @@ test('O12 changing the Set to Working moves its Rest to the Plan length: 1:00 be
     onLogged: () => undefined,
   }
   const { rerender } = render(<SetScreen {...props} />)
-  expect(readoutValue(restReadout())).toBe('1:00')
+  expect(readoutValue(restReadout())).toBe('01:00')
 
   rerender(<SetScreen {...props} logged={[working]} restFrom={{ entry: working, planRestSeconds: 180 }} />)
 
-  expect(readoutValue(restReadout())).toBe('3:00')
+  expect(readoutValue(restReadout())).toBe('03:00')
 })
 
 // --- E15-T6: the Plate line under the weight Dial -----------------------------------------------
@@ -3461,4 +3464,106 @@ test('O13 with the Plate line and Add warm-ups showing, one tap on Log set store
   const [entry] = await storedEntries()
   expect(storedSummary(entry)).toEqual([1, 100, 8, undefined])
   expect('kind' in entry).toBe(false)
+})
+
+// --- E16-T5 O10: rest as a digital clock ------------------------------------------------------
+
+test('O10 with 87 s of rest left the clock reads 01:27 with leading zeros', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  expect(readoutValue(screen.getByRole('timer', { name: 'Rest remaining' }))).toBe('01:27')
+})
+
+test('O10 a rest under ten seconds reads 00:07, not 0:07', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 173_000)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  expect(readoutValue(restReadout())).toBe('00:07')
+})
+
+test('O10 the clock sits above the set counter', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  const clock = screen.getByRole('timer', { name: 'Rest remaining' })
+  const counter = document.querySelector('.set-counter')
+  expect(counter).not.toBeNull()
+  expect(clock.compareDocumentPosition(counter as Element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O10 with the rest running, −15 s, +15 s and Skip are offered under the clock', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  const clock = screen.getByRole('timer', { name: 'Rest remaining' })
+  for (const control of [minus15(), plus15(), skip()]) {
+    expect(clock.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  }
+})
+
+test('O10 once the rest is over the clock counts up +00:42 with no adjustments', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 222_000)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  expect(readoutValue(restReadout())).toBe('+00:42')
+  expect(screen.queryByRole('button', { name: '+15 s' })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^[−-]15 s$/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
+})
+
+test('O10 tapping the clock opens the rest Dial', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
+  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await user.click(restReadout())
+
+  expect(await screen.findByRole('listbox', { name: 'Rest ladder' })).toBeVisible()
+})
+
+test('O10 the Action bar button still reads Rest 1:27 while the clock reads 01:27', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  expect(readoutValue(logButton())).toBe('Rest 1:27')
+})
+
+test('O10 the Action bar button still reads Rest +0:42 once over', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 222_000)
+  renderWithSessionRest([squatEntry(1, BASE)])
+
+  expect(readoutValue(logButton())).toBe('Rest +0:42')
+})
+
+test('O10 +15 s still stores a rest of 195 s through onSetRest', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
+  const { user, onSetRest } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  await user.click(plus15())
+
+  await waitFor(() => expect(onSetRest).toHaveBeenCalledTimes(1))
+  expect(onSetRest).toHaveBeenCalledWith(expect.objectContaining({ loggedAt: BASE }), 195)
+})
+
+function restCss(): string {
+  return readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'SetScreen.css'), 'utf-8')
+}
+
+test('O10 the clock is styled in --font-display at --text-display with tabular figures', () => {
+  const decls = declarationsFor(restCss(), '.rest-readout')
+  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-size')).toBe('var(--text-display)')
+  expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
+})
+
+test('O10 the over clock is coloured --color-accent by a rule on the rest panel', () => {
+  const rules = postcss.parse(restCss()).nodes.filter(
+    (node): node is Rule => node.type === 'rule' && /data-over/.test(node.selector),
+  )
+  const colours = rules.flatMap((rule) =>
+    rule.nodes
+      .filter((decl): decl is Declaration => decl.type === 'decl' && decl.prop === 'color')
+      .map((decl) => decl.value.trim()),
+  )
+  expect(colours).toContain('var(--color-accent)')
 })
