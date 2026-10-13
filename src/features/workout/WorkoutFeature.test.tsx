@@ -298,22 +298,26 @@ async function openSeatedCurlsAtSet2(user: UserEvent): Promise<void> {
 }
 
 /** The Hammer Curls row of whichever overlay is open, found as `swapSeatedCurlsForHammerCurls` does. */
-async function hammerCurlsRow(): Promise<HTMLElement> {
-  const name = await screen.findByText('Hammer Curls', { selector: '.alternatives-row-name' }, SETTLE)
+async function hammerCurlsRow(rowName = 'Hammer Curls'): Promise<HTMLElement> {
+  const name = await screen.findByText(rowName, { selector: '.alternatives-row-name' }, SETTLE)
   const row = name.closest('li')
   if (!row) throw new Error('the Hammer Curls row is not inside a list item')
   return row
 }
 
-async function expectHammerCurlsOnSet2(user: UserEvent): Promise<void> {
-  expect(await screen.findByRole('heading', { level: 1, name: 'Hammer Curls' }, SETTLE)).toBeVisible()
+async function expectHammerCurlsOnSet2(
+  user: UserEvent,
+  chosenName = 'Hammer Curls',
+  chosenId = 'Hammer_Curls',
+): Promise<void> {
+  expect(await screen.findByRole('heading', { level: 1, name: chosenName }, SETTLE)).toBeVisible()
   expect(screen.getByText('Set 2 of 3')).toBeVisible()
   expect(screen.queryByRole('dialog')).toBeNull()
   // Never logged before: it opens on what the Seated biceps curls would have (8 kg x 10 here).
   await user.click(screen.getByRole('button', { name: 'Log set' }))
   await waitFor(async () => {
     const stored = await storedActiveSession()
-    const hammer = stored?.entries.filter((e) => e.exerciseId === 'Hammer_Curls')
+    const hammer = stored?.entries.filter((e) => e.exerciseId === chosenId)
     expect(hammer?.map((e) => [e.setIndex, e.weightKg, e.reps])).toEqual([[2, 8, 10]])
   }, SETTLE)
 }
@@ -335,9 +339,14 @@ test('O22 choosing an Alternative from the detail overlay at Set 2 opens the cho
 
   await user.click(screen.getByRole('button', { name: 'Exercise info' }))
   await screen.findByRole('dialog', { name: 'Seated biceps curls' }, SETTLE)
-  await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do this instead' }))
+  // The detail overlay lists only the top five Similar exercises; Alternate Hammer Curl is one.
+  await user.click(
+    within(await hammerCurlsRow('Alternate Hammer Curl')).getByRole('button', {
+      name: 'Do this instead',
+    }),
+  )
 
-  await expectHammerCurlsOnSet2(user)
+  await expectHammerCurlsOnSet2(user, 'Alternate Hammer Curl', 'Alternate_Hammer_Curl')
 })
 
 test('O22 after choosing an Alternative the Workout’s list row names it with "for <planned name>" under it', async () => {
