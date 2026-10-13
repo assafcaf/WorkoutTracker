@@ -1,5 +1,6 @@
 import {
   ACTIVE_PROGRAM_ID_KEY,
+  BODYWEIGHT_OVERRIDES_KEY,
   EXERCISE_NOTES_KEY,
   EFFORT_TRACKING_KEY,
   GYM_EQUIPMENT_KEY,
@@ -27,6 +28,7 @@ export const SETTING_KEYS: readonly SettingKeyInfo[] = [
   { key: EXERCISE_NOTES_KEY, synced: true, topic: 'preferences' },
   { key: EFFORT_TRACKING_KEY, synced: true, topic: 'preferences' },
   { key: PLATE_INVENTORY_KEY, synced: true, topic: 'preferences' },
+  { key: BODYWEIGHT_OVERRIDES_KEY, synced: true, topic: 'preferences' },
   // Device-local: each device remembers its own last export.
   { key: LAST_EXPORTED_AT_KEY, synced: false, topic: 'preferences' },
   // Sync's own bookkeeping (syncClient.ts): never pushed, and no topic changes with it.
