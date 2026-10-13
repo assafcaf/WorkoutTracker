@@ -48,6 +48,6 @@
 .line-chart-latest {
   fill: var(--color-text);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
 }

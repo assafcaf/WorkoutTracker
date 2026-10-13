@@ -21,7 +21,7 @@
   background: transparent;
   color: var(--color-muted);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .history-stats-option[aria-pressed='true'] {

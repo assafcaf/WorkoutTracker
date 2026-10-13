@@ -59,8 +59,8 @@
 .app-header-title {
   overflow: hidden;
   font-size: var(--text-lg);
-  font-weight: 600;
-  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -105,7 +105,7 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 /* "Finish workout": one of the action bar's own buttons, given its own class so the audit

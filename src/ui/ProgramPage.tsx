@@ -116,7 +116,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     const counts = toRegionCounts(prescribedWeekly(oneWorkout, catalog, library))
     return (
       <section key={`${program.id}/${workout.id}`} className="workout-card">
-        <h3>{workout.name}</h3>
+        <h3 className="program-page-workout-title">{workout.name}</h3>
         <ul>
           {workout.exercises.map((plan) => (
             <li key={plan.exerciseId}>{planLine(plan, catalog)}</li>
@@ -219,11 +219,11 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 
       {active && (
         <>
-          <h2>{active.name}</h2>
+          <h2 className="program-page-title">{active.name}</h2>
           {active.workouts.map((workout) => renderWorkout(active, workout))}
 
           <section className="program-page-weekly">
-            <h3>Weekly volume</h3>
+            <h3 className="program-page-section-heading">Weekly volume</h3>
             <div className="program-page-map">
               <BodyMap counts={prescribedRegionCounts} scale="week" />
             </div>
@@ -238,7 +238,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
           </section>
 
           <section className="program-page-thisweek">
-            <h3>This week</h3>
+            <h3 className="program-page-section-heading">This week</h3>
             <div className="program-page-thisweek-maps">
               <figure className="program-page-map">
                 <BodyMap counts={prescribedRegionCounts} scale="week" />
@@ -257,7 +257,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 
       {activeProgramId === null && (
         <section className="program-page-newuser">
-          <h2>Choose a program</h2>
+          <h2 className="program-page-title">Choose a program</h2>
           <div className="program-page-newuser-list">
             {visiblePrograms(programs).map((program) => (
               <div key={program.id} className="program-page-newuser-card">
