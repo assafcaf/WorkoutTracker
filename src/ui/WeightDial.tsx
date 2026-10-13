@@ -81,7 +81,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
       <button
         type="button"
         aria-label="Decrease weight"
-        className="dial-step"
+        className="dial-step icon-btn"
         onClick={() => step(-1)}
       >
         &minus;
@@ -95,7 +95,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
         <button
           type="button"
           aria-label="Weight"
-          className="dial-readout"
+          className="dial-readout cell"
           data-length={lengthClass(readValue(value, bodyweight))}
           disabled={!adjustable}
           onClick={() => {
@@ -130,7 +130,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
       <button
         type="button"
         aria-label="Increase weight"
-        className="dial-step"
+        className="dial-step icon-btn"
         onClick={() => step(1)}
       >
         +

@@ -23,7 +23,7 @@ export function SetKindRow({ value, onChange }: SetKindRowProps): JSX.Element {
         <button
           key={label}
           type="button"
-          className="set-kind-choice"
+          className="set-kind-choice chip"
           aria-pressed={kind === value}
           onClick={() => onChange(kind)}
         >

@@ -34,7 +34,7 @@ export function TabBar(props: TabBarProps): JSX.Element {
         <button
           key={tab.id}
           type="button"
-          className="tab-bar-tab"
+          className="tab-bar-tab tab"
           aria-label={tab.label}
           aria-current={tab.id === current ? 'page' : undefined}
           onClick={() => onChange(tab.id)}

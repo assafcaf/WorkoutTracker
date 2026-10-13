@@ -671,7 +671,7 @@ export function WorkoutFeature({
         title={located.workout.name}
         onBack={() => setView('picker')}
         action={
-          <button type="button" className="finish-workout" onClick={handleFinish}>
+          <button type="button" className="finish-workout btn-primary" onClick={handleFinish}>
             Finish workout
           </button>
         }

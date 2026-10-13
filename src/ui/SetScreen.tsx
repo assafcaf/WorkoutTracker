@@ -830,15 +830,15 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // only an extra set is offered -- and only to a caller that knows what to do with it.
   const actions = editing !== null ? (
     <>
-      <button type="button" className="save-set" onClick={() => void saveSet()}>
+      <button type="button" className="save-set btn-primary" onClick={() => void saveSet()}>
         Save set
       </button>
-      <button type="button" className="delete-set" onClick={() => void deleteSet()}>
+      <button type="button" className="delete-set btn-danger" onClick={() => void deleteSet()}>
         Delete set
       </button>
       <button
         type="button"
-        className="cancel-edit"
+        className="cancel-edit btn-quiet"
         onClick={() => returnToLogging(loggedSets.length + 1, loggedSets)}
       >
         Cancel
@@ -848,7 +848,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     justLogged !== null ? (
       <button
         type="button"
-        className="log-set log-set--confirmed"
+        className="log-set log-set--confirmed btn-primary"
         aria-label="Log set"
         onClick={() => void log()}
       >
@@ -856,7 +856,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </button>
     ) : (
       // The rest clock has its own bar at the top of the screen; the button only logs.
-      <button type="button" className="log-set" aria-label="Log set" onClick={() => void log()}>
+      <button type="button" className="log-set btn-primary" aria-label="Log set" onClick={() => void log()}>
         Log set
       </button>
     )
@@ -866,12 +866,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         <p className="up-next">Up next: {upNext}</p>
       )}
       {onFinishExercise === undefined ? null : (
-        <button type="button" className="finish-exercise" onClick={onFinishExercise}>
+        <button type="button" className="finish-exercise btn-secondary" onClick={onFinishExercise}>
           Finish exercise
         </button>
       )}
       {onAddSet === undefined ? null : (
-        <button type="button" className="add-set" onClick={() => addSet(onAddSet)}>
+        <button type="button" className="add-set btn-secondary" onClick={() => addSet(onAddSet)}>
           Add set
         </button>
       )}
@@ -885,7 +885,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           <span className="rest-label">{rest.isOver ? 'Rest over' : 'Rest'}</span>
           <button
             type="button"
-            className="rest-readout"
+            className="rest-readout cell"
             onClick={() => setRestDialOpen(true)}
           >
             <span role="timer" aria-label="Rest remaining">
@@ -896,19 +896,19 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             <div className="rest-controls">
               <button
                 type="button"
-                className="rest-adjust"
+                className="rest-adjust btn-secondary"
                 onClick={() => adjust({ kind: 'add', seconds: -15 })}
               >
                 −15 s
               </button>
               <button
                 type="button"
-                className="rest-adjust"
+                className="rest-adjust btn-secondary"
                 onClick={() => adjust({ kind: 'add', seconds: 15 })}
               >
                 +15 s
               </button>
-              <button type="button" className="rest-skip" onClick={() => adjust({ kind: 'skip' })}>
+              <button type="button" className="rest-skip btn-quiet" onClick={() => adjust({ kind: 'skip' })}>
                 Skip
               </button>
             </div>
@@ -939,7 +939,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             >
               <button
                 type="button"
-                className="logged-set"
+                className="logged-set cell"
                 data-editing={editing === entry.setIndex ? 'true' : undefined}
                 onClick={() => openLogged(entry)}
               >
@@ -994,7 +994,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           <button
             type="button"
             role="switch"
-            className="bodyweight-switch"
+            className="bodyweight-switch chip"
             aria-checked={bodyweight}
             onClick={() => handleBodyweightChange(!bodyweight)}
           >
@@ -1013,7 +1013,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           Warm-up {ramp.index + 1} of {ramp.steps.length} · {rampStep.weightKg} kg × {rampStep.reps}
         </p>
       ) : rampOffer !== null && rampOffer.length > warmupsLogged ? (
-        <button type="button" className="add-warmups" onClick={() => startRamp(rampOffer)}>
+        <button type="button" className="add-warmups btn-quiet" onClick={() => startRamp(rampOffer)}>
           Add warm-ups
         </button>
       ) : null}
@@ -1024,14 +1024,14 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
         <button
           type="button"
-          className="open-alternatives"
+          className="open-alternatives btn-secondary"
           onClick={() => onOpenAlternatives?.(exercise.id)}
         >
           Alternatives
         </button>
         <button
           type="button"
-          className="open-history"
+          className="open-history btn-secondary"
           onClick={() => onOpenHistory?.(exercise.id)}
         >
           History
@@ -1051,7 +1051,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           <div className="set-note-actions">
             <button
               type="button"
-              className="set-note-save"
+              className="set-note-save btn-primary"
               onClick={() => {
                 const save = props.onSaveExerciseNote
                 if (save === undefined) return
@@ -1060,7 +1060,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             >
               Save note
             </button>
-            <button type="button" className="set-note-cancel" onClick={() => setEditingNote(false)}>
+            <button type="button" className="set-note-cancel btn-quiet" onClick={() => setEditingNote(false)}>
               Cancel
             </button>
           </div>
@@ -1068,7 +1068,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       ) : props.exerciseNote === undefined || props.exerciseNote === null || props.exerciseNote === '' ? (
         <button
           type="button"
-          className="set-note-add"
+          className="set-note-add btn-quiet"
           onClick={() => {
             setNoteDraft('')
             setEditingNote(true)
@@ -1079,7 +1079,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       ) : (
         <button
           type="button"
-          className="set-note-text"
+          className="set-note-text cell"
           onClick={() => {
             setNoteDraft(props.exerciseNote ?? '')
             setEditingNote(true)
@@ -1100,7 +1100,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {undo === null ? null : (
         <p role="status" className="set-undo">
           Set deleted
-          <button type="button" className="undo-delete" onClick={() => void restoreSet()}>
+          <button type="button" className="undo-delete btn-quiet" onClick={() => void restoreSet()}>
             Undo
           </button>
         </p>
@@ -1118,7 +1118,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             <button
               key={rir}
               type="button"
-              className="effort-chip"
+              className="effort-chip chip"
               aria-pressed={effort.rir === rir}
               onClick={() => pickEffort(rir)}
             >
@@ -1150,7 +1150,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           ) : (
             <button
               type="button"
-              className="rest-use-offer"
+              className="rest-use-offer btn-secondary"
               disabled={useOffer.status === 'saving'}
               onClick={() => void saveRestForExercise()}
             >

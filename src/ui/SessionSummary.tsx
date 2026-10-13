@@ -126,7 +126,7 @@ export function SessionSummary({
           onClose={() => setOpenRegion(null)}
         />
       ) : null}
-      <button type="button" className="session-summary-done" onClick={onClose}>
+      <button type="button" className="session-summary-done btn-primary" onClick={onClose}>
         Done
       </button>
     </div>

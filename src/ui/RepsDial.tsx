@@ -50,7 +50,7 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
       <button
         type="button"
         aria-label="Decrease reps"
-        className="dial-step"
+        className="dial-step icon-btn"
         onClick={() => step(-1)}
       >
         &minus;
@@ -64,7 +64,7 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
         <button
           type="button"
           aria-label="Reps"
-          className="dial-readout"
+          className="dial-readout cell"
           onClick={() => {
             if (drag.consumeDrag()) return
             setKeypadOpen(true)
@@ -95,7 +95,7 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
       <button
         type="button"
         aria-label="Increase reps"
-        className="dial-step"
+        className="dial-step icon-btn"
         onClick={() => step(1)}
       >
         +

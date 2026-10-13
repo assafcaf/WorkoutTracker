@@ -45,7 +45,7 @@ export function AlternativesList({
         <p className="alternatives-empty">{"No alternatives with your gym's equipment"}</p>
         <button
           type="button"
-          className="alternatives-show-all"
+          className="alternatives-show-all btn-quiet"
           onClick={() => setShowAllEquipment(true)}
         >
           Show all equipment
@@ -74,7 +74,7 @@ export function AlternativesList({
           <li key={alternative.id} className="alternatives-row">
             <button
               type="button"
-              className="alternatives-row-open"
+              className="alternatives-row-open cell"
               onClick={() => onOpenDetail(alternative.id)}
             >
               <span className="alternatives-row-name">{alternative.name}</span>
@@ -82,7 +82,7 @@ export function AlternativesList({
             {onChoose ? (
               <button
                 type="button"
-                className="alternatives-row-choose"
+                className="alternatives-row-choose btn-secondary"
                 onClick={() => onChoose(alternative.id)}
               >
                 Do this instead

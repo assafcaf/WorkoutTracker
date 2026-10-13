@@ -418,6 +418,22 @@ test('O15 Remove on a Plan drops it, shown and saved', async () => {
   expect(program.workouts[0].exercises).toEqual([benchPlan, rowPlan])
 })
 
+// --- E17-T7 O11: destructive actions wear btn-danger -------------------------------------------
+const BUTTON_ROLES = ['btn-primary', 'btn-secondary', 'btn-quiet', 'btn-danger', 'tab', 'key', 'chip', 'cell', 'icon-btn']
+
+/** The control-table roles a button wears (E17-T7 O10/O11). */
+function rolesOf(button: HTMLElement): string[] {
+  return [...button.classList].filter((name) => BUTTON_ROLES.includes(name))
+}
+
+test('E17 O11 Remove on a Plan in the editor wears btn-danger and no other role', () => {
+  renderEditor(split())
+
+  expect(
+    rolesOf(within(planByName(workoutAt(0), 'Back Squat')).getByRole('button', { name: 'Remove' })),
+  ).toEqual(['btn-danger'])
+})
+
 test('O15 Remove workout on a Workout from initial hides it: no longer shown, saved with hidden: true', async () => {
   const { user, onSave } = renderEditor(split())
 

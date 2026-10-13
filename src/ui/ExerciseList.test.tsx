@@ -538,3 +538,47 @@ test('O4 lunges with 2 warm-ups and 3 working Sets logged reads 3/3', () => {
 
   expect(progressOf('Lunges')).toBe('3/3')
 })
+
+// --- E17-T7 O11: destructive actions wear btn-danger -------------------------------------------
+const BUTTON_ROLES = ['btn-primary', 'btn-secondary', 'btn-quiet', 'btn-danger', 'tab', 'key', 'chip', 'cell', 'icon-btn']
+
+/** The control-table roles a button wears (E17-T7 O10/O11). */
+function rolesOf(button: HTMLElement): string[] {
+  return [...button.classList].filter((name) => BUTTON_ROLES.includes(name))
+}
+
+function renderDiscardable() {
+  const user = userEvent.setup()
+  render(
+    <ExerciseList
+      program={assaf}
+      workout={workoutA}
+      resolve={resolve}
+      session={sessionWith([entry(workoutA.exercises[0].exerciseId, 1)])}
+      onOpenSet={vi.fn()}
+      onFinish={vi.fn()}
+      onDiscard={vi.fn()}
+      lastSwaps={{}}
+      onUndoSwap={vi.fn()}
+      onApplySwap={vi.fn()}
+      lastEntries={new Map()}
+      sessions={[]}
+      volumeBaseline={{ period: 'last' }}
+    />,
+  )
+  return { user }
+}
+
+test('E17 O11 Discard workout wears btn-danger and no other role', () => {
+  renderDiscardable()
+
+  expect(rolesOf(screen.getByRole('button', { name: 'Discard workout' }))).toEqual(['btn-danger'])
+})
+
+test('E17 O11 the Discard that confirms Discard workout wears btn-danger and no other role', async () => {
+  const { user } = renderDiscardable()
+
+  await user.click(screen.getByRole('button', { name: 'Discard workout' }))
+
+  expect(rolesOf(screen.getByRole('button', { name: 'Discard' }))).toEqual(['btn-danger'])
+})

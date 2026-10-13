@@ -3,6 +3,99 @@
  * these classes; they do not restyle them. Imported by base.css, so it reaches every screen.
  */
 
+/* The button roles (the Design's control table, E17-T7). Every <button> wears exactly one. */
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-semibold);
+}
+
+.btn-primary:active {
+  background: var(--color-primary-pressed);
+  color: var(--color-on-primary);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-control);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+}
+
+.btn-secondary:active {
+  background: var(--color-raised);
+}
+
+.btn-quiet {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.btn-quiet:active {
+  background: var(--color-raised);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--color-danger);
+}
+
+.btn-danger:active {
+  background: var(--color-raised);
+}
+
+/* Effort, Set kind and filter chips, and the Bodyweight switch. */
+.chip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-control);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+}
+
+.chip[aria-pressed='true'],
+.chip[aria-checked='true'] {
+  background: var(--color-primary-tint);
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.tab {
+  color: var(--color-muted);
+}
+
+.tab[aria-current='page'] {
+  color: var(--color-primary);
+}
+
+.key {
+  background: var(--color-raised);
+  color: var(--color-text);
+}
+
+.key:active {
+  background: var(--color-control);
+}
+
+.cell {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.cell:active {
+  background: var(--color-control);
+}
+
+.icon-btn {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.icon-btn:active {
+  background: var(--color-control);
+}
+
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-hairline);

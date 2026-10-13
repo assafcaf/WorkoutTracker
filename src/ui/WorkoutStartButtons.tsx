@@ -23,7 +23,7 @@ export function WorkoutStartButtons(props: WorkoutStartButtonsProps): JSX.Elemen
           data-stripe={index % 2 === 0 ? 'primary' : 'accent'}
         >
           <h3 className="workout-start-card-title">{workout.name}</h3>
-          <button type="button" className="start-workout" onClick={() => onStart(workout.id)}>
+          <button type="button" className="start-workout btn-primary" onClick={() => onStart(workout.id)}>
             Start {workout.name}
           </button>
         </section>
