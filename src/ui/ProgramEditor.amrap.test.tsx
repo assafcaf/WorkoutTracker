@@ -75,13 +75,16 @@ function planRow(name: string): HTMLElement {
   return row
 }
 
-function amrapBox(name: string): HTMLElement {
+/** A Plan's Last set AMRAP switch, in its options menu -- opened first when closed. */
+async function amrapBox(user: ReturnType<typeof userEvent.setup>, name: string): Promise<HTMLElement> {
+  const toggle = within(planRow(name)).getByRole('button', { name: /^Options for / })
+  if (toggle.getAttribute('aria-expanded') !== 'true') await user.click(toggle)
   return within(planRow(name)).getByRole('switch', { name: 'Last set AMRAP' })
 }
 
 test('O13: ticking Last set AMRAP on a Plan and saving stores amrapLast true on that Plan only', async () => {
   const { onSave, user } = renderEditor(program(false))
-  await user.click(amrapBox('Flat Bench'))
+  await user.click(await amrapBox(user, 'Flat Bench'))
   await user.click(screen.getByRole('button', { name: 'Save' }))
   const saved = onSave.mock.calls[0][0]
   expect(saved.workouts[0].exercises[0].amrapLast).toBe(true)
@@ -90,7 +93,7 @@ test('O13: ticking Last set AMRAP on a Plan and saving stores amrapLast true on 
 
 test('O13: a Plan never ticked is saved without an amrapLast field', async () => {
   const { onSave, user } = renderEditor(program(false))
-  expect(amrapBox('Flat Bench')).not.toBeChecked()
+  expect(await amrapBox(user, 'Flat Bench')).not.toBeChecked()
   await user.click(screen.getByRole('button', { name: 'Save' }))
   const saved = onSave.mock.calls[0][0]
   expect('amrapLast' in saved.workouts[0].exercises[0]).toBe(false)
@@ -98,14 +101,14 @@ test('O13: a Plan never ticked is saved without an amrapLast field', async () =>
 
 test('O13: a Plan stored with amrapLast true shows the box ticked and keeps it on save', async () => {
   const { onSave, user } = renderEditor(program(true))
-  expect(amrapBox('Flat Bench')).toBeChecked()
+  expect(await amrapBox(user, 'Flat Bench')).toBeChecked()
   await user.click(screen.getByRole('button', { name: 'Save' }))
   expect(onSave.mock.calls[0][0].workouts[0].exercises[0].amrapLast).toBe(true)
 })
 
 test('O13: unticking Last set AMRAP removes the field rather than storing false', async () => {
   const { onSave, user } = renderEditor(program(true))
-  await user.click(amrapBox('Flat Bench'))
+  await user.click(await amrapBox(user, 'Flat Bench'))
   await user.click(screen.getByRole('button', { name: 'Save' }))
   const saved = onSave.mock.calls[0][0]
   expect('amrapLast' in saved.workouts[0].exercises[0]).toBe(false)

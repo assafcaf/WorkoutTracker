@@ -15,6 +15,7 @@ import { expect, test, vi } from 'vitest'
 import assafJson from '../data/programs/assaf-ab-2026.json'
 import starterJson from '../data/programs/full-body-starter.json'
 import exercisesJson from '../data/exercises.json'
+import libraryJson from '../data/library/exercises.json'
 import { ProgramPage } from './ProgramPage'
 import type { Exercise, LibraryExercise, Muscle, Program, Session } from '../types'
 
@@ -42,6 +43,7 @@ function renderProgramPage(
       catalog={catalog}
       library={library}
       onChooseProgram={onChooseProgram}
+      programsOpen
     />,
   )
   return { onChooseProgram }
@@ -53,10 +55,24 @@ function precedes(first: Element, second: Element): boolean {
   )
 }
 
-function lines(list: HTMLElement): string[] {
-  return within(list)
-    .getAllByRole('listitem')
-    .map((item) => (item.textContent ?? '').replace(/\s+/g, ' ').trim())
+/** A workout card's exercise table, one `Exercise | Sets × reps | Rest | kg` line per row. */
+function lines(card: HTMLElement): string[] {
+  return within(card)
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) =>
+      within(row)
+        .getAllByRole('cell')
+        .map((cell) => (cell.textContent ?? '').replace(/\s+/g, ' ').trim())
+        .join(' | '),
+    )
+}
+
+/** The workout card headed `name`. */
+function workoutCard(name: string): HTMLElement {
+  const card = screen.getByRole('heading', { name }).closest('.workout-card')
+  if (!card) throw new Error(`no workout card headed ${name}`)
+  return card as HTMLElement
 }
 
 // --- carried over from ProgramPicker.test.tsx's O1/O2 --------------------------------------
@@ -74,30 +90,31 @@ test('O1 the active program leads with its name, then Workout A, then Workout B'
 test('O1 Workout A names its seven exercises with rep target, set count and rest', () => {
   renderProgramPage()
 
-  const [listA] = screen.getAllByRole('list')
-  expect(lines(listA)).toEqual([
-    'Back squat 8-10 x 4, rest 180s',
-    'Lunges 10-12 x 3, rest 90s',
-    'DB bench press 8-10 x 4, rest 90s',
-    'Push-ups 10-15 x 3, rest 90s',
-    'Machine shoulder press 8-10 x 3, rest 90s',
-    'Lateral raises 10-15 x 3, rest 90s',
-    'Cable push-down 10-12 x 3, rest 90s',
+  // S7a's table: name, sets × reps, rest as m:ss, and the load the next session opens on --
+  // with no Session logged, each Exercise's own start weight (src/data/exercises.json).
+  expect(lines(workoutCard('Workout A'))).toEqual([
+    'Back squat | 4 × 8–10 | 3:00 | 50',
+    'Lunges | 3 × 10–12 | 1:30 | 7',
+    'DB bench press | 4 × 8–10 | 1:30 | 10',
+    'Push-ups | 3 × 10–15 | 1:30 | BW',
+    'Machine shoulder press | 3 × 8–10 | 1:30 | 5',
+    'Lateral raises | 3 × 10–15 | 1:30 | 3',
+    'Cable push-down | 3 × 10–12 | 1:30 | 17.5',
   ])
 })
 
 test('O1 Workout B names its seven exercises with rep target, set count and rest', () => {
   renderProgramPage()
 
-  const listB = screen.getAllByRole('list')[1]
-  expect(lines(listB)).toEqual([
-    'Deadlift 8-10 x 3, rest 180s',
-    'Assisted pull-ups 5-8 x 4, rest 90s',
-    'Narrow-grip pull-down 10-12 x 3, rest 90s',
-    'Machine row 8-10 x 4, rest 90s',
-    'Face pull 10-15 x 3, rest 90s',
-    'Hyper-extension 10-15 x 3, rest 90s',
-    'Seated biceps curls 10-12 x 3, rest 90s',
+  // An assisted Bodyweight lift reads its signed start Load (BW−27), a plain one BW.
+  expect(lines(workoutCard('Workout B'))).toEqual([
+    'Deadlift | 3 × 8–10 | 3:00 | 55',
+    'Assisted pull-ups | 4 × 5–8 | 1:30 | BW−27',
+    'Narrow-grip pull-down | 3 × 10–12 | 1:30 | 41.25',
+    'Machine row | 4 × 8–10 | 1:30 | 50',
+    'Face pull | 3 × 10–15 | 1:30 | 15',
+    'Hyper-extension | 3 × 10–15 | 1:30 | BW',
+    'Seated biceps curls | 3 × 10–12 | 1:30 | 8',
   ])
 })
 
@@ -130,6 +147,7 @@ test('O1 with the other program active, the page leads with it and its radio is 
       catalog={catalogWithout()}
       library={new Map()}
       onChooseProgram={vi.fn()}
+      programsOpen
     />,
   )
 
@@ -177,7 +195,7 @@ test('O2 no picker renders when a plan references an id absent from the catalog'
   }
 
   expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
-  expect(screen.queryByText('Back squat 8-10 x 4, rest 180s')).toBeNull()
+  expect(screen.queryByText('Back squat')).toBeNull()
 })
 
 // --- M13: a per-workout body map, wired for real (not mocked) through prescribedWeekly ------
@@ -245,15 +263,18 @@ test('M13 a workout card draws a body map banding its own exercises, wired to re
     />,
   )
 
-  // Scoped to the workout card (not the whole page): E5-T19 adds a week-scale prescribed body
-  // map to the same page, whose quadriceps band differs from this per-workout, session-scale
-  // one, so a page-wide query would be over-broad. There is exactly one workout card here.
+  // Progress Dashboard S7a: the workout card is a table, each exercise marked by its muscle
+  // family's dot (quadriceps -> legs, through the real library entry), and the card holds no
+  // body map of its own -- the muscle map is drawn once, for the week, below the workouts.
   const workoutCard = container.querySelector('.workout-card')
   if (!workoutCard) throw new Error('expected a .workout-card element')
-  const quadriceps = [...workoutCard.querySelectorAll('[data-region="quadriceps"]')]
-  expect(quadriceps.length, 'quadriceps must be drawn at least once').toBeGreaterThan(0)
-  for (const element of quadriceps) {
-    expect(element).toHaveAttribute('data-band', '3')
+  const row = within(workoutCard as HTMLElement).getByRole('row', { name: /Solo exercise/ })
+  expect(row.querySelector('.muscle-dot')).toHaveAttribute('data-family', 'legs')
+  expect(workoutCard.querySelector('.body-map')).toBeNull()
+  const weekQuadriceps = [...container.querySelectorAll('.program-page-weekly [data-region="quadriceps"]')]
+  expect(weekQuadriceps.length, 'quadriceps must be drawn on the weekly map').toBeGreaterThan(0)
+  for (const element of weekQuadriceps) {
+    expect(element).not.toHaveAttribute('data-band', '0')
   }
 })
 
@@ -637,11 +658,17 @@ test('O23 each workout card shows exactly one session-scale body-map legend', ()
     />,
   )
 
+  // Progress Dashboard S7a: a workout card no longer draws a session-scale map, so it carries
+  // no legend; each of its exercises carries its family's dot instead, named by the one family
+  // legend in "Weekly sets, planned".
   const cards = [...container.querySelectorAll('.workout-card')]
   expect(cards.length, 'the active program must render at least one workout card').toBeGreaterThan(0)
   for (const card of cards) {
-    expect(card.querySelectorAll('.body-map-legend[data-scale="session"]')).toHaveLength(1)
+    expect(card.querySelectorAll('.body-map-legend')).toHaveLength(0)
+    const rows = card.querySelectorAll('tbody tr')
+    expect(card.querySelectorAll('tbody tr .muscle-dot')).toHaveLength(rows.length)
   }
+  expect(container.querySelectorAll('.program-page-legend')).toHaveLength(1)
 })
 
 test('O23 "Weekly volume" shows exactly one week-scale body-map legend', () => {
@@ -730,6 +757,7 @@ function renderActionsPage(overrides: Partial<import('./ProgramPage').ProgramPag
       onCopyProgram={onCopyProgram}
       onDeleteProgram={onDeleteProgram}
       onResetProgram={onResetProgram}
+      programsOpen
       {...overrides}
     />,
   )
@@ -900,4 +928,164 @@ test('E17 O11 Delete program wears btn-danger and no other role', () => {
 
   const row = programRow(container, 'user-only')
   expect(rolesOf(within(row).getByRole('button', { name: 'Delete' }))).toEqual(['btn-danger'])
+})
+
+// --- Progress Dashboard S7a: the head, weekly sets by family, the workout tables and the ------
+// Programs panel behind the head's overflow.
+
+const realLibrary = new Map(
+  (libraryJson as unknown as LibraryExercise[]).map((entry) => [entry.id, entry] as const),
+)
+
+function renderAssaf(overrides: Partial<import('./ProgramPage').ProgramPageProps> = {}) {
+  const onEditProgram = vi.fn()
+  const onProgramsOpenChange = vi.fn()
+  const result = render(
+    <ProgramPage
+      programs={[assaf, starter]}
+      activeProgramId="assaf-ab-2026"
+      catalog={catalogWithout()}
+      library={realLibrary}
+      onChooseProgram={vi.fn()}
+      onEditProgram={onEditProgram}
+      onProgramsOpenChange={onProgramsOpenChange}
+      {...overrides}
+    />,
+  )
+  return { ...result, onEditProgram, onProgramsOpenChange }
+}
+
+test('S7a the head names the active program and its size: sessions a week, workouts and exercises', () => {
+  renderAssaf()
+
+  expect(screen.getByRole('heading', { name: 'A/B Split' })).toBeVisible()
+  expect(screen.getByText('3× per week · 2 workouts · 14 exercises')).toBeVisible()
+})
+
+test('S7a Weekly sets, planned totals the week and splits it by muscle family, the counts adding up to the total', () => {
+  // Hand-checked against src/data/library/exercises.json's first primary muscles, weighted
+  // 3 sessions / 2 workouts = 1.5: push 19 sets (28.5), pull 14 (21), legs 7 (10.5), core 6 (9).
+  // 28.5 and 10.5 round to 29 and 10, so the legend still adds up to 69.
+  const { container } = renderAssaf()
+
+  const card = container.querySelector('.program-page-volume') as HTMLElement
+  expect(within(card).getByRole('heading', { name: 'Weekly sets, planned' })).toBeVisible()
+  expect(within(card).getByText('69 sets')).toBeVisible()
+  const legend = [...card.querySelectorAll('.program-page-legend-item')].map((item) =>
+    (item.textContent ?? '').replace(/\s+/g, ' ').trim(),
+  )
+  expect(legend).toEqual(['Push29', 'Pull21', 'Legs10', 'Core9'])
+  expect(within(card).getByRole('img')).toHaveAccessibleName('Push 29, Pull 21, Legs 10, Core 9 sets a week')
+  const segments = [...card.querySelectorAll('.program-page-volume-segment')]
+  expect(segments.map((segment) => segment.getAttribute('data-family'))).toEqual(['push', 'pull', 'legs', 'core'])
+})
+
+test("S7a each workout card's head reads its sets and estimated minutes", () => {
+  renderAssaf()
+
+  // workoutEstimate: 23 sets x 40 s plus every rest but the last -- A 3260 s, B 3170 s.
+  expect(within(workoutCard('Workout A')).getByText('23 sets · ~54 min')).toBeVisible()
+  expect(within(workoutCard('Workout B')).getByText('23 sets · ~53 min')).toBeVisible()
+})
+
+test("S7a each exercise row carries its muscle family's dot", () => {
+  renderAssaf()
+
+  const families = within(workoutCard('Workout B'))
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) => row.querySelector('.muscle-dot')?.getAttribute('data-family'))
+  expect(families).toEqual(['core', 'pull', 'pull', 'pull', 'push', 'core', 'pull'])
+})
+
+test('S7a the kg column reads the load the next session opens on, a step up after a filled rep range', () => {
+  const full: Session = {
+    id: 'full-squat',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt: NOW - 5000,
+    finishedAt: NOW - 1000,
+    entries: [1, 2, 3, 4].map((setIndex) => ({
+      exerciseId: 'back-squat',
+      setIndex,
+      weightKg: 60,
+      reps: 10,
+      loggedAt: NOW - 5000 + setIndex,
+    })),
+  }
+  renderAssaf({ sessions: [full], now: NOW })
+
+  expect(lines(workoutCard('Workout A'))[0]).toBe('Back squat | 4 × 8–10 | 3:00 | 62.5')
+})
+
+test('S7a Edit in the head opens the editor on the active program', async () => {
+  const user = userEvent.setup()
+  const { onEditProgram } = renderAssaf()
+
+  await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
+
+  expect(onEditProgram).toHaveBeenCalledWith('assaf-ab-2026')
+})
+
+test('S7a the Programs panel is closed at first: no program radios until the overflow opens it, Done closes it', async () => {
+  const user = userEvent.setup()
+  const { onProgramsOpenChange } = renderAssaf()
+
+  expect(screen.queryByRole('radio')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'New program' })).toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
+
+  const panel = screen.getByRole('dialog', { name: 'Programs' })
+  expect(within(panel).getByRole('radio', { name: 'A/B Split' })).toBeChecked()
+  expect(within(panel).getByRole('button', { name: 'New program' })).toBeVisible()
+  expect(onProgramsOpenChange).toHaveBeenLastCalledWith(true)
+
+  await user.click(within(panel).getByRole('button', { name: 'Done' }))
+
+  expect(screen.queryByRole('dialog', { name: 'Programs' })).toBeNull()
+  expect(onProgramsOpenChange).toHaveBeenLastCalledWith(false)
+})
+
+test('S7a with the caller holding programsOpen, the panel follows it', () => {
+  const { rerender } = render(
+    <ProgramPage
+      programs={[assaf, starter]}
+      activeProgramId="assaf-ab-2026"
+      catalog={catalogWithout()}
+      library={new Map()}
+      onChooseProgram={vi.fn()}
+      programsOpen
+    />,
+  )
+  expect(screen.getByRole('dialog', { name: 'Programs' })).toBeVisible()
+
+  rerender(
+    <ProgramPage
+      programs={[assaf, starter]}
+      activeProgramId="assaf-ab-2026"
+      catalog={catalogWithout()}
+      library={new Map()}
+      onChooseProgram={vi.fn()}
+      programsOpen={false}
+    />,
+  )
+  expect(screen.queryByRole('dialog', { name: 'Programs' })).toBeNull()
+})
+
+test('S7a a message set while the panel is closed shows on the page itself', () => {
+  renderAssaf({ programMessage: 'Finish the workout in progress first' })
+
+  expect(screen.getByRole('status')).toHaveTextContent('Finish the workout in progress first')
+})
+
+test('S7a a hidden workout of the active program gets no card', () => {
+  const withRetired: Program = {
+    ...assaf,
+    workouts: [...assaf.workouts, { ...assaf.workouts[0], id: 'retired', name: 'Retired', hidden: true }],
+  }
+  renderAssaf({ programs: [withRetired, starter] })
+
+  expect(screen.queryByRole('heading', { name: 'Retired' })).toBeNull()
+  expect(screen.getByText('3× per week · 2 workouts · 14 exercises')).toBeVisible()
 })

@@ -1359,7 +1359,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               setToolsOpen(true)
             }}
           >
-            <Icon name="More" size={24} />
+            <Icon name="Ellipsis" size={24} />
           </button>
         </div>
 

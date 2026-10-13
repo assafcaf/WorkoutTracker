@@ -188,13 +188,16 @@ test('O12 every class a control carries has a rule in some stylesheet under src'
 test('O12 the picker\'s fieldset in App.tsx carries the workout-picker class', () => {
   // E11-T15 O14 moved the picker out of App.tsx into the Workout screen group; the title is
   // kept as it was on purpose (the merge's weakened-tests check matches titles).
+  //
+  // The Progress Dashboard replaced the picker with the Dashboard's dock (S1): its one Start
+  // button is guarded on storageAvailable in the handler rather than by a disabled fieldset,
+  // which would also have disabled the Dashboard header's Settings gear. So the Workout screen
+  // group holds no fieldset of its own any more, and the guard is in its start handler.
   const appSource = readFileSync(join(srcDir, 'features', 'workout', 'WorkoutFeature.tsx'), 'utf-8')
-  const fieldset = extractControls(appSource).find(
-    (control) => control.tag === 'fieldset' && control.attrs.includes('storageAvailable'),
-  )
+  const fieldsets = extractControls(appSource).filter((control) => control.tag === 'fieldset')
 
-  expect(fieldset, 'the picker\'s fieldset (guarding on storageAvailable) must exist').toBeDefined()
-  expect(classesOf((fieldset as FoundControl).attrs)).toEqual(['workout-picker'])
+  expect(fieldsets, 'the Workout screen group renders no fieldset').toEqual([])
+  expect(appSource).toMatch(/onStartWorkout=\{\(workoutId\) => \{\s*if \(activeProgram !== null && storageAvailable\)/)
 })
 
 test('O14 .workout-picker resets border, padding and margin to zero', () => {

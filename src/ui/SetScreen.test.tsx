@@ -195,10 +195,6 @@ function cellReading(element: HTMLElement): string {
   return [...element.children].map((child) => (child.textContent ?? '').trim()).join(' ')
 }
 
-/** The rest clock in the rest panel: "2:48" while rest runs (S4). */
-function restClock(): string {
-  return readoutValue(screen.getByRole('timer', { name: 'Rest remaining' }))
-}
 
 test('O9 a weight entered on the keypad is displayed as entered though it is off the ladder', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })

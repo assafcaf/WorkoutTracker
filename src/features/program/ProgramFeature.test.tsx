@@ -61,9 +61,12 @@ function renderFeature(
 test('O10 ProgramFeature lists Programs, leading with the active one', async () => {
   await saveUserProgram(extraVisibleProgram(), NOW)
 
+  const user = userEvent.setup()
   renderFeature()
 
   expect(await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)).toBeVisible()
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
   expect(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE)).toBeInTheDocument()
 })
 
@@ -72,6 +75,8 @@ test('O10 ProgramFeature switches the active Program when another is chosen', as
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   await user.click(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE))
 
@@ -84,6 +89,8 @@ test('O10 ProgramFeature opens the editor on New program and reports onInSession
   const onInSession = vi.fn()
   renderFeature({ onInSession })
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   await user.click(screen.getByRole('button', { name: 'New program' }))
 
@@ -95,6 +102,8 @@ test('O10 ProgramFeature Cancel from the editor returns to the Program list', as
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   await user.click(screen.getByRole('button', { name: 'New program' }))
   await screen.findByLabelText('Program name', undefined, SETTLE)
@@ -107,6 +116,8 @@ test('O10 ProgramFeature edits a Program, saving it and returning to the Program
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
   if (!row) throw new Error('expected a row for assaf-ab-2026')
@@ -125,6 +136,8 @@ test('O10 ProgramFeature copies a Program into a new, separately listed one', as
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
   if (!row) throw new Error('expected a row for assaf-ab-2026')
@@ -142,6 +155,8 @@ test('O10 ProgramFeature resets an edited bundled Program back to its original',
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'My AB' }, SETTLE)
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
   if (!row) throw new Error('expected a row for assaf-ab-2026')
@@ -173,6 +188,8 @@ test('O10 ProgramFeature deleting the Program the Session in progress runs on sh
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="user-stored-solo"]')
   if (!row) throw new Error('expected a row for user-stored-solo')
@@ -198,6 +215,8 @@ test('O10 ProgramFeature a save the in-progress guard rejects shows the in-progr
     </ServicesProvider>,
   )
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
   if (!row) throw new Error('expected a row for assaf-ab-2026')
@@ -222,6 +241,8 @@ test('O10 ProgramFeature a rejected save shows Couldn’t save — try again', a
     </ServicesProvider>,
   )
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
   if (!row) throw new Error('expected a row for assaf-ab-2026')
@@ -230,4 +251,52 @@ test('O10 ProgramFeature a rejected save shows Couldn’t save — try again', a
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   expect(await screen.findByText(SAVE_ERROR, undefined, SETTLE)).toBeVisible()
+})
+
+test('S7a ProgramFeature keeps the Programs panel open across a visit to the editor it opened', async () => {
+  const user = userEvent.setup()
+  renderFeature()
+  await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
+
+  await user.click(screen.getByRole('button', { name: 'New program' }))
+  await screen.findByLabelText('Program name', undefined, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  expect(await screen.findByRole('dialog', { name: 'Programs' }, SETTLE)).toBeVisible()
+})
+
+test('S7b ProgramFeature opens Edit in the head on the active Program, under its own name', async () => {
+  const user = userEvent.setup()
+  renderFeature()
+  await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
+
+  expect(await screen.findByRole('heading', { level: 1, name: 'Edit A/B Split' }, SETTLE)).toBeVisible()
+  expect(screen.getByLabelText('Program name')).toHaveValue('A/B Split')
+  expect(screen.queryByRole('dialog', { name: 'Programs' })).toBeNull()
+})
+
+test('S7b ProgramFeature titles a copy Copy program', async () => {
+  const user = userEvent.setup()
+  renderFeature()
+  await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Programs' }))
+
+  const row = document.querySelector('[data-program-id="assaf-ab-2026"]') as HTMLElement
+  await user.click(within(row).getByRole('button', { name: 'Copy' }))
+
+  expect(await screen.findByRole('heading', { level: 1, name: 'Copy program' }, SETTLE)).toBeVisible()
+})
+
+test('S7a ProgramFeature makes the active Program the one large title, its size line and Edit beside it', async () => {
+  renderFeature()
+
+  expect(await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)).toBeVisible()
+  expect(screen.getAllByRole('heading', { name: 'A/B Split' })).toHaveLength(1)
+  expect(screen.queryByRole('heading', { name: 'Program' })).toBeNull()
+  expect(screen.getByText('3× per week · 2 workouts · 14 exercises')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Edit A/B Split' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Programs' })).toBeVisible()
 })

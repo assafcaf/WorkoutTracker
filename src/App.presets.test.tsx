@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
+import { workoutsOffered } from './test/dashboard'
 import { db } from './storage/db'
 import { FakeSyncServer } from './test/fakeSyncServer'
 
@@ -68,8 +69,9 @@ test('O21 pressing Use this on A/B Split makes it active and the Workout tab off
 
   await user.click(await screen.findByRole('button', { name: 'Dashboard' }, SETTLE))
 
+  // The Dashboard's dock offers Workout A, due first, and "Change" steps to Workout B.
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeVisible()
+  expect(await workoutsOffered(user)).toEqual(['Workout A', 'Workout B'])
 })
 
 test('O21 pressing Use this on A/B Split stores it as the active program', async () => {
@@ -93,6 +95,9 @@ test('O21 with an active program the Program tab still does not list Full body s
 
   await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
   await openProgramTab(user)
+  // The program list is the Programs panel behind the head's overflow (S7a).
+  await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
+  await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
 
   expect(screen.queryByText('Full body starter')).toBeNull()
 })

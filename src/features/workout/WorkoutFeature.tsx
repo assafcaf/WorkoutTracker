@@ -1,5 +1,5 @@
 import { swapPreset } from '../../domain/swapPreset'
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
@@ -13,7 +13,6 @@ import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
 import { latestSet, restLengthOf } from '../../domain/rest'
 import { countsTowardStats } from '../../domain/setKind'
-import { formatDay } from '../../domain/dates'
 import { ServiceError } from '../../services'
 import type {
   Exercise,
@@ -24,22 +23,19 @@ import type {
   VolumeBaseline,
   Workout,
 } from '../../types'
-import { ActionBarSlot, AppShell, SettingsButton } from '../../ui/AppShell'
+import { ActionBarSlot, AppShell, ShellChromeContext } from '../../ui/AppShell'
 import { LiveHeader } from '../../ui/LiveHeader'
 import type { LiveStatus } from '../../ui/LiveStrip'
-import { BackupBadge } from '../../ui/BackupBadge'
 import { ExerciseList } from '../../ui/ExerciseList'
-import { NoProgram } from '../../ui/NoProgram'
-import { ResumeCard } from '../../ui/ResumeCard'
 import { SessionSummary } from '../../ui/SessionSummary'
 import { SetScreen } from '../../ui/SetScreen'
 import { StorageUnavailableBanner } from '../../ui/StorageUnavailableBanner'
-import { WorkoutStartButtons } from '../../ui/WorkoutStartButtons'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
 import { LiveSessionBar } from '../../ui/live/LiveSessionBar'
 import type { LiveView } from '../../ui/live/LiveSessionBar'
 import { UpNextRows } from '../../ui/live/UpNextRows'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
+import { DashboardScreen } from '../dashboard/DashboardScreen'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
 import { useServices, useSyncControls } from '../ServicesProvider'
@@ -196,6 +192,8 @@ export function WorkoutFeature({
 }: WorkoutFeatureProps): JSX.Element | null {
   const services = useServices()
   const { syncNow } = useSyncControls()
+  // The app root's way into Settings, which the Dashboard's gear opens.
+  const chrome = useContext(ShellChromeContext)
 
   const catalogData = useServiceData((s) => s.catalog.load(), [])
   const programsData = useServiceData<ProgramsView>(async (s) => {
@@ -221,10 +219,6 @@ export function WorkoutFeature({
   }, ['programs'])
   const gymEquipmentData = useServiceData(
     (s) => orElse(s.preferences.gymEquipment(), null),
-    ['preferences'],
-  )
-  const lastExportedAtData = useServiceData(
-    (s) => orElse(s.preferences.lastExportedAt(), null),
     ['preferences'],
   )
   const volumeBaselineData = useServiceData(
@@ -361,7 +355,6 @@ export function WorkoutFeature({
   const { catalog, library, videos } = catalogData.data
   const { activeProgramId, staleActiveProgramNotice, storageAvailable } = programsData.data
   const gymEquipment = gymEquipmentData.status === 'ready' ? gymEquipmentData.data : null
-  const lastExportedAt = lastExportedAtData.status === 'ready' ? lastExportedAtData.data : null
   const volumeBaseline: VolumeBaseline =
     volumeBaselineData.status === 'ready' ? volumeBaselineData.data : { period: 'last' }
   const sessions = sessionsData.status === 'ready' ? sessionsData.data : []
@@ -961,38 +954,38 @@ export function WorkoutFeature({
       throw new Error(`no program ${activeProgramId} among the loaded programs`)
     }
 
+    // The Dashboard (S1) draws its own large title with the sync line, so the shell draws none.
     content = (
-      <AppShell
-        title="Dashboard"
-        subtitle={formatDay(new Date(), new Date())}
-        actions={<SettingsButton />}
-      >
-        {!storageAvailable ? <StorageUnavailableBanner /> : null}
-        {staleActiveProgramNotice ? (
-          <p>The saved active program no longer exists; showing the first program instead.</p>
-        ) : null}
-        <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
-        {session && located ? (
-          <ResumeCard
-            programName={located.program.name}
-            workoutName={located.workout.name}
-            onResume={() =>
-              minimised && onRestore
-                ? onRestore()
-                : handleChoose(session.programId, session.workoutId)
-            }
-          />
-        ) : null}
-        {activeProgram === null ? (
-          <NoProgram onChooseProgram={() => navigate({ tab: 'program' })} />
-        ) : (
-          <fieldset className="workout-picker" disabled={!storageAvailable}>
-            <WorkoutStartButtons
-              program={activeProgram}
-              onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}
-            />
-          </fieldset>
-        )}
+      <AppShell title="Dashboard" ownHeader>
+        <DashboardScreen
+          onStartWorkout={(workoutId) => {
+            if (activeProgram !== null && storageAvailable) handleChoose(activeProgram.id, workoutId)
+          }}
+          onOpenSettings={() => chrome.onOpenSettings?.()}
+          // A backup due is the gear's marker here (S1); Settings spells it out in full.
+          notices={
+            !storageAvailable || staleActiveProgramNotice ? (
+              <>
+                {!storageAvailable ? <StorageUnavailableBanner /> : null}
+                {staleActiveProgramNotice ? (
+                  <p>The saved active program no longer exists; showing the first program instead.</p>
+                ) : null}
+              </>
+            ) : null
+          }
+          resume={
+            session && located
+              ? {
+                  programName: located.program.name,
+                  workoutName: located.workout.name,
+                  onResume: () =>
+                    minimised && onRestore
+                      ? onRestore()
+                      : handleChoose(session.programId, session.workoutId),
+                }
+              : null
+          }
+        />
       </AppShell>
     )
   }
