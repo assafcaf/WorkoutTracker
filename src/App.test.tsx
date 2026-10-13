@@ -1589,7 +1589,10 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
-  await user.click(await screen.findByRole('button', { name: 'Back' }, SETTLE))
+  // The chosen Exercise's Set screen opens under the closing overlay; Back waits for both.
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
 
   // The done exercise carries the planned sets, rep range and rest -- seated-biceps-curls'
   // own plan (sets: 3, repRange: [10, 12], restSeconds: 90).
@@ -1618,7 +1621,10 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
-  await user.click(await screen.findByRole('button', { name: 'Back' }, SETTLE))
+  // The chosen Exercise's Set screen opens under the closing overlay; Back waits for both.
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
 
   const swappedRow = await screen.findByRole(
     'button',
@@ -1660,7 +1666,10 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
   // The swap now stays on the Set screen (E16-T12); the list row is one Back away.
-  await user.click(await screen.findByRole('button', { name: 'Back' }, SETTLE))
+  // The chosen Exercise's Set screen opens under the closing overlay; Back waits for both.
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
+  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
 

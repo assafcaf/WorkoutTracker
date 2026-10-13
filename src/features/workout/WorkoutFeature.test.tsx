@@ -95,7 +95,9 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
   // The swap now stays on the Set screen (E16-T12); the list row is one Back away.
-  await user.click(await screen.findByRole('button', { name: 'Back' }, SETTLE))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
+  await screen.findByRole('button', { name: 'Log set' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
 
