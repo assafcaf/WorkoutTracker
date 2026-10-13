@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import { ExerciseList } from './ExerciseList'
 import { SessionSummary } from './SessionSummary'
@@ -114,7 +114,7 @@ test('O7 the Session summary shows the same volume and body map with warm-up Set
   render(<SessionSummary session={finished(WARMED)} resolve={resolve} library={LIBRARY} onClose={vi.fn()} />)
 
   const dialog = screen.getByRole('dialog', { name: 'Session summary' })
-  expect(within(dialog).getByText('300 kg')).toBeInTheDocument()
+  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toBe('300 kg')
   const chest = [...dialog.querySelectorAll('[data-region="chest"]')]
   expect(chest.length).toBeGreaterThan(0)
   // One working set is band 1 on the session scale; five counted sets would be band 3.

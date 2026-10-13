@@ -1,0 +1,22 @@
+/* RecordSpark (E17 S5b): every colour through a `var(--...)` from src/styles/tokens.css. */
+
+.record-spark {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+.record-spark-line {
+  fill: none;
+  stroke: var(--color-secondary);
+  stroke-width: 1.75px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.record-spark-end {
+  color: var(--color-on-primary);
+  fill: var(--color-primary);
+  stroke: var(--color-surface);
+  stroke-width: 1.5px;
+}

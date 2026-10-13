@@ -185,8 +185,12 @@ test('F3 SessionSummary\'s dialog carries the shared overlay-panel class', () =>
 test('O23 SessionSummary shows exactly one session-scale body-map legend', () => {
   renderSummary()
 
+  // Title kept (weakened-tests gate); E17 S5b: the region heat list's legend names the session bands.
   const dialog = summaryDialog()
-  expect(dialog.querySelectorAll('.body-map-legend[data-scale="session"]')).toHaveLength(1)
+  const legends = dialog.querySelectorAll('.heat-legend[data-scale="session"]')
+  expect(legends).toHaveLength(1)
+  expect(legends[0].textContent).toContain('3–5')
+  expect(legends[0].textContent).toContain('sets / session')
 })
 
 test('M16 Done on the session summary calls onClose', async () => {
@@ -309,6 +313,19 @@ function benchSession(
   }
 }
 
+/** A KPI's value as it reads, number and unit together: `52 min`, `4,250 kg`. */
+function kpiValue(dialog: HTMLElement, kpi: string): string {
+  return dialog.querySelector(`[data-kpi="${kpi}"] .session-summary-kpi-value`)?.textContent ?? ''
+}
+
+/** Every record row's label and detail, as `Heaviest set | Bench press · 85 kg × 5 · +5 kg`. */
+function recordRows(dialog: HTMLElement): string[] {
+  return [...dialog.querySelectorAll('.session-summary-record')].map(
+    (row) =>
+      `${row.querySelector('.session-summary-record-label')?.textContent} | ${row.querySelector('.session-summary-record-detail')?.textContent}`,
+  )
+}
+
 function renderWithStats(session: Session, earlierSessions: Session[] = []): HTMLElement {
   render(
     <SessionSummary
@@ -326,19 +343,19 @@ function renderWithStats(session: Session, earlierSessions: Session[] = []): HTM
 test('O16 SessionSummary shows a 52-minute Session’s duration as 52 min', () => {
   const dialog = renderWithStats(benchSession('d52', BASE, 52, 1, 40, 5))
 
-  expect(within(dialog).getByText('52 min')).toBeVisible()
+  expect(kpiValue(dialog, 'duration')).toBe('52 min')
 })
 
 test('O16 SessionSummary shows a 65-minute Session’s duration as 1 h 05 min', () => {
   const dialog = renderWithStats(benchSession('d65', BASE, 65, 1, 40, 5))
 
-  expect(within(dialog).getByText('1 h 05 min')).toBeVisible()
+  expect(kpiValue(dialog, 'duration')).toBe('1 h 05 min')
 })
 
 test('O16 SessionSummary shows the volume as 4,250 kg, and no bodyweight reps when there are none', () => {
   const dialog = renderWithStats(benchSession('vol', BASE, 52, 10, 85, 5))
 
-  expect(within(dialog).getByText('4,250 kg')).toBeVisible()
+  expect(kpiValue(dialog, 'volume')).toBe('4,250 kg')
   expect(dialog.textContent).not.toContain('bodyweight reps')
 })
 
@@ -355,14 +372,19 @@ test('O16 SessionSummary adds · 36 bodyweight reps to the volume when the Sessi
   )
   const dialog = renderWithStats(session)
 
-  expect(within(dialog).getByText('4,250 kg · 36 bodyweight reps')).toBeVisible()
+  const volume = dialog.querySelector('[data-kpi="volume"]') as HTMLElement
+  expect(kpiValue(dialog, 'volume')).toBe('4,250 kg')
+  expect(within(volume).getByText('· 36 bodyweight reps')).toBeVisible()
 })
 
 test('O16 SessionSummary lists a PR set in the Session as Bench press · Heaviest set · 85 kg × 5', () => {
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  const line = within(dialog).getByText('Bench press · Heaviest set · 85 kg × 5')
+  // Title kept (weakened-tests gate); E17 S5b: the record's label heads its row, the Exercise,
+  // the set and the gain over the old record read beneath it.
+  expect(recordRows(dialog)).toContain('Heaviest set | Bench press · 85 kg × 5 · +5 kg')
+  const line = within(dialog).getByText('Bench press · 85 kg × 5 · +5 kg')
   expect(line).toBeVisible()
   expect(line.closest('li')).not.toBeNull()
 })
@@ -371,7 +393,7 @@ test('O16 SessionSummary marks each listed PR with one .tag-pr reading PR', () =
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  const item = within(dialog).getByText('Bench press · Heaviest set · 85 kg × 5').closest('li') as HTMLElement
+  const item = within(dialog).getByText('Bench press · 85 kg × 5 · +5 kg').closest('li') as HTMLElement
   const tags = item.querySelectorAll('.tag.tag-pr')
   expect(tags).toHaveLength(1)
   expect(tags[0].textContent).toBe('PR')
@@ -388,9 +410,17 @@ test('O16 SessionSummary shows duration, volume and PRs above the body map', () 
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
+  // Title kept (weakened-tests gate); E17 S5b: the region heat list stands where the map was.
   const map = dialog.querySelector('[data-region]')!
-  for (const text of ['52 min', '1,275 kg', 'Bench press · Heaviest set · 85 kg × 5']) {
-    const element = within(dialog).getByText(text)
+  expect(kpiValue(dialog, 'duration')).toBe('52 min')
+  expect(kpiValue(dialog, 'volume')).toBe('1,275 kg')
+  const elements = [
+    dialog.querySelector('[data-kpi="duration"]') as HTMLElement,
+    dialog.querySelector('[data-kpi="volume"]') as HTMLElement,
+    within(dialog).getByText('Bench press · 85 kg × 5 · +5 kg'),
+  ]
+  for (const element of elements) {
+    const text = element.textContent
     expect(
       element.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING,
       `${text} must come before the body map`,
@@ -402,7 +432,114 @@ test('O16 SessionSummary with no PRs shows no PR list', () => {
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 90, 5)
   const dialog = renderWithStats(benchSession('nopr', BASE, 52, 3, 85, 5), [earlier])
 
-  expect(within(dialog).getByText('52 min')).toBeVisible()
+  expect(kpiValue(dialog, 'duration')).toBe('52 min')
   expect(within(dialog).queryAllByRole('listitem')).toHaveLength(0)
   expect(dialog.textContent).not.toContain('Heaviest set')
+})
+
+// --- E17 S5b: the Progress Dashboard summary --------------------------------------------------
+
+function renderS5b(session: Session, earlierSessions: Session[] = [], extra: { onEdit?: () => void } = {}): HTMLElement {
+  render(
+    <SessionSummary
+      session={session}
+      earlierSessions={earlierSessions}
+      planFor={planFor}
+      resolve={resolve}
+      library={LIBRARY}
+      workoutName="Workout A"
+      onClose={vi.fn()}
+      {...extra}
+    />,
+  )
+  return summaryDialog()
+}
+
+test('S5b SessionSummary is headed by the Workout, with the day beside it', () => {
+  const dialog = renderS5b(benchSession('h', new Date(2026, 9, 13, 18).getTime(), 52, 3, 85, 5))
+
+  expect(within(dialog).getByRole('heading', { name: 'Workout A', level: 2 })).toBeVisible()
+  const date = dialog.querySelector('.session-summary-date')?.textContent ?? ''
+  expect(date).toMatch(/^(Tue 13 Oct|13 Oct 2026)$/)
+})
+
+test('S5b the KPI strip reads duration, volume against the last same Workout, working sets and PRs', () => {
+  const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
+  const session = benchSession('pr', BASE, 52, 3, 85, 5)
+  session.entries.push({ kind: 'warmup', exerciseId: 'bench', setIndex: 0, weightKg: 40, reps: 5, loggedAt: BASE + 500 })
+  const dialog = renderS5b(session, [earlier])
+
+  expect(kpiValue(dialog, 'duration')).toBe('52 min')
+  expect(kpiValue(dialog, 'volume')).toBe('1,275 kg')
+  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-note')?.textContent).toBe('+6.3% vs last A')
+  expect(kpiValue(dialog, 'sets')).toBe('3')
+  expect(kpiValue(dialog, 'prs')).toBe('3')
+})
+
+test('S5b each record row carries a PR tag and a sparkline of that record over the Sessions', () => {
+  const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
+  const dialog = renderS5b(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
+
+  const section = within(dialog).getByRole('region', { name: 'Records' })
+  const rows = within(section).getAllByRole('listitem')
+  expect(rows).toHaveLength(3)
+  for (const row of rows) {
+    expect(row.querySelector('.tag.tag-pr')?.textContent).toBe('PR')
+    expect(row.querySelector('svg.record-spark')).not.toBeNull()
+  }
+  expect(recordRows(dialog)).toContain('Best estimated 1RM | Bench press · 99.2 kg · +5.8 kg')
+})
+
+test('S5b Worked today lists the regions as heat squares on the session scale', () => {
+  renderSummary()
+
+  const worked = within(summaryDialog()).getByRole('region', { name: 'Worked today' })
+  const upperBack = worked.querySelector('[data-region="upper-back"]') as HTMLElement
+  expect(upperBack).toHaveAccessibleName('Upper back, 7 sets')
+  expect(upperBack.querySelector('.heat-cell')).toHaveAttribute('data-band', '3')
+  expect(worked.querySelector('[data-region="gluteal"] .heat-cell')?.textContent).toBe('0.5')
+})
+
+test('S5b the exercise table gives each Exercise its best set, volume and change against last time', () => {
+  const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
+  const dialog = renderS5b(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
+
+  const table = within(dialog).getByRole('table')
+  expect(within(table).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+    'Exercise',
+    'Best set',
+    'Volume, kg',
+    'Δ vs last',
+  ])
+  const [, bench] = within(table).getAllByRole('row')
+  expect(within(bench).getAllByRole('cell').map((td) => td.textContent)).toEqual([
+    'Bench press',
+    '85 × 5 PR',
+    '1,275',
+    '+75',
+  ])
+})
+
+test('S5b the dock offers Share as the secondary action beside Done', () => {
+  const dialog = renderS5b(benchSession('d', BASE, 52, 1, 40, 5))
+
+  const share = within(dialog).getByRole('button', { name: 'Share' })
+  const done = within(dialog).getByRole('button', { name: 'Done' })
+  expect(share).toHaveClass('btn-secondary')
+  expect(done).toHaveClass('btn-primary')
+  expect(share.compareDocumentPosition(done) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('S5b Edit session shows only when onEdit is given, and calls it', async () => {
+  const onEdit = vi.fn()
+  const dialog = renderS5b(benchSession('e', BASE, 52, 1, 40, 5), [], { onEdit })
+
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Edit session' }))
+  expect(onEdit).toHaveBeenCalledTimes(1)
+})
+
+test('S5b the finish summary, given no onEdit, has no Edit session', () => {
+  const dialog = renderS5b(benchSession('e', BASE, 52, 1, 40, 5))
+
+  expect(within(dialog).queryByRole('button', { name: 'Edit session' })).toBeNull()
 })

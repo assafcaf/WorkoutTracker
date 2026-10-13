@@ -124,6 +124,7 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
                     session={summarySession}
                     resolve={resolve}
                     library={libraryMap}
+                    workoutName={summarise(summarySession, programs).workoutName}
                     earlierSessions={sessions.filter(
                       (other) =>
                         other.id !== summarySession.id &&

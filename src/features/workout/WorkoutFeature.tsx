@@ -763,6 +763,11 @@ export function WorkoutFeature({
           session={summarySession}
           resolve={resolveListExercise}
           library={libraryMap}
+          workoutName={
+            programs
+              .find((program) => program.id === summarySession.programId)
+              ?.workouts.find((workout) => workout.id === summarySession.workoutId)?.name
+          }
           earlierSessions={sessions.filter(
             (other) =>
               other.id !== summarySession.id &&
