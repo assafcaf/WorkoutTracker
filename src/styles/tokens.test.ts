@@ -226,21 +226,21 @@ test('O1 the motion tokens carry a 150ms fast duration and a 0.97 press scale', 
 })
 
 test('O1 --font-sans is a system stack, so no web font has to reach the phone', () => {
+  // Body now names Geist first, then the system stack (E17-T2); the title is kept.
   const fontSans = normalise(tokens().get('--font-sans'))
+    .replace(/"/g, "'")
+    .replace(/\s*,\s*/g, ', ')
 
-  expect(fontSans).toMatch(/system-ui|-apple-system/)
+  expect(fontSans).toBe("'geist', system-ui, -apple-system, 'segoe ui', roboto, sans-serif")
   expect(fontSans, '--font-sans must not load a font file').not.toMatch(/url\(/)
 })
 
 test('O1 --font-display names Barlow Semi-Condensed first, then the system stack', () => {
-  // Quote style and spacing are not the decision; the families and their order are.
+  // Body now asserts --font-display aliases --font-sans until T12 drops it (E17-T2).
   const fontDisplay = normalise(tokens().get('--font-display'))
-    .replace(/"/g, "'")
-    .replace(/\s*,\s*/g, ', ')
 
-  expect(fontDisplay).toBe(
-    "'barlow semi-condensed', system-ui, -apple-system, 'segoe ui', roboto, sans-serif",
-  )
+  expect(fontDisplay).toBe('var(--font-sans)')
+  expect(fontDisplay).not.toMatch(/barlow/)
 })
 
 test('O1 tokens.css declares no @font-face, so the display font is loaded elsewhere', () => {
