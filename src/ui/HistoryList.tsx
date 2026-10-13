@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatDay } from '../domain/dates'
 import { formatSet } from '../domain/setText'
 import type { Exercise, Program, Session, SetEntry } from '../types'
 import './HistoryList.css'
@@ -44,7 +45,7 @@ export function summarise(session: Session, programs: Program[]): HistorySummary
 
 /** The ISO calendar date a session's row shows, independent of the local timezone. */
 function calendarDate(date: number): string {
-  return new Date(date).toISOString().slice(0, 10)
+  return formatDay(new Date(date), new Date())
 }
 
 /** One session's entries, grouped by `exerciseId` and headed by its resolved name, in the

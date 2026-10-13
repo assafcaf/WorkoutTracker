@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatDay } from '../domain/dates'
 import { progression } from '../domain/progression'
 import { recordsFor, type ExerciseRecord } from '../domain/records'
 import { seriesFor, type SeriesKind } from '../domain/series'
@@ -85,7 +86,7 @@ function recordUnit(record: ExerciseRecord): string {
 }
 
 function calendarDate(date: number): string {
-  return new Date(date).toISOString().slice(0, 10)
+  return formatDay(new Date(date), new Date())
 }
 
 function ExerciseProgress({ sessions, resolve, programs }: StatsProps): JSX.Element {

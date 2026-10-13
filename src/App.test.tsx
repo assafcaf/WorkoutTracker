@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
+
+// History dates render through formatDay in the local zone; BASE is late evening UTC.
+process.env.TZ = 'UTC'
 import { db, isStorageAvailable } from './storage/db'
 import {
   getGymEquipment,
@@ -505,7 +508,7 @@ test('O17 the finished session appears in the history list with its date, progra
   await user.click(await screen.findByRole('button', { name: 'History' }, SETTLE))
 
   const row = await screen.findByRole('listitem', {}, SETTLE)
-  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(within(row).getByText('14 Nov 2023')).toBeVisible()
   expect(within(row).getByText('A/B Split')).toBeVisible()
   expect(within(row).getByText('Workout A')).toBeVisible()
   expect(within(row).getByText('2 sets')).toBeVisible()
@@ -823,7 +826,7 @@ test('O8 pressing the History tab lists the finished sessions with the tab bar s
 
   // Hand-checked from the fixture: BASE is 2023-11-14 UTC, and one set of 60 kg x 10 is 600 kg.
   const row = await screen.findByRole('listitem', {}, SETTLE)
-  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(within(row).getByText('14 Nov 2023')).toBeVisible()
   expect(within(row).getByText('600 kg')).toBeVisible()
   // The shell stays put: the trainee is never stranded on a screen with no way off it.
   expect(mainNav()).toBeVisible()
@@ -2840,7 +2843,7 @@ test('O10 choosing History in the switch goes back from Stats to the History lis
 
   // Hand-checked from the fixture: BASE is 2023-11-14 UTC.
   const row = await screen.findByRole('listitem', {}, SETTLE)
-  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(within(row).getByText('14 Nov 2023')).toBeVisible()
   expect(screen.getByRole('heading', { name: 'History', level: 1 })).toBeVisible()
   expect(screen.queryByRole('region', { name: 'Exercise progress' })).toBeNull()
 })

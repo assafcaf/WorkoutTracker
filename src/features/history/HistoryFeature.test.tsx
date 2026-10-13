@@ -392,7 +392,7 @@ test('O16 opening a Session from History shows its duration, volume and the PR i
   )
 
   const user = userEvent.setup()
-  await user.click(await screen.findByRole('button', { name: /2023-11-16/ }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /16 Nov 2023/ }, SETTLE))
   await user.click(await screen.findByRole('button', { name: 'Open session' }, SETTLE))
   const dialog = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 

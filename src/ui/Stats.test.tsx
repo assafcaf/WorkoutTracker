@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { Stats } from './Stats'
 import { loadCatalog } from '../data/catalog'
 import { declarationsFor } from '../test/cssAudit'
@@ -385,6 +385,30 @@ test('O11 choosing an exercise that is not the default shows its progression bar
   const mostReps = recordItem('Most reps at the heaviest weight')
   expect(mostReps, 'the Most reps at the heaviest weight record').not.toBeUndefined()
   expect(textOf(mostReps as HTMLElement)).toMatch(/\b8\b/)
+})
+
+test('O21 Stats shows each record date as formatDay answers: weekday this year, year in another', () => {
+  process.env.TZ = 'UTC'
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(Date.UTC(2026, 9, 13, 12, 0)))
+  try {
+    const thisYear: Session = { ...o11Newest, startedAt: Date.UTC(2026, 5, 10, 12, 0) }
+    const { unmount } = render(
+      <Stats sessions={[thisYear]} resolve={resolveO11} programs={[o11Program, o11OtherProgram]} />,
+    )
+    expect(textOf(recordItem('Heaviest set') as HTMLElement)).toContain('Wed 10 Jun')
+    unmount()
+
+    const lastYear: Session = { ...o11Newest, startedAt: Date.UTC(2025, 5, 10, 12, 0) }
+    render(
+      <Stats sessions={[lastYear]} resolve={resolveO11} programs={[o11Program, o11OtherProgram]} />,
+    )
+    const text = textOf(recordItem('Heaviest set') as HTMLElement)
+    expect(text).toContain('10 Jun 2025')
+    expect(text).not.toContain('Tue')
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 test('O11 a swapped-in exercise takes the plan it was swapped in for, so its bar and records are shown', async () => {
