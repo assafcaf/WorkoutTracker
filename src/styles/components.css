@@ -22,3 +22,13 @@
   background: var(--color-primary-tint);
   color: var(--color-primary);
 }
+
+/* A muscle family's colour, shown as data: an 8px dot inside a neutral `.muscle-chip`. The dot's
+ * fill comes from the chip's `data-family` (src/ui/MuscleChip.css). */
+.muscle-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+}

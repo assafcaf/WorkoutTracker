@@ -6,6 +6,7 @@ import { expect, test } from 'vitest'
 import { BodyMap } from './BodyMap'
 import type { Region } from '../../domain/muscles'
 import { declarationsFor } from '../../test/cssAudit'
+import { declarationsMatching, paintOf } from '../../test/cssMatch'
 
 /** Every SVG shape carrying `data-region="<region>"` within `root` (front and back combined,
  * or scoped to one view). */
@@ -134,11 +135,76 @@ test('O14 an untrained region fills --map-shade-0, which equals --color-raised',
 
   const elements = regionElements(container, 'chest')
   expect(elements.length, 'chest must be drawn at least once').toBeGreaterThan(0)
+  // E17-T10 (O18): the "nothing counted" band is now --heat-0, the first step of the heat
+  // ramp; the --map-* tokens are on their way out (E17-T12).
   for (const element of elements) {
-    expect((element as HTMLElement).style.fill).toBe('var(--map-shade-0)')
+    expect(paintOf(declarationsMatching(element))).toBe('var(--heat-0)')
   }
+})
 
-  const tokensCss = readFileSync(join(here, '..', '..', 'styles', 'tokens.css'), 'utf-8')
-  const tokens = declarationsFor(tokensCss, ':root')
-  expect(tokens.get('--map-shade-0')).toBe(tokens.get('--color-raised'))
+// O18 (E17-T10): every band paints the heat ramp, --heat-0 ... --heat-3; the exercise scale
+// paints a primary muscle --heat-3 and a secondary --heat-2. Read through src/test/cssMatch.ts,
+// so an inline style and a stylesheet rule keyed on data-band/data-shade both count.
+
+function paintsOf(root: ParentNode, region: Region): string[] {
+  const elements = regionElements(root, region)
+  expect(elements.length, `${region} must be drawn at least once`).toBeGreaterThan(0)
+  return elements.map((element) => paintOf(declarationsMatching(element)) ?? '(none)')
+}
+
+test('O18 a session count of 6 (band 3) paints --heat-3', () => {
+  const { container } = render(<BodyMap counts={new Map<Region, number>([['quadriceps', 6]])} scale="session" />)
+
+  for (const paint of paintsOf(container, 'quadriceps')) expect(paint).toBe('var(--heat-3)')
+})
+
+test('O18 a session count of 3 (band 2) paints --heat-2', () => {
+  const { container } = render(<BodyMap counts={new Map<Region, number>([['chest', 3]])} scale="session" />)
+
+  for (const paint of paintsOf(container, 'chest')) expect(paint).toBe('var(--heat-2)')
+})
+
+test('O18 a session count of 2 (band 1) paints --heat-1', () => {
+  const { container } = render(<BodyMap counts={new Map<Region, number>([['biceps', 2]])} scale="session" />)
+
+  for (const paint of paintsOf(container, 'biceps')) expect(paint).toBe('var(--heat-1)')
+})
+
+test('O18 a week count of 21 (band 3) paints --heat-3', () => {
+  const { container } = render(<BodyMap counts={new Map<Region, number>([['hamstring', 21]])} scale="week" />)
+
+  for (const paint of paintsOf(container, 'hamstring')) expect(paint).toBe('var(--heat-3)')
+})
+
+test('O18 the exercise scale paints a primary muscle (count 1) --heat-3', () => {
+  const { container } = render(<BodyMap counts={new Map<Region, number>([['chest', 1]])} scale="exercise" />)
+
+  for (const paint of paintsOf(container, 'chest')) expect(paint).toBe('var(--heat-3)')
+})
+
+test('O18 the exercise scale paints a secondary muscle (count 0.5) --heat-2', () => {
+  const { container } = render(<BodyMap counts={new Map<Region, number>([['triceps', 0.5]])} scale="exercise" />)
+
+  for (const paint of paintsOf(container, 'triceps')) expect(paint).toBe('var(--heat-2)')
+})
+
+test('O18 the exercise scale paints an untouched muscle --heat-0', () => {
+  const { container } = render(<BodyMap counts={new Map<Region, number>([['chest', 1]])} scale="exercise" />)
+
+  for (const paint of paintsOf(container, 'quadriceps')) expect(paint).toBe('var(--heat-0)')
+})
+
+test('O18 no shape on the map, filler shapes included, paints a --map-* or --family-* token', () => {
+  for (const scale of ['session', 'week', 'exercise'] as const) {
+    const { container, unmount } = render(
+      <BodyMap counts={new Map<Region, number>([['chest', 6], ['biceps', 0.5]])} scale={scale} />,
+    )
+    const shapes = [...container.querySelectorAll('svg polygon')]
+    expect(shapes.length).toBeGreaterThan(0)
+    for (const shape of shapes) {
+      const paint = paintOf(declarationsMatching(shape)) ?? ''
+      expect(paint, `a ${scale}-scale shape paints ${paint}`).toMatch(/^var\(--heat-[0-3]\)$/)
+    }
+    unmount()
+  }
 })
