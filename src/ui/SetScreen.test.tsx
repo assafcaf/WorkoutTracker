@@ -2662,8 +2662,15 @@ test('O17 a Bodyweight Exercise shows the Load Dial under the reps Dial', () => 
 })
 
 test('O17 Assisted pull-ups, not a Bodyweight Exercise, shows no Load Dial', () => {
-  renderSetScreen({ exercise: assistedPullUps, plan: assistedPullUpPlan })
+  // E16-T10: the catalog's assisted pull-ups are now a Bodyweight Exercise at a negative Load, so
+  // they get the Load Dial; only a genuinely loaded Exercise (back-squat) shows none.
+  const { unmount } = renderSetScreen({ exercise: assistedPullUps, plan: assistedPullUpPlan })
 
+  expect(screen.getByRole('group', { name: 'Reps' })).toBeInTheDocument()
+  expect(loadGroup()).not.toBeNull()
+  unmount()
+
+  renderSetScreen({ exercise: backSquat, plan: squatPlan })
   expect(screen.getByRole('group', { name: 'Reps' })).toBeInTheDocument()
   expect(loadGroup()).toBeNull()
 })
