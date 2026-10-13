@@ -3,6 +3,8 @@ import { WEIGHT_STEPS, ladderFor, stepWeight } from '../domain/dial'
 import { loadText } from '../domain/setText'
 import { Keypad } from './Keypad'
 import { useCentredRung } from './useCentredRung'
+import { useScrub } from './useScrub'
+import type { DialVariant } from './dialVariant'
 import type { Exercise } from '../types'
 import './dial.css'
 
@@ -15,6 +17,13 @@ export type WeightDialProps = {
   value: number | null
   /** Told the weight chosen; on a Bodyweight Exercise, the signed Load. */
   onChange(value: number | null): void
+  /**
+   * `column` (the default) is the card with its Rung column and minus/plus. `scrub` is the Set
+   * screen's: the number alone, dragged up or down to change it and tapped to type it, with the
+   * Rungs either side shown faintly. The column and minus/plus stay in the page for a screen
+   * reader and the keyboard, out of sight until focused.
+   */
+  variant?: DialVariant
 }
 
 /** What a value reads: the weight in kg, or on a Bodyweight Exercise `BW`, `BW+10`, `BW−20`. */
@@ -23,16 +32,24 @@ function readValue(value: number | null, bodyweight: boolean): string {
   return value === null ? 'BW' : String(value)
 }
 
+/** How long a readout is, so the scrub variant can size `82.5` and `BW+10` to fit half the screen. */
+function lengthClass(text: string): '4' | 'long' | undefined {
+  if (text.length <= 3) return undefined
+  return text.length === 4 ? '4' : 'long'
+}
+
 /**
- * The weight scroll-snap column with its minus/plus buttons and its readout.
+ * The weight Dial: its readout, its Rung column and its minus/plus buttons.
  *
  * Three ways into the same value: the column snaps to a rung, the minus/plus buttons step one
- * rung along it, and the readout opens a keypad for a weight off the ladder. On a Bodyweight
- * Exercise the same Dial carries the signed Load, its Rungs running from BW−60 to BW+100
- * through BW (E16-T4), and its keypad takes a sign.
+ * rung along it, and tapping the readout opens a keypad for a weight off the ladder. In the
+ * `scrub` variant a drag on the number steps it too. On a Bodyweight Exercise the same Dial
+ * carries the signed Load, its Rungs running from BW−60 to BW+100 through BW (E16-T4), and its
+ * keypad takes a sign.
  */
 export function WeightDial(props: WeightDialProps): JSX.Element {
   const { exercise, onChange } = props
+  const scrub = props.variant === 'scrub'
   const bodyweight = exercise.bodyweight
   const value = bodyweight ? (props.value ?? 0) : props.value
   const [keypadOpen, setKeypadOpen] = useState(false)
@@ -42,14 +59,24 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
   const adjustable = ladder.length > 0 && value !== null
   const groupLabel = loaded ? 'Weight (kg)' : 'Weight'
   const unit = value === null || (bodyweight && value === 0) ? '' : 'kg'
+  const stepOnce = (from: number, dir: 1 | -1): number => stepWeight(from, dir, exercise)
+  const drag = useScrub(adjustable ? value : null, stepOnce, onChange)
 
   function step(dir: 1 | -1): void {
     if (value === null || ladder.length === 0) return
     onChange(stepWeight(value, dir, exercise))
   }
 
+  const above = adjustable && value !== null ? stepOnce(value, 1) : null
+  const below = adjustable && value !== null ? stepOnce(value, -1) : null
+
   return (
-    <div className="dial" role="group" aria-label={groupLabel}>
+    <div
+      className={scrub ? 'dial dial--scrub' : 'dial'}
+      data-scrubbing={drag.active ? 'true' : undefined}
+      role="group"
+      aria-label={groupLabel}
+    >
       <h3 className="dial-heading">{groupLabel}</h3>
       <button
         type="button"
@@ -59,28 +86,31 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
       >
         &minus;
       </button>
-      <div className="dial-body">
+      <div className="dial-body" {...(scrub && adjustable ? drag.handlers : {})}>
+        {scrub ? (
+          <span className="dial-ghost" aria-hidden="true">
+            {above === null || above === value ? '' : readValue(above, bodyweight)}
+          </span>
+        ) : null}
         <button
           type="button"
           aria-label="Weight"
           className="dial-readout"
+          data-length={lengthClass(readValue(value, bodyweight))}
           disabled={!adjustable}
-          onClick={() => setKeypadOpen(true)}
+          onClick={() => {
+            if (drag.consumeDrag()) return
+            setKeypadOpen(true)
+          }}
         >
           {readValue(value, bodyweight)}
         </button>
-        <span className="dial-unit">{unit}</span>
-        {loaded ? (
-          <button
-            type="button"
-            aria-label="Type weight"
-            className="dial-type"
-            disabled={!adjustable}
-            onClick={() => setKeypadOpen(true)}
-          >
-            Type weight
-          </button>
+        {scrub ? (
+          <span className="dial-ghost" aria-hidden="true">
+            {below === null || below === value ? '' : readValue(below, bodyweight)}
+          </span>
         ) : null}
+        <span className="dial-unit">{unit}</span>
         {ladder.length > 0 ? (
           <ul role="listbox" aria-label="Weight ladder" className="dial-column" ref={columnRef}>
             {ladder.map((rung) => (
