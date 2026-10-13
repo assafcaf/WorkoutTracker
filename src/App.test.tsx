@@ -2031,6 +2031,8 @@ test('M13 choosing another program in the Program tab’s switcher makes it the 
   await findStartButton()
 
   await pressTab(user, 'Program')
+  // The switcher is the Programs panel behind the Program tab's overflow (S7a).
+  await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
   await user.click(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE))
 
   // The Program tab itself now leads with the chosen program...

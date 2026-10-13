@@ -1,0 +1,24 @@
+/* A muscle family's data colour on the Program tab and in its editor (Progress Dashboard S7a,
+ * S7b): the 8px `.muscle-dot` beside an exercise, a weekly bar segment and a legend swatch all
+ * carry `.program-family` with the family in `data-family`. A dot of no known family stays
+ * the neutral control grey. */
+
+.program-family {
+  background: var(--color-control);
+}
+
+.program-family[data-family='push'] {
+  background: var(--data-push);
+}
+
+.program-family[data-family='pull'] {
+  background: var(--data-pull);
+}
+
+.program-family[data-family='legs'] {
+  background: var(--data-legs);
+}
+
+.program-family[data-family='core'] {
+  background: var(--data-core);
+}

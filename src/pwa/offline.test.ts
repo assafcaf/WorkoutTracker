@@ -246,7 +246,9 @@ test('O4 with the network down the Program tab names exercises out of the cached
   if (!programTab) throw new Error('no Program tab button in the cached app')
   programTab.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
 
-  const expected = 'Back squat 8-10 x 4, rest 180s'
+  // Progress Dashboard S7a's workout table: the row's name cell runs straight into its
+  // `Sets × reps` cell in the page's text.
+  const expected = 'Back squat4 × 8–10'
   const deadline = Date.now() + 5_000
   while (Date.now() < deadline && !(window.document.body.textContent ?? '').includes(expected)) {
     await new Promise((resolve) => setTimeout(resolve, 25))

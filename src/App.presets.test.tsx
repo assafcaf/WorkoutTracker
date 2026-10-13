@@ -95,6 +95,9 @@ test('O21 with an active program the Program tab still does not list Full body s
 
   await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
   await openProgramTab(user)
+  // The program list is the Programs panel behind the head's overflow (S7a).
+  await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
+  await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
 
   expect(screen.queryByText('Full body starter')).toBeNull()
 })
