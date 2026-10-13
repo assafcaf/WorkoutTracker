@@ -170,18 +170,18 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         return (
           <li key={plan.exerciseId}>
             {doneId !== undefined ? (
-              <button type="button" className="exercise-row swapped" onClick={open}>
+              <button type="button" className="exercise-row swapped cell" onClick={open}>
                 {rowBody}
               </button>
             ) : (
-              <button type="button" className="exercise-row" onClick={open}>
+              <button type="button" className="exercise-row cell" onClick={open}>
                 {rowBody}
               </button>
             )}
             {doneId !== undefined && logged === 0 ? (
               <button
                 type="button"
-                className="exercise-undo-swap"
+                className="exercise-undo-swap btn-quiet"
                 onClick={() => onUndoSwap(plan.exerciseId)}
               >
                 Undo swap
@@ -190,7 +190,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
             {doneId === undefined && lastDoneId !== undefined ? (
               <button
                 type="button"
-                className="exercise-last-time"
+                className="exercise-last-time btn-quiet"
                 onClick={() => onApplySwap(plan.exerciseId, lastDoneId)}
               >
                 {`Last time: ${resolve(lastDoneId)?.name ?? lastDoneId}`}
@@ -214,7 +214,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         </label>
         <button
           type="button"
-          className="exercise-note-save"
+          className="exercise-note-save btn-primary"
           onClick={() => {
             void onSaveNote(noteDraft.slice(0, NOTE_MAX)).then(() => setEditingNote(false))
           }}
@@ -225,7 +225,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
     ) : (
       <button
         type="button"
-        className="exercise-note-add"
+        className="exercise-note-add btn-quiet"
         onClick={() => {
           setNoteDraft(note ?? '')
           setEditingNote(true)
@@ -237,19 +237,19 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
     {onDiscard === undefined ? null : confirmingDiscard ? (
       <div className="exercise-discard-confirm" role="group" aria-label="Discard workout">
         <p>{`Discard this workout? Its ${setCount} ${setCount === 1 ? 'set is' : 'sets are'} deleted.`}</p>
-        <button type="button" className="exercise-discard-confirm-yes" onClick={onDiscard}>
+        <button type="button" className="exercise-discard-confirm-yes btn-danger" onClick={onDiscard}>
           Discard
         </button>
         <button
           type="button"
-          className="exercise-discard-confirm-cancel"
+          className="exercise-discard-confirm-cancel btn-quiet"
           onClick={() => setConfirmingDiscard(false)}
         >
           Cancel
         </button>
       </div>
     ) : (
-      <button type="button" className="exercise-discard" onClick={() => setConfirmingDiscard(true)}>
+      <button type="button" className="exercise-discard btn-danger" onClick={() => setConfirmingDiscard(true)}>
         Discard workout
       </button>
     )}

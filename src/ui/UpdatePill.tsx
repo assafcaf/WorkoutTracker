@@ -16,7 +16,7 @@ export function UpdatePill({ onUpdate }: UpdatePillProps): JSX.Element {
   return (
     <button
       type="button"
-      className="update-pill"
+      className="update-pill btn-primary"
       onClick={() => {
         void onUpdate()
       }}

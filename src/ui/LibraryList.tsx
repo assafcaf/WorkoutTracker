@@ -85,7 +85,7 @@ export function LibraryList({
     <div className="library-list-container">
       <button
         type="button"
-        className="library-gym-only-chip"
+        className="library-gym-only-chip chip"
         aria-pressed={gymOnly}
         onClick={() => setGymOnly((current) => !current)}
       >
@@ -100,7 +100,7 @@ export function LibraryList({
               <li key={exercise.id} className="library-row">
                 <button
                   type="button"
-                  className="library-row-button"
+                  className="library-row-button cell"
                   onClick={() => onOpen(exercise.id)}
                 >
                   <span className="library-row-name">{exercise.name}</span>
@@ -109,7 +109,7 @@ export function LibraryList({
                 {onPick === undefined ? null : (
                   <button
                     type="button"
-                    className="library-row-pick"
+                    className="library-row-pick btn-secondary"
                     onClick={() => onPick(exercise.id)}
                   >
                     Pick
@@ -122,7 +122,7 @@ export function LibraryList({
             <nav aria-label="Pages" className="library-pager">
               <button
                 type="button"
-                className="library-pager-button"
+                className="library-pager-button btn-secondary"
                 disabled={page === 0}
                 onClick={() => {
                   setPage((current) => current - 1)
@@ -136,7 +136,7 @@ export function LibraryList({
               </span>
               <button
                 type="button"
-                className="library-pager-button"
+                className="library-pager-button btn-secondary"
                 disabled={page + 1 >= totalPages}
                 onClick={() => {
                   setPage((current) => current + 1)

@@ -52,7 +52,7 @@ export function PlateInventoryEditor(props: PlateInventoryEditorProps): JSX.Elem
           />
           <button
             type="button"
-            className="plate-editor-button"
+            className="plate-editor-button btn-danger"
             onClick={() =>
               onChange({ ...inventory, plates: inventory.plates.filter((p) => p.kg !== plate.kg) })
             }
@@ -69,13 +69,13 @@ export function PlateInventoryEditor(props: PlateInventoryEditorProps): JSX.Elem
           value={newKg}
           onChange={(event) => setNewKg(event.target.value)}
         />
-        <button type="button" className="plate-editor-button" onClick={handleAdd}>
+        <button type="button" className="plate-editor-button btn-secondary" onClick={handleAdd}>
           Add plate
         </button>
       </div>
       <button
         type="button"
-        className="plate-editor-button"
+        className="plate-editor-button btn-quiet"
         onClick={() => onChange(DEFAULT_PLATE_INVENTORY)}
       >
         Reset to defaults

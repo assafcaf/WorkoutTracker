@@ -105,7 +105,7 @@ function HistoryCard(props: { session: Session } & Omit<HistoryListProps, 'sessi
     <li className="history-row">
       <button
         type="button"
-        className="history-toggle"
+        className="history-toggle cell"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
@@ -130,7 +130,7 @@ function HistoryCard(props: { session: Session } & Omit<HistoryListProps, 'sessi
                   {onEdit ? (
                     <button
                       type="button"
-                      className="history-group-edit"
+                      className="history-group-edit btn-quiet"
                       onClick={() => onEdit(session.id, group.exerciseId)}
                     >
                       Edit
@@ -149,12 +149,12 @@ function HistoryCard(props: { session: Session } & Omit<HistoryListProps, 'sessi
           </ul>
           {session.note ? <p className="history-note">{session.note}</p> : null}
           {onOpen ? (
-            <button type="button" className="history-open" onClick={() => onOpen(session.id)}>
+            <button type="button" className="history-open btn-secondary" onClick={() => onOpen(session.id)}>
               Open session
             </button>
           ) : null}
           {onEdit ? (
-            <button type="button" className="history-edit" onClick={() => onEdit(session.id)}>
+            <button type="button" className="history-edit btn-secondary" onClick={() => onEdit(session.id)}>
               Edit workout
             </button>
           ) : null}

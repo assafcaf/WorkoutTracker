@@ -32,10 +32,10 @@ export function ImportConfirm(props: ImportConfirmProps): JSX.Element {
           .
         </p>
         <div className="import-confirm-actions">
-          <button type="button" className="import-confirm-cancel" onClick={onCancel}>
+          <button type="button" className="import-confirm-cancel btn-quiet" onClick={onCancel}>
             Cancel
           </button>
-          <button type="button" className="import-confirm-confirm" onClick={onConfirm}>
+          <button type="button" className="import-confirm-confirm btn-primary" onClick={onConfirm}>
             Import
           </button>
         </div>

@@ -47,7 +47,7 @@ export function ExerciseHistoryOverlay({
         <h2 id="exercise-history-heading" className="exercise-history-heading">
           History · {exercise.name}
         </h2>
-        <button type="button" className="exercise-history-close" onClick={onClose}>
+        <button type="button" className="exercise-history-close btn-quiet" onClick={onClose}>
           Close
         </button>
       </div>

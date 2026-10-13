@@ -49,10 +49,10 @@ export function RestDial(props: RestDialProps): JSX.Element {
         </ul>
       </div>
       <div className="rest-dial-actions">
-        <button type="button" className="rest-dial-set" onClick={() => onSet(value)}>
+        <button type="button" className="rest-dial-set btn-primary" onClick={() => onSet(value)}>
           Set rest
         </button>
-        <button type="button" className="rest-dial-cancel" onClick={onCancel}>
+        <button type="button" className="rest-dial-cancel btn-quiet" onClick={onCancel}>
           Cancel
         </button>
       </div>

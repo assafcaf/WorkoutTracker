@@ -47,12 +47,12 @@ export function RegionPanel({
       <div className="region-panel-actions">
         <button
           type="button"
-          className="region-panel-button"
+          className="region-panel-button btn-primary"
           onClick={() => onBrowse(musclesForRegion(region))}
         >
           Browse exercises
         </button>
-        <button type="button" className="region-panel-button" onClick={onClose}>
+        <button type="button" className="region-panel-button btn-quiet" onClick={onClose}>
           Close
         </button>
       </div>

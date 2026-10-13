@@ -51,21 +51,21 @@ export function Keypad(props: KeypadProps): JSX.Element {
       <output className="keypad-entry">{shown}</output>
       <div className="keypad-keys">
         {KEYS.map((key) => (
-          <button key={key} type="button" className="keypad-key" onClick={() => append(key)}>
+          <button key={key} type="button" className="keypad-key key" onClick={() => append(key)}>
             {key}
           </button>
         ))}
         {signed ? (
-          <button type="button" className="keypad-key" onClick={() => setNegative(!negative)}>
+          <button type="button" className="keypad-key key" onClick={() => setNegative(!negative)}>
             &minus;
           </button>
         ) : null}
       </div>
       <div className="keypad-actions">
-        <button type="button" className="keypad-cancel" onClick={onCancel}>
+        <button type="button" className="keypad-cancel btn-quiet" onClick={onCancel}>
           Cancel
         </button>
-        <button type="button" className="keypad-ok" onClick={commit}>
+        <button type="button" className="keypad-ok btn-primary" onClick={commit}>
           OK
         </button>
       </div>

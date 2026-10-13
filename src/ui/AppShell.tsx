@@ -98,7 +98,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
       <div className="app-shell">
         <header className="app-header">
           {onBack ? (
-            <button type="button" className="app-header-back" aria-label="Back" onClick={onBack}>
+            <button type="button" className="app-header-back icon-btn" aria-label="Back" onClick={onBack}>
               <Icon name="ChevronLeft" size={24} />
             </button>
           ) : null}

@@ -20,9 +20,15 @@
   border-radius: var(--radius-sm);
 }
 
-.keypad-keys button,
-.keypad-key {
+.keypad-keys button {
   min-height: var(--tap-min);
+}
+
+/* A digit key wears the `key` role and is taller than a plain tap target. */
+.keypad-key {
+  min-height: var(--key-min);
+  background: var(--color-raised);
+  color: var(--color-text);
 }
 
 .keypad-actions {

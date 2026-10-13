@@ -44,7 +44,7 @@ export function AlternativesOverlay({
         <h2 id="alternatives-heading" className="alternatives-overlay-heading">
           Alternatives to {planned.name}
         </h2>
-        <button type="button" className="alternatives-overlay-close" onClick={onClose}>
+        <button type="button" className="alternatives-overlay-close btn-quiet" onClick={onClose}>
           Close
         </button>
       </div>

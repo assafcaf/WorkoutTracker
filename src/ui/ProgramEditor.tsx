@@ -212,14 +212,14 @@ export function ProgramEditor({
     query === '' ? library : library.filter((e) => e.name.toLowerCase().includes(query))
 
   const actions = (
-    <button type="button" className="program-editor-save" onClick={save} disabled={!canSave}>
+    <button type="button" className="program-editor-save btn-primary" onClick={save} disabled={!canSave}>
       Save
     </button>
   )
 
   return (
     <div className="program-editor">
-      <button type="button" className="program-editor-cancel" onClick={onCancel}>
+      <button type="button" className="program-editor-cancel btn-quiet" onClick={onCancel}>
         Cancel
       </button>
 
@@ -287,7 +287,7 @@ export function ProgramEditor({
           <div className="program-editor-row-actions">
             <button
               type="button"
-              className="program-editor-action"
+              className="program-editor-action btn-quiet"
               disabled={displayIndex === 0}
               onClick={() => moveWorkout(workout.id, -1)}
             >
@@ -295,7 +295,7 @@ export function ProgramEditor({
             </button>
             <button
               type="button"
-              className="program-editor-action"
+              className="program-editor-action btn-quiet"
               disabled={displayIndex === visible.length - 1}
               onClick={() => moveWorkout(workout.id, 1)}
             >
@@ -303,7 +303,7 @@ export function ProgramEditor({
             </button>
             <button
               type="button"
-              className="program-editor-action"
+              className="program-editor-action btn-danger"
               onClick={() => removeWorkout(workout.id)}
             >
               Remove workout
@@ -401,7 +401,7 @@ export function ProgramEditor({
                   <div className="program-editor-row-actions">
                     <button
                       type="button"
-                      className="program-editor-action"
+                      className="program-editor-action btn-quiet"
                       disabled={j === 0}
                       onClick={() =>
                         updateWorkout(workout.id, (w) => ({ ...w, plans: swap(w.plans, j, j - 1) }))
@@ -411,7 +411,7 @@ export function ProgramEditor({
                     </button>
                     <button
                       type="button"
-                      className="program-editor-action"
+                      className="program-editor-action btn-quiet"
                       disabled={j === workout.plans.length - 1}
                       onClick={() =>
                         updateWorkout(workout.id, (w) => ({ ...w, plans: swap(w.plans, j, j + 1) }))
@@ -421,7 +421,7 @@ export function ProgramEditor({
                     </button>
                     <button
                       type="button"
-                      className="program-editor-action"
+                      className="program-editor-action btn-danger"
                       onClick={() =>
                         updateWorkout(workout.id, (w) => ({
                           ...w,
@@ -441,7 +441,7 @@ export function ProgramEditor({
 
           <button
             type="button"
-            className="program-editor-add"
+            className="program-editor-add btn-secondary"
             onClick={() => setPickingFor(workout.id)}
           >
             Add exercise
@@ -450,7 +450,7 @@ export function ProgramEditor({
         )
       })}
 
-      <button type="button" className="program-editor-add" onClick={addWorkout}>
+      <button type="button" className="program-editor-add btn-secondary" onClick={addWorkout}>
         Add workout
       </button>
 
@@ -472,7 +472,7 @@ export function ProgramEditor({
           <h2 className="program-editor-picker-heading">Add exercise</h2>
           <button
             type="button"
-            className="program-editor-cancel"
+            className="program-editor-cancel btn-quiet"
             onClick={() => {
               setPickingFor(null)
               setSearch('')

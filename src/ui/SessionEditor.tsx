@@ -202,7 +202,7 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
                     <span className="session-editor-set-values">{setText(entry)}</span>
                     <button
                       type="button"
-                      className="session-editor-set-action"
+                      className="session-editor-set-action btn-quiet"
                       aria-label={`Edit set ${entry.setIndex}`}
                       aria-pressed={isOpen}
                       onClick={() =>
@@ -213,7 +213,7 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
                     </button>
                     <button
                       type="button"
-                      className="session-editor-set-action"
+                      className="session-editor-set-action btn-danger"
                       aria-label={`Delete set ${entry.setIndex}`}
                       onClick={() => deleteSet(exerciseId, entry.setIndex)}
                     >
@@ -256,7 +256,7 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
             </ul>
             <button
               type="button"
-              className="session-editor-add"
+              className="session-editor-add btn-secondary"
               onClick={() => addSet(exerciseId, entries)}
             >
               Add set
@@ -286,28 +286,28 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
       <div className="session-editor-actions">
         {onDelete === undefined ? null : confirmingDelete ? (
           <>
-            <button type="button" className="session-editor-cancel" onClick={() => setConfirmingDelete(false)}>
+            <button type="button" className="session-editor-cancel btn-quiet" onClick={() => setConfirmingDelete(false)}>
               Keep
             </button>
-            <button type="button" className="session-editor-delete" onClick={onDelete}>
+            <button type="button" className="session-editor-delete btn-danger" onClick={onDelete}>
               Confirm
             </button>
           </>
         ) : (
           <button
             type="button"
-            className="session-editor-delete"
+            className="session-editor-delete btn-danger"
             onClick={() => setConfirmingDelete(true)}
           >
             Delete workout
           </button>
         )}
-        <button type="button" className="session-editor-cancel" onClick={onCancel}>
+        <button type="button" className="session-editor-cancel btn-quiet" onClick={onCancel}>
           Cancel
         </button>
         <button
           type="button"
-          className="session-editor-save"
+          className="session-editor-save btn-primary"
           disabled={!canSave}
           onClick={() => void save()}
         >

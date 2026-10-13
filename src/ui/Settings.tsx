@@ -260,7 +260,7 @@ export function Settings(props: SettingsProps): JSX.Element {
           <span className="settings-action-label">Track effort</span>
         </label>
       </fieldset>
-      <button type="button" className="settings-action" onClick={() => onExport?.()}>
+      <button type="button" className="settings-action btn-secondary" onClick={() => onExport?.()}>
         <span className="settings-action-label">Export</span>
       </button>
       <label className="settings-action">
@@ -285,7 +285,7 @@ export function Settings(props: SettingsProps): JSX.Element {
           </p>
           <button
             type="button"
-            className="settings-action"
+            className="settings-action btn-secondary"
             onClick={() => onSyncNow?.()}
             disabled={sync.status === 'syncing'}
           >
@@ -304,7 +304,7 @@ export function Settings(props: SettingsProps): JSX.Element {
               </p>
               <button
                 type="button"
-                className="settings-action"
+                className="settings-action btn-secondary"
                 onClick={() => onAdoptAccount?.()}
               >
                 <span className="settings-action-label">

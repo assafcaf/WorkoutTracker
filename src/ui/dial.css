@@ -291,6 +291,10 @@
   font-size: var(--text-lg);
 }
 
+.dial--scrub .keypad-key {
+  min-height: var(--key-min);
+}
+
 .dial--scrub .keypad-ok {
   background: var(--color-primary);
   color: var(--color-on-primary);

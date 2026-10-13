@@ -152,14 +152,14 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         </label>
         <button
           type="button"
-          className="program-page-edit"
+          className="program-page-edit btn-secondary"
           onClick={() => onEditProgram?.(program.id)}
         >
           Edit
         </button>
         <button
           type="button"
-          className="program-page-copy"
+          className="program-page-copy btn-secondary"
           onClick={() => onCopyProgram?.(program.id)}
         >
           Copy
@@ -167,7 +167,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         {isUser && !isBundled && !confirming && (
           <button
             type="button"
-            className="program-page-delete"
+            className="program-page-delete btn-danger"
             onClick={() => setConfirmingId(program.id)}
           >
             Delete
@@ -176,7 +176,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         {isUser && isBundled && !confirming && (
           <button
             type="button"
-            className="program-page-reset"
+            className="program-page-reset btn-danger"
             onClick={() => setConfirmingId(program.id)}
           >
             Reset to original
@@ -185,7 +185,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         {confirming && (
           <button
             type="button"
-            className="program-page-confirm"
+            className="program-page-confirm btn-danger"
             onClick={() => {
               setConfirmingId(null)
               if (isBundled) onResetProgram?.(program.id)
@@ -204,7 +204,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
       {activeProgramId !== null && (
         <fieldset className="settings-group program-page-switcher">
           <legend className="settings-legend">Active program</legend>
-          <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
+          <button type="button" className="program-page-new btn-secondary" onClick={() => onNewProgram?.()}>
             New program
           </button>
           {programs.map((program) => renderProgramRow(program))}
@@ -264,7 +264,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
                 <span className="program-page-newuser-name">{program.name}</span>
                 <button
                   type="button"
-                  className="program-page-use program-page-use-primary"
+                  className="program-page-use program-page-use-primary btn-primary"
                   onClick={() => onChooseProgram(program.id)}
                 >
                   {`Use this ${program.name}`}
@@ -274,7 +274,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
           </div>
           <button
             type="button"
-            className="program-page-new program-page-new-secondary"
+            className="program-page-new program-page-new-secondary btn-secondary"
             onClick={() => onNewProgram?.()}
           >
             New program
