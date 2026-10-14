@@ -99,6 +99,10 @@
 
 .logged-set {
   min-height: var(--tap-min);
+}
+
+/* A logged Set is filled (the mock's `.cell.done`); `.cell` alone would leave it transparent. */
+.logged-set.cell {
   border-color: var(--color-raised);
   background: var(--color-raised);
 }
@@ -214,6 +218,44 @@ button.set-cell--current {
 
 .effort-chip[aria-pressed='true'] {
   font-weight: var(--weight-semibold);
+}
+
+/* "Next: set 4 · 62.5 × 8 · last 60 × 8 ⌄": the steppers folded while rest runs (S4). */
+.set-next-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 56px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-control);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-secondary);
+  font: inherit;
+  text-align: left;
+}
+
+.set-next-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.set-next-label {
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.set-next-last {
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 /* "e1RM 75.0 · record 74.2 → PR if logged", recomputed as the steppers move. */
@@ -353,17 +395,23 @@ button.set-cell--current {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  min-height: 64px;
 }
 
-.rest-panel-clock {
+/* "REST" over "of 3:00", beside the countdown. */
+.rest-panel-of {
   display: flex;
-  flex: none;
   flex-direction: column;
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* The countdown: the time alone, a button the rest Dial opens from. Tabular figures so the
  * seconds do not shift the line as they count down. */
 .rest-readout {
+  flex: none;
   min-height: var(--tap-min);
   padding: 0;
   border: 0;
@@ -376,36 +424,38 @@ button.set-cell--current {
   text-align: left;
 }
 
-.rest-panel-of {
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-}
-
 .rest-panel-caption {
   color: var(--color-muted);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
+  line-height: 16px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
+/* The bar of the rest gone, the panel's width: "you usually rest 2:40" ends at its tick. */
 .rest-panel-gauge {
-  flex: 1;
   min-width: 0;
 }
 
+.rest-bar-usual-row {
+  position: relative;
+  height: 16px;
+}
+
 .rest-bar-usual-label {
-  min-height: 16px;
+  position: absolute;
+  top: 0;
   color: var(--color-muted);
   font-size: var(--text-xs);
-  text-align: right;
+  line-height: 16px;
+  white-space: nowrap;
 }
 
 .rest-bar {
   position: relative;
   height: 8px;
-  margin: var(--space-2) 0;
+  margin: 11px 0 var(--space-3);
   border-radius: var(--radius-pill);
   background: var(--color-raised);
 }
@@ -433,6 +483,7 @@ button.set-cell--current {
   justify-content: space-between;
   color: var(--color-muted);
   font-size: var(--text-xs);
+  line-height: 16px;
   font-variant-numeric: tabular-nums;
 }
 

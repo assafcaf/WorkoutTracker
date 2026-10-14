@@ -9,6 +9,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import postcss from 'postcss'
 import type { Declaration, Rule } from 'postcss'
 import { declarationsFor } from '../test/cssAudit'
+import { unfoldSteppers } from '../test/steppers'
 import { loadCatalog } from '../data/catalog'
 import { formatDay } from '../domain/dates'
 import { SetScreen, loggedText, setCounterText } from './SetScreen'
@@ -116,11 +117,13 @@ function renderSetScreen(over: Partial<SetScreenProps> = {}) {
 
 /** The weight readout, which is also the button that opens the weight keypad. */
 function weightReadout(): HTMLElement {
+  unfoldSteppers()
   return screen.getByRole('button', { name: 'Weight' })
 }
 
 /** The reps readout, which is also the button that opens the reps keypad. */
 function repsReadout(): HTMLElement {
+  unfoldSteppers()
   return screen.getByRole('button', { name: 'Reps' })
 }
 
@@ -246,6 +249,8 @@ test('O9 cancelling the keypad leaves the weight on the value it was showing', a
 test('O9 the plus button moves the weight one rung up the ladder', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
 
+  unfoldSteppers()
+
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 
   expect(readoutValue(weightReadout())).toBe('62.5')
@@ -254,6 +259,8 @@ test('O9 the plus button moves the weight one rung up the ladder', async () => {
 test('O9 the minus button snaps an off-ladder weight down to the rung below it', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
   await enterOnKeypad(user, weightReadout(), ['6', '3'])
+
+  unfoldSteppers()
 
   await user.click(screen.getByRole('button', { name: 'Decrease weight' }))
 
@@ -287,6 +294,7 @@ test('O10 the plus button leaves a bodyweight exercise reading BW', async () => 
   expect(readoutValue(weightReadout())).toBe('BW')
 
   // E16-T4 O7: + steps one Rung of the signed Load, through BW: push-ups' 1 kg step reads BW+1.
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 
   expect(readoutValue(weightReadout())).toBe('BW+1')
@@ -343,6 +351,8 @@ test('O12 one tap on the log button opens set 3 preset, with no other interactio
 
 test('O12 set 3 opens on the values just logged for set 2', async () => {
   const { user } = renderSetScreen({ setIndex: 2, lastEntries: [historyEntry(2, 60, 10)] })
+
+  unfoldSteppers()
 
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   await user.click(logButton())
@@ -779,6 +789,7 @@ test('O1 choosing 5 from the step options moves Increase weight from 60 to 65', 
   await openTools(user)
   await user.selectOptions(stepControl(2.5), '5')
   await closeSheet(user)
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 
   expect(readoutValue(weightReadout())).toBe('65')
@@ -912,6 +923,8 @@ test('O10 sets logged today never change the Last time line', async () => {
   await user.click(logButton())
   await screen.findByText('Set 2 of 4')
 
+  // Rest folds the steppers and the Last time line with them (S4); unfolded, the line is as it was.
+  unfoldSteppers()
   expect(screen.getByText(`Last time 80 × 8 · ${formatDay(new Date(BASE), new Date())}`)).toBeVisible()
 })
 
@@ -1726,11 +1739,15 @@ test('O9 while resting before a planned Set the screen shows Next: set 2 · 60 k
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  // The next Set is the outlined cell, which while rest runs logs it with one tap (S4): set 2,
-  // at the weight on the steppers.
-  expect(screen.queryByText(NEXT_LINE)).toBeNull()
+  // While rest runs the steppers fold into one row naming the next Set and last time's (S4); the
+  // outlined cell logs it with one tap.
+  const next = screen.getByRole('button', { name: NEXT_LINE })
+  expect(next).toHaveAttribute('aria-expanded', 'false')
+  expect(next.textContent).toMatch(/^Next: set 2 · 60 × \d+$/)
+  expect(screen.queryByRole('button', { name: 'Weight' })).toBeNull()
   expect(logButton()).toHaveClass('set-cell--current')
   expect(cellReading(logButton())).toBe(`2 60×${readoutValue(repsReadout())}`)
+  expect(screen.queryByRole('button', { name: NEXT_LINE })).toBeNull()
 })
 
 test('O9 a Bodyweight Exercise reads Next: set 2 · BW × 10–15', () => {
@@ -1743,7 +1760,7 @@ test('O9 a Bodyweight Exercise reads Next: set 2 · BW × 10–15', () => {
     restFrom: { entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 },
   })
 
-  expect(screen.queryByText(NEXT_LINE)).toBeNull()
+  expect(screen.getByRole('button', { name: NEXT_LINE }).textContent).toMatch(/^Next: set 2 · BW × \d+$/)
   expect(logButton()).toHaveClass('set-cell--current')
   expect(cellReading(logButton())).toMatch(/^2 BW×\d+$/)
 })
@@ -1751,7 +1768,8 @@ test('O9 a Bodyweight Exercise reads Next: set 2 · BW × 10–15', () => {
 test('O9 without rest there is no Next line', () => {
   renderSetScreen({ setIndex: 2, lastEntries: [historyEntry(1, 60, 10)], restFrom: null })
 
-  expect(screen.queryByText(NEXT_LINE)).toBeNull()
+  expect(screen.queryByRole('button', { name: NEXT_LINE })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Weight' })).toBeVisible()
 })
 
 test('O9 on an extra Set past the plan there is no Next line', () => {
@@ -1763,7 +1781,9 @@ test('O9 on an extra Set past the plan there is no Next line', () => {
     restFrom: { entry: historyEntry(4, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(screen.queryByText(NEXT_LINE)).toBeNull()
+  // An extra Set keeps its steppers through rest: nothing folds into a Next row.
+  expect(screen.queryByRole('button', { name: NEXT_LINE })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Weight' })).toBeVisible()
 })
 
 test('O9 in the done state there is no Next line', () => {
@@ -1775,6 +1795,37 @@ test('O9 in the done state there is no Next line', () => {
   })
 
   expect(screen.queryByText(NEXT_LINE)).toBeNull()
+})
+
+test('S4 the folded Next row adds last time’s Set at that position: · last 60 × 8', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({
+    setIndex: 2,
+    lastEntries: [historyEntry(1, 60, 10)],
+    lastTime: [historyEntry(1, 60, 10), historyEntry(2, 60, 8)],
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  expect(screen.getByRole('button', { name: NEXT_LINE }).textContent).toMatch(
+    /^Next: set 2 · 60 × \d+ · last 60 × 8$/,
+  )
+  // Folded, the Last time line and the projection go with the steppers.
+  expect(screen.queryByText(/^Last time /)).toBeNull()
+})
+
+test('S4 a tap on the Next row brings the steppers back, and the next log folds them again', async () => {
+  const { user, onLog } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+
+  await user.click(logButton())
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(1))
+  await user.click(await screen.findByRole('button', { name: NEXT_LINE }))
+  expect(screen.getByRole('button', { name: 'Increase weight' })).toBeVisible()
+
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  await user.click(logButton())
+  await waitFor(() => expect(onLog).toHaveBeenCalledTimes(2))
+  expect(await screen.findByRole('button', { name: NEXT_LINE })).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('button', { name: 'Increase weight' })).toBeNull()
 })
 
 // E13-T10: the Log set button carries the rest, and the logged cue.
@@ -2740,8 +2791,12 @@ test('O14 choosing AMRAP on any Set makes the counter read 8+ reps', async () =>
 test('O14 the AMRAP Set is stored with kind amrap and reps above the range', async () => {
   const { user, onLog } = renderSetScreen({ plan: amrapPlan, setIndex: 3 })
 
+  unfoldSteppers()
+
   await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase reps' }))
   await user.click(logButton())
 
@@ -2768,6 +2823,7 @@ function loadGroup(): HTMLElement | null {
 
 /** The Load's readout: since E16-T4, the Weight Dial's readout on a Bodyweight Exercise. */
 function loadReadout(): HTMLElement {
+  unfoldSteppers()
   return screen.getByRole('button', { name: 'Weight' })
 }
 
@@ -3004,6 +3060,8 @@ test('O8 a Bodyweight Set typed as −27 on the weight keypad reads BW−27 and 
 test('O8 a Bodyweight Set stepped up one Rung from BW logs weightKg null and loadKg +1', async () => {
   const { user, onLog } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
 
+  unfoldSteppers()
+
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   expect(readoutValue(weightReadout())).toBe('BW+1')
   await user.click(logButton())
@@ -3210,6 +3268,8 @@ test('O8 a weight entered on the keypad moves the Plate line: 80 kg reads Per si
 
 test('O8 the plus button moves the Plate line: 62.5 kg reads Nearest 60 kg · per side: 20', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+
+  unfoldSteppers()
 
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 
@@ -3645,6 +3705,8 @@ test('O10 at 40 kg on the Dial the offer shows, and one rung down at 37.5 kg it 
   const { user } = renderBarbell([], { lastEntries: [historyEntry(1, 40, 8)] })
   expect(await warmupsOffered(user)).toBe(true)
 
+  unfoldSteppers()
+
   await user.click(screen.getByRole('button', { name: 'Decrease weight' }))
 
   expect(readoutValue(weightReadout())).toBe('37.5')
@@ -3826,6 +3888,8 @@ test('O13 last time 80×8 ×3, Set 1 logged at 82.5 × 8: Set 2 opens at 82.5', 
   const { user } = renderWithLogged([], { lastEntries: lastTime80x8 })
   expect(readoutValue(weightReadout())).toBe('80')
 
+  unfoldSteppers()
+
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   expect(readoutValue(weightReadout())).toBe('82.5')
   await user.click(logButton())
@@ -3836,6 +3900,8 @@ test('O13 last time 80×8 ×3, Set 1 logged at 82.5 × 8: Set 2 opens at 82.5', 
 
 test('O13 last time 80×8 ×3, Sets 1 and 2 logged at 82.5 × 8: Set 3 opens at 82.5', async () => {
   const { user } = renderWithLogged([], { lastEntries: lastTime80x8 })
+
+  unfoldSteppers()
 
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   await user.click(logButton())
@@ -4113,7 +4179,10 @@ test('Live S3 after two logged Sets the open third is outlined and the fourth is
 test('Live S3 the open cell and the Log label follow the steppers', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
 
+  unfoldSteppers()
+
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Decrease reps' }))
 
   expect(plannedCells()[0].text).toMatch(/62\.5.9$/)
@@ -4130,6 +4199,8 @@ test('Live S3 a Set heavier than every record reads e1RM, the record and PR if l
   const line = (): string => (document.querySelector('.set-projection')?.textContent ?? '').replace(/\s+/g, ' ')
   expect(line()).toMatch(/^e1RM 101\.3 . record 101\.3 . no PR at this load$/)
   expect(screen.queryByText('PR if logged')).toBeNull()
+
+  unfoldSteppers()
 
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 

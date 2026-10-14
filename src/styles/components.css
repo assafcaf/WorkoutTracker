@@ -46,7 +46,8 @@
   background: var(--color-raised);
 }
 
-/* Effort, Set kind and filter chips, and the Bodyweight switch. */
+/* Effort, Set kind and filter chips, and the Bodyweight switch. Chosen: white, outlined 2 px in
+ * the accent, accent text (the mock's `.eff button.on` / `.kchips button.on`). */
 .chip {
   background: var(--color-surface);
   border: 1px solid var(--color-control);
@@ -56,9 +57,10 @@
 
 .chip[aria-pressed='true'],
 .chip[aria-checked='true'] {
-  background: var(--color-primary-tint);
-  border: 1px solid var(--color-primary);
+  background: var(--color-surface);
+  border: 2px solid var(--color-primary);
   color: var(--color-primary);
+  font-weight: var(--weight-semibold);
 }
 
 .tab {

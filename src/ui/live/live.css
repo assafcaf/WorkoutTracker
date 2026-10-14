@@ -16,8 +16,24 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding-bottom: var(--space-2);
+  margin: 0 calc(var(--space-4) * -1);
+  padding: 0 var(--space-4) var(--space-2);
   border-bottom: 1px solid var(--color-hairline);
+}
+
+/* Over the Live session the one hairline is the projection line's, the header's width; the
+ * Now | All switch rides on the surface under it with no line of its own, and the body starts
+ * 8 px below the switch (S2/S3). */
+header.live-header:has(.live-bar) {
+  border-bottom: 0;
+}
+
+header.live-header > .live-bar {
+  margin-bottom: 0;
+}
+
+.live-header + .app-main {
+  padding-top: var(--space-2);
 }
 
 .live-progress-volume {

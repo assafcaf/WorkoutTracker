@@ -338,7 +338,8 @@ test.each([
 ])('E17 O10 chip selected paints primary-tint fill with primary border and text: %s', (_, selector) => {
   const selected = declarationsMatching(componentsCss(), selector)
 
-  expect(fillOf(selected)).toBe('var(--color-primary-tint)')
+  expect(fillOf(selected)).toBe('var(--color-surface)')
+  expect(borderOf(selected)).toContain('2px')
   expect(borderOf(selected)).toContain('var(--color-primary)')
   expect(selected.get('color')).toBe('var(--color-primary)')
 })
