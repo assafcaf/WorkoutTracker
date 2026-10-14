@@ -10,7 +10,7 @@
 // [O16] the four big-number rules read var(--font-display) with tabular-nums.
 // [O17] the production build precaches the vendored .woff2, so the numbers still render
 // offline.
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import postcss from 'postcss'
@@ -46,13 +46,38 @@ function fontFaceDecls(css: string): Map<string, string> {
   return decls
 }
 
+// The title predates the Geist swap (E17-T2) and is kept; the body asserts the Geist face.
 test('O15 fonts.css declares one @font-face for Barlow Semi-Condensed at weight 600 with font-display swap', () => {
   const css = read('src/styles/fonts.css')
   expect(fontFaceCount(css), 'expected exactly one @font-face rule').toBe(1)
   const decls = fontFaceDecls(css)
-  expect(decls.get('font-family')).toBe("'Barlow Semi-Condensed'")
-  expect(decls.get('font-weight')).toBe('600')
+  expect(decls.get('font-family')?.replace(/['"]/g, '')).toBe('Geist')
+  expect(decls.get('font-weight')).toBe('400 600')
   expect(decls.get('font-display')).toBe('swap')
+})
+
+function srcFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name)
+    return entry.isDirectory() ? srcFiles(full) : [full]
+  })
+}
+
+test('O5 no Barlow file or reference remains under src/', () => {
+  const offenders = srcFiles(join(repoRoot, 'src')).filter((file) => {
+    if (/barlow/i.test(file.replace(/^.*[\\/]src[\\/]/, ''))) return true
+    // Tests may name the old face; every other source file may not.
+    if (/\.test\.[tj]sx?$/.test(file)) return false
+    if (!/\.(css|ts|tsx|html|txt|json|svg)$/.test(file)) return false
+    return /barlow/i.test(readFileSync(file, 'utf-8'))
+  })
+  expect(offenders).toEqual([])
+})
+
+test('O5 the vendored Geist .woff2 is present under src/assets/fonts/', () => {
+  const fonts = readdirSync(join(repoRoot, 'src', 'assets', 'fonts')).filter((f) => f.endsWith('.woff2'))
+  expect(fonts.length).toBe(1)
+  expect(fonts[0]).toMatch(/geist/i)
 })
 
 test('O15 the @font-face url points at a .woff2 file under src/assets/fonts/', () => {
@@ -75,27 +100,28 @@ test('O15 the vendored font has its OFL licence text beside it', () => {
   expect(licence.toUpperCase()).toContain('SIL OPEN FONT LICENSE')
 })
 
+// The O16 titles predate E17-T5's type sweep and are kept; the bodies assert the one family.
 test('O16 .dial-readout reads the display font with tabular numerals', () => {
   const decls = declarationsFor(read('src/ui/dial.css'), '.dial-readout')
-  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-family')).toBe('var(--font-sans)')
   expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
 })
 
 test('O16 .app-header-title reads the display font with tabular numerals', () => {
   const decls = declarationsFor(read('src/ui/AppShell.css'), '.app-header-title')
-  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-family')).toBe('var(--font-sans)')
   expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
 })
 
 test('O16 .stats-record-value reads the display font with tabular numerals', () => {
   const decls = declarationsFor(read('src/ui/Stats.css'), '.stats-record-value')
-  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-family')).toBe('var(--font-sans)')
   expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
 })
 
 test('O16 .set-counter reads the display font with tabular numerals', () => {
   const decls = declarationsFor(read('src/ui/SetScreen.css'), '.set-counter')
-  expect(decls.get('font-family')).toBe('var(--font-display)')
+  expect(decls.get('font-family')).toBe('var(--font-sans)')
   expect(decls.get('font-variant-numeric')).toBe('tabular-nums')
 })
 
@@ -111,6 +137,15 @@ beforeAll(async () => {
 test('O17 the production build emits a .woff2 for the display font', () => {
   const fontFile = app.files.find((file) => file.endsWith('.woff2'))
   expect(fontFile, 'the build emitted no .woff2 file — is fonts.css imported from base.css?').toBeDefined()
+})
+
+test('O6 the build emits the Geist .woff2 and no Barlow one, under 100 KB', () => {
+  const fonts = app.files.filter((file) => file.endsWith('.woff2'))
+  expect(fonts.map((f) => f.toLowerCase()).some((f) => f.includes('geist'))).toBe(true)
+  expect(fonts.some((f) => /barlow/i.test(f))).toBe(false)
+  const geist = fonts.find((f) => /geist/i.test(f))
+  const size = geist ? statSync(join(app.outDir, geist)).size : Infinity
+  expect(size).toBeLessThanOrEqual(100 * 1024)
 })
 
 test('O17 the service worker precaches the display font, so it works with the network down', async () => {

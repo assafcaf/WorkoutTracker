@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatDay } from '../domain/dates'
 import { formatSet } from '../domain/setText'
 import type { Exercise, Program, Session, SetEntry } from '../types'
 import './HistoryList.css'
@@ -44,7 +45,7 @@ export function summarise(session: Session, programs: Program[]): HistorySummary
 
 /** The ISO calendar date a session's row shows, independent of the local timezone. */
 function calendarDate(date: number): string {
-  return new Date(date).toISOString().slice(0, 10)
+  return formatDay(new Date(date), new Date())
 }
 
 /** One session's entries, grouped by `exerciseId` and headed by its resolved name, in the
@@ -104,7 +105,7 @@ function HistoryCard(props: { session: Session } & Omit<HistoryListProps, 'sessi
     <li className="history-row">
       <button
         type="button"
-        className="history-toggle"
+        className="history-toggle cell"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
@@ -129,7 +130,7 @@ function HistoryCard(props: { session: Session } & Omit<HistoryListProps, 'sessi
                   {onEdit ? (
                     <button
                       type="button"
-                      className="history-group-edit"
+                      className="history-group-edit btn-quiet"
                       onClick={() => onEdit(session.id, group.exerciseId)}
                     >
                       Edit
@@ -148,12 +149,12 @@ function HistoryCard(props: { session: Session } & Omit<HistoryListProps, 'sessi
           </ul>
           {session.note ? <p className="history-note">{session.note}</p> : null}
           {onOpen ? (
-            <button type="button" className="history-open" onClick={() => onOpen(session.id)}>
+            <button type="button" className="history-open btn-secondary" onClick={() => onOpen(session.id)}>
               Open session
             </button>
           ) : null}
           {onEdit ? (
-            <button type="button" className="history-edit" onClick={() => onEdit(session.id)}>
+            <button type="button" className="history-edit btn-secondary" onClick={() => onEdit(session.id)}>
               Edit workout
             </button>
           ) : null}

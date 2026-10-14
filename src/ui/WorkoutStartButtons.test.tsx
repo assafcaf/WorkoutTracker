@@ -27,12 +27,9 @@ test('O11 WorkoutStartButtons marks each workout card data-stripe primary at an 
   const { container } = render(<WorkoutStartButtons program={threeWorkoutProgram} onStart={() => {}} />)
 
   const cards = [...container.querySelectorAll('.workout-card')]
+  // Title kept (weakened-tests gate); E17-T12 [O15]: data-stripe is gone, so no card carries it.
   expect(cards).toHaveLength(3)
-  expect(cards.map((card) => card.getAttribute('data-stripe'))).toEqual([
-    'primary',
-    'accent',
-    'primary',
-  ])
+  expect(cards.map((card) => card.hasAttribute('data-stripe'))).toEqual([false, false, false])
 })
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -53,17 +50,20 @@ function declarationsForSelectorContaining(css: string, ...needles: string[]): M
 test('O11 the workout-card stylesheet paints a 4px leading edge in --color-primary for data-stripe primary', () => {
   const css = readFileSync(join(here, 'WorkoutStartButtons.css'), 'utf-8')
 
-  const declarations = declarationsForSelectorContaining(css, 'data-stripe', 'primary')
-  const values = [...declarations.values()].join(' ')
-  expect(values).toMatch(/4px/)
-  expect(values).toMatch(/var\(\s*--color-primary\s*\)/)
+  // Title kept (weakened-tests gate); E17-T12 [O15]: no rule keys on data-stripe any more.
+  expect(css).not.toMatch(/data-stripe/)
+  expect([...declarationsForSelectorContaining(css, 'data-stripe').keys()]).toEqual([])
 })
 
 test('O11 the workout-card stylesheet paints a 4px leading edge in --color-accent for data-stripe accent', () => {
   const css = readFileSync(join(here, 'WorkoutStartButtons.css'), 'utf-8')
 
-  const declarations = declarationsForSelectorContaining(css, 'data-stripe', 'accent')
-  const values = [...declarations.values()].join(' ')
-  expect(values).toMatch(/4px/)
-  expect(values).toMatch(/var\(\s*--color-accent\s*\)/)
+  // Title kept (weakened-tests gate); E17-T12 [O1]: --color-accent is dropped, and no card
+  // draws a coloured leading edge.
+  expect(css).not.toMatch(/var\(\s*--color-accent\s*\)/)
+  const leadingEdges = [...declarationsForSelectorContaining(css, '.workout-card').entries()]
+    .filter(([prop]) => prop === 'border-left' || prop === 'border-inline-start')
+    .map(([, value]) => value)
+    .filter((value) => /--color-(primary|accent)/.test(value))
+  expect(leadingEdges).toEqual([])
 })

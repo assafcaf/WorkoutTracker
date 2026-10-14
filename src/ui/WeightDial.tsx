@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { WEIGHT_STEPS, ladderFor, stepWeight } from '../domain/dial'
 import { loadText } from '../domain/setText'
+import { Icon } from './icons'
 import { Keypad } from './Keypad'
+import { Select } from './controls'
 import { useCentredRung } from './useCentredRung'
 import { useScrub } from './useScrub'
 import type { DialVariant } from './dialVariant'
@@ -81,10 +83,10 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
       <button
         type="button"
         aria-label="Decrease weight"
-        className="dial-step"
+        className="dial-step icon-btn"
         onClick={() => step(-1)}
       >
-        &minus;
+        <Icon name="Minus" size={24} />
       </button>
       <div className="dial-body" {...(scrub && adjustable ? drag.handlers : {})}>
         {scrub ? (
@@ -95,7 +97,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
         <button
           type="button"
           aria-label="Weight"
-          className="dial-readout"
+          className="dial-readout cell"
           data-length={lengthClass(readValue(value, bodyweight))}
           disabled={!adjustable}
           onClick={() => {
@@ -130,10 +132,10 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
       <button
         type="button"
         aria-label="Increase weight"
-        className="dial-step"
+        className="dial-step icon-btn"
         onClick={() => step(1)}
       >
-        +
+        <Icon name="Plus" size={24} />
       </button>
       {keypadOpen ? (
         <Keypad
@@ -160,9 +162,8 @@ export function WeightStepControl(props: {
   return (
     <label className="dial-step-control">
       {label}
-      <select
+      <Select
         aria-label={label}
-        className="dial-step-select"
         value={props.step}
         onChange={(event) => props.onStepChange(Number(event.target.value))}
       >
@@ -171,7 +172,7 @@ export function WeightStepControl(props: {
             {step}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   )
 }

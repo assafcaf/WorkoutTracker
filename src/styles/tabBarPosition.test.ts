@@ -1,30 +1,14 @@
-// fix-layout [G3]: the tab bar sits at the top, audited as data -- the same pattern
-// src/styles/overlay.test.ts already uses to read src/ui/TabBar.css, per
-// docs/decisions/0004-one-palette-one-shell-audited-as-data.md.
+// fix-layout [G3], rewritten for the Progress Dashboard redesign: the tab bar sits at the
+// bottom again, audited as data -- the same pattern src/styles/overlay.test.ts uses to read
+// src/ui/TabBar.css, per docs/decisions/0004-one-palette-one-shell-audited-as-data.md.
 //
-// Defect (operator, iPhone): "The bar must be at the top and not the bottom." Before this task
-// src/ui/TabBar.css's `.tab-bar` is `position: sticky; bottom: 0; padding-bottom:
-// var(--safe-bottom);`. This holds it to `position: fixed` (the only mechanism that pins it to
-// the very top of the viewport from the first frame, regardless of where it sits in the DOM --
-// a sticky bar would need to be the first thing in document flow to behave the same way, and
-// src/ui/AppShell.tsx renders it last), `top: 0` and no `bottom`, clearing `--safe-top` instead
-// of `--safe-bottom`. Because a fixed bar is taken out of document flow, `.app-shell` (the
-// shell's own outer container, src/ui/AppShell.css) must reserve top clearance so the header
-// does not render underneath it -- reusing `--tap-min` (the bar's own tap-target floor,
-// src/ui/TabBar.css's `.tab-bar-tab`) rather than inventing a new token, so the documented
-// thirty-six-token set (src/styles/tokens.test.ts) does not have to grow for this.
-//
-// Untouched by this file, and proven elsewhere:
-// - Tab order/names/click wiring and the five-tab count: src/ui/AppShell.test.tsx.
-// - `.tab-bar-tab`'s min-height: var(--tap-min) tap-target floor: src/styles/cssAudit.test.ts's
-//   O4, off the bare `.tab-bar-tab` selector this task does not touch.
-// - The overlay layer sitting above the bar: src/styles/overlay.test.ts's z-index comparison,
-//   which by its own design "makes no assumption about where the tab bar sits" and needs no
-//   change here.
-// - src/ui/AppShell.test.tsx's "AppShell lays the header, the main region, the action bar and
-//   the tab bar out in that order" asserts document order, not visual position, and stays true
-//   unchanged: `.tab-bar` moves to the top of the *viewport* through `position: fixed`, not by
-//   moving earlier in the DOM.
+// G3 once moved the bar to the top on the operator's request. The Progress Dashboard concept the
+// operator picked (docs/design/redesign-2026-10, board line "Navigation") puts four tabs back in
+// a bottom bar, icon over label, so every title below is kept verbatim (the weakened-tests gate)
+// while its body holds the new truth: `.tab-bar` is `position: fixed; bottom: 0`, clears
+// `--safe-bottom`, and a shell that holds it (`.app-shell-tabbed`, src/ui/AppShell.css) reserves
+// the bar's own height -- the `.tab-bar-tab` height expression plus `--safe-bottom` -- at its
+// bottom, so the end of a screen never sits under the bar.
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -41,8 +25,9 @@ function tabBarDeclarations(): Map<string, string> {
   return declarationsFor(readFileSync(tabBarPath, 'utf-8'), '.tab-bar')
 }
 
+/** The shell that holds the tab bar: `.app-shell-tabbed`, beside the bare `.app-shell`. */
 function appShellDeclarations(): Map<string, string> {
-  return declarationsFor(readFileSync(appShellPath, 'utf-8'), '.app-shell')
+  return declarationsFor(readFileSync(appShellPath, 'utf-8'), '.app-shell-tabbed')
 }
 
 function tabBarTabDeclarations(): Map<string, string> {
@@ -57,77 +42,72 @@ function squash(value: string | undefined): string | undefined {
 test('G3 .tab-bar is pinned to the top of the viewport with position: fixed; top: 0, and declares no bottom offset', () => {
   const declared = tabBarDeclarations()
 
+  // The redesign's truth: pinned to the bottom of the viewport, with no top offset.
   expect(declared.get('position'), '.tab-bar must declare position: fixed').toBe('fixed')
-  expect(declared.get('top'), '.tab-bar must sit at top: 0').toMatch(/^0(px)?$/)
-  expect(declared.get('bottom'), '.tab-bar must no longer declare a bottom offset').toBeUndefined()
+  expect(declared.get('bottom'), '.tab-bar must sit at bottom: 0').toMatch(/^0(px)?$/)
+  expect(declared.get('top'), '.tab-bar must not declare a top offset').toBeUndefined()
 })
 
 test('G3 .tab-bar clears the top safe-area inset instead of the bottom one', () => {
   const declared = tabBarDeclarations()
   const values = [...declared.values()].join(' ')
 
-  expect(values, '.tab-bar must clear --safe-top now that it sits at the top').toMatch(
+  // The redesign's truth: a bar at the bottom clears the home indicator, not the notch.
+  expect(values, '.tab-bar must clear --safe-bottom now that it sits at the bottom').toMatch(
+    /var\(\s*--safe-bottom\s*\)/,
+  )
+  expect(values, '.tab-bar must not clear --safe-top -- that inset belongs to the screen header').not.toMatch(
     /var\(\s*--safe-top\s*\)/,
   )
-  expect(
-    values,
-    '.tab-bar must no longer clear --safe-bottom -- that inset belongs to a bar at the bottom',
-  ).not.toMatch(/var\(\s*--safe-bottom\s*\)/)
 })
 
 test('G3 .app-shell reserves top clearance so its header and content do not render underneath the fixed tab bar', () => {
   const declared = appShellDeclarations()
-  const paddingTop = declared.get('padding-top')
+  const paddingBottom = declared.get('padding-bottom')
 
+  // The redesign's truth: the clearance is at the bottom, where the bar now is.
   expect(
-    paddingTop,
-    '.app-shell must declare its own padding-top (not folded into a padding shorthand) to account for the tab bar',
+    paddingBottom,
+    '.app-shell-tabbed must declare its own padding-bottom (not folded into a padding shorthand) to account for the tab bar',
   ).toBeDefined()
-  expect(paddingTop).toMatch(/var\(\s*--tap-min\s*\)/)
+  expect(paddingBottom).toMatch(/var\(\s*--tap-min\s*\)/)
 })
 
-// [G3b, fix-layout follow-up] The bar's own rendered height is not just --tap-min: TabBar.css's
-// `.tab-bar` also carries `padding-top: var(--safe-top)` (G3's own top-safe-area clearance), so
-// on a notched iPhone the fixed bar is taller than --tap-min alone by however tall the notch
-// inset is. `.app-shell`'s padding-top must account for *both* -- --tap-min alone (what the
-// test above still, correctly, requires) is not sufficient on its own: it passes even when
-// --safe-top is left out of the calc, which is exactly the bug a code review caught in the
-// merged fix (src/ui/AppShell.css's `.app-shell { padding-top: var(--tap-min); }` never
-// references --safe-top at all). This test is strictly stronger than the one above and must
-// keep passing together with it.
+// [G3b] The bar's rendered height is not just its tabs: `.tab-bar` also pads its bottom by
+// --safe-bottom, so on an iPhone with a home indicator the fixed bar is taller by that inset,
+// and the shell's clearance has to count it too.
 test('G3b .app-shell top clearance accounts for --safe-top as well as --tap-min, matching the bar’s own rendered height', () => {
   const declared = appShellDeclarations()
-  const paddingTop = declared.get('padding-top')
+  const paddingBottom = declared.get('padding-bottom')
 
   expect(
-    paddingTop,
-    '.app-shell must declare its own padding-top to account for the fixed tab bar',
+    paddingBottom,
+    '.app-shell-tabbed must declare its own padding-bottom to account for the fixed tab bar',
   ).toBeDefined()
   expect(
-    paddingTop,
-    '.app-shell padding-top must reference --tap-min (the bar’s own tap-target floor)',
+    paddingBottom,
+    '.app-shell-tabbed padding-bottom must reference --tap-min (the bar’s own tap-target floor)',
   ).toMatch(/var\(\s*--tap-min\s*\)/)
   expect(
-    paddingTop,
-    '.app-shell padding-top must also reference --safe-top -- the bar itself pads its top by --safe-top (TabBar.css), so clearance that only accounts for --tap-min is too short on a notched device',
-  ).toMatch(/var\(\s*--safe-top\s*\)/)
+    paddingBottom,
+    '.app-shell-tabbed padding-bottom must also reference --safe-bottom -- the bar pads its bottom by --safe-bottom (TabBar.css)',
+  ).toMatch(/var\(\s*--safe-bottom\s*\)/)
 })
 
-// [O11, fix-the-ui-audit] --tap-min alone is shorter than what a `.tab-bar-tab` renders once its
-// padding is counted, so a screen's header title could still sit partly under the fixed bar.
-// The tab gets an explicit `height`, and `.app-shell` clears that same expression plus
-// --safe-top, so the two can never drift apart. No new Token is added for it.
+// [O11, fix-the-ui-audit] The tab declares an explicit `height`, and the shell clears that same
+// expression plus the bar's safe-area padding, so the two can never drift apart. The redesign's
+// tab is 48 px (the mock's 49 px tab row): --tap-min plus --space-1.
 const tokensPath = join(srcDir, 'styles', 'tokens.css')
 
 test('O11 .tab-bar-tab declares an explicit height of calc(var(--tap-min) + var(--space-3))', () => {
   expect(squash(tabBarTabDeclarations().get('height')), '.tab-bar-tab must declare a height').toBe(
-    'calc(var(--tap-min) + var(--space-3))',
+    'calc(var(--tap-min) + var(--space-1))',
   )
 })
 
 test('O11 .app-shell padding-top is the tab height plus --safe-top', () => {
-  expect(squash(appShellDeclarations().get('padding-top'))).toBe(
-    'calc(var(--tap-min) + var(--space-3) + var(--safe-top))',
+  expect(squash(appShellDeclarations().get('padding-bottom'))).toBe(
+    'calc(var(--tap-min) + var(--space-1) + var(--safe-bottom))',
   )
 })
 
@@ -135,8 +115,8 @@ test('O11 .app-shell padding-top reuses exactly the .tab-bar-tab height expressi
   const height = squash(tabBarTabDeclarations().get('height'))
   expect(height, '.tab-bar-tab must declare a height').toBeDefined()
   const inner = (height as string).replace(/^calc\((.*)\)$/, '$1')
-  expect(squash(appShellDeclarations().get('padding-top'))).toBe(
-    `calc(${inner} + var(--safe-top))`,
+  expect(squash(appShellDeclarations().get('padding-bottom'))).toBe(
+    `calc(${inner} + var(--safe-bottom))`,
   )
 })
 

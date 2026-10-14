@@ -1,8 +1,21 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, test, vi } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import { HistoryList, summarise } from './HistoryList'
 import type { Exercise, Program, Session, SetEntry } from '../types'
+
+// Dates render through formatDay against the current time, so pin the zone (BASE is late evening
+// UTC) and the clock's year; only Date is faked, so timers and userEvent keep working.
+process.env.TZ = 'UTC'
+
+function useClock(year: number): void {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(Date.UTC(year, 11, 1, 12, 0)))
+}
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 // summarise is pure over a session and the programs it is checked against, so these tests need
 // no database: they build both by hand. The end-to-end half of O17 -- that a session finished
@@ -119,10 +132,11 @@ test('O17 HistoryList shows a finished session date, program name, workout name,
     bodyweightEntry('push-ups', 1, 15),
   ])
 
+  useClock(2026)
   render(<HistoryList sessions={[session]} programs={[assaf]} resolve={() => undefined} />)
 
   const [row] = screen.getAllByRole('listitem')
-  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(within(row).getByText('14 Nov 2023')).toBeVisible()
   expect(within(row).getByText('A/B Split')).toBeVisible()
   expect(within(row).getByText('Workout A')).toBeVisible()
   expect(within(row).getByText('2 sets')).toBeVisible()
@@ -264,10 +278,11 @@ function renderCard(handlers: { onOpen?: (id: string) => void; onEdit?: (id: str
 }
 
 test('O18 a finished Session is a collapsed card showing its date, Workout, duration and Set count, with no Sets listed', () => {
+  useClock(2023)
   renderCard({ onOpen: () => {}, onEdit: () => {} })
 
   const row = screen.getByRole('listitem')
-  expect(within(row).getByText('2023-11-14')).toBeVisible()
+  expect(within(row).getByText('Tue 14 Nov')).toBeVisible()
   expect(within(row).getByText('Workout A')).toBeVisible()
   expect(within(row).getByText('60 min')).toBeVisible()
   expect(within(row).getByText('3 sets')).toBeVisible()

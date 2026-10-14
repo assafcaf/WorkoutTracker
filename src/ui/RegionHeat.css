@@ -1,0 +1,109 @@
+/* Heat squares, their legend and the two-column region list (E17 S5b, S6a). Every colour comes
+ * through a `var(--…)` from src/styles/tokens.css: the four `--heat-*` steps, text on them. */
+
+.heat-cell {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.heat-cell[data-band='0'] {
+  background: var(--heat-0);
+  color: var(--color-muted);
+}
+
+.heat-cell[data-band='1'] {
+  background: var(--heat-1);
+  color: var(--color-text);
+}
+
+.heat-cell[data-band='2'] {
+  background: var(--heat-2);
+  color: var(--color-text);
+}
+
+.heat-cell[data-band='3'] {
+  background: var(--heat-3);
+  color: var(--color-on-primary);
+}
+
+.heat-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+.heat-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.heat-legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.heat-legend-swatch[data-band='0'] {
+  background: var(--heat-0);
+  border: 1px solid var(--color-hairline);
+}
+
+.heat-legend-swatch[data-band='1'] {
+  background: var(--heat-1);
+}
+
+.heat-legend-swatch[data-band='2'] {
+  background: var(--heat-2);
+  color: var(--color-text);
+}
+
+.heat-legend-swatch[data-band='3'] {
+  background: var(--heat-3);
+  color: var(--color-on-primary);
+}
+
+.heat-legend-unit {
+  margin-left: auto;
+}
+
+.region-heat {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--space-4);
+}
+
+.region-heat-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.region-heat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.region-heat-label {
+  width: 84px;
+  white-space: nowrap;
+}

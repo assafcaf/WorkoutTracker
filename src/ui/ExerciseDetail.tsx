@@ -87,7 +87,7 @@ export function ExerciseDetail({
       aria-modal="true"
       aria-label={heading ?? entry.name}
     >
-      <button type="button" className="exercise-detail-back" onClick={onBack}>
+      <button type="button" className="exercise-detail-back btn-quiet" onClick={onBack}>
         Back
       </button>
       <h1 className="exercise-detail-heading">{heading ?? entry.name}</h1>

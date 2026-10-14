@@ -32,7 +32,7 @@
   margin: 0;
   color: var(--color-muted);
   font-size: var(--text-md);
-  font-weight: 700;
+  font-weight: var(--weight-semibold);
 }
 
 .dial-body {
@@ -82,7 +82,7 @@
 
 .dial-rung[aria-selected='true'] {
   color: var(--color-primary);
-  font-weight: 700;
+  font-weight: var(--weight-semibold);
   font-size: var(--text-xl);
 }
 
@@ -109,13 +109,13 @@
 .dial-readout {
   min-height: var(--tap-min);
   font-size: var(--text-display);
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 
   padding: 0;
   border: none;
   background: none;
-  font-weight: 700;
+  font-weight: var(--weight-semibold);
   line-height: 1.1;
   cursor: pointer;
 }
@@ -140,15 +140,6 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.dial-step-select {
-  min-height: var(--tap-min);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--color-raised);
-  color: var(--color-text);
   font-size: var(--text-sm);
 }
 
@@ -179,14 +170,15 @@
   color: var(--color-on-primary);
 }
 
-/* The scrub variant (the Set screen): the number alone, big, with the values a step either side
- * of it shown faintly above and below. A drag on it steps the value (src/ui/useScrub.ts); a tap
- * opens the keypad as a sheet from the bottom of the screen. The heading, the Rung column and
- * minus/plus stay in the page for a screen reader and the keyboard, out of sight until focused. */
+/* The scrub variant (the Live session's steppers, Progress Dashboard S3): one row per number,
+ * minus | the number and its unit | plus, the number at the hero size in tabular figures. A tap
+ * on the number opens the keypad as a sheet from the bottom of the screen; a drag on it still
+ * steps it (src/ui/useScrub.ts). The heading, the Rung column and the faint neighbouring values
+ * stay in the page for a screen reader, out of sight. */
 .dial--scrub {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 56px;
+  align-items: center;
   gap: 0;
   padding: 0;
   background: transparent;
@@ -194,7 +186,7 @@
 
 .dial--scrub .dial-heading,
 .dial--scrub .dial-column,
-.dial--scrub .dial-step:not(:focus-visible) {
+.dial--scrub .dial-ghost {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -206,52 +198,52 @@
   border: 0;
 }
 
+.dial--scrub .dial-step {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--color-control);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.dial--scrub .dial-step:active {
+  background: var(--color-raised);
+}
+
 .dial--scrub .dial-body {
-  flex-direction: column;
+  flex-direction: row;
   flex-wrap: nowrap;
-  align-items: center;
-  gap: 0;
-  padding: var(--space-2) 0;
-  border-radius: var(--radius-lg);
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: 64px;
   touch-action: none;
   user-select: none;
   cursor: ns-resize;
 }
 
 .dial--scrub[data-scrubbing='true'] .dial-body {
-  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
 }
 
 .dial--scrub .dial-readout {
-  font-size: calc(var(--text-display) * 1.5);
-  line-height: 1;
+  font-size: var(--text-hero);
+  line-height: 64px;
+  letter-spacing: -0.03em;
   cursor: inherit;
 }
 
-.dial--scrub .dial-readout[data-length='4'] {
-  font-size: calc(var(--text-display) * 1.2);
-}
-
 .dial--scrub .dial-readout[data-length='long'] {
-  font-size: calc(var(--text-display) * 0.75);
-}
-
-.dial--scrub .dial-ghost {
-  min-height: calc(var(--text-xl) * 1.25);
-  color: var(--color-muted);
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.4;
-}
-
-.dial--scrub[data-scrubbing='true'] .dial-ghost {
-  opacity: 0.85;
+  font-size: calc(var(--text-hero) * 0.75);
 }
 
 .dial--scrub .dial-unit {
-  font-size: var(--text-sm);
+  color: var(--color-muted);
+  font-size: var(--text-md);
 }
 
 /* The keypad a tap opens rises from the bottom of the screen, over the Action bar. */
@@ -262,8 +254,13 @@
   left: 0;
   z-index: 3;
   padding-bottom: calc(var(--space-4) + var(--safe-bottom));
-  border-top: 1px solid var(--color-raised);
+  padding-top: var(--space-3);
+  padding-right: var(--space-4);
+  padding-left: var(--space-4);
+  border-top: 1px solid var(--color-hairline);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sheet);
 }
 
 .dial--scrub > .keypad {
@@ -274,9 +271,9 @@
 
 .dial--scrub .keypad-entry {
   text-align: right;
-  font-family: var(--font-display);
-  font-size: calc(var(--text-display) * 0.75);
-  font-weight: 700;
+  font-family: var(--font-sans);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
 }
 
@@ -285,14 +282,18 @@
 .dial--scrub .keypad-ok {
   min-height: calc(var(--tap-min) + var(--space-2));
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--color-raised);
   color: var(--color-text);
   font-size: var(--text-lg);
 }
 
+.dial--scrub .keypad-key {
+  min-height: var(--key-min);
+}
+
 .dial--scrub .keypad-ok {
   background: var(--color-primary);
   color: var(--color-on-primary);
-  font-weight: 700;
+  font-weight: var(--weight-semibold);
 }

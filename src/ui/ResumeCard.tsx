@@ -20,7 +20,7 @@ export function ResumeCard(props: ResumeCardProps): JSX.Element {
   return (
     <section className="resume-card">
       <p className="resume-card-program">{programName}</p>
-      <button type="button" className="resume-workout" onClick={onResume}>
+      <button type="button" className="resume-workout btn-primary" onClick={onResume}>
         Resume {workoutName}
       </button>
     </section>

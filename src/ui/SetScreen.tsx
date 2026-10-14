@@ -1,21 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
+import { formatDay } from '../domain/dates'
+import { projectSet } from '../domain/liveProgress'
 import { formatSet, formatSetCompact } from '../domain/setText'
 import { presetForSet, presetFromSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { recordsSetBy } from '../domain/records'
+import { prMoment } from '../domain/prMoment'
+import type { PrMoment } from '../domain/prMoment'
 import { formatPlates, platesFor } from '../domain/plates'
+import { usualRestSeconds } from '../domain/usualRest'
 import { warmupRamp } from '../domain/warmup'
 import type { WarmupStep } from '../domain/warmup'
-import { adjustRest, formatClock, formatRest, restAfter, restLengthOf } from '../domain/rest'
+import { adjustRest, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
-import { ExerciseInfoLink } from './ExerciseInfoLink'
+import { RecordSpark } from './charts/RecordSpark'
+import { Segmented } from './controls'
+import { Icon } from './icons'
+import { PlatesDrawing } from './live/PlatesDrawing'
+import { RestPanel } from './live/RestPanel'
 import { playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
 import { RestDial } from './RestDial'
-import { SetKindRow } from './SetKindRow'
+import { SetKindRow, setKindLabel } from './SetKindRow'
+import { Sheet } from './Sheet'
+import { Snackbar } from './Snackbar'
 import { Toast } from './Toast'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial, WeightStepControl } from './WeightDial'
@@ -171,6 +183,13 @@ export type SetScreenProps = {
   trackEffort?: boolean
   /** Stores (or with `null` clears) the RIR of logged Set `setIndex` (E14-T10). */
   onSetEffort?(setIndex: number, rir: 0 | 1 | 2 | 3 | null): Promise<void>
+  /**
+   * The rest of the Workout, shown under the projection line (the Live session's "Now" view,
+   * Progress Dashboard S3): its compact rows. Omitted shows none.
+   */
+  upcoming?: ReactNode
+  /** A logged Set to open for editing as the screen opens: a done cell tapped in "All". */
+  editSetIndex?: number
 }
 
 /**
@@ -195,19 +214,28 @@ export function setCounterText(
   return amrapFloor === undefined ? text : `${text} · ${amrapFloor}+ reps`
 }
 
-/** "80×8 · 80×8 · 80×7", in set order; a Bodyweight Set reads "BW×8". */
-function lastTimeText(exerciseId: string, entries: SetEntry[]): string {
-  return entries
-    .filter((entry) => entry.exerciseId === exerciseId)
-    .sort((a, b) => a.setIndex - b.setIndex)
-    .map(formatSetCompact)
-    .join(' · ')
+/**
+ * "Last time 60 × 9 · Fri 9 Oct": last time's working Set at the open Set's working `position`
+ * (its last one past it), and the day it was lifted. Empty with no working Set last time.
+ */
+function lastTimeText(exerciseId: string, entries: SetEntry[], position: number): string {
+  const set = lastTimeSet(exerciseId, entries, position)
+  if (set === null) return ''
+  return `Last time ${formatSet(set)} · ${formatDay(new Date(set.loggedAt), new Date())}`
 }
 
-/** "New PR · Heaviest set, Best estimated 1RM · 85 kg × 5": every record's label, then the Set. */
-function recordToastText(labels: string[], weightKg: number | null, reps: number): string {
-  const load = weightKg === null ? `${reps} reps` : `${weightKg} kg × ${reps}`
-  return `New PR · ${labels.join(', ')} · ${load}`
+/** Last time's working Set at working `position` (its last one past it), or null with none. */
+function lastTimeSet(exerciseId: string, entries: SetEntry[], position: number): SetEntry | null {
+  const sets = workingSets(entries.filter((entry) => entry.exerciseId === exerciseId)).sort(
+    (a, b) => a.setIndex - b.setIndex,
+  )
+  if (sets.length === 0) return null
+  return sets[Math.min(Math.max(position, 1), sets.length) - 1]
+}
+
+/** A Set's load as a cell shows it: `62.5`, `BW`, `BW+10`. */
+function cellText(set: { weightKg: number | null; reps: number; loadKg?: number }): string {
+  return formatSetCompact(set)
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -216,7 +244,7 @@ const TICK_MS = 500
 /** How long Undo stays offered after a Set is deleted (E12-T3). */
 const UNDO_MS = 5000
 
-/** How long the Log set button and the new row show the Set as just logged (E13-T10). */
+/** How long the new cell shows the Set as just logged (E13-T10). */
 const CONFIRMED_MS = 1500
 
 /** The one-letter marker a Set of another kind carries in the logged list (E14-T9). */
@@ -244,6 +272,12 @@ function loadOf(open: OpenSet): { loadKg: number } | Record<string, never> {
  * reps the Dials return to when it ends. Screen state only; nothing of it is stored.
  */
 type Ramp = { steps: WarmupStep[]; index: number; workingKg: number; workingReps: number }
+
+/** A logged Set's values in the edit sheet (S2b), its RIR among them. */
+type Draft = OpenSet & { rir: 0 | 1 | 2 | 3 | null }
+
+/** The exercise tools sheet's segments (S3b). */
+type ToolsSegment = 'plates' | 'warmup' | 'notes'
 
 /**
  * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
@@ -352,7 +386,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
   // and otherwise the catalog's own; the Dial and Ladder both follow it via `effectiveExercise`.
-  const lastTime = lastTimeText(exercise.id, props.lastTime ?? [])
   const [weightStep, setWeightStep] = useState<number>(
     props.weightStep ?? exercise.weightStep,
   )
@@ -431,16 +464,28 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       ? open.setIndex
       : 1 + carried + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
 
+  const lastTime = lastTimeText(exercise.id, props.lastTime ?? [], position)
+  const lastTimeEntry = lastTimeSet(exercise.id, props.lastTime ?? [], position)
+  // While rest runs the steppers fold into one "Next: set 4 · 62.5 × 8" row (S4); a tap on it
+  // brings them back to change the next Set. Every log folds them again.
+  const [nextExpanded, setNextExpanded] = useState(false)
+
   /** Today's Sets to preset from once they are `entries`: none when the caller gives no `logged`. */
   function today(entries: SetEntry[]): SetEntry[] | undefined {
     return props.logged === undefined ? undefined : entries
   }
-  // The logged Set open for editing, if any (E12-T3), and the Set just deleted that Undo restores.
+  // The logged Set open in the edit sheet, if any (E12-T3, S2b), with the values being edited;
+  // the Set on the steppers stays as it was behind the sheet.
   const [editing, setEditing] = useState<number | null>(null)
+  const [draft, setDraft] = useState<Draft | null>(null)
   // The Warm-up ramp under way, if any (E15-T7); it starts only on a tap of Add warm-ups.
   const [ramp, setRamp] = useState<Ramp | null>(null)
   const [undo, setUndo] = useState<SetEntry | null>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The exercise tools sheet (S3b), its segment and whether its Set type row is open.
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const [toolsSegment, setToolsSegment] = useState<ToolsSegment>(props.plates ? 'plates' : 'notes')
+  const [kindsOpen, setKindsOpen] = useState(false)
 
   function clearUndo(): void {
     if (undoTimer.current !== null) clearTimeout(undoTimer.current)
@@ -454,7 +499,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     },
     [],
   )
-  // The Set logged in the last CONFIRMED_MS: the button and its row show it as just logged.
+  // The Set logged in the last CONFIRMED_MS: its cell shows it as just logged.
   const [justLogged, setJustLogged] = useState<number | null>(null)
   const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(
@@ -463,7 +508,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     },
     [],
   )
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<PrMoment | null>(null)
   const [error, setError] = useState<string | null>(null)
   // The Set rest follows: the caller's `restFrom` (the Session's latest Set), until this screen
   // logs one or adjusts the rest; a changed `restFrom` -- the stored adjustment, a delete -- wins.
@@ -481,6 +526,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     null,
   )
   const [now, setNow] = useState<number>(() => Date.now())
+  // The rest that ran out on this screen, by its key: "Over rest +0:12" shows quietly over Log
+  // set until the next rest. A rest skipped, or one already over when the screen opened, never.
+  const [overKey, setOverKey] = useState<string | null>(null)
 
   // The controls belong to the screen's bottom edge, which inside the shell is the sticky
   // action bar; outside one -- the screen rendered bare -- they stay where they are written.
@@ -513,7 +561,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   const rest: RestState | null =
     restFrom === null ? null : restAfter(restFrom.entry, restFrom.planRestSeconds, now)
-  const done = editing === null && position > plan.sets && !extraOpen
+  const done = position > plan.sets && !extraOpen
+  const resting = rest !== null && !rest.isOver
+  // An extra Set past the plan keeps its steppers: there is no planned next Set to name.
+  const collapsed = resting && !done && position <= plan.sets && !nextExpanded
+  const overShown = rest !== null && rest.isOver && overKey !== null && overKey === currentRestKey
 
   // Fires playRestOver once per rest period: only after this mount has actually seen the rest
   // running (isOver false) for the current Set, so a screen opened with rest already over --
@@ -545,30 +597,39 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     } else if (current.seenRunning && !current.fired) {
       current.fired = true
       playRestOver()
+      setOverKey(current.key)
     }
   }, [currentRestKey, lastLoggedAt, restIsOver])
 
-  // The rest Dial, open from the rest readout, and the Use offer its Set rest leaves (E13-T9).
+  // The rest Dial (E13-T9), opened from the countdown or the tools sheet's Rest time row, and the
+  // Use offer its Set rest leaves.
   const [restDialOpen, setRestDialOpen] = useState(false)
   // The Exercise note editor (E14-T11).
   const [editingNote, setEditingNote] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
   const [useOffer, setUseOffer] = useState<UseRestOffer | null>(null)
 
+  // How long the trainee usually rests after this Exercise (S4), from the earlier Sessions.
+  const usualRest = usualRestSeconds(exercise.id, earlier)
+
   /** The rest Dial's Set rest: the Set's rest is `seconds`, and it may become the Plan's. */
   function setRestFromDial(seconds: number): void {
     setRestDialOpen(false)
+    if (restFrom === null) {
+      // No rest to change yet: the Dial sets the Exercise's own rest straight away.
+      void saveRestForExercise(seconds)
+      return
+    }
     applyRest({ kind: 'set', seconds })
     // A Warm-up's short rest says nothing about the Exercise's Plan rest: no offer (E15-T2).
-    const afterWarmup = restFrom?.entry.kind === 'warmup'
+    const afterWarmup = restFrom.entry.kind === 'warmup'
     if (props.onUseRestForExercise !== undefined && !afterWarmup) {
       setUseOffer({ seconds, status: 'offered' })
     }
   }
 
-  async function saveRestForExercise(): Promise<void> {
-    if (useOffer === null || props.onUseRestForExercise === undefined) return
-    const { seconds } = useOffer
+  async function saveRestForExercise(seconds: number): Promise<void> {
+    if (props.onUseRestForExercise === undefined) return
     setUseOffer({ seconds, status: 'saving' })
     try {
       await props.onUseRestForExercise(seconds)
@@ -635,6 +696,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       clearUndo()
       setHistory(merged)
       setRestFrom({ entry, planRestSeconds: plan.restSeconds })
+      setOverKey(null)
       if (confirmTimer.current !== null) clearTimeout(confirmTimer.current)
       setJustLogged(open.setIndex)
       confirmTimer.current = setTimeout(() => {
@@ -644,6 +706,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setUseOffer(null)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setEffort({ setIndex: open.setIndex, rir: null })
+      setNextExpanded(false)
       const next = openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter))
       const nextStep = ramp === null ? undefined : ramp.steps[ramp.index + 1]
       if (ramp === null) {
@@ -662,16 +725,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           (logged) => logged.exerciseId === exercise.id && countsTowardStats(logged),
         ).length,
       )
-      const records = recordsSetBy(exercise, plan, props.earlierSessions ?? [], session, entry)
-      setToast(
-        records.length === 0
-          ? null
-          : recordToastText(
-              records.map((record) => record.label),
-              entry.weightKg,
-              entry.reps,
-            ),
-      )
+      setToast(prMoment(exercise, plan, props.earlierSessions ?? [], session, entry))
       onLogged(session, nextSetIndex)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -691,7 +745,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // the Warm-ups already logged. Offered only before the first working Set of a barbell Exercise.
   const warmupsLogged = loggedSets.length - workingSets(loggedSets).length
   const rampOffer: WarmupStep[] | null =
-    props.plates && ramp === null && editing === null && !done && loggedCount === 0 && open.weightKg !== null
+    props.plates && ramp === null && !done && loggedCount === 0 && open.weightKg !== null
       ? warmupRamp(open.weightKg, props.plates)
       : null
   const rampStep = ramp === null ? undefined : ramp.steps[ramp.index]
@@ -700,12 +754,14 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     const step = steps[warmupsLogged]
     if (step === undefined || open.weightKg === null) return
     setError(null)
+    setToolsOpen(false)
     setRamp({ steps, index: warmupsLogged, workingKg: open.weightKg, workingReps: open.reps })
     setOpen({ ...open, weightKg: step.weightKg, reps: step.reps, kind: 'warmup' })
   }
 
   /** The kind row: choosing another kind than Warm-up ends a ramp at its working weight. */
   function chooseKind(kind: SetKind | null): void {
+    setKindsOpen(false)
     if (ramp === null || kind === 'warmup') {
       setOpen({ ...open, kind })
       return
@@ -715,45 +771,69 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   }
 
   function openLogged(entry: SetEntry): void {
-    setRamp(null)
     setError(null)
+    setToolsOpen(false)
     setEditing(entry.setIndex)
-    setOpen({
+    setDraft({
       setIndex: entry.setIndex,
       weightKg: entry.weightKg,
       reps: entry.reps,
       kind: entry.kind ?? null,
       loadKg: entry.loadKg ?? 0,
+      rir: entry.rir ?? null,
     })
+  }
+
+  // A done cell tapped in "All" opens the screen on that Set, ready to edit.
+  useEffect(() => {
+    if (props.editSetIndex === undefined) return
+    const entry = loggedSets.find((candidate) => candidate.setIndex === props.editSetIndex)
+    if (entry !== undefined) openLogged(entry)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the screen opens
+  }, [])
+
+  /** Closes the edit sheet with nothing changed. */
+  function cancelEdit(): void {
+    setError(null)
+    setEditing(null)
+    setDraft(null)
   }
 
   /** Back to the next Set to log, `next` being its index and `sets` today's Sets by then. */
   function returnToLogging(next: number, sets: SetEntry[], from: SetEntry[] = history): void {
     setError(null)
     setEditing(null)
+    setDraft(null)
     setExtraOpen(false)
+    setRamp(null)
     setOpen(openSetFor(exercise, plan, next, from, today(sets)))
   }
 
   async function saveSet(): Promise<void> {
-    if (editing === null || props.onEditSet === undefined) return
-    const validation = validateEntry(open.weightKg, open.reps, open.loadKg)
+    if (editing === null || draft === null || props.onEditSet === undefined) return
+    const validation = validateEntry(draft.weightKg, draft.reps, draft.loadKg)
     if (!validation.ok) {
       setError(validation.error)
       return
     }
     const before = loggedSets.find((entry) => entry.setIndex === editing)
     // The kind goes along only when it was changed; omitted, the service keeps the Set's own.
-    const kindChanged = open.kind !== (before?.kind ?? null)
+    const kindChanged = draft.kind !== (before?.kind ?? null)
     const values = {
-      weightKg: open.weightKg,
-      reps: open.reps,
-      ...(kindChanged ? { kind: open.kind } : {}),
+      weightKg: draft.weightKg,
+      reps: draft.reps,
+      ...(kindChanged ? { kind: draft.kind } : {}),
       // A Bodyweight Set always sends its Load, null at plain bodyweight to remove one (E14-T14).
-      ...(exercise.bodyweight ? { loadKg: open.loadKg === 0 ? null : open.loadKg } : {}),
+      ...(exercise.bodyweight ? { loadKg: draft.loadKg === 0 ? null : draft.loadKg } : {}),
     }
     try {
       await props.onEditSet(editing, values)
+      const rirBefore = before?.rir ?? null
+      if (draft.rir !== rirBefore) {
+        props.onSetEffort?.(editing, draft.rir).catch((cause: unknown) => {
+          setError(cause instanceof Error ? cause.message : String(cause))
+        })
+      }
       const edited = loggedSets.map((entry) => {
         if (entry.setIndex !== editing) return entry
         const { kind: _was, loadKg: _wasLoad, ...unkinded } = entry
@@ -763,8 +843,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           ...unkinded,
           weightKg: values.weightKg,
           reps: values.reps,
-          ...loadOf(open),
-          ...(open.kind === null ? {} : { kind: open.kind }),
+          ...loadOf(draft),
+          ...(draft.kind === null ? {} : { kind: draft.kind }),
         }
       })
       const merged =
@@ -826,344 +906,685 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     add(exercise.id, open.setIndex)
   }
 
-  // Past the plan the screen is done: every planned set is logged, so "Log set" is withheld and
-  // only an extra set is offered -- and only to a caller that knows what to do with it.
-  const actions = editing !== null ? (
-    <>
-      <button type="button" className="save-set" onClick={() => void saveSet()}>
-        Save set
-      </button>
-      <button type="button" className="delete-set" onClick={() => void deleteSet()}>
-        Delete set
-      </button>
-      <button
-        type="button"
-        className="cancel-edit"
-        onClick={() => returnToLogging(loggedSets.length + 1, loggedSets)}
-      >
-        Cancel
-      </button>
-    </>
-  ) : !done ? (
-    justLogged !== null ? (
-      <button
-        type="button"
-        className="log-set log-set--confirmed"
-        aria-label="Log set"
-        onClick={() => void log()}
-      >
-        Logged ✓
-      </button>
-    ) : (
-      // The rest clock has its own bar at the top of the screen; the button only logs.
-      <button type="button" className="log-set" aria-label="Log set" onClick={() => void log()}>
-        Log set
-      </button>
+  /** A tools sheet row that hands off elsewhere: the sheet closes first. */
+  function handOff(action: () => void): void {
+    setToolsOpen(false)
+    action()
+  }
+
+  // Each logged working Set's place among the working Sets, for its cell; a warm-up has none.
+  const ordinals = new Map<number, number>()
+  {
+    let n = carried
+    for (const entry of loggedSets) {
+      if (entry.kind === 'warmup') continue
+      n += 1
+      ordinals.set(entry.setIndex, n)
+    }
+  }
+
+  // The cells after the logged ones: the Set on the steppers, then every planned Set still to
+  // come at its Preset.
+  const cells: { position: number; current: boolean; weightKg: number | null; reps: number; loadKg: number }[] = []
+  {
+    const last = Math.max(plan.sets, extraOpen ? position : 0)
+    for (let at = position; at <= last && !done; at += 1) {
+      if (at === position) {
+        cells.push({ position: at, current: true, weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })
+        continue
+      }
+      const preset = presetForSet({
+        exercise,
+        plan,
+        setIndex: open.setIndex + (at - position),
+        lastEntries: history,
+        today: today(loggedSets),
+      })
+      cells.push({ position: at, current: false, weightKg: preset.weightKg, reps: preset.reps, loadKg: preset.loadKg ?? 0 })
+    }
+  }
+
+  // What the Set on the steppers would mean if logged: its e1RM, the record, PR if logged.
+  const projection = !done
+    ? projectSet({
+        exercise,
+        plan,
+        earlier,
+        session: thisSession,
+        set: {
+          weightKg: open.weightKg,
+          reps: open.reps,
+          ...(open.loadKg === 0 ? {} : { loadKg: open.loadKg }),
+          ...(open.kind === null ? {} : { kind: open.kind }),
+        },
+      })
+    : null
+
+  const sheetOpen = toolsOpen || draft !== null || restDialOpen
+  // Behind a sheet the screen is out of reach of the keyboard and a screen reader (S3b, S2b).
+  const hiddenBehindSheet = sheetOpen ? { 'aria-hidden': true as const, inert: '' } : {}
+
+  // The row over the countdown (S4): the rest Dial's "Use 2:30 for …" and its outcome, or, once
+  // the trainee's usual rest differs from the Plan's, "Use 2:40 for Back squat".
+  const usualOffered =
+    useOffer === null &&
+    props.onUseRestForExercise !== undefined &&
+    usualRest !== null &&
+    restFrom !== null &&
+    restFrom.entry.exerciseId === exercise.id &&
+    restFrom.entry.kind !== 'warmup' &&
+    Math.abs(usualRest - plan.restSeconds) >= 15
+  const offer: JSX.Element | null =
+    useOffer !== null ? (
+      <p className="rest-use">
+        {useOffer.status === 'saved' ? (
+          <span className="rest-use-saved">
+            <Icon name="Check" size={18} />
+            {props.programName === undefined ? 'Saved' : `Saved to ${props.programName}`}
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="rest-use-offer btn-quiet"
+            disabled={useOffer.status === 'saving'}
+            onClick={() => void saveRestForExercise(useOffer.seconds)}
+          >
+            <Icon name="Clock" size={18} />
+            Use {formatRest(useOffer.seconds)} for {exercise.name}
+          </button>
+        )}
+        {typeof useOffer.status === 'object' ? (
+          <span className="rest-use-error" role="alert">
+            {useOffer.status.error}
+          </span>
+        ) : null}
+      </p>
+    ) : usualOffered && usualRest !== null ? (
+      <p className="rest-use">
+        <button
+          type="button"
+          className="rest-use-offer btn-quiet"
+          onClick={() => void saveRestForExercise(usualRest)}
+        >
+          <Icon name="Clock" size={18} />
+          Use {formatRest(usualRest)} for {exercise.name}
+        </button>
+      </p>
+    ) : null
+
+  const restPanel =
+    rest === null || restFrom === null || !resting ? null : (
+      <RestPanel
+        remainingSeconds={rest.remainingSeconds}
+        totalSeconds={restLengthOf(restFrom.entry, restFrom.planRestSeconds)}
+        usualSeconds={restFrom.entry.exerciseId === exercise.id ? usualRest : null}
+        offer={offer}
+        onOpenDial={() => setRestDialOpen(true)}
+        onLess={() => adjust({ kind: 'add', seconds: -15 })}
+        onMore={() => adjust({ kind: 'add', seconds: 15 })}
+        onSkip={() => adjust({ kind: 'skip' })}
+      />
+    )
+
+  // The bottom edge: the rest panel while rest runs (S4), else "Log set 3 · 62.5 × 8" (F3) with
+  // a quiet over-rest line once a rest ran out here. Past the plan the screen is done: "Log set"
+  // is withheld and only an extra set is offered -- and only to a caller that knows what to do
+  // with it.
+  const actions = !done ? (
+    restPanel ?? (
+      <div className="log-dock">
+        {resting || useOffer === null ? null : offer}
+        {overShown && rest !== null ? (
+          <p className="rest-over" data-over="true">
+            Over rest ·{' '}
+            <span role="timer" aria-label="Rest remaining">
+              {formatOver(rest.overSeconds)}
+            </span>
+          </p>
+        ) : null}
+        {/* The label follows the steppers: "Log set 3 · 62.5 × 8". Its name stays "Log set". */}
+        <button type="button" className="log-set btn-primary" aria-label="Log set" onClick={() => void log()}>
+          Log set {position} · {formatSet({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })}
+        </button>
+      </div>
     )
   ) : (
-    <>
+    <div className="log-dock">
+      {restPanel}
       {onFinishExercise === undefined || !upNext ? null : (
         <p className="up-next">Up next: {upNext}</p>
       )}
-      {onFinishExercise === undefined ? null : (
-        <button type="button" className="finish-exercise" onClick={onFinishExercise}>
-          Finish exercise
-        </button>
-      )}
-      {onAddSet === undefined ? null : (
-        <button type="button" className="add-set" onClick={() => addSet(onAddSet)}>
-          Add set
-        </button>
-      )}
-    </>
+      <div className="done-actions">
+        {onFinishExercise === undefined ? null : (
+          <button type="button" className="finish-exercise btn-secondary" onClick={onFinishExercise}>
+            Finish exercise
+          </button>
+        )}
+        {onAddSet === undefined ? null : (
+          <button type="button" className="add-set btn-secondary" onClick={() => addSet(onAddSet)}>
+            Add set
+          </button>
+        )}
+      </div>
+    </div>
+  )
+  const dock = (
+    <div className="set-dock" {...hiddenBehindSheet}>
+      {actions}
+    </div>
   )
 
-  return (
-    <div className="set-screen">
-      {rest === null ? null : (
-        <div className="rest-timer" data-over={rest.isOver ? 'true' : undefined}>
-          <span className="rest-label">{rest.isOver ? 'Rest over' : 'Rest'}</span>
+  // The tools sheet's segments: Plates and Warm-up for a barbell, Notes wherever notes are kept.
+  const segments: { value: ToolsSegment; label: string }[] = [
+    ...(props.plates ? [{ value: 'plates' as const, label: 'Plates' }, { value: 'warmup' as const, label: 'Warm-up' }] : []),
+    ...(props.onSaveExerciseNote === undefined ? [] : [{ value: 'notes' as const, label: 'Notes' }]),
+  ]
+  const segment = segments.some((option) => option.value === toolsSegment)
+    ? toolsSegment
+    : segments[0]?.value
+  const plates = props.plates ?? null
+  const loading = plates !== null && open.weightKg !== null ? platesFor(open.weightKg, plates) : null
+
+  const noteTools =
+    props.onSaveExerciseNote === undefined ? null : editingNote ? (
+      <div className="set-note-editor">
+        <label className="set-note-label">
+          <span>Note</span>
+          <textarea
+            className="set-note-input"
+            maxLength={EXERCISE_NOTE_MAX}
+            value={noteDraft}
+            onChange={(event) => setNoteDraft(event.target.value)}
+          />
+        </label>
+        <div className="set-note-actions">
           <button
             type="button"
-            className="rest-readout"
-            onClick={() => setRestDialOpen(true)}
+            className="set-note-save btn-primary"
+            onClick={() => {
+              const save = props.onSaveExerciseNote
+              if (save === undefined) return
+              void save(noteDraft.slice(0, EXERCISE_NOTE_MAX)).then(() => setEditingNote(false))
+            }}
           >
-            <span role="timer" aria-label="Rest remaining">
-              {formatClock(rest)}
-            </span>
+            Save note
           </button>
-          {rest.isOver ? null : (
-            <div className="rest-controls">
+          <button type="button" className="set-note-cancel btn-quiet" onClick={() => setEditingNote(false)}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div className="set-note">
+        <p className="sheet-caption">Exercise note</p>
+        {props.exerciseNote === undefined || props.exerciseNote === null || props.exerciseNote === '' ? (
+          <button
+            type="button"
+            className="set-note-add btn-quiet"
+            onClick={() => {
+              setNoteDraft('')
+              setEditingNote(true)
+            }}
+          >
+            Add note
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="set-note-text cell"
+            onClick={() => {
+              setNoteDraft(props.exerciseNote ?? '')
+              setEditingNote(true)
+            }}
+          >
+            {props.exerciseNote}
+          </button>
+        )}
+      </div>
+    )
+
+  const toolsSheet = !toolsOpen ? null : (
+    <Sheet label={`${exercise.name} tools`} onClose={() => setToolsOpen(false)}>
+      <div className="sheet-head">
+        <h2 className="sheet-title">{exercise.name}</h2>
+        <button
+          type="button"
+          className="sheet-close icon-btn"
+          aria-label="Close"
+          onClick={() => setToolsOpen(false)}
+        >
+          <Icon name="X" size={24} />
+        </button>
+      </div>
+      {segments.length > 1 && segment !== undefined ? (
+        <Segmented
+          name="exercise-tools"
+          label="Exercise tools"
+          value={segment}
+          options={segments}
+          onChange={setToolsSegment}
+        />
+      ) : null}
+      <div className="tools-body">
+        {segment === 'plates' && plates !== null ? (
+          open.weightKg === null ? null : (
+            <>
+              <PlatesDrawing loading={loading} barKg={plates.barKg} />
+              <div className="tools-plates-line">
+                <p className="plate-line">{formatPlates(loading, plates)}</p>
+                <span className="tools-plates-total">
+                  {plates.barKg} kg bar · {open.weightKg} kg
+                </span>
+              </div>
+            </>
+          )
+        ) : null}
+        {segment === 'warmup' && plates !== null ? (
+          <div className="tools-warmups">
+            {(ramp?.steps ?? rampOffer ?? []).map((step, index) => (
+              <p key={index} className="tools-warmup-row" data-done={index < warmupsLogged ? 'true' : undefined}>
+                <span className="tools-warmup-index">
+                  Warm-up {index + 1} of {(ramp?.steps ?? rampOffer ?? []).length}
+                </span>
+                <span className="tools-warmup-set">
+                  {step.weightKg} kg × {step.reps}
+                </span>
+                <span className="tools-warmup-plates">
+                  {formatPlates(platesFor(step.weightKg, plates), plates).replace('Per side: ', 'Per side ')}
+                </span>
+              </p>
+            ))}
+            {ramp !== null ? null : rampOffer !== null && rampOffer.length > warmupsLogged ? (
+              <button type="button" className="add-warmups btn-secondary" onClick={() => startRamp(rampOffer)}>
+                Add warm-ups
+              </button>
+            ) : (
+              <p className="sheet-caption">Warm-ups are offered before the first working set.</p>
+            )}
+          </div>
+        ) : null}
+        {segment === 'notes' ? noteTools : null}
+      </div>
+      <div className="tools-rows">
+        <button type="button" className="sheet-row cell" aria-expanded={kindsOpen} onClick={() => setKindsOpen(!kindsOpen)}>
+          <span className="sheet-row-icon"><Icon name="Tag" /></span>
+          <span className="sheet-row-label">Set type</span>
+          <span className="sheet-row-value">{setKindLabel(open.kind)}</span>
+          <span className="sheet-row-chevron"><Icon name={kindsOpen ? 'ChevronDown' : 'ChevronRight'} size={18} /></span>
+        </button>
+        {kindsOpen ? (
+          <div className="tools-kinds">
+            <SetKindRow value={open.kind} onChange={chooseKind} />
+          </div>
+        ) : null}
+        <button type="button" className="sheet-row cell" onClick={() => handOff(() => setRestDialOpen(true))}>
+          <span className="sheet-row-icon"><Icon name="Clock" /></span>
+          <span className="sheet-row-label">Rest time</span>
+          <span className="sheet-row-value">
+            {formatRest(restFrom === null ? plan.restSeconds : restLengthOf(restFrom.entry, restFrom.planRestSeconds))}
+          </span>
+          <span className="sheet-row-chevron"><Icon name="ChevronRight" size={18} /></span>
+        </button>
+        {/* How the steppers count: the weight step, and Bodyweight (E8-T8, E16-T13). */}
+        <div className="set-dial-controls">
+          {exercise.bodyweight ? null : (
+            <div className="sheet-row tools-step">
+              <span className="sheet-row-icon"><Icon name="Settings" /></span>
+              <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
+            </div>
+          )}
+          {props.onBodyweightChange === undefined ? null : (
+            <div className="sheet-row tools-bodyweight">
+              <span className="sheet-row-icon"><Icon name="Dumbbell" /></span>
+              <span className="sheet-row-label">Bodyweight exercise</span>
               <button
                 type="button"
-                className="rest-adjust"
-                onClick={() => adjust({ kind: 'add', seconds: -15 })}
+                role="switch"
+                className="bodyweight-switch chip"
+                aria-checked={bodyweight}
+                onClick={() => handleBodyweightChange(!bodyweight)}
               >
-                −15 s
-              </button>
-              <button
-                type="button"
-                className="rest-adjust"
-                onClick={() => adjust({ kind: 'add', seconds: 15 })}
-              >
-                +15 s
-              </button>
-              <button type="button" className="rest-skip" onClick={() => adjust({ kind: 'skip' })}>
-                Skip
+                Bodyweight
               </button>
             </div>
           )}
+          {bodyweightError === null ? null : (
+            <p className="bodyweight-error" role="alert">
+              {bodyweightError}
+            </p>
+          )}
         </div>
-      )}
-
-      {/* The exercise's name is the shell's own header title (`AppShell`'s `<h1>`, set by every
-          caller to `exercise.name`); a second heading here would duplicate it verbatim, which
-          collides for a caller matching an exercise's set screen by its accessible name alone
-          (E5-T12's S7, opening a swapped-in exercise's set screen). */}
-      <p className="set-counter">{setCounterText(
-          position,
-          plan.sets,
-          loggedCount,
-          done,
-          open.kind === 'amrap' ? plan.repRange[0] : undefined,
-        )}</p>
-
-      {lastTime === '' ? null : <p className="set-last-time">Last time: {lastTime}</p>}
-
-      {loggedSets.length === 0 ? null : (
-        <ul className="logged-sets" aria-label="Sets logged">
-          {loggedSets.map((entry) => (
-            <li
-              key={entry.setIndex}
-              className={justLogged === entry.setIndex ? 'just-logged' : undefined}
-            >
-              <button
-                type="button"
-                className="logged-set"
-                data-editing={editing === entry.setIndex ? 'true' : undefined}
-                onClick={() => openLogged(entry)}
-              >
-                {formatSet(entry)}
-              </button>
-              {entry.kind === undefined ? null : (
-                <span className="set-kind-marker">{KIND_MARKERS[entry.kind]}</span>
-              )}
-              {entry.rir === undefined ? null : (
-                <span className="logged-set-rir">
-                  {' · RIR '}
-                  {entry.rir === 3 ? '3+' : entry.rir}
-                </span>
-              )}
-              {isRecordSet(entry) ? (
-                <span className="pr-badge" aria-label="Personal record">
-                  PR
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="set-dials">
-        {exercise.bodyweight ? (
-          // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
-          <WeightDial
-            variant="scrub"
-            exercise={effectiveExercise}
-            value={open.loadKg}
-            onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
-          />
-        ) : (
-          <WeightDial
-            variant="scrub"
-            exercise={effectiveExercise}
-            value={open.weightKg}
-            onChange={(weightKg) => setOpen({ ...open, weightKg })}
-          />
-        )}
-        <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+        <button type="button" className="sheet-row cell" onClick={() => handOff(() => onOpenAlternatives?.(exercise.id))}>
+          <span className="sheet-row-icon"><Icon name="Swap" /></span>
+          <span className="sheet-row-label">Swap exercise</span>
+          <span className="sheet-row-chevron"><Icon name="ChevronRight" size={18} /></span>
+        </button>
+        <button type="button" className="sheet-row cell" onClick={() => handOff(() => onOpenInfo?.(exercise.id))}>
+          <span className="sheet-row-icon"><Icon name="Info" /></span>
+          <span className="sheet-row-label">Exercise info</span>
+          <span className="sheet-row-chevron"><Icon name="ChevronRight" size={18} /></span>
+        </button>
+        <button type="button" className="sheet-row cell" onClick={() => handOff(() => onOpenHistory?.(exercise.id))}>
+          <span className="sheet-row-icon"><Icon name="ChartLine" /></span>
+          <span className="sheet-row-label">Lift history</span>
+          <span className="sheet-row-chevron"><Icon name="ChevronRight" size={18} /></span>
+        </button>
       </div>
-      <div className="set-dial-controls">
-        {exercise.bodyweight ? null : (
-          <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
-        )}
-        {props.plates && open.weightKg !== null ? (
-          <p className="plate-line">{formatPlates(platesFor(open.weightKg, props.plates), props.plates)}</p>
+    </Sheet>
+  )
+
+  const editedEntry = editing === null ? undefined : loggedSets.find((entry) => entry.setIndex === editing)
+  const editTitle =
+    editing === null
+      ? ''
+      : `Edit ${ordinals.has(editing) ? `set ${ordinals.get(editing)}` : 'warm-up'} · ${exercise.name}`
+  const editSheet =
+    draft === null || editing === null ? null : (
+      <Sheet label={editTitle} onClose={cancelEdit}>
+        <div className="sheet-head">
+          <h2 className="sheet-title">{editTitle}</h2>
+          <button type="button" className="delete-set btn-danger" onClick={() => void deleteSet()}>
+            Delete set
+          </button>
+        </div>
+        <div className="set-dials">
+          {exercise.bodyweight ? (
+            <WeightDial
+              variant="scrub"
+              exercise={effectiveExercise}
+              value={draft.loadKg}
+              onChange={(loadKg) => setDraft({ ...draft, loadKg: loadKg ?? 0 })}
+            />
+          ) : (
+            <WeightDial
+              variant="scrub"
+              exercise={effectiveExercise}
+              value={draft.weightKg}
+              onChange={(weightKg) => setDraft({ ...draft, weightKg })}
+            />
+          )}
+          <RepsDial variant="scrub" value={draft.reps} onChange={(reps) => setDraft({ ...draft, reps })} />
+        </div>
+        {plates !== null && draft.weightKg !== null ? (
+          <p className="plate-line">{formatPlates(platesFor(draft.weightKg, plates), plates)}</p>
         ) : null}
-        {props.onBodyweightChange === undefined ? null : (
+        <p className="sheet-caption">Set kind</p>
+        <SetKindRow value={draft.kind} onChange={(kind) => setDraft({ ...draft, kind })} />
+        {props.trackEffort === true || editedEntry?.rir !== undefined ? (
+          <div className="effort-row">
+            <span className="effort-label">Effort</span>
+            <EffortChips value={draft.rir} onPick={(rir) => setDraft({ ...draft, rir })} />
+          </div>
+        ) : null}
+        {error === null ? null : (
+          <p className="set-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="button" className="save-set btn-primary" onClick={() => void saveSet()}>
+          Save set
+        </button>
+      </Sheet>
+    )
+
+  const restDialSheet = !restDialOpen ? null : (
+    <Sheet label="Rest" onClose={() => setRestDialOpen(false)}>
+      <RestDial
+        seconds={restFrom === null ? plan.restSeconds : restLengthOf(restFrom.entry, restFrom.planRestSeconds)}
+        onSet={setRestFromDial}
+        onCancel={() => setRestDialOpen(false)}
+      />
+    </Sheet>
+  )
+
+  return (
+    <>
+      <div className="set-screen" {...hiddenBehindSheet}>
+        {/* The exercise's name is the screen's one heading: the Live header names the workout as
+            plain text on the set view (`LiveHeader`'s `heading={false}`), so only one heading
+            ever names the Exercise (E5-T12's S7 matches a screen by it). */}
+        <div className="set-head">
+          <div className="set-head-text">
+            <h1 className="set-exercise-name">{exercise.name}</h1>
+            <p className="set-counter">
+              <span>
+                {setCounterText(
+                  position,
+                  plan.sets,
+                  loggedCount,
+                  done,
+                  open.kind === 'amrap' ? plan.repRange[0] : undefined,
+                )}
+              </span>
+              {done || open.kind === 'amrap' ? null : (
+                <span className="set-counter-target">
+                  {` · target ${plan.repRange[0]}–${plan.repRange[1]}`}
+                </span>
+              )}
+            </p>
+          </div>
           <button
             type="button"
-            role="switch"
-            className="bodyweight-switch"
-            aria-checked={bodyweight}
-            onClick={() => handleBodyweightChange(!bodyweight)}
+            className="set-tools-open icon-btn"
+            aria-label="Exercise tools"
+            onClick={() => {
+              setKindsOpen(false)
+              setToolsOpen(true)
+            }}
           >
-            Bodyweight
+            <Icon name="Ellipsis" size={24} />
           </button>
-        )}
-      </div>
-      {bodyweightError === null ? null : (
-        <p className="bodyweight-error" role="alert">
-          {bodyweightError}
-        </p>
-      )}
-      <SetKindRow value={open.kind} onChange={chooseKind} />
-      {ramp !== null && rampStep !== undefined ? (
-        <p className="warmup-ramp">
-          Warm-up {ramp.index + 1} of {ramp.steps.length} · {rampStep.weightKg} kg × {rampStep.reps}
-        </p>
-      ) : rampOffer !== null && rampOffer.length > warmupsLogged ? (
-        <button type="button" className="add-warmups" onClick={() => startRamp(rampOffer)}>
-          Add warm-ups
-        </button>
-      ) : null}
-
-      {/* Secondary: everything that is not the two numbers sits below the Dials, so the Dials
-          are the first thing on the screen after where the trainee is. */}
-      <div className="set-screen-links">
-        <ExerciseInfoLink exercise={exercise} onOpen={() => onOpenInfo?.(exercise.id)} />
-        <button
-          type="button"
-          className="open-alternatives"
-          onClick={() => onOpenAlternatives?.(exercise.id)}
-        >
-          Alternatives
-        </button>
-        <button
-          type="button"
-          className="open-history"
-          onClick={() => onOpenHistory?.(exercise.id)}
-        >
-          History
-        </button>
-      </div>
-      {props.onSaveExerciseNote === undefined ? null : editingNote ? (
-        <div className="set-note-editor">
-          <label className="set-note-label">
-            <span>Note</span>
-            <textarea
-              className="set-note-input"
-              maxLength={EXERCISE_NOTE_MAX}
-              value={noteDraft}
-              onChange={(event) => setNoteDraft(event.target.value)}
-            />
-          </label>
-          <div className="set-note-actions">
-            <button
-              type="button"
-              className="set-note-save"
-              onClick={() => {
-                const save = props.onSaveExerciseNote
-                if (save === undefined) return
-                void save(noteDraft.slice(0, EXERCISE_NOTE_MAX)).then(() => setEditingNote(false))
-              }}
-            >
-              Save note
-            </button>
-            <button type="button" className="set-note-cancel" onClick={() => setEditingNote(false)}>
-              Cancel
-            </button>
-          </div>
         </div>
-      ) : props.exerciseNote === undefined || props.exerciseNote === null || props.exerciseNote === '' ? (
-        <button
-          type="button"
-          className="set-note-add"
-          onClick={() => {
-            setNoteDraft('')
-            setEditingNote(true)
-          }}
-        >
-          Add note
-        </button>
-      ) : (
-        <button
-          type="button"
-          className="set-note-text"
-          onClick={() => {
-            setNoteDraft(props.exerciseNote ?? '')
-            setEditingNote(true)
-          }}
-        >
-          {props.exerciseNote}
-        </button>
-      )}
 
-      {error === null ? null : (
-        <p className="set-error" role="alert">
-          {error}
+        {/* The set cells: today's logged Sets (tap one to edit it), the Set on the steppers
+            outlined -- while rest runs, a tap on it logs it -- and the planned Sets still to come,
+            dashed. */}
+        <div className="set-cells">
+          {loggedSets.length === 0 ? null : (
+            <ul className="logged-sets" aria-label="Sets logged">
+              {loggedSets.map((entry) => (
+                <li
+                  key={entry.setIndex}
+                  className={justLogged === entry.setIndex ? 'just-logged' : undefined}
+                >
+                  <button
+                    type="button"
+                    className="logged-set cell"
+                    aria-label={formatSet(entry)}
+                    data-editing={editing === entry.setIndex ? 'true' : undefined}
+                    data-kind={entry.kind}
+                    onClick={() => openLogged(entry)}
+                  >
+                    <span className="set-cell-index">
+                      <span>
+                        {ordinals.get(entry.setIndex) ?? ''}
+                        {entry.kind === undefined ? null : (
+                          <span className="set-kind-marker">{KIND_MARKERS[entry.kind]}</span>
+                        )}
+                      </span>
+                      {isRecordSet(entry) ? (
+                        <span className="tag tag-pr" aria-label="Personal record">
+                          PR
+                        </span>
+                      ) : entry.rir === undefined ? (
+                        <Icon name="Check" size={12} />
+                      ) : null}
+                    </span>
+                    <span className="set-cell-value">{cellText(entry)}</span>
+                  </button>
+                  {/* A record's PR tag has the corner; its RIR shows in the edit sheet. */}
+                  {entry.rir === undefined || isRecordSet(entry) ? null : (
+                    <span className="logged-set-rir">
+                      {'RIR '}
+                      {entry.rir === 3 ? '3+' : entry.rir}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {cells.map((cell) =>
+            cell.current && resting ? (
+              <button
+                key={cell.position}
+                type="button"
+                className="set-cell set-cell--current cell"
+                aria-label="Log set"
+                onClick={() => void log()}
+              >
+                <span className="set-cell-index">{cell.position}</span>
+                <span className="set-cell-value">{cellText(cell)}</span>
+              </button>
+            ) : (
+              <div
+                key={cell.position}
+                className={cell.current ? 'set-cell set-cell--current' : 'set-cell set-cell--future'}
+                aria-hidden="true"
+              >
+                <span className="set-cell-index">{cell.position}</span>
+                <span className="set-cell-value">{cellText(cell)}</span>
+              </div>
+            ),
+          )}
+        </div>
+
+        {/* "Set 3 effort": RIR 0 / 1 / 2 / 3+ for the Set just logged, while its rest runs. */}
+        {props.trackEffort !== true || effort === null || !resting ? null : (
+          <div className="effort-row">
+            <span className="effort-label">
+              Set {ordinals.get(effort.setIndex) ?? effort.setIndex}
+              <br />
+              effort
+            </span>
+            <EffortChips value={effort.rir} onPick={pickEffort} />
+          </div>
+        )}
+
+        {ramp !== null && rampStep !== undefined ? (
+          <p className="warmup-ramp">
+            Warm-up {ramp.index + 1} of {ramp.steps.length} · {rampStep.weightKg} kg × {rampStep.reps}
+          </p>
+        ) : null}
+
+        {/* While rest runs (S4) the steppers fold into "Next: set 4 · 62.5 × 8 · last 60 × 8 ⌄";
+            a tap unfolds them to change the next Set. */}
+        {collapsed ? (
+          <button
+            type="button"
+            className="set-next-row cell"
+            aria-expanded={false}
+            onClick={() => setNextExpanded(true)}
+          >
+            <span className="set-next-text">
+              <span className="set-next-label">
+                Next: set {position} ·{' '}
+                {formatSet({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })}
+              </span>
+              {lastTimeEntry === null ? null : (
+                <span className="set-next-last"> · last {formatSet(lastTimeEntry)}</span>
+              )}
+            </span>
+            <Icon name="ChevronDown" size={20} />
+          </button>
+        ) : (
+          <>
+          {lastTime === '' ? null : <p className="set-last-time">{lastTime}</p>}
+
+          <div className="set-dials">
+            {exercise.bodyweight ? (
+              // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
+              <WeightDial
+                variant="scrub"
+                exercise={effectiveExercise}
+                value={open.loadKg}
+                onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
+              />
+            ) : (
+              <WeightDial
+                variant="scrub"
+                exercise={effectiveExercise}
+                value={open.weightKg}
+                onChange={(weightKg) => setOpen({ ...open, weightKg })}
+              />
+            )}
+            <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+          </div>
+
+          {projection === null || (projection.e1rm === null && !projection.isPr) ? null : (
+            <p className="set-projection">
+              {projection.e1rm === null ? null : (
+                <>
+                  {'e1RM '}
+                  <b className="set-projection-value">{projection.e1rm.toFixed(1)}</b>
+                </>
+              )}
+              {projection.record === null ? null : ` · record ${projection.record.toFixed(1)}`}
+              {projection.isPr ? (
+                <>
+                  {projection.e1rm === null ? null : ' → '}
+                  <span className="tag tag-pr">PR if logged</span>
+                </>
+              ) : projection.record === null ? null : (
+                ' · no PR at this load'
+              )}
+            </p>
+          )}
+          </>
+        )}
+
+        {error === null || draft !== null ? null : (
+          <p className="set-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        {props.upcoming === undefined || resting ? null : (
+          <div className="set-upcoming">{props.upcoming}</div>
+        )}
+
+        <p role="status" className="set-logged" data-family={family}>
+          {loggedMessage}
         </p>
-      )}
+      </div>
 
-      {actionBar === null ? actions : createPortal(actions, actionBar)}
+      {actionBar === null ? dock : createPortal(dock, actionBar)}
+
+      {toolsSheet}
+      {editSheet}
+      {restDialSheet}
 
       {undo === null ? null : (
-        <p role="status" className="set-undo">
-          Set deleted
-          <button type="button" className="undo-delete" onClick={() => void restoreSet()}>
-            Undo
-          </button>
-        </p>
+        <Snackbar message="Set deleted" actionLabel="Undo" onAction={() => void restoreSet()} />
       )}
 
-      {toast === null ? null : <Toast message={toast} onDismiss={() => setToast(null)} />}
-
-      <p role="status" className="set-logged" data-family={family}>
-        {loggedMessage}
-      </p>
-
-      {props.trackEffort !== true || effort === null ? null : (
-        <div className="effort-chips" role="group" aria-label="Reps in reserve">
-          {([0, 1, 2, 3] as const).map((rir) => (
-            <button
-              key={rir}
-              type="button"
-              className="effort-chip"
-              aria-pressed={effort.rir === rir}
-              onClick={() => pickEffort(rir)}
-            >
-              {rir === 3 ? '3+' : rir}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {rest === null || done || extraOpen || editing !== null || ramp !== null || position > plan.sets ? null : (
-        <p className="set-next">
-          Next: set {position} · {open.weightKg === null ? 'BW' : `${open.weightKg} kg`} ×{' '}
-          {plan.repRange[0]}–{plan.repRange[1]}
-        </p>
-      )}
-
-      {rest === null || restFrom === null || !restDialOpen ? null : (
-        <RestDial
-          seconds={restLengthOf(restFrom.entry, restFrom.planRestSeconds)}
-          onSet={setRestFromDial}
-          onCancel={() => setRestDialOpen(false)}
+      {toast === null ? null : (
+        <Toast
+          message={toast.title}
+          detail={toast.detail}
+          lead={<span className="tag tag-pr">PR</span>}
+          trail={<RecordSpark values={toast.values} label={toast.label} width={48} height={20} />}
+          onDismiss={() => setToast(null)}
         />
       )}
+    </>
+  )
+}
 
-      {useOffer === null ? null : (
-        <p className="rest-use">
-          {useOffer.status === 'saved' ? (
-            props.programName === undefined ? 'Saved' : `Saved to ${props.programName}`
-          ) : (
-            <button
-              type="button"
-              className="rest-use-offer"
-              disabled={useOffer.status === 'saving'}
-              onClick={() => void saveRestForExercise()}
-            >
-              Use {formatRest(useOffer.seconds)} for {exercise.name}
-            </button>
-          )}
-          {typeof useOffer.status === 'object' ? (
-            <span className="rest-use-error" role="alert">
-              {useOffer.status.error}
-            </span>
-          ) : null}
-        </p>
-      )}
+/** The RIR chips "RIR 0 · 1 · 2 · 3+" (E14-T10), for the Set just logged or the one edited. */
+function EffortChips(props: { value: 0 | 1 | 2 | 3 | null; onPick(rir: 0 | 1 | 2 | 3): void }): JSX.Element {
+  return (
+    <div className="effort-chips" role="group" aria-label="Reps in reserve">
+      {([0, 1, 2, 3] as const).map((rir) => (
+        <button
+          key={rir}
+          type="button"
+          className="effort-chip chip"
+          aria-pressed={props.value === rir}
+          onClick={() => props.onPick(rir)}
+        >
+          {rir === 0 ? 'RIR 0' : rir === 3 ? '3+' : rir}
+        </button>
+      ))}
     </div>
   )
 }

@@ -7,13 +7,14 @@ export type MuscleChipProps = {
 }
 
 /**
- * A muscle's name, tinted by its family (E10-T3): `<span className="muscle-chip"
- * data-family={familyOf(muscle)}>{muscle}</span>`. Used by `LibraryList` for a row's primary
- * muscle; the body map and any other consumer are out of scope for this task.
+ * A muscle's name on a neutral chip (E10-T3): `<span className="muscle-chip"
+ * data-family={familyOf(muscle)}>`, holding an empty 8px `.muscle-dot` painted with the
+ * family's data colour (E17-T10, O17), then the name.
  */
 export function MuscleChip({ muscle }: MuscleChipProps): JSX.Element {
   return (
     <span className="muscle-chip" data-family={familyOf(muscle)}>
+      <span className="muscle-dot" aria-hidden="true" />
       {muscle}
     </span>
   )

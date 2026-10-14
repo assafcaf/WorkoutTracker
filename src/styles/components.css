@@ -1,0 +1,307 @@
+/* The global component rules (E17): `.card`, the `btn-*` roles, `.chip`, `.tag`, `.tag-pr`,
+ * `.switch`, `.segmented`, `.select`, `.icon-btn` and `.muscle-dot`. Screen stylesheets compose
+ * these classes; they do not restyle them. Imported by base.css, so it reaches every screen.
+ */
+
+/* The button roles (the Design's control table, E17-T7). Every <button> wears exactly one. */
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-semibold);
+}
+
+.btn-primary:active {
+  background: var(--color-primary-pressed);
+  color: var(--color-on-primary);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-control);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+}
+
+.btn-secondary:active {
+  background: var(--color-raised);
+}
+
+.btn-quiet {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.btn-quiet:active {
+  background: var(--color-raised);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--color-danger);
+}
+
+.btn-danger:active {
+  background: var(--color-raised);
+}
+
+/* Effort, Set kind and filter chips, and the Bodyweight switch. Chosen: white, outlined 2 px in
+ * the accent, accent text (the mock's `.eff button.on` / `.kchips button.on`). */
+.chip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-control);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+}
+
+.chip[aria-pressed='true'],
+.chip[aria-checked='true'] {
+  background: var(--color-surface);
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.tab {
+  color: var(--color-muted);
+}
+
+.tab[aria-current='page'] {
+  color: var(--color-primary);
+}
+
+.key {
+  background: var(--color-raised);
+  color: var(--color-text);
+}
+
+.key:active {
+  background: var(--color-control);
+}
+
+.cell {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.cell:active {
+  background: var(--color-control);
+}
+
+.icon-btn {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.icon-btn:active {
+  background: var(--color-control);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+}
+
+/* ---- Switch, Segmented, Select (E17-T8) ----------------------------------------------------
+ * The native controls, unpainted (`appearance: none`) and redrawn from tokens. Each stays the
+ * native element underneath, so the keyboard, screen readers and the OS picker keep working. */
+
+/* A checkbox drawn as a switch: the label text first, the track at the row's end. */
+.switch-field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+}
+
+.switch-label {
+  flex: 1;
+}
+
+.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-control);
+  cursor: pointer;
+  transition: background-color var(--motion-fast);
+}
+
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sheet);
+  transition: transform var(--motion-fast);
+}
+
+.switch:checked {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.switch:checked::before {
+  transform: translateX(18px);
+}
+
+.switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* A radio group drawn as segments on a grey track (S2, S6b, S7a): a compact `--color-raised`
+ * track, 3 px inset, and the checked segment a white raised pill with a hairline ring. The track
+ * is 48 px (the Live session's Now | All); a screen draws a shorter one by setting its height,
+ * e.g. 36 px on the Program tab. However short the track is drawn, each radio's hit area stays
+ * `--tap-min` tall: the native input is laid over its segment and reaches past the segment's
+ * edges by the difference (a screen with a shorter track widens that inset), while the paint
+ * stays on the segment. */
+.segmented {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 3px;
+  height: 48px;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+}
+
+.segmented-option {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+/* The radio itself: unpainted, laid over its segment and stretched to the tap floor. */
+.segmented .segmented-input {
+  appearance: none;
+  position: absolute;
+  inset: -1px 0;
+  z-index: 1;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.segmented .segmented-input:focus-visible {
+  outline: none;
+}
+
+.segmented .segmented-option:has(.segmented-input:checked) {
+  background: var(--color-surface);
+  outline: 1px solid var(--color-hairline);
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+
+.segmented .segmented-option:has(.segmented-input:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.segmented-label {
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* A native select with the icon set's chevron laid over its right edge; the chevron lets taps
+ * through, so the OS picker still opens wherever the select is tapped. */
+.select-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-muted);
+}
+
+.select-field > svg {
+  position: absolute;
+  right: var(--space-3);
+  pointer-events: none;
+}
+
+.select {
+  appearance: none;
+  width: 100%;
+  min-height: var(--tap-min);
+  margin: 0;
+  padding: 0 calc(var(--space-3) * 2 + 18px) 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-pill);
+}
+
+/* The PR tag (S5b, S6a): an accent-outlined pill on the surface, as the mock's `.tag`. */
+.tag-pr {
+  min-height: 20px;
+  padding: 0 7px;
+  border: 1.5px solid var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* A muscle family's colour, shown as data: an 8px dot inside a neutral `.muscle-chip`. The dot's
+ * fill comes from the chip's `data-family` (src/ui/MuscleChip.css). */
+.muscle-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+}

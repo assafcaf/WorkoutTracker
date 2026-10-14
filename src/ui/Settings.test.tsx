@@ -210,7 +210,7 @@ test('S14 Settings lists every given equipment type in "My gym\'s equipment", al
   )
 
   for (const equipment of equipmentTypes) {
-    expect(screen.getByRole('checkbox', { name: equipment })).toBeChecked()
+    expect(screen.getByRole('switch', { name: equipment })).toBeChecked()
   }
 })
 
@@ -226,9 +226,9 @@ test('S14 Settings ticks only the equipment types in a saved gym equipment list'
     />,
   )
 
-  expect(screen.getByRole('checkbox', { name: 'barbell' })).toBeChecked()
-  expect(screen.getByRole('checkbox', { name: 'dumbbell' })).not.toBeChecked()
-  expect(screen.getByRole('checkbox', { name: 'machine' })).not.toBeChecked()
+  expect(screen.getByRole('switch', { name: 'barbell' })).toBeChecked()
+  expect(screen.getByRole('switch', { name: 'dumbbell' })).not.toBeChecked()
+  expect(screen.getByRole('switch', { name: 'machine' })).not.toBeChecked()
 })
 
 test('S14 unticking machine calls onGymEquipmentChange with every other equipment type still in the list', async () => {
@@ -245,7 +245,7 @@ test('S14 unticking machine calls onGymEquipmentChange with every other equipmen
     />,
   )
 
-  await user.click(screen.getByRole('checkbox', { name: 'machine' }))
+  await user.click(screen.getByRole('switch', { name: 'machine' }))
 
   expect(onGymEquipmentChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
 })
@@ -294,9 +294,29 @@ test('O12 Settings shows "Never synced" when sync.lastSyncedAt is null', () => {
 
 test('O12 Settings shows the last synced time as a local date and time when lastSyncedAt is set', () => {
   const lastSyncedAt = 1700000000000
-  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt, status: 'ok' })
+  process.env.TZ = 'UTC'
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(Date.UTC(2023, 11, 1, 12, 0)))
+  try {
+    renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt, status: 'ok' })
 
-  expect(screen.getByText(new Date(lastSyncedAt).toLocaleString())).toBeInTheDocument()
+    expect(screen.getByText('Tue 14 Nov')).toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+test('O21 Settings shows a last synced day in another year with its year', () => {
+  process.env.TZ = 'UTC'
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(Date.UTC(2026, 9, 13, 12, 0)))
+  try {
+    renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: 1700000000000, status: 'ok' })
+
+    expect(screen.getByText('14 Nov 2023')).toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 test('O12 clicking "Sync now" calls onSyncNow', async () => {
@@ -388,7 +408,7 @@ test('S14 re-ticking a previously unticked equipment type adds it back to the sa
     />,
   )
 
-  await user.click(screen.getByRole('checkbox', { name: 'dumbbell' }))
+  await user.click(screen.getByRole('switch', { name: 'dumbbell' }))
 
   expect(onGymEquipmentChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
 })
@@ -523,13 +543,13 @@ test('O9 Settings has a Track effort checkbox under the legend Effort, off by de
   renderWithTrackEffort({})
 
   const group = screen.getByRole('group', { name: 'Effort' })
-  expect(within(group).getByRole('checkbox', { name: 'Track effort' })).not.toBeChecked()
+  expect(within(group).getByRole('switch', { name: 'Track effort' })).not.toBeChecked()
 })
 
 test('O9 the Track effort checkbox is ticked when trackEffort is on', () => {
   renderWithTrackEffort({ trackEffort: true })
 
-  expect(screen.getByRole('checkbox', { name: 'Track effort' })).toBeChecked()
+  expect(screen.getByRole('switch', { name: 'Track effort' })).toBeChecked()
 })
 
 test('O9 ticking Track effort calls onTrackEffortChange with true', async () => {
@@ -537,7 +557,7 @@ test('O9 ticking Track effort calls onTrackEffortChange with true', async () => 
   const onTrackEffortChange = vi.fn()
   renderWithTrackEffort({ trackEffort: false, onTrackEffortChange })
 
-  await user.click(screen.getByRole('checkbox', { name: 'Track effort' }))
+  await user.click(screen.getByRole('switch', { name: 'Track effort' }))
 
   expect(onTrackEffortChange).toHaveBeenCalledTimes(1)
   expect(onTrackEffortChange).toHaveBeenCalledWith(true)
@@ -548,7 +568,7 @@ test('O9 unticking Track effort calls onTrackEffortChange with false', async () 
   const onTrackEffortChange = vi.fn()
   renderWithTrackEffort({ trackEffort: true, onTrackEffortChange })
 
-  await user.click(screen.getByRole('checkbox', { name: 'Track effort' }))
+  await user.click(screen.getByRole('switch', { name: 'Track effort' }))
 
   expect(onTrackEffortChange).toHaveBeenCalledWith(false)
 })

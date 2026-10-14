@@ -21,7 +21,7 @@
 .stats-heading {
   margin: 0;
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
 
@@ -42,16 +42,9 @@
   color: var(--color-muted);
 }
 
+/* The picker's `.select-field` wrapper (E17-T8) takes the row's remaining width. */
 .stats-picker-select {
   flex: 1;
-  min-height: 44px;
-  padding: 0 var(--space-2);
-  border: 0;
-  box-shadow: inset 0 0 0 1px var(--color-muted);
-  border-radius: var(--radius-sm);
-  background: var(--color-raised);
-  color: var(--color-text);
-  font-size: var(--text-md);
 }
 
 .stats-records {
@@ -73,8 +66,8 @@
 
 .stats-record-value {
   color: var(--color-text);
-  font-weight: 600;
-  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
 
@@ -83,17 +76,3 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The PR medallion (E10-T5): a small gold-toned badge marking every record, holding the one
- * court-stripe cue. */
-.pr-medallion {
-  display: inline-flex;
-  width: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 1px solid var(--pr-ring);
-  border-radius: var(--radius-pill);
-  background: var(--pr-tint);
-  color: var(--pr-ink);
-}

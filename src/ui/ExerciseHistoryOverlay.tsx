@@ -47,7 +47,7 @@ export function ExerciseHistoryOverlay({
         <h2 id="exercise-history-heading" className="exercise-history-heading">
           History · {exercise.name}
         </h2>
-        <button type="button" className="exercise-history-close" onClick={onClose}>
+        <button type="button" className="exercise-history-close btn-quiet" onClick={onClose}>
           Close
         </button>
       </div>
@@ -76,7 +76,7 @@ export function ExerciseHistoryOverlay({
                   ),
                 )}
                 {entries.some(isRecord) ? (
-                  <span className="pr-badge" aria-label="Personal record">
+                  <span className="tag tag-pr" aria-label="Personal record">
                     PR
                   </span>
                 ) : null}

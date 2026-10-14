@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
+import { workoutsOffered } from './test/dashboard'
 import abSplitJson from './data/programs/assaf-ab-2026.json'
 import { db } from './storage/db'
 import { USER_PROGRAMS_KEY } from './storage/settingsStore'
@@ -56,6 +57,21 @@ async function storedUserPrograms(): Promise<UserProgram[]> {
 
 async function openProgramTab(user: User): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
+  await openProgramsPanel(user)
+}
+
+/**
+ * Opens the Programs panel behind the Program tab's overflow (S7a), where the program list and
+ * New program live; with no active Program, New program is on the page itself.
+ */
+async function openProgramsPanel(user: User): Promise<void> {
+  await waitFor(() => {
+    const more = screen.queryByRole('button', { name: 'Programs' })
+    const newProgram = screen.queryByRole('button', { name: 'New program' })
+    expect(more ?? newProgram).not.toBeNull()
+  }, SETTLE)
+  const more = screen.queryByRole('button', { name: 'Programs' })
+  if (more !== null && more.getAttribute('aria-expanded') !== 'true') await user.click(more)
   await screen.findByRole('button', { name: 'New program' }, SETTLE)
 }
 
@@ -236,10 +252,10 @@ test(
     await waitFor(async () => {
       expect((await db.settings.get('activeProgramId'))?.value).toBe(stored.id)
     }, SETTLE)
-    await user.click(screen.getByRole('button', { name: 'Workout' }))
+    await user.click(screen.getByRole('button', { name: 'Dashboard' }))
+    // The Dashboard's dock offers Push, due first, and "Change" steps through Pull and Legs.
     expect(await screen.findByRole('button', { name: 'Start Push' }, SETTLE)).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Start Pull' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Start Legs' })).toBeVisible()
+    expect(await workoutsOffered(user)).toEqual(['Push', 'Pull', 'Legs'])
   },
   LONG,
 )
@@ -254,7 +270,7 @@ test(
     await buildPushPullLegs(user)
     await openProgramTab(user)
     await user.click(screen.getByRole('radio', { name: 'Push Pull Legs' }))
-    await user.click(screen.getByRole('button', { name: 'Workout' }))
+    await user.click(screen.getByRole('button', { name: 'Dashboard' }))
     await user.click(await screen.findByRole('button', { name: 'Start Push' }, SETTLE))
     await user.click(await screen.findByRole('button', { name: /^Barbell Bench Press - Medium Grip/ }, SETTLE))
 

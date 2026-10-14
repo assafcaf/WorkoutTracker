@@ -538,3 +538,127 @@ test('O4 lunges with 2 warm-ups and 3 working Sets logged reads 3/3', () => {
 
   expect(progressOf('Lunges')).toBe('3/3')
 })
+
+// --- E17-T7 O11: destructive actions wear btn-danger -------------------------------------------
+const BUTTON_ROLES = ['btn-primary', 'btn-secondary', 'btn-quiet', 'btn-danger', 'tab', 'key', 'chip', 'cell', 'icon-btn']
+
+/** The control-table roles a button wears (E17-T7 O10/O11). */
+function rolesOf(button: HTMLElement): string[] {
+  return [...button.classList].filter((name) => BUTTON_ROLES.includes(name))
+}
+
+function renderDiscardable() {
+  const user = userEvent.setup()
+  render(
+    <ExerciseList
+      program={assaf}
+      workout={workoutA}
+      resolve={resolve}
+      session={sessionWith([entry(workoutA.exercises[0].exerciseId, 1)])}
+      onOpenSet={vi.fn()}
+      onFinish={vi.fn()}
+      onDiscard={vi.fn()}
+      lastSwaps={{}}
+      onUndoSwap={vi.fn()}
+      onApplySwap={vi.fn()}
+      lastEntries={new Map()}
+      sessions={[]}
+      volumeBaseline={{ period: 'last' }}
+    />,
+  )
+  return { user }
+}
+
+test('E17 O11 Discard workout wears btn-danger and no other role', () => {
+  renderDiscardable()
+
+  expect(rolesOf(screen.getByRole('button', { name: 'Discard workout' }))).toEqual(['btn-danger'])
+})
+
+test('E17 O11 the Discard that confirms Discard workout wears btn-danger and no other role', async () => {
+  const { user } = renderDiscardable()
+
+  await user.click(screen.getByRole('button', { name: 'Discard workout' }))
+
+  expect(rolesOf(screen.getByRole('button', { name: 'Discard' }))).toEqual(['btn-danger'])
+})
+
+// --- Progress Dashboard S2: the Live session's All view ----------------------------------------
+
+function renderAll(
+  entries: SetEntry[],
+  over: { currentId?: string | null; sessions?: Session[] } = {},
+) {
+  const user = userEvent.setup()
+  const onOpenSet = vi.fn()
+  const onOpenLogged = vi.fn()
+  render(
+    <ExerciseList
+      program={assaf}
+      workout={workoutA}
+      resolve={resolve}
+      session={sessionWith(entries)}
+      onOpenSet={onOpenSet}
+      onFinish={vi.fn()}
+      lastSwaps={{}}
+      onUndoSwap={vi.fn()}
+      onApplySwap={vi.fn()}
+      lastEntries={new Map()}
+      sessions={over.sessions ?? []}
+      volumeBaseline={{ period: 'last' }}
+      currentId={over.currentId}
+      onOpenLogged={onOpenLogged}
+    />,
+  )
+  return { user, onOpenSet, onOpenLogged }
+}
+
+/** The cells of one Exercise's block, by their class: done, current or future. */
+function cellsOf(exerciseName: string): string[] {
+  const block = row(exerciseName).closest('li') as HTMLElement
+  return Array.from(block.querySelectorAll('.all-cell')).map((cell) =>
+    cell.classList.contains('all-cell--done')
+      ? 'done'
+      : cell.classList.contains('all-cell--current')
+        ? 'current'
+        : 'future',
+  )
+}
+
+test('Live S2 each header reads logged/planned and the Plan, beside the name', () => {
+  renderAll([entry('back-squat', 1), entry('back-squat', 2)])
+
+  expect(within(row('Back squat')).getByText(/· 4 × 8–10$/)).toBeVisible()
+  expect(progressOf('Back squat')).toBe('2/4')
+})
+
+test('Live S2 the Exercise the session is on shows its done cells, its next one outlined and the rest dashed', () => {
+  renderAll([entry('back-squat', 1), entry('back-squat', 2)], { currentId: 'back-squat' })
+
+  expect(cellsOf('Back squat')).toEqual(['done', 'done', 'current', 'future'])
+  expect(cellsOf('Lunges')).toEqual(['future', 'future', 'future'])
+})
+
+test('Live S2 tapping a done cell opens that logged Set; tapping one still to come opens the next Set', async () => {
+  const { user, onOpenSet, onOpenLogged } = renderAll(
+    [entry('back-squat', 1), entry('back-squat', 2)],
+    { currentId: 'back-squat' },
+  )
+
+  await user.click(screen.getByRole('button', { name: 'Set 2 · 60 × 10' }))
+  expect(onOpenLogged).toHaveBeenCalledWith('back-squat', 2)
+
+  const block = row('Back squat').closest('li') as HTMLElement
+  await user.click(within(block).getByRole('button', { name: /^Set 4 · / }))
+  expect(onOpenSet).toHaveBeenCalledWith('back-squat', 3)
+})
+
+test('Live S2 a done cell that set a record carries the PR tag', () => {
+  const earlier = finishedSession(workoutA.id, BASE - 86_400_000, [
+    weightedEntry('back-squat', 1, 50, 10),
+  ])
+  renderAll([entry('back-squat', 1)], { sessions: [earlier] })
+
+  const cell = screen.getByRole('button', { name: 'Set 1 · 60 × 10' })
+  expect(within(cell).getByText('PR')).toHaveClass('tag', 'tag-pr')
+})

@@ -1,154 +1,518 @@
-/* The Program editor (E9-T7): the Program's own fields, a card per Workout with its Plans, and
- * the exercise search overlay, which takes its fixed, opaque shape from `.overlay-panel`
- * (src/styles/overlay.css). `Save` is styled by the Action bar (src/ui/AppShell.css).
+/* The Program editor (E9-T7), laid out as Progress Dashboard S7b: a `Cancel · title · Save`
+ * bar, the Program's own name and sessions a week, then a section per Workout -- its name and
+ * live size, a column header and one 56px row per Plan with a drag handle, the exercise's name
+ * and Sets / Reps / Rest / kg cells (outlined in primary while focused) -- and, once an edit
+ * changes the week, a sticky "Impact on weekly volume" card.
  *
- * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
- * one definition site.
+ * Every colour comes through a var(--…) from src/styles/tokens.css.
  */
 
 .program-editor {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  min-height: 100vh;
+  padding: 0 var(--space-4) calc(var(--space-6) + var(--safe-bottom));
+  background: var(--color-surface);
+}
+
+/* Room under the last row for the sticky impact card. */
+.program-editor-with-impact {
+  padding-bottom: calc(220px + var(--safe-bottom));
+}
+
+/* ---- The bar ---- */
+
+.program-editor-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 56px;
+  margin: 0 calc(var(--space-4) * -1);
+  padding: var(--safe-top) var(--space-4) 0;
+  border-bottom: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+}
+
+.program-editor-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.program-editor-cancel,
+.program-editor-bar .program-editor-cancel {
+  justify-self: start;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+/* `Save` sits at the bar's end, an accent label rather than a filled button (S7b). */
+.program-editor-save,
+.program-editor-bar .program-editor-save {
+  justify-self: end;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+/* A disabled Save (O16: while `validateProgram` names a fault) must not read the same as an
+ * enabled one -- muted label, reduced opacity, and a `not-allowed` cursor, restoring the
+ * accent the moment the fault is fixed and `disabled` drops off. */
+.program-editor-save:disabled,
+.program-editor-bar .program-editor-save:disabled {
+  opacity: 0.5;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+
+.program-editor-error {
+  margin: var(--space-3) 0 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+/* ---- The Program's own fields ---- */
+
+.program-editor-program {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .program-editor-field {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.program-editor-checkbox {
-  min-height: var(--tap-min);
-  min-width: var(--tap-min);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .program-editor-label {
-  color: var(--color-muted);
+  color: var(--color-secondary);
   font-size: var(--text-sm);
 }
 
 .program-editor-input {
+  flex: 1;
+  max-width: 220px;
   min-height: var(--tap-min);
   padding: 0 var(--space-3);
-  border: 0;
-  box-shadow: inset 0 0 0 1px var(--color-muted);
+  border: 2px solid transparent;
   border-radius: var(--radius-sm);
   background: var(--color-raised);
   color: var(--color-text);
   font-size: var(--text-md);
+  font-weight: var(--weight-medium);
 }
+
+.program-editor-input-short {
+  max-width: 64px;
+  text-align: center;
+}
+
+.program-editor-input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  background: var(--color-surface);
+}
+
+.program-editor-heading {
+  margin: var(--space-4) 0 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.program-editor-fault {
+  margin: var(--space-1) 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+/* ---- A Workout ---- */
 
 .program-editor-workout {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  min-width: 0;
   margin: 0;
-  padding: var(--space-4);
+  padding: 0;
   border: 0;
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
+/* The fieldset's "Workout N" stays its accessible group name; the name field is the heading. */
 .program-editor-legend {
-  float: left;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.program-editor-workout-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+}
+
+.program-editor-workout-name {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap-min);
   padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
   color: var(--color-text);
-  font-size: var(--text-lg);
-  font-weight: 600;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.program-editor-workout-name:focus {
+  border-bottom-color: var(--color-primary);
+  outline: none;
+}
+
+.program-editor-workout-size {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+/* ---- Column header and rows ---- */
+
+.program-editor-columns,
+.program-editor-plan-row {
+  display: grid;
+  grid-template-columns: 16px 8px minmax(0, 1fr) 40px 64px 44px 52px 24px;
+  align-items: center;
+  column-gap: var(--space-1);
+}
+
+.program-editor-columns {
+  min-height: 24px;
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.program-editor-col-name {
+  grid-column: 2 / 4;
+  padding-left: var(--space-2);
+}
+
+.program-editor-col {
+  text-align: center;
 }
 
 .program-editor-plans {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .program-editor-plan {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--color-bg);
-  border-radius: var(--radius-sm);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.program-editor-plan[data-dragging='true'] {
+  background: var(--color-raised);
+}
+
+.program-editor-plan[data-drop-target='true'] {
+  box-shadow: var(--shadow-sheet);
+}
+
+.program-editor-plan-row {
+  min-height: 56px;
+}
+
+.program-editor-handle {
+  display: grid;
+  width: 16px;
+  min-height: var(--tap-min);
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: var(--color-muted);
+  cursor: grab;
+  touch-action: none;
 }
 
 .program-editor-plan-name {
   margin: 0;
-  color: var(--color-text);
-  font-size: var(--text-md);
-  font-weight: 600;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  letter-spacing: -0.015em;
+  line-height: 17px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.program-editor-plan-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.program-editor-row-actions {
+/* A cell: a raised 44px tile holding a bare input; the focused one is outlined in primary. */
+.program-editor-cell {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.program-editor-action,
-.program-editor-cancel,
-.program-editor-add {
+  align-items: center;
+  justify-content: center;
   min-height: var(--tap-min);
-  padding: 0 var(--space-3);
-  border: none;
+  border: 2px solid transparent;
   border-radius: var(--radius-sm);
   background: var(--color-raised);
+}
+
+.program-editor-cell:focus-within {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+
+.program-editor-cell-static {
   color: var(--color-text);
   font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.program-editor-cell-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.program-editor-cell-input:focus {
+  outline: none;
+  font-weight: var(--weight-semibold);
+}
+
+.program-editor-cell-input::-webkit-outer-spin-button,
+.program-editor-cell-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.program-editor-cell-reps {
+  gap: 0;
+  padding: 0 var(--space-1);
+}
+
+.program-editor-rep {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+/* A rep range reads as one value: the low end hugs the dash from the left, the high from the right. */
+.program-editor-rep:first-child .program-editor-cell-input {
+  text-align: right;
+}
+
+.program-editor-rep:last-child .program-editor-cell-input {
+  text-align: left;
+}
+
+.program-editor-rep-dash {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.program-editor-more {
+  display: grid;
+  width: 24px;
+  min-height: var(--tap-min);
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+/* A row's or a Workout's options, opened under it by its (…). */
+.program-editor-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+}
+
+.program-editor-menu-switch {
+  font-size: var(--text-sm);
+}
+
+.program-editor-menu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.program-editor-action {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  font-size: var(--text-sm);
+  cursor: pointer;
 }
 
 .program-editor-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.program-editor-add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.program-editor-add-workout {
+  min-height: var(--tap-min);
+  margin-top: var(--space-4);
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.program-editor-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- Impact on weekly volume: the sticky bottom card ---- */
+
+.program-editor-impact {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  padding: 14px var(--space-4) calc(var(--space-4) + var(--safe-bottom));
+  border-top: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sheet);
+}
+
+.program-editor-impact-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.program-editor-impact-label {
   color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  line-height: 16px;
+  text-transform: uppercase;
 }
 
-.program-editor-cancel {
-  align-self: flex-start;
+.program-editor-impact-caption {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 16px;
 }
 
-.program-editor-error {
-  margin: 0;
-  color: var(--color-danger);
-}
-
-/* A `validateProgram` fault's message, beside the field its path names (E9-T8). */
-.program-editor-fault {
-  margin: 0;
-  color: var(--color-danger);
-  font-size: var(--text-sm);
-}
-
-.program-editor-heading {
-  margin: 0;
-  color: var(--color-text);
+.program-editor-impact-headline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
-/* `Save`: one of the Action bar's own buttons, given its own class so the control audit
- * (src/styles/controlAudit.test.ts) finds a rule for it. */
-.program-editor-save {
-  font-weight: 600;
+.program-editor-impact-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
 
-/* A disabled Save (O16: while `validateProgram` names a fault) must not read the same as an
- * enabled one -- muted background, reduced opacity, and a `not-allowed` cursor, restoring the
- * court-green style the moment the fault is fixed and `disabled` drops off. */
-.program-editor-save:disabled {
-  opacity: 0.5;
-  background: var(--color-muted);
-  cursor: not-allowed;
+.program-editor-impact-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  align-items: center;
 }
+
+.program-editor-impact-bar-label,
+.program-editor-impact-tick {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.program-editor-impact-track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-right: var(--space-5);
+}
+
+.program-editor-impact-bar {
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-control);
+}
+
+.program-editor-impact-value {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+.program-editor-impact-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 52px;
+  margin-right: var(--space-5);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--color-hairline);
+}
+
+/* ---- The exercise picker ---- */
 
 .program-editor-picker {
   display: flex;
@@ -170,4 +534,5 @@
   margin: var(--space-4) 0 0;
   color: var(--color-text);
   font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
 }

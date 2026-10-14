@@ -100,6 +100,10 @@ test('O21 a record Set carries the PR badge and the older Session does not', () 
   expect(within(dialog).getAllByLabelText('Personal record')).toHaveLength(1)
   const newerRow = within(dialog).getByText('Tue 6 Oct').closest('li') as HTMLElement
   expect(within(newerRow).getByLabelText('Personal record')).toBeVisible()
+  const tag = within(newerRow).getByLabelText('Personal record')
+  expect(tag).toHaveClass('tag', 'tag-pr')
+  expect(tag.textContent).toBe('PR')
+  expect(dialog.querySelector('.pr-badge')).toBeNull()
 })
 
 test('O21 with no finished Session of this Exercise the overlay reads No earlier Sessions', () => {

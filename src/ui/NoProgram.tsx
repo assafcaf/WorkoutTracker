@@ -14,7 +14,7 @@ export function NoProgram(props: NoProgramProps): JSX.Element {
   return (
     <section className="no-program">
       <p className="no-program-title">No program yet</p>
-      <button type="button" className="no-program-choose" onClick={onChooseProgram}>
+      <button type="button" className="no-program-choose btn-primary" onClick={onChooseProgram}>
         Choose a program
       </button>
     </section>

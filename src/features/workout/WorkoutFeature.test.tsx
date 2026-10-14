@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
@@ -7,6 +7,8 @@ import { createServices, type Services } from '../../services'
 import { ServiceError } from '../../services/errors'
 import type { Session, SetEntry } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
+import { startFromDashboard, workoutsOffered } from '../../test/dashboard'
+import { findSteppers, unfoldSteppers } from '../../test/steppers'
 import { WorkoutFeature } from './WorkoutFeature'
 
 // E11-T10 O9: the Workout tab as its own container, over the real services (createServices) and
@@ -18,6 +20,16 @@ import { WorkoutFeature } from './WorkoutFeature'
 // "Start Workout A" (WorkoutStartButtons), "Resume Workout A" (ResumeCard), "Choose a program"
 // (NoProgram), "Log set" / "Set 2 of 4" (SetScreen), "Alternatives to …", "Do this instead",
 // "Undo swap", "Finish workout", and the "Session summary" dialog with its "Done".
+
+
+/**
+ * Opens the set screen's exercise tools sheet from its ⋯ button (S3b) and taps its row `name`:
+ * "Swap exercise", "Exercise info", "Lift history", "Rest time" ... Without a row, only opens it.
+ */
+async function toolsRow(user: UserEvent, name?: string): Promise<void> {
+  await user.click(await screen.findByRole('button', { name: 'Exercise tools' }, { timeout: 3000 }))
+  if (name !== undefined) await user.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }))
+}
 
 const NOW = 1_700_000_000_000
 const SETTLE = { timeout: 3000 }
@@ -61,7 +73,7 @@ function renderFeature(services: Services) {
 }
 
 async function startWorkout(user: UserEvent, workoutName: string): Promise<void> {
-  await user.click(await screen.findByRole('button', { name: `Start ${workoutName}` }, SETTLE))
+  await startFromDashboard(user, workoutName)
 }
 
 async function openExercise(user: UserEvent, exerciseName: string): Promise<void> {
@@ -69,7 +81,7 @@ async function openExercise(user: UserEvent, exerciseName: string): Promise<void
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )
   // The screen changes after the click settles; wait for it so later sync reads do not race it.
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 }
 
 /** What the exercise list shows as an exercise's set progress: "1/4". */
@@ -86,7 +98,7 @@ async function storedActiveSession(): Promise<Session | null> {
 
 /** From Workout B's seated biceps curls set screen: swaps it for Hammer Curls. */
 async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLElement> {
-  await user.click(await screen.findByRole('button', { name: 'Alternatives' }, SETTLE))
+  await toolsRow(user, 'Swap exercise')
   await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
@@ -96,10 +108,10 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
-  // The swap now stays on the Set screen (E16-T12); the list row is one Back away.
+  // The swap now stays on the Set screen (E16-T12); the list row is one All away.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await screen.findByRole('button', { name: 'Log set' }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
 
@@ -108,8 +120,9 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
 test('O9 WorkoutFeature shows the Workout picker with the active program’s start buttons', async () => {
   renderFeature(await servicesOnAssafAB())
 
+  // The Dashboard's dock offers the workout due, and "Change" steps to the program's other one.
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeVisible()
+  expect(await workoutsOffered(userEvent.setup())).toEqual(['Workout A', 'Workout B'])
 })
 
 test('O9 WorkoutFeature reports onInSession(false) on the picker', async () => {
@@ -124,10 +137,13 @@ test('O9 WorkoutFeature reports onInSession(false) on the picker', async () => {
 test('O9 with no active program the picker offers Choose a program, which navigates to the Program tab', async () => {
   const { user, navigate } = renderFeature(buildServices())
 
-  await user.click(await screen.findByRole('button', { name: 'Choose a program' }, SETTLE))
-
-  expect(navigate).toHaveBeenCalledWith({ tab: 'program' })
+  // The Dashboard (S8) offers the Programs in place: "Use A/B Split" takes it up right there,
+  // with no trip to the Program tab, and its workout due is then offered.
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
+  await user.click(await screen.findByRole('button', { name: 'Use A/B Split' }, SETTLE))
+
+  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+  expect(navigate).not.toHaveBeenCalled()
 })
 
 // --- start or resume ------------------------------------------------------------------------
@@ -179,7 +195,7 @@ test('O9 backing out of the exercise list shows Resume Workout A on the picker a
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('button', { name: 'Minimise' }))
 
   expect(await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)).toBeVisible()
   await waitFor(() => expect(onInSession).toHaveBeenLastCalledWith(false), SETTLE)
@@ -191,7 +207,7 @@ test('O9 Resume Workout A returns to the same Session in progress', async () => 
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   const before = await storedActiveSession()
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('button', { name: 'Minimise' }))
 
   await user.click(await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE))
 
@@ -256,7 +272,7 @@ test('O9 Back from the set screen shows the exercise list with the logged Set co
   await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
 
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('1/4')
@@ -332,7 +348,7 @@ test('O22 choosing an Alternative from the list at Set 2 opens the chosen Exerci
   const { user } = renderFeature(await servicesOnAssafAB())
   await openSeatedCurlsAtSet2(user)
 
-  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+  await toolsRow(user, 'Swap exercise')
   await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
   await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do this instead' }))
 
@@ -343,7 +359,7 @@ test('O22 choosing an Alternative from the detail overlay at Set 2 opens the cho
   const { user } = renderFeature(await servicesOnAssafAB())
   await openSeatedCurlsAtSet2(user)
 
-  await user.click(screen.getByRole('button', { name: 'Exercise info' }))
+  await toolsRow(user, 'Exercise info')
   await screen.findByRole('dialog', { name: 'Seated biceps curls' }, SETTLE)
   // The detail overlay lists only the top five Similar exercises; Alternate Hammer Curl is one.
   await user.click(
@@ -358,12 +374,12 @@ test('O22 choosing an Alternative from the detail overlay at Set 2 opens the cho
 test('O22 after choosing an Alternative the Workout’s list row names it with "for <planned name>" under it', async () => {
   const { user } = renderFeature(await servicesOnAssafAB())
   await openSeatedCurlsAtSet2(user)
-  await user.click(screen.getByRole('button', { name: 'Alternatives' }))
+  await toolsRow(user, 'Swap exercise')
   await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
   await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do this instead' }))
   await screen.findByRole('heading', { level: 1, name: 'Hammer Curls' }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
 
   const row = await screen.findByRole('button', { name: /^Hammer Curls/ }, SETTLE)
   expect(row.querySelector('.exercise-name')).toHaveTextContent('Hammer Curls')
@@ -378,10 +394,10 @@ test('O9 Finish workout finishes the Session and shows the Session summary', asy
   await openExercise(user, 'Back squat')
   await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+  await user.click(screen.getByRole('button', { name: 'Finish' }))
 
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
   expect(await storedActiveSession()).toBeNull()
@@ -393,7 +409,7 @@ test('O9 Done on the Session summary leaves the picker, reporting onInSession(fa
   const { user, onInSession } = renderFeature(await servicesOnAssafAB())
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Finish workout' }))
+  await user.click(screen.getByRole('button', { name: 'Finish' }))
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 
   await user.click(within(summary).getByRole('button', { name: 'Done' }))
@@ -401,7 +417,8 @@ test('O9 Done on the Session summary leaves the picker, reporting onInSession(fa
   await waitFor(() => {
     expect(screen.queryByRole('dialog', { name: 'Session summary' })).toBeNull()
   }, SETTLE)
-  expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
+  // Back on the Dashboard, whose dock offers the workout due after Workout A.
+  expect(await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Resume Workout A' })).toBeNull()
   expect(onInSession).toHaveBeenLastCalledWith(false)
 })
@@ -526,7 +543,7 @@ test("O4 a set screen opened from the list shows the rest of the Session's lates
   await openExercise(user, 'Lunges')
 
   // Back squat's 180 s from T0, 100 s gone -- not lunges' own 90 s.
-  await waitFor(async () => expect(await restReadoutText()).toBe('01:20'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
 })
 
 test('O4 +15 s on the set screen stores the Set with a 195 s rest through services.sessions.setRest', async () => {
@@ -556,7 +573,7 @@ test('O4 +15 s on the set screen moves the rest readout from 1:20 to 1:35', asyn
 
   await user.click(await screen.findByRole('button', { name: '+15 s' }, SETTLE))
 
-  await waitFor(async () => expect(await restReadoutText()).toBe('01:35'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:35'), SETTLE)
 })
 
 test('O4 after +15 s and a reload the set screen shows the same rest', async () => {
@@ -576,7 +593,7 @@ test('O4 after +15 s and a reload the set screen shows the same rest', async () 
   const { user } = renderFeature(await servicesOnAssafAB())
   await openExercise(user, 'Lunges')
 
-  await waitFor(async () => expect(await restReadoutText()).toBe('01:35'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:35'), SETTLE)
 })
 
 test('O4 after Skip and a reload the set screen reads +0:00 over', async () => {
@@ -586,7 +603,7 @@ test('O4 after Skip and a reload the set screen reads +0:00 over', async () => {
   ])
   const first = renderFeature(services)
   await openExercise(first.user, 'Lunges')
-  await first.user.click(await screen.findByRole('button', { name: 'Skip' }, SETTLE))
+  await first.user.click(await screen.findByRole('button', { name: 'Skip rest' }, SETTLE))
   await waitFor(async () => {
     const stored = await storedActiveSession()
     expect(stored?.entries[0].restSeconds).toBe(100)
@@ -596,7 +613,9 @@ test('O4 after Skip and a reload the set screen reads +0:00 over', async () => {
   const { user } = renderFeature(await servicesOnAssafAB())
   await openExercise(user, 'Lunges')
 
-  await waitFor(async () => expect(await restReadoutText()).toBe('+00:00'), SETTLE)
+  // A skipped rest is over as the screen opens: no clock at all, Log set has the dock (F3).
+  expect(await screen.findByRole('button', { name: 'Log set' }, SETTLE)).toBeVisible()
+  expect(screen.queryByRole('timer', { name: 'Rest remaining' })).toBeNull()
 })
 
 test('O4 after the latest Set is deleted, rest follows the new latest Set', async () => {
@@ -609,12 +628,12 @@ test('O4 after the latest Set is deleted, rest follows the new latest Set', asyn
   ])
   const { user } = renderFeature(services)
   await openExercise(user, 'Lunges')
-  await waitFor(async () => expect(await restReadoutText()).toBe('00:50'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('0:50'), SETTLE)
 
   await user.click(await screen.findByRole('button', { name: '20 × 10' }, SETTLE))
   await user.click(screen.getByRole('button', { name: 'Delete set' }))
 
-  await waitFor(async () => expect(await restReadoutText()).toBe('01:20'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
 })
 
 // --- E13-T12 O11: Finish exercise leads on to the next unfinished Exercise --------------------
@@ -657,7 +676,7 @@ test('O11 after Finish exercise the next set screen still counts the rest from t
   await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
 
   // Back squat's 180 s from T0, 100 s gone.
-  await waitFor(async () => expect(await restReadoutText()).toBe('01:20'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
 })
 
 test('O11 Finish exercise skips a next Exercise whose Sets are all logged', async () => {
@@ -745,7 +764,7 @@ test('O5 Set rest 2:30 on the rest Dial stores the Set with a 150 s rest through
 
   await waitFor(() => expect(setRest).toHaveBeenCalledTimes(1), SETTLE)
   expect(setRest).toHaveBeenCalledWith(sessionId, 'back-squat', 1, 150)
-  await waitFor(async () => expect(await restReadoutText()).toBe('00:50'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('0:50'), SETTLE)
 })
 
 test('O6 Use 2:30 for Back squat saves A/B Split with the back squat Plan resting 150 s', async () => {
@@ -812,7 +831,7 @@ test("O6 after Use 2:30 for Back squat, the next Session's back squat rest is 2:
   await openExercise(user, 'Back squat')
 
   // 150 s from T0 + 40 s, 60 s gone -- not the bundled 180 s's 2:00.
-  await waitFor(async () => expect(await restReadoutText()).toBe('01:30'), SETTLE)
+  await waitFor(async () => expect(await restReadoutText()).toBe('1:30'), SETTLE)
 })
 
 test('O6 a swapped-in Hammer Curls writes its rest to the Seated biceps curls Plan it was swapped under', async () => {
@@ -1004,7 +1023,7 @@ test('O5 after a warm-up today, lunges opens on last time’s first working Set,
   const { user } = renderFeature(services)
   await openExercise(user, 'Lunges')
 
-  const weight = await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  const weight = await findSteppers()
   expect(
     [weight, screen.getByRole('button', { name: 'Reps' })].map((readout) =>
       (readout.textContent ?? '').replace(/\s+/g, ' ').trim(),
@@ -1027,6 +1046,7 @@ async function lungesLastTime10x12(services: Services): Promise<void> {
 }
 
 function readoutsNow(): string[] {
+  unfoldSteppers()
   return [
     screen.getByRole('button', { name: 'Weight' }),
     screen.getByRole('button', { name: 'Reps' }),
@@ -1055,6 +1075,7 @@ test('O13 lunges last time 10×12 ×3, Set 1 logged at 11 × 12: Sets 2 and 3 op
   await openExercise(user, 'Lunges')
   await screen.findByText('Set 1 of 3', undefined, SETTLE)
   expect(readoutsNow()).toEqual(['10', '12'])
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   await user.click(screen.getByRole('button', { name: 'Log set' }))
 
@@ -1080,6 +1101,9 @@ test('O11 a saved Exercise note shows on the set screen of a new Session of that
 
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
+  // The note lives in the exercise tools sheet's Notes (S3b).
+  await toolsRow(user)
+  await user.click(screen.getByRole('radio', { name: 'Notes' }))
 
   expect(await screen.findByText('belt on, chalk', undefined, SETTLE)).toBeVisible()
 })
@@ -1089,6 +1113,8 @@ test('O11 Add note on the set screen stores the Exercise note under its id', asy
   const { user } = renderFeature(services)
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
+  await toolsRow(user)
+  await user.click(screen.getByRole('radio', { name: 'Notes' }))
 
   await user.click(await screen.findByRole('button', { name: 'Add note' }, SETTLE))
   await user.type(await screen.findByLabelText('Note', undefined, SETTLE), 'pin 4')
@@ -1108,6 +1134,8 @@ test('O11 saving the Exercise note empty removes it', async () => {
   const { user } = renderFeature(services)
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
+  await toolsRow(user)
+  await user.click(screen.getByRole('radio', { name: 'Notes' }))
 
   await user.click(await screen.findByText('belt on', undefined, SETTLE))
   await user.clear(await screen.findByLabelText('Note', undefined, SETTLE))
@@ -1137,7 +1165,7 @@ test('O9 with Track effort on, logging a Set shows the RIR chips 0 1 2 3+', asyn
 
   const chips = await screen.findByRole('group', { name: 'Reps in reserve' }, SETTLE)
   expect(within(chips).getAllByRole('button').map((chip) => chip.textContent)).toEqual([
-    '0',
+    'RIR 0',
     '1',
     '2',
     '3+',
@@ -1182,7 +1210,7 @@ test('O9 a Set with rir reads RIR n in the logged-set list', async () => {
   await user.click(within(chips).getByRole('button', { name: '1' }))
 
   const list = screen.getByRole('list', { name: 'Sets logged' })
-  await waitFor(() => expect(list.textContent).toMatch(/× \d+\s*· RIR 1$/), SETTLE)
+  await waitFor(() => expect(list.textContent).toMatch(/RIR 1$/), SETTLE)
 })
 
 // --- E14-T14: the Load Dial and the tap budget (O17, O19) ------------------------------------
@@ -1224,12 +1252,15 @@ test('O19 with the kind row, the Load Dial, a note and effort on, a Set matching
   const { user } = renderFeature(services)
   await openExercise(user, 'Push-ups')
 
-  // Every R3 control is on screen before the tap.
+  // Every R3 control is there before the tap: the Load on the steppers, the kind and the note in
+  // the exercise tools sheet (S3b), which closes again untouched.
   await screen.findByRole('listbox', { name: 'Weight ladder' }, SETTLE)
   expect(loadReadoutValue()).toBe('BW+10')
+  await toolsRow(user, 'Set type')
   expect(screen.getByRole('group', { name: 'Set kind' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute('aria-pressed', 'true')
   expect(await screen.findByText('hands under shoulders', undefined, SETTLE)).toBeVisible()
+  await user.keyboard('{Escape}')
 
   await user.click(screen.getByRole('button', { name: 'Log set' }))
 
@@ -1308,6 +1339,8 @@ test('O8 Back squat, a barbell Exercise, shows the Plate line from the stored in
   const { user } = renderFeature(services)
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
+  // The Plate line is the tools sheet's Plates segment (S3b).
+  await toolsRow(user)
 
   await waitFor(() => expect(plateLine()?.textContent).toBe('Per side: 10 · 5'), SETTLE)
 })
@@ -1318,6 +1351,7 @@ test('O8 a change to the stored inventory while the set screen is open changes t
   const { user } = renderFeature(services)
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
+  await toolsRow(user)
   await waitFor(() => expect(plateLine()?.textContent).toBe('Per side: 10 · 5'), SETTLE)
 
   await services.preferences.setPlateInventory({ barKg: 10, plates: [{ kg: 20, pairs: 2 }] })
@@ -1354,6 +1388,7 @@ test('O8 a swapped-in barbell Exercise shows the Plate line', async () => {
   await services.sessions.applySwap(started.id, 'seated-biceps-curls', 'Barbell_Curl')
   const { user } = renderFeature(services)
   await openExercise(user, 'Barbell Curl')
+  await toolsRow(user)
 
   await waitFor(
     () => expect(plateLine()?.textContent).toMatch(/^(Per side:|Nearest|Bar only|Lighter)/),
@@ -1372,8 +1407,11 @@ test('O13 on Back squat with the Plate line and Add warm-ups showing, one tap on
   const { user } = renderFeature(await servicesOnAssafAB())
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
+  await toolsRow(user)
   await waitFor(() => expect(plateLine()?.textContent).toBe('Per side: 15'), SETTLE)
+  await user.click(screen.getByRole('radio', { name: 'Warm-up' }))
   await waitFor(() => expect(addWarmupsOffer()).not.toBeNull(), SETTLE)
+  await user.keyboard('{Escape}')
 
   await user.click(screen.getByRole('button', { name: 'Log set' }))
 
@@ -1396,6 +1434,8 @@ test('O10 after a reload with one Warm-up logged for Back squat, Add warm-ups co
   ])
   const { user } = renderFeature(services)
   await openExercise(user, 'Back squat')
+  await toolsRow(user)
+  await user.click(await screen.findByRole('radio', { name: 'Warm-up' }, SETTLE))
   await waitFor(() => expect(addWarmupsOffer()).not.toBeNull(), SETTLE)
 
   await user.click(addWarmupsOffer() as HTMLElement)
@@ -1434,7 +1474,7 @@ test('O21 the History link on the set screen opens History · Back squat listing
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
 
-  await user.click(await screen.findByRole('button', { name: 'History' }, SETTLE))
+  await toolsRow(user, 'Lift history')
 
   const dialog = await screen.findByRole('dialog', { name: 'History · Back squat' }, SETTLE)
   expect(within(dialog).getByText('Tue 6 Oct')).toBeVisible()
@@ -1450,7 +1490,7 @@ test('O21 closing History returns to the same open Set with its logged Set and r
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
   const restBefore = await restReadoutText()
 
-  await user.click(await screen.findByRole('button', { name: 'History' }, SETTLE))
+  await toolsRow(user, 'Lift history')
   const dialog = await screen.findByRole('dialog', { name: 'History · Back squat' }, SETTLE)
   await user.click(within(dialog).getByRole('button', { name: 'Close' }))
 
@@ -1493,7 +1533,7 @@ test('O16 a pre-epic assisted pull-ups Set reads BW−27 × 8 on the Last time l
   await openExercise(user, 'Assisted pull-ups')
 
   expect(
-    await screen.findByText(new RegExp(`^Last time: BW${MINUS}27 ?${TIMES} ?8$`), undefined, SETTLE),
+    await screen.findByText(new RegExp(`^Last time BW${MINUS}27 ?${TIMES} ?8 · `), undefined, SETTLE),
   ).toBeVisible()
   expect(loadReadoutValue()).toBe(`BW${MINUS}27`)
 })
@@ -1504,7 +1544,7 @@ test('O16 the History overlay lists a pre-epic assisted pull-ups Set as BW−27 
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Assisted pull-ups')
 
-  await user.click(await screen.findByRole('button', { name: 'History' }, SETTLE))
+  await toolsRow(user, 'Lift history')
 
   const dialog = await screen.findByRole('dialog', { name: 'History · Assisted pull-ups' }, SETTLE)
   expect(dialog.textContent).toMatch(new RegExp(`BW${MINUS}27 ?${TIMES} ?8`))
@@ -1515,7 +1555,7 @@ test('O16 the session summary reads a pre-epic assisted pull-ups Set as BW−27 
   await seedPreEpicAssisted('pre-epic', 27, false, OCT_6)
   const { user } = renderFeature(await servicesOnAssafAB())
 
-  await user.click(await screen.findByRole('button', { name: 'Finish workout' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
 
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   await waitFor(() => expect(summary.textContent).toMatch(new RegExp(`BW${MINUS}27 ?${TIMES} ?8`)), SETTLE)
@@ -1523,14 +1563,23 @@ test('O16 the session summary reads a pre-epic assisted pull-ups Set as BW−27 
 
 // --- E16-T13 O6: the Bodyweight switch, its override applied --------------------------------
 
-/** The Set screen's Bodyweight switch, once it is up. */
-function findBodyweightSwitch(): Promise<HTMLElement> {
+/**
+ * The Set screen's Bodyweight switch, once it is up: a row of the exercise tools sheet (S3b),
+ * which this opens from the ⋯ button when it is not open already.
+ */
+async function findBodyweightSwitch(): Promise<HTMLElement> {
+  if (screen.queryByRole('dialog') === null) {
+    fireEvent.click(await screen.findByRole('button', { name: 'Exercise tools' }, SETTLE))
+  }
   return screen.findByRole('switch', { name: 'Bodyweight' }, SETTLE)
 }
 
-/** What the weight readout shows, whitespace-collapsed: "50", "BW", "BW+50". */
+/**
+ * What the weight readout shows, whitespace-collapsed: "50", "BW", "BW+50" -- read through the
+ * tools sheet when it is open over the screen.
+ */
 function weightReadoutText(): string {
-  return (screen.getByRole('button', { name: 'Weight' }).textContent ?? '').replace(/\s+/g, ' ').trim()
+  return (screen.getByRole('button', { name: 'Weight', hidden: true }).textContent ?? '').replace(/\s+/g, ' ').trim()
 }
 
 test('O6 Back squat, loaded in the catalog, opens with the Bodyweight switch off on 50 kg', async () => {
@@ -1618,7 +1667,7 @@ test('O6 reopening Back squat after flipping Bodyweight on shows the switch on a
     SETTLE,
   )
 
-  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await openExercise(user, 'Back squat')
 
   expect(await findBodyweightSwitch()).toBeChecked()

@@ -1,6 +1,10 @@
 import { useState } from 'react'
+import { presetForSet } from '../domain/prefill'
+import { recordsSetBy } from '../domain/records'
 import { workingSets } from '../domain/setKind'
+import { formatSet, loadText } from '../domain/setText'
 import './ExerciseList.css'
+import { Icon } from './icons'
 import { VolumeVsBaseline } from './VolumeVsBaseline'
 import type {
   Exercise,
@@ -8,6 +12,7 @@ import type {
   Program,
   Session,
   SetEntry,
+  SetKind,
   VolumeBaseline,
   Workout,
 } from '../types'
@@ -59,6 +64,105 @@ export type ExerciseListProps = {
   note?: string
   /** Saves the note text (500 characters at most); empty removes it. No control when absent. */
   onSaveNote?(text: string): Promise<void>
+  /** The Exercise the session is on (`currentExerciseId`): its next cell is outlined. */
+  currentId?: string | null
+  /** A done cell tapped: opens that logged Set to edit. Absent, it opens the next Set instead. */
+  onOpenLogged?(exerciseId: string, setIndex: number): void
+}
+
+const KIND_LETTERS: Record<SetKind, string> = { warmup: 'W', drop: 'D', failure: 'F', amrap: 'A' }
+
+/**
+ * One Exercise's row of set cells in the Live session's All view (Progress Dashboard S2): its
+ * warm-ups as one cell, each logged working Set filled (tap to edit), the next one outlined when
+ * the session is on this Exercise, and the planned Sets still to come dashed at their Preset.
+ */
+function SetCells(props: {
+  exercise: Exercise
+  plan: ExercisePlan
+  session: Session
+  earlier: Session[]
+  lastEntries: SetEntry[]
+  current: boolean
+  onOpenNext(): void
+  onOpenLogged(setIndex: number): void
+}): JSX.Element {
+  const { exercise, plan, session, earlier, lastEntries, current, onOpenNext, onOpenLogged } = props
+  const today = session.entries
+    .filter((entry) => entry.exerciseId === exercise.id)
+    .sort((a, b) => a.setIndex - b.setIndex)
+  const warmups = today.filter((entry) => entry.kind === 'warmup')
+  const working = workingSets(today)
+  const upcoming: { position: number; weightKg: number | null; reps: number; loadKg?: number }[] = []
+  for (let position = working.length + 1; position <= plan.sets; position += 1) {
+    const preset = presetForSet({
+      exercise,
+      plan,
+      setIndex: today.length + 1 + (position - working.length - 1),
+      lastEntries,
+      today,
+    })
+    upcoming.push({ position, ...preset })
+  }
+  const isRecord = (entry: SetEntry): boolean =>
+    recordsSetBy(exercise, plan, earlier, session, entry).length > 0
+
+  return (
+    <div className="all-cells">
+      {warmups.length === 0 ? null : (
+        <span className="all-cell all-cell--done all-cell--warmup" aria-label={`${warmups.length} warm-ups`}>
+          <span className="all-cell-mark">
+            <Icon name="Check" size={12} />
+          </span>
+          <span className="all-cell-load">W</span>
+          <span className="all-cell-reps">{warmups.length}</span>
+        </span>
+      )}
+      {working.map((entry, at) => (
+        <button
+          key={entry.setIndex}
+          type="button"
+          className="all-cell all-cell--done cell"
+          aria-label={`Set ${at + 1} · ${formatSet(entry)}`}
+          onClick={() => onOpenLogged(entry.setIndex)}
+        >
+          <span className="all-cell-mark">
+            {entry.kind === undefined ? null : <b className="all-cell-kind">{KIND_LETTERS[entry.kind]}</b>}
+            {isRecord(entry) ? <span className="tag tag-pr">PR</span> : <Icon name="Check" size={12} />}
+          </span>
+          <span className="all-cell-load">{loadText(entry)}</span>
+          <span className="all-cell-reps">×{entry.reps}</span>
+        </button>
+      ))}
+      {upcoming.map((cell, at) =>
+        current && at === 0 ? (
+          <button
+            key={cell.position}
+            type="button"
+            className="all-cell all-cell--current cell"
+            aria-label={`Set ${cell.position} · ${formatSet(cell)} · next`}
+            onClick={onOpenNext}
+          >
+            <span className="all-cell-mark" />
+            <span className="all-cell-load">{loadText(cell)}</span>
+            <span className="all-cell-reps">×{cell.reps}</span>
+          </button>
+        ) : (
+          <button
+            key={cell.position}
+            type="button"
+            className="all-cell all-cell--future cell"
+            aria-label={`Set ${cell.position} · ${formatSet(cell)}`}
+            onClick={onOpenNext}
+          >
+            <span className="all-cell-mark" />
+            <span className="all-cell-load">{loadText(cell)}</span>
+            <span className="all-cell-reps">×{cell.reps}</span>
+          </button>
+        ),
+      )}
+    </div>
+  )
 }
 
 /** The longest Session note, in characters (E14-T4). */
@@ -121,6 +225,10 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
   const [noteDraft, setNoteDraft] = useState('')
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const setCount = session.entries.length
+  // The baseline a done cell's PR tag is measured against: the finished Sessions before this one.
+  const earlier = sessions.filter(
+    (other) => other.id !== session.id && other.finishedAt !== null && other.startedAt < session.startedAt,
+  )
 
   return (
     <>
@@ -146,21 +254,28 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
                 </>
               ) : null}
             </span>{' '}
-            <span className="set-progress">{`${working}/${plan.sets}`}</span>
+            <span className="exercise-meta">
+              <span className="set-progress">{`${working}/${plan.sets}`}</span>
+              {` · ${plan.sets} × ${plan.repRange[0]}–${plan.repRange[1]}`}
+            </span>
           </>
         )
 
+        // The volume against the baseline stays the row's to say, for a screen reader: the
+        // projection line above the list carries it on screen (Progress Dashboard S2).
         const rowBody = (
           <>
             {label}
             {exercise !== undefined ? (
-              <VolumeVsBaseline
-                exercise={exercise}
-                entries={session.entries}
-                sessions={sessions}
-                baseline={volumeBaseline}
-                now={Date.now()}
-              />
+              <span className="exercise-volume">
+                <VolumeVsBaseline
+                  exercise={exercise}
+                  entries={session.entries}
+                  sessions={sessions}
+                  baseline={volumeBaseline}
+                  now={Date.now()}
+                />
+              </span>
             ) : null}
           </>
         )
@@ -168,20 +283,34 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
 
         // Two literal classNames, not a computed one: the control audit reads them statically.
         return (
-          <li key={plan.exerciseId}>
+          <li key={plan.exerciseId} className="exercise-block">
             {doneId !== undefined ? (
-              <button type="button" className="exercise-row swapped" onClick={open}>
+              <button type="button" className="exercise-row swapped cell" onClick={open}>
                 {rowBody}
               </button>
             ) : (
-              <button type="button" className="exercise-row" onClick={open}>
+              <button type="button" className="exercise-row cell" onClick={open}>
                 {rowBody}
               </button>
+            )}
+            {exercise === undefined ? null : (
+              <SetCells
+                exercise={exercise}
+                plan={plan}
+                session={session}
+                earlier={earlier}
+                lastEntries={props.lastEntries.get(effectiveId) ?? []}
+                current={props.currentId === effectiveId}
+                onOpenNext={open}
+                onOpenLogged={(setIndex) =>
+                  props.onOpenLogged === undefined ? open() : props.onOpenLogged(effectiveId, setIndex)
+                }
+              />
             )}
             {doneId !== undefined && logged === 0 ? (
               <button
                 type="button"
-                className="exercise-undo-swap"
+                className="exercise-undo-swap btn-quiet"
                 onClick={() => onUndoSwap(plan.exerciseId)}
               >
                 Undo swap
@@ -190,7 +319,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
             {doneId === undefined && lastDoneId !== undefined ? (
               <button
                 type="button"
-                className="exercise-last-time"
+                className="exercise-last-time btn-quiet"
                 onClick={() => onApplySwap(plan.exerciseId, lastDoneId)}
               >
                 {`Last time: ${resolve(lastDoneId)?.name ?? lastDoneId}`}
@@ -214,7 +343,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         </label>
         <button
           type="button"
-          className="exercise-note-save"
+          className="exercise-note-save btn-primary"
           onClick={() => {
             void onSaveNote(noteDraft.slice(0, NOTE_MAX)).then(() => setEditingNote(false))
           }}
@@ -225,7 +354,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
     ) : (
       <button
         type="button"
-        className="exercise-note-add"
+        className="exercise-note-add btn-quiet"
         onClick={() => {
           setNoteDraft(note ?? '')
           setEditingNote(true)
@@ -237,19 +366,19 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
     {onDiscard === undefined ? null : confirmingDiscard ? (
       <div className="exercise-discard-confirm" role="group" aria-label="Discard workout">
         <p>{`Discard this workout? Its ${setCount} ${setCount === 1 ? 'set is' : 'sets are'} deleted.`}</p>
-        <button type="button" className="exercise-discard-confirm-yes" onClick={onDiscard}>
+        <button type="button" className="exercise-discard-confirm-yes btn-danger" onClick={onDiscard}>
           Discard
         </button>
         <button
           type="button"
-          className="exercise-discard-confirm-cancel"
+          className="exercise-discard-confirm-cancel btn-quiet"
           onClick={() => setConfirmingDiscard(false)}
         >
           Cancel
         </button>
       </div>
     ) : (
-      <button type="button" className="exercise-discard" onClick={() => setConfirmingDiscard(true)}>
+      <button type="button" className="exercise-discard btn-danger" onClick={() => setConfirmingDiscard(true)}>
         Discard workout
       </button>
     )}

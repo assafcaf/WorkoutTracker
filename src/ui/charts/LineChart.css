@@ -1,6 +1,7 @@
 /* LineChart (E4-T7): every colour comes through a `var(--…)` from src/styles/tokens.css. No
- * literal colour and no token added here. The series is clay (the accent); gridlines are the
- * raised tone, one step off the surface; all text uses the text tokens, never the series colour.
+ * literal colour and no token added here. The series is the primary indigo, 2px (E17-T10, O19);
+ * gridlines are the hairline; axis labels are --text-xs in --color-muted; all text uses the text
+ * tokens, never the series colour.
  */
 
 .line-chart {
@@ -16,38 +17,53 @@
 }
 
 .line-chart-grid {
-  stroke: var(--color-raised);
+  stroke: var(--color-hairline);
   stroke-width: 1px;
   shape-rendering: crispEdges;
 }
 
 .line-chart-line {
   fill: none;
-  stroke: var(--color-accent);
+  stroke: var(--color-primary);
   stroke-width: 2px;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 
 .line-chart-point {
-  fill: var(--color-accent);
-  /* The marker holds no text, but the contrast audit wants every accent fill to name its own
+  fill: var(--color-primary);
+  /* The marker holds no text, but the contrast audit wants every primary fill to name its own
    * foreground. */
   color: var(--color-on-primary);
   stroke: var(--color-surface);
   stroke-width: 2px;
 }
 
-.line-chart-tick,
+/* With records marked (the Lifts tab): the line and the plain points step back to the secondary
+ * ink, and only the record points keep the primary fill. */
+.line-chart[data-records] .line-chart-line {
+  stroke: var(--color-secondary);
+}
+
+.line-chart-plain {
+  fill: var(--color-secondary);
+}
+
+.line-chart-record {
+  fill: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.line-chart-axis-label,
 .line-chart-unit {
   fill: var(--color-muted);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
 
 .line-chart-latest {
   fill: var(--color-text);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
 }

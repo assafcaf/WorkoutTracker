@@ -41,7 +41,7 @@
 }
 
 .exercise-detail-video a {
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .exercise-detail-instructions {
@@ -78,4 +78,11 @@
   color: var(--color-muted);
   font-size: var(--text-xs);
   text-align: center;
+}
+
+/* The "Similar exercises" section heading (E17-T5). */
+.exercise-detail-similar-heading {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
 }

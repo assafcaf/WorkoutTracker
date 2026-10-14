@@ -393,3 +393,19 @@ test('O12 SessionEditor saving the note cleared hands over a draft without a not
   const draft = await savedDraft(onSave)
   expect(draft.note === undefined || draft.note === '').toBe(true)
 })
+
+// --- E17-T7 O11: destructive actions wear btn-danger -------------------------------------------
+const BUTTON_ROLES = ['btn-primary', 'btn-secondary', 'btn-quiet', 'btn-danger', 'tab', 'key', 'chip', 'cell', 'icon-btn']
+
+/** The control-table roles a button wears (E17-T7 O10/O11). */
+function rolesOf(button: HTMLElement): string[] {
+  return [...button.classList].filter((name) => BUTTON_ROLES.includes(name))
+}
+
+test('E17 O11 SessionEditor Delete set wears btn-danger and no other role', () => {
+  renderEditor()
+
+  expect(
+    rolesOf(within(group('Back squat')).getByRole('button', { name: 'Delete set 1' })),
+  ).toEqual(['btn-danger'])
+})

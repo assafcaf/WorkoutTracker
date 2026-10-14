@@ -1,20 +1,34 @@
 import { useState } from 'react'
-import type {
-  Exercise,
-  ExercisePlan,
-  LibraryExercise,
-  Muscle,
-  Program,
-  Session,
-  Workout,
-} from '../types'
+import type { Exercise, LibraryExercise, Muscle, Program, Session, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
-import { toRegionCounts, weekSets } from '../domain/muscles'
+import { workoutEstimate } from '../domain/dashboard'
+import { toRegionCounts, weekSets, type MuscleFamily } from '../domain/muscles'
+import { nextLoadText } from '../domain/planLoad'
 import { visiblePrograms } from '../domain/programs'
-import { prescribedWeekly, programGaps } from '../domain/programVolume'
+import {
+  exerciseFamily,
+  FAMILIES,
+  familyWeekly,
+  prescribedWeekly,
+  programGaps,
+} from '../domain/programVolume'
+import { formatRest } from '../domain/rest'
 import { BodyMap } from './body/BodyMap'
 import { BodyMapLegend } from './body/BodyMapLegend'
+import { Segmented } from './controls'
+import { ProgramHeadActions } from './program/ProgramHead'
+import {
+  CHOOSE_LINE,
+  CHOOSE_TITLE,
+  FAMILY_LABELS,
+  plural,
+  programSizeLine,
+  setsRepsText,
+  wholeCount,
+  wholeCounts,
+} from './program/planText'
 import './Settings.css'
+import './program/ProgramFamily.css'
 import './ProgramPage.css'
 
 export type ProgramPageProps = {
@@ -25,8 +39,8 @@ export type ProgramPageProps = {
   library: Map<string, LibraryExercise>
   onChooseProgram(id: string): void
   /**
-   * This week's logged sets, for the "This week" done map (M15). Optional -- and defaults to
-   * `[]` -- only because this task does not own `App.tsx`; E5-T20 wires it from there.
+   * Every Session, for the "This week" done map (M15) and the kg column's next load. Optional --
+   * and defaults to `[]` -- only because this task does not own `App.tsx`; E5-T20 wires it.
    */
   sessions?: Session[]
   /** "Now", for `weekSets`'s 7-day window (M15). Defaults to `Date.now()`. */
@@ -45,24 +59,29 @@ export type ProgramPageProps = {
   bundledProgramIds?: Set<string>
   /** An error line shown on the Program tab when set (E9-T3; E9-T10 wires it from `App.tsx`). */
   programMessage?: string | null
+  /**
+   * Whether the Programs panel (the header's overflow: switch, New, Edit, Copy, Delete, Reset)
+   * is open. Given, the caller holds it -- so the panel is still open on returning from the
+   * editor it opened; omitted, the page holds its own, closed at first.
+   */
+  programsOpen?: boolean
+  onProgramsOpenChange?(open: boolean): void
+  /**
+   * Where the head (the title, its size line, Edit and the overflow) goes: `inline` draws it at
+   * the top of the page; `none` leaves it to the caller -- the Program tab hands it to the
+   * shell's large page title (`ProgramHeadActions`, `programSizeLine`). Defaults to `inline`.
+   */
+  head?: 'inline' | 'none'
 }
 
 /**
- * One line of a workout's plan: the exercise's name, its rep target, its set count and its
- * rest, as in "Back squat 8-10 x 4, rest 180s" (M13 -- `ProgramPicker`'s line gains rest here).
- */
-function planLine(plan: ExercisePlan, catalog: Map<string, Exercise>): string {
-  const name = catalog.get(plan.exerciseId)?.name ?? plan.exerciseId
-  const [low, high] = plan.repRange
-  return `${name} ${low}-${high} x ${plan.sets}, rest ${plan.restSeconds}s`
-}
-
-/**
- * The Program tab (E5-T18): the active program's name, a card per workout listing its
- * exercises with a small body map of that workout's sets, and a program switcher -- an
- * always-visible radio list of every loaded program, the active one checked, the same shape as
- * Settings' "Active program" group (operator ruling: no "Other programs" disclosure). Carried
- * over from `ProgramPicker` (E1-T2), which this replaces on the Workout tab (M12).
+ * The Program tab (Progress Dashboard S7a): the active program's name and size, its planned
+ * weekly sets by muscle family, and a card per workout with a table of its exercises -- family
+ * dot, sets × reps, rest and the load the next session opens on. `Edit` opens the editor on the
+ * active program; the overflow opens the Programs panel, the always-visible radio list of every
+ * loaded program with each one's own actions (operator ruling, E5-T18: no "Other programs"
+ * disclosure inside it). Below the workouts sit the planned muscle map with its gaps (M14) and
+ * "This week"'s planned-vs-done maps (M15).
  */
 export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const {
@@ -82,8 +101,15 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     userProgramIds = new Set<string>(),
     bundledProgramIds = new Set<string>(),
     programMessage = null,
+    head = 'inline',
   } = props
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [ownProgramsOpen, setOwnProgramsOpen] = useState(false)
+  const programsOpen = props.programsOpen ?? ownProgramsOpen
+  function setProgramsOpen(open: boolean): void {
+    setOwnProgramsOpen(open)
+    props.onProgramsOpenChange?.(open)
+  }
 
   // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
   // half-built page behind -- the same rule `ProgramPicker` enforced.
@@ -96,9 +122,10 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     throw new Error(`no program ${activeProgramId} among the loaded programs`)
   }
 
-  // The whole active program's prescribed weekly volume (M14/M15's prescribed side) -- distinct
-  // from a single workout card's session-scale map (`renderWorkout` below), which is why the
-  // fixtures band the same muscle differently at the two scales.
+  const lookup = (id: string) => catalog.get(id)
+  const workouts = active ? active.workouts.filter((workout) => !workout.hidden) : []
+
+  // The whole active program's prescribed weekly volume (M14/M15's prescribed side).
   const prescribedMuscleCounts = active
     ? prescribedWeekly(active, catalog, library)
     : new Map<Muscle, number>()
@@ -110,22 +137,95 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const doneRegionCounts = toRegionCounts(doneMuscleCounts)
   const noSetsThisWeek = doneMuscleCounts.size === 0
 
-  function renderWorkout(program: Program, workout: Workout): JSX.Element {
-    // One workout's sets at weight 1: the workout as a program of its own, done once a week.
-    const oneWorkout: Program = { ...program, workouts: [workout], sessionsPerWeek: 1 }
-    const counts = toRegionCounts(prescribedWeekly(oneWorkout, catalog, library))
+  function renderWeeklySets(program: Program): JSX.Element {
+    const { total, families } = familyWeekly(program, lookup, library)
+    const counts = wholeCounts(FAMILIES.map((family) => families[family]))
+    const countOf = (family: MuscleFamily) => counts[FAMILIES.indexOf(family)]
+    const described = FAMILIES.map((family) => `${FAMILY_LABELS[family]} ${countOf(family)}`)
     return (
-      <section key={`${program.id}/${workout.id}`} className="workout-card">
-        <h3>{workout.name}</h3>
-        <ul>
-          {workout.exercises.map((plan) => (
-            <li key={plan.exerciseId}>{planLine(plan, catalog)}</li>
+      <section className="program-page-volume card" aria-labelledby="program-page-volume-title">
+        <div className="program-page-card-head">
+          <h3 className="program-page-card-title" id="program-page-volume-title">
+            Weekly sets, planned
+          </h3>
+          <span className="program-page-card-total">{`${wholeCount(total)} sets`}</span>
+        </div>
+        <div
+          className="program-page-volume-bar"
+          role="img"
+          aria-label={`${described.join(', ')} sets a week`}
+        >
+          {FAMILIES.filter((family) => families[family] > 0).map((family) => (
+            <span
+              key={family}
+              className="program-page-volume-segment program-family"
+              data-family={family}
+              style={{ flexGrow: families[family] }}
+            />
+          ))}
+        </div>
+        <ul className="program-page-legend">
+          {FAMILIES.map((family) => (
+            <li key={family} className="program-page-legend-item" data-family={family}>
+              <span className="muscle-dot program-family" data-family={family} aria-hidden="true" />
+              {FAMILY_LABELS[family]}
+              <b className="program-page-legend-count">{countOf(family)}</b>
+            </li>
           ))}
         </ul>
-        <div className="program-page-map">
-          <BodyMap counts={counts} scale="session" />
+      </section>
+    )
+  }
+
+  function renderWorkout(program: Program, workout: Workout): JSX.Element {
+    const { sets, minutes } = workoutEstimate(workout)
+    return (
+      <section key={`${program.id}/${workout.id}`} className="workout-card card">
+        <div className="program-page-card-head">
+          <h3 className="program-page-workout-title">{workout.name}</h3>
+          <span className="program-page-card-note">{`${sets} sets · ~${minutes} min`}</span>
         </div>
-        <BodyMapLegend scale="session" />
+        <table className="program-page-table">
+          <thead>
+            <tr>
+              <th scope="col" className="program-page-th">
+                Exercise
+              </th>
+              <th scope="col" className="program-page-th program-page-num">
+                Sets × reps
+              </th>
+              <th scope="col" className="program-page-th program-page-num">
+                Rest
+              </th>
+              <th scope="col" className="program-page-th program-page-num">
+                kg
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {workout.exercises.map((plan, index) => {
+              const exercise = catalog.get(plan.exerciseId)
+              const family = exerciseFamily(exercise, library)
+              return (
+                <tr key={`${plan.exerciseId}-${index}`} className="program-page-row" data-exercise-id={plan.exerciseId}>
+                  <td className="program-page-exercise">
+                    <span
+                      className="muscle-dot program-family"
+                      data-family={family ?? undefined}
+                      aria-hidden="true"
+                    />
+                    {exercise?.name ?? plan.exerciseId}
+                  </td>
+                  <td className="program-page-num">{setsRepsText(plan)}</td>
+                  <td className="program-page-num program-page-rest">{formatRest(plan.restSeconds)}</td>
+                  <td className="program-page-num program-page-kg">
+                    {exercise ? nextLoadText(exercise, plan, sessions) : '–'}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </section>
     )
   }
@@ -137,29 +237,27 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     const confirming = confirmingId === program.id
     return (
       <div key={program.id} data-program-id={program.id} className="program-page-switcher-row">
-        <label className={`settings-action${checked ? ' settings-action-active' : ''}`}>
-          <input
-            type="radio"
-            className="settings-radio"
-            name="program-page-active-program"
-            value={program.id}
-            checked={checked}
-            onChange={() => {
-              if (!checked) onChooseProgram(program.id)
-            }}
-          />
-          <span className="settings-action-label">{program.name}</span>
-        </label>
+        {/* One segment per row, all sharing a name, so the rows still form one native radio
+            group while each keeps its own action buttons beside it. */}
+        <Segmented
+          name="program-page-active-program"
+          label="Active program"
+          value={activeProgramId ?? ''}
+          options={[{ value: program.id, label: program.name }]}
+          onChange={() => {
+            if (!checked) onChooseProgram(program.id)
+          }}
+        />
         <button
           type="button"
-          className="program-page-edit"
+          className="program-page-edit btn-secondary"
           onClick={() => onEditProgram?.(program.id)}
         >
           Edit
         </button>
         <button
           type="button"
-          className="program-page-copy"
+          className="program-page-copy btn-secondary"
           onClick={() => onCopyProgram?.(program.id)}
         >
           Copy
@@ -167,7 +265,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         {isUser && !isBundled && !confirming && (
           <button
             type="button"
-            className="program-page-delete"
+            className="program-page-delete btn-danger"
             onClick={() => setConfirmingId(program.id)}
           >
             Delete
@@ -176,7 +274,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         {isUser && isBundled && !confirming && (
           <button
             type="button"
-            className="program-page-reset"
+            className="program-page-reset btn-danger"
             onClick={() => setConfirmingId(program.id)}
           >
             Reset to original
@@ -185,7 +283,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         {confirming && (
           <button
             type="button"
-            className="program-page-confirm"
+            className="program-page-confirm btn-danger"
             onClick={() => {
               setConfirmingId(null)
               if (isBundled) onResetProgram?.(program.id)
@@ -199,31 +297,71 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     )
   }
 
+  const message =
+    programMessage === null || programMessage === '' ? null : (
+      <p className="program-page-message" role="status">
+        {programMessage}
+      </p>
+    )
+
   return (
     <div className="program-page">
-      {activeProgramId !== null && (
-        <fieldset className="settings-group program-page-switcher">
-          <legend className="settings-legend">Active program</legend>
-          <button type="button" className="program-page-new" onClick={() => onNewProgram?.()}>
-            New program
-          </button>
-          {programs.map((program) => renderProgramRow(program))}
-        </fieldset>
+      {active && head === 'inline' && (
+        <div className="program-page-head">
+          <div className="program-page-head-text">
+            <h2 className="program-page-title">{active.name}</h2>
+            <p className="program-page-subtitle">{programSizeLine(active)}</p>
+          </div>
+          <div className="program-page-head-actions">
+            <ProgramHeadActions
+              name={active.name}
+              onEdit={() => onEditProgram?.(active.id)}
+              programsOpen={programsOpen}
+              onOpenPrograms={() => setProgramsOpen(true)}
+            />
+          </div>
+        </div>
       )}
 
-      {activeProgramId !== null && programMessage && (
-        <p className="program-page-message" role="status">
-          {programMessage}
-        </p>
+      {activeProgramId !== null && programsOpen && (
+        <div
+          className="program-page-programs overlay-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="program-page-programs-title"
+        >
+          <div className="program-page-programs-head">
+            <h2 className="program-page-programs-title" id="program-page-programs-title">
+              Programs
+            </h2>
+            <button
+              type="button"
+              className="program-page-programs-done btn-quiet"
+              onClick={() => setProgramsOpen(false)}
+            >
+              Done
+            </button>
+          </div>
+          <fieldset className="settings-group program-page-switcher">
+            <legend className="settings-legend">Active program</legend>
+            {programs.map((program) => renderProgramRow(program))}
+          </fieldset>
+          {message}
+          <button type="button" className="program-page-new btn-secondary" onClick={() => onNewProgram?.()}>
+            New program
+          </button>
+        </div>
       )}
+
+      {activeProgramId !== null && !programsOpen && message}
 
       {active && (
         <>
-          <h2>{active.name}</h2>
-          {active.workouts.map((workout) => renderWorkout(active, workout))}
+          {renderWeeklySets(active)}
+          {workouts.map((workout) => renderWorkout(active, workout))}
 
-          <section className="program-page-weekly">
-            <h3>Weekly volume</h3>
+          <section className="program-page-weekly card">
+            <h3 className="program-page-section-heading">Muscles, planned per week</h3>
             <div className="program-page-map">
               <BodyMap counts={prescribedRegionCounts} scale="week" />
             </div>
@@ -231,40 +369,46 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
             {gaps.length > 0 && (
               <ul className="program-page-gaps">
                 {gaps.map((muscle) => (
-                  <li key={muscle}>{`No direct ${muscle} work`}</li>
+                  <li key={muscle} className="program-page-gap">{`No direct ${muscle} work`}</li>
                 ))}
               </ul>
             )}
           </section>
 
-          <section className="program-page-thisweek">
-            <h3>This week</h3>
+          <section className="program-page-thisweek card">
+            <h3 className="program-page-section-heading">This week</h3>
             <div className="program-page-thisweek-maps">
               <figure className="program-page-map">
                 <BodyMap counts={prescribedRegionCounts} scale="week" />
-                <figcaption>Planned</figcaption>
+                <figcaption className="program-page-caption">Planned</figcaption>
               </figure>
               <figure className="program-page-map">
                 <BodyMap counts={doneRegionCounts} scale="week" />
-                <figcaption>Done</figcaption>
+                <figcaption className="program-page-caption">Done</figcaption>
               </figure>
             </div>
             <BodyMapLegend scale="week" />
-            {noSetsThisWeek && <p>No sets logged in the last 7 days</p>}
+            {noSetsThisWeek && <p className="program-page-empty">No sets logged in the last 7 days</p>}
           </section>
         </>
       )}
 
       {activeProgramId === null && (
         <section className="program-page-newuser">
-          <h2>Choose a program</h2>
+          {head === 'inline' && (
+            <>
+              <h2 className="program-page-title">{CHOOSE_TITLE}</h2>
+              <p className="program-page-subtitle">{CHOOSE_LINE}</p>
+            </>
+          )}
           <div className="program-page-newuser-list">
             {visiblePrograms(programs).map((program) => (
-              <div key={program.id} className="program-page-newuser-card">
+              <div key={program.id} className="program-page-newuser-card card">
                 <span className="program-page-newuser-name">{program.name}</span>
+                <span className="program-page-newuser-size">{newUserSize(program)}</span>
                 <button
                   type="button"
-                  className="program-page-use program-page-use-primary"
+                  className="program-page-use program-page-use-primary btn-primary"
                   onClick={() => onChooseProgram(program.id)}
                 >
                   {`Use this ${program.name}`}
@@ -274,14 +418,19 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
           </div>
           <button
             type="button"
-            className="program-page-new program-page-new-secondary"
+            className="program-page-new program-page-new-secondary btn-secondary"
             onClick={() => onNewProgram?.()}
           >
             New program
           </button>
         </section>
       )}
-
     </div>
   )
+}
+
+/** A program's size on the new-user chooser: `3× per week · 2 workouts`. */
+function newUserSize(program: Program): string {
+  const workouts = program.workouts.filter((workout) => !workout.hidden).length
+  return `${program.sessionsPerWeek}× per week · ${plural(workouts, 'workout', 'workouts')}`
 }

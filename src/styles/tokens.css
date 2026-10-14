@@ -1,55 +1,51 @@
-/* The design system's one definition site (Court, decision 0009).
+/* The design system's one definition site (Progress Dashboard, E17).
  *
  * Every colour, space, radius, size, font and motion value the app draws with is declared here
  * and used through `var(--…)` everywhere else, so the palette can only change in one place. The
- * set is closed: src/styles/tokens.test.ts holds this file to exactly these forty-nine tokens,
- * with the values of the spec's token table.
+ * set is closed: src/styles/tokens.test.ts holds this file to the 52 tokens of the spec's token
+ * table, with their values, and nothing else.
  *
- * The palette is light-only: an ivory field, white cards that separate from it by tint rather
- * than by a hairline, warm ink, court green for the primary action and clay for data. Every
- * documented text/background pair is asserted at 4.5:1 or better.
+ * The palette is light-only: a cool grey field, white cards, near-black ink, one indigo accent
+ * for the primary action, and colour otherwise only in data. Every documented text/background
+ * pair is asserted at its floor: 7:1 for numerals and the primary label, 4.5:1 for text and
+ * 3:1 for data marks.
  */
 :root {
-  /* Palette. Surfaces go from the ivory field up through white cards to raised controls. */
-  --color-bg: #F5F1E8;
+  /* Neutrals. Surfaces go from the grey field up through white cards to raised controls. */
+  --color-bg: #F6F6F8;
   --color-surface: #FFFFFF;
-  --color-raised: #ECE6DA;
-  --color-text: #24211D;
-  --color-muted: #5F5A52;
-  /* Court green: the primary action and the active state, and nothing else. */
-  --color-primary: #1F4D3A;
-  --color-on-primary: #F5F1E8;
-  /* Clay: chart lines and bars, progress fills and highlighted numbers. */
-  --color-accent: #9E5231;
+  --color-raised: #EEEEF2;
+  --color-hairline: #E3E3E9;
+  --color-control: #CACAD3;
+  --color-text: #16161D;
+  --color-secondary: #45454F;
+  --color-muted: #62626F;
+
+  /* Accent: the primary action and the active state, and nothing else. */
+  --color-primary: #4338A8;
+  --color-primary-pressed: #362C8C;
+  --color-primary-tint: #EEEDF8;
+  --color-on-primary: #FFFFFF;
+
+  /* Status. */
   --color-warn: #8A5A12;
-  --color-danger: #A33B32;
+  --color-danger: #B42318;
 
-  /* The four muscle families: a pastel tint and an ink in the same hue that reads on it. */
-  --family-push-tint: #F3DDD0;
-  --family-push-ink: #7A3A20;
-  --family-pull-tint: #DCE5F0;
-  --family-pull-ink: #2E4A6B;
-  --family-legs-tint: #DDE7DA;
-  --family-legs-ink: #34503A;
-  --family-core-tint: #E6DFEE;
-  --family-core-ink: #4F3D68;
+  /* Colour only in data: the four muscle-family marks, the four heat steps and the second
+   * chart series. */
+  --data-push: #256F91;
+  --data-pull: #96506F;
+  --data-legs: #4F7A33;
+  --data-core: #93611A;
+  --heat-0: #E6F1F2;
+  --heat-1: #A9D3D6;
+  --heat-2: #4E9DA4;
+  --heat-3: #1D6970;
+  --chart-b: #8A8A97;
 
-  /* The personal-record medallion. */
-  --pr-tint: #F2E3B8;
-  --pr-ink: #6B4E0E;
-  --pr-ring: #B08A2E;
-
-  /* BodyMap's four shade bands, a single-hue ramp from --color-raised to clay, so the steps
-   * survive every colour-vision deficiency. --map-shade-0 is the "nothing counted" shade. Plus
-   * the exercise-scale pair: --map-primary for a primary muscle, --map-secondary for a
-   * secondary one. None is a text/background pair; the map strokes every region in
-   * --color-muted instead, because the light steps sit close to the surface. */
-  --map-shade-0: #ECE6DA;
-  --map-shade-1: #EBC7B0;
-  --map-shade-2: #D0906C;
-  --map-shade-3: #9E5231;
-  --map-primary: #9E5231;
-  --map-secondary: #D0906C;
+  /* Effects: the scrim behind a sheet, and the sheet's shadow. */
+  --scrim: rgba(22, 22, 29, 0.4);
+  --shadow-sheet: 0 8px 24px rgba(22, 22, 29, 0.12);
 
   /* Spacing scale, in 4px steps that widen as they grow. */
   --space-1: 4px;
@@ -59,20 +55,19 @@
   --space-5: 24px;
   --space-6: 32px;
 
-  /* Corner radii. `--radius-pill` is any value past half the tallest control. */
-  --radius-sm: 12px;
-  --radius-lg: 20px;
+  /* Corner radii: sm for cells, inputs, chips and tags; md for buttons; lg for cards and sheet
+   * tops. `--radius-pill` is any value past half the tallest control. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
   --radius-pill: 999px;
 
-  /* The tap-target floor every interactive control has to reach. */
+  /* The tap-target floor every interactive control has to reach, and the keypad key's. */
   --tap-min: 44px;
+  --key-min: 64px;
 
   /* The system stack for body text: it paints on the first frame. */
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-
-  /* The display face for numbers and headings, falling back to the system stack until it
-   * loads. The font file is declared outside this file. */
-  --font-display: 'Barlow Semi-Condensed', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   /* Type scale. */
   --text-xs: 12px;
@@ -80,7 +75,13 @@
   --text-md: 16px;
   --text-lg: 20px;
   --text-xl: 28px;
+  --text-hero: 60px;
   --text-display: 64px;
+
+  /* Weights. */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
 
   /* Motion: how long a press takes, and how far it shrinks the control. */
   --motion-fast: 150ms;

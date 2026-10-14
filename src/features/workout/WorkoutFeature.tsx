@@ -1,12 +1,18 @@
 import { swapPreset } from '../../domain/swapPreset'
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
+import { validateEntry } from '../../domain/dial'
 import { nextExerciseAfter } from '../../domain/flow'
+import { currentExerciseId, liveProgress, planFor } from '../../domain/liveProgress'
+import { presetForSet } from '../../domain/prefill'
+import { workingSets } from '../../domain/setKind'
+import { formatSet } from '../../domain/setText'
 import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
-import { latestSet } from '../../domain/rest'
+import { latestSet, restLengthOf } from '../../domain/rest'
+import { countsTowardStats } from '../../domain/setKind'
 import { ServiceError } from '../../services'
 import type {
   Exercise,
@@ -17,18 +23,19 @@ import type {
   VolumeBaseline,
   Workout,
 } from '../../types'
-import { ActionBarSlot, AppShell } from '../../ui/AppShell'
-import { BackupBadge } from '../../ui/BackupBadge'
-import { ElapsedTime } from '../../ui/ElapsedTime'
+import { ActionBarSlot, AppShell, ShellChromeContext } from '../../ui/AppShell'
+import { LiveHeader } from '../../ui/LiveHeader'
+import type { LiveStatus } from '../../ui/LiveStrip'
 import { ExerciseList } from '../../ui/ExerciseList'
-import { NoProgram } from '../../ui/NoProgram'
-import { ResumeCard } from '../../ui/ResumeCard'
 import { SessionSummary } from '../../ui/SessionSummary'
 import { SetScreen } from '../../ui/SetScreen'
 import { StorageUnavailableBanner } from '../../ui/StorageUnavailableBanner'
-import { WorkoutStartButtons } from '../../ui/WorkoutStartButtons'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
+import { LiveSessionBar } from '../../ui/live/LiveSessionBar'
+import type { LiveView } from '../../ui/live/LiveSessionBar'
+import { UpNextRows } from '../../ui/live/UpNextRows'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
+import { DashboardScreen } from '../dashboard/DashboardScreen'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
 import { useServices, useSyncControls } from '../ServicesProvider'
@@ -44,6 +51,23 @@ export type WorkoutFeatureProps = {
    * the picker offers resuming it (the tab reached again later). Defaults to `true`.
    */
   landInSession?: boolean
+  /**
+   * Whether the Dashboard is the screen showing (default `true`). `false` draws nothing while
+   * no Live session is on screen, but keeps the session's place -- the exercise, the set --
+   * for when the trainee returns to it.
+   */
+  shown?: boolean
+  /** Whether the Live session is minimised to the app root's live strip (default `false`). */
+  minimised?: boolean
+  /**
+   * The Live session header's chevron. Unset -- no app root to hold a live strip -- minimising
+   * returns to the Dashboard's picker, which offers resuming the session.
+   */
+  onMinimise?(): void
+  /** Brings a minimised Live session back on screen: resuming it, or starting a workout. */
+  onRestore?(): void
+  /** Told what the live strip shows while a session is in progress, and `null` once none is. */
+  onLive?(status: LiveStatus | null): void
 }
 
 type View = 'picker' | 'list' | 'set'
@@ -63,6 +87,8 @@ type OpenSet = {
   seed?: SetEntry[]
   /** The Set the screen is on after logging, which its key (`setIndex`) does not follow. */
   liveSetIndex?: number
+  /** A logged Set to open for editing: a done cell tapped in the All view. */
+  editSetIndex?: number
 }
 
 /** The detail overlay (E5-T8, E5-T15) or the ranked alternatives overlay (E5-T12). */
@@ -105,6 +131,24 @@ function plannedExerciseIdFor(session: Session, exerciseId: string): string {
 }
 
 /**
+ * The done id of the exercise the Live session is on: `current` while it still has planned
+ * working Sets to log, else the next Plan after it with some left (`nextExerciseAfter`), else
+ * null once every planned Set is in.
+ */
+function currentExerciseOf(workout: Workout, session: Session, current: string | null): string | null {
+  if (current !== null) {
+    const plan = workout.exercises.find(
+      (candidate) => candidate.exerciseId === plannedExerciseIdFor(session, current),
+    )
+    const logged = session.entries.filter(
+      (entry) => entry.exerciseId === current && countsTowardStats(entry),
+    ).length
+    if (plan !== undefined && logged < plan.sets) return current
+  }
+  return nextExerciseAfter(workout, session, current ?? '')
+}
+
+/**
  * `catalog` plus every library Exercise a Program's Plan points at (E9-T9), so a Program built
  * from the library passes `assertPlansAreInCatalog`.
  */
@@ -140,9 +184,16 @@ export function WorkoutFeature({
   navigate,
   onInSession,
   landInSession = true,
-}: WorkoutFeatureProps): JSX.Element {
+  shown = true,
+  minimised = false,
+  onMinimise,
+  onRestore,
+  onLive,
+}: WorkoutFeatureProps): JSX.Element | null {
   const services = useServices()
   const { syncNow } = useSyncControls()
+  // The app root's way into Settings, which the Dashboard's gear opens.
+  const chrome = useContext(ShellChromeContext)
 
   const catalogData = useServiceData((s) => s.catalog.load(), [])
   const programsData = useServiceData<ProgramsView>(async (s) => {
@@ -168,10 +219,6 @@ export function WorkoutFeature({
   }, ['programs'])
   const gymEquipmentData = useServiceData(
     (s) => orElse(s.preferences.gymEquipment(), null),
-    ['preferences'],
-  )
-  const lastExportedAtData = useServiceData(
-    (s) => orElse(s.preferences.lastExportedAt(), null),
     ['preferences'],
   )
   const volumeBaselineData = useServiceData(
@@ -248,6 +295,50 @@ export function WorkoutFeature({
     onInSession(inSession)
   }, [inSession, onInSession])
 
+  // Minimising takes the set screen down; it comes back on the Set it had moved on to by
+  // logging, not the one it was first opened on.
+  useEffect(() => {
+    if (!minimised) return
+    setOpenSet((current) =>
+      current && current.liveSetIndex !== undefined
+        ? { ...current, setIndex: current.liveSetIndex, liveSetIndex: undefined, extra: false }
+        : current,
+    )
+  }, [minimised])
+
+  // What the live strip says, reported whenever it changes: the workout, its clock, the rest
+  // after the latest Set and the set due next.
+  let liveStatus: LiveStatus | null = null
+  if (inSession && session && located && catalogData.status === 'ready') {
+    const { catalog, library } = catalogData.data
+    const libraryById = new Map(library.map((entry) => [entry.id, entry] as const))
+    const latest = latestSet(session.entries)
+    const latestPlan =
+      latest === null
+        ? undefined
+        : located.workout.exercises.find(
+            (candidate) => candidate.exerciseId === plannedExerciseIdFor(session, latest.exerciseId),
+          )
+    const nextId = currentExerciseOf(located.workout, session, openSet?.exerciseId ?? null)
+    const nextName = nextId === null ? null : (resolveExercise(nextId, catalog, libraryById)?.name ?? nextId)
+    const nextSet = session.entries.filter((entry) => entry.exerciseId === nextId).length + 1
+    liveStatus = {
+      workoutName: located.workout.name,
+      startedAt: session.startedAt,
+      restEndsAt:
+        latest === null || latestPlan === undefined
+          ? null
+          : latest.loggedAt + restLengthOf(latest, latestPlan.restSeconds) * 1000,
+      next: nextName === null ? null : `${nextName} · set ${nextSet}`,
+    }
+  }
+  const liveKey = liveStatus === null ? '' : JSON.stringify(liveStatus)
+  const latestLiveStatus = useRef(liveStatus)
+  latestLiveStatus.current = liveStatus
+  useEffect(() => {
+    onLive?.(latestLiveStatus.current)
+  }, [liveKey, onLive])
+
   if (catalogData.status === 'error' || programsData.status === 'error') {
     const error = catalogData.status === 'error' ? catalogData.error : programsData.error
     return (
@@ -264,7 +355,6 @@ export function WorkoutFeature({
   const { catalog, library, videos } = catalogData.data
   const { activeProgramId, staleActiveProgramNotice, storageAvailable } = programsData.data
   const gymEquipment = gymEquipmentData.status === 'ready' ? gymEquipmentData.data : null
-  const lastExportedAt = lastExportedAtData.status === 'ready' ? lastExportedAtData.data : null
   const volumeBaseline: VolumeBaseline =
     volumeBaselineData.status === 'ready' ? volumeBaselineData.data : { period: 'last' }
   const sessions = sessionsData.status === 'ready' ? sessionsData.data : []
@@ -390,6 +480,7 @@ export function WorkoutFeature({
         setLastEntries(startedLastEntries)
         setOpenSet(null)
         setView('list')
+        onRestore?.()
       })
       .catch(() => {
         // The picker stays up; nothing was started, so there is nothing to undo.
@@ -409,6 +500,75 @@ export function WorkoutFeature({
       })
       .catch(() => {
         // Without the history the preset would be wrong; the list stays up instead.
+      })
+  }
+
+  /** A done cell tapped in All: opens its Exercise on the Now view with that Set to edit. */
+  function handleOpenLogged(exerciseId: string, setIndex: number): void {
+    if (!session) return
+    const logged = session.entries.filter((entry) => entry.exerciseId === exerciseId).length
+    Promise.all([
+      services.sessions.lastEntriesFor(exerciseId),
+      services.preferences.weightStep(exerciseId),
+    ])
+      .then(([history, weightStep]) => {
+        setOpenSet({
+          exerciseId,
+          setIndex: logged + 1,
+          history,
+          extra: false,
+          weightStep,
+          exerciseNote: null,
+          editSetIndex: setIndex,
+        })
+        setView('set')
+        loadExerciseNote(exerciseId)
+      })
+      .catch(() => {
+        // The All view stays up; nothing was opened.
+      })
+  }
+
+  /** The Set the All view's Log button logs: the current Exercise's next one, at its Preset. */
+  function quickLogEntry(): { entry: SetEntry; position: number } | null {
+    if (!session || !located) return null
+    const id = currentExerciseId(located.workout, session)
+    if (id === null) return null
+    const plan = planFor(located.workout, session, id)
+    const exercise = resolveListExercise(id)
+    if (!plan || !exercise) return null
+    const today = session.entries.filter((entry) => entry.exerciseId === id)
+    const setIndex = today.length + 1
+    const position = workingSets(today).length + 1
+    const preset = presetForSet({
+      exercise,
+      plan,
+      setIndex,
+      lastEntries: lastEntries.get(id) ?? [],
+      today,
+    })
+    const entry: SetEntry = {
+      exerciseId: id,
+      setIndex,
+      weightKg: preset.weightKg,
+      reps: preset.reps,
+      ...(preset.loadKg ? { loadKg: preset.loadKg } : {}),
+      loggedAt: 0,
+      ...(plan.amrapLast === true && position === plan.sets ? { kind: 'amrap' as const } : {}),
+    }
+    return { entry, position }
+  }
+
+  /** The All view's Log button: one tap logs the pre-filled Set, a whole-Session put. */
+  function handleQuickLog(): void {
+    const next = quickLogEntry()
+    if (!session || next === null) return
+    if (!validateEntry(next.entry.weightKg, next.entry.reps, next.entry.loadKg).ok) return
+    services.sessions
+      .logSet(session.id, { ...next.entry, loggedAt: Date.now() })
+      .then(setSession)
+      .catch(() => {
+        // Nothing was logged; the button stays for another try.
       })
   }
 
@@ -514,9 +674,72 @@ export function WorkoutFeature({
     }
   }
 
+  // The Live session is on screen unless the trainee minimised it to the live strip.
+  const liveOnScreen = inSession && !minimised
+
+  /** The chevron: to the app root's live strip, or with no root to hold one, to the picker. */
+  function handleMinimise(): void {
+    if (onMinimise) onMinimise()
+    else setView('picker')
+  }
+
+  /** "Now": the set the session is on -- the open exercise while it has sets left, else the next. */
+  function handleNow(): void {
+    if (!session || !located) return
+    const current = openSet?.exerciseId ?? null
+    const target =
+      currentExerciseOf(located.workout, session, current) ??
+      current ??
+      located.workout.exercises[0]?.exerciseId ??
+      null
+    if (target === null) return
+    const logged = session.entries.filter((entry) => entry.exerciseId === target).length
+    handleOpenSet(target, logged + 1)
+  }
+
+  /** The Live session's header (S2/S3), with its Now | All switch under the row. */
+  function liveHeader(
+    liveSession: Session,
+    workoutName: string,
+    shown: LiveView,
+    heading = true,
+  ): JSX.Element {
+    return (
+      <LiveHeader
+        workoutName={workoutName}
+        heading={heading}
+        startedAt={liveSession.startedAt}
+        onMinimise={handleMinimise}
+        onFinish={handleFinish}
+      >
+        {liveBar(shown)}
+      </LiveHeader>
+    )
+  }
+  // The Live session's projection line and its Now | All switch (Progress Dashboard S2/S3),
+  // over both views of the Session in progress.
+  const liveBar = (shown: LiveView): JSX.Element | null =>
+    session && located ? (
+      <LiveSessionBar
+        progress={liveProgress({
+          workout: located.workout,
+          session,
+          earlier: sessions,
+          resolve: resolveListExercise,
+        })}
+        workoutName={located.workout.name}
+        view={shown}
+        onViewChange={(next) => {
+          if (next === shown) return
+          if (next === 'all') setView('list')
+          else handleNow()
+        }}
+      />
+    ) : null
+
   let content: JSX.Element | null = null
 
-  if (view === 'set' && session && located && openSet) {
+  if (liveOnScreen && view === 'set' && session && located && openSet) {
     const plannedId = plannedExerciseIdFor(session, openSet.exerciseId)
     const plan = located.workout.exercises.find((candidate) => candidate.exerciseId === plannedId)
     const exercise = resolveListExercise(openSet.exerciseId)
@@ -539,12 +762,26 @@ export function WorkoutFeature({
       const nextId = nextExerciseAfter(located.workout, session, openSet.exerciseId)
       const nextName = nextId === null ? null : (resolveListExercise(nextId)?.name ?? null)
       content = (
-        <AppShell title={exercise.name} onBack={() => setView('list')} action={<ActionBarSlot />}>
-          <p className="workout-time">
-            Workout <ElapsedTime startedAt={session.startedAt} />
-          </p>
+        <AppShell
+          title={exercise.name}
+          header={liveHeader(session, located.workout.name, 'now', false)}
+          action={<ActionBarSlot />}
+        >
           <SetScreen
-            key={`${openSet.exerciseId}#${openSet.setIndex}`}
+            key={`${openSet.exerciseId}#${openSet.setIndex}#${openSet.editSetIndex ?? ''}`}
+            editSetIndex={openSet.editSetIndex}
+            upcoming={
+              <UpNextRows
+                workout={located.workout}
+                session={session}
+                resolve={resolveListExercise}
+                lastEntries={lastEntries}
+                sessions={sessions}
+                volumeBaseline={volumeBaseline}
+                currentId={openSet.exerciseId}
+                onOpen={handleOpenSet}
+              />
+            }
             exercise={exercise}
             plates={isBarbell(libraryMap.get(exercise.libraryId)) ? (plateInventoryData.status === 'ready' ? plateInventoryData.data : null) : null}
             plan={plan}
@@ -665,19 +902,23 @@ export function WorkoutFeature({
     }
   }
 
-  if (content === null && view === 'list' && session && located) {
+  if (content === null && liveOnScreen && view === 'list' && session && located) {
+    const quick = quickLogEntry()
     content = (
       <AppShell
         title={located.workout.name}
-        onBack={() => setView('picker')}
+        header={liveHeader(session, located.workout.name, 'all')}
         action={
-          <button type="button" className="finish-workout" onClick={handleFinish}>
-            Finish workout
-          </button>
+          quick === null ? undefined : (
+            <button type="button" className="log-set btn-primary" onClick={handleQuickLog}>
+              {`Log set ${quick.position} · ${formatSet(quick.entry)}`}
+            </button>
+          )
         }
       >
-        <ElapsedTime startedAt={session.startedAt} />
         <ExerciseList
+          currentId={currentExerciseId(located.workout, session)}
+          onOpenLogged={handleOpenLogged}
           program={located.program}
           workout={located.workout}
           resolve={resolveListExercise}
@@ -698,6 +939,10 @@ export function WorkoutFeature({
     )
   }
 
+  // Off the Dashboard with no Live session on screen, nothing is drawn; the session's place is
+  // kept for the live strip to return to.
+  if (content === null && !shown) return null
+
   if (content === null) {
     // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
     // half-built Workout tab behind.
@@ -709,30 +954,38 @@ export function WorkoutFeature({
       throw new Error(`no program ${activeProgramId} among the loaded programs`)
     }
 
+    // The Dashboard (S1) draws its own large title with the sync line, so the shell draws none.
     content = (
-      <AppShell title="Workout">
-        {!storageAvailable ? <StorageUnavailableBanner /> : null}
-        {staleActiveProgramNotice ? (
-          <p>The saved active program no longer exists; showing the first program instead.</p>
-        ) : null}
-        <BackupBadge lastExportedAt={lastExportedAt} now={Date.now()} />
-        {session && located ? (
-          <ResumeCard
-            programName={located.program.name}
-            workoutName={located.workout.name}
-            onResume={() => handleChoose(session.programId, session.workoutId)}
-          />
-        ) : null}
-        {activeProgram === null ? (
-          <NoProgram onChooseProgram={() => navigate({ tab: 'program' })} />
-        ) : (
-          <fieldset className="workout-picker" disabled={!storageAvailable}>
-            <WorkoutStartButtons
-              program={activeProgram}
-              onStart={(workoutId) => handleChoose(activeProgram.id, workoutId)}
-            />
-          </fieldset>
-        )}
+      <AppShell title="Dashboard" ownHeader>
+        <DashboardScreen
+          onStartWorkout={(workoutId) => {
+            if (activeProgram !== null && storageAvailable) handleChoose(activeProgram.id, workoutId)
+          }}
+          onOpenSettings={() => chrome.onOpenSettings?.()}
+          // A backup due is the gear's marker here (S1); Settings spells it out in full.
+          notices={
+            !storageAvailable || staleActiveProgramNotice ? (
+              <>
+                {!storageAvailable ? <StorageUnavailableBanner /> : null}
+                {staleActiveProgramNotice ? (
+                  <p>The saved active program no longer exists; showing the first program instead.</p>
+                ) : null}
+              </>
+            ) : null
+          }
+          resume={
+            session && located
+              ? {
+                  programName: located.program.name,
+                  workoutName: located.workout.name,
+                  onResume: () =>
+                    minimised && onRestore
+                      ? onRestore()
+                      : handleChoose(session.programId, session.workoutId),
+                }
+              : null
+          }
+        />
       </AppShell>
     )
   }
@@ -740,7 +993,7 @@ export function WorkoutFeature({
   return (
     <>
       {content}
-      {overlay?.kind === 'detail' ? (
+      {liveOnScreen && overlay?.kind === 'detail' ? (
         <DetailOverlay
           libraryId={overlay.libraryId}
           heading={overlay.heading}
@@ -763,6 +1016,11 @@ export function WorkoutFeature({
           session={summarySession}
           resolve={resolveListExercise}
           library={libraryMap}
+          workoutName={
+            programs
+              .find((program) => program.id === summarySession.programId)
+              ?.workouts.find((workout) => workout.id === summarySession.workoutId)?.name
+          }
           earlierSessions={sessions.filter(
             (other) =>
               other.id !== summarySession.id &&
@@ -782,8 +1040,8 @@ export function WorkoutFeature({
           }}
         />
       ) : null}
-      {historyOverlay}
-      {overlay?.kind === 'alternatives' ? (
+      {liveOnScreen ? historyOverlay : null}
+      {liveOnScreen && overlay?.kind === 'alternatives' ? (
         <AlternativesOverlay
           plannedId={overlay.plannedId}
           catalog={catalog}

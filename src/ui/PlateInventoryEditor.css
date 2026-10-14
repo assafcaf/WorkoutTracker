@@ -1,20 +1,23 @@
-/* The Bar and plates editor (E15-T5): court tokens only. */
+/* The Bar and plates editor (E15-T5), as rows of the Settings card it sits in: a 52 px row per
+ * plate split by hairlines, the count in a raised well like the Program editor's cells (S7b),
+ * and Remove as a trash icon at the row's end. Design tokens only. */
 .plate-editor {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
 .plate-editor-row {
   display: flex;
-  min-height: var(--tap-min);
+  min-height: 52px;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
   color: var(--color-text);
   font-size: var(--text-md);
+}
+
+.plate-editor > * + * {
+  border-top: 1px solid var(--color-hairline);
 }
 
 .plate-editor-label {
@@ -22,23 +25,64 @@
 }
 
 .plate-editor-input {
-  width: 6rem;
+  width: 72px;
   min-height: var(--tap-min);
-  font-size: var(--text-md);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-align: center;
+}
+
+.plate-editor-input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+/* The new plate's weight leads its row, where a plate's label would stand. */
+.plate-editor-row > .plate-editor-input:first-child {
+  flex: 1;
+  text-align: left;
 }
 
 .plate-editor-button {
+  display: inline-flex;
+  min-width: var(--tap-min);
   min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-4);
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.plate-editor-button.btn-danger,
+.plate-editor-button.btn-quiet {
   border: 0;
-  border-radius: var(--radius-lg);
-  background: var(--color-raised);
-  color: var(--color-text);
+}
+
+.plate-editor-button.btn-danger {
+  padding: 0;
+}
+
+.plate-editor > .plate-editor-button {
+  border-top: 1px solid var(--color-hairline);
+  justify-content: flex-start;
+  padding: 0 var(--space-3);
+  min-height: 52px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   font-size: var(--text-md);
+  font-weight: var(--weight-regular);
 }
 
 .plate-editor-error {
   margin: 0;
+  padding: var(--space-2) var(--space-3);
   color: var(--color-danger);
   font-size: var(--text-sm);
 }

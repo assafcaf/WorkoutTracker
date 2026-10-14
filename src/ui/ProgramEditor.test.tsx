@@ -159,6 +159,47 @@ function workoutButton(workout: HTMLElement, name: string): HTMLElement {
   return own[0]
 }
 
+/** Opens a Workout's own options menu (its Move up / Move down / Remove workout), if closed. */
+async function openWorkoutMenu(
+  user: ReturnType<typeof userEvent.setup>,
+  workout: HTMLElement,
+): Promise<void> {
+  const toggle = within(workout)
+    .getAllByRole('button', { name: /^Options for / })
+    .find((button) => {
+      const item = button.closest('li')
+      return item === null || !workout.contains(item)
+    })
+  if (toggle === undefined) throw new Error('no Workout options toggle')
+  if (toggle.getAttribute('aria-expanded') !== 'true') await user.click(toggle)
+}
+
+/** Opens a Plan's options menu (Move up / Move down / Swap / AMRAP / Remove), if closed. */
+async function openPlanMenu(user: ReturnType<typeof userEvent.setup>, plan: HTMLElement): Promise<void> {
+  const toggle = within(plan).getByRole('button', { name: /^Options for / })
+  if (toggle.getAttribute('aria-expanded') !== 'true') await user.click(toggle)
+}
+
+/** A Plan's own menu button `name`, its menu opened first. */
+async function planButton(
+  user: ReturnType<typeof userEvent.setup>,
+  plan: HTMLElement,
+  name: string,
+): Promise<HTMLElement> {
+  await openPlanMenu(user, plan)
+  return within(plan).getByRole('button', { name })
+}
+
+/** A Workout's own menu button `name`, its menu opened first. */
+async function workoutMenuButton(
+  user: ReturnType<typeof userEvent.setup>,
+  workout: HTMLElement,
+  name: string,
+): Promise<HTMLElement> {
+  await openWorkoutMenu(user, workout)
+  return workoutButton(workout, name)
+}
+
 /** A Workout's Plans, top to bottom. */
 function plans(workout: HTMLElement): HTMLElement[] {
   return within(workout)
@@ -305,7 +346,7 @@ test('O14 Sessions per week follows the number of Workouts as they are added and
   expect(sessionsPerWeek().value).toBe('2')
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
   expect(sessionsPerWeek().value).toBe('3')
-  await user.click(within(workoutAt(2)).getByRole('button', { name: 'Remove workout' }))
+  await user.click(await workoutMenuButton(user, workoutAt(2), 'Remove workout'))
   expect(sessionsPerWeek().value).toBe('2')
 
   // Named, with a Plan each, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
@@ -328,7 +369,7 @@ test('O14 Sessions per week stops following the Workouts once it is changed by h
   await user.type(sessionsPerWeek(), '4')
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
   expect(sessionsPerWeek().value).toBe('4')
-  await user.click(within(workoutAt(0)).getByRole('button', { name: 'Remove workout' }))
+  await user.click(await workoutMenuButton(user, workoutAt(0), 'Remove workout'))
   expect(sessionsPerWeek().value).toBe('4')
 
   // Named, with a Plan each, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
@@ -364,7 +405,7 @@ test('O14 Sessions per week counts only the visible Workouts, not hidden ones', 
 test('O15 Move down on the first Workout puts it second, shown and saved', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(workoutButton(workoutAt(0), 'Move down'))
+  await user.click(await workoutMenuButton(user, workoutAt(0), 'Move down'))
 
   expect(workoutNamesShown()).toEqual(['Lower', 'Upper'])
   const program = await save(user, onSave)
@@ -375,7 +416,7 @@ test('O15 Move down on the first Workout puts it second, shown and saved', async
 test('O15 Move up on the second Workout puts it first, shown and saved', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(workoutButton(workoutAt(1), 'Move up'))
+  await user.click(await workoutMenuButton(user, workoutAt(1), 'Move up'))
 
   expect(workoutNamesShown()).toEqual(['Lower', 'Upper'])
   const program = await save(user, onSave)
@@ -385,9 +426,7 @@ test('O15 Move up on the second Workout puts it first, shown and saved', async (
 test('O15 Move up on a Plan swaps it with the one above, its numbers kept, shown and saved', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(
-    within(planByName(workoutAt(0), 'Back Squat')).getByRole('button', { name: 'Move up' }),
-  )
+  await user.click(await planButton(user, planByName(workoutAt(0), 'Back Squat'), 'Move up'))
 
   expect(planNamesShown(workoutAt(0))).toEqual(['Back Squat', 'Flat Bench', 'Cable Row'])
   const program = await save(user, onSave)
@@ -397,9 +436,7 @@ test('O15 Move up on a Plan swaps it with the one above, its numbers kept, shown
 test('O15 Move down on a Plan swaps it with the one below, shown and saved', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(
-    within(planByName(workoutAt(0), 'Back Squat')).getByRole('button', { name: 'Move down' }),
-  )
+  await user.click(await planButton(user, planByName(workoutAt(0), 'Back Squat'), 'Move down'))
 
   expect(planNamesShown(workoutAt(0))).toEqual(['Flat Bench', 'Cable Row', 'Back Squat'])
   const program = await save(user, onSave)
@@ -409,19 +446,33 @@ test('O15 Move down on a Plan swaps it with the one below, shown and saved', asy
 test('O15 Remove on a Plan drops it, shown and saved', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(
-    within(planByName(workoutAt(0), 'Back Squat')).getByRole('button', { name: 'Remove' }),
-  )
+  await user.click(await planButton(user, planByName(workoutAt(0), 'Back Squat'), 'Remove'))
 
   expect(planNamesShown(workoutAt(0))).toEqual(['Flat Bench', 'Cable Row'])
   const program = await save(user, onSave)
   expect(program.workouts[0].exercises).toEqual([benchPlan, rowPlan])
 })
 
+// --- E17-T7 O11: destructive actions wear btn-danger -------------------------------------------
+const BUTTON_ROLES = ['btn-primary', 'btn-secondary', 'btn-quiet', 'btn-danger', 'tab', 'key', 'chip', 'cell', 'icon-btn']
+
+/** The control-table roles a button wears (E17-T7 O10/O11). */
+function rolesOf(button: HTMLElement): string[] {
+  return [...button.classList].filter((name) => BUTTON_ROLES.includes(name))
+}
+
+test('E17 O11 Remove on a Plan in the editor wears btn-danger and no other role', async () => {
+  const { user } = renderEditor(split())
+
+  expect(rolesOf(await planButton(user, planByName(workoutAt(0), 'Back Squat'), 'Remove'))).toEqual([
+    'btn-danger',
+  ])
+})
+
 test('O15 Remove workout on a Workout from initial hides it: no longer shown, saved with hidden: true', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(within(workoutAt(1)).getByRole('button', { name: 'Remove workout' }))
+  await user.click(await workoutMenuButton(user, workoutAt(1), 'Remove workout'))
 
   expect(workoutNamesShown()).toEqual(['Upper'])
   const program = await save(user, onSave)
@@ -435,7 +486,7 @@ test('O15 Remove workout on a Workout added in this edit drops it from what is s
 
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
   expect(workouts()).toHaveLength(3)
-  await user.click(within(workoutAt(2)).getByRole('button', { name: 'Remove workout' }))
+  await user.click(await workoutMenuButton(user, workoutAt(2), 'Remove workout'))
 
   expect(workoutNamesShown()).toEqual(['Upper', 'Lower'])
   const program = await save(user, onSave)
@@ -487,6 +538,8 @@ test('O15 an added Workout gets a workout- id and its typed name, and the Progra
 
 test('O15 Move up on the first Workout and Move down on the last are disabled, the others enabled', async () => {
   const { user } = renderEditor(split())
+  await openWorkoutMenu(user, workoutAt(0))
+  await openWorkoutMenu(user, workoutAt(1))
 
   expect(workoutButton(workoutAt(0), 'Move up')).toBeDisabled()
   expect(workoutButton(workoutAt(0), 'Move down')).toBeEnabled()
@@ -503,6 +556,7 @@ test('O15 Move up on the first Workout and Move down on the last are disabled, t
 test("O15 Move up on a Workout's first Plan and Move down on its last are disabled, the others enabled", async () => {
   const { user } = renderEditor(split())
 
+  for (const plan of [...plans(workoutAt(0)), ...plans(workoutAt(1))]) await openPlanMenu(user, plan)
   const [first, middle, last] = plans(workoutAt(0))
   expect(within(first).getByRole('button', { name: 'Move up' })).toBeDisabled()
   expect(within(first).getByRole('button', { name: 'Move down' })).toBeEnabled()
@@ -524,7 +578,7 @@ test("O15 Move up on a Workout's first Plan and Move down on its last are disabl
 test('O15 Cancel calls onCancel and never onSave', async () => {
   const { user, onSave, onCancel } = renderEditor(split())
 
-  await user.click(workoutButton(workoutAt(0), 'Move down'))
+  await user.click(await workoutMenuButton(user, workoutAt(0), 'Move down'))
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
   expect(onCancel).toHaveBeenCalledTimes(1)

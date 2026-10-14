@@ -6,6 +6,8 @@ import postcss from 'postcss'
 import { expect, test } from 'vitest'
 import { LineChart } from './LineChart'
 import type { Series, SeriesKind } from '../../domain/series'
+import { referencedVars } from '../../test/cssAudit'
+import { declarationsMatching } from '../../test/cssMatch'
 
 // Hand-rolled fixtures -- LineChart depends on nothing beyond its own props. jsdom has no
 // layout, so geometry is read from the attributes the chart writes, never from a bounding box.
@@ -164,11 +166,14 @@ test('O11 LineChart.css exists and is imported by LineChart.tsx', () => {
 })
 
 test('O11 LineChart strokes its line 2px in the accent colour with round joins and caps', () => {
-  const line = lineChartRules().find(
-    (rule) => rule.decls.get('stroke') === 'var(--color-accent)' && rule.decls.has('stroke-width'),
+  // E17-T10 (O19): the series line is now 2 px --color-primary; --color-accent is retired.
+  const { container } = render(
+    <LineChart series={series('e1rm', [[1, 60], [2, 80]])} title="Fixture chart" />,
   )
-  expect(line, 'a rule stroking the line with var(--color-accent)').not.toBeUndefined()
-  const decls = (line as Rule).decls
+  const polyline = container.querySelector('svg polyline')
+  expect(polyline, 'two points are joined by a polyline').not.toBeNull()
+  const decls = declarationsMatching(polyline as Element)
+  expect(decls.get('stroke')).toBe('var(--color-primary)')
   expect(decls.get('stroke-width')).toMatch(/^2(px)?$/)
   expect(decls.get('stroke-linejoin')).toBe('round')
   expect(decls.get('stroke-linecap')).toBe('round')
@@ -180,4 +185,100 @@ test('O11 LineChart draws no dashed stroke anywhere', () => {
   for (const rule of rules) {
     expect(rule.decls.has('stroke-dasharray'), `${rule.selector} is dashed`).toBe(false)
   }
+})
+
+// O19 (E17-T10): quiet charts with real axes. Gridlines are --color-hairline; an x-axis
+// (`[data-axis="x"]`) labels the points' dates and a y-axis (`[data-axis="y"]`) labels values,
+// every axis label at --text-xs in --color-muted. Fixture dates are local noon, so the day does
+// not move with the host's time zone; "13 Oct" is what both `formatDay` ("Tue 13 Oct") and any
+// shorter day-month label contain.
+
+const OCT_13 = new Date(2026, 9, 13, 12).getTime()
+const OCT_20 = new Date(2026, 9, 20, 12).getTime()
+
+function axisLabels(container: Element, axis: 'x' | 'y'): Element[] {
+  const group = container.querySelector(`svg [data-axis="${axis}"]`)
+  expect(group, `the chart must draw a [data-axis="${axis}"] axis`).not.toBeNull()
+  return [...(group as Element).querySelectorAll('text')]
+}
+
+function datedChart(): Element {
+  const { container } = render(
+    <LineChart series={series('e1rm', [[OCT_13, 60], [OCT_20, 80]])} title="Fixture chart" />,
+  )
+  return container
+}
+
+test('O19 LineChart draws an x-axis labelling the points with their dates', () => {
+  const text = axisLabels(datedChart(), 'x').map((label) => label.textContent ?? '')
+
+  expect(text.some((label) => label.includes('13 Oct')), `x labels: ${text.join(' | ')}`).toBe(true)
+  expect(text.some((label) => label.includes('20 Oct')), `x labels: ${text.join(' | ')}`).toBe(true)
+})
+
+test('O19 LineChart draws a y-axis labelling values that span the series', () => {
+  const text = axisLabels(datedChart(), 'y').map((label) => (label.textContent ?? '').trim())
+
+  expect(text).toContain('60')
+  expect(text).toContain('80')
+})
+
+test('O19 LineChart axis labels are --text-xs in --color-muted', () => {
+  const container = datedChart()
+  const labels = [...axisLabels(container, 'x'), ...axisLabels(container, 'y')]
+  expect(labels.length).toBeGreaterThan(0)
+
+  for (const label of labels) {
+    const decls = declarationsMatching(label)
+    expect(decls.get('font-size'), `"${label.textContent}" font-size`).toBe('var(--text-xs)')
+    expect(decls.get('fill'), `"${label.textContent}" fill`).toBe('var(--color-muted)')
+  }
+})
+
+test('O19 LineChart gridlines are stroked --color-hairline', () => {
+  const grid = [...datedChart().querySelectorAll('svg .line-chart-grid')]
+  expect(grid.length).toBeGreaterThan(0)
+
+  for (const line of grid) expect(declarationsMatching(line).get('stroke')).toBe('var(--color-hairline)')
+})
+
+test('O19 LineChart.css references no --color-accent token', () => {
+  expect([...referencedVars(readFileSync(cssPath, 'utf-8'))]).not.toContain('--color-accent')
+})
+
+test('Lifts LineChart marks the points given as records and draws the rest plain', () => {
+  const { container } = render(
+    <LineChart series={series('e1rm', [[1, 60], [2, 58], [3, 66]])} title="Fixture chart" recordAts={[1, 3]} />,
+  )
+
+  expect(circles(container).map((c) => c.getAttribute('class'))).toEqual([
+    'line-chart-point line-chart-record',
+    'line-chart-point line-chart-plain',
+    'line-chart-point line-chart-record',
+  ])
+  expect(declarationsMatching(circles(container)[0]).get('fill')).toBe('var(--color-primary)')
+  expect(declarationsMatching(circles(container)[1]).get('fill')).toBe('var(--color-secondary)')
+})
+
+test('Lifts LineChart without records draws every point alike', () => {
+  const { container } = render(<LineChart series={series('e1rm', [[1, 60], [2, 66]])} title="Fixture chart" />)
+
+  expect(circles(container).map((c) => c.getAttribute('class'))).toEqual(['line-chart-point', 'line-chart-point'])
+})
+
+test('Lifts LineChart with compact dates labels day and month, only as many as fit', () => {
+  const day = (date: number): number => new Date(new Date().getFullYear(), 0, date, 9).getTime()
+  const { container } = render(
+    <LineChart
+      series={series('e1rm', [[day(1), 60], [day(2), 61], [day(3), 62], [day(10), 63], [day(12), 63], [day(14), 63], [day(20), 64], [day(21), 65]])}
+      title="Fixture chart"
+      compactDates
+    />,
+  )
+
+  const labels = [...container.querySelectorAll('[data-axis="x"] text')].map((text) => text.textContent)
+  expect(labels[0]).toBe('1 Jan')
+  expect(labels[labels.length - 1]).toBe('21 Jan')
+  expect(labels.length).toBeLessThan(8)
+  expect(labels.length).toBeGreaterThanOrEqual(2)
 })

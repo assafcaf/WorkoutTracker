@@ -1,39 +1,92 @@
-/* The shell's own layout: the header, the scrolling main region and the sticky action bar.
+/* The shell's own layout: the header, the scrolling main region, the sticky action bar and
+ * room for the bottom tab bar.
  *
  * Every colour here comes through a `var(--…)` from src/styles/tokens.css; the audit in
  * src/styles/cssAudit.test.ts fails on a literal one. `.app-header-back` and
  * `.action-bar > button` carry `min-height: var(--tap-min)` on their bare selectors, which is
  * where E3-T8's tap-target audit reads the floor off.
  *
- * `.app-shell`'s own `padding-top` (fix-layout, G3; G3b follow-up) reserves clearance for
- * `.tab-bar` (src/ui/TabBar.css), which is `position: fixed` at the top of the viewport and so
- * out of document flow -- without it the fixed bar would render over the header. The bar's own
- * rendered height is `--tap-min` (its tap-target floor) plus `--safe-top` (its own
- * `padding-top`, clearing the notch), so this reuses both of those existing tokens via `calc()`
- * rather than inventing a new one. That padding pushes this whole flex column down, so
- * `.app-header`'s own `top: 0` sticky point already sits below the fixed bar; its `z-index`
- * stays lower than the bar's so the bar always wins if they ever overlap during a scroll.
+ * `.tab-bar` (src/ui/TabBar.css) is `position: fixed` at the bottom of the viewport and so out
+ * of document flow: a shell that holds it (`.app-shell-tabbed`) reserves its height --
+ * `.tab-bar-tab`'s own height plus `--safe-bottom`, the bar's bottom padding -- so the end of a
+ * screen is never under the bar. A tab screen also clears the notch at its top; a sticky header
+ * (`.app-header-bar`, the Live session's `.live-header`) clears it itself, and a live strip
+ * above the shell (src/ui/LiveStrip.css) already has.
  */
 
 .app-shell {
   display: flex;
   min-height: 100vh;
   flex-direction: column;
-  padding-top: calc(var(--tap-min) + var(--space-3) + var(--safe-top));
   background: var(--color-bg);
 }
 
-/* Sticky, so the screen's title and its trailing slot stay reachable while the main region
- * scrolls under them. */
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+.app-shell-tabbed {
+  padding-top: var(--safe-top);
+  padding-bottom: calc(var(--tap-min) + var(--space-1) + var(--safe-bottom));
+}
+
+.live-strip + .app-shell-tabbed {
+  padding-top: 0;
+}
+
+/* A full-screen mode (the Live session) is drawn on the surface, as in S2/S3. */
+.app-shell-full {
+  background: var(--color-surface);
+}
+
+/* Above a tab's large title: the Program tab's Program | Exercises switch (S7a), a 220 x 36
+ * segmented control, with the screen's own actions (Edit, the overflow) at the row's end. */
+.app-lead {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-bg);
+  min-height: 56px;
+  padding: 0 var(--space-4);
+}
+
+.app-lead .segmented {
+  width: 220px;
+  height: 36px;
+}
+
+/* A 30 px segment, tapped across the 44 px floor. */
+.app-lead .segmented .segmented-input {
+  inset: -7px 0;
+}
+
+.app-lead-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  margin-right: -10px;
+}
+
+/* The lead row stands where the title's top padding would; the title sits 4 px under it. */
+.app-lead + .page-header {
+  padding-top: var(--space-1);
+}
+
+/* A tab's content starts 8 px under its large title (S6a, S6b). */
+.page-header + .app-main {
+  padding-top: var(--space-2);
+}
+
+/* A page's compact header (Settings, an editor): sticky, so the back chevron and the title stay
+ * reachable while the main region scrolls under them. 56 px on the surface, the title centred
+ * between the chevron and the trailing slot, as S7b's "Edit A/B Split" bar. */
+.app-header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(var(--tap-min), 1fr) auto minmax(var(--tap-min), 1fr);
+  align-items: center;
+  gap: var(--space-1);
+  min-height: calc(56px + var(--safe-top));
+  padding: var(--safe-top) var(--space-2) 0;
+  border-bottom: 1px solid var(--color-hairline);
+  background: var(--color-surface);
 }
 
 .app-header-back {
@@ -51,16 +104,25 @@
 
 .app-header-title-group {
   display: flex;
-  flex: 1;
   flex-direction: column;
+  min-width: 0;
   overflow: hidden;
+  text-align: center;
+}
+
+.app-header-back {
+  justify-self: start;
+}
+
+.app-header-bar .app-header-trailing {
+  justify-self: end;
 }
 
 .app-header-title {
   overflow: hidden;
-  font-size: var(--text-lg);
-  font-weight: 600;
-  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -77,8 +139,36 @@
   padding: var(--space-4);
 }
 
+/* A tab screen that draws its own header (the Dashboard) lays out its own padding too. */
+.app-main-flush {
+  padding: 0;
+}
+
+/* The Settings gear (S1) and its backup-due marker. */
+.settings-open {
+  position: relative;
+  display: inline-flex;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+}
+
+.settings-open-badge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-warn);
+}
+
 /* The action bar rides the bottom of the viewport above the home indicator, so the screen's
- * one commitment -- finishing a workout, logging a set -- is always in reach of a thumb. */
+ * one commitment -- logging a set, saving an edit -- is always in reach of a thumb. */
 .action-bar {
   position: sticky;
   bottom: 0;
@@ -86,6 +176,7 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   padding-bottom: calc(var(--space-3) + var(--safe-bottom));
+  border-top: 1px solid var(--color-hairline);
   background: var(--color-surface);
 }
 
@@ -105,12 +196,14 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
-/* "Finish workout": one of the action bar's own buttons, given its own class so the audit
- * (src/styles/controlAudit.test.ts) can find its rule -- `.action-bar > button` above is where
- * its actual styling comes from. */
+/* "Finish": the Live session header's own way to end the workout (S2/S3), a secondary button
+ * so the screen's one primary stays "Log set". */
 .finish-workout {
   min-height: var(--tap-min);
+  padding: 0 14px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
 }

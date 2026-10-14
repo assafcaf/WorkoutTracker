@@ -18,6 +18,11 @@ export type SessionEditView = { view: 'session-edit'; sessionId: string; exercis
 export type HistoryFeatureProps = {
   navigate(to: AppRoute): void
   onInSession(inSession: boolean): void
+  /**
+   * Pins the view to one side with no switch: the Sessions tab (history) and the Lifts tab
+   * (stats), each titled for its tab. Unset keeps the History | Stats switch.
+   */
+  only?: HistoryStatsView
 }
 
 /**
@@ -28,8 +33,8 @@ export type HistoryFeatureProps = {
  * History never puts the trainee mid-session; `onInSession(false)` is reported once so the
  * tab bar the shell around this container draws never mistakes an open summary for one.
  */
-export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): JSX.Element {
-  const [view, setView] = useState<HistoryStatsView>('history')
+export function HistoryFeature({ navigate, onInSession, only }: HistoryFeatureProps): JSX.Element {
+  const [view, setView] = useState<HistoryStatsView>(only ?? 'history')
   const [summarySessionId, setSummarySessionId] = useState<string | null>(null)
   const [editing, setEditing] = useState<SessionEditView | null>(null)
   const services = useServices()
@@ -64,8 +69,8 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
 
   // The shell's own header carries the tab's one heading; the summary sits over the shell.
   return (
-    <AppShell title={view === 'stats' ? 'Stats' : 'History'}>
-      <HistoryStatsSwitch current={view} onChange={setView} />
+    <AppShell title={only === 'history' ? 'Sessions' : only === 'stats' ? 'Lifts' : view === 'stats' ? 'Stats' : 'History'}>
+      {only ? null : <HistoryStatsSwitch current={view} onChange={setView} />}
       {ready
         ? (() => {
             const sessions = sessionsData.data
@@ -124,6 +129,7 @@ export function HistoryFeature({ navigate, onInSession }: HistoryFeatureProps): 
                     session={summarySession}
                     resolve={resolve}
                     library={libraryMap}
+                    workoutName={summarise(summarySession, programs).workoutName}
                     earlierSessions={sessions.filter(
                       (other) =>
                         other.id !== summarySession.id &&

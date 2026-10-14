@@ -21,7 +21,7 @@ export function HistoryStatsSwitch(props: HistoryStatsSwitchProps): JSX.Element 
         <button
           key={view}
           type="button"
-          className="history-stats-option"
+          className="history-stats-option chip"
           aria-pressed={view === current}
           onClick={() => onChange(view)}
         >

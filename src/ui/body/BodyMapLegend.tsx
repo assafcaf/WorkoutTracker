@@ -15,6 +15,11 @@ export type BodyMapLegendProps = {
 export function BodyMapLegend({ scale }: BodyMapLegendProps): JSX.Element {
   return (
     <p className="body-map-legend" data-scale={scale}>
+      <span className="body-map-legend-swatches" aria-hidden="true">
+        {[0, 1, 2, 3].map((band) => (
+          <span key={band} className="body-map-legend-swatch" data-band={band} />
+        ))}
+      </span>
       {BAND_LABELS[scale].join(' / ')}
     </p>
   )

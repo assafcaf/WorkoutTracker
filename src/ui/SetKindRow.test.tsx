@@ -4,7 +4,10 @@ import { expect, test, vi } from 'vitest'
 import { SetKindRow } from './SetKindRow'
 import type { SetKind } from '../types'
 
-const LABELS = ['W-up', 'Working', 'Drop', 'Fail', 'AMRAP']
+const LABELS = ['Warm-up', 'Working', 'Drop', 'Failure', 'AMRAP']
+
+/** The short names these tests were written with, to the full ones the chips now show (S2b). */
+const SHOWN: Record<string, string> = { 'W-up': 'Warm-up', Fail: 'Failure', Drop: 'Drop', AMRAP: 'AMRAP' }
 
 function renderRow(value: SetKind | null) {
   const onChange = vi.fn()
@@ -39,7 +42,7 @@ test.each([
 ] as const)('O6 the value %s selects %s', (value, label) => {
   renderRow(value)
 
-  expect(pressed()).toEqual([label])
+  expect(pressed()).toEqual([SHOWN[label]])
 })
 
 test.each([
@@ -50,7 +53,7 @@ test.each([
 ] as const)('O6 choosing %s tells onChange %s', async (label, kind) => {
   const { user, onChange } = renderRow(null)
 
-  await user.click(screen.getByRole('button', { name: label }))
+  await user.click(screen.getByRole('button', { name: SHOWN[label] }))
 
   expect(onChange).toHaveBeenCalledWith(kind)
 })

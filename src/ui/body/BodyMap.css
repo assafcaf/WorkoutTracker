@@ -24,9 +24,29 @@
   height: auto;
 }
 
-/* Every region polygon is outlined, so the light first steps of the clay ramp (E10-T1's
- * --map-shade-0, equal to --color-raised) stay readable against the page rather than
- * disappearing into a fill-only shape (E10-T6, O14). */
+/* Every region polygon is outlined, so the light first steps of the heat ramp stay readable
+ * against the page rather than disappearing into a fill-only shape (E10-T6, O14). A shape with
+ * nothing counted, filler shapes included, fills --heat-0. */
 .body-map svg polygon {
   stroke: var(--color-muted);
+  fill: var(--heat-0);
+}
+
+/* Each band paints its heat step; the exercise scale paints a primary muscle --heat-3 and a
+ * secondary one --heat-2 (E17-T10, O18). The --heat-2/--heat-3 rules name a text colour for
+ * the contrast audit, though a shape holds no text. */
+.body-map svg polygon[data-band='1'] {
+  fill: var(--heat-1);
+}
+
+.body-map svg polygon[data-band='2'],
+.body-map svg polygon[data-shade='secondary'] {
+  fill: var(--heat-2);
+  color: var(--color-text);
+}
+
+.body-map svg polygon[data-band='3'],
+.body-map svg polygon[data-shade='primary'] {
+  fill: var(--heat-3);
+  color: var(--color-on-primary);
 }

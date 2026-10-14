@@ -8,25 +8,25 @@ export type BodyMapProps = {
    * nothing counted. */
   counts: Map<Region, number>
   /** 'session'/'week' band a region through `src/domain/band.ts`'s `band()` (M5); 'exercise'
-   * thresholds a count directly (M10): >= 1 is `--map-primary`, 0 < count < 1 is
-   * `--map-secondary`. */
+   * thresholds a count directly (M10): >= 1 is primary (`--heat-3`), 0 < count < 1 is
+   * secondary (`--heat-2`). */
   scale: 'session' | 'week' | 'exercise'
   /** Tapping a counted region (E5-T20's region tap panel; out of scope here). */
   onRegionTap?(region: Region): void
 }
 
-/** The data attributes and fill token one region's shapes get for `count` at `scale`. */
+/** The data attributes one region's shapes get for `count` at `scale`; BodyMap.css paints
+ * each band and shade its heat step (E17-T10, O18). */
 function regionShade(
   count: number,
   scale: BodyMapProps['scale'],
-): { 'data-band'?: number; 'data-shade'?: 'primary' | 'secondary' | 'empty'; fill: string } {
+): { 'data-band'?: number; 'data-shade'?: 'primary' | 'secondary' | 'empty' } {
   if (scale === 'exercise') {
-    if (count >= 1) return { 'data-shade': 'primary', fill: 'var(--map-primary)' }
-    if (count > 0) return { 'data-shade': 'secondary', fill: 'var(--map-secondary)' }
-    return { 'data-shade': 'empty', fill: 'var(--map-shade-0)' }
+    if (count >= 1) return { 'data-shade': 'primary' }
+    if (count > 0) return { 'data-shade': 'secondary' }
+    return { 'data-shade': 'empty' }
   }
-  const regionBand = band(count, scale)
-  return { 'data-band': regionBand, fill: `var(--map-shade-${regionBand})` }
+  return { 'data-band': band(count, scale) }
 }
 
 /**
@@ -53,16 +53,14 @@ export function BodyMap({ counts, scale, onRegionTap }: BodyMapProps): JSX.Eleme
     >
       {polygons.map(({ region, points }, index) => {
         if (region === null) {
-          return <polygon key={index} points={points} style={{ fill: 'var(--map-shade-0)' }} />
+          return <polygon key={index} points={points} />
         }
-        const { fill, ...attributes } = regionShade(counts.get(region) ?? 0, scale)
         return (
           <polygon
             key={index}
             points={points}
             data-region={region}
-            {...attributes}
-            style={{ fill }}
+            {...regionShade(counts.get(region) ?? 0, scale)}
             onClick={onRegionTap ? () => onRegionTap(region) : undefined}
           />
         )

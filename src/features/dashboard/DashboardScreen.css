@@ -1,0 +1,519 @@
+/* The Dashboard (Progress Dashboard S1, S8). Composes the global `.card`, `.btn-primary`,
+ * `.btn-secondary` and `.icon-btn`; every colour, size and radius is a token. The workout due
+ * and its start button ride a dock fixed to the bottom of the viewport. */
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  /* Room under the last card for the dock, fixed just above the tab bar; the shell around the
+   * Dashboard (`.app-shell-tabbed`) already reserves the tab bar's own height. */
+  padding: var(--space-2) var(--space-4) 152px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* ---- header ---- */
+
+.dashboard-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.dashboard-heading {
+  min-width: 0;
+}
+
+.dashboard-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: 34px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+}
+
+.dashboard-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.dashboard-status-offline {
+  color: var(--color-secondary);
+}
+
+.dashboard-header-actions {
+  display: flex;
+  margin-right: -10px;
+}
+
+.dashboard-icon-btn {
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+}
+
+.dashboard-icon-btn:first-child:not(:last-child) {
+  color: var(--color-secondary);
+}
+
+/* ---- this week ---- */
+
+.dashboard-week-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.dashboard-caption {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 16px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-card-note {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}
+
+.dashboard-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.dashboard-kpi {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 10px var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.dashboard-kpi-label,
+.dashboard-kpi-was {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}
+
+.dashboard-kpi-value {
+  font-size: var(--text-xl);
+  line-height: 34px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* ---- cards ---- */
+
+.dashboard-card {
+  margin-top: 10px;
+  padding: var(--space-3);
+}
+
+.dashboard-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.dashboard-card-title {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: 22px;
+  font-weight: var(--weight-semibold);
+}
+
+/* Muscle week: two columns of name, heat square and plan. */
+.dashboard-muscles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--space-4);
+}
+
+.dashboard-muscle-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dashboard-muscle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+}
+
+.dashboard-muscle-name {
+  width: 76px;
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.dashboard-muscle-of {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.dashboard-heat {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+.dashboard-heat[data-band='0'],
+.dashboard-legend-swatch[data-band='0'] {
+  background: var(--heat-0);
+  color: var(--color-muted);
+}
+
+.dashboard-heat[data-band='1'],
+.dashboard-legend-swatch[data-band='1'] {
+  background: var(--heat-1);
+  color: var(--color-text);
+}
+
+.dashboard-heat[data-band='2'],
+.dashboard-legend-swatch[data-band='2'] {
+  background: var(--heat-2);
+  color: var(--color-text);
+}
+
+.dashboard-heat[data-band='3'],
+.dashboard-legend-swatch[data-band='3'] {
+  background: var(--heat-3);
+  color: var(--color-surface);
+}
+
+.dashboard-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}
+
+.dashboard-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dashboard-legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.dashboard-legend-swatch[data-band='0'] {
+  outline: 1px solid var(--color-hairline);
+  outline-offset: -1px;
+}
+
+.dashboard-legend-unit {
+  margin-left: auto;
+}
+
+.dashboard-gaps {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-4);
+  margin-top: 6px;
+  color: var(--color-secondary);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}
+
+/* Lifts: a hint, then one row per lift. */
+.dashboard-lifts {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+
+.dashboard-lifts-head {
+  height: 28px;
+  margin-bottom: 0;
+}
+
+.dashboard-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  margin: 0;
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+.dashboard-lift {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 40px;
+}
+
+.dashboard-lift + .dashboard-lift {
+  border-top: 1px solid var(--color-hairline);
+}
+
+.dashboard-lift-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-lift-value {
+  width: 44px;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  text-align: right;
+}
+
+.dashboard-lift-delta {
+  width: 36px;
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  text-align: right;
+}
+
+.dashboard-empty {
+  margin: 0;
+  padding: var(--space-2) 0 var(--space-3);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+/* ---- the dock: the workout due, or the Program to use ---- */
+
+/* Fixed just above the bottom tab bar (src/ui/TabBar.css): the bar's tab height, its hairline
+ * and its bottom padding clear of the home indicator. The tab bar itself clears that, so the
+ * dock pads only its own. */
+.dashboard-dock {
+  position: fixed;
+  right: 0;
+  bottom: calc(var(--tap-min) + var(--space-1) + 1px + var(--safe-bottom));
+  left: 0;
+  z-index: 5;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+}
+
+.dashboard-due-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* "Change": offers another workout of the Program in the due one's place. */
+.dashboard-change {
+  min-height: var(--tap-min);
+  margin: calc(var(--space-3) * -1) calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.dashboard-notices {
+  margin-top: var(--space-3);
+}
+
+.dashboard-notices > :last-child {
+  margin-bottom: 0;
+}
+
+.dashboard-header-trailing {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-right: var(--space-1);
+}
+
+.dashboard-due {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: 22px;
+}
+
+.dashboard-due-name {
+  font-weight: var(--weight-semibold);
+}
+
+.dashboard-due-last {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.dashboard-due-size {
+  margin: 2px 0 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.dashboard-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+  min-height: var(--tap-min);
+  margin-top: var(--space-3);
+  border: 0;
+  font-size: var(--text-md);
+}
+
+.dashboard-start:disabled {
+  opacity: 0.5;
+}
+
+.dashboard-dock > .dashboard-start:first-child {
+  margin-top: 0;
+}
+
+/* ---- no program yet (S8) ---- */
+
+.dashboard-pick {
+  margin-top: 28px;
+  padding: var(--space-3);
+}
+
+.dashboard-pick-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 26px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+.dashboard-pick-lead {
+  margin: var(--space-1) 0 0;
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.dashboard-program {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: var(--tap-min);
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  text-align: left;
+  font: inherit;
+}
+
+.dashboard-program + .dashboard-program {
+  margin-top: var(--space-2);
+}
+
+.dashboard-program[aria-pressed='true'] {
+  border: 1.5px solid var(--color-primary);
+}
+
+.dashboard-program-head {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.dashboard-program-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.dashboard-program-name {
+  font-size: var(--text-md);
+  line-height: 22px;
+  font-weight: var(--weight-semibold);
+}
+
+.dashboard-program-summary {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.dashboard-program-check {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.dashboard-program-workout {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  height: 32px;
+  align-items: center;
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+.dashboard-program-workout:nth-child(2) {
+  margin-top: var(--space-2);
+  border-top: 0;
+}
+
+.dashboard-program-workout:last-child {
+  border-bottom: 0;
+}
+
+.dashboard-program-workout-name {
+  color: var(--color-secondary);
+}
+
+.dashboard-program-workout-size {
+  color: var(--color-muted);
+}
+
+.dashboard-new-note {
+  margin: var(--space-4) 0 0;
+  padding: 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}

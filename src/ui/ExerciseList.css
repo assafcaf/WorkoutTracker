@@ -10,34 +10,143 @@
   flex-direction: column;
   padding: 0;
   margin: 0;
-  gap: var(--space-2);
+  gap: 0;
   list-style: none;
+}
+
+/* One Exercise in the Live session's All view (Progress Dashboard S2): a header -- its name, then
+ * "4/4 - 4 x 8-10" on the far edge -- over its row of set cells, a hairline under each. */
+.exercise-block {
+  padding: var(--space-1) 0 var(--space-3);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .exercise-row {
   display: flex;
   width: 100%;
   min-height: var(--tap-min);
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) 0;
   border: 0;
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  background: transparent;
   text-align: left;
 }
 
 .exercise-name {
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+}
+
+.exercise-meta {
+  flex: none;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 /* The progress reads as a count, not as a heading: quiet, and always on the same edge so the
  * column of them can be scanned down in one look. */
 .set-progress {
   color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The row's volume against its baseline, kept for a screen reader; on screen the projection
+ * line carries the session's volume. */
+.exercise-volume {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The set cells under the header: 56 px squares, done filled, next outlined, still to come
+ * dashed; wider than the screen, the row scrolls sideways. */
+.all-cells {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.all-cells::-webkit-scrollbar {
+  display: none;
+}
+
+.all-cell {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  min-height: 56px;
+  padding: 0;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  line-height: 16px;
+}
+
+.all-cell--done,
+.all-cell--done.cell {
+  border-color: var(--color-raised);
+  background: var(--color-raised);
+}
+
+.all-cell--warmup {
+  width: 44px;
+}
+
+.all-cell--current {
+  border: 2px solid var(--color-primary);
+}
+
+.all-cell--future {
+  border: 1.5px dashed var(--color-control);
+}
+
+.all-cell-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 14px;
+  color: var(--color-secondary);
+  font-size: var(--text-xs);
+}
+
+.all-cell-mark .tag-pr {
+  padding: 0 4px;
+  line-height: 14px;
+}
+
+.all-cell-kind {
+  font-weight: var(--weight-semibold);
+}
+
+.all-cell-load {
   font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.all-cell--future .all-cell-load {
+  color: var(--color-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.all-cell-reps {
+  color: var(--color-secondary);
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -49,18 +158,18 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
-/* A swapped-in row: clay edge and an "instead of" line, so the swap reads without colour too.
- * Clay (--color-accent), never court green, which is reserved for the primary action. */
+/* A swapped-in row: a neutral edge and an "instead of" line, so the swap reads without colour
+ * too. Indigo is reserved for the primary action, so the edge stays grey. */
 .exercise-row.swapped {
-  border-left: var(--space-1) solid var(--color-accent);
+  border-left: var(--space-1) solid var(--color-control);
 }
 
 .exercise-instead {
   display: block;
-  color: var(--color-accent);
+  color: var(--color-secondary);
   font-size: var(--text-sm);
 }
 
@@ -78,7 +187,7 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .exercise-discard-confirm {
@@ -127,5 +236,5 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  color: var(--color-accent);
+  color: var(--color-text);
 }

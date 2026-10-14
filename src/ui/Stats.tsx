@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatDay } from '../domain/dates'
 import { progression } from '../domain/progression'
 import { recordsFor, type ExerciseRecord } from '../domain/records'
 import { seriesFor, type SeriesKind } from '../domain/series'
@@ -8,7 +9,7 @@ import type { Resolve } from '../domain/muscles'
 import type { Exercise, ExercisePlan, Program, Session } from '../types'
 import { BarChart } from './charts/BarChart'
 import { LineChart } from './charts/LineChart'
-import { CourtStripe } from './CourtStripe'
+import { Select } from './controls'
 import { ProgressionBar } from './ProgressionBar'
 import './Stats.css'
 
@@ -85,7 +86,7 @@ function recordUnit(record: ExerciseRecord): string {
 }
 
 function calendarDate(date: number): string {
-  return new Date(date).toISOString().slice(0, 10)
+  return formatDay(new Date(date), new Date())
 }
 
 function ExerciseProgress({ sessions, resolve, programs }: StatsProps): JSX.Element {
@@ -108,7 +109,7 @@ function ExerciseProgress({ sessions, resolve, programs }: StatsProps): JSX.Elem
     <>
       <label className="stats-picker">
         <span className="stats-picker-label">Exercise</span>
-        <select
+        <Select
           className="stats-picker-select"
           value={exercise.id}
           onChange={(event) => setChosenId(event.target.value)}
@@ -118,7 +119,7 @@ function ExerciseProgress({ sessions, resolve, programs }: StatsProps): JSX.Elem
               {option.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {plan ? <ProgressionBar progression={progression(exercise, plan, lastEntries)} /> : null}
       <LineChart series={series} title={`${exercise.name} ${SERIES_TITLES[series.kind]}`} />
@@ -126,8 +127,8 @@ function ExerciseProgress({ sessions, resolve, programs }: StatsProps): JSX.Elem
         <ul className="stats-records">
           {records.map((record) => (
             <li key={record.kind} className="stats-record">
-              <span className="pr-medallion" aria-hidden="true">
-                <CourtStripe />
+              <span className="tag tag-pr" aria-label="Personal record">
+                PR
               </span>{' '}
               <span className="stats-record-label">{record.label}</span>{' '}
               <span className="stats-record-value">{recordValueText(record)}</span>{' '}
