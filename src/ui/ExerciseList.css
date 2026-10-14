@@ -95,7 +95,8 @@
   line-height: 16px;
 }
 
-.all-cell--done {
+.all-cell--done,
+.all-cell--done.cell {
   border-color: var(--color-raised);
   background: var(--color-raised);
 }

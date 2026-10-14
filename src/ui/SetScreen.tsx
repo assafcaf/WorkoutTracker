@@ -219,12 +219,18 @@ export function setCounterText(
  * (its last one past it), and the day it was lifted. Empty with no working Set last time.
  */
 function lastTimeText(exerciseId: string, entries: SetEntry[], position: number): string {
+  const set = lastTimeSet(exerciseId, entries, position)
+  if (set === null) return ''
+  return `Last time ${formatSet(set)} · ${formatDay(new Date(set.loggedAt), new Date())}`
+}
+
+/** Last time's working Set at working `position` (its last one past it), or null with none. */
+function lastTimeSet(exerciseId: string, entries: SetEntry[], position: number): SetEntry | null {
   const sets = workingSets(entries.filter((entry) => entry.exerciseId === exerciseId)).sort(
     (a, b) => a.setIndex - b.setIndex,
   )
-  if (sets.length === 0) return ''
-  const set = sets[Math.min(Math.max(position, 1), sets.length) - 1]
-  return `Last time ${formatSet(set)} · ${formatDay(new Date(set.loggedAt), new Date())}`
+  if (sets.length === 0) return null
+  return sets[Math.min(Math.max(position, 1), sets.length) - 1]
 }
 
 /** A Set's load as a cell shows it: `62.5`, `BW`, `BW+10`. */
@@ -459,6 +465,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       : 1 + carried + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
 
   const lastTime = lastTimeText(exercise.id, props.lastTime ?? [], position)
+  const lastTimeEntry = lastTimeSet(exercise.id, props.lastTime ?? [], position)
+  // While rest runs the steppers fold into one "Next: set 4 · 62.5 × 8" row (S4); a tap on it
+  // brings them back to change the next Set. Every log folds them again.
+  const [nextExpanded, setNextExpanded] = useState(false)
 
   /** Today's Sets to preset from once they are `entries`: none when the caller gives no `logged`. */
   function today(entries: SetEntry[]): SetEntry[] | undefined {
@@ -553,6 +563,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     restFrom === null ? null : restAfter(restFrom.entry, restFrom.planRestSeconds, now)
   const done = position > plan.sets && !extraOpen
   const resting = rest !== null && !rest.isOver
+  // An extra Set past the plan keeps its steppers: there is no planned next Set to name.
+  const collapsed = resting && !done && position <= plan.sets && !nextExpanded
   const overShown = rest !== null && rest.isOver && overKey !== null && overKey === currentRestKey
 
   // Fires playRestOver once per rest period: only after this mount has actually seen the rest
@@ -694,6 +706,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setUseOffer(null)
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setEffort({ setIndex: open.setIndex, rir: null })
+      setNextExpanded(false)
       const next = openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter))
       const nextStep = ramp === null ? undefined : ramp.steps[ramp.index + 1]
       if (ramp === null) {
@@ -1399,7 +1412,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                     </span>
                     <span className="set-cell-value">{cellText(entry)}</span>
                   </button>
-                  {entry.rir === undefined ? null : (
+                  {/* A record's PR tag has the corner; its RIR shows in the edit sheet. */}
+                  {entry.rir === undefined || isRecordSet(entry) ? null : (
                     <span className="logged-set-rir">
                       {'RIR '}
                       {entry.rir === 3 ? '3+' : entry.rir}
@@ -1452,46 +1466,70 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           </p>
         ) : null}
 
-        {lastTime === '' ? null : <p className="set-last-time">{lastTime}</p>}
+        {/* While rest runs (S4) the steppers fold into "Next: set 4 · 62.5 × 8 · last 60 × 8 ⌄";
+            a tap unfolds them to change the next Set. */}
+        {collapsed ? (
+          <button
+            type="button"
+            className="set-next-row cell"
+            aria-expanded={false}
+            onClick={() => setNextExpanded(true)}
+          >
+            <span className="set-next-text">
+              <span className="set-next-label">
+                Next: set {position} ·{' '}
+                {formatSet({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })}
+              </span>
+              {lastTimeEntry === null ? null : (
+                <span className="set-next-last"> · last {formatSet(lastTimeEntry)}</span>
+              )}
+            </span>
+            <Icon name="ChevronDown" size={20} />
+          </button>
+        ) : (
+          <>
+          {lastTime === '' ? null : <p className="set-last-time">{lastTime}</p>}
 
-        <div className="set-dials">
-          {exercise.bodyweight ? (
-            // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
-            <WeightDial
-              variant="scrub"
-              exercise={effectiveExercise}
-              value={open.loadKg}
-              onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
-            />
-          ) : (
-            <WeightDial
-              variant="scrub"
-              exercise={effectiveExercise}
-              value={open.weightKg}
-              onChange={(weightKg) => setOpen({ ...open, weightKg })}
-            />
+          <div className="set-dials">
+            {exercise.bodyweight ? (
+              // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
+              <WeightDial
+                variant="scrub"
+                exercise={effectiveExercise}
+                value={open.loadKg}
+                onChange={(loadKg) => setOpen({ ...open, loadKg: loadKg ?? 0 })}
+              />
+            ) : (
+              <WeightDial
+                variant="scrub"
+                exercise={effectiveExercise}
+                value={open.weightKg}
+                onChange={(weightKg) => setOpen({ ...open, weightKg })}
+              />
+            )}
+            <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
+          </div>
+
+          {projection === null || (projection.e1rm === null && !projection.isPr) ? null : (
+            <p className="set-projection">
+              {projection.e1rm === null ? null : (
+                <>
+                  {'e1RM '}
+                  <b className="set-projection-value">{projection.e1rm.toFixed(1)}</b>
+                </>
+              )}
+              {projection.record === null ? null : ` · record ${projection.record.toFixed(1)}`}
+              {projection.isPr ? (
+                <>
+                  {projection.e1rm === null ? null : ' → '}
+                  <span className="tag tag-pr">PR if logged</span>
+                </>
+              ) : projection.record === null ? null : (
+                ' · no PR at this load'
+              )}
+            </p>
           )}
-          <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
-        </div>
-
-        {projection === null || (projection.e1rm === null && !projection.isPr) ? null : (
-          <p className="set-projection">
-            {projection.e1rm === null ? null : (
-              <>
-                {'e1RM '}
-                <b className="set-projection-value">{projection.e1rm.toFixed(1)}</b>
-              </>
-            )}
-            {projection.record === null ? null : ` · record ${projection.record.toFixed(1)}`}
-            {projection.isPr ? (
-              <>
-                {projection.e1rm === null ? null : ' → '}
-                <span className="tag tag-pr">PR if logged</span>
-              </>
-            ) : projection.record === null ? null : (
-              ' · no PR at this load'
-            )}
-          </p>
+          </>
         )}
 
         {error === null || draft !== null ? null : (

@@ -19,8 +19,8 @@ export type RestPanelProps = {
 
 /**
  * The rest panel (Progress Dashboard S4/F2), in the action bar while rest runs: an offer row,
- * the countdown as the hero against "of 3:00", a thin bar of the rest gone with a tick at the
- * trainee's usual rest, and −15 s, +15 s and Skip rest.
+ * the countdown as the hero beside "REST of 3:00", under it a bar the panel's width of the rest gone
+ * with a tick at the trainee's usual rest, and −15 s, +15 s and Skip rest.
  */
 export function RestPanel(props: RestPanelProps): JSX.Element {
   const { remainingSeconds, totalSeconds, usualSeconds } = props
@@ -35,31 +35,34 @@ export function RestPanel(props: RestPanelProps): JSX.Element {
         <div className="rest-panel-offer">{props.offer}</div>
       )}
       <div className="rest-panel-main">
-        <div className="rest-panel-clock">
-          <button type="button" className="rest-readout cell" onClick={props.onOpenDial}>
-            <span role="timer" aria-label="Rest remaining" className="rest-clock">
-              {formatRest(remainingSeconds)}
+        <button type="button" className="rest-readout cell" onClick={props.onOpenDial}>
+          <span role="timer" aria-label="Rest remaining" className="rest-clock">
+            {formatRest(remainingSeconds)}
+          </span>
+        </button>
+        <p className="rest-panel-of">
+          <span className="rest-panel-caption">Rest</span>
+          <span>of {formatRest(totalSeconds)}</span>
+        </p>
+      </div>
+      <div className="rest-panel-gauge" aria-hidden="true">
+        <div className="rest-bar-usual-row">
+          {usualSeconds === null ? null : (
+            <span className="rest-bar-usual-label" style={{ right: `calc(100% - ${percent(usualSeconds)})` }}>
+              you usually rest {formatRest(usualSeconds)}
             </span>
-          </button>
-          <p className="rest-panel-of">
-            <span className="rest-panel-caption">Rest</span> of {formatRest(totalSeconds)}
-          </p>
+          )}
         </div>
-        <div className="rest-panel-gauge">
-          <p className="rest-bar-usual-label" aria-hidden="true">
-            {usualSeconds === null ? '' : `you usually rest ${formatRest(usualSeconds)}`}
-          </p>
-          <div className="rest-bar" aria-hidden="true">
-            <span className="rest-bar-fill" style={{ width: percent(gone) }} />
-            {usualSeconds === null ? null : (
-              <span className="rest-bar-usual" style={{ left: percent(usualSeconds) }} />
-            )}
-          </div>
-          <p className="rest-bar-axis" aria-hidden="true">
-            <span>0:00</span>
-            <span>{formatRest(axis)}</span>
-          </p>
+        <div className="rest-bar">
+          <span className="rest-bar-fill" style={{ width: percent(gone) }} />
+          {usualSeconds === null ? null : (
+            <span className="rest-bar-usual" style={{ left: percent(usualSeconds) }} />
+          )}
         </div>
+        <p className="rest-bar-axis">
+          <span>0:00</span>
+          <span>{formatRest(axis)}</span>
+        </p>
       </div>
       <div className="rest-controls">
         <button type="button" className="rest-adjust btn-secondary" onClick={props.onLess}>

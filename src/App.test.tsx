@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
+import { findSteppers, unfoldSteppers } from './test/steppers'
 
 // History dates render through formatDay in the local zone; BASE is late evening UTC.
 process.env.TZ = 'UTC'
@@ -225,11 +226,13 @@ beforeEach(async () => {
 
 /** The weight readout, which is also the button that opens the weight keypad. */
 function weightReadout(): HTMLElement {
+  unfoldSteppers()
   return screen.getByRole('button', { name: 'Weight' })
 }
 
 /** The reps readout, which is also the button that opens the reps keypad. */
 function repsReadout(): HTMLElement {
+  unfoldSteppers()
   return screen.getByRole('button', { name: 'Reps' })
 }
 
@@ -258,7 +261,7 @@ async function openExercise(user: UserEvent, exerciseName: string): Promise<void
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )
   // The screen changes after the click settles; wait for it so later sync reads do not race it.
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 }
 
 /** Taps "Log set" and waits for the set after it to be the one on the dials. */
@@ -344,7 +347,7 @@ test('O6 opening a lift last logged in an earlier, finished session shows no res
   await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 
   expect(screen.queryByRole('timer', { name: 'Rest remaining' })).toBeNull()
 })
@@ -417,6 +420,7 @@ async function logFourSetsOfBackSquat(user: UserEvent): Promise<void> {
   await logSetAndOpen(user, 2, 4)
   await logSetAndOpen(user, 3, 4)
   await logSetAndOpen(user, 4, 4)
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
   await waitFor(async () => {
@@ -967,7 +971,7 @@ async function startWorkoutA(user: UserEvent): Promise<void> {
 async function openBackSquat(user: UserEvent): Promise<void> {
   await startWorkoutA(user)
   await openExercise(user, 'Back squat')
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 }
 
 // --- O10: the exercise list ----------------------------------------------------------------
@@ -1456,7 +1460,7 @@ test('L14 tapping Exercise info on the deadlift set screen opens the in-app deta
   await findStartButton()
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Deadlift')
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 
   await toolsRow(user, 'Exercise info')
 
@@ -1480,8 +1484,9 @@ test('L14 the set screen underneath the detail overlay is not unmounted, so its 
   await findStartButton()
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Deadlift')
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
   // Nudges the dial off its preset value, so a remounted set screen would be caught below.
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   const weightBefore = readoutValue(weightReadout())
 
@@ -1571,7 +1576,7 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
   await findStartButton()
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 
   await toolsRow(user, 'Swap exercise')
 
@@ -1600,7 +1605,7 @@ test('F2 tapping Alternatives on a live set opens the alternatives list as a mod
   await findStartButton()
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 
   await toolsRow(user, 'Swap exercise')
 
@@ -1628,7 +1633,7 @@ test('F3 the Alternatives overlay carries the shared overlay-panel class', async
   await findStartButton()
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 
   await toolsRow(user, 'Swap exercise')
 
@@ -1646,7 +1651,7 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   await findStartButton()
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 
   await toolsRow(user, 'Swap exercise')
   const hammerRowName = await screen.findByText(
@@ -1659,7 +1664,7 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
   await user.click(screen.getByRole('radio', { name: 'All' }))
 
   // The done exercise carries the planned sets, rep range and rest -- seated-biceps-curls'
@@ -1678,7 +1683,7 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   await findStartButton()
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 
   await toolsRow(user, 'Swap exercise')
   const hammerRowName = await screen.findByText(
@@ -1691,7 +1696,7 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
   await user.click(screen.getByRole('radio', { name: 'All' }))
 
   const swappedRow = await screen.findByRole(
@@ -1702,7 +1707,7 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   await user.click(swappedRow)
 
   expect(await screen.findByRole('heading', { name: 'Hammer Curls' }, SETTLE)).toBeVisible()
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
   // Hammer_Curls has no logged history of its own yet: `trainingFieldsFor`'s dumbbell
   // startWeight (0, hand-checked against src/domain/trainingFields.ts) and the bottom of
   // seated-biceps-curls' own repRange ([10, 12]).
@@ -1736,7 +1741,7 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   // The swap now stays on the Set screen (E16-T12); the list row is one Back away.
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
   await user.click(screen.getByRole('radio', { name: 'All' }))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
@@ -2675,6 +2680,7 @@ async function logAllThreePlannedBackSquatSets(user: UserEvent): Promise<void> {
   await openExercise(user, 'Back squat')
   await logSetAndOpen(user, 2, 3)
   await logSetAndOpen(user, 3, 3)
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   await enterOnKeypad(user, repsReadout(), ['7'])
   await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
@@ -3151,7 +3157,7 @@ test('O2 a Session in progress on a set screen stays on the same set when the do
   await waitFor(() => {
     expect(screen.getByText('Set 2 of 4')).toBeVisible()
   }, SETTLE)
-  expect(screen.getByRole('button', { name: 'Weight' })).toBeVisible()
+  expect(weightReadout()).toBeVisible()
 })
 
 // --- E8-T11: choosing the volume baseline in Settings wires through to the row -------------

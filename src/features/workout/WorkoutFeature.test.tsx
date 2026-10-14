@@ -8,6 +8,7 @@ import { ServiceError } from '../../services/errors'
 import type { Session, SetEntry } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
 import { startFromDashboard, workoutsOffered } from '../../test/dashboard'
+import { findSteppers, unfoldSteppers } from '../../test/steppers'
 import { WorkoutFeature } from './WorkoutFeature'
 
 // E11-T10 O9: the Workout tab as its own container, over the real services (createServices) and
@@ -80,7 +81,7 @@ async function openExercise(user: UserEvent, exerciseName: string): Promise<void
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )
   // The screen changes after the click settles; wait for it so later sync reads do not race it.
-  await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  await findSteppers()
 }
 
 /** What the exercise list shows as an exercise's set progress: "1/4". */
@@ -1022,7 +1023,7 @@ test('O5 after a warm-up today, lunges opens on last time’s first working Set,
   const { user } = renderFeature(services)
   await openExercise(user, 'Lunges')
 
-  const weight = await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  const weight = await findSteppers()
   expect(
     [weight, screen.getByRole('button', { name: 'Reps' })].map((readout) =>
       (readout.textContent ?? '').replace(/\s+/g, ' ').trim(),
@@ -1045,6 +1046,7 @@ async function lungesLastTime10x12(services: Services): Promise<void> {
 }
 
 function readoutsNow(): string[] {
+  unfoldSteppers()
   return [
     screen.getByRole('button', { name: 'Weight' }),
     screen.getByRole('button', { name: 'Reps' }),
@@ -1073,6 +1075,7 @@ test('O13 lunges last time 10×12 ×3, Set 1 logged at 11 × 12: Sets 2 and 3 op
   await openExercise(user, 'Lunges')
   await screen.findByText('Set 1 of 3', undefined, SETTLE)
   expect(readoutsNow()).toEqual(['10', '12'])
+  unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   await user.click(screen.getByRole('button', { name: 'Log set' }))
 
