@@ -4,6 +4,8 @@ import { AppShell } from '../../ui/AppShell'
 import { MusclesPage } from './MusclesPage'
 import type { AppRoute } from '../routes'
 import { LiftPage } from './LiftPage'
+import { AllLifts } from './AllLifts'
+import { Home } from './Home'
 
 /** The pages the Progress tab pushes. `home` is the tab's own screen; the others push over it. */
 export type ProgressPage =
@@ -48,3 +50,7 @@ export const PROGRESS_PAGES: ProgressPages = {
 PROGRESS_PAGES.muscles = MusclesPage
 // E18-T11: the lift page (appended, so tickets registering other pages never touch this line).
 PROGRESS_PAGES.lift = LiftPage
+
+// E18-T10 registers its pages (append-only, so tickets adding other pages never touch these lines).
+PROGRESS_PAGES.home = Home
+PROGRESS_PAGES.lifts = AllLifts
