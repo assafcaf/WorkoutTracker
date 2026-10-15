@@ -2,6 +2,8 @@ import { createElement } from 'react'
 import type { ComponentType, FunctionComponent } from 'react'
 import { AppShell } from '../../ui/AppShell'
 import { MusclesPage } from './MusclesPage'
+import type { AppRoute } from '../routes'
+import { LiftPage } from './LiftPage'
 
 /** The pages the Progress tab pushes. `home` is the tab's own screen; the others push over it. */
 export type ProgressPage =
@@ -17,6 +19,8 @@ export type ProgressPageProps<K extends ProgressPageKind = ProgressPageKind> = {
   page: Extract<ProgressPage, { kind: K }>
   /** Pushes a page over this one. */
   push(page: ProgressPage): void
+  /** Sends the app to a route (a Session's summary); the group's own `navigate`, when it has one. */
+  navigate?: (to: AppRoute) => void
   /** The page's Back control; `undefined` on the home page, which is the tab itself. */
   onBack: (() => void) | undefined
 }
@@ -42,3 +46,5 @@ export const PROGRESS_PAGES: ProgressPages = {
 }
 
 PROGRESS_PAGES.muscles = MusclesPage
+// E18-T11: the lift page (appended, so tickets registering other pages never touch this line).
+PROGRESS_PAGES.lift = LiftPage

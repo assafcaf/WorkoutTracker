@@ -32,8 +32,9 @@ describe('E18-T11 O21 lift page', () => {
   it('O21 shows the verdict banner and the latest top set as the hero', () => {
     open('back-squat')
     expect(screen.getByText('▲ Moving')).toBeVisible()
-    expect(screen.getByText('62.5 kg × 8')).toBeVisible()
-    expect(screen.getByText(/Wed 14 Oct/)).toBeVisible()
+    const hero = within(screen.getByRole('region', { name: 'Latest top set' }))
+    expect(hero.getByText('62.5 kg × 8')).toBeVisible()
+    expect(hero.getByText(/Wed 14 Oct/)).toBeVisible()
   })
 
   it('O21 draws the ladder with the presets Step, 3M, 1Y and All, Step first', async () => {
