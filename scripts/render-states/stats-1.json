@@ -1,0 +1,214 @@
+{
+ "now": "2026-06-23T18:05:00+03:00",
+ "timezone": "Asia/Jerusalem",
+ "dpr": 2,
+ "settings": {
+  "activeProgramId": "assaf-ab-2026",
+  "effortTracking": true,
+  "exerciseNotes": {
+   "back-squat": "Belt from set 3",
+   "db-bench-press": "Elbows 45°"
+  },
+  "lastExportedAt": 1791802800000
+ },
+ "sessions": [
+  {
+   "id": "seed-00",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1782142680000,
+   "finishedAt": 1782146926000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1782142960000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 30,
+     "reps": 5,
+     "loggedAt": 1782143035000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 35,
+     "reps": 10,
+     "loggedAt": 1782143120000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 45,
+     "reps": 9,
+     "loggedAt": 1782143368000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 50,
+     "reps": 7,
+     "loggedAt": 1782143612000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 50,
+     "reps": 6,
+     "loggedAt": 1782143851000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1782144101000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1782144231000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1782144389000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782144534000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782144649000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782144785000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 10,
+     "reps": 7,
+     "loggedAt": 1782144895000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1782145033000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 9,
+     "loggedAt": 1782145161000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1782145279000,
+     "kind": "failure"
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1782145464000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1782145593000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 7,
+     "loggedAt": 1782145719000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 3,
+     "reps": 10,
+     "loggedAt": 1782145864000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 3,
+     "reps": 10,
+     "loggedAt": 1782145973000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 3,
+     "reps": 10,
+     "loggedAt": 1782146132000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 4,
+     "weightKg": 1,
+     "reps": 12,
+     "loggedAt": 1782146253000,
+     "kind": "drop"
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 17.5,
+     "reps": 10,
+     "loggedAt": 1782146422000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 17.5,
+     "reps": 10,
+     "loggedAt": 1782146562000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 17.5,
+     "reps": 8,
+     "loggedAt": 1782146674000
+    }
+   ],
+   "updatedAt": 1782146926000
+  }
+ ]
+}

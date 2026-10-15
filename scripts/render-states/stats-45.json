@@ -1,0 +1,9000 @@
+{
+ "now": "2026-10-15T18:05:00+03:00",
+ "timezone": "Asia/Jerusalem",
+ "dpr": 2,
+ "settings": {
+  "activeProgramId": "assaf-ab-2026",
+  "effortTracking": true,
+  "exerciseNotes": {
+   "back-squat": "Belt from set 3",
+   "db-bench-press": "Elbows 45°"
+  },
+  "lastExportedAt": 1791802800000
+ },
+ "sessions": [
+  {
+   "id": "seed-00",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1782142680000,
+   "finishedAt": 1782146926000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1782142960000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 30,
+     "reps": 5,
+     "loggedAt": 1782143035000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 35,
+     "reps": 10,
+     "loggedAt": 1782143120000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 45,
+     "reps": 9,
+     "loggedAt": 1782143368000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 50,
+     "reps": 7,
+     "loggedAt": 1782143612000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 50,
+     "reps": 6,
+     "loggedAt": 1782143851000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1782144101000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1782144231000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1782144389000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782144534000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782144649000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782144785000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 10,
+     "reps": 7,
+     "loggedAt": 1782144895000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1782145033000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 9,
+     "loggedAt": 1782145161000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1782145279000,
+     "kind": "failure"
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1782145464000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1782145593000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 7,
+     "loggedAt": 1782145719000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 3,
+     "reps": 10,
+     "loggedAt": 1782145864000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 3,
+     "reps": 10,
+     "loggedAt": 1782145973000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 3,
+     "reps": 10,
+     "loggedAt": 1782146132000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 4,
+     "weightKg": 1,
+     "reps": 12,
+     "loggedAt": 1782146253000,
+     "kind": "drop"
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 17.5,
+     "reps": 10,
+     "loggedAt": 1782146422000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 17.5,
+     "reps": 10,
+     "loggedAt": 1782146562000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 17.5,
+     "reps": 8,
+     "loggedAt": 1782146674000
+    }
+   ],
+   "updatedAt": 1782146926000
+  },
+  {
+   "id": "seed-01",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1782315120000,
+   "finishedAt": 1782319065000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1782315390000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1782315475000
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1782315711000
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1782315908000
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1782316125000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1782316249000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1782316390000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 4,
+     "loggedAt": 1782316483000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 41.25,
+     "reps": 10,
+     "loggedAt": 1782316636000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 41.25,
+     "reps": 10,
+     "loggedAt": 1782316771000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 41.25,
+     "reps": 9,
+     "loggedAt": 1782316914000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 50,
+     "reps": 8,
+     "loggedAt": 1782317089000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 50,
+     "reps": 8,
+     "loggedAt": 1782317237000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 50,
+     "reps": 8,
+     "loggedAt": 1782317390000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 50,
+     "reps": 7,
+     "loggedAt": 1782317544000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 15,
+     "reps": 10,
+     "loggedAt": 1782317726000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 15,
+     "reps": 10,
+     "loggedAt": 1782317831000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 15,
+     "reps": 10,
+     "loggedAt": 1782317981000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1782318165000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1782318282000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1782318394000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 8,
+     "reps": 10,
+     "loggedAt": 1782318554000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 8,
+     "reps": 10,
+     "loggedAt": 1782318695000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 8,
+     "reps": 9,
+     "loggedAt": 1782318803000
+    }
+   ],
+   "updatedAt": 1782319065000
+  },
+  {
+   "id": "seed-02",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1782488340000,
+   "finishedAt": 1782492597000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1782488620000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 30,
+     "reps": 5,
+     "loggedAt": 1782488695000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 35,
+     "reps": 10,
+     "loggedAt": 1782488780000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 45,
+     "reps": 9,
+     "loggedAt": 1782488996000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 50,
+     "reps": 8,
+     "loggedAt": 1782489242000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 50,
+     "reps": 8,
+     "loggedAt": 1782489451000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 7,
+     "reps": 11,
+     "loggedAt": 1782489733000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 7,
+     "reps": 11,
+     "loggedAt": 1782489860000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 7,
+     "reps": 11,
+     "loggedAt": 1782490003000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782490187000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782490339000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 7,
+     "loggedAt": 1782490459000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782490613000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1782490792000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1782490948000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1782491108000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1782491263000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1782491373000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1782491524000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 3,
+     "reps": 11,
+     "loggedAt": 1782491694000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 3,
+     "reps": 11,
+     "loggedAt": 1782491812000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 3,
+     "reps": 9,
+     "loggedAt": 1782491953000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 17.5,
+     "reps": 11,
+     "loggedAt": 1782492132000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 17.5,
+     "reps": 11,
+     "loggedAt": 1782492242000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 17.5,
+     "reps": 10,
+     "loggedAt": 1782492380000
+    }
+   ],
+   "updatedAt": 1782492597000
+  },
+  {
+   "id": "seed-03",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1782746340000,
+   "finishedAt": 1782750354000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1782746610000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1782746695000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 55,
+     "reps": 7,
+     "loggedAt": 1782746939000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1782747185000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1782747457000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1782747588000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1782747692000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1782747842000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 41.25,
+     "reps": 11,
+     "loggedAt": 1782748031000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 41.25,
+     "reps": 10,
+     "loggedAt": 1782748150000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 41.25,
+     "reps": 10,
+     "loggedAt": 1782748265000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 50,
+     "reps": 9,
+     "loggedAt": 1782748444000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 50,
+     "reps": 9,
+     "loggedAt": 1782748577000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 50,
+     "reps": 9,
+     "loggedAt": 1782748699000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 50,
+     "reps": 8,
+     "loggedAt": 1782748800000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 15,
+     "reps": 11,
+     "loggedAt": 1782748940000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 15,
+     "reps": 11,
+     "loggedAt": 1782749101000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 15,
+     "reps": 11,
+     "loggedAt": 1782749242000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1782749386000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 9,
+     "loggedAt": 1782749512000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1782749621000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 8,
+     "reps": 11,
+     "loggedAt": 1782749802000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 8,
+     "reps": 10,
+     "loggedAt": 1782749956000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 8,
+     "reps": 10,
+     "loggedAt": 1782750103000
+    }
+   ],
+   "updatedAt": 1782750354000
+  },
+  {
+   "id": "seed-04",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1782919860000,
+   "finishedAt": 1782924036000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1782920140000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 30,
+     "reps": 5,
+     "loggedAt": 1782920215000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 35,
+     "reps": 10,
+     "loggedAt": 1782920300000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 45,
+     "reps": 9,
+     "loggedAt": 1782920548000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 50,
+     "reps": 9,
+     "loggedAt": 1782920795000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 50,
+     "reps": 9,
+     "loggedAt": 1782920994000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 7,
+     "reps": 12,
+     "loggedAt": 1782921234000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 7,
+     "reps": 12,
+     "loggedAt": 1782921363000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 7,
+     "reps": 11,
+     "loggedAt": 1782921485000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 9,
+     "loggedAt": 1782921661000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 9,
+     "loggedAt": 1782921801000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782921950000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1782922093000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 12,
+     "loggedAt": 1782922243000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1782922386000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1782922547000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1782922702000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1782922840000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 7,
+     "loggedAt": 1782922944000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 3,
+     "reps": 13,
+     "loggedAt": 1782923128000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 3,
+     "reps": 13,
+     "loggedAt": 1782923252000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 3,
+     "reps": 12,
+     "loggedAt": 1782923380000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 17.5,
+     "reps": 12,
+     "loggedAt": 1782923526000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 17.5,
+     "reps": 12,
+     "loggedAt": 1782923674000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 17.5,
+     "reps": 10,
+     "loggedAt": 1782923791000
+    }
+   ],
+   "updatedAt": 1782924036000,
+   "note": "Gym crowded, did push-ups on the floor."
+  },
+  {
+   "id": "seed-05",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1783092780000,
+   "finishedAt": 1783096805000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1783093050000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1783093135000
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 55,
+     "reps": 9,
+     "loggedAt": 1783093332000
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 9,
+     "loggedAt": 1783093526000
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1783093756000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1783093888000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1783093988000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1783094138000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 41.25,
+     "reps": 12,
+     "loggedAt": 1783094321000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 41.25,
+     "reps": 12,
+     "loggedAt": 1783094462000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 41.25,
+     "reps": 12,
+     "loggedAt": 1783094610000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1783094775000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1783094912000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1783095028000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1783095187000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 15,
+     "reps": 12,
+     "loggedAt": 1783095349000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 15,
+     "reps": 12,
+     "loggedAt": 1783095476000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 15,
+     "reps": 11,
+     "loggedAt": 1783095633000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 12,
+     "loggedAt": 1783095798000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1783095956000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1783096110000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 8,
+     "reps": 12,
+     "loggedAt": 1783096300000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 8,
+     "reps": 12,
+     "loggedAt": 1783096437000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 8,
+     "reps": 12,
+     "loggedAt": 1783096556000
+    }
+   ],
+   "updatedAt": 1783096805000
+  },
+  {
+   "id": "seed-06",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1783351320000,
+   "finishedAt": 1783355554000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1783351600000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 30,
+     "reps": 5,
+     "loggedAt": 1783351675000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 35,
+     "reps": 10,
+     "loggedAt": 1783351760000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1783351983000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 50,
+     "reps": 9,
+     "loggedAt": 1783352227000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1783352477000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 7,
+     "reps": 12,
+     "loggedAt": 1783352715000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 7,
+     "reps": 12,
+     "loggedAt": 1783352851000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 7,
+     "reps": 12,
+     "loggedAt": 1783352976000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1783353165000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1783353311000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1783353458000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1783353600000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1783353771000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 13,
+     "loggedAt": 1783353882000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1783354036000,
+     "kind": "failure"
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 9,
+     "loggedAt": 1783354213000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 9,
+     "loggedAt": 1783354322000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 8,
+     "loggedAt": 1783354448000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 3,
+     "reps": 14,
+     "loggedAt": 1783354623000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 3,
+     "reps": 14,
+     "loggedAt": 1783354766000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 3,
+     "reps": 13,
+     "loggedAt": 1783354880000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 17.5,
+     "reps": 12,
+     "loggedAt": 1783355053000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 17.5,
+     "reps": 12,
+     "loggedAt": 1783355175000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 17.5,
+     "reps": 13,
+     "loggedAt": 1783355320000,
+     "kind": "failure"
+    }
+   ],
+   "updatedAt": 1783355554000
+  },
+  {
+   "id": "seed-07",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1783522980000,
+   "finishedAt": 1783527081000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1783523250000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1783523335000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1783523585000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1783523835000
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1783524107000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1783524220000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1783524352000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1783524452000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1783524594000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1783524719000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 42.5,
+     "reps": 8,
+     "loggedAt": 1783524868000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1783525031000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1783525169000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1783525279000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 6,
+     "loggedAt": 1783525399000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 15,
+     "reps": 13,
+     "loggedAt": 1783525590000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 15,
+     "reps": 12,
+     "loggedAt": 1783525726000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 15,
+     "reps": 12,
+     "loggedAt": 1783525845000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1783526037000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 13,
+     "loggedAt": 1783526197000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 13,
+     "loggedAt": 1783526346000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 9,
+     "reps": 10,
+     "loggedAt": 1783526534000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 9,
+     "reps": 10,
+     "loggedAt": 1783526688000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 9,
+     "reps": 9,
+     "loggedAt": 1783526814000
+    }
+   ],
+   "updatedAt": 1783527081000
+  },
+  {
+   "id": "seed-08",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1783697760000,
+   "finishedAt": 1783702085000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1783698040000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 30,
+     "reps": 5,
+     "loggedAt": 1783698115000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 35,
+     "reps": 10,
+     "loggedAt": 1783698200000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1783698401000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1783698616000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1783698862000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 8,
+     "reps": 10,
+     "loggedAt": 1783699107000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 8,
+     "reps": 9,
+     "loggedAt": 1783699228000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 8,
+     "reps": 9,
+     "loggedAt": 1783699339000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 8,
+     "loggedAt": 1783699473000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 8,
+     "loggedAt": 1783699576000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 8,
+     "loggedAt": 1783699696000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 11,
+     "reps": 8,
+     "loggedAt": 1783699841000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1783700005000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1783700133000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1783700296000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 9,
+     "loggedAt": 1783700478000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 9,
+     "loggedAt": 1783700617000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 9,
+     "loggedAt": 1783700745000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 3,
+     "reps": 15,
+     "loggedAt": 1783700904000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 3,
+     "reps": 15,
+     "loggedAt": 1783701057000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 3,
+     "reps": 15,
+     "loggedAt": 1783701217000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 4,
+     "weightKg": 1,
+     "reps": 12,
+     "loggedAt": 1783701357000,
+     "kind": "drop"
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1783701545000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1783701699000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1783701837000
+    }
+   ],
+   "updatedAt": 1783702085000
+  },
+  {
+   "id": "seed-09",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1783954440000,
+   "finishedAt": 1783958397000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1783954710000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1783954795000
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 57.5,
+     "reps": 8,
+     "loggedAt": 1783955007000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 57.5,
+     "reps": 7,
+     "loggedAt": 1783955251000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1783955527000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1783955649000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1783955768000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1783955905000,
+     "loadKg": -27
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 42.5,
+     "reps": 11,
+     "loggedAt": 1783956093000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1783956245000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 42.5,
+     "reps": 11,
+     "loggedAt": 1783956359000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1783956517000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1783956621000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1783956730000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 7,
+     "loggedAt": 1783956840000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 15,
+     "reps": 13,
+     "loggedAt": 1783957010000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 15,
+     "reps": 13,
+     "loggedAt": 1783957161000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 15,
+     "reps": 13,
+     "loggedAt": 1783957283000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1783957474000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1783957606000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1783957764000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 9,
+     "reps": 11,
+     "loggedAt": 1783957944000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 9,
+     "reps": 11,
+     "loggedAt": 1783958055000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 9,
+     "reps": 10,
+     "loggedAt": 1783958162000
+    }
+   ],
+   "updatedAt": 1783958397000
+  },
+  {
+   "id": "seed-10",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1784128140000,
+   "finishedAt": 1784132498000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1784128420000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 32.5,
+     "reps": 5,
+     "loggedAt": 1784128495000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 37.5,
+     "reps": 10,
+     "loggedAt": 1784128580000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 47.5,
+     "reps": 9,
+     "loggedAt": 1784128813000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 52.5,
+     "reps": 8,
+     "loggedAt": 1784129058000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 52.5,
+     "reps": 8,
+     "loggedAt": 1784129304000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 8,
+     "reps": 11,
+     "loggedAt": 1784129564000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 8,
+     "reps": 11,
+     "loggedAt": 1784129690000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 8,
+     "reps": 9,
+     "loggedAt": 1784129804000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 9,
+     "loggedAt": 1784129963000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 9,
+     "loggedAt": 1784130103000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 9,
+     "loggedAt": 1784130243000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 11,
+     "reps": 9,
+     "loggedAt": 1784130358000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784130526000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784130668000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 13,
+     "loggedAt": 1784130820000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 10,
+     "loggedAt": 1784130984000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 10,
+     "loggedAt": 1784131117000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 10,
+     "loggedAt": 1784131267000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 4,
+     "reps": 10,
+     "loggedAt": 1784131455000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 4,
+     "reps": 9,
+     "loggedAt": 1784131566000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 4,
+     "reps": 10,
+     "loggedAt": 1784131676000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 4,
+     "weightKg": 2,
+     "reps": 12,
+     "loggedAt": 1784131822000,
+     "kind": "drop"
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1784131961000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1784132105000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 20,
+     "reps": 9,
+     "loggedAt": 1784132239000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1784132498000
+  },
+  {
+   "id": "seed-11",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1784302440000,
+   "finishedAt": 1784306379000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1784302710000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1784302795000,
+     "rir": 3,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 57.5,
+     "reps": 9,
+     "loggedAt": 1784303043000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 57.5,
+     "reps": 8,
+     "loggedAt": 1784303239000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1784303474000,
+     "loadKg": -25,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1784303583000,
+     "loadKg": -25,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 4,
+     "loggedAt": 1784303679000,
+     "loadKg": -25
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1784303794000,
+     "loadKg": -25,
+     "rir": 0
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 42.5,
+     "reps": 12,
+     "loggedAt": 1784303951000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 42.5,
+     "reps": 12,
+     "loggedAt": 1784304074000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 42.5,
+     "reps": 12,
+     "loggedAt": 1784304195000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 55,
+     "reps": 9,
+     "loggedAt": 1784304352000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 55,
+     "reps": 9,
+     "loggedAt": 1784304457000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 55,
+     "reps": 9,
+     "loggedAt": 1784304581000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1784304705000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 15,
+     "reps": 14,
+     "loggedAt": 1784304882000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 15,
+     "reps": 14,
+     "loggedAt": 1784305012000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 15,
+     "reps": 13,
+     "loggedAt": 1784305156000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784305341000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784305483000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784305638000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 9,
+     "reps": 12,
+     "loggedAt": 1784305826000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 9,
+     "reps": 12,
+     "loggedAt": 1784305988000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 9,
+     "reps": 12,
+     "loggedAt": 1784306113000,
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1784306379000
+  },
+  {
+   "id": "seed-12",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1784559360000,
+   "finishedAt": 1784563448000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1784559640000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 32.5,
+     "reps": 5,
+     "loggedAt": 1784559715000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 37.5,
+     "reps": 10,
+     "loggedAt": 1784559800000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 47.5,
+     "reps": 9,
+     "loggedAt": 1784560040000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 52.5,
+     "reps": 9,
+     "loggedAt": 1784560241000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 52.5,
+     "reps": 8,
+     "loggedAt": 1784560468000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 8,
+     "reps": 12,
+     "loggedAt": 1784560714000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 8,
+     "reps": 11,
+     "loggedAt": 1784560869000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 8,
+     "reps": 12,
+     "loggedAt": 1784560999000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1784561140000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1784561263000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1784561379000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1784561492000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784561656000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1784561786000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1784561904000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 6.25,
+     "reps": 8,
+     "loggedAt": 1784562064000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 6.25,
+     "reps": 7,
+     "loggedAt": 1784562201000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 6.25,
+     "reps": 8,
+     "loggedAt": 1784562304000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 4,
+     "reps": 11,
+     "loggedAt": 1784562473000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 4,
+     "reps": 11,
+     "loggedAt": 1784562613000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 4,
+     "reps": 10,
+     "loggedAt": 1784562727000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 11,
+     "loggedAt": 1784562894000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 20,
+     "reps": 11,
+     "loggedAt": 1784563035000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 20,
+     "reps": 11,
+     "loggedAt": 1784563180000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1784563448000
+  },
+  {
+   "id": "seed-13",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1784732700000,
+   "finishedAt": 1784736713000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1784732970000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1784733055000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 57.5,
+     "reps": 10,
+     "loggedAt": 1784733287000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 57.5,
+     "reps": 9,
+     "loggedAt": 1784733493000,
+     "rir": 0,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1784733765000,
+     "loadKg": -25,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1784733894000,
+     "loadKg": -25,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1784734014000,
+     "loadKg": -25
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1784734138000,
+     "loadKg": -25,
+     "rir": 0
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 43.75,
+     "reps": 10,
+     "loggedAt": 1784734325000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 43.75,
+     "reps": 9,
+     "loggedAt": 1784734482000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 43.75,
+     "reps": 9,
+     "loggedAt": 1784734596000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1784734738000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1784734868000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 55,
+     "reps": 9,
+     "loggedAt": 1784734983000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1784735141000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 15,
+     "reps": 15,
+     "loggedAt": 1784735301000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 15,
+     "reps": 15,
+     "loggedAt": 1784735453000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 15,
+     "reps": 15,
+     "loggedAt": 1784735611000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784735775000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784735917000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784736064000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1784736250000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 9,
+     "loggedAt": 1784736376000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1784736497000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1784736713000
+  },
+  {
+   "id": "seed-14",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1784907540000,
+   "finishedAt": 1784911721000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1784907820000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 32.5,
+     "reps": 5,
+     "loggedAt": 1784907895000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 37.5,
+     "reps": 10,
+     "loggedAt": 1784907980000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1784908214000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 52.5,
+     "reps": 10,
+     "loggedAt": 1784908413000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 52.5,
+     "reps": 10,
+     "loggedAt": 1784908640000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 8,
+     "reps": 12,
+     "loggedAt": 1784908907000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 8,
+     "reps": 12,
+     "loggedAt": 1784909049000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 8,
+     "reps": 12,
+     "loggedAt": 1784909180000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 12,
+     "reps": 8,
+     "loggedAt": 1784909332000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 12,
+     "reps": 8,
+     "loggedAt": 1784909463000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 12,
+     "reps": 8,
+     "loggedAt": 1784909611000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 12,
+     "reps": 7,
+     "loggedAt": 1784909743000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1784909915000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1784910050000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 16,
+     "loggedAt": 1784910204000,
+     "kind": "failure",
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 6.25,
+     "reps": 9,
+     "loggedAt": 1784910342000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 6.25,
+     "reps": 9,
+     "loggedAt": 1784910475000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 6.25,
+     "reps": 8,
+     "loggedAt": 1784910627000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 4,
+     "reps": 12,
+     "loggedAt": 1784910772000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 4,
+     "reps": 11,
+     "loggedAt": 1784910880000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 4,
+     "reps": 12,
+     "loggedAt": 1784911027000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 12,
+     "loggedAt": 1784911206000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 20,
+     "reps": 12,
+     "loggedAt": 1784911335000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 20,
+     "reps": 12,
+     "loggedAt": 1784911486000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1784911721000
+  },
+  {
+   "id": "seed-15",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1785164340000,
+   "finishedAt": 1785168273000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1785164610000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1785164695000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 57.5,
+     "reps": 10,
+     "loggedAt": 1785164914000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 57.5,
+     "reps": 10,
+     "loggedAt": 1785165128000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1785165376000,
+     "loadKg": -25,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1785165521000,
+     "loadKg": -25,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1785165630000,
+     "loadKg": -25
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1785165745000,
+     "loadKg": -25,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 43.75,
+     "reps": 11,
+     "loggedAt": 1785165917000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 43.75,
+     "reps": 11,
+     "loggedAt": 1785166063000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 43.75,
+     "reps": 11,
+     "loggedAt": 1785166215000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1785166354000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1785166488000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1785166625000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1785166749000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 17.5,
+     "reps": 10,
+     "loggedAt": 1785166908000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 17.5,
+     "reps": 9,
+     "loggedAt": 1785167012000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 17.5,
+     "reps": 10,
+     "loggedAt": 1785167159000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785167318000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785167441000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785167572000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 11,
+     "loggedAt": 1785167732000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1785167883000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 11,
+     "loggedAt": 1785168043000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1785168273000
+  },
+  {
+   "id": "seed-16",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1785336720000,
+   "finishedAt": 1785340886000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1785337000000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 32.5,
+     "reps": 5,
+     "loggedAt": 1785337075000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 40,
+     "reps": 10,
+     "loggedAt": 1785337160000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 50,
+     "reps": 9,
+     "loggedAt": 1785337368000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 55,
+     "reps": 7,
+     "loggedAt": 1785337563000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 55,
+     "reps": 7,
+     "loggedAt": 1785337756000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 9,
+     "reps": 10,
+     "loggedAt": 1785338019000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 9,
+     "reps": 9,
+     "loggedAt": 1785338157000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 9,
+     "reps": 9,
+     "loggedAt": 1785338279000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 12,
+     "reps": 9,
+     "loggedAt": 1785338417000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 12,
+     "reps": 9,
+     "loggedAt": 1785338557000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 12,
+     "reps": 9,
+     "loggedAt": 1785338705000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 12,
+     "reps": 9,
+     "loggedAt": 1785338824000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785338983000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785339129000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785339277000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 6.25,
+     "reps": 10,
+     "loggedAt": 1785339426000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 6.25,
+     "reps": 10,
+     "loggedAt": 1785339544000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 6.25,
+     "reps": 10,
+     "loggedAt": 1785339678000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 4,
+     "reps": 14,
+     "loggedAt": 1785339855000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 4,
+     "reps": 14,
+     "loggedAt": 1785339968000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 4,
+     "reps": 13,
+     "loggedAt": 1785340123000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 4,
+     "weightKg": 2,
+     "reps": 12,
+     "loggedAt": 1785340235000,
+     "kind": "drop",
+     "rir": 0
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 22.5,
+     "reps": 10,
+     "loggedAt": 1785340400000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 22.5,
+     "reps": 9,
+     "loggedAt": 1785340512000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 22.5,
+     "reps": 11,
+     "loggedAt": 1785340643000,
+     "kind": "failure"
+    }
+   ],
+   "updatedAt": 1785340886000
+  },
+  {
+   "id": "seed-17",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1785510900000,
+   "finishedAt": 1785514951000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1785511170000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1785511255000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 60,
+     "reps": 7,
+     "loggedAt": 1785511447000
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 60,
+     "reps": 7,
+     "loggedAt": 1785511652000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1785511896000,
+     "loadKg": -25,
+     "rir": 3
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1785512042000,
+     "loadKg": -25,
+     "rir": 3
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1785512179000,
+     "loadKg": -25,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1785512319000,
+     "loadKg": -25,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 43.75,
+     "reps": 12,
+     "loggedAt": 1785512460000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 43.75,
+     "reps": 12,
+     "loggedAt": 1785512596000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 43.75,
+     "reps": 12,
+     "loggedAt": 1785512754000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1785512935000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1785513083000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1785513203000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 60,
+     "reps": 6,
+     "loggedAt": 1785513343000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 17.5,
+     "reps": 12,
+     "loggedAt": 1785513494000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 17.5,
+     "reps": 11,
+     "loggedAt": 1785513652000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 17.5,
+     "reps": 12,
+     "loggedAt": 1785513761000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785513953000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785514106000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785514232000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 12,
+     "loggedAt": 1785514415000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 12,
+     "loggedAt": 1785514560000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 12,
+     "loggedAt": 1785514724000
+    }
+   ],
+   "updatedAt": 1785514951000
+  },
+  {
+   "id": "seed-18",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1785769200000,
+   "finishedAt": 1785773406000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1785769480000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 32.5,
+     "reps": 5,
+     "loggedAt": 1785769555000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 40,
+     "reps": 10,
+     "loggedAt": 1785769640000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 50,
+     "reps": 9,
+     "loggedAt": 1785769879000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 55,
+     "reps": 9,
+     "loggedAt": 1785770117000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 55,
+     "reps": 8,
+     "loggedAt": 1785770326000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 9,
+     "reps": 11,
+     "loggedAt": 1785770585000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 9,
+     "reps": 11,
+     "loggedAt": 1785770738000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 9,
+     "reps": 10,
+     "loggedAt": 1785770853000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 12,
+     "reps": 10,
+     "loggedAt": 1785770997000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 12,
+     "reps": 10,
+     "loggedAt": 1785771142000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 12,
+     "reps": 10,
+     "loggedAt": 1785771272000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 12,
+     "reps": 10,
+     "loggedAt": 1785771381000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785771551000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785771721000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 17,
+     "loggedAt": 1785771880000,
+     "kind": "failure",
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 7.5,
+     "reps": 8,
+     "loggedAt": 1785772045000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 7.5,
+     "reps": 8,
+     "loggedAt": 1785772157000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 7.5,
+     "reps": 8,
+     "loggedAt": 1785772273000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 4,
+     "reps": 15,
+     "loggedAt": 1785772462000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 4,
+     "reps": 15,
+     "loggedAt": 1785772612000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 4,
+     "reps": 13,
+     "loggedAt": 1785772739000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 22.5,
+     "reps": 11,
+     "loggedAt": 1785772907000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 22.5,
+     "reps": 11,
+     "loggedAt": 1785773062000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 22.5,
+     "reps": 11,
+     "loggedAt": 1785773172000
+    }
+   ],
+   "updatedAt": 1785773406000
+  },
+  {
+   "id": "seed-19",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1785943620000,
+   "finishedAt": 1785947593000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1785943890000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1785943975000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1785944212000,
+     "rir": 2,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1785944458000,
+     "rir": 0,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1785944734000,
+     "loadKg": -25,
+     "rir": 3
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1785944875000,
+     "loadKg": -25,
+     "rir": 3
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1785944986000,
+     "loadKg": -25,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1785945141000,
+     "loadKg": -25
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1785945291000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1785945415000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 45,
+     "reps": 9,
+     "loggedAt": 1785945557000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1785945739000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1785945854000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 60,
+     "reps": 7,
+     "loggedAt": 1785945955000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 60,
+     "reps": 7,
+     "loggedAt": 1785946064000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 17.5,
+     "reps": 13,
+     "loggedAt": 1785946250000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 17.5,
+     "reps": 12,
+     "loggedAt": 1785946363000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 17.5,
+     "reps": 12,
+     "loggedAt": 1785946505000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1785946705000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1785946830000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1785946949000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1785947129000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 9,
+     "loggedAt": 1785947242000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1785947363000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1785947593000
+  },
+  {
+   "id": "seed-20",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1786114920000,
+   "finishedAt": 1786119006000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1786115200000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 32.5,
+     "reps": 5,
+     "loggedAt": 1786115275000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 40,
+     "reps": 10,
+     "loggedAt": 1786115360000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1786115584000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1786115828000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1786116034000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 9,
+     "reps": 12,
+     "loggedAt": 1786116263000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 9,
+     "reps": 12,
+     "loggedAt": 1786116372000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 9,
+     "reps": 12,
+     "loggedAt": 1786116518000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1786116677000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1786116813000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1786116926000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1786117036000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1786117210000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1786117328000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1786117448000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 7.5,
+     "reps": 9,
+     "loggedAt": 1786117582000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 7.5,
+     "reps": 8,
+     "loggedAt": 1786117712000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 7.5,
+     "reps": 9,
+     "loggedAt": 1786117861000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 4,
+     "reps": 15,
+     "loggedAt": 1786118056000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 4,
+     "reps": 15,
+     "loggedAt": 1786118182000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 4,
+     "reps": 15,
+     "loggedAt": 1786118312000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 22.5,
+     "reps": 12,
+     "loggedAt": 1786118456000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 22.5,
+     "reps": 12,
+     "loggedAt": 1786118608000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 22.5,
+     "reps": 12,
+     "loggedAt": 1786118744000,
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1786119006000
+  },
+  {
+   "id": "seed-21",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1786981080000,
+   "finishedAt": 1786985054000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1786981350000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1786981435000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 60,
+     "reps": 10,
+     "loggedAt": 1786981676000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 60,
+     "reps": 10,
+     "loggedAt": 1786981899000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1786982169000,
+     "loadKg": -23
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1786982289000,
+     "loadKg": -23,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1786982411000,
+     "loadKg": -23,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1786982511000,
+     "loadKg": -23,
+     "rir": 0
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 45,
+     "reps": 11,
+     "loggedAt": 1786982655000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 45,
+     "reps": 11,
+     "loggedAt": 1786982787000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1786982945000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 60,
+     "reps": 9,
+     "loggedAt": 1786983105000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 60,
+     "reps": 9,
+     "loggedAt": 1786983227000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1786983365000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 60,
+     "reps": 9,
+     "loggedAt": 1786983470000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 17.5,
+     "reps": 15,
+     "loggedAt": 1786983637000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 17.5,
+     "reps": 15,
+     "loggedAt": 1786983762000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 17.5,
+     "reps": 15,
+     "loggedAt": 1786983917000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1786984110000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1786984231000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1786984374000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 11,
+     "loggedAt": 1786984541000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 11,
+     "loggedAt": 1786984654000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1786984802000,
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1786985054000
+  },
+  {
+   "id": "seed-22",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1787153820000,
+   "finishedAt": 1787157858000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1787154100000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1787154175000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1787154260000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 52.5,
+     "reps": 9,
+     "loggedAt": 1787154472000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 57.5,
+     "reps": 8,
+     "loggedAt": 1787154708000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 57.5,
+     "reps": 8,
+     "loggedAt": 1787154905000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1787155166000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1787155316000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 9,
+     "loggedAt": 1787155422000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1787155564000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1787155685000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1787155805000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1787155914000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787156076000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787156200000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 16,
+     "loggedAt": 1787156366000,
+     "kind": "failure",
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 7.5,
+     "reps": 10,
+     "loggedAt": 1787156506000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 7.5,
+     "reps": 10,
+     "loggedAt": 1787156664000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 7.5,
+     "reps": 10,
+     "loggedAt": 1787156772000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 10,
+     "loggedAt": 1787156960000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 10,
+     "loggedAt": 1787157108000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 9,
+     "loggedAt": 1787157218000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 25,
+     "reps": 10,
+     "loggedAt": 1787157394000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 25,
+     "reps": 10,
+     "loggedAt": 1787157527000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 25,
+     "reps": 11,
+     "loggedAt": 1787157637000,
+     "kind": "failure"
+    }
+   ],
+   "updatedAt": 1787157858000
+  },
+  {
+   "id": "seed-23",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1787324220000,
+   "finishedAt": 1787328167000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1787324490000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 52.5,
+     "reps": 10,
+     "loggedAt": 1787324575000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 62.5,
+     "reps": 8,
+     "loggedAt": 1787324775000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 62.5,
+     "reps": 8,
+     "loggedAt": 1787324969000,
+     "rir": 0,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1787325241000,
+     "loadKg": -23,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1787325383000,
+     "loadKg": -23,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1787325496000,
+     "loadKg": -23
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1787325634000,
+     "loadKg": -23,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 45,
+     "reps": 11,
+     "loggedAt": 1787325798000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1787325915000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 45,
+     "reps": 9,
+     "loggedAt": 1787326035000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 60,
+     "reps": 9,
+     "loggedAt": 1787326200000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 60,
+     "reps": 9,
+     "loggedAt": 1787326326000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1787326464000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1787326590000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1787326731000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1787326858000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 20,
+     "reps": 9,
+     "loggedAt": 1787326991000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787327170000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787327325000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1787327484000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 12,
+     "loggedAt": 1787327677000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 12,
+     "loggedAt": 1787327826000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 12,
+     "loggedAt": 1787327939000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1787328167000
+  },
+  {
+   "id": "seed-24",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1787585940000,
+   "finishedAt": 1787590007000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1787586220000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1787586295000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1787586380000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 52.5,
+     "reps": 9,
+     "loggedAt": 1787586621000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 57.5,
+     "reps": 7,
+     "loggedAt": 1787586832000,
+     "rir": 2,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 57.5,
+     "reps": 6,
+     "loggedAt": 1787587074000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 11,
+     "loggedAt": 1787587301000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1787587415000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1787587536000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1787587674000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1787587799000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1787587947000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1787588087000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787588257000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787588391000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 17,
+     "loggedAt": 1787588523000,
+     "kind": "failure"
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 8.75,
+     "reps": 8,
+     "loggedAt": 1787588666000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 8.75,
+     "reps": 8,
+     "loggedAt": 1787588807000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 8.75,
+     "reps": 8,
+     "loggedAt": 1787588927000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 12,
+     "loggedAt": 1787589066000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 11,
+     "loggedAt": 1787589173000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 12,
+     "loggedAt": 1787589326000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 25,
+     "reps": 11,
+     "loggedAt": 1787589509000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 25,
+     "reps": 11,
+     "loggedAt": 1787589618000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 25,
+     "reps": 11,
+     "loggedAt": 1787589754000
+    }
+   ],
+   "updatedAt": 1787590007000
+  },
+  {
+   "id": "seed-25",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1787758080000,
+   "finishedAt": 1787761993000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1787758350000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 52.5,
+     "reps": 10,
+     "loggedAt": 1787758435000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 62.5,
+     "reps": 8,
+     "loggedAt": 1787758632000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 62.5,
+     "reps": 8,
+     "loggedAt": 1787758854000,
+     "rir": 0,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1787759128000,
+     "loadKg": -23,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1787759234000,
+     "loadKg": -23
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1787759342000,
+     "loadKg": -23,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1787759468000,
+     "loadKg": -23,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 45,
+     "reps": 12,
+     "loggedAt": 1787759607000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 45,
+     "reps": 12,
+     "loggedAt": 1787759745000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 45,
+     "reps": 12,
+     "loggedAt": 1787759889000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 60,
+     "reps": 10,
+     "loggedAt": 1787760026000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 60,
+     "reps": 10,
+     "loggedAt": 1787760148000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 60,
+     "reps": 10,
+     "loggedAt": 1787760283000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 60,
+     "reps": 10,
+     "loggedAt": 1787760436000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 12,
+     "loggedAt": 1787760613000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 20,
+     "reps": 11,
+     "loggedAt": 1787760739000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 20,
+     "reps": 11,
+     "loggedAt": 1787760890000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787761038000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1787761180000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787761325000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 12,
+     "reps": 10,
+     "loggedAt": 1787761499000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 12,
+     "reps": 10,
+     "loggedAt": 1787761632000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 12,
+     "reps": 9,
+     "loggedAt": 1787761756000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1787761993000
+  },
+  {
+   "id": "seed-26",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1787930400000,
+   "finishedAt": 1787934675000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1787930680000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1787930755000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1787930840000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 52.5,
+     "reps": 9,
+     "loggedAt": 1787931042000,
+     "rir": 2,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 57.5,
+     "reps": 8,
+     "loggedAt": 1787931288000,
+     "rir": 2,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 57.5,
+     "reps": 9,
+     "loggedAt": 1787931536000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 12,
+     "loggedAt": 1787931773000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 12,
+     "loggedAt": 1787931912000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 12,
+     "loggedAt": 1787932050000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1787932189000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1787932310000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1787932436000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1787932537000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787932733000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787932857000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1787933026000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 8.75,
+     "reps": 9,
+     "loggedAt": 1787933186000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 8.75,
+     "reps": 8,
+     "loggedAt": 1787933304000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 8.75,
+     "reps": 7,
+     "loggedAt": 1787933449000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 13,
+     "loggedAt": 1787933635000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 13,
+     "loggedAt": 1787933771000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 13,
+     "loggedAt": 1787933887000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 4,
+     "weightKg": 3,
+     "reps": 12,
+     "loggedAt": 1787934007000,
+     "kind": "drop"
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 25,
+     "reps": 12,
+     "loggedAt": 1787934172000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 25,
+     "reps": 12,
+     "loggedAt": 1787934305000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 25,
+     "reps": 13,
+     "loggedAt": 1787934453000,
+     "kind": "failure",
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1787934675000
+  },
+  {
+   "id": "seed-27",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1788190680000,
+   "finishedAt": 1788194591000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1788190950000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 52.5,
+     "reps": 10,
+     "loggedAt": 1788191035000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 62.5,
+     "reps": 10,
+     "loggedAt": 1788191231000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 62.5,
+     "reps": 10,
+     "loggedAt": 1788191479000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1788191731000,
+     "loadKg": -23,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1788191830000,
+     "loadKg": -23,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1788191978000,
+     "loadKg": -23,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1788192117000,
+     "loadKg": -23,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 46.25,
+     "reps": 10,
+     "loggedAt": 1788192254000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 46.25,
+     "reps": 10,
+     "loggedAt": 1788192389000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 46.25,
+     "reps": 10,
+     "loggedAt": 1788192503000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 65,
+     "reps": 8,
+     "loggedAt": 1788192651000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 65,
+     "reps": 8,
+     "loggedAt": 1788192752000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 65,
+     "reps": 7,
+     "loggedAt": 1788192861000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 65,
+     "reps": 8,
+     "loggedAt": 1788193007000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 14,
+     "loggedAt": 1788193170000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 20,
+     "reps": 14,
+     "loggedAt": 1788193325000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 20,
+     "reps": 12,
+     "loggedAt": 1788193442000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788193600000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788193766000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1788193917000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 12,
+     "reps": 11,
+     "loggedAt": 1788194105000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 12,
+     "reps": 11,
+     "loggedAt": 1788194250000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 12,
+     "reps": 11,
+     "loggedAt": 1788194367000,
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1788194591000
+  },
+  {
+   "id": "seed-28",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1788361860000,
+   "finishedAt": 1788366236000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1788362140000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1788362215000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1788362300000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 52.5,
+     "reps": 9,
+     "loggedAt": 1788362541000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 57.5,
+     "reps": 9,
+     "loggedAt": 1788362747000,
+     "rir": 2,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 57.5,
+     "reps": 8,
+     "loggedAt": 1788362993000,
+     "rir": 1,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1788363273000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1788363404000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1788363554000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1788363738000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1788363859000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1788363988000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1788364139000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788364312000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788364437000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1788364601000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 8.75,
+     "reps": 10,
+     "loggedAt": 1788364781000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 8.75,
+     "reps": 9,
+     "loggedAt": 1788364927000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 8.75,
+     "reps": 10,
+     "loggedAt": 1788365045000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 14,
+     "loggedAt": 1788365192000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 14,
+     "loggedAt": 1788365359000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 13,
+     "loggedAt": 1788365520000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 27.5,
+     "reps": 10,
+     "loggedAt": 1788365695000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 27.5,
+     "reps": 9,
+     "loggedAt": 1788365853000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 27.5,
+     "reps": 9,
+     "loggedAt": 1788365972000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1788366236000
+  },
+  {
+   "id": "seed-29",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1788536040000,
+   "finishedAt": 1788540033000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1788536310000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1788536395000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 65,
+     "reps": 8,
+     "loggedAt": 1788536641000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 65,
+     "reps": 7,
+     "loggedAt": 1788536874000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1788537131000,
+     "loadKg": -23,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1788537233000,
+     "loadKg": -23,
+     "rir": 3
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1788537362000,
+     "loadKg": -23,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1788537484000,
+     "loadKg": -23,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 46.25,
+     "reps": 11,
+     "loggedAt": 1788537634000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 46.25,
+     "reps": 10,
+     "loggedAt": 1788537762000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 46.25,
+     "reps": 11,
+     "loggedAt": 1788537894000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 65,
+     "reps": 9,
+     "loggedAt": 1788538048000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 65,
+     "reps": 9,
+     "loggedAt": 1788538203000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 65,
+     "reps": 8,
+     "loggedAt": 1788538319000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 65,
+     "reps": 9,
+     "loggedAt": 1788538427000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 15,
+     "loggedAt": 1788538572000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 20,
+     "reps": 15,
+     "loggedAt": 1788538709000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 20,
+     "reps": 15,
+     "loggedAt": 1788538867000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788539050000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788539170000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1788539333000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 12,
+     "reps": 12,
+     "loggedAt": 1788539477000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 12,
+     "reps": 12,
+     "loggedAt": 1788539627000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 12,
+     "reps": 12,
+     "loggedAt": 1788539789000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1788540033000
+  },
+  {
+   "id": "seed-30",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1788795060000,
+   "finishedAt": 1788799265000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1788795340000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1788795415000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1788795500000,
+     "rir": 3,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 52.5,
+     "reps": 10,
+     "loggedAt": 1788795750000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 57.5,
+     "reps": 9,
+     "loggedAt": 1788795965000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 57.5,
+     "reps": 10,
+     "loggedAt": 1788796192000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 11,
+     "loggedAt": 1788796461000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1788796592000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 11,
+     "loggedAt": 1788796744000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1788796878000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1788796988000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1788797101000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1788797232000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788797429000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788797556000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 17,
+     "loggedAt": 1788797693000,
+     "kind": "failure",
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 8.75,
+     "reps": 10,
+     "loggedAt": 1788797878000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 8.75,
+     "reps": 10,
+     "loggedAt": 1788797985000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 8.75,
+     "reps": 10,
+     "loggedAt": 1788798115000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 15,
+     "loggedAt": 1788798295000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 15,
+     "loggedAt": 1788798450000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 5,
+     "reps": 15,
+     "loggedAt": 1788798613000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 27.5,
+     "reps": 11,
+     "loggedAt": 1788798784000
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 27.5,
+     "reps": 10,
+     "loggedAt": 1788798903000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 27.5,
+     "reps": 9,
+     "loggedAt": 1788799033000,
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1788799265000
+  },
+  {
+   "id": "seed-31",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1788966480000,
+   "finishedAt": 1788970258000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1788966750000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1788966835000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 65,
+     "reps": 8,
+     "loggedAt": 1788967046000
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 65,
+     "reps": 7,
+     "loggedAt": 1788967241000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1788967469000,
+     "loadKg": -21,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1788967579000,
+     "loadKg": -21,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 4,
+     "loggedAt": 1788967678000,
+     "loadKg": -21,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1788967798000,
+     "loadKg": -21,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 46.25,
+     "reps": 12,
+     "loggedAt": 1788967976000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 46.25,
+     "reps": 11,
+     "loggedAt": 1788968093000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 46.25,
+     "reps": 12,
+     "loggedAt": 1788968216000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 65,
+     "reps": 10,
+     "loggedAt": 1788968381000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 65,
+     "reps": 10,
+     "loggedAt": 1788968487000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 65,
+     "reps": 10,
+     "loggedAt": 1788968622000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 65,
+     "reps": 10,
+     "loggedAt": 1788968727000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 22.5,
+     "reps": 10,
+     "loggedAt": 1788968880000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 22.5,
+     "reps": 9,
+     "loggedAt": 1788969038000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 22.5,
+     "reps": 9,
+     "loggedAt": 1788969164000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788969341000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788969508000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1788969649000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 10,
+     "loggedAt": 1788969795000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1788969908000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 10,
+     "loggedAt": 1788970027000
+    }
+   ],
+   "updatedAt": 1788970258000
+  },
+  {
+   "id": "seed-32",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1789138140000,
+   "finishedAt": 1789142327000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1789138420000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1789138495000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1789138580000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 52.5,
+     "reps": 10,
+     "loggedAt": 1789138815000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 57.5,
+     "reps": 10,
+     "loggedAt": 1789139045000,
+     "rir": 3,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 57.5,
+     "reps": 8,
+     "loggedAt": 1789139291000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 11,
+     "loggedAt": 1789139542000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 11,
+     "loggedAt": 1789139675000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 10,
+     "loggedAt": 1789139802000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1789139988000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1789140089000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1789140243000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1789140344000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1789140499000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1789140616000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 17,
+     "loggedAt": 1789140750000,
+     "kind": "failure",
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1789140920000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 7,
+     "loggedAt": 1789141051000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 10,
+     "reps": 8,
+     "loggedAt": 1789141191000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 6,
+     "reps": 10,
+     "loggedAt": 1789141373000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 6,
+     "reps": 10,
+     "loggedAt": 1789141517000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 6,
+     "reps": 9,
+     "loggedAt": 1789141665000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 27.5,
+     "reps": 12,
+     "loggedAt": 1789141809000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 27.5,
+     "reps": 11,
+     "loggedAt": 1789141937000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 27.5,
+     "reps": 11,
+     "loggedAt": 1789142095000,
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1789142327000
+  },
+  {
+   "id": "seed-33",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1789399680000,
+   "finishedAt": 1789403615000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1789399950000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1789400035000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 65,
+     "reps": 9,
+     "loggedAt": 1789400242000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 65,
+     "reps": 9,
+     "loggedAt": 1789400485000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1789400724000,
+     "loadKg": -21,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1789400826000,
+     "loadKg": -21,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1789400924000,
+     "loadKg": -21,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1789401060000,
+     "loadKg": -21,
+     "rir": 0
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 46.25,
+     "reps": 12,
+     "loggedAt": 1789401246000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 46.25,
+     "reps": 12,
+     "loggedAt": 1789401369000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 46.25,
+     "reps": 12,
+     "loggedAt": 1789401485000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 70,
+     "reps": 8,
+     "loggedAt": 1789401669000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 70,
+     "reps": 8,
+     "loggedAt": 1789401787000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 70,
+     "reps": 7,
+     "loggedAt": 1789401905000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 70,
+     "reps": 7,
+     "loggedAt": 1789402042000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 22.5,
+     "reps": 11,
+     "loggedAt": 1789402219000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 22.5,
+     "reps": 10,
+     "loggedAt": 1789402370000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 22.5,
+     "reps": 9,
+     "loggedAt": 1789402515000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1789402670000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1789402832000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1789402978000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 10,
+     "loggedAt": 1789403145000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 10,
+     "loggedAt": 1789403280000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1789403396000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1789403615000
+  },
+  {
+   "id": "seed-34",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1790003760000,
+   "finishedAt": 1790007956000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1790004040000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1790004115000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 37.5,
+     "reps": 10,
+     "loggedAt": 1790004200000,
+     "rir": 3,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1790004450000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 50,
+     "reps": 10,
+     "loggedAt": 1790004645000,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 9,
+     "reps": 12,
+     "loggedAt": 1790005141000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 9,
+     "reps": 12,
+     "loggedAt": 1790005262000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 8,
+     "loggedAt": 1790005574000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 8,
+     "loggedAt": 1790005727000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 8,
+     "loggedAt": 1790005841000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790006093000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790006221000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 8.75,
+     "reps": 9,
+     "loggedAt": 1790006518000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 8.75,
+     "reps": 9,
+     "loggedAt": 1790006665000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 12,
+     "loggedAt": 1790006957000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 11,
+     "loggedAt": 1790007084000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 22.5,
+     "reps": 12,
+     "loggedAt": 1790007399000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 22.5,
+     "reps": 12,
+     "loggedAt": 1790007526000
+    }
+   ],
+   "updatedAt": 1790007956000,
+   "deload": true,
+   "note": "Deload week, back from being sick."
+  },
+  {
+   "id": "seed-35",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1790174760000,
+   "finishedAt": 1790178719000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1790175030000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1790175115000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 57.5,
+     "reps": 10,
+     "loggedAt": 1790175365000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1790175832000,
+     "loadKg": -23,
+     "rir": 3
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1790175978000,
+     "loadKg": -23
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1790176093000,
+     "loadKg": -23,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1790176362000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 42.5,
+     "reps": 10,
+     "loggedAt": 1790176518000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1790176815000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1790176918000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1790177043000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 13,
+     "loggedAt": 1790177318000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 20,
+     "reps": 12,
+     "loggedAt": 1790177464000
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790177757000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790177891000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 11,
+     "loggedAt": 1790178234000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 11,
+     "loggedAt": 1790178344000,
+     "rir": 3
+    }
+   ],
+   "updatedAt": 1790178719000,
+   "deload": true
+  },
+  {
+   "id": "seed-36",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1790348340000,
+   "finishedAt": 1790352399000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1790348620000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1790348695000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 40,
+     "reps": 10,
+     "loggedAt": 1790348780000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 47.5,
+     "reps": 9,
+     "loggedAt": 1790349011000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 52.5,
+     "reps": 7,
+     "loggedAt": 1790349206000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1790349682000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 10,
+     "reps": 10,
+     "loggedAt": 1790349817000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 11,
+     "reps": 9,
+     "loggedAt": 1790350086000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 11,
+     "reps": 8,
+     "loggedAt": 1790350235000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 11,
+     "reps": 7,
+     "loggedAt": 1790350361000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790350639000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790350761000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 8.75,
+     "reps": 10,
+     "loggedAt": 1790351108000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 8.75,
+     "reps": 10,
+     "loggedAt": 1790351231000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 5,
+     "reps": 13,
+     "loggedAt": 1790351489000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 5,
+     "reps": 13,
+     "loggedAt": 1790351631000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 25,
+     "reps": 10,
+     "loggedAt": 1790351904000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 25,
+     "reps": 10,
+     "loggedAt": 1790352019000,
+     "rir": 2
+    }
+   ],
+   "updatedAt": 1790352399000,
+   "deload": true
+  },
+  {
+   "id": "seed-37",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1790607780000,
+   "finishedAt": 1790611672000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1790608050000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 57.5,
+     "reps": 10,
+     "loggedAt": 1790608135000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 67.5,
+     "reps": 8,
+     "loggedAt": 1790608334000,
+     "rir": 2,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 67.5,
+     "reps": 8,
+     "loggedAt": 1790608580000,
+     "rir": 1,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1790608854000,
+     "loadKg": -21,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1790608955000,
+     "loadKg": -21,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1790609093000,
+     "loadKg": -21
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 7,
+     "loggedAt": 1790609194000,
+     "loadKg": -21,
+     "rir": 0
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1790609369000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1790609509000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1790609632000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 70,
+     "reps": 9,
+     "loggedAt": 1790609783000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 70,
+     "reps": 9,
+     "loggedAt": 1790609890000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 70,
+     "reps": 8,
+     "loggedAt": 1790610032000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 70,
+     "reps": 8,
+     "loggedAt": 1790610159000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 22.5,
+     "reps": 15,
+     "loggedAt": 1790610336000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 22.5,
+     "reps": 15,
+     "loggedAt": 1790610470000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 22.5,
+     "reps": 15,
+     "loggedAt": 1790610618000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790610795000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790610919000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790611069000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 12,
+     "loggedAt": 1790611209000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 12,
+     "loggedAt": 1790611343000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 12,
+     "loggedAt": 1790611457000
+    }
+   ],
+   "updatedAt": 1790611672000
+  },
+  {
+   "id": "seed-38",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1790781540000,
+   "finishedAt": 1790785727000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1790781820000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1790781895000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1790781980000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 9,
+     "loggedAt": 1790782194000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 60,
+     "reps": 7,
+     "loggedAt": 1790782383000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 60,
+     "reps": 6,
+     "loggedAt": 1790782577000,
+     "rir": 1,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 12,
+     "reps": 11,
+     "loggedAt": 1790782859000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 12,
+     "reps": 11,
+     "loggedAt": 1790783012000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 12,
+     "reps": 10,
+     "loggedAt": 1790783148000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1790783305000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1790783414000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1790783538000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1790783671000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790783870000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790784006000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 17,
+     "loggedAt": 1790784156000,
+     "kind": "failure",
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 11.25,
+     "reps": 8,
+     "loggedAt": 1790784339000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 11.25,
+     "reps": 8,
+     "loggedAt": 1790784485000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 11.25,
+     "reps": 8,
+     "loggedAt": 1790784589000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 6,
+     "reps": 14,
+     "loggedAt": 1790784766000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 6,
+     "reps": 14,
+     "loggedAt": 1790784919000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 6,
+     "reps": 14,
+     "loggedAt": 1790785054000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 30,
+     "reps": 10,
+     "loggedAt": 1790785232000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 30,
+     "reps": 9,
+     "loggedAt": 1790785354000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 30,
+     "reps": 10,
+     "loggedAt": 1790785491000,
+     "kind": "failure",
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1790785727000,
+   "note": "Left shoulder a bit tight on bench."
+  },
+  {
+   "id": "seed-39",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1790954880000,
+   "finishedAt": 1790958813000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1790955150000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 57.5,
+     "reps": 10,
+     "loggedAt": 1790955235000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 67.5,
+     "reps": 9,
+     "loggedAt": 1790955465000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 67.5,
+     "reps": 8,
+     "loggedAt": 1790955711000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1790955942000,
+     "loadKg": -21,
+     "rir": 3
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1790956096000,
+     "loadKg": -21,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1790956249000,
+     "loadKg": -21,
+     "rir": 3
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 8,
+     "loggedAt": 1790956356000,
+     "loadKg": -21,
+     "rir": 0
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1790956504000
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 47.5,
+     "reps": 9,
+     "loggedAt": 1790956630000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 47.5,
+     "reps": 8,
+     "loggedAt": 1790956770000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 70,
+     "reps": 10,
+     "loggedAt": 1790956930000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 70,
+     "reps": 10,
+     "loggedAt": 1790957064000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 70,
+     "reps": 10,
+     "loggedAt": 1790957196000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 70,
+     "reps": 10,
+     "loggedAt": 1790957316000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 25,
+     "reps": 10,
+     "loggedAt": 1790957491000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 25,
+     "reps": 10,
+     "loggedAt": 1790957631000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 25,
+     "reps": 10,
+     "loggedAt": 1790957758000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790957909000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790958047000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1790958191000
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 14,
+     "reps": 10,
+     "loggedAt": 1790958339000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 14,
+     "reps": 9,
+     "loggedAt": 1790958466000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 14,
+     "reps": 10,
+     "loggedAt": 1790958576000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1790958813000
+  },
+  {
+   "id": "seed-40",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1791212400000,
+   "finishedAt": 1791216613000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1791212680000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1791212755000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1791212840000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 9,
+     "loggedAt": 1791213047000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 60,
+     "reps": 9,
+     "loggedAt": 1791213288000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 60,
+     "reps": 8,
+     "loggedAt": 1791213516000,
+     "rir": 1,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 12,
+     "reps": 12,
+     "loggedAt": 1791213800000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 12,
+     "reps": 11,
+     "loggedAt": 1791213951000
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 12,
+     "reps": 12,
+     "loggedAt": 1791214083000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1791214220000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1791214346000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1791214469000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1791214614000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1791214764000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1791214933000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 17,
+     "loggedAt": 1791215070000,
+     "kind": "failure",
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 11.25,
+     "reps": 9,
+     "loggedAt": 1791215240000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 11.25,
+     "reps": 9,
+     "loggedAt": 1791215372000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 11.25,
+     "reps": 8,
+     "loggedAt": 1791215473000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 6,
+     "reps": 15,
+     "loggedAt": 1791215669000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 6,
+     "reps": 15,
+     "loggedAt": 1791215785000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 6,
+     "reps": 15,
+     "loggedAt": 1791215928000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 30,
+     "reps": 11,
+     "loggedAt": 1791216077000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 30,
+     "reps": 10,
+     "loggedAt": 1791216221000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 30,
+     "reps": 11,
+     "loggedAt": 1791216370000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1791216613000
+  },
+  {
+   "id": "seed-41",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1791384960000,
+   "finishedAt": 1791388928000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1791385230000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 57.5,
+     "reps": 10,
+     "loggedAt": 1791385315000,
+     "rir": 2,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 67.5,
+     "reps": 10,
+     "loggedAt": 1791385565000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 67.5,
+     "reps": 10,
+     "loggedAt": 1791385801000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1791386067000,
+     "loadKg": -19,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1791386207000,
+     "loadKg": -19,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1791386306000,
+     "loadKg": -19,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1791386445000,
+     "loadKg": -19,
+     "rir": 0
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 46.25,
+     "reps": 10,
+     "loggedAt": 1791386585000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 46.25,
+     "reps": 9,
+     "loggedAt": 1791386743000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 46.25,
+     "reps": 9,
+     "loggedAt": 1791386850000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 75,
+     "reps": 8,
+     "loggedAt": 1791387007000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 75,
+     "reps": 8,
+     "loggedAt": 1791387150000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 75,
+     "reps": 8,
+     "loggedAt": 1791387293000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 75,
+     "reps": 8,
+     "loggedAt": 1791387439000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 25,
+     "reps": 12,
+     "loggedAt": 1791387596000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 25,
+     "reps": 12,
+     "loggedAt": 1791387755000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 25,
+     "reps": 11,
+     "loggedAt": 1791387865000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 12,
+     "loggedAt": 1791388054000,
+     "loadKg": 5,
+     "rir": 1
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1791388188000,
+     "loadKg": 5,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1791388299000,
+     "loadKg": 5,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 14,
+     "reps": 11,
+     "loggedAt": 1791388464000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 14,
+     "reps": 10,
+     "loggedAt": 1791388585000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 14,
+     "reps": 10,
+     "loggedAt": 1791388701000,
+     "rir": 1
+    }
+   ],
+   "updatedAt": 1791388928000,
+   "note": "Right elbow sore on pull-downs, dropped the weight."
+  },
+  {
+   "id": "seed-42",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1791558300000,
+   "finishedAt": 1791562535000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1791558580000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 35,
+     "reps": 5,
+     "loggedAt": 1791558655000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 45,
+     "reps": 10,
+     "loggedAt": 1791558740000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 55,
+     "reps": 10,
+     "loggedAt": 1791558978000,
+     "rir": 3,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 60,
+     "reps": 10,
+     "loggedAt": 1791559228000,
+     "rir": 3,
+     "restSeconds": 210
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 60,
+     "reps": 10,
+     "loggedAt": 1791559478000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 12,
+     "reps": 12,
+     "loggedAt": 1791559734000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 12,
+     "reps": 12,
+     "loggedAt": 1791559866000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 12,
+     "reps": 12,
+     "loggedAt": 1791560001000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1791560148000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1791560287000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1791560432000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1791560562000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1791560720000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1791560863000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 17,
+     "loggedAt": 1791561029000,
+     "kind": "failure",
+     "rir": 0
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 11.25,
+     "reps": 10,
+     "loggedAt": 1791561199000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 11.25,
+     "reps": 10,
+     "loggedAt": 1791561341000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 11.25,
+     "reps": 10,
+     "loggedAt": 1791561497000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1791561643000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1791561761000
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 7,
+     "reps": 9,
+     "loggedAt": 1791561889000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 30,
+     "reps": 12,
+     "loggedAt": 1791562039000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 30,
+     "reps": 12,
+     "loggedAt": 1791562152000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 30,
+     "reps": 12,
+     "loggedAt": 1791562313000
+    }
+   ],
+   "updatedAt": 1791562535000
+  },
+  {
+   "id": "seed-43",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-b",
+   "startedAt": 1791817260000,
+   "finishedAt": 1791821191000,
+   "entries": [
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 1,
+     "weightKg": 40,
+     "reps": 5,
+     "loggedAt": 1791817530000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 2,
+     "weightKg": 60,
+     "reps": 10,
+     "loggedAt": 1791817615000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 3,
+     "weightKg": 70,
+     "reps": 7,
+     "loggedAt": 1791817805000
+    },
+    {
+     "exerciseId": "deadlift",
+     "setIndex": 4,
+     "weightKg": 70,
+     "reps": 7,
+     "loggedAt": 1791818004000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1791818237000,
+     "loadKg": -19,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1791818386000,
+     "loadKg": -19,
+     "rir": 2
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 6,
+     "loggedAt": 1791818505000,
+     "loadKg": -19,
+     "rir": 1
+    },
+    {
+     "exerciseId": "assisted-pull-ups",
+     "setIndex": 4,
+     "weightKg": null,
+     "reps": 5,
+     "loggedAt": 1791818645000,
+     "loadKg": -19,
+     "rir": 0
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 1,
+     "weightKg": 46.25,
+     "reps": 9,
+     "loggedAt": 1791818809000,
+     "rir": 3
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 2,
+     "weightKg": 46.25,
+     "reps": 8,
+     "loggedAt": 1791818951000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "narrow-grip-pull-down",
+     "setIndex": 3,
+     "weightKg": 46.25,
+     "reps": 8,
+     "loggedAt": 1791819068000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 1,
+     "weightKg": 75,
+     "reps": 9,
+     "loggedAt": 1791819232000
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 2,
+     "weightKg": 75,
+     "reps": 9,
+     "loggedAt": 1791819386000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 3,
+     "weightKg": 75,
+     "reps": 9,
+     "loggedAt": 1791819524000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-row",
+     "setIndex": 4,
+     "weightKg": 75,
+     "reps": 8,
+     "loggedAt": 1791819656000
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 1,
+     "weightKg": 25,
+     "reps": 13,
+     "loggedAt": 1791819811000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 2,
+     "weightKg": 25,
+     "reps": 13,
+     "loggedAt": 1791819934000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "face-pull",
+     "setIndex": 3,
+     "weightKg": 25,
+     "reps": 12,
+     "loggedAt": 1791820045000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 12,
+     "loggedAt": 1791820219000,
+     "loadKg": 5,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 11,
+     "loggedAt": 1791820339000,
+     "loadKg": 5,
+     "rir": 2
+    },
+    {
+     "exerciseId": "hyper-extension",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 10,
+     "loggedAt": 1791820487000,
+     "loadKg": 5,
+     "rir": 1
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 1,
+     "weightKg": 14,
+     "reps": 12,
+     "loggedAt": 1791820631000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 2,
+     "weightKg": 14,
+     "reps": 12,
+     "loggedAt": 1791820772000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "seated-biceps-curls",
+     "setIndex": 3,
+     "weightKg": 14,
+     "reps": 12,
+     "loggedAt": 1791820928000,
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1791821191000
+  },
+  {
+   "id": "seed-44",
+   "programId": "assaf-ab-2026",
+   "workoutId": "workout-a",
+   "startedAt": 1791989040000,
+   "finishedAt": 1791993299000,
+   "entries": [
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 1,
+     "weightKg": 20,
+     "reps": 10,
+     "loggedAt": 1791989320000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 2,
+     "weightKg": 37.5,
+     "reps": 5,
+     "loggedAt": 1791989395000,
+     "kind": "warmup"
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 3,
+     "weightKg": 47.5,
+     "reps": 10,
+     "loggedAt": 1791989480000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 4,
+     "weightKg": 57.5,
+     "reps": 9,
+     "loggedAt": 1791989674000
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 5,
+     "weightKg": 62.5,
+     "reps": 8,
+     "loggedAt": 1791989884000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "back-squat",
+     "setIndex": 6,
+     "weightKg": 62.5,
+     "reps": 7,
+     "loggedAt": 1791990091000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 10,
+     "loggedAt": 1791990364000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 10,
+     "loggedAt": 1791990484000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lunges",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 10,
+     "loggedAt": 1791990631000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 1,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1791990773000
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 2,
+     "weightKg": 13,
+     "reps": 9,
+     "loggedAt": 1791990878000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 3,
+     "weightKg": 13,
+     "reps": 8,
+     "loggedAt": 1791991004000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "db-bench-press",
+     "setIndex": 4,
+     "weightKg": 13,
+     "reps": 7,
+     "loggedAt": 1791991114000,
+     "rir": 0
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 1,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1791991291000
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 2,
+     "weightKg": null,
+     "reps": 14,
+     "loggedAt": 1791991451000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "push-ups",
+     "setIndex": 3,
+     "weightKg": null,
+     "reps": 15,
+     "loggedAt": 1791991619000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 1,
+     "weightKg": 12.5,
+     "reps": 8,
+     "loggedAt": 1791991801000
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 2,
+     "weightKg": 12.5,
+     "reps": 7,
+     "loggedAt": 1791991916000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "machine-shoulder-press",
+     "setIndex": 3,
+     "weightKg": 12.5,
+     "reps": 6,
+     "loggedAt": 1791992039000,
+     "rir": 1
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 1,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1791992216000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 2,
+     "weightKg": 7,
+     "reps": 10,
+     "loggedAt": 1791992368000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 3,
+     "weightKg": 7,
+     "reps": 9,
+     "loggedAt": 1791992483000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "lateral-raises",
+     "setIndex": 4,
+     "weightKg": 5,
+     "reps": 12,
+     "loggedAt": 1791992642000,
+     "kind": "drop",
+     "rir": 1
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 1,
+     "weightKg": 32.5,
+     "reps": 10,
+     "loggedAt": 1791992791000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 2,
+     "weightKg": 32.5,
+     "reps": 10,
+     "loggedAt": 1791992951000,
+     "rir": 2
+    },
+    {
+     "exerciseId": "cable-push-down",
+     "setIndex": 3,
+     "weightKg": 32.5,
+     "reps": 8,
+     "loggedAt": 1791993083000,
+     "rir": 0
+    }
+   ],
+   "updatedAt": 1791993299000
+  }
+ ]
+}

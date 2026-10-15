@@ -30,6 +30,10 @@ const loadSessions = () => read<Sess[]>('src/test/fixtures/stats/sessions.json')
 
 const fmt = (n: number) => String(n)
 function text(e: Entry): string {
+  const kind = e.kind === 'drop' || e.kind === 'failure' ? ` (${e.kind})` : ''
+  return base(e) + kind
+}
+function base(e: Entry): string {
   if (e.loadKg !== undefined && e.loadKg !== null) {
     return `BW${e.loadKg > 0 ? '+' : '−'}${fmt(Math.abs(e.loadKg))} × ${e.reps}`
   }
