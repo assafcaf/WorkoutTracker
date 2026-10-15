@@ -178,29 +178,15 @@
 
 /* ---- Volume per session ---- */
 
-.sessions-series-legend {
-  display: flex;
-  gap: var(--space-3);
+.sessions-volume-workout + .sessions-volume-workout {
+  margin-top: var(--space-2);
+}
+
+.sessions-volume-name {
+  margin: 0;
   color: var(--color-muted);
   font-size: var(--text-xs);
-}
-
-.sessions-series-key {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.sessions-series-swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: var(--radius-sm);
-  background: var(--color-secondary);
-}
-
-.sessions-series-swatch[data-series='b'] {
-  background: var(--chart-b);
+  font-weight: 600;
 }
 
 /* ---- Sessions by week ---- */
