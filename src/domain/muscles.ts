@@ -176,7 +176,7 @@ export function contributors(
   library: Map<string, LibraryExercise>,
 ): { exerciseId: string; name: string; sets: number }[] {
   const byExercise = new Map<string, { exerciseId: string; name: string; sets: number }>()
-  for (const entry of entries) {
+  for (const entry of workingSets(entries)) {
     const resolved = resolveLibraryExercise(entry, resolve, library)
     if (!resolved) continue
     const { exercise, libraryExercise } = resolved
