@@ -16,7 +16,7 @@ import { sessionVolume } from '../domain/volume'
 import { workingSets } from '../domain/setKind'
 import type { ExerciseRecord } from '../domain/records'
 import type { Region, Resolve } from '../domain/muscles'
-import type { ExercisePlan, LibraryExercise, Muscle, Session } from '../types'
+import type { ExercisePlan, LibraryExercise, Muscle, Program, Session } from '../types'
 import { RecordSpark } from './charts/RecordSpark'
 import { Icon } from './icons'
 import { HeatLegend, RegionHeatList } from './RegionHeat'
@@ -39,6 +39,8 @@ export type SessionSummaryProps = {
   onBrowse?(muscles: Muscle[]): void
   /** Opens the Session's editor; omitted means no Edit control (the finish summary). */
   onEdit?(): void
+  program?: Program
+  onDeloadChange?(on: boolean): void
 }
 
 /** The duration KPI's value and unit: `52` `min`, or `1 h 05` `min` from an hour up. */
