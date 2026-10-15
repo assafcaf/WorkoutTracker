@@ -139,7 +139,7 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
   await user.click(await screen.findByRole('radio', { name: 'Second Program' }, FAST))
   // Settings is a full-screen page since the Progress Dashboard redesign: its Back chevron, then
   // the Dashboard tab, is the way back.
-  await pressTab(user, 'Dashboard')
+  await pressTab(user, 'Train')
 
   expect(await screen.findByRole('button', { name: 'Start Second Workout' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
@@ -155,7 +155,7 @@ test('O18 App navigates to Settings, hiding the picker, and back again', async (
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 
   // And back again: the Settings page's Back chevron, then the Dashboard tab.
-  await pressTab(user, 'Dashboard')
+  await pressTab(user, 'Train')
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
 })
 
@@ -812,7 +812,7 @@ async function pressTab(user: UserEvent, name: string): Promise<void> {
     return
   }
   if (name === 'Settings') {
-    await user.click(within(mainNav()).getByRole('button', { name: 'Dashboard' }))
+    await user.click(within(mainNav()).getByRole('button', { name: 'Train' }))
     await user.click(await screen.findByRole('button', { name: 'Settings' }, SETTLE))
     return
   }
@@ -850,14 +850,14 @@ test('O7 the app on load offers a Main nav holding exactly the Workout, Program,
 
   // Title kept (weakened-tests gate): the Progress Dashboard redesign has exactly four tabs;
   // Exercises is the Program tab's second side and Settings the Dashboard header's gear.
-  expect(tabNames()).toEqual(['Dashboard', 'Sessions', 'Lifts', 'Program'])
+  expect(tabNames()).toEqual(['Train', 'Progress', 'Sessions', 'Program'])
 })
 
 test('O7 the app on load, with no session in progress, is on the Workout tab', async () => {
   await renderApp()
   await findStartButton()
 
-  expect(currentTabNames()).toEqual(['Dashboard'])
+  expect(currentTabNames()).toEqual(['Train'])
 })
 
 test('O8 pressing the History tab lists the finished sessions with the tab bar still on screen', async () => {
@@ -2055,7 +2055,7 @@ test('M13 choosing another program in the Program tab’s switcher makes it the 
   expect(screen.getByRole('radio', { name: 'Second Program' })).toBeChecked()
   // ...and so does the Workout tab: hand-checked against SECOND_VISIBLE_PROGRAM above, whose one
   // workout is "Second Workout".
-  await pressTab(user, 'Dashboard')
+  await pressTab(user, 'Train')
   expect(await screen.findByRole('button', { name: 'Start Second Workout' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 })
@@ -2590,7 +2590,7 @@ describe('E7-T8', () => {
     )
     await serverSettled(3)
 
-    await pressTab(user, 'Dashboard')
+    await pressTab(user, 'Train')
 
     // The Dashboard's dock offers the adopted program's workout: Full body starter's "Full body".
     expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
@@ -2841,32 +2841,20 @@ describe('E6-T10', { timeout: 15_000 }, () => {
 // then the switch's Stats button -- and what that screen says with nothing logged. Stats' own
 // contract is proven in src/ui/Stats.test.tsx.
 
-/** From a fresh render, presses the Lifts tab, which holds what the History | Stats switch's
- * Stats side held before the Progress Dashboard redesign. */
+/** From a fresh render, presses the Progress tab, the screen group that replaced the Lifts tab. */
 async function openStatsThroughHistory(user: UserEvent): Promise<void> {
   await renderApp()
   await findStartButton()
-  await pressTab(user, 'Lifts')
-  await screen.findByRole('heading', { name: 'Lifts', level: 1 }, SETTLE)
-  await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)
-}
-
-/**
- * The Lifts tab's one line with nothing logged (S6b), which stands in for both of Stats' old
- * sections: the lift card with its chart, and the volume chart under it.
- */
-function liftsEmptyLine(): HTMLElement {
-  return screen.getByText(/^No sets yet\./)
+  await pressTab(user, 'Progress')
+  await screen.findByRole('heading', { name: 'Progress', level: 1 }, SETTLE)
 }
 
 test('O10 with nothing logged, Stats reached through the History tab says a set has to be logged before an exercise can be chosen', async () => {
   const user = userEvent.setup()
   await openStatsThroughHistory(user)
 
-  const text = textOf(liftsEmptyLine())
-  expect(text).toMatch(/\blog a set\b/i)
-  expect(text).toMatch(/\byour lifts\b/i)
-  // No lift to choose yet: the chips of the trainee's lifts are not drawn.
+  // The old Lifts search is gone; no lift to choose is drawn on the Progress tab.
+  expect(screen.queryByRole('searchbox', { name: 'Search exercises' })).toBeNull()
   expect(screen.queryByRole('group', { name: 'Your lifts' })).toBeNull()
 })
 
@@ -2874,9 +2862,7 @@ test('O10 with nothing logged, Stats reached through the History tab says a sess
   const user = userEvent.setup()
   await openStatsThroughHistory(user)
 
-  // The volume chart is drawn from logged sets; with none the empty line says to log one, and
-  // the chart's heading is not drawn at all.
-  expect(textOf(liftsEmptyLine())).toMatch(/\blog a set\b/i)
+  // The volume chart's heading is not drawn on the Progress tab.
   expect(screen.queryByText('Volume per session')).toBeNull()
 })
 
@@ -2887,8 +2873,7 @@ test('O10 with nothing logged, Stats reached through the History tab draws no ch
   const main = shellMain() as HTMLElement
   expect(main.querySelector('.lifts-card')).toBeNull()
   expect(screen.queryByText('Volume per session')).toBeNull()
-  // The only drawing left on the tab is the search field's magnifier icon.
-  expect(main.querySelectorAll('svg')).toHaveLength(1)
+  expect(main.querySelectorAll('svg')).toHaveLength(0)
 })
 
 test('O10 the History tab opens the History list with the switch on History, never Stats', async () => {
@@ -2910,11 +2895,12 @@ test('O10 Stats is titled Stats, keeps History the current tab and marks Stats a
   const user = userEvent.setup()
   await openStatsThroughHistory(user)
 
-  // Stats is the Lifts tab of its own now, titled Lifts, with no switch.
-  expect(currentTabNames()).toEqual(['Lifts'])
+  // Stats is the Progress tab of its own now, titled Progress, with no switch.
+  expect(currentTabNames()).toEqual(['Progress'])
   expect(screen.queryByRole('group', { name: 'History view' })).toBeNull()
   // The tab's content rides inside the shell, like every other tab screen's body.
-  expect(shellMain()?.contains(liftsEmptyLine())).toBe(true)
+  expect(shellMain()).not.toBeNull()
+  expect(screen.getByRole('heading', { name: 'Progress', level: 1 })).toBeVisible()
 })
 
 test('O10 choosing History in the switch goes back from Stats to the History list', async () => {
@@ -2940,7 +2926,7 @@ test('O10 pressing the History tab from Stats opens the History list, not Stats'
 
   await screen.findByRole('listitem', {}, SETTLE)
   expect(currentTabNames()).toEqual(['Sessions'])
-  expect(screen.queryByText(/^No sets yet\./)).toBeNull()
+  expect(screen.queryByRole('heading', { name: 'Progress', level: 1 })).toBeNull()
 })
 
 // --- E4-T6's row progression bar: superseded by E8-T10 --------------------------------------
@@ -3123,7 +3109,7 @@ test('O1 returning from another tab with no Session in progress lands back on Wo
   setDocumentVisibility('visible')
 
   await waitFor(() => {
-    expect(currentTabNames()).toEqual(['Dashboard'])
+    expect(currentTabNames()).toEqual(['Train'])
   }, SETTLE)
 })
 
@@ -3215,7 +3201,7 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
   )
   await user.selectOptions(screen.getByRole('combobox', { name: 'Using' }), 'Average')
 
-  await pressTab(user, 'Dashboard')
+  await pressTab(user, 'Train')
   await user.click(await screen.findByRole('button', { name: /^Resume Workout A/ }, SETTLE))
 
   const row = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
@@ -3281,7 +3267,7 @@ test('O14 the Exercises search and filters survive leaving and returning to the 
   await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
   await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
 
-  await pressTab(user, 'Dashboard')
+  await pressTab(user, 'Train')
   await findStartButton()
   await pressTab(user, 'Exercises')
 

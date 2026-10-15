@@ -252,7 +252,7 @@ test(
     await waitFor(async () => {
       expect((await db.settings.get('activeProgramId'))?.value).toBe(stored.id)
     }, SETTLE)
-    await user.click(screen.getByRole('button', { name: 'Dashboard' }))
+    await user.click(screen.getByRole('button', { name: 'Train' }))
     // The Dashboard's dock offers Push, due first, and "Change" steps through Pull and Legs.
     expect(await screen.findByRole('button', { name: 'Start Push' }, SETTLE)).toBeVisible()
     expect(await workoutsOffered(user)).toEqual(['Push', 'Pull', 'Legs'])
@@ -270,7 +270,7 @@ test(
     await buildPushPullLegs(user)
     await openProgramTab(user)
     await user.click(screen.getByRole('radio', { name: 'Push Pull Legs' }))
-    await user.click(screen.getByRole('button', { name: 'Dashboard' }))
+    await user.click(screen.getByRole('button', { name: 'Train' }))
     await user.click(await screen.findByRole('button', { name: 'Start Push' }, SETTLE))
     await user.click(await screen.findByRole('button', { name: /^Barbell Bench Press - Medium Grip/ }, SETTLE))
 

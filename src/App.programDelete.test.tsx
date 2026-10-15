@@ -363,7 +363,7 @@ test('O10 deleting the active user Program leaves the workout picker offering th
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
   await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Dashboard' }))
+  await user.click(screen.getByRole('button', { name: 'Train' }))
 
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Push' })).toBeNull()
@@ -556,7 +556,7 @@ test('O11 with a Session in progress, editing its Workout’s Plans and saving i
     })
   }, SETTLE)
 
-  await user.click(await screen.findByRole('button', { name: 'Dashboard' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Train' }, SETTLE))
   await waitFor(() => expect(document.body.querySelector('button.resume-workout')).not.toBeNull(), SETTLE)
   await user.click(document.body.querySelector('button.resume-workout') as HTMLElement)
   await user.click(await screen.findByRole('button', { name: /^Barbell Bench Press - Medium Grip/ }, SETTLE))
@@ -628,7 +628,7 @@ test('O12 after Reset to original a set screen on Workout A uses the bundled num
   await openProgramTab(user)
   await resetAndConfirm(user, 'A/B Split')
   await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00 \| /), SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Dashboard' }))
+  await user.click(screen.getByRole('button', { name: 'Train' }))
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
   await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
 

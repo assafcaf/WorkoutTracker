@@ -72,7 +72,7 @@ test('each of the four tabs is titled for itself in a large page header', async 
   await renderApp()
   await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
 
-  for (const name of ['Sessions', 'Lifts', 'Program']) {
+  for (const name of ['Progress', 'Sessions', 'Program']) {
     await pressTab(user, name)
     const title = await screen.findByRole('heading', { level: 1, name }, SETTLE)
     expect(title).toHaveClass('page-header-title')
@@ -132,9 +132,9 @@ test('minimising the Live session pins a live strip naming the workout over ever
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
 
   await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
-  for (const name of ['Sessions', 'Lifts', 'Program', 'Dashboard']) {
+  for (const name of ['Progress', 'Sessions', 'Program', 'Train']) {
     await pressTab(user, name)
-    await screen.findByRole('heading', { level: 1, name }, SETTLE)
+    await screen.findByRole('heading', { level: 1, name: name === 'Train' ? 'Dashboard' : name }, SETTLE)
     const strip = liveStrip()
     expect(strip, `no live strip on ${name}`).not.toBeNull()
     expect(strip).toHaveTextContent(/Workout A/)
@@ -192,14 +192,14 @@ test('finishing a session returned to from another tab lands on the Dashboard un
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
   await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
-  await pressTab(user, 'Lifts')
+  await pressTab(user, 'Progress')
   await user.click(screen.getByRole('button', { name: 'Return to Workout A' }))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 
   await user.click(screen.getByRole('button', { name: 'Finish' }))
 
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
-  expect(within(mainNav()).getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
+  expect(within(mainNav()).getByRole('button', { name: 'Train' })).toHaveAttribute('aria-current', 'page')
   expect(liveStrip()).toBeNull()
   expect(await getActiveSession()).toBeNull()
 })
@@ -213,4 +213,19 @@ test('Resume on the Dashboard while minimised returns to the same set', async ()
   await user.click(await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE))
 
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
+})
+
+test('the tab bar reads Train, Progress, Sessions, Program, and Progress opens its own home page', async () => {
+  const user = userEvent.setup()
+  await renderApp()
+  await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
+
+  const names = within(mainNav())
+    .getAllByRole('button')
+    .map((button) => button.getAttribute('aria-label'))
+  expect(names).toEqual(['Train', 'Progress', 'Sessions', 'Program'])
+
+  await pressTab(user, 'Progress')
+  expect(await screen.findByRole('heading', { level: 1, name: 'Progress' }, SETTLE)).toBeVisible()
+  expect(within(mainNav()).getByRole('button', { name: 'Progress' })).toHaveAttribute('aria-current', 'page')
 })
