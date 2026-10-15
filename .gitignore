@@ -11,3 +11,6 @@ coverage/
 .vite/
 .dev.vars
 .wrangler/
+
+# PAD 0.4 owners keep development tests here, never committed
+src/_dev/
