@@ -1,0 +1,124 @@
+{
+ "dashboard": {
+  "tinyText": [],
+  "overflowX": [],
+  "smallTargets": [],
+  "svgText": [],
+  "clipped": []
+ },
+ "sessions": {
+  "tinyText": [],
+  "overflowX": [],
+  "smallTargets": [],
+  "svgText": [
+   "16.0px tall · 12px rgb(98, 98, 111) \"0\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"5,000\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"10,000\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"14 Sep\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"25 Sep\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"2 Oct\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"14 Oct\"",
+   "16.0px tall · 12px rgb(22, 22, 29) \"4,185\""
+  ],
+  "clipped": [
+   "sessions-visually-hidden \"Region\""
+  ]
+ },
+ "summary": {
+  "tinyText": [],
+  "overflowX": [],
+  "smallTargets": [
+   "158x24 Chest, 7 sets",
+   "158x24 Shoulders, 10.5 sets",
+   "158x24 Triceps, 8 sets",
+   "158x24 Lats, 0 sets",
+   "158x24 Biceps, 0 sets",
+   "158x24 Quads, 7 sets",
+   "158x24 Lower back, 2 sets",
+   "158x24 Hamstrings, 3.5 sets",
+   "158x24 Glutes, 3.5 sets",
+   "158x24 Calves, 3.5 sets",
+   "158x24 Abs, 0 sets"
+  ],
+  "svgText": [
+   "16.0px tall · 12px rgb(98, 98, 111) \"0\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"5,000\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"10,000\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"14 Sep\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"25 Sep\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"2 Oct\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"14 Oct\"",
+   "16.0px tall · 12px rgb(22, 22, 29) \"4,185\""
+  ],
+  "clipped": [
+   "sessions-visually-hidden \"Region\"",
+   " \"Machine shoulder press\"",
+   " \"Cable push-down\""
+  ]
+ },
+ "lifts": {
+  "tinyText": [],
+  "overflowX": [
+   "BUTTON.chip lifts-chip right=433",
+   "BUTTON.chip lifts-chip right=623",
+   "BUTTON.chip lifts-chip right=745",
+   "BUTTON.chip lifts-chip right=894",
+   "BUTTON.chip lifts-chip right=981",
+   "BUTTON.chip lifts-chip right=1129",
+   "BUTTON.chip lifts-chip right=1311",
+   "BUTTON.chip lifts-chip right=1429",
+   "BUTTON.chip lifts-chip right=1523",
+   "BUTTON.chip lifts-chip right=1665",
+   "BUTTON.chip lifts-chip right=1828"
+  ],
+  "smallTargets": [
+   "102x36 Back squat",
+   "74x36 Lunges",
+   "129x36 DB bench press",
+   "88x36 Push-ups",
+   "182x36 Machine shoulder press",
+   "114x36 Lateral raises",
+   "141x36 Cable push-down",
+   "78x36 Deadlift",
+   "140x36 Assisted pull-ups",
+   "175x36 Narrow-grip pull-down",
+   "110x36 Machine row",
+   "85x36 Face pull",
+   "134x36 Hyper-extension",
+   "155x36 Seated biceps curls",
+   "40x44 "
+  ],
+  "svgText": [
+   "17.0px tall · 12px rgb(98, 98, 111) \"kg\"",
+   "17.0px tall · 12px rgb(98, 98, 111) \"74\"",
+   "17.0px tall · 12px rgb(98, 98, 111) \"76\"",
+   "17.0px tall · 12px rgb(98, 98, 111) \"78\"",
+   "17.0px tall · 12px rgb(98, 98, 111) \"80\"",
+   "17.0px tall · 12px rgb(98, 98, 111) \"21 Sep\"",
+   "17.0px tall · 12px rgb(98, 98, 111) \"30 Sep\"",
+   "17.0px tall · 12px rgb(98, 98, 111) \"14 Oct\"",
+   "19.0px tall · 14px rgb(22, 22, 29) \"79.2\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"0\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"5,000\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"10,000\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"22 Jun\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"13 Jul\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"3 Aug\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"31 Aug\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"14 Oct\"",
+   "16.0px tall · 12px rgb(22, 22, 29) \"4,185\""
+  ],
+  "clipped": []
+ },
+ "program": {
+  "tinyText": [],
+  "overflowX": [],
+  "smallTargets": [
+   "38x44 Edit A/B Split"
+  ],
+  "svgText": [],
+  "clipped": [
+   "program-page-exercise \"Narrow-grip pull-down\""
+  ]
+ }
+}

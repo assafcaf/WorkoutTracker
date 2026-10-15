@@ -1,0 +1,1566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lift Ledger · stats concept 2</title>
+<style>
+:root{
+  /* board (presentation only) */
+  --board:#E4E5E7; --board-mark:#E5007E;
+  /* neutral ramp */
+  --page:#FBFBFC; --surface:#FFFFFF; --rule:#E4E5E9; --gap:#EFF0F2;
+  --context:#8A9099; --muted:#5E636B; --secondary:#3D4148; --ink:#0F1012;
+  /* the one accent: selection, active state, primary */
+  --sel:#2156D9;
+  /* data: emphasis line for stalled and slipping rows */
+  --emph:#C4511A;
+  /* ordinal ramp, % of plan (teal, so it never reads as the selection accent) */
+  --r1:#7FBCB4; --r2:#4F9E94; --r3:#2F8A80; --r4:#1B6159;
+  /* neutral ramp for the session body map (sets today) */
+  --k1:#AEB2B9; --k2:#90959E; --k3:#737982; --k4:#50565F;
+  /* type */
+  --sans:"Segoe UI", system-ui, sans-serif;
+  --mono:Consolas, "Cascadia Mono", monospace;
+  --fs12:12px; --fs13:13px; --fs15:15px; --fs20:20px; --fs28:28px;
+  --fs-board:14px; --fs-board-thesis:20px; --fs-board-title:40px;
+  /* radii */
+  --r-chip:4px; --r-pill:3px; --r-phone:40px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:inherit}
+body{width:2760px;height:3240px;background:var(--board);font-family:var(--sans);font-size:var(--fs-board);color:var(--ink);position:relative;overflow:hidden}
+
+/* ---------- board ---------- */
+.bh{position:absolute;left:0;top:0;width:2760px;height:352px;padding:48px 48px 0}
+.bh h1{font:600 var(--fs-board-title)/48px var(--sans);letter-spacing:-.5px}
+.bh .thesis{font:var(--fs-board-thesis)/28px var(--sans);color:var(--secondary);margin-top:6px}
+.bh .four{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;column-gap:40px;margin-top:16px;font-size:var(--fs-board);line-height:20px;color:var(--secondary)}
+.bh .four b{color:var(--ink);font-weight:600;display:block}
+.tokens{display:flex;gap:28px;margin-top:20px;align-items:flex-start}
+.tg{display:flex;flex-direction:column;gap:6px}
+.tg .tl{font-weight:600;font-size:var(--fs-board)}
+.sw{display:flex;gap:10px}
+.sw div{width:84px;font:var(--fs12)/16px var(--mono);color:var(--secondary)}
+.sw i{display:block;width:40px;height:40px;border-radius:var(--r-chip);margin-bottom:4px;box-shadow:inset 0 0 0 1px rgba(15,16,18,.12)}
+.spec{margin-top:4px;font-size:var(--fs-board);color:var(--secondary)}
+.spec .m{font-family:var(--mono)}
+.lbl{position:absolute;font:600 var(--fs-board)/18px var(--sans);white-space:nowrap}
+.lbl span{font-weight:400;color:var(--secondary)}
+.cap{position:absolute;width:420px;font:var(--fs-board)/19px var(--sans);color:var(--secondary)}
+.dsc{position:absolute;display:flex;gap:8px;align-items:center;font-size:var(--fs-board);color:var(--secondary)}
+.dsc button{height:28px;padding:0 12px;border:2px dashed var(--board-mark);border-radius:var(--r-chip);color:var(--ink)}
+.dsc button.on{background:var(--board-mark);color:var(--surface);border-style:solid}
+.mk{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border:2px dashed var(--board-mark);border-radius:50%;pointer-events:none;z-index:20}
+.mkarrow{position:absolute;pointer-events:none;z-index:20;overflow:visible}
+.panel{position:absolute;left:1832px;top:2312px;width:836px;height:844px;font-size:var(--fs13);line-height:17px;color:var(--secondary)}
+.panel h3{font:600 var(--fs-board)/20px var(--sans);color:var(--ink);margin-bottom:6px}
+.panel table{border-collapse:collapse;width:100%}
+.panel td,.panel th{text-align:left;vertical-align:top;padding:3px 8px 3px 0;border-bottom:1px solid #CFD1D6}
+.panel th{color:var(--ink);font-weight:600}
+.panel .ck td:first-child{width:24px;color:var(--ink);font-family:var(--mono)}
+.panel .ck td:nth-child(2){width:62px;font-weight:600;color:var(--ink)}
+.panel .ck td{padding:2px 8px 2px 0}
+
+/* ---------- phone ---------- */
+.phone{position:absolute;width:390px;height:844px;border-radius:var(--r-phone);overflow:hidden;background:var(--page);font-family:var(--sans);font-size:var(--fs13);color:var(--ink);user-select:none;-webkit-user-select:none}
+.sb{position:absolute;left:0;top:0;width:390px;height:47px;display:flex;justify-content:space-between;align-items:center;padding:4px 26px 0 34px}
+.sb .tm{font:600 var(--fs15)/20px var(--sans)}
+.view{position:absolute;left:0;top:47px;width:390px;height:714px}
+.tabbar{position:absolute;left:0;top:761px;width:390px;height:49px;border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(4,1fr);background:var(--page)}
+.tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:var(--fs12);color:var(--muted);height:48px}
+.tabbar button.on{color:var(--sel);font-weight:600}
+.home{position:absolute;left:128px;top:831px;width:134px;height:5px;border-radius:var(--r-pill);background:var(--ink)}
+
+.hA{position:absolute;left:0;top:0;width:390px;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.hA h1{font:600 var(--fs28)/34px var(--sans);letter-spacing:-.3px}
+.hB{position:absolute;left:0;top:44px;width:390px;height:40px;display:flex;align-items:stretch;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--rule)}
+.segc{display:flex;gap:20px}
+.segc button{font-size:var(--fs15);color:var(--muted);position:relative;padding:0 2px;height:40px;line-height:38px}
+.segc button.on{color:var(--ink);font-weight:600}
+.segc button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--sel)}
+.sortc{font-size:var(--fs13);color:var(--secondary);height:40px;padding:0 0 0 12px}
+.sortc .k{color:var(--muted)}
+.rng{display:flex;height:44px;align-items:center}
+.rng button{height:44px;display:flex;align-items:center}
+.rng button span{display:block;width:38px;height:30px;line-height:28px;text-align:center;font:var(--fs13)/28px var(--mono);color:var(--secondary);border:1px solid var(--rule);border-left-width:0}
+.rng button:first-child span{border-left-width:1px;border-radius:var(--r-chip) 0 0 var(--r-chip)}
+.rng button:last-child span{border-radius:0 var(--r-chip) var(--r-chip) 0}
+.rng button.on span{background:var(--sel);border-color:var(--sel);color:var(--surface);font-weight:600}
+.since{font-size:var(--fs13);color:var(--muted)}
+
+.scr{position:absolute;left:0;top:44px;width:390px;bottom:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.scr::-webkit-scrollbar{display:none}
+.scr.full{top:44px}
+.scr.withbar{bottom:52px}
+.hA .segc{gap:16px}
+.hA .segc button{height:44px;line-height:46px}
+.cbar{position:absolute;left:0;bottom:0;width:390px;height:52px;padding:4px 16px;display:flex;gap:8px;align-items:center;background:var(--page);border-top:1px solid var(--rule)}
+.cbar button{height:44px;border:1px solid var(--rule);border-radius:var(--r-chip);color:var(--secondary);font-size:var(--fs13);line-height:16px;text-align:center}
+.cbar .rg{width:44px;font-family:var(--mono)}
+.cbar .rg.on{border:2px solid var(--sel);color:var(--sel);font-weight:600}
+.cbar .sep{width:1px;height:28px;background:var(--rule);margin:0 2px}
+.cbar .two{flex:1;padding:0 6px;text-align:left}
+.cbar .two span{display:block;font-size:var(--fs12);color:var(--muted)}
+.cbar .wide{flex:1;color:var(--sel);border-color:var(--sel);font-weight:600}
+.tot{height:38px;padding:0 16px}
+.tot .v{font:600 var(--fs15)/20px var(--sans);white-space:nowrap}
+.tot .v button{font-weight:600}
+.tot .s{font-size:var(--fs13);line-height:18px;color:var(--secondary);white-space:nowrap}
+.g{font-family:var(--mono);font-weight:400}
+.nx{color:var(--sel);font-weight:600;padding:12px 0;margin:-12px 0}
+.colh{position:sticky;top:0;z-index:3;height:20px;background:var(--page);border-bottom:1px solid var(--rule);display:grid;grid-template-columns:162px 90px 1fr;column-gap:8px;padding:0 16px;align-items:center;font-size:var(--fs12);color:var(--muted)}
+.colh svg{display:block;overflow:visible}
+.colh .r{text-align:right}
+.scrubbing .colh{top:72px}
+.row{display:grid;grid-template-columns:162px 90px minmax(0,1fr);column-gap:8px;padding:0 16px;height:56px;border-bottom:1px solid var(--rule);align-items:center;cursor:pointer}
+.row.open{background:var(--surface);border-bottom-color:transparent}
+.rn{min-width:0}
+.nm{font:600 var(--fs15)/20px var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l2{font-size:var(--fs13);line-height:18px;color:var(--secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l2.ink{color:var(--ink)}
+.l2 b{font-weight:600;color:var(--ink)}
+.sp{display:block;overflow:visible}
+.mm{font:var(--fs12) var(--mono);fill:var(--muted);text-anchor:end}
+.rv{display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap}
+.now{font:var(--fs20)/24px var(--mono);letter-spacing:-.4px}
+.now.muted{color:var(--muted)}
+.ch{font-size:var(--fs13);line-height:18px;color:var(--secondary);font-variant-numeric:tabular-nums}
+.grp{padding:14px 16px 6px;font-size:var(--fs12);color:var(--muted);border-bottom:1px solid var(--rule)}
+.howto{padding:12px 16px 14px;border-bottom:1px solid var(--rule)}
+.howto .t{font:600 var(--fs13)/18px var(--sans);color:var(--secondary)}
+.howto .d{font-size:var(--fs12);line-height:17px;color:var(--muted);margin-top:4px}
+.howto svg{vertical-align:-2px}
+.cta{position:sticky;bottom:0;padding:12px 16px 14px;background:var(--page);border-top:1px solid var(--rule)}
+.cta button{display:block;width:100%;height:48px;border-radius:var(--r-chip);background:var(--sel);color:var(--surface);font:600 var(--fs15)/48px var(--sans);text-align:center}
+.cta .s{font-size:var(--fs12);color:var(--muted);text-align:center;margin-top:6px}
+
+/* readout */
+.ro{position:sticky;top:0;z-index:4;height:72px;padding:3px 16px 0;background:var(--surface);border-bottom:1px solid var(--rule);box-shadow:inset 3px 0 0 var(--sel)}
+.ro .a{display:flex;justify-content:space-between;align-items:center;height:20px}
+.ro .a b{font:600 var(--fs15)/20px var(--sans)}
+.ro .chip{height:24px;padding:0 10px;border:1px solid var(--sel);color:var(--sel);border-radius:var(--r-chip);font-size:var(--fs13);line-height:22px}
+.ro .b{font-size:var(--fs13);line-height:17px;white-space:nowrap;overflow:hidden}
+.ro .b b{font-weight:600}
+.ro .m{font-family:var(--mono)}
+.ro .c{font-size:var(--fs13);line-height:17px;color:var(--secondary);white-space:nowrap}
+.ro .d{font-size:var(--fs12);line-height:15px;color:var(--muted);white-space:nowrap}
+.ro .lnk{color:var(--sel);font-size:var(--fs13)}
+
+/* expanded row */
+.xp{background:var(--surface);border-bottom:1px solid var(--rule)}
+.xp svg{display:block}
+.ct{font:var(--fs12) var(--sans);fill:var(--muted)}
+.ctn{font:var(--fs12) var(--mono);fill:var(--muted)}
+.cti{font:var(--fs12) var(--sans);fill:var(--secondary)}
+.ctk{font:600 var(--fs12) var(--sans);fill:var(--ink)}
+.mt{padding:0 16px 10px}
+.mth,.mtr{display:grid;grid-template-columns:44px 1fr 104px;column-gap:8px;align-items:center}
+.mth{height:22px;font-size:var(--fs12);color:var(--muted);border-bottom:1px solid var(--rule)}
+.mtr{height:44px;font-size:var(--fs13);border-bottom:1px solid var(--rule);cursor:pointer}
+.mtr .k::after{content:" ›";color:var(--muted)}
+.mtr .s{font:var(--fs12) var(--mono);white-space:nowrap;overflow:hidden}
+.mtr .k{color:var(--secondary);white-space:nowrap}
+.mtr .k.mu{color:var(--muted)}
+.mtr.sel{box-shadow:inset 3px 0 0 var(--sel)}
+.mtn{font-size:var(--fs12);line-height:18px;color:var(--muted);padding:2px 0 2px 52px;border-bottom:1px solid var(--rule)}
+.wu{font-size:var(--fs12);line-height:17px;color:var(--muted);padding-top:6px}
+
+/* muscles */
+.msum{padding:4px 16px 0;height:62px}
+.msum .v{font:600 var(--fs15)/20px var(--sans)}
+.msum .s{font-size:var(--fs13);line-height:18px;color:var(--secondary);white-space:nowrap}
+.mleg{height:22px;padding:0 16px;display:flex;align-items:center;gap:7px;font-size:var(--fs12);color:var(--muted);white-space:nowrap}
+.mleg i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:3px}
+.mh,.mr{display:grid;grid-template-columns:86px 44px 44px 44px 44px 40px 1fr;column-gap:2px;padding:0 16px}
+.mh{height:46px;font-size:var(--fs12);line-height:14px;color:var(--muted);align-items:end;padding-bottom:3px;border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--page);z-index:2}
+.mh div{text-align:center}
+.mh div:first-child{text-align:left}
+.mh .hat{background:repeating-linear-gradient(135deg,var(--rule) 0 2px,transparent 2px 5px);border-radius:var(--r-pill) var(--r-pill) 0 0;color:var(--secondary)}
+.mr{height:44px;align-items:center;cursor:pointer;border-bottom:1px solid var(--rule)}
+.mr .n{font:600 var(--fs15)/20px var(--sans);white-space:nowrap}
+.hc{display:flex;flex-direction:column;align-items:center;justify-content:center;height:40px}
+.hc .n{font:var(--fs15)/18px var(--mono)}
+.hc .tr{position:relative;width:38px;height:6px;background:var(--gap);margin-top:3px}
+.hc .tr i{position:absolute;left:0;top:0;bottom:0}
+.hc .tr u{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--ink)}
+.b1{background:var(--r1)} .b2{background:var(--r2)} .b3{background:var(--r3)} .b4{background:var(--r4)}
+.mr .pl{font:var(--fs15)/38px var(--mono);text-align:center}
+.mr .ty{font-size:var(--fs12);color:var(--muted);text-align:right}
+.mx{background:var(--surface);padding:10px 16px 12px;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:1fr 128px;column-gap:12px}
+.mx .t{font:600 var(--fs13)/18px var(--sans);color:var(--secondary)}
+.mx .l{font-size:var(--fs13);line-height:20px}
+.mx .l .m{font-family:var(--mono)}
+.mx .e{font-size:var(--fs12);line-height:17px;color:var(--muted);margin-top:6px}
+
+/* records */
+.rs{padding:6px 16px 0}
+.rs .t{font:600 var(--fs13)/18px var(--sans);color:var(--secondary)}
+.rs .s{font-size:var(--fs12);line-height:16px;color:var(--muted)}
+.rh,.rr{display:grid;grid-template-columns:1fr 96px 64px;column-gap:8px;padding:0 16px}
+.rh{height:24px;align-items:center;font-size:var(--fs12);color:var(--muted);border-bottom:1px solid var(--rule);border-top:1px solid var(--rule);position:sticky;top:0;background:var(--page);z-index:2}
+.rh div:nth-child(n+2){text-align:right}
+.rfn{padding:4px 16px 5px;font-size:var(--fs12);line-height:16px;color:var(--muted);border-bottom:1px solid var(--rule)}
+.rr{height:56px;align-items:center;border-bottom:1px solid var(--rule);cursor:pointer}
+.rr.open{background:var(--surface);border-bottom-color:transparent}
+.rr .e1{font:var(--fs15)/24px var(--mono)}
+.rr .e1.na{color:var(--muted)}
+.rx{background:var(--surface);padding:2px 16px 12px;border-bottom:1px solid var(--rule)}
+.rx .t{font-size:var(--fs12);color:var(--muted);margin:6px 0 2px}
+.rx .l{display:grid;grid-template-columns:52px 112px 1fr;column-gap:8px;font-size:var(--fs13);line-height:21px;border-bottom:1px solid var(--rule)}
+.rx .l .m{font-family:var(--mono);font-size:var(--fs12)}
+.rx .b{display:grid;grid-template-columns:130px 1fr;column-gap:8px;font-size:var(--fs13);line-height:21px;border-bottom:1px solid var(--rule)}
+.rx .b .m{font-family:var(--mono);font-size:var(--fs12)}
+
+/* session */
+.nav{position:absolute;left:0;top:0;width:390px;height:44px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--rule)}
+.nav .bk{position:absolute;left:8px;top:0;height:44px;padding:0 8px;color:var(--sel);font-size:var(--fs15)}
+.nav .nt{font:600 var(--fs15)/20px var(--sans)}
+.shd{padding:8px 16px 8px}
+.shd h2{font:600 var(--fs28)/34px var(--sans)}
+.shd .v{font:var(--fs15)/22px var(--sans);font-variant-numeric:tabular-nums;margin-top:2px}
+.shd .s{font-size:var(--fs13);line-height:18px;color:var(--secondary)}
+.shl{margin:0 16px 8px;padding:7px 10px;font-size:var(--fs13);line-height:18px;background:var(--surface);box-shadow:inset 3px 0 0 var(--sel)}
+.sth,.str{display:grid;grid-template-columns:1fr 60px 58px 106px;column-gap:7px;padding:0 16px}
+.sth{height:24px;align-items:center;font-size:var(--fs12);color:var(--muted);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.sth div:nth-child(2),.sth div:nth-child(3){text-align:right}
+.str{min-height:46px;align-items:center;border-bottom:1px solid var(--rule);cursor:pointer}
+.str.hl{background:var(--surface);box-shadow:inset 3px 0 0 var(--sel)}
+.str .n{font:600 var(--fs15)/18px var(--sans)}
+.str .td{font:var(--fs15)/20px var(--mono);text-align:right}
+.str .la{font:var(--fs13)/20px var(--mono);text-align:right;color:var(--muted)}
+.str .lv{font-size:var(--fs13);line-height:17px}
+.str .lv div:last-child{color:var(--muted);font-size:var(--fs12);line-height:15px}
+.svol{padding:7px 16px 8px;border-bottom:1px solid var(--rule)}
+.svol .v{font-size:var(--fs13);line-height:18px;font-variant-numeric:tabular-nums}
+.svol .s{font-size:var(--fs12);line-height:16px;color:var(--muted)}
+.smu{padding:8px 16px 0;display:grid;grid-template-columns:1fr 124px;column-gap:10px}
+.smu .t{font:600 var(--fs13)/18px var(--sans);color:var(--secondary);grid-column:1/3}
+.smu table{border-collapse:collapse;width:100%;font-size:var(--fs13)}
+.smu td{height:20px;border-bottom:1px solid var(--rule);padding:0}
+.smu td.m{font-family:var(--mono);text-align:right;padding-right:10px}
+.smu td.z{color:var(--muted)}
+.bleg{font-size:var(--fs12);color:var(--muted);line-height:16px;margin-top:4px}
+.bleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 2px 0 4px;vertical-align:-1px}
+
+/* sessions tab */
+.cal{padding:4px 16px 8px;border-bottom:1px solid var(--rule)}
+.cal .wh,.cal .wr{display:grid;grid-template-columns:repeat(7,1fr) 44px;text-align:center}
+.cal .wh{font-size:var(--fs12);color:var(--muted);height:20px}
+.cal .wr{height:34px;align-items:center;font-size:var(--fs12);color:var(--muted)}
+.cal .dd{display:inline-block;width:26px;height:26px;line-height:26px;border-radius:50%}
+.cal .dd.a{background:var(--ink);color:var(--surface);font-weight:600}
+.cal .dd.dl{box-shadow:inset 0 0 0 1.5px var(--ink);color:var(--ink);font-weight:600}
+.cal .dd.td{box-shadow:inset 0 0 0 1.5px var(--sel);color:var(--sel)}
+.cal .wc{font-family:var(--mono);color:var(--secondary);text-align:right}
+.sl{display:grid;grid-template-columns:1fr auto;column-gap:8px;height:56px;padding:0 16px;align-items:center;border-bottom:1px solid var(--rule);cursor:pointer}
+.sl .n{font:600 var(--fs15)/20px var(--sans)}
+.sl .s{font-size:var(--fs13);line-height:18px;color:var(--secondary)}
+.sl .c{color:var(--muted);font-size:var(--fs15)}
+.empty{padding:24px 16px;font-size:var(--fs15);line-height:22px;color:var(--secondary)}
+@media (prefers-reduced-motion:no-preference){ .xp,.mx,.rx{animation:open .2s ease-out} @keyframes open{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}} }
+</style>
+</head>
+<body>
+<div class="bh">
+  <h1>Lift Ledger</h1>
+  <div class="thesis">All 14 lifts on one screen, as a table whose rows are sparklines on one shared time axis. The table is the chart: every number is visible and comparable.</div>
+  <div class="four">
+    <div><b>Headline stat</b>The ledger, led by its totals row <span style="font-family:var(--mono)">11 of 14 moving · 2 stalled · 1 slipping</span>; per lift, the change over the range in its own units</div>
+    <div><b>IA</b>Ledger · Sessions · Train · Program. Ledger = Lifts | Muscles | Records, three tables of one shape. No chart pages: rows expand in place</div>
+    <div><b>Primary form</b>Sparkline rows: small multiples on one shared time axis, own y-scale each, min and max printed, gaps broken, deloads hollow</div>
+    <div><b>Interaction</b>Linked scrub: one hairline through all rows at once · one global range 1M · 3M · 1Y · All · compare = baseline switch</div>
+  </div>
+  <div class="tokens">
+    <div class="tg"><div class="tl">Neutral ramp</div><div class="sw">
+      <div><i style="background:var(--page)"></i>page<br>#FBFBFC</div>
+      <div><i style="background:var(--surface)"></i>row surface<br>#FFFFFF</div>
+      <div><i style="background:var(--gap)"></i>gap band<br>#EFF0F2</div>
+      <div><i style="background:var(--rule)"></i>rule<br>#E4E5E9</div>
+      <div><i style="background:var(--context)"></i>context line<br>#8A9099</div>
+      <div><i style="background:var(--muted)"></i>muted text<br>#5E636B</div>
+      <div><i style="background:var(--secondary)"></i>secondary<br>#3D4148</div>
+      <div><i style="background:var(--ink)"></i>ink<br>#0F1012</div>
+    </div></div>
+    <div class="tg"><div class="tl">Accent</div><div class="sw">
+      <div><i style="background:var(--sel)"></i>selection<br>#2156D9</div>
+    </div></div>
+    <div class="tg"><div class="tl">Data</div><div class="sw">
+      <div><i style="background:var(--emph)"></i>emphasis<br>#C4511A</div>
+      <div><i style="background:var(--r1)"></i>&lt; 50 % plan<br>#7FBCB4</div>
+      <div><i style="background:var(--r2)"></i>50–80 %<br>#4F9E94</div>
+      <div><i style="background:var(--r3)"></i>80–100 %<br>#2F8A80</div>
+      <div><i style="background:var(--r4)"></i>≥ 100 %<br>#1B6159</div>
+      <div><i style="background:var(--k1)"></i>sets today<br>#AEB2B9</div>
+      <div><i style="background:var(--k2)"></i>3–5<br>#90959E</div>
+      <div><i style="background:var(--k3)"></i>6–9<br>#737982</div>
+      <div><i style="background:var(--k4)"></i>10+<br>#50565F</div>
+    </div></div>
+    <div class="tg"><div class="tl">Type</div>
+      <div class="spec">Segoe UI 400 / 600 — Back squat · Stalled · Records</div>
+      <div class="spec m">Consolas — 62.5×8  BW−19×6  ▲ +2.5 kg  ■ ▼ ○</div>
+      <div class="spec">Sizes 12 · 13 · 15 · 20 · 28 · radius 4 on chips · rules, no cards</div>
+    </div>
+  </div>
+</div>
+
+<div id="board"></div>
+
+<div class="panel" id="panel">
+  <h3>Tap counts, from app open (Ledger → Lifts)</h3>
+  <table>
+    <tr><th>Question</th><th>Taps</th><th>Sequence</th><th>Frame</th></tr>
+    <tr><td>Am I progressing?</td><td>0</td><td>Totals row, then attention-sorted rows with change per lift</td><td>S1</td></tr>
+    <tr><td>How's my bench?</td><td>0 · 1</td><td>Row 2: ■ Stalled · 13×9 · = 0 since 7 Aug; tap for the chart and last 4 sessions</td><td>S1 · S8d</td></tr>
+    <tr><td>Which muscles am I under-training?</td><td>1</td><td>Muscles segment: heat table vs plan, “lightest planned” line</td><td>S4</td></tr>
+    <tr><td>What did today's workout achieve?</td><td>2</td><td>Sessions tab → Wed 14 Oct</td><td>S6</td></tr>
+  </table>
+  <h3 style="margin-top:14px">Self-check against principles §6, revision 1 (P = pass, ½ = partial) · 26 P · 4 ½</h3>
+  <table class="ck">
+    <tr><td>1</td><td>P</td><td>S1 opens on the totals verdict and per-lift change in own units; no tonnage, e1RM or PR count</td></tr>
+    <tr><td>2</td><td>P</td><td>kg volume only inside S6 / S8d sessions</td></tr>
+    <tr><td>3</td><td>P</td><td>S2 third panel “e1RM (estimated)” under weight and reps; S5 footnote; 9 lifts show none</td></tr>
+    <tr><td>4</td><td>P</td><td>S3 BW−27…BW−19 reversed, “less is better”; S3b BW+5; push-ups in reps; no negative kg</td></tr>
+    <tr><td>5</td><td>P</td><td>S2 “2 warm-ups not counted”; S6 the same; S8b readout lists them; S1b legend</td></tr>
+    <tr><td>6</td><td>P</td><td>S4: sets vs plan in 2-week blocks (one ABA + one BAB week)</td></tr>
+    <tr><td>7</td><td>P</td><td>Rev 1: S7c shows raw values and “2 sessions”; no delta before 4 sessions of a lift</td></tr>
+    <tr><td>8</td><td>P</td><td>S2: deload hatched + hollow dots off the line; Holiday and No A session bands; breaks</td></tr>
+    <tr><td>9</td><td>P</td><td>S5 newest first, one per lift per session, kind named</td></tr>
+    <tr><td>10</td><td>P</td><td>Rev 1: S4 done-vs-plan is a bar with a plan tick; teal shade only repeats it</td></tr>
+    <tr><td>11</td><td>P</td><td>None anywhere</td></tr>
+    <tr><td>12</td><td>P</td><td>14 small multiples; orange only on the stalled or slipping stretch of 3 rows</td></tr>
+    <tr><td>13</td><td>P</td><td>Reps, records and weekly bars from zero; every line prints min and max</td></tr>
+    <tr><td>14</td><td>½</td><td>Expanded charts show every session; sparklines show only latest and deload dots</td></tr>
+    <tr><td>15</td><td>P</td><td>End and band annotations; e1RM at latest or scrubbed only; S5 labels max and latest bars</td></tr>
+    <tr><td>16</td><td>P</td><td>▲ ▼ = glyph on every delta; −2 kg assist. wears ▲</td></tr>
+    <tr><td>17</td><td>P</td><td>One domain, 90 × 55 for all rows; holiday band aligns (S8a)</td></tr>
+    <tr><td>18</td><td>P</td><td>The table is the chart; expanded rows add a 6-session table</td></tr>
+    <tr><td>19</td><td>P</td><td>“11 of 14 moving · 2 stalled · 1 slipping” above the first sparkline</td></tr>
+    <tr><td>20</td><td>P</td><td>Row → 44 px session row: 2 taps; an older session = drag + “Open ›”; back works</td></tr>
+    <tr><td>21</td><td>P</td><td>One range control, in the bottom bar, outlined selection; Muscles/Records fixed windows (ruling 12)</td></tr>
+    <tr><td>22</td><td>P</td><td>S8b hairline at Fri 9 Oct, sticky readout of the working sets</td></tr>
+    <tr><td>23</td><td>P</td><td>Rows, totals, this-week rows and S5 per-session bars all lead somewhere</td></tr>
+    <tr><td>24</td><td>P</td><td>“Try 15 kg next”; nothing edits the program</td></tr>
+    <tr><td>25</td><td>P</td><td>S7a button; S7b/c “Start B ›” and how many sessions until verdicts</td></tr>
+    <tr><td>26</td><td>P</td><td>Chart: expanded row · records: S5 · vs last time: S6 · body map: S6, muscle rows · Sessions tab</td></tr>
+    <tr><td>27</td><td>½</td><td>Values 20 px; the per-row verdict is now ink 600, but still 13 px</td></tr>
+    <tr><td>28</td><td>½</td><td>Bottom bar 44 px with 8 px gaps, rows 56, table rows 44; totals counts and “Start B ›” still ~20 px tall</td></tr>
+    <tr><td>29</td><td>P</td><td>Totals + the 4 attention rows (slip, 2 stalls, ready) are above the fold</td></tr>
+    <tr><td>30</td><td>½</td><td>Range, sort, baseline, Back/Open in the bottom bar; the Lifts/Muscles/Records switch stays at the top</td></tr>
+  </table>
+</div>
+
+<script>
+/* Subset of brief-data.json (lifts, sessions, weeks, plan), values copied character for character. */
+const D = {
+lifts: {
+"back-squat": Object.assign({"n":"Back squat","w":"A","k":"loaded","ps":"4 × 8–10","e1":true,"v":"moving","why":"4 record(s) in the last 4 sessions","ns":{"repsAtTop":15,"target":20,"at":"62.5 kg","ready":false},"rec":{"Heaviest set":"62.5 kg × 8 · Wed 14 Oct","Best estimated 1RM":"80.0 kg · Fri 9 Oct"}}, {p: [
+  ["06-22",0,"35 × 10 · 45 × 9 · 50 × 7 · 50 × 6","20 × 10 · 30 × 5",50.0,7,61.7,"","",""],
+  ["06-26",0,"35 × 10 · 45 × 9 · 50 × 8 · 50 × 8","20 × 10 · 30 × 5",50.0,8,63.3,"Rep record|50 kg × 8|+1 rep","Estimated 1RM 63.3 kg (estimated) +1.6 kg",""],
+  ["07-01",0,"35 × 10 · 45 × 9 · 50 × 9 · 50 × 9","20 × 10 · 30 × 5",50.0,9,65.0,"Rep record|50 kg × 9|+1 rep","Estimated 1RM 65.0 kg (estimated) +1.7 kg","Gym crowded, did push-ups on the floor."],
+  ["07-06",0,"35 × 10 · 45 × 10 · 50 × 9 · 50 × 10","20 × 10 · 30 × 5",50.0,10,66.7,"Rep record|50 kg × 10|+1 rep","Estimated 1RM 66.7 kg (estimated) +1.7 kg",""],
+  ["07-10",0,"35 × 10 · 45 × 10 · 50 × 10 · 50 × 10","20 × 10 · 30 × 5",50.0,10,66.7,"","",""],
+  ["07-15",0,"37.5 × 10 · 47.5 × 9 · 52.5 × 8 · 52.5 × 8","20 × 10 · 32.5 × 5",52.5,8,66.5,"Heaviest weight|52.5 kg × 8|+2.5 kg","",""],
+  ["07-20",0,"37.5 × 10 · 47.5 × 9 · 52.5 × 9 · 52.5 × 8","20 × 10 · 32.5 × 5",52.5,9,68.2,"Rep record|52.5 kg × 9|+1 rep","Estimated 1RM 68.2 kg (estimated) +1.5 kg",""],
+  ["07-24",0,"37.5 × 10 · 47.5 × 10 · 52.5 × 10 · 52.5 × 10","20 × 10 · 32.5 × 5",52.5,10,70.0,"Rep record|52.5 kg × 10|+1 rep","Estimated 1RM 70.0 kg (estimated) +1.8 kg",""],
+  ["07-29",0,"40 × 10 · 50 × 9 · 55 × 7 · 55 × 7","20 × 10 · 32.5 × 5",55.0,7,67.8,"Heaviest weight|55 kg × 7|+2.5 kg","",""],
+  ["08-03",0,"40 × 10 · 50 × 9 · 55 × 9 · 55 × 8","20 × 10 · 32.5 × 5",55.0,9,71.5,"Rep record|55 kg × 9|+2 reps","Estimated 1RM 71.5 kg (estimated) +1.5 kg",""],
+  ["08-07",0,"40 × 10 · 50 × 10 · 55 × 10 · 55 × 10","20 × 10 · 32.5 × 5",55.0,10,73.3,"Rep record|55 kg × 10|+1 rep","Estimated 1RM 73.3 kg (estimated) +1.8 kg",""],
+  ["08-19",0,"42.5 × 10 · 52.5 × 9 · 57.5 × 8 · 57.5 × 8","20 × 10 · 35 × 5",57.5,8,72.8,"Heaviest weight|57.5 kg × 8|+2.5 kg","",""],
+  ["08-24",0,"42.5 × 10 · 52.5 × 9 · 57.5 × 7 · 57.5 × 6","20 × 10 · 35 × 5",57.5,7,70.9,"","",""],
+  ["08-28",0,"42.5 × 10 · 52.5 × 9 · 57.5 × 8 · 57.5 × 9","20 × 10 · 35 × 5",57.5,9,74.8,"Rep record|57.5 kg × 9|+1 rep","Estimated 1RM 74.8 kg (estimated) +1.5 kg",""],
+  ["09-02",0,"42.5 × 10 · 52.5 × 9 · 57.5 × 9 · 57.5 × 8","20 × 10 · 35 × 5",57.5,9,74.8,"","",""],
+  ["09-07",0,"42.5 × 10 · 52.5 × 10 · 57.5 × 9 · 57.5 × 10","20 × 10 · 35 × 5",57.5,10,76.7,"Rep record|57.5 kg × 10|+1 rep","Estimated 1RM 76.7 kg (estimated) +1.9 kg",""],
+  ["09-11",0,"42.5 × 10 · 52.5 × 10 · 57.5 × 10 · 57.5 × 8","20 × 10 · 35 × 5",57.5,10,76.7,"","",""],
+  ["09-21",1,"37.5 × 10 · 45 × 10 · 50 × 10","20 × 10 · 35 × 5",50.0,10,66.7,"","","Deload week, back from being sick."],
+  ["09-25",1,"40 × 10 · 47.5 × 9 · 52.5 × 7","20 × 10 · 35 × 5",52.5,7,64.8,"","",""],
+  ["09-30",0,"45 × 10 · 55 × 9 · 60 × 7 · 60 × 6","20 × 10 · 35 × 5",60.0,7,74.0,"Heaviest weight|60 kg × 7|+2.5 kg","","Left shoulder a bit tight on bench."],
+  ["10-05",0,"45 × 10 · 55 × 9 · 60 × 9 · 60 × 8","20 × 10 · 35 × 5",60.0,9,78.0,"Rep record|60 kg × 9|+2 reps","Estimated 1RM 78.0 kg (estimated) +1.3 kg",""],
+  ["10-09",0,"45 × 10 · 55 × 10 · 60 × 10 · 60 × 10","20 × 10 · 35 × 5",60.0,10,80.0,"Rep record|60 kg × 10|+1 rep","Estimated 1RM 80.0 kg (estimated) +2 kg",""],
+  ["10-14",0,"47.5 × 10 · 57.5 × 9 · 62.5 × 8 · 62.5 × 7","20 × 10 · 37.5 × 5",62.5,8,79.2,"Heaviest weight|62.5 kg × 8|+2.5 kg","",""],
+]}),
+"lunges": Object.assign({"n":"Lunges","w":"A","k":"loaded","ps":"3 × 10–12","e1":false,"v":"moving","why":"3 record(s) in the last 4 sessions","ns":{"repsAtTop":30,"target":36,"at":"13 kg","ready":false},"rec":{"Heaviest set":"13 kg × 10 · Wed 14 Oct"}}, {p: [
+  ["06-22",0,"7 × 10 · 7 × 10 · 7 × 10","",7.0,10,0,"","",""],
+  ["06-26",0,"7 × 11 · 7 × 11 · 7 × 11","",7.0,11,0,"Rep record|7 kg × 11|+1 rep","",""],
+  ["07-01",0,"7 × 12 · 7 × 12 · 7 × 11","",7.0,12,0,"Rep record|7 kg × 12|+1 rep","","Gym crowded, did push-ups on the floor."],
+  ["07-06",0,"7 × 12 · 7 × 12 · 7 × 12","",7.0,12,0,"","",""],
+  ["07-10",0,"8 × 10 · 8 × 9 · 8 × 9","",8.0,10,0,"Heaviest weight|8 kg × 10|+1 kg","",""],
+  ["07-15",0,"8 × 11 · 8 × 11 · 8 × 9","",8.0,11,0,"Rep record|8 kg × 11|+1 rep","",""],
+  ["07-20",0,"8 × 12 · 8 × 11 · 8 × 12","",8.0,12,0,"Rep record|8 kg × 12|+1 rep","",""],
+  ["07-24",0,"8 × 12 · 8 × 12 · 8 × 12","",8.0,12,0,"","",""],
+  ["07-29",0,"9 × 10 · 9 × 9 · 9 × 9","",9.0,10,0,"Heaviest weight|9 kg × 10|+1 kg","",""],
+  ["08-03",0,"9 × 11 · 9 × 11 · 9 × 10","",9.0,11,0,"Rep record|9 kg × 11|+1 rep","",""],
+  ["08-07",0,"9 × 12 · 9 × 12 · 9 × 12","",9.0,12,0,"Rep record|9 kg × 12|+1 rep","",""],
+  ["08-19",0,"10 × 10 · 10 × 10 · 10 × 9","",10.0,10,0,"Heaviest weight|10 kg × 10|+1 kg","",""],
+  ["08-24",0,"10 × 11 · 10 × 10 · 10 × 10","",10.0,11,0,"Rep record|10 kg × 11|+1 rep","",""],
+  ["08-28",0,"10 × 12 · 10 × 12 · 10 × 12","",10.0,12,0,"Rep record|10 kg × 12|+1 rep","",""],
+  ["09-02",0,"11 × 10 · 11 × 10 · 11 × 10","",11.0,10,0,"Heaviest weight|11 kg × 10|+1 kg","",""],
+  ["09-07",0,"11 × 11 · 11 × 10 · 11 × 11","",11.0,11,0,"Rep record|11 kg × 11|+1 rep","",""],
+  ["09-11",0,"11 × 11 · 11 × 11 · 11 × 10","",11.0,11,0,"","",""],
+  ["09-21",1,"9 × 12 · 9 × 12","",9,12,0,"","","Deload week, back from being sick."],
+  ["09-25",1,"10 × 10 · 10 × 10","",10,10,0,"","",""],
+  ["09-30",0,"12 × 11 · 12 × 11 · 12 × 10","",12.0,11,0,"Heaviest weight|12 kg × 11|+1 kg","","Left shoulder a bit tight on bench."],
+  ["10-05",0,"12 × 12 · 12 × 11 · 12 × 12","",12.0,12,0,"Rep record|12 kg × 12|+1 rep","",""],
+  ["10-09",0,"12 × 12 · 12 × 12 · 12 × 12","",12.0,12,0,"","",""],
+  ["10-14",0,"13 × 10 · 13 × 10 · 13 × 10","",13.0,10,0,"Heaviest weight|13 kg × 10|+1 kg","",""],
+]}),
+"db-bench-press": Object.assign({"n":"DB bench press","w":"A","k":"loaded","ps":"4 × 8–10","e1":true,"v":"stalled","why":"no record since Fri 7 Aug: 10 sessions, 9.9 weeks","ns":{"repsAtTop":33,"target":40,"at":"13 kg","ready":false},"rec":{"Heaviest set":"13 kg × 9 · Fri 7 Aug","Best estimated 1RM":"16.9 kg · Fri 7 Aug"}}, {p: [
+  ["06-22",0,"10 × 8 · 10 × 8 · 10 × 8 · 10 × 7","",10.0,8,12.7,"","",""],
+  ["06-26",0,"10 × 8 · 10 × 8 · 10 × 7 · 10 × 8","",10.0,8,12.7,"","",""],
+  ["07-01",0,"10 × 9 · 10 × 9 · 10 × 8 · 10 × 8","",10.0,9,13.0,"Rep record|10 kg × 9|+1 rep","","Gym crowded, did push-ups on the floor."],
+  ["07-06",0,"10 × 10 · 10 × 10 · 10 × 10 · 10 × 10","",10.0,10,13.3,"Rep record|10 kg × 10|+1 rep","",""],
+  ["07-10",0,"11 × 8 · 11 × 8 · 11 × 8 · 11 × 8","",11.0,8,13.9,"Heaviest weight|11 kg × 8|+1 kg","Estimated 1RM 13.9 kg (estimated) +0.6 kg",""],
+  ["07-15",0,"11 × 9 · 11 × 9 · 11 × 9 · 11 × 9","",11.0,9,14.3,"Rep record|11 kg × 9|+1 rep","",""],
+  ["07-20",0,"11 × 10 · 11 × 10 · 11 × 10 · 11 × 10","",11.0,10,14.7,"Rep record|11 kg × 10|+1 rep","",""],
+  ["07-24",0,"12 × 8 · 12 × 8 · 12 × 8 · 12 × 7","",12.0,8,15.2,"Heaviest weight|12 kg × 8|+1 kg","Estimated 1RM 15.2 kg (estimated) +0.5 kg",""],
+  ["07-29",0,"12 × 9 · 12 × 9 · 12 × 9 · 12 × 9","",12.0,9,15.6,"Rep record|12 kg × 9|+1 rep","",""],
+  ["08-03",0,"12 × 10 · 12 × 10 · 12 × 10 · 12 × 10","",12.0,10,16.0,"Rep record|12 kg × 10|+1 rep","",""],
+  ["08-07",0,"13 × 9 · 13 × 9 · 13 × 8 · 13 × 7","",13.0,9,16.9,"Heaviest weight|13 kg × 9|+1 kg","Estimated 1RM 16.9 kg (estimated) +0.9 kg",""],
+  ["08-19",0,"13 × 8 · 13 × 8 · 13 × 8 · 13 × 7","",13.0,8,16.5,"","",""],
+  ["08-24",0,"13 × 8 · 13 × 8 · 13 × 7 · 13 × 7","",13.0,8,16.5,"","",""],
+  ["08-28",0,"13 × 8 · 13 × 8 · 13 × 7 · 13 × 7","",13.0,8,16.5,"","",""],
+  ["09-02",0,"13 × 9 · 13 × 9 · 13 × 8 · 13 × 7","",13.0,9,16.9,"","",""],
+  ["09-07",0,"13 × 9 · 13 × 8 · 13 × 8 · 13 × 7","",13.0,9,16.9,"","",""],
+  ["09-11",0,"13 × 9 · 13 × 8 · 13 × 8 · 13 × 7","",13.0,9,16.9,"","",""],
+  ["09-21",1,"11 × 8 · 11 × 8 · 11 × 8","",11,8,13.9,"","","Deload week, back from being sick."],
+  ["09-25",1,"11 × 9 · 11 × 8 · 11 × 7","",11,9,14.3,"","",""],
+  ["09-30",0,"13 × 9 · 13 × 8 · 13 × 8 · 13 × 7","",13.0,9,16.9,"","","Left shoulder a bit tight on bench."],
+  ["10-05",0,"13 × 9 · 13 × 8 · 13 × 7 · 13 × 7","",13.0,9,16.9,"","",""],
+  ["10-09",0,"13 × 9 · 13 × 8 · 13 × 8 · 13 × 7","",13.0,9,16.9,"","",""],
+  ["10-14",0,"13 × 9 · 13 × 9 · 13 × 8 · 13 × 7","",13.0,9,16.9,"","",""],
+]}),
+"push-ups": Object.assign({"n":"Push-ups","w":"A","k":"bodyweight","ps":"3 × 10–15","e1":false,"v":"stalled","why":"no record since Mon 3 Aug: 11 sessions, 10.4 weeks","ns":{"repsAtTop":44,"target":45,"at":"BW","ready":false},"rec":{"Most reps in a set":"17 · Mon 3 Aug"}}, {p: [
+  ["06-22",0,"BW × 10 · BW × 9 · BW × 11 (failure)","",0.0,11,0,"","",""],
+  ["06-26",0,"BW × 11 · BW × 11 · BW × 10","",0.0,11,0,"","",""],
+  ["07-01",0,"BW × 12 · BW × 11 · BW × 11","",0.0,12,0,"Rep record|BW × 12|+1 rep","","Gym crowded, did push-ups on the floor."],
+  ["07-06",0,"BW × 14 · BW × 13 · BW × 15 (failure)","",0.0,15,0,"Rep record|BW × 15|+3 reps","",""],
+  ["07-10",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["07-15",0,"BW × 15 · BW × 15 · BW × 13","",0.0,15,0,"","",""],
+  ["07-20",0,"BW × 15 · BW × 14 · BW × 14","",0.0,15,0,"","",""],
+  ["07-24",0,"BW × 15 · BW × 14 · BW × 16 (failure)","",0.0,16,0,"Rep record|BW × 16|+1 rep","",""],
+  ["07-29",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["08-03",0,"BW × 15 · BW × 15 · BW × 17 (failure)","",0.0,17,0,"Rep record|BW × 17|+1 rep","",""],
+  ["08-07",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["08-19",0,"BW × 15 · BW × 15 · BW × 16 (failure)","",0.0,16,0,"","",""],
+  ["08-24",0,"BW × 15 · BW × 15 · BW × 17 (failure)","",0.0,17,0,"","",""],
+  ["08-28",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["09-02",0,"BW × 15 · BW × 15 · BW × 14","",0.0,15,0,"","",""],
+  ["09-07",0,"BW × 15 · BW × 15 · BW × 17 (failure)","",0.0,17,0,"","",""],
+  ["09-11",0,"BW × 15 · BW × 15 · BW × 17 (failure)","",0.0,17,0,"","",""],
+  ["09-21",1,"BW × 15 · BW × 15","",0.0,15,0,"","","Deload week, back from being sick."],
+  ["09-25",1,"BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["09-30",0,"BW × 15 · BW × 15 · BW × 17 (failure)","",0.0,17,0,"","","Left shoulder a bit tight on bench."],
+  ["10-05",0,"BW × 15 · BW × 15 · BW × 17 (failure)","",0.0,17,0,"","",""],
+  ["10-09",0,"BW × 15 · BW × 15 · BW × 17 (failure)","",0.0,17,0,"","",""],
+  ["10-14",0,"BW × 15 · BW × 14 · BW × 15","",0.0,15,0,"","",""],
+]}),
+"machine-shoulder-press": Object.assign({"n":"Machine shoulder press","w":"A","k":"loaded","ps":"3 × 8–10","e1":true,"v":"moving","why":"4 record(s) in the last 4 sessions","ns":{"repsAtTop":21,"target":30,"at":"12.5 kg","ready":false},"rec":{"Heaviest set":"12.5 kg × 8 · Wed 14 Oct","Best estimated 1RM":"15.8 kg · Wed 14 Oct"}}, {p: [
+  ["06-22",0,"5 × 8 · 5 × 8 · 5 × 7","",5.0,8,6.3,"","",""],
+  ["06-26",0,"5 × 8 · 5 × 8 · 5 × 8","",5.0,8,6.3,"","",""],
+  ["07-01",0,"5 × 8 · 5 × 8 · 5 × 7","",5.0,8,6.3,"","","Gym crowded, did push-ups on the floor."],
+  ["07-06",0,"5 × 9 · 5 × 9 · 5 × 8","",5.0,9,6.5,"Rep record|5 kg × 9|+1 rep","",""],
+  ["07-10",0,"5 × 9 · 5 × 9 · 5 × 9","",5.0,9,6.5,"","",""],
+  ["07-15",0,"5 × 10 · 5 × 10 · 5 × 10","",5.0,10,6.7,"Rep record|5 kg × 10|+1 rep","",""],
+  ["07-20",0,"6.25 × 8 · 6.25 × 7 · 6.25 × 8","",6.25,8,7.9,"Heaviest weight|6.25 kg × 8|+1.25 kg","Estimated 1RM 7.9 kg (estimated) +1.2 kg",""],
+  ["07-24",0,"6.25 × 9 · 6.25 × 9 · 6.25 × 8","",6.25,9,8.1,"Rep record|6.25 kg × 9|+1 rep","",""],
+  ["07-29",0,"6.25 × 10 · 6.25 × 10 · 6.25 × 10","",6.25,10,8.3,"Rep record|6.25 kg × 10|+1 rep","",""],
+  ["08-03",0,"7.5 × 8 · 7.5 × 8 · 7.5 × 8","",7.5,8,9.5,"Heaviest weight|7.5 kg × 8|+1.25 kg","Estimated 1RM 9.5 kg (estimated) +1.2 kg",""],
+  ["08-07",0,"7.5 × 9 · 7.5 × 8 · 7.5 × 9","",7.5,9,9.8,"Rep record|7.5 kg × 9|+1 rep","",""],
+  ["08-19",0,"7.5 × 10 · 7.5 × 10 · 7.5 × 10","",7.5,10,10.0,"Rep record|7.5 kg × 10|+1 rep","",""],
+  ["08-24",0,"8.75 × 8 · 8.75 × 8 · 8.75 × 8","",8.75,8,11.1,"Heaviest weight|8.75 kg × 8|+1.25 kg","Estimated 1RM 11.1 kg (estimated) +1.1 kg",""],
+  ["08-28",0,"8.75 × 9 · 8.75 × 8 · 8.75 × 7","",8.75,9,11.4,"Rep record|8.75 kg × 9|+1 rep","",""],
+  ["09-02",0,"8.75 × 10 · 8.75 × 9 · 8.75 × 10","",8.75,10,11.7,"Rep record|8.75 kg × 10|+1 rep","",""],
+  ["09-07",0,"8.75 × 10 · 8.75 × 10 · 8.75 × 10","",8.75,10,11.7,"","",""],
+  ["09-11",0,"10 × 8 · 10 × 7 · 10 × 8","",10.0,8,12.7,"Heaviest weight|10 kg × 8|+1.25 kg","Estimated 1RM 12.7 kg (estimated) +1 kg",""],
+  ["09-21",1,"8.75 × 9 · 8.75 × 9","",8.75,9,11.4,"","","Deload week, back from being sick."],
+  ["09-25",1,"8.75 × 10 · 8.75 × 10","",8.75,10,11.7,"","",""],
+  ["09-30",0,"11.25 × 8 · 11.25 × 8 · 11.25 × 8","",11.25,8,14.2,"Heaviest weight|11.25 kg × 8|+1.25 kg","Estimated 1RM 14.2 kg (estimated) +1.5 kg","Left shoulder a bit tight on bench."],
+  ["10-05",0,"11.25 × 9 · 11.25 × 9 · 11.25 × 8","",11.25,9,14.6,"Rep record|11.25 kg × 9|+1 rep","",""],
+  ["10-09",0,"11.25 × 10 · 11.25 × 10 · 11.25 × 10","",11.25,10,15.0,"Rep record|11.25 kg × 10|+1 rep","",""],
+  ["10-14",0,"12.5 × 8 · 12.5 × 7 · 12.5 × 6","",12.5,8,15.8,"Heaviest weight|12.5 kg × 8|+1.25 kg","Estimated 1RM 15.8 kg (estimated) +0.8 kg",""],
+]}),
+"lateral-raises": Object.assign({"n":"Lateral raises","w":"A","k":"loaded","ps":"3 × 10–15","e1":false,"v":"moving","why":"3 record(s) in the last 4 sessions","ns":{"repsAtTop":29,"target":45,"at":"7 kg","ready":false},"rec":{"Heaviest set":"7 kg × 10 · Fri 9 Oct"}}, {p: [
+  ["06-22",0,"3 × 10 · 3 × 10 · 3 × 10 · 1 × 12 (drop)","",3.0,10,0,"","",""],
+  ["06-26",0,"3 × 11 · 3 × 11 · 3 × 9","",3.0,11,0,"Rep record|3 kg × 11|+1 rep","",""],
+  ["07-01",0,"3 × 13 · 3 × 13 · 3 × 12","",3.0,13,0,"Rep record|3 kg × 13|+2 reps","","Gym crowded, did push-ups on the floor."],
+  ["07-06",0,"3 × 14 · 3 × 14 · 3 × 13","",3.0,14,0,"Rep record|3 kg × 14|+1 rep","",""],
+  ["07-10",0,"3 × 15 · 3 × 15 · 3 × 15 · 1 × 12 (drop)","",3.0,15,0,"Rep record|3 kg × 15|+1 rep","",""],
+  ["07-15",0,"4 × 10 · 4 × 9 · 4 × 10 · 2 × 12 (drop)","",4.0,10,0,"Heaviest weight|4 kg × 10|+1 kg","",""],
+  ["07-20",0,"4 × 11 · 4 × 11 · 4 × 10","",4.0,11,0,"Rep record|4 kg × 11|+1 rep","",""],
+  ["07-24",0,"4 × 12 · 4 × 11 · 4 × 12","",4.0,12,0,"Rep record|4 kg × 12|+1 rep","",""],
+  ["07-29",0,"4 × 14 · 4 × 14 · 4 × 13 · 2 × 12 (drop)","",4.0,14,0,"Rep record|4 kg × 14|+2 reps","",""],
+  ["08-03",0,"4 × 15 · 4 × 15 · 4 × 13","",4.0,15,0,"Rep record|4 kg × 15|+1 rep","",""],
+  ["08-07",0,"4 × 15 · 4 × 15 · 4 × 15","",4.0,15,0,"","",""],
+  ["08-19",0,"5 × 10 · 5 × 10 · 5 × 9","",5.0,10,0,"Heaviest weight|5 kg × 10|+1 kg","",""],
+  ["08-24",0,"5 × 12 · 5 × 11 · 5 × 12","",5.0,12,0,"Rep record|5 kg × 12|+2 reps","",""],
+  ["08-28",0,"5 × 13 · 5 × 13 · 5 × 13 · 3 × 12 (drop)","",5.0,13,0,"Rep record|5 kg × 13|+1 rep","",""],
+  ["09-02",0,"5 × 14 · 5 × 14 · 5 × 13","",5.0,14,0,"Rep record|5 kg × 14|+1 rep","",""],
+  ["09-07",0,"5 × 15 · 5 × 15 · 5 × 15","",5.0,15,0,"Rep record|5 kg × 15|+1 rep","",""],
+  ["09-11",0,"6 × 10 · 6 × 10 · 6 × 9","",6.0,10,0,"Heaviest weight|6 kg × 10|+1 kg","",""],
+  ["09-21",1,"5 × 12 · 5 × 11","",5,12,0,"","","Deload week, back from being sick."],
+  ["09-25",1,"5 × 13 · 5 × 13","",5,13,0,"","",""],
+  ["09-30",0,"6 × 14 · 6 × 14 · 6 × 14","",6.0,14,0,"Rep record|6 kg × 14|+4 reps","","Left shoulder a bit tight on bench."],
+  ["10-05",0,"6 × 15 · 6 × 15 · 6 × 15","",6.0,15,0,"Rep record|6 kg × 15|+1 rep","",""],
+  ["10-09",0,"7 × 10 · 7 × 10 · 7 × 9","",7.0,10,0,"Heaviest weight|7 kg × 10|+1 kg","",""],
+  ["10-14",0,"7 × 10 · 7 × 10 · 7 × 9 · 5 × 12 (drop)","",7.0,10,0,"","",""],
+]}),
+"cable-push-down": Object.assign({"n":"Cable push-down","w":"A","k":"loaded","ps":"3 × 10–12","e1":false,"v":"moving","why":"4 record(s) in the last 4 sessions","ns":{"repsAtTop":28,"target":36,"at":"32.5 kg","ready":false},"rec":{"Heaviest set":"32.5 kg × 10 · Wed 14 Oct"}}, {p: [
+  ["06-22",0,"17.5 × 10 · 17.5 × 10 · 17.5 × 8","",17.5,10,0,"","",""],
+  ["06-26",0,"17.5 × 11 · 17.5 × 11 · 17.5 × 10","",17.5,11,0,"Rep record|17.5 kg × 11|+1 rep","",""],
+  ["07-01",0,"17.5 × 12 · 17.5 × 12 · 17.5 × 10","",17.5,12,0,"Rep record|17.5 kg × 12|+1 rep","","Gym crowded, did push-ups on the floor."],
+  ["07-06",0,"17.5 × 12 · 17.5 × 12 · 17.5 × 13 (failure)","",17.5,13,0,"Rep record|17.5 kg × 13|+1 rep","",""],
+  ["07-10",0,"20 × 10 · 20 × 10 · 20 × 10","",20.0,10,0,"Heaviest weight|20 kg × 10|+2.5 kg","",""],
+  ["07-15",0,"20 × 10 · 20 × 10 · 20 × 9","",20.0,10,0,"","",""],
+  ["07-20",0,"20 × 11 · 20 × 11 · 20 × 11","",20.0,11,0,"Rep record|20 kg × 11|+1 rep","",""],
+  ["07-24",0,"20 × 12 · 20 × 12 · 20 × 12","",20.0,12,0,"Rep record|20 kg × 12|+1 rep","",""],
+  ["07-29",0,"22.5 × 10 · 22.5 × 9 · 22.5 × 11 (failure)","",22.5,11,0,"Heaviest weight|22.5 kg × 11|+2.5 kg","",""],
+  ["08-03",0,"22.5 × 11 · 22.5 × 11 · 22.5 × 11","",22.5,11,0,"","",""],
+  ["08-07",0,"22.5 × 12 · 22.5 × 12 · 22.5 × 12","",22.5,12,0,"Rep record|22.5 kg × 12|+1 rep","",""],
+  ["08-19",0,"25 × 10 · 25 × 10 · 25 × 11 (failure)","",25.0,11,0,"Heaviest weight|25 kg × 11|+2.5 kg","",""],
+  ["08-24",0,"25 × 11 · 25 × 11 · 25 × 11","",25.0,11,0,"","",""],
+  ["08-28",0,"25 × 12 · 25 × 12 · 25 × 13 (failure)","",25.0,13,0,"Rep record|25 kg × 13|+2 reps","",""],
+  ["09-02",0,"27.5 × 10 · 27.5 × 9 · 27.5 × 9","",27.5,10,0,"Heaviest weight|27.5 kg × 10|+2.5 kg","",""],
+  ["09-07",0,"27.5 × 11 · 27.5 × 10 · 27.5 × 9","",27.5,11,0,"Rep record|27.5 kg × 11|+1 rep","",""],
+  ["09-11",0,"27.5 × 12 · 27.5 × 11 · 27.5 × 11","",27.5,12,0,"Rep record|27.5 kg × 12|+1 rep","",""],
+  ["09-21",1,"22.5 × 12 · 22.5 × 12","",22.5,12,0,"","","Deload week, back from being sick."],
+  ["09-25",1,"25 × 10 · 25 × 10","",25.0,10,0,"","",""],
+  ["09-30",0,"30 × 10 · 30 × 9 · 30 × 10 (failure)","",30.0,10,0,"Heaviest weight|30 kg × 10|+2.5 kg","","Left shoulder a bit tight on bench."],
+  ["10-05",0,"30 × 11 · 30 × 10 · 30 × 11","",30.0,11,0,"Rep record|30 kg × 11|+1 rep","",""],
+  ["10-09",0,"30 × 12 · 30 × 12 · 30 × 12","",30.0,12,0,"Rep record|30 kg × 12|+1 rep","",""],
+  ["10-14",0,"32.5 × 10 · 32.5 × 10 · 32.5 × 8","",32.5,10,0,"Heaviest weight|32.5 kg × 10|+2.5 kg","",""],
+]}),
+"deadlift": Object.assign({"n":"Deadlift","w":"B","k":"loaded","ps":"3 × 8–10","e1":true,"v":"moving","why":"4 record(s) in the last 4 sessions","ns":{"repsAtTop":14,"target":20,"at":"70 kg","ready":false},"rec":{"Heaviest set":"70 kg × 7 · Mon 12 Oct","Best estimated 1RM":"90.0 kg · Wed 7 Oct"}}, {p: [
+  ["06-24",0,"45 × 10 · 55 × 8 · 55 × 8","40 × 5",55.0,8,69.7,"","",""],
+  ["06-29",0,"45 × 10 · 55 × 7 · 55 × 8","40 × 5",55.0,8,69.7,"","",""],
+  ["07-03",0,"45 × 10 · 55 × 9 · 55 × 9","40 × 5",55.0,9,71.5,"Rep record|55 kg × 9|+1 rep","Estimated 1RM 71.5 kg (estimated) +1.8 kg",""],
+  ["07-08",0,"45 × 10 · 55 × 10 · 55 × 10","40 × 5",55.0,10,73.3,"Rep record|55 kg × 10|+1 rep","Estimated 1RM 73.3 kg (estimated) +1.8 kg",""],
+  ["07-13",0,"47.5 × 10 · 57.5 × 8 · 57.5 × 7","40 × 5",57.5,8,72.8,"Heaviest weight|57.5 kg × 8|+2.5 kg","",""],
+  ["07-17",0,"47.5 × 10 · 57.5 × 9 · 57.5 × 8","40 × 5",57.5,9,74.8,"Rep record|57.5 kg × 9|+1 rep","Estimated 1RM 74.8 kg (estimated) +1.5 kg",""],
+  ["07-22",0,"47.5 × 10 · 57.5 × 10 · 57.5 × 9","40 × 5",57.5,10,76.7,"Rep record|57.5 kg × 10|+1 rep","Estimated 1RM 76.7 kg (estimated) +1.9 kg",""],
+  ["07-27",0,"47.5 × 10 · 57.5 × 10 · 57.5 × 10","40 × 5",57.5,10,76.7,"","",""],
+  ["07-31",0,"50 × 10 · 60 × 7 · 60 × 7","40 × 5",60.0,7,74.0,"Heaviest weight|60 kg × 7|+2.5 kg","",""],
+  ["08-05",0,"50 × 10 · 60 × 8 · 60 × 8","40 × 5",60.0,8,76.0,"Rep record|60 kg × 8|+1 rep","",""],
+  ["08-17",0,"50 × 10 · 60 × 10 · 60 × 10","40 × 5",60.0,10,80.0,"Rep record|60 kg × 10|+2 reps","Estimated 1RM 80.0 kg (estimated) +3.3 kg",""],
+  ["08-21",0,"52.5 × 10 · 62.5 × 8 · 62.5 × 8","40 × 5",62.5,8,79.2,"Heaviest weight|62.5 kg × 8|+2.5 kg","",""],
+  ["08-26",0,"52.5 × 10 · 62.5 × 8 · 62.5 × 8","40 × 5",62.5,8,79.2,"","",""],
+  ["08-31",0,"52.5 × 10 · 62.5 × 10 · 62.5 × 10","40 × 5",62.5,10,83.3,"Rep record|62.5 kg × 10|+2 reps","Estimated 1RM 83.3 kg (estimated) +3.3 kg",""],
+  ["09-04",0,"55 × 10 · 65 × 8 · 65 × 7","40 × 5",65.0,8,82.3,"Heaviest weight|65 kg × 8|+2.5 kg","",""],
+  ["09-09",0,"55 × 10 · 65 × 8 · 65 × 7","40 × 5",65.0,8,82.3,"","",""],
+  ["09-14",0,"55 × 10 · 65 × 9 · 65 × 9","40 × 5",65.0,9,84.5,"Rep record|65 kg × 9|+1 rep","Estimated 1RM 84.5 kg (estimated) +1.2 kg",""],
+  ["09-23",1,"47.5 × 10 · 57.5 × 10","40 × 5",57.5,10,76.7,"","",""],
+  ["09-28",0,"57.5 × 10 · 67.5 × 8 · 67.5 × 8","40 × 5",67.5,8,85.5,"Heaviest weight|67.5 kg × 8|+2.5 kg","Estimated 1RM 85.5 kg (estimated) +1 kg",""],
+  ["10-02",0,"57.5 × 10 · 67.5 × 9 · 67.5 × 8","40 × 5",67.5,9,87.8,"Rep record|67.5 kg × 9|+1 rep","Estimated 1RM 87.8 kg (estimated) +2.3 kg",""],
+  ["10-07",0,"57.5 × 10 · 67.5 × 10 · 67.5 × 10","40 × 5",67.5,10,90.0,"Rep record|67.5 kg × 10|+1 rep","Estimated 1RM 90.0 kg (estimated) +2.2 kg","Right elbow sore on pull-downs, dropped the weight."],
+  ["10-12",0,"60 × 10 · 70 × 7 · 70 × 7","40 × 5",70.0,7,86.3,"Heaviest weight|70 kg × 7|+2.5 kg","",""],
+]}),
+"assisted-pull-ups": Object.assign({"n":"Assisted pull-ups","w":"B","k":"assisted","ps":"4 × 5–8","e1":false,"v":"moving","why":"4 record(s) in the last 4 sessions","ns":{"repsAtTop":23,"target":32,"at":"BW−19","ready":false},"rec":{"Least assistance":"BW−19 × 6 · Mon 12 Oct","Most reps at BW−19":"6 · Mon 12 Oct"}}, {p: [
+  ["06-24",0,"BW−27 × 5 · BW−27 × 5 · BW−27 × 5 · BW−27 × 4","",-27.0,5,0,"","",""],
+  ["06-29",0,"BW−27 × 6 · BW−27 × 6 · BW−27 × 6 · BW−27 × 5","",-27.0,6,0,"Rep record|BW−27 × 6|+1 rep","",""],
+  ["07-03",0,"BW−27 × 7 · BW−27 × 7 · BW−27 × 7 · BW−27 × 6","",-27.0,7,0,"Rep record|BW−27 × 7|+1 rep","",""],
+  ["07-08",0,"BW−27 × 8 · BW−27 × 8 · BW−27 × 8 · BW−27 × 7","",-27.0,8,0,"Rep record|BW−27 × 8|+1 rep","",""],
+  ["07-13",0,"BW−27 × 8 · BW−27 × 8 · BW−27 × 8 · BW−27 × 8","",-27.0,8,0,"","",""],
+  ["07-17",0,"BW−25 × 5 · BW−25 × 5 · BW−25 × 4 · BW−25 × 5","",-25.0,5,0,"Least assistance|BW−25 × 5|−2 kg assistance","",""],
+  ["07-22",0,"BW−25 × 6 · BW−25 × 6 · BW−25 × 6 · BW−25 × 5","",-25.0,6,0,"Rep record|BW−25 × 6|+1 rep","",""],
+  ["07-27",0,"BW−25 × 7 · BW−25 × 7 · BW−25 × 6 · BW−25 × 7","",-25.0,7,0,"Rep record|BW−25 × 7|+1 rep","",""],
+  ["07-31",0,"BW−25 × 8 · BW−25 × 8 · BW−25 × 8 · BW−25 × 7","",-25.0,8,0,"Rep record|BW−25 × 8|+1 rep","",""],
+  ["08-05",0,"BW−25 × 8 · BW−25 × 8 · BW−25 × 8 · BW−25 × 8","",-25.0,8,0,"","",""],
+  ["08-17",0,"BW−23 × 5 · BW−23 × 5 · BW−23 × 5 · BW−23 × 5","",-23.0,5,0,"Least assistance|BW−23 × 5|−2 kg assistance","",""],
+  ["08-21",0,"BW−23 × 6 · BW−23 × 6 · BW−23 × 5 · BW−23 × 6","",-23.0,6,0,"Rep record|BW−23 × 6|+1 rep","",""],
+  ["08-26",0,"BW−23 × 7 · BW−23 × 7 · BW−23 × 7 · BW−23 × 5","",-23.0,7,0,"Rep record|BW−23 × 7|+1 rep","",""],
+  ["08-31",0,"BW−23 × 7 · BW−23 × 7 · BW−23 × 6 · BW−23 × 5","",-23.0,7,0,"","",""],
+  ["09-04",0,"BW−23 × 8 · BW−23 × 8 · BW−23 × 8 · BW−23 × 8","",-23.0,8,0,"Rep record|BW−23 × 8|+1 rep","",""],
+  ["09-09",0,"BW−21 × 5 · BW−21 × 5 · BW−21 × 4 · BW−21 × 5","",-21.0,5,0,"Least assistance|BW−21 × 5|−2 kg assistance","",""],
+  ["09-14",0,"BW−21 × 5 · BW−21 × 5 · BW−21 × 5 · BW−21 × 5","",-21.0,5,0,"","",""],
+  ["09-23",1,"BW−23 × 6 · BW−23 × 6 · BW−23 × 6","",-23.0,6,0,"","",""],
+  ["09-28",0,"BW−21 × 7 · BW−21 × 7 · BW−21 × 6 · BW−21 × 7","",-21.0,7,0,"Rep record|BW−21 × 7|+2 reps","",""],
+  ["10-02",0,"BW−21 × 8 · BW−21 × 8 · BW−21 × 8 · BW−21 × 8","",-21.0,8,0,"Rep record|BW−21 × 8|+1 rep","",""],
+  ["10-07",0,"BW−19 × 5 · BW−19 × 5 · BW−19 × 5 · BW−19 × 5","",-19.0,5,0,"Least assistance|BW−19 × 5|−2 kg assistance","","Right elbow sore on pull-downs, dropped the weight."],
+  ["10-12",0,"BW−19 × 6 · BW−19 × 6 · BW−19 × 6 · BW−19 × 5","",-19.0,6,0,"Rep record|BW−19 × 6|+1 rep","",""],
+]}),
+"narrow-grip-pull-down": Object.assign({"n":"Narrow-grip pull-down","w":"B","k":"loaded","ps":"3 × 10–12","e1":false,"v":"slipping","why":"last 2 sessions below 47.5 kg × 10 (Mon 28 Sep)","ns":{"repsAtTop":25,"target":36,"at":"46.25 kg","ready":false},"rec":{"Heaviest set":"47.5 kg × 10 · Mon 28 Sep"}}, {p: [
+  ["06-24",0,"41.25 × 10 · 41.25 × 10 · 41.25 × 9","",41.25,10,0,"","",""],
+  ["06-29",0,"41.25 × 11 · 41.25 × 10 · 41.25 × 10","",41.25,11,0,"Rep record|41.25 kg × 11|+1 rep","",""],
+  ["07-03",0,"41.25 × 12 · 41.25 × 12 · 41.25 × 12","",41.25,12,0,"Rep record|41.25 kg × 12|+1 rep","",""],
+  ["07-08",0,"42.5 × 10 · 42.5 × 10 · 42.5 × 8","",42.5,10,0,"Heaviest weight|42.5 kg × 10|+1.25 kg","",""],
+  ["07-13",0,"42.5 × 11 · 42.5 × 10 · 42.5 × 11","",42.5,11,0,"Rep record|42.5 kg × 11|+1 rep","",""],
+  ["07-17",0,"42.5 × 12 · 42.5 × 12 · 42.5 × 12","",42.5,12,0,"Rep record|42.5 kg × 12|+1 rep","",""],
+  ["07-22",0,"43.75 × 10 · 43.75 × 9 · 43.75 × 9","",43.75,10,0,"Heaviest weight|43.75 kg × 10|+1.25 kg","",""],
+  ["07-27",0,"43.75 × 11 · 43.75 × 11 · 43.75 × 11","",43.75,11,0,"Rep record|43.75 kg × 11|+1 rep","",""],
+  ["07-31",0,"43.75 × 12 · 43.75 × 12 · 43.75 × 12","",43.75,12,0,"Rep record|43.75 kg × 12|+1 rep","",""],
+  ["08-05",0,"45 × 10 · 45 × 10 · 45 × 9","",45.0,10,0,"Heaviest weight|45 kg × 10|+1.25 kg","",""],
+  ["08-17",0,"45 × 11 · 45 × 11 · 45 × 10","",45.0,11,0,"Rep record|45 kg × 11|+1 rep","",""],
+  ["08-21",0,"45 × 11 · 45 × 10 · 45 × 9","",45.0,11,0,"","",""],
+  ["08-26",0,"45 × 12 · 45 × 12 · 45 × 12","",45.0,12,0,"Rep record|45 kg × 12|+1 rep","",""],
+  ["08-31",0,"46.25 × 10 · 46.25 × 10 · 46.25 × 10","",46.25,10,0,"Heaviest weight|46.25 kg × 10|+1.25 kg","",""],
+  ["09-04",0,"46.25 × 11 · 46.25 × 10 · 46.25 × 11","",46.25,11,0,"Rep record|46.25 kg × 11|+1 rep","",""],
+  ["09-09",0,"46.25 × 12 · 46.25 × 11 · 46.25 × 12","",46.25,12,0,"Rep record|46.25 kg × 12|+1 rep","",""],
+  ["09-14",0,"46.25 × 12 · 46.25 × 12 · 46.25 × 12","",46.25,12,0,"","",""],
+  ["09-23",1,"42.5 × 10 · 42.5 × 10","",42.5,10,0,"","",""],
+  ["09-28",0,"47.5 × 10 · 47.5 × 10 · 47.5 × 10","",47.5,10,0,"Heaviest weight|47.5 kg × 10|+1.25 kg","",""],
+  ["10-02",0,"47.5 × 10 · 47.5 × 9 · 47.5 × 8","",47.5,10,0,"","",""],
+  ["10-07",0,"46.25 × 10 · 46.25 × 9 · 46.25 × 9","",46.25,10,0,"","","Right elbow sore on pull-downs, dropped the weight."],
+  ["10-12",0,"46.25 × 9 · 46.25 × 8 · 46.25 × 8","",46.25,9,0,"","",""],
+]}),
+"machine-row": Object.assign({"n":"Machine row","w":"B","k":"loaded","ps":"4 × 8–10","e1":true,"v":"moving","why":"4 record(s) in the last 4 sessions","ns":{"repsAtTop":35,"target":40,"at":"75 kg","ready":false},"rec":{"Heaviest set":"75 kg × 9 · Mon 12 Oct","Best estimated 1RM":"97.5 kg · Mon 12 Oct"}}, {p: [
+  ["06-24",0,"50 × 8 · 50 × 8 · 50 × 8 · 50 × 7","",50.0,8,63.3,"","",""],
+  ["06-29",0,"50 × 9 · 50 × 9 · 50 × 9 · 50 × 8","",50.0,9,65.0,"Rep record|50 kg × 9|+1 rep","Estimated 1RM 65.0 kg (estimated) +1.7 kg",""],
+  ["07-03",0,"50 × 10 · 50 × 10 · 50 × 10 · 50 × 10","",50.0,10,66.7,"Rep record|50 kg × 10|+1 rep","Estimated 1RM 66.7 kg (estimated) +1.7 kg",""],
+  ["07-08",0,"55 × 8 · 55 × 8 · 55 × 8 · 55 × 6","",55.0,8,69.7,"Heaviest weight|55 kg × 8|+5 kg","Estimated 1RM 69.7 kg (estimated) +3 kg",""],
+  ["07-13",0,"55 × 8 · 55 × 8 · 55 × 8 · 55 × 7","",55.0,8,69.7,"","",""],
+  ["07-17",0,"55 × 9 · 55 × 9 · 55 × 9 · 55 × 8","",55.0,9,71.5,"Rep record|55 kg × 9|+1 rep","Estimated 1RM 71.5 kg (estimated) +1.8 kg",""],
+  ["07-22",0,"55 × 10 · 55 × 10 · 55 × 9 · 55 × 10","",55.0,10,73.3,"Rep record|55 kg × 10|+1 rep","Estimated 1RM 73.3 kg (estimated) +1.8 kg",""],
+  ["07-27",0,"55 × 10 · 55 × 10 · 55 × 10 · 55 × 10","",55.0,10,73.3,"","",""],
+  ["07-31",0,"60 × 8 · 60 × 8 · 60 × 8 · 60 × 6","",60.0,8,76.0,"Heaviest weight|60 kg × 8|+5 kg","Estimated 1RM 76.0 kg (estimated) +2.7 kg",""],
+  ["08-05",0,"60 × 8 · 60 × 8 · 60 × 7 · 60 × 7","",60.0,8,76.0,"","",""],
+  ["08-17",0,"60 × 9 · 60 × 9 · 60 × 8 · 60 × 9","",60.0,9,78.0,"Rep record|60 kg × 9|+1 rep","Estimated 1RM 78.0 kg (estimated) +2 kg",""],
+  ["08-21",0,"60 × 9 · 60 × 9 · 60 × 8 · 60 × 8","",60.0,9,78.0,"","",""],
+  ["08-26",0,"60 × 10 · 60 × 10 · 60 × 10 · 60 × 10","",60.0,10,80.0,"Rep record|60 kg × 10|+1 rep","Estimated 1RM 80.0 kg (estimated) +2 kg",""],
+  ["08-31",0,"65 × 8 · 65 × 8 · 65 × 7 · 65 × 8","",65.0,8,82.3,"Heaviest weight|65 kg × 8|+5 kg","Estimated 1RM 82.3 kg (estimated) +2.3 kg",""],
+  ["09-04",0,"65 × 9 · 65 × 9 · 65 × 8 · 65 × 9","",65.0,9,84.5,"Rep record|65 kg × 9|+1 rep","Estimated 1RM 84.5 kg (estimated) +2.2 kg",""],
+  ["09-09",0,"65 × 10 · 65 × 10 · 65 × 10 · 65 × 10","",65.0,10,86.7,"Rep record|65 kg × 10|+1 rep","Estimated 1RM 86.7 kg (estimated) +2.2 kg",""],
+  ["09-14",0,"70 × 8 · 70 × 8 · 70 × 7 · 70 × 7","",70.0,8,88.7,"Heaviest weight|70 kg × 8|+5 kg","Estimated 1RM 88.7 kg (estimated) +2 kg",""],
+  ["09-23",1,"60 × 8 · 60 × 8 · 60 × 8","",60,8,76.0,"","",""],
+  ["09-28",0,"70 × 9 · 70 × 9 · 70 × 8 · 70 × 8","",70.0,9,91.0,"Rep record|70 kg × 9|+1 rep","Estimated 1RM 91.0 kg (estimated) +2.3 kg",""],
+  ["10-02",0,"70 × 10 · 70 × 10 · 70 × 10 · 70 × 10","",70.0,10,93.3,"Rep record|70 kg × 10|+1 rep","Estimated 1RM 93.3 kg (estimated) +2.3 kg",""],
+  ["10-07",0,"75 × 8 · 75 × 8 · 75 × 8 · 75 × 8","",75.0,8,95.0,"Heaviest weight|75 kg × 8|+5 kg","Estimated 1RM 95.0 kg (estimated) +1.7 kg","Right elbow sore on pull-downs, dropped the weight."],
+  ["10-12",0,"75 × 9 · 75 × 9 · 75 × 9 · 75 × 8","",75.0,9,97.5,"Rep record|75 kg × 9|+1 rep","Estimated 1RM 97.5 kg (estimated) +2.5 kg",""],
+]}),
+"face-pull": Object.assign({"n":"Face pull","w":"B","k":"loaded","ps":"3 × 10–15","e1":false,"v":"moving","why":"4 record(s) in the last 4 sessions","ns":{"repsAtTop":38,"target":45,"at":"25 kg","ready":false},"rec":{"Heaviest set":"25 kg × 13 · Mon 12 Oct"}}, {p: [
+  ["06-24",0,"15 × 10 · 15 × 10 · 15 × 10","",15.0,10,0,"","",""],
+  ["06-29",0,"15 × 11 · 15 × 11 · 15 × 11","",15.0,11,0,"Rep record|15 kg × 11|+1 rep","",""],
+  ["07-03",0,"15 × 12 · 15 × 12 · 15 × 11","",15.0,12,0,"Rep record|15 kg × 12|+1 rep","",""],
+  ["07-08",0,"15 × 13 · 15 × 12 · 15 × 12","",15.0,13,0,"Rep record|15 kg × 13|+1 rep","",""],
+  ["07-13",0,"15 × 13 · 15 × 13 · 15 × 13","",15.0,13,0,"","",""],
+  ["07-17",0,"15 × 14 · 15 × 14 · 15 × 13","",15.0,14,0,"Rep record|15 kg × 14|+1 rep","",""],
+  ["07-22",0,"15 × 15 · 15 × 15 · 15 × 15","",15.0,15,0,"Rep record|15 kg × 15|+1 rep","",""],
+  ["07-27",0,"17.5 × 10 · 17.5 × 9 · 17.5 × 10","",17.5,10,0,"Heaviest weight|17.5 kg × 10|+2.5 kg","",""],
+  ["07-31",0,"17.5 × 12 · 17.5 × 11 · 17.5 × 12","",17.5,12,0,"Rep record|17.5 kg × 12|+2 reps","",""],
+  ["08-05",0,"17.5 × 13 · 17.5 × 12 · 17.5 × 12","",17.5,13,0,"Rep record|17.5 kg × 13|+1 rep","",""],
+  ["08-17",0,"17.5 × 15 · 17.5 × 15 · 17.5 × 15","",17.5,15,0,"Rep record|17.5 kg × 15|+2 reps","",""],
+  ["08-21",0,"20 × 10 · 20 × 10 · 20 × 9","",20.0,10,0,"Heaviest weight|20 kg × 10|+2.5 kg","",""],
+  ["08-26",0,"20 × 12 · 20 × 11 · 20 × 11","",20.0,12,0,"Rep record|20 kg × 12|+2 reps","",""],
+  ["08-31",0,"20 × 14 · 20 × 14 · 20 × 12","",20.0,14,0,"Rep record|20 kg × 14|+2 reps","",""],
+  ["09-04",0,"20 × 15 · 20 × 15 · 20 × 15","",20.0,15,0,"Rep record|20 kg × 15|+1 rep","",""],
+  ["09-09",0,"22.5 × 10 · 22.5 × 9 · 22.5 × 9","",22.5,10,0,"Heaviest weight|22.5 kg × 10|+2.5 kg","",""],
+  ["09-14",0,"22.5 × 11 · 22.5 × 10 · 22.5 × 9","",22.5,11,0,"Rep record|22.5 kg × 11|+1 rep","",""],
+  ["09-23",1,"20 × 13 · 20 × 12","",20.0,13,0,"","",""],
+  ["09-28",0,"22.5 × 15 · 22.5 × 15 · 22.5 × 15","",22.5,15,0,"Rep record|22.5 kg × 15|+4 reps","",""],
+  ["10-02",0,"25 × 10 · 25 × 10 · 25 × 10","",25.0,10,0,"Heaviest weight|25 kg × 10|+2.5 kg","",""],
+  ["10-07",0,"25 × 12 · 25 × 12 · 25 × 11","",25.0,12,0,"Rep record|25 kg × 12|+2 reps","","Right elbow sore on pull-downs, dropped the weight."],
+  ["10-12",0,"25 × 13 · 25 × 13 · 25 × 12","",25.0,13,0,"Rep record|25 kg × 13|+1 rep","",""],
+]}),
+"hyper-extension": Object.assign({"n":"Hyper-extension","w":"B","k":"bodyweight","ps":"3 × 10–15","e1":false,"v":"moving","why":"1 record(s) in the last 4 sessions","ns":{"repsAtTop":33,"target":45,"at":"BW+5","ready":false},"rec":{"Heaviest added load":"BW+5 × 12 · Wed 7 Oct","Most reps, bodyweight only":"15 · Mon 13 Jul","Most reps at BW+5":"12 · Wed 7 Oct"}}, {p: [
+  ["06-24",0,"BW × 10 · BW × 10 · BW × 10","",0.0,10,0,"","",""],
+  ["06-29",0,"BW × 10 · BW × 9 · BW × 10","",0.0,10,0,"","",""],
+  ["07-03",0,"BW × 12 · BW × 11 · BW × 11","",0.0,12,0,"Rep record|BW × 12|+2 reps","",""],
+  ["07-08",0,"BW × 14 · BW × 13 · BW × 13","",0.0,14,0,"Rep record|BW × 14|+2 reps","",""],
+  ["07-13",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"Rep record|BW × 15|+1 rep","",""],
+  ["07-17",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["07-22",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["07-27",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["07-31",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["08-05",0,"BW × 15 · BW × 14 · BW × 14","",0.0,15,0,"","",""],
+  ["08-17",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["08-21",0,"BW × 15 · BW × 15 · BW × 14","",0.0,15,0,"","",""],
+  ["08-26",0,"BW × 15 · BW × 14 · BW × 15","",0.0,15,0,"","",""],
+  ["08-31",0,"BW × 15 · BW × 15 · BW × 14","",0.0,15,0,"","",""],
+  ["09-04",0,"BW × 15 · BW × 15 · BW × 14","",0.0,15,0,"","",""],
+  ["09-09",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["09-14",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["09-23",1,"BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["09-28",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["10-02",0,"BW × 15 · BW × 15 · BW × 15","",0.0,15,0,"","",""],
+  ["10-07",0,"BW+5 × 12 · BW+5 × 11 · BW+5 × 10","",5.0,12,0,"First added load|BW+5 × 12|+5 kg","","Right elbow sore on pull-downs, dropped the weight."],
+  ["10-12",0,"BW+5 × 12 · BW+5 × 11 · BW+5 × 10","",5.0,12,0,"","",""],
+]}),
+"seated-biceps-curls": Object.assign({"n":"Seated biceps curls","w":"B","k":"loaded","ps":"3 × 10–12","e1":false,"v":"moving","why":"4 record(s) in the last 4 sessions","ns":{"repsAtTop":36,"target":36,"at":"14 kg","ready":true},"rec":{"Heaviest set":"14 kg × 12 · Mon 12 Oct"}}, {p: [
+  ["06-24",0,"8 × 10 · 8 × 10 · 8 × 9","",8.0,10,0,"","",""],
+  ["06-29",0,"8 × 11 · 8 × 10 · 8 × 10","",8.0,11,0,"Rep record|8 kg × 11|+1 rep","",""],
+  ["07-03",0,"8 × 12 · 8 × 12 · 8 × 12","",8.0,12,0,"Rep record|8 kg × 12|+1 rep","",""],
+  ["07-08",0,"9 × 10 · 9 × 10 · 9 × 9","",9.0,10,0,"Heaviest weight|9 kg × 10|+1 kg","",""],
+  ["07-13",0,"9 × 11 · 9 × 11 · 9 × 10","",9.0,11,0,"Rep record|9 kg × 11|+1 rep","",""],
+  ["07-17",0,"9 × 12 · 9 × 12 · 9 × 12","",9.0,12,0,"Rep record|9 kg × 12|+1 rep","",""],
+  ["07-22",0,"10 × 10 · 10 × 9 · 10 × 8","",10.0,10,0,"Heaviest weight|10 kg × 10|+1 kg","",""],
+  ["07-27",0,"10 × 11 · 10 × 10 · 10 × 11","",10.0,11,0,"Rep record|10 kg × 11|+1 rep","",""],
+  ["07-31",0,"10 × 12 · 10 × 12 · 10 × 12","",10.0,12,0,"Rep record|10 kg × 12|+1 rep","",""],
+  ["08-05",0,"11 × 10 · 11 × 9 · 11 × 10","",11.0,10,0,"Heaviest weight|11 kg × 10|+1 kg","",""],
+  ["08-17",0,"11 × 11 · 11 × 11 · 11 × 10","",11.0,11,0,"Rep record|11 kg × 11|+1 rep","",""],
+  ["08-21",0,"11 × 12 · 11 × 12 · 11 × 12","",11.0,12,0,"Rep record|11 kg × 12|+1 rep","",""],
+  ["08-26",0,"12 × 10 · 12 × 10 · 12 × 9","",12.0,10,0,"Heaviest weight|12 kg × 10|+1 kg","",""],
+  ["08-31",0,"12 × 11 · 12 × 11 · 12 × 11","",12.0,11,0,"Rep record|12 kg × 11|+1 rep","",""],
+  ["09-04",0,"12 × 12 · 12 × 12 · 12 × 12","",12.0,12,0,"Rep record|12 kg × 12|+1 rep","",""],
+  ["09-09",0,"13 × 10 · 13 × 9 · 13 × 10","",13.0,10,0,"Heaviest weight|13 kg × 10|+1 kg","",""],
+  ["09-14",0,"13 × 10 · 13 × 10 · 13 × 9","",13.0,10,0,"","",""],
+  ["09-23",1,"11 × 11 · 11 × 11","",11,11,0,"","",""],
+  ["09-28",0,"13 × 12 · 13 × 12 · 13 × 12","",13.0,12,0,"Rep record|13 kg × 12|+2 reps","",""],
+  ["10-02",0,"14 × 10 · 14 × 9 · 14 × 10","",14.0,10,0,"Heaviest weight|14 kg × 10|+1 kg","",""],
+  ["10-07",0,"14 × 11 · 14 × 10 · 14 × 10","",14.0,11,0,"Rep record|14 kg × 11|+1 rep","","Right elbow sore on pull-downs, dropped the weight."],
+  ["10-12",0,"14 × 12 · 14 × 12 · 14 × 12","",14.0,12,0,"Rep record|14 kg × 12|+1 rep","",""],
+]}),
+},
+sessions: [
+  ["06-22","A",71,24,2,2632,30,[],0,""],
+  ["06-24","B",66,23,1,4758,49,[],0,""],
+  ["06-26","A",71,23,2,2869,32,["Back squat · Rep record · 50 kg × 8 · +1 rep","Lunges · Rep record · 7 kg × 11 · +1 rep","Lateral raises · Rep record · 3 kg × 11 · +1 rep","Cable push-down · Rep record · 17.5 kg × 11 · +1 rep"],0,""],
+  ["06-29","B",67,23,1,5047,52,["Assisted pull-ups · Rep record · BW−27 × 6 · +1 rep","Narrow-grip pull-down · Rep record · 41.25 kg × 11 · +1 rep","Machine row · Rep record · 50 kg × 9 · +1 rep","Face pull · Rep record · 15 kg × 11 · +1 rep","Seated biceps curls · Rep record · 8 kg × 11 · +1 rep"],0,""],
+  ["07-01","A",70,23,2,3064,34,["Back squat · Rep record · 50 kg × 9 · +1 rep","Lunges · Rep record · 7 kg × 12 · +1 rep","DB bench press · Rep record · 10 kg × 9 · +1 rep","Push-ups · Rep record · BW × 12 · +1 rep","Lateral raises · Rep record · 3 kg × 13 · +2 reps","Cable push-down · Rep record · 17.5 kg × 12 · +1 rep"],0,"Gym crowded, did push-ups on the floor."],
+  ["07-03","B",67,23,1,5738,61,["Deadlift · Rep record · 55 kg × 9 · +1 rep","Assisted pull-ups · Rep record · BW−27 × 7 · +1 rep","Narrow-grip pull-down · Rep record · 41.25 kg × 12 · +1 rep","Machine row · Rep record · 50 kg × 10 · +1 rep","Face pull · Rep record · 15 kg × 12 · +1 rep","Hyper-extension · Rep record · BW × 12 · +2 reps","Seated biceps curls · Rep record · 8 kg × 12 · +1 rep"],0,""],
+  ["07-06","A",71,23,2,3303,42,["Back squat · Rep record · 50 kg × 10 · +1 rep","DB bench press · Rep record · 10 kg × 10 · +1 rep","Push-ups · Rep record · BW × 15 · +3 reps","Machine shoulder press · Rep record · 5 kg × 9 · +1 rep","Lateral raises · Rep record · 3 kg × 14 · +1 rep","Cable push-down · Rep record · 17.5 kg × 13 · +1 rep"],0,""],
+  ["07-08","B",68,23,1,5206,71,["Deadlift · Rep record · 55 kg × 10 · +1 rep","Assisted pull-ups · Rep record · BW−27 × 8 · +1 rep","Narrow-grip pull-down · Heaviest weight · 42.5 kg × 10 · +1.25 kg","Machine row · Heaviest weight · 55 kg × 8 · +5 kg","Face pull · Rep record · 15 kg × 13 · +1 rep","Hyper-extension · Rep record · BW × 14 · +2 reps","Seated biceps curls · Heaviest weight · 9 kg × 10 · +1 kg"],0,""],
+  ["07-10","A",72,24,2,3258,45,["Lunges · Heaviest weight · 8 kg × 10 · +1 kg","DB bench press · Heaviest weight · 11 kg × 8 · +1 kg","Lateral raises · Rep record · 3 kg × 15 · +1 rep","Cable push-down · Heaviest weight · 20 kg × 10 · +2.5 kg"],0,""],
+  ["07-13","B",66,23,1,5276,77,["Deadlift · Heaviest weight · 57.5 kg × 8 · +2.5 kg","Narrow-grip pull-down · Rep record · 42.5 kg × 11 · +1 rep","Hyper-extension · Rep record · BW × 15 · +1 rep","Seated biceps curls · Rep record · 9 kg × 11 · +1 rep"],0,""],
+  ["07-15","A",73,24,2,3157,43,["Back squat · Heaviest weight · 52.5 kg × 8 · +2.5 kg","Lunges · Rep record · 8 kg × 11 · +1 rep","DB bench press · Rep record · 11 kg × 9 · +1 rep","Machine shoulder press · Rep record · 5 kg × 10 · +1 rep","Lateral raises · Heaviest weight · 4 kg × 10 · +1 kg"],0,""],
+  ["07-17","B",66,23,1,5847,64,["Deadlift · Rep record · 57.5 kg × 9 · +1 rep","Assisted pull-ups · Least assistance · BW−25 × 5 · −2 kg assistance","Narrow-grip pull-down · Rep record · 42.5 kg × 12 · +1 rep","Machine row · Rep record · 55 kg × 9 · +1 rep","Face pull · Rep record · 15 kg × 14 · +1 rep","Seated biceps curls · Rep record · 9 kg × 12 · +1 rep"],0,""],
+  ["07-20","A",68,23,2,3347,43,["Back squat · Rep record · 52.5 kg × 9 · +1 rep","Lunges · Rep record · 8 kg × 12 · +1 rep","DB bench press · Rep record · 11 kg × 10 · +1 rep","Machine shoulder press · Heaviest weight · 6.25 kg × 8 · +1.25 kg","Lateral raises · Rep record · 4 kg × 11 · +1 rep","Cable push-down · Rep record · 20 kg × 11 · +1 rep"],0,""],
+  ["07-22","B",67,23,1,5883,68,["Deadlift · Rep record · 57.5 kg × 10 · +1 rep","Assisted pull-ups · Rep record · BW−25 × 6 · +1 rep","Narrow-grip pull-down · Heaviest weight · 43.75 kg × 10 · +1.25 kg","Machine row · Rep record · 55 kg × 10 · +1 rep","Face pull · Rep record · 15 kg × 15 · +1 rep","Seated biceps curls · Heaviest weight · 10 kg × 10 · +1 kg"],0,""],
+  ["07-24","A",70,23,2,3583,45,["Back squat · Rep record · 52.5 kg × 10 · +1 rep","DB bench press · Heaviest weight · 12 kg × 8 · +1 kg","Push-ups · Rep record · BW × 16 · +1 rep","Machine shoulder press · Rep record · 6.25 kg × 9 · +1 rep","Lateral raises · Rep record · 4 kg × 12 · +1 rep","Cable push-down · Rep record · 20 kg × 12 · +1 rep"],0,""],
+  ["07-27","B",66,23,1,6096,72,["Assisted pull-ups · Rep record · BW−25 × 7 · +1 rep","Narrow-grip pull-down · Rep record · 43.75 kg × 11 · +1 rep","Face pull · Heaviest weight · 17.5 kg × 10 · +2.5 kg","Seated biceps curls · Rep record · 10 kg × 11 · +1 rep"],0,""],
+  ["07-29","A",69,24,2,3355,45,["Back squat · Heaviest weight · 55 kg × 7 · +2.5 kg","Lunges · Heaviest weight · 9 kg × 10 · +1 kg","DB bench press · Rep record · 12 kg × 9 · +1 rep","Machine shoulder press · Rep record · 6.25 kg × 10 · +1 rep","Lateral raises · Rep record · 4 kg × 14 · +2 reps","Cable push-down · Heaviest weight · 22.5 kg × 11 · +2.5 kg"],0,""],
+  ["07-31","B",68,23,1,5688,76,["Deadlift · Heaviest weight · 60 kg × 7 · +2.5 kg","Assisted pull-ups · Rep record · BW−25 × 8 · +1 rep","Narrow-grip pull-down · Rep record · 43.75 kg × 12 · +1 rep","Machine row · Heaviest weight · 60 kg × 8 · +5 kg","Face pull · Rep record · 17.5 kg × 12 · +2 reps","Seated biceps curls · Rep record · 10 kg × 12 · +1 rep"],0,""],
+  ["08-03","A",70,23,2,3648,47,["Back squat · Rep record · 55 kg × 9 · +2 reps","Lunges · Rep record · 9 kg × 11 · +1 rep","DB bench press · Rep record · 12 kg × 10 · +1 rep","Push-ups · Rep record · BW × 17 · +1 rep","Machine shoulder press · Heaviest weight · 7.5 kg × 8 · +1.25 kg","Lateral raises · Rep record · 4 kg × 15 · +1 rep"],0,""],
+  ["08-05","B",66,23,1,5532,75,["Deadlift · Rep record · 60 kg × 8 · +1 rep","Narrow-grip pull-down · Heaviest weight · 45 kg × 10 · +1.25 kg","Face pull · Rep record · 17.5 kg × 13 · +1 rep","Seated biceps curls · Heaviest weight · 11 kg × 10 · +1 kg"],0,""],
+  ["08-07","A",68,23,2,3938,45,["Back squat · Rep record · 55 kg × 10 · +1 rep","Lunges · Rep record · 9 kg × 12 · +1 rep","DB bench press · Heaviest weight · 13 kg × 9 · +1 kg","Machine shoulder press · Rep record · 7.5 kg × 9 · +1 rep","Cable push-down · Rep record · 22.5 kg × 12 · +1 rep"],0,""],
+  ["08-17","B",66,23,1,6380,65,["Deadlift · Rep record · 60 kg × 10 · +2 reps","Assisted pull-ups · Least assistance · BW−23 × 5 · −2 kg assistance","Narrow-grip pull-down · Rep record · 45 kg × 11 · +1 rep","Machine row · Rep record · 60 kg × 9 · +1 rep","Face pull · Rep record · 17.5 kg × 15 · +2 reps","Seated biceps curls · Rep record · 11 kg × 11 · +1 rep"],0,""],
+  ["08-19","A",67,23,2,3656,46,["Back squat · Heaviest weight · 57.5 kg × 8 · +2.5 kg","Lunges · Heaviest weight · 10 kg × 10 · +1 kg","Machine shoulder press · Rep record · 7.5 kg × 10 · +1 rep","Lateral raises · Heaviest weight · 5 kg × 10 · +1 kg","Cable push-down · Heaviest weight · 25 kg × 11 · +2.5 kg"],0,""],
+  ["08-21","B",66,23,1,5891,67,["Deadlift · Heaviest weight · 62.5 kg × 8 · +2.5 kg","Assisted pull-ups · Rep record · BW−23 × 6 · +1 rep","Face pull · Heaviest weight · 20 kg × 10 · +2.5 kg","Seated biceps curls · Rep record · 11 kg × 12 · +1 rep"],0,""],
+  ["08-24","A",68,23,2,3555,47,["Lunges · Rep record · 10 kg × 11 · +1 rep","Machine shoulder press · Heaviest weight · 8.75 kg × 8 · +1.25 kg","Lateral raises · Rep record · 5 kg × 12 · +2 reps"],0,""],
+  ["08-26","B",65,23,1,6573,70,["Assisted pull-ups · Rep record · BW−23 × 7 · +1 rep","Narrow-grip pull-down · Rep record · 45 kg × 12 · +1 rep","Machine row · Rep record · 60 kg × 10 · +1 rep","Face pull · Rep record · 20 kg × 12 · +2 reps","Seated biceps curls · Heaviest weight · 12 kg × 10 · +1 kg"],0,""],
+  ["08-28","A",71,24,2,3991,45,["Back squat · Rep record · 57.5 kg × 9 · +1 rep","Lunges · Rep record · 10 kg × 12 · +1 rep","Machine shoulder press · Rep record · 8.75 kg × 9 · +1 rep","Lateral raises · Rep record · 5 kg × 13 · +1 rep","Cable push-down · Rep record · 25 kg × 13 · +2 reps"],0,""],
+  ["08-31","B",65,23,1,6374,69,["Deadlift · Rep record · 62.5 kg × 10 · +2 reps","Narrow-grip pull-down · Heaviest weight · 46.25 kg × 10 · +1.25 kg","Machine row · Heaviest weight · 65 kg × 8 · +5 kg","Face pull · Rep record · 20 kg × 14 · +2 reps","Seated biceps curls · Rep record · 12 kg × 11 · +1 rep"],0,""],
+  ["09-02","A",73,23,2,3863,44,["Lunges · Heaviest weight · 11 kg × 10 · +1 kg","Machine shoulder press · Rep record · 8.75 kg × 10 · +1 rep","Lateral raises · Rep record · 5 kg × 14 · +1 rep","Cable push-down · Heaviest weight · 27.5 kg × 10 · +2.5 kg"],0,""],
+  ["09-04","B",67,23,1,6612,76,["Deadlift · Heaviest weight · 65 kg × 8 · +2.5 kg","Assisted pull-ups · Rep record · BW−23 × 8 · +1 rep","Narrow-grip pull-down · Rep record · 46.25 kg × 11 · +1 rep","Machine row · Rep record · 65 kg × 9 · +1 rep","Face pull · Rep record · 20 kg × 15 · +1 rep","Seated biceps curls · Rep record · 12 kg × 12 · +1 rep"],0,""],
+  ["09-07","A",70,23,2,4123,47,["Back squat · Rep record · 57.5 kg × 10 · +1 rep","Lunges · Rep record · 11 kg × 11 · +1 rep","Lateral raises · Rep record · 5 kg × 15 · +1 rep","Cable push-down · Rep record · 27.5 kg × 11 · +1 rep"],0,""],
+  ["09-09","B",63,23,1,6751,64,["Assisted pull-ups · Least assistance · BW−21 × 5 · −2 kg assistance","Narrow-grip pull-down · Rep record · 46.25 kg × 12 · +1 rep","Machine row · Rep record · 65 kg × 10 · +1 rep","Face pull · Heaviest weight · 22.5 kg × 10 · +2.5 kg","Seated biceps curls · Heaviest weight · 13 kg × 10 · +1 kg"],0,""],
+  ["09-11","A",70,23,2,4092,47,["Machine shoulder press · Heaviest weight · 10 kg × 8 · +1.25 kg","Lateral raises · Heaviest weight · 6 kg × 10 · +1 kg","Cable push-down · Rep record · 27.5 kg × 12 · +1 rep"],0,""],
+  ["09-14","B",66,23,1,6537,65,["Deadlift · Rep record · 65 kg × 9 · +1 rep","Machine row · Heaviest weight · 70 kg × 8 · +5 kg","Face pull · Rep record · 22.5 kg × 11 · +1 rep"],0,""],
+  ["09-21","A",58,16,2,2618,30,[],1,"Deload week, back from being sick."],
+  ["09-23","B",54,16,1,4082,48,[],1,""],
+  ["09-25","A",56,16,2,2464,30,[],1,""],
+  ["09-28","B",65,23,1,6941,72,["Deadlift · Heaviest weight · 67.5 kg × 8 · +2.5 kg","Assisted pull-ups · Rep record · BW−21 × 7 · +2 reps","Narrow-grip pull-down · Heaviest weight · 47.5 kg × 10 · +1.25 kg","Machine row · Rep record · 70 kg × 9 · +1 rep","Face pull · Rep record · 22.5 kg × 15 · +4 reps","Seated biceps curls · Rep record · 13 kg × 12 · +2 reps"],0,""],
+  ["09-30","A",70,23,2,3917,47,["Back squat · Heaviest weight · 60 kg × 7 · +2.5 kg","Lunges · Heaviest weight · 12 kg × 11 · +1 kg","Machine shoulder press · Heaviest weight · 11.25 kg × 8 · +1.25 kg","Lateral raises · Rep record · 6 kg × 14 · +4 reps","Cable push-down · Heaviest weight · 30 kg × 10 · +2.5 kg"],0,"Left shoulder a bit tight on bench."],
+  ["10-02","B",66,23,1,6961,77,["Deadlift · Rep record · 67.5 kg × 9 · +1 rep","Assisted pull-ups · Rep record · BW−21 × 8 · +1 rep","Machine row · Rep record · 70 kg × 10 · +1 rep","Face pull · Heaviest weight · 25 kg × 10 · +2.5 kg","Seated biceps curls · Heaviest weight · 14 kg × 10 · +1 kg"],0,""],
+  ["10-05","A",70,23,2,4311,47,["Back squat · Rep record · 60 kg × 9 · +2 reps","Lunges · Rep record · 12 kg × 12 · +1 rep","Machine shoulder press · Rep record · 11.25 kg × 9 · +1 rep","Lateral raises · Rep record · 6 kg × 15 · +1 rep","Cable push-down · Rep record · 30 kg × 11 · +1 rep"],0,""],
+  ["10-07","B",66,23,1,6929,53,["Deadlift · Rep record · 67.5 kg × 10 · +1 rep","Assisted pull-ups · Least assistance · BW−19 × 5 · −2 kg assistance","Machine row · Heaviest weight · 75 kg × 8 · +5 kg","Face pull · Rep record · 25 kg × 12 · +2 reps","Hyper-extension · First added load · BW+5 × 12 · +5 kg","Seated biceps curls · Rep record · 14 kg × 11 · +1 rep"],0,"Right elbow sore on pull-downs, dropped the weight."],
+  ["10-09","A",71,23,2,4669,47,["Back squat · Rep record · 60 kg × 10 · +1 rep","Machine shoulder press · Rep record · 11.25 kg × 10 · +1 rep","Lateral raises · Heaviest weight · 7 kg × 10 · +1 kg","Cable push-down · Rep record · 30 kg × 12 · +1 rep"],0,""],
+  ["10-12","B",66,23,1,6815,56,["Deadlift · Heaviest weight · 70 kg × 7 · +2.5 kg","Assisted pull-ups · Rep record · BW−19 × 6 · +1 rep","Machine row · Rep record · 75 kg × 9 · +1 rep","Face pull · Rep record · 25 kg × 13 · +1 rep","Seated biceps curls · Rep record · 14 kg × 12 · +1 rep"],0,""],
+  ["10-14","A",71,24,2,4185,44,["Back squat · Heaviest weight · 62.5 kg × 8 · +2.5 kg","Lunges · Heaviest weight · 13 kg × 10 · +1 kg","Machine shoulder press · Heaviest weight · 12.5 kg × 8 · +1.25 kg","Cable push-down · Heaviest weight · 32.5 kg × 10 · +2.5 kg"],0,""],
+],
+weeks: [
+  ["06-22",3,70,0,{"chest":14.0,"shoulders":24.5,"triceps":16.0,"lats":12.5,"middle back":8.5,"biceps":6.5,"quadriceps":15.5,"hamstrings":10.0,"glutes":10.0,"calves":8.5,"lower back":10.0,"abdominals":2.0,"forearms":3.5,"traps":1.5}],
+  ["06-29",3,69,0,{"chest":7.0,"shoulders":18.5,"triceps":8.0,"lats":25.0,"middle back":17.0,"biceps":13.0,"quadriceps":10.0,"hamstrings":9.5,"glutes":9.5,"calves":6.5,"lower back":14.0,"abdominals":4.0,"forearms":7.0,"traps":3.0}],
+  ["07-06",3,70,0,{"chest":14.0,"shoulders":24.5,"triceps":16.0,"lats":12.5,"middle back":8.5,"biceps":6.5,"quadriceps":15.5,"hamstrings":10.0,"glutes":10.0,"calves":8.5,"lower back":10.0,"abdominals":2.0,"forearms":3.5,"traps":1.5}],
+  ["07-13",3,70,0,{"chest":7.0,"shoulders":19.5,"triceps":8.0,"lats":25.0,"middle back":17.0,"biceps":13.0,"quadriceps":10.0,"hamstrings":9.5,"glutes":9.5,"calves":6.5,"lower back":14.0,"abdominals":4.0,"forearms":7.0,"traps":3.0}],
+  ["07-20",3,69,0,{"chest":14.0,"shoulders":23.5,"triceps":16.0,"lats":12.5,"middle back":8.5,"biceps":6.5,"quadriceps":15.5,"hamstrings":10.0,"glutes":10.0,"calves":8.5,"lower back":10.0,"abdominals":2.0,"forearms":3.5,"traps":1.5}],
+  ["07-27",3,70,0,{"chest":7.0,"shoulders":19.5,"triceps":8.0,"lats":25.0,"middle back":17.0,"biceps":13.0,"quadriceps":10.0,"hamstrings":9.5,"glutes":9.5,"calves":6.5,"lower back":14.0,"abdominals":4.0,"forearms":7.0,"traps":3.0}],
+  ["08-03",3,69,0,{"chest":14.0,"shoulders":23.5,"triceps":16.0,"lats":12.5,"middle back":8.5,"biceps":6.5,"quadriceps":15.5,"hamstrings":10.0,"glutes":10.0,"calves":8.5,"lower back":10.0,"abdominals":2.0,"forearms":3.5,"traps":1.5}],
+  ["08-10",0,0,0,{"chest":0,"shoulders":0,"triceps":0,"lats":0,"middle back":0,"biceps":0,"quadriceps":0,"hamstrings":0,"glutes":0,"calves":0,"lower back":0,"abdominals":0,"forearms":0,"traps":0}],
+  ["08-17",3,69,0,{"chest":7.0,"shoulders":18.5,"triceps":8.0,"lats":25.0,"middle back":17.0,"biceps":13.0,"quadriceps":10.0,"hamstrings":9.5,"glutes":9.5,"calves":6.5,"lower back":14.0,"abdominals":4.0,"forearms":7.0,"traps":3.0}],
+  ["08-24",3,70,0,{"chest":14.0,"shoulders":24.5,"triceps":16.0,"lats":12.5,"middle back":8.5,"biceps":6.5,"quadriceps":15.5,"hamstrings":10.0,"glutes":10.0,"calves":8.5,"lower back":10.0,"abdominals":2.0,"forearms":3.5,"traps":1.5}],
+  ["08-31",3,69,0,{"chest":7.0,"shoulders":18.5,"triceps":8.0,"lats":25.0,"middle back":17.0,"biceps":13.0,"quadriceps":10.0,"hamstrings":9.5,"glutes":9.5,"calves":6.5,"lower back":14.0,"abdominals":4.0,"forearms":7.0,"traps":3.0}],
+  ["09-07",3,69,0,{"chest":14.0,"shoulders":23.5,"triceps":16.0,"lats":12.5,"middle back":8.5,"biceps":6.5,"quadriceps":15.5,"hamstrings":10.0,"glutes":10.0,"calves":8.5,"lower back":10.0,"abdominals":2.0,"forearms":3.5,"traps":1.5}],
+  ["09-14",1,23,0,{"chest":0.0,"shoulders":4.5,"triceps":0.0,"lats":12.5,"middle back":8.5,"biceps":6.5,"quadriceps":1.5,"hamstrings":3.0,"glutes":3.0,"calves":1.5,"lower back":6.0,"abdominals":2.0,"forearms":3.5,"traps":1.5}],
+  ["09-21",3,48,1,{"chest":10.0,"shoulders":16.0,"triceps":11.0,"lats":9.0,"middle back":6.0,"biceps":4.5,"quadriceps":11.0,"hamstrings":7.0,"glutes":7.0,"calves":6.0,"lower back":7.0,"abdominals":1.5,"forearms":2.5,"traps":1.0}],
+  ["09-28",3,69,0,{"chest":7.0,"shoulders":18.5,"triceps":8.0,"lats":25.0,"middle back":17.0,"biceps":13.0,"quadriceps":10.0,"hamstrings":9.5,"glutes":9.5,"calves":6.5,"lower back":14.0,"abdominals":4.0,"forearms":7.0,"traps":3.0}],
+  ["10-05",3,69,0,{"chest":14.0,"shoulders":23.5,"triceps":16.0,"lats":12.5,"middle back":8.5,"biceps":6.5,"quadriceps":15.5,"hamstrings":10.0,"glutes":10.0,"calves":8.5,"lower back":10.0,"abdominals":2.0,"forearms":3.5,"traps":1.5}],
+  ["10-12",2,47,0,{"chest":7.0,"shoulders":15.0,"triceps":8.0,"lats":12.5,"middle back":8.5,"biceps":6.5,"quadriceps":8.5,"hamstrings":6.5,"glutes":6.5,"calves":5.0,"lower back":8.0,"abdominals":2.0,"forearms":3.5,"traps":1.5}],
+],
+plan: {"chest":10.5,"shoulders":21.0,"triceps":12.0,"lats":18.75,"middle back":12.75,"biceps":9.75,"quadriceps":12.75,"hamstrings":9.75,"glutes":9.75,"calves":7.5,"lower back":12.0,"abdominals":3.0,"forearms":5.25,"traps":2.25}
+};
+</script>
+<script>
+'use strict';
+/* ================= data prep ================= */
+const ORDER = Object.keys(D.lifts);
+const LIFTS = {};
+ORDER.forEach(id => {
+  const l = D.lifts[id];
+  LIFTS[id] = { id, name: l.n, w: l.w, kind: l.k, presc: l.ps, e1: l.e1, verdict: l.v, why: l.why, ns: l.ns, rec: l.rec,
+    pts: l.p.map(a => ({ md: a[0], dl: !!a[1], sets: a[2], wu: a[3], lv: a[4], r: a[5], e1: a[6] || null,
+      pr: a[7] ? (([k, t, g]) => ({ kind: k, text: t, gain: g }))(a[7].split('|')) : null, also: a[8], note: a[9] })) };
+});
+const SESS = D.sessions.map(a => ({ md: a[0], w: a[1], dur: a[2], ws: a[3], wu: a[4], kg: a[5], bwr: a[6], prs: a[7], dl: !!a[8], note: a[9] }));
+const WEEKS = D.weeks.map(a => ({ md: a[0], n: a[1], ws: a[2], dl: !!a[3], ms: a[4] }));
+/* lift → muscles, from the app's exercise library (src/data/library/exercises.json): [primary], [secondary] */
+const MAP = {
+  'back-squat': [['quadriceps'], ['calves', 'glutes', 'hamstrings', 'lower back']],
+  'lunges': [['quadriceps'], ['calves', 'glutes', 'hamstrings']],
+  'db-bench-press': [['chest'], ['shoulders', 'triceps']],
+  'push-ups': [['chest'], ['shoulders', 'triceps']],
+  'machine-shoulder-press': [['shoulders'], ['triceps']],
+  'lateral-raises': [['shoulders'], []],
+  'cable-push-down': [['triceps'], []],
+  'deadlift': [['lower back'], ['calves', 'forearms', 'glutes', 'hamstrings', 'lats', 'middle back', 'quadriceps', 'traps']],
+  'assisted-pull-ups': [['lats'], ['abdominals', 'forearms', 'middle back']],
+  'narrow-grip-pull-down': [['lats'], ['biceps', 'middle back', 'shoulders']],
+  'machine-row': [['lats'], ['biceps', 'middle back']],
+  'face-pull': [['shoulders'], ['middle back']],
+  'hyper-extension': [['lower back'], ['glutes', 'hamstrings']],
+  'seated-biceps-curls': [['biceps'], []]
+};
+const M12 = ['chest', 'shoulders', 'triceps', 'lats', 'middle back', 'biceps', 'quadriceps', 'hamstrings', 'glutes', 'calves', 'lower back', 'abdominals'];
+const MN = { chest: 'Chest', shoulders: 'Shoulders', triceps: 'Triceps', lats: 'Lats', 'middle back': 'Mid back', biceps: 'Biceps', quadriceps: 'Quads', hamstrings: 'Hamstrings', glutes: 'Glutes', calves: 'Calves', 'lower back': 'Lower back', abdominals: 'Abs' };
+/* attention sort: slipping, stalled, ready (computed from the data), then a fixed reading order for the rest */
+const REST_ORDER = ['back-squat', 'deadlift', 'machine-row', 'machine-shoulder-press', 'assisted-pull-ups', 'lunges', 'lateral-raises', 'cable-push-down', 'face-pull', 'hyper-extension', 'db-bench-press', 'push-ups', 'narrow-grip-pull-down', 'seated-biceps-curls'];
+const ATT = (() => {
+  const v = k => ORDER.filter(id => D.lifts[id].v === k), ready = ORDER.filter(id => D.lifts[id].ns.ready && D.lifts[id].v === 'moving');
+  const head = [...v('slipping'), ...v('stalled'), ...ready];
+  return [...head, ...REST_ORDER.filter(id => !head.includes(id))];
+})();
+/* a session note belongs under a lift when it names it */
+const NOTE_KEY = { 'narrow-grip-pull-down': 'pull-down', 'db-bench-press': 'bench', 'push-ups': 'push-ups' };
+const STATES = { full: { cut: '10-14', today: '10-15' }, s3: { cut: '06-26', today: '06-27' }, s1: { cut: '06-22', today: '06-23' }, fresh: { cut: null, today: '10-15' } };
+
+/* ================= helpers ================= */
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WDN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const dnum = md => Date.UTC(2026, +md.slice(0, 2) - 1, +md.slice(3, 5)) / 864e5;
+const dn = p => dnum(p.md);
+const dOf = n => new Date(n * 864e5);
+const lab = md => { const d = dOf(dnum(md)); return WDN[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()]; };
+const shN = n => { const d = dOf(n); return d.getUTCDate() + ' ' + MON[d.getUTCMonth()]; };
+const sh = md => shN(dnum(md));
+const wkStart = n => n - (((n + 3) % 7) + 7) % 7;
+const wkIdx = n => Math.floor((n + 3) / 7);
+const f1 = n => Math.round(n * 10) / 10;
+const num = x => String(+(Math.round(x * 100) / 100));
+const int = n => n.toLocaleString('en-US');
+const half = x => Math.floor(x + 0.5 + 1e-9);
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+let UID = 0;
+
+const cutN = st => STATES[st.ds].cut ? dnum(STATES[st.ds].cut) : -1;
+const ptsFor = (L, st) => L.pts.filter(p => dn(p) <= cutN(st));
+const sessFor = st => SESS.filter(s => dnum(s.md) <= cutN(st));
+const lastND = pts => { for (let i = pts.length - 1; i >= 0; i--) if (!pts[i].dl) return pts[i]; return null; };
+function domainFor(st) {
+  const first = dnum(SESS[0].md);
+  if (st.ds !== 'full') return { s: first - 1, e: first + 27, sparse: true };
+  const e = dnum(STATES[st.ds].today), t = dOf(e);
+  const back = k => Date.UTC(t.getUTCFullYear(), t.getUTCMonth() - k, t.getUTCDate()) / 864e5;
+  if (st.range === '1M') return { s: back(1), e };
+  if (st.range === '3M') return { s: back(3), e };
+  return { s: first - 1, e };
+}
+const inDom = (p, dom) => dn(p) >= dom.s && dn(p) <= dom.e;
+const val = (L, p) => L.id === 'push-ups' ? p.r : p.lv;
+function labV(L, v) {
+  if (L.kind === 'assisted') return 'BW−' + num(-v);
+  if (L.id === 'push-ups') return String(v);
+  if (L.kind === 'bodyweight') return v > 0 ? 'BW+' + num(v) : 'BW';
+  return num(v);
+}
+function tok(L, lv) { if (L.kind === 'assisted') return 'BW−' + num(-lv); if (L.kind === 'bodyweight') return lv > 0 ? 'BW+' + num(lv) : 'BW'; return num(lv); }
+const topC = (L, p) => tok(L, p.lv) + '×' + p.r;
+const topS = (L, p) => (L.kind === 'loaded' ? tok(L, p.lv) + ' kg' : tok(L, p.lv)) + ' × ' + p.r;
+function parseSets(s) { return s.split(' · ').map(t => { const m = t.match(/^(.+?) × (\d+)(?: \((drop|failure)\))?$/); return { lv: m[1], r: +m[2], tag: m[3] || '' }; }); }
+const repsAtTop = (L, p) => parseSets(p.sets).filter(x => x.lv === tok(L, p.lv) && x.tag !== 'drop').map(x => x.r);
+function compactSets(s) {
+  const ps = parseSets(s), main = ps.filter(x => x.tag !== 'drop'), drops = ps.filter(x => x.tag === 'drop');
+  let out = main.every(x => x.lv === main[0].lv) ? main[0].lv + ' × ' + main.map(x => x.r).join(' · ') : main.map(x => x.lv + '×' + x.r).join(' ');
+  drops.forEach(x => out += ' + ' + x.lv + '×' + x.r + ' drop');
+  return out;
+}
+const presc = L => { const m = L.presc.match(/(\d+) × (\d+)–(\d+)/); return { sets: +m[1], lo: +m[2], hi: +m[3] }; };
+function emptyWeeks(dom) { return WEEKS.filter(w => w.n === 0).map(w => dnum(w.md)).filter(n => n + 7 > dom.s && n < dom.e); }
+function segs(pts) { const out = []; let cur = []; pts.forEach((p, i) => { if (i && wkIdx(dn(p)) - wkIdx(dn(pts[i - 1])) > 1) { out.push(cur); cur = []; } cur.push(p); }); if (cur.length) out.push(cur); return out; }
+function verdictInfo(L, st) {
+  if (st.ds === 'full') return { v: L.verdict };
+  const n = ptsFor(L, st).filter(p => !p.dl).length;
+  return n === 0 ? { v: 'none' } : { v: 'new', more: 4 - n };
+}
+function baseFor(L, st) {
+  const nd = ptsFor(L, st).filter(p => !p.dl);
+  if (st.base === '4w') { const lim = dnum(STATES[st.ds].today) - 28; const c = nd.filter(p => dn(p) <= lim); return c[c.length - 1]; }
+  const dom = domainFor(st); return nd.find(p => dn(p) >= dom.s);
+}
+function chg(L, b, n) {
+  if (!b || !n) return '—';
+  const reps = d => (d > 0 ? '▲ +' : '▼ −') + plural(Math.abs(d), 'rep');
+  if (L.id === 'push-ups') { const d = n.r - b.r; return d === 0 ? 'same' : reps(d); }
+  if (n.lv !== b.lv) {
+    if (L.kind === 'assisted') { const d = (-n.lv) - (-b.lv); return (d < 0 ? '▲ −' : '▼ +') + num(Math.abs(d)) + ' kg assist.'; }
+    const d = n.lv - b.lv; return (d > 0 ? '▲ +' : '▼ −') + num(Math.abs(d)) + ' kg';
+  }
+  const d = n.r - b.r; return d === 0 ? 'same' : reps(d);
+}
+/* the lift's weight step = the smallest increase it has ever made; next weight = latest top + step */
+function nextWeight(L) {
+  const lv = [...new Set(L.pts.filter(p => !p.dl).map(p => p.lv))].sort((a, b) => a - b);
+  let step = Infinity; for (let i = 1; i < lv.length; i++) step = Math.min(step, lv[i] - lv[i - 1]);
+  return num(lastND(L.pts).lv + step) + ' kg';
+}
+const readyLift = () => ORDER.map(id => LIFTS[id]).find(L => L.ns.ready);
+/* program schedule facts, computed from the data rather than typed */
+const setsPerSession = w => ORDER.filter(id => LIFTS[id].w === w).reduce((a, id) => a + presc(LIFTS[id]).sets, 0);
+function nextSession(st) {
+  const ss = sessFor(st), last = ss[ss.length - 1], today = dnum(STATES[st.ds].today);
+  if (!last) return { w: 'A', d: null };
+  const w = last.w === 'A' ? 'B' : 'A', later = SESS.find(s => dnum(s.md) > dnum(last.md));
+  if (later) return { w, d: dnum(later.md) };
+  let d = today + 1; while (![1, 3, 5].includes(dOf(d).getUTCDay())) d++;
+  return { w, d };
+}
+const dayName = n => WDN[dOf(n).getUTCDay()];
+const dayFull = n => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dOf(n).getUTCDay()];
+const labN = n => dayName(n) + ' ' + shN(n);
+/* ruling 11: a delta printed beside a stalled / slipping verdict uses the verdict's own window */
+function lastRecPt(L, st) { const ps = ptsFor(L, st).filter(p => p.pr); return ps[ps.length - 1]; }
+function verdictWin(L, st) {
+  if (st.ds !== 'full') return null;
+  const nd = ptsFor(L, st).filter(p => !p.dl);
+  const now = nd[nd.length - 1];
+  if (L.verdict === 'stalled') {
+    const r = lastRecPt(L, st), c = chg(L, r, now);
+    return { from: r.md, ref: r, txt: c === 'same' ? '= 0 since ' + sh(r.md) : c + ', ' + sh(r.md), status: '■ Stalled · no record since ' + lab(r.md) };
+  }
+  if (L.verdict === 'slipping') {
+    const prior = nd.slice(-6, -2), best = prior.reduce((a, b) => (b.lv > a.lv || (b.lv === a.lv && b.r > a.r)) ? b : a, prior[0]);
+    return { from: best.md, ref: best, txt: chg(L, best, now) + ', last 2', status: '▼ Slipping · last 2 below ' + topS(L, best).replace(' kg', '') };
+  }
+  return null;
+}
+const glyphHTML = s => s.replace(/^([▲▼■○=])/, '<span class="g">$1</span>');
+function l2text(L, info) {
+  if (info.v === 'none') return 'Workout ' + L.w;
+  if (info.v === 'new') return '<span class="g">○</span> Too new · ' + info.more + ' more';
+  const ns = L.ns, at = ns.at.replace(' kg', '');
+  const cnt = L.id === 'push-ups' ? ns.repsAtTop + '/' + ns.target + ' reps' : ns.repsAtTop + '/' + ns.target + ' at ' + at;
+  if (L.verdict === 'stalled') return '<b><span class="g">■</span> Stalled</b> · ' + cnt;
+  if (L.verdict === 'slipping') return '<b><span class="g">▼</span> Slipping</b> · ' + cnt;
+  if (ns.ready) return '<span class="g">▲</span> ' + ns.repsAtTop + '/' + ns.target + ' · Try ' + nextWeight(L) + ' next';
+  return '<span class="g">▲</span> ' + cnt;
+}
+const ring = (cx, cy, r, fill, bg) => `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${r + 1.5}" style="fill:${bg || 'var(--page)'}"/><circle cx="${f1(cx)}" cy="${f1(cy)}" r="${r}" style="fill:${fill}"/>`;
+const hollow = (cx, cy, r, col, bg) => `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${r}" style="fill:${bg || 'var(--page)'};stroke:${col};stroke-width:1.4"/>`;
+function hatchDef(id) { return `<pattern id="${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" style="fill:var(--gap)"/><line x1="0" y1="0" x2="0" y2="5" style="stroke:var(--context);stroke-width:1.2;stroke-opacity:.55"/></pattern>`; }
+
+/* ================= icons ================= */
+const ICON = {
+  ledger: '<svg width="22" height="22" viewBox="0 0 22 22" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M3 5.5h16M3 11h16M3 16.5h16"/><path d="M12 7.5l2.5 2 2.5-3" /></svg>',
+  sessions: '<svg width="22" height="22" viewBox="0 0 22 22" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><rect x="3" y="4.5" width="16" height="14" rx="2"/><path d="M3 9h16M7.5 2.5v4M14.5 2.5v4"/></svg>',
+  train: '<svg width="22" height="22" viewBox="0 0 22 22" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M6.5 11h9M3.5 8v6M6.5 6.5v9M15.5 6.5v9M18.5 8v6"/></svg>',
+  program: '<svg width="22" height="22" viewBox="0 0 22 22" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M8 6h11M8 11h11M8 16h11"/><circle cx="4" cy="6" r=".9" style="fill:currentColor"/><circle cx="4" cy="11" r=".9" style="fill:currentColor"/><circle cx="4" cy="16" r=".9" style="fill:currentColor"/></svg>'
+};
+const statusBar = () => `<div class="sb"><span class="tm">9:41</span><svg width="72" height="13" viewBox="0 0 72 13" style="fill:var(--ink)"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="6" width="3" height="6" rx="1"/><rect x="9" y="3.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="1" width="3" height="11" rx="1"/><path d="M30.5 11.5l-2-2.2a3 3 0 014 0z"/><path d="M26 7.2a6.5 6.5 0 019 0l-1.3 1.4a4.6 4.6 0 00-6.4 0z"/><path d="M23.5 4.6a10 10 0 0114 0l-1.3 1.4a8 8 0 00-11.4 0z"/><rect x="44" y="1" width="24" height="11.5" rx="3.2" style="fill:none;stroke:var(--ink);stroke-opacity:.45"/><rect x="46" y="3" width="17.5" height="7.5" rx="1.8"/><rect x="69.3" y="4.5" width="1.6" height="4.5" rx=".8" style="fill-opacity:.45"/></svg></div>`;
+function tabbar(st) {
+  const t = [['ledger', 'Ledger'], ['sessions', 'Sessions'], ['train', 'Train'], ['program', 'Program']];
+  return `<div class="tabbar">${t.map(([k, n]) => `<button data-act="tab:${k}" class="${st.tab === k ? 'on' : ''}">${ICON[k]}<span>${n}</span></button>`).join('')}</div>`;
+}
+
+/* ================= sparkline (one row) ================= */
+const SPW = 90, SPH = 55, SPT = 16, SPB = 39, SX0 = 4, SX1 = 86;
+function spark(L, st, dom, emph) {
+  const pts = ptsFor(L, st), inr = pts.filter(p => inDom(p, dom));
+  const X = d => SX0 + (d - dom.s) / (dom.e - dom.s) * (SX1 - SX0);
+  let s = `<svg class="sp" width="${SPW}" height="${SPH}" viewBox="0 0 ${SPW} ${SPH}" data-spark="${L.id}" data-x0="${SX0}" data-x1="${SX1}">`;
+  if (!dom.sparse) for (const w of emptyWeeks(dom)) { const a = Math.max(X(w), 0), b = Math.min(X(w + 7), SPW); if (b > a) s += `<rect x="${f1(a)}" y="0" width="${f1(b - a)}" height="${SPH + 1}" style="fill:var(--gap)"/>`; }
+  let Y = () => (SPT + SPB) / 2;
+  if (inr.length) {
+    const vs = inr.map(p => val(L, p)), mn = Math.min(...vs), mx = Math.max(...vs);
+    const lo = L.id === 'push-ups' ? Math.min(mn, mx - 6) : mn;
+    Y = v => mx === lo ? (SPT + SPB) / 2 : SPB - (v - lo) / (mx - lo) * (SPB - SPT);
+    const win = emph ? verdictWin(L, st) : null;
+    const col = 'var(--context)';
+    const step = L.id !== 'push-ups';
+    const path = seg => { let d = `M${f1(X(dn(seg[0])))} ${f1(Y(val(L, seg[0])))}`; for (let i = 1; i < seg.length; i++) { const xx = f1(X(dn(seg[i]))), yy = f1(Y(val(L, seg[i]))); d += step ? ` H${xx} V${yy}` : ` L${xx} ${yy}`; } return d; };
+    for (const seg0 of segs(inr)) {
+      const seg = seg0.filter(p => !p.dl);
+      if (seg.length < 2) continue;
+      s += `<path d="${path(seg)}" style="fill:none;stroke:${col};stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round"/>`;
+      if (win) { const w = seg.filter(p => dn(p) >= dnum(win.from)); if (w.length > 1) s += `<path d="${path(w)}" style="fill:none;stroke:var(--emph);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round"/>`; }
+    }
+    const sparse = !!dom.sparse;
+    inr.forEach(p => {
+      if (p.dl) s += hollow(X(dn(p)), Y(val(L, p)), 2.2, col);
+      else if (sparse) s += ring(X(dn(p)), Y(val(L, p)), 3, 'var(--ink)');
+    });
+    if (!sparse && !st.scrub) { const last = inr[inr.length - 1]; s += ring(X(dn(last)), Y(val(L, last)), 3, emph ? 'var(--emph)' : 'var(--ink)'); }
+    if (!sparse) { s += `<text x="${SPW}" y="10" class="mm">${labV(L, mx)}</text>`; if (mx !== mn) s += `<text x="${SPW}" y="${f1(Math.min(52, Y(mn) + 14))}" class="mm">${labV(L, mn)}</text>`; }
+  }
+  if (st.scrub && !dom.sparse) {
+    const sx = f1(X(dnum(st.scrub)));
+    s += `<line x1="${sx}" x2="${sx}" y1="-1" y2="${SPH + 1}" style="stroke:var(--sel);stroke-width:1.2"/>`;
+    const p = inr.find(p => p.md === st.scrub); if (p) s += ring(+sx, Y(val(L, p)), 3, 'var(--sel)');
+  }
+  return s + '</svg>';
+}
+/* weekly bar sparkline for the This-week rows */
+function weekSpark(key, dom, st) {
+  const X = d => SX0 + (d - dom.s) / (dom.e - dom.s) * (SX1 - SX0);
+  const ws = WEEKS.filter(w => dnum(w.md) + 7 > dom.s && dnum(w.md) <= dom.e);
+  const mx = key === 'n' ? 3 : Math.max(...WEEKS.map(w => w.ws)), uid = 'h' + (UID++);
+  let s = `<svg class="sp" width="${SPW}" height="${SPH}" viewBox="0 0 ${SPW} ${SPH}"><defs>${hatchDef(uid)}</defs>`;
+  for (const w of emptyWeeks(dom)) { const a = Math.max(X(w), 0), b = Math.min(X(w + 7), SPW); if (b > a) s += `<rect x="${f1(a)}" y="0" width="${f1(b - a)}" height="${SPH + 1}" style="fill:var(--gap)"/>`; }
+  const bw = Math.max(2, Math.min(3, (SX1 - SX0) / ws.length - 3));
+  ws.forEach((w, i) => {
+    const v = w[key], cx = Math.min(Math.max(X(dnum(w.md) + 3.5), SX0 + bw / 2), SX1 - bw / 2), h = v / mx * (SPB - SPT + 6), cur = i === ws.length - 1;
+    if (cur) { const hp = SPB - SPT + 6; s += `<rect x="${f1(cx - bw / 2)}" y="${f1(SPB - hp)}" width="${f1(bw)}" height="${f1(hp)}" style="fill:none;stroke:var(--context);stroke-width:1"/>`; }
+    if (v > 0) s += `<rect x="${f1(cx - bw / 2)}" y="${f1(SPB - h)}" width="${f1(bw)}" height="${f1(h)}" style="fill:${w.dl ? `url(#${uid})` : cur ? 'var(--ink)' : 'var(--context)'}"/>`;
+  });
+  s += `<line x1="0" x2="${SPW}" y1="${SPB + .5}" y2="${SPB + .5}" style="stroke:var(--rule)"/>`;
+  s += `<text x="${SPW}" y="10" class="mm">${mx}</text><text x="${SPW}" y="54" class="mm">0</text>`;
+  return s + '</svg>';
+}
+
+/* ================= expanded chart ================= */
+const CX0 = 60, CX1 = 372;
+function chart(L, st) {
+  const dom = domainFor(st), pts = ptsFor(L, st), P = pts.filter(p => inDom(p, dom));
+  if (!P.length) return '';
+  const uid = 'h' + (UID++);
+  const X = d => CX0 + (d - dom.s) / (dom.e - dom.s) * (CX1 - CX0);
+  const emph = st.ds === 'full' && (L.verdict === 'stalled' || L.verdict === 'slipping');
+  const lc = 'var(--secondary)';
+  const hasE = L.e1 && st.ds === 'full';
+  const hs = hasE ? [72, 30, 28] : [96, 44];
+  const P1t = 34, P1b = P1t + hs[0], P2t = P1b + 26, P2b = P2t + hs[1];
+  const P3t = hasE ? P2b + 26 : 0, P3b = hasE ? P3t + hs[2] : 0;
+  const Bot = hasE ? P3b : P2b, AX = Bot + 16, H = AX + 6;
+  let s = `<svg width="390" height="${H}" viewBox="0 0 390 ${H}" data-chart="${L.id}" data-x0="${CX0}" data-x1="${CX1}" style="touch-action:none"><defs>${hatchDef(uid)}</defs>`;
+  /* bands: holiday, no session of this lift, deload */
+  const bands = [];
+  emptyWeeks(dom).forEach(w => bands.push({ a: w, b: w + 7, k: 'gap', t: 'Holiday' }));
+  const have = new Set(P.map(p => wkIdx(dn(p))));
+  if (P.length > 1) for (let w = wkStart(dn(P[0])); w <= wkStart(dn(P[P.length - 1])); w += 7) {
+    if (!have.has(wkIdx(w)) && !bands.some(b => b.a === w)) bands.push({ a: w, b: w + 7, k: 'gap', t: 'No ' + L.w + ' session' });
+  }
+  const dlp = P.find(p => p.dl); if (dlp) { const w = wkStart(dn(dlp)); bands.push({ a: w, b: w + 7, k: 'dl', t: 'Deload' }); }
+  bands.sort((a, b) => a.a - b.a);
+  let prevR = -1e9, prevBand = null, labs = [];
+  bands.forEach(b => {
+    const a = Math.max(X(b.a), CX0 - 4), e = Math.min(X(b.b), CX1 + 4);
+    if (e <= a) return;
+    s += `<rect x="${f1(a)}" y="16" width="${f1(e - a)}" height="${Bot - 16}" style="fill:${b.k === 'dl' ? `url(#${uid})` : 'var(--gap)'}"/>`;
+    const w = b.t.length * 6.1, c = (a + e) / 2;
+    let lab = { x: c, anchor: 'middle', l: c - w / 2, r: c + w / 2, t: b.t };
+    if (lab.l < prevR + 4 && prevBand) { const prev = labs[labs.length - 1]; prev.x = a - 3; prev.anchor = 'end'; prev.r = a - 3; lab = { x: a + 3, anchor: 'start', l: a + 3, r: a + 3 + w, t: b.t }; }
+    if (lab.r > 388) { lab.x = 388; lab.anchor = 'end'; }
+    labs.push(lab); prevR = lab.r; prevBand = b;
+  });
+  labs.forEach(l => s += `<text x="${f1(l.x)}" y="27" class="ct" style="text-anchor:${l.anchor}">${l.t}</text>`);
+  /* panel 1: the lever */
+  const t1 = L.kind === 'assisted' ? 'Assistance · less is better ↑' : L.id === 'push-ups' ? 'Best set · reps' : L.kind === 'bodyweight' ? 'Added load · kg' : 'Top-set weight · kg';
+  s += `<text x="16" y="12" class="ctk">${t1}</text>`;
+  if (st.ds === 'full' && emph) s += `<text x="374" y="12" class="cti" style="text-anchor:end">${verdictWin(L, st).status}</text>`;
+  const v1 = P.map(p => val(L, p)), mn = Math.min(...v1), mx = Math.max(...v1);
+  const Y1 = v => mx === mn ? (P1t + P1b) / 2 : P1b - 6 - (v - mn) / (mx - mn) * (P1b - P1t - 18);
+  let ticks = [...new Set(v1)].sort((a, b) => a - b);
+  const maxT = Math.floor((P1b - P1t - 18) / 15) + 1;
+  if (ticks.length > maxT) { const k = []; for (let i = ticks.length - 1; i >= 0; i -= 2) k.push(ticks[i]); if (k[k.length - 1] !== ticks[0]) { if (Y1(ticks[0]) - Y1(k[k.length - 1]) < 14) k.pop(); k.push(ticks[0]); } ticks = k; }
+  ticks.forEach(t => { const y = f1(Y1(t)); s += `<line x1="${CX0 - 4}" x2="${CX1}" y1="${y}" y2="${y}" style="stroke:var(--rule)"/><text x="${CX0 - 8}" y="${y + 4}" class="ctn" style="text-anchor:end">${labV(L, t)}</text>`; });
+  const step = L.id !== 'push-ups';
+  const win = emph ? verdictWin(L, st) : null, inWin = p => win && dn(p) >= dnum(win.from);
+  const pth = seg => { let d = `M${f1(X(dn(seg[0])))} ${f1(Y1(val(L, seg[0])))}`; for (let i = 1; i < seg.length; i++) { const xx = f1(X(dn(seg[i]))), yy = f1(Y1(val(L, seg[i]))); d += step ? ` H${xx} V${yy}` : ` L${xx} ${yy}`; } return d; };
+  segs(P).forEach(seg0 => {
+    const seg = seg0.filter(p => !p.dl);
+    if (seg.length < 2) return;
+    s += `<path d="${pth(seg)}" style="fill:none;stroke:var(--secondary);stroke-width:2;stroke-linejoin:round;stroke-linecap:round"/>`;
+    const w = seg.filter(inWin); if (w.length > 1) s += `<path d="${pth(w)}" style="fill:none;stroke:var(--emph);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>`;
+  });
+  P.forEach(p => { const cx = X(dn(p)), cy = Y1(val(L, p)); s += p.dl ? hollow(cx, cy, 3, 'var(--secondary)', 'var(--surface)') : ring(cx, cy, 3, p.md === st.scrub ? 'var(--sel)' : inWin(p) ? 'var(--emph)' : 'var(--secondary)', 'var(--surface)'); });
+  /* in-plot annotation */
+  let ann = null;
+  if (L.id === 'hyper-extension') { const p = P.find(p => p.lv > 0); if (p) ann = { p, t: '+5 kg from ' + lab(p.md) }; }
+  else if (L.kind === 'assisted') { const p = P.find(p => p.lv === mx); if (p && p !== P[0]) ann = { p, t: 'Least assistance · ' + lab(p.md) }; }
+  else { const last = P[P.length - 1]; if (last.pr && last.pr.kind === 'Heaviest weight') ann = { p: last, t: 'Heaviest weight ' + last.pr.gain }; }
+  if (ann && st.ds === 'full') s += `<text x="${f1(X(dn(ann.p)) - 9)}" y="${f1(Y1(val(L, ann.p)) + 4)}" class="cti" style="text-anchor:end">${ann.t}</text>`;
+  /* panel 2: reps per set at the top lever, bars from zero */
+  const pr = presc(L);
+  const allR = P.flatMap(p => repsAtTop(L, p)), rmax = Math.max(pr.hi, ...allR);
+  const Y2 = r => P2b - r / rmax * (P2b - P2t);
+  s += `<text x="16" y="${P2t - 8}" class="ctk">Reps per set at that ${L.kind === 'assisted' ? 'assistance' : L.kind === 'bodyweight' ? 'load' : 'weight'}</text>`;
+  s += `<rect x="${CX0 - 4}" y="${f1(Y2(pr.hi))}" width="${CX1 - CX0 + 4}" height="${f1(Y2(pr.lo) - Y2(pr.hi))}" style="fill:var(--gap)"/>`;
+  s += `<text x="${CX0 - 8}" y="${f1((Y2(pr.hi) + Y2(pr.lo)) / 2 + 4)}" class="ctn" style="text-anchor:end">${pr.lo}–${pr.hi}</text>`;
+  s += `<text x="${CX0 - 8}" y="${P2b + 4}" class="ctn" style="text-anchor:end">0</text>`;
+  if (rmax > pr.hi + 1) s += `<text x="${CX0 - 8}" y="${f1(Y2(rmax) + 4)}" class="ctn" style="text-anchor:end">${rmax}</text>`;
+  let minDx = 1e9; for (let i = 1; i < P.length; i++) minDx = Math.min(minDx, X(dn(P[i])) - X(dn(P[i - 1])));
+  const lastMd = P[P.length - 1].md;
+  P.forEach(p => {
+    const rs = repsAtTop(L, p), n = rs.length, gw = Math.min(minDx * 0.6, 12), bw = Math.min(3, Math.max(1.2, (gw - (n - 1)) / n)), x0 = X(dn(p)) - (n * bw + (n - 1)) / 2;
+    const fill = p.md === st.scrub ? 'var(--sel)' : p.md === lastMd ? lc : 'var(--context)';
+    rs.forEach((r, i) => s += `<rect x="${f1(x0 + i * (bw + 1))}" y="${f1(Y2(r))}" width="${f1(bw)}" height="${f1(P2b - Y2(r))}" style="fill:${fill};fill-opacity:${p.dl ? .4 : p.md === lastMd || p.md === st.scrub ? 1 : .75}"/>`);
+  });
+  s += `<line x1="${CX0 - 4}" x2="${CX1}" y1="${P2b + .5}" y2="${P2b + .5}" style="stroke:var(--context);stroke-width:1"/>`;
+  /* panel 3: e1RM, estimated */
+  if (hasE) {
+    const E = P.filter(p => p.e1), ev = E.map(p => p.e1), emn = Math.min(...ev), emx = Math.max(...ev);
+    const Y3 = v => P3b - 4 - (v - emn) / (emx - emn || 1) * (P3b - P3t - 10);
+    const nd = E.filter(p => !p.dl), last = nd[nd.length - 1], sp = st.scrub && E.find(p => p.md === st.scrub);
+    s += `<text x="16" y="${P3t - 8}" class="ctk">e1RM (estimated) · kg</text><text x="374" y="${P3t - 8}" class="cti" style="text-anchor:end">${sp ? sp.e1.toFixed(1) + ' on ' + lab(sp.md) : last.e1.toFixed(1) + ' latest'}</text>`;
+    [emn, emx].forEach(t => { const y = f1(Y3(t)); s += `<line x1="${CX0 - 4}" x2="${CX1}" y1="${y}" y2="${y}" style="stroke:var(--rule)"/><text x="${CX0 - 8}" y="${y + 4}" class="ctn" style="text-anchor:end">${t.toFixed(1)}</text>`; });
+    segs(E).forEach(seg0 => { const seg = seg0.filter(p => !p.dl); if (seg.length < 2) return; s += `<path d="M${seg.map(p => f1(X(dn(p))) + ' ' + f1(Y3(p.e1))).join(' L')}" style="fill:none;stroke:var(--context);stroke-width:1.5;stroke-linejoin:round"/>`; });
+    E.forEach(p => s += p.dl ? hollow(X(dn(p)), Y3(p.e1), 2.2, 'var(--context)', 'var(--surface)') : ring(X(dn(p)), Y3(p.e1), 2.2, p.md === st.scrub ? 'var(--sel)' : 'var(--context)', 'var(--surface)'));
+  }
+  /* x axis */
+  const days = dom.e - dom.s;
+  if (days > 45) { for (let m = 0; m < 12; m++) { const n = Date.UTC(2026, m, 1) / 864e5; if (n > dom.s + 2 && n < dom.e) s += `<line x1="${f1(X(n))}" x2="${f1(X(n))}" y1="${Bot + 1}" y2="${Bot + 5}" style="stroke:var(--context)"/><text x="${f1(X(n))}" y="${AX}" class="ct" style="text-anchor:middle">${MON[m]}</text>`; } }
+  else { for (let n = wkStart(dom.s) + 7; n < dom.e; n += 7) s += `<line x1="${f1(X(n))}" x2="${f1(X(n))}" y1="${Bot + 1}" y2="${Bot + 5}" style="stroke:var(--context)"/><text x="${f1(X(n))}" y="${AX}" class="ct" style="text-anchor:middle">${shN(n)}</text>`; }
+  /* scrub */
+  if (st.scrub && P.some(p => p.md === st.scrub)) { const x = f1(X(dnum(st.scrub))); s += `<line x1="${x}" x2="${x}" y1="16" y2="${Bot}" style="stroke:var(--sel);stroke-width:1.2"/>`; }
+  s += `<rect x="${CX0 - 8}" y="16" width="${CX1 - CX0 + 16}" height="${Bot - 16}" style="fill:transparent;cursor:crosshair"/>`;
+  return s + '</svg>';
+}
+function miniTable(L, st) {
+  const dom = domainFor(st), P = ptsFor(L, st).filter(p => inDom(p, dom)).slice(-4).reverse();
+  const wu = P.find(p => p.wu);
+  let h = `<div class="mt"><div class="mth"><span>Date</span><span>${wu ? 'Sets · ' + wu.wu.split(' · ').length + ' warm-ups not counted' : 'Working sets · no warm-ups'}</span><span>Record</span></div>`;
+  P.forEach(p => {
+    const k = p.pr ? p.pr.kind : p.dl ? 'Deload' : '—';
+    h += `<div class="mtr${p.md === st.scrub ? ' sel' : ''}" data-act="open:${p.md}"><span>${sh(p.md)}</span><span class="s">${compactSets(p.sets)}</span><span class="k${p.pr ? '' : ' mu'}">${k}</span></div>`;
+    const note = SESS.find(s => s.md === p.md).note;
+    if (note && NOTE_KEY[L.id] && note.toLowerCase().includes(NOTE_KEY[L.id])) h += `<div class="mtn">Note · ${note}</div>`;
+  });
+  return h + '</div>';
+}
+
+/* ================= ledger: lifts ================= */
+function totals(st) {
+  if (st.ds === 'fresh') return `<div class="tot"><div class="v">No sessions yet · A/B Split, 14 lifts</div><div class="s">Each row fills in after its first session · <button class="nx" data-act="tab:train">Start A ›</button></div></div>`;
+  const nx = nextSession(st), nxN = ORDER.filter(id => LIFTS[id].w === nx.w).length;
+  const startB = `<button class="nx" data-act="tab:train">Start ${nx.w} ›</button>`;
+  if (st.ds === 's1') { const n = ORDER.filter(id => ptsFor(LIFTS[id], st).length).length; return `<div class="tot"><div class="v">${n} baselines · verdicts after 4 sessions</div><div class="s">Next: Workout ${nx.w} on ${dayFull(nx.d)} sets ${nxN} more · ${startB}</div></div>`; }
+  if (st.ds === 's3') { const t = dnum(STATES[st.ds].today), n = sessFor(st).filter(s => wkStart(dnum(s.md)) === wkStart(t)).length; return `<div class="tot"><div class="v">${n} of 3 sessions this week</div><div class="s">Verdicts after 4 sessions of a lift · next: ${nx.w}, ${dayName(nx.d)} · ${startB}</div></div>`; }
+  const c = { moving: 0, stalled: 0, slipping: 0 }; ORDER.forEach(id => c[LIFTS[id].verdict]++);
+  const R = readyLift();
+  return `<div class="tot"><div class="v"><button data-act="tot:moving"><span class="g">▲</span> ${c.moving} of ${ORDER.length} moving</button> · <button data-act="tot:stalled"><span class="g">■</span> ${c.stalled} stalled</button> · <button data-act="tot:slipping"><span class="g">▼</span> ${c.slipping} slipping</button></div><div class="s">${R ? R.name + ' is ready: try ' + nextWeight(R) + ' next' : ''}</div></div>`;
+}
+function readout(st) {
+  const L = LIFTS[st.focus], p = ptsFor(L, st).find(p => p.md === st.scrub), s = SESS.find(x => x.md === st.scrub);
+  let h = `<div class="ro"><div class="a"><b>${L.name} · ${lab(st.scrub)} · Workout ${s.w}${s.dl ? ' · deload' : ''}</b></div>`;
+  if (p) {
+    h += `<div class="b"><span class="m">${p.sets.replace(/ \((failure|drop)\)/g, '')}</span></div>`;
+    h += `<div class="c">${p.pr ? p.pr.kind + ' · ' + p.pr.text + ' · ' + p.pr.gain : p.dl ? 'Deload · no records' : 'No record'}${L.e1 && p.e1 ? ' · e1RM ' + p.e1.toFixed(1) + ' (estimated)' : ''}</div>`;
+    h += `<div class="d"><span>${p.wu ? 'Warm-ups ' + p.wu + ' not counted' : 'No warm-ups logged'}</span></div>`;
+  } else h += `<div class="b">No ${L.name} session that day</div><div class="c">Workout ${L.w} lift; Workout ${s.w} on this date</div>`;
+  return h + '</div>';
+}
+const baseLabel = st => st.base === '4w' ? 'vs 4 wk ago' : 'vs ' + shN(Math.max(domainFor(st).s, dnum(SESS[0].md)));
+function colh(st, dom) {
+  if (st.ds === 'fresh') return `<div class="colh"><div>Lift</div><div></div><div class="r">Prescription</div></div>`;
+  const X = d => SX0 + (d - dom.s) / (dom.e - dom.s) * (SX1 - SX0);
+  let ax = `<svg width="${SPW}" height="24" viewBox="0 0 ${SPW} 24">`;
+  if (dom.sparse) ax += `<text x="0" y="16" class="ct">22 Jun</text><text x="${SPW}" y="16" class="ct" style="text-anchor:end">19 Jul</text>`;
+  else {
+    for (const w of emptyWeeks(dom)) { const a = Math.max(X(w), 0), b = Math.min(X(w + 7), SPW); ax += `<rect x="${f1(a)}" y="0" width="${f1(b - a)}" height="25" style="fill:var(--gap)"/>`; }
+    for (let m = 0; m < 12; m++) { const n = Date.UTC(2026, m, 1) / 864e5; if (n > dom.s + 1 && n < dom.e) ax += `<line x1="${f1(X(n))}" x2="${f1(X(n))}" y1="19" y2="24" style="stroke:var(--context)"/><text x="${f1(X(n))}" y="15" class="ct" style="text-anchor:middle">${MON[m]}</text>`; }
+    if (st.scrub) ax += `<line x1="${f1(X(dnum(st.scrub)))}" x2="${f1(X(dnum(st.scrub)))}" y1="18" y2="25" style="stroke:var(--sel);stroke-width:1.2"/>`;
+  }
+  ax += '</svg>';
+  let r = 'Top set';
+  if (st.ds === 'full') r = `<span style="color:var(--secondary)">${baseLabel(st)}</span>`;
+  return `<div class="colh"><div>Lift · next step</div><div>${ax}</div><div class="r">${r}</div></div>`;
+}
+function liftRow(id, st, dom) {
+  const L = LIFTS[id], pts = ptsFor(L, st), info = verdictInfo(L, st), open = st.open === id;
+  const emph = st.ds === 'full' && (L.verdict === 'stalled' || L.verdict === 'slipping');
+  let now, ch = '', nowCls = '';
+  if (st.ds === 'fresh') { now = L.presc; }
+  else if (!pts.length) { now = '—'; nowCls = ' muted'; ch = 'after ' + dayFull(nextSession(st).d); }
+  else if (st.scrub) { const p = pts.find(p => p.md === st.scrub); now = p ? topC(L, p) : '—'; nowCls = p ? '' : ' muted'; ch = p ? (p.pr ? p.pr.kind : p.dl ? 'Deload' : 'no record') : 'no session'; }
+  else if (st.ds !== 'full') { const last = pts[pts.length - 1]; now = topC(L, last); ch = pts.length < 2 ? 'baseline' : plural(pts.length, 'session'); }
+  else { const last = lastND(pts), w = verdictWin(L, st); now = topC(L, last); ch = w ? `<span style="font-size:var(--fs12);color:var(--ink)">${glyphHTML(w.txt)}</span>` : glyphHTML(chg(L, baseFor(L, st), last)); }
+  const act = st.ds === 'fresh' ? '' : ` data-act="toggle:${id}"`;
+  let h = `<div class="row${open ? ' open' : ''}" data-row="${id}"${act}><div class="rn"><div class="nm">${L.name}</div><div class="l2${emph ? ' ink' : ''}">${l2text(L, info)}</div></div>`;
+  h += st.ds === 'fresh' || !pts.length ? '<div></div>' : spark(L, st, dom, emph);
+  h += `<div class="rv"><div class="now${nowCls}">${now}</div><div class="ch">${ch}</div></div></div>`;
+  if (open && pts.length) h += `<div class="xp">${chart(L, st)}${miniTable(L, st)}</div>`;
+  return h;
+}
+function liftsView(st) {
+  const dom = domainFor(st);
+  let h = st.scrub ? readout(st) : totals(st);
+  h += colh(st, dom);
+  let list;
+  const nx = nextSession(st), other = nx.w === 'A' ? 'B' : 'A';
+  const ofW = w => ORDER.filter(i => LIFTS[i].w === w);
+  const gl = w => 'Workout ' + w + (st.ds === 'fresh' ? (w === 'A' ? ' · first session' : '') : w === nx.w ? ' · next ' + labN(nx.d) : '');
+  if (st.ds !== 'full') list = [{ g: gl('A') }, ...ofW('A'), { g: gl('B') }, ...ofW('B')];
+  else if (st.sort === 'prog') list = ORDER;
+  else if (st.sort === 'ab') list = [{ g: 'Workout ' + nx.w + ' · due ' + labN(nx.d) }, ...ofW(nx.w), { g: 'Workout ' + other }, ...ofW(other)];
+  else list = ATT;
+  list.forEach(x => h += typeof x === 'string' ? liftRow(x, st, dom) : `<div class="grp">${x.g}</div>`);
+  if (st.ds === 'full') {
+    h += `<div class="howto"><div class="t">Lifts · how to read</div><div class="d">`
+      + `<svg width="22" height="10"><path d="M1 8 H8 V3 H21" style="fill:none;stroke:var(--context);stroke-width:1.5"/></svg> line = top set at working weight · `
+      + `<svg width="10" height="10"><circle cx="5" cy="5" r="2.6" style="fill:var(--page);stroke:var(--context);stroke-width:1.3"/></svg> hollow = deload · `
+      + `<svg width="10" height="10"><rect width="10" height="10" style="fill:var(--gap)"/></svg> gap = no session that week · warm-ups not counted · `
+      + `<svg width="22" height="10"><path d="M1 8 H8 V3 H21" style="fill:none;stroke:var(--emph);stroke-width:2"/></svg> the stalled or slipping stretch · numbers right of each line are its max and min · stalled and slipping rows measure change over that stretch, other rows from the baseline in the column header</div></div>`;
+    const t = dnum(STATES[st.ds].today), w0 = wkStart(t), cur = WEEKS.find(w => dnum(w.md) === w0);
+    const thisWk = sessFor(st).filter(s => wkStart(dnum(s.md)) === w0), last4 = WEEKS.filter(w => dnum(w.md) < w0).slice(-4);
+    /* this week's pattern: sessions done plus the rest of Mon/Wed/Fri, alternating from the next one */
+    let pat = thisWk.map(s => s.w), nw = nx.w; for (let i = pat.length; i < 3; i++) { pat.push(nw); nw = nw === 'A' ? 'B' : 'A'; }
+    const planned = pat.reduce((a, w) => a + setsPerSession(w), 0);
+    h += `<div class="grp">This week · ${labN(w0)} – ${labN(w0 + 6)}</div>`;
+    h += `<div class="row" data-act="tab:sessions"><div class="rn"><div class="nm">Sessions</div><div class="l2">Workout ${nx.w} due ${labN(nx.d)}</div></div>${weekSpark('n', dom, st)}<div class="rv"><div class="now">${thisWk.length} of 3</div><div class="ch">${last4.reduce((a, w) => a + w.n, 0)}/${last4.length * 3} · 4 wk</div></div></div>`;
+    h += `<div class="row" data-act="tab:sessions"><div class="rn"><div class="nm">Working sets</div><div class="l2">warm-ups not counted</div></div>${weekSpark('ws', dom, st)}<div class="rv"><div class="now">${cur.ws} of ${planned}</div><div class="ch">planned</div></div></div>`;
+    h += `<div style="height:16px"></div>`;
+  } else if (st.ds === 'fresh') {
+    h += `<div class="cta" style="position:static"><button data-act="tab:train">Start Workout A</button><div class="s">Your first session sets ${ORDER.filter(i => LIFTS[i].w === 'A').length} baselines. Records start from the second.</div></div>`;
+  } else h += `<div class="howto"><div class="d">Each lift needs 4 sessions before it gets a verdict (moving, stalled or slipping). A first session is a baseline, never a record.</div></div>`;
+  return h;
+}
+
+/* ================= ledger: muscles ================= */
+/* "last 3 weeks" = the 3 calendar weeks before this one, plus this one */
+const recSince = st => wkStart(dnum(STATES[st.ds].today)) - 21;
+/* four 2-week blocks (one ABA + one BAB week each), ending with the last full week */
+const mdOf = n => { const d = dOf(n); return String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); };
+const BLOCKS = (() => {
+  const lastFull = wkStart(dnum(STATES.full.today)) - 7, out = [];
+  for (let k = 3; k >= 0; k--) {
+    const b = lastFull - 7 - 14 * k, e = b + 13, sm = dOf(b).getUTCMonth() === dOf(e).getUTCMonth();
+    const ws = [mdOf(b), mdOf(b + 7)].map(m => WEEKS.find(w => w.md === m));
+    const flag = [ws.some(w => w.n > 0 && w.n < 3) ? (/sick/.test(SESS.filter(s => dnum(s.md) >= b && dnum(s.md) <= e).map(s => s.note).join(' ')) ? 'sick' : 'short week') : '', ws.some(w => w.dl) ? 'deload' : ''].filter(Boolean).join('+');
+    out.push([mdOf(b), mdOf(b + 7), sm ? dOf(b).getUTCDate() + '–' + dOf(e).getUTCDate() : shN(b) + '–', sm ? MON[dOf(b).getUTCMonth()] : shN(e), flag]);
+  }
+  return out;
+})();
+const wkOf = md => WEEKS.find(w => w.md === md);
+const binOf = pct => pct < 0.5 - 1e-9 ? 1 : pct < 0.8 - 1e-9 ? 2 : pct < 1 - 1e-9 ? 3 : 4;
+function musclesView(st) {
+  if (st.ds !== 'full') return `<div class="empty">Muscle sets fill in after your first full week (one Workout A and one Workout B), then compare in 2-week blocks against the plan.</div>`;
+  const lb = BLOCKS[BLOCKS.length - 1], onPlan = M12.filter(m => (wkOf(lb[0]).ms[m] + wkOf(lb[1]).ms[m]) / 2 >= D.plan[m] - 1e-9).length;
+  const byPlan = M12.slice().sort((a, b) => D.plan[a] - D.plan[b]);
+  const lightM = byPlan.filter(m => half(D.plan[m]) <= 10);
+  const light = lightM.map((m, i) => MN[m] + (i === lightM.length - 1 || half(D.plan[lightM[i + 1]]) !== half(D.plan[m]) ? ' ' + half(D.plan[m]) : '')).join(', ');
+  const top = byPlan.filter(m => half(D.plan[m]) >= 18).reverse().map(m => MN[m] + ' ' + half(D.plan[m])).join(', ');
+  let h = `<div class="msum"><div class="v">Last 2 weeks: on plan for ${onPlan === M12.length ? 'all ' + M12.length : onPlan + ' of ' + M12.length} muscles</div><div class="s">Light plan: ${light}</div><div class="s">At the top of 10–20: ${top}</div></div>`;
+  h += `<div class="mleg"><span>Bar = done, tick = plan ·</span><span><i class="b1"></i>&lt;50</span><span><i class="b2"></i>50–80</span><span><i class="b3"></i>80–100</span><span><i class="b4"></i>≥100 %</span></div>`;
+  h += `<div class="mh"><div>Sets a week,<br>2-wk avg</div>${BLOCKS.map(b => `<div${b[4] ? ' class="hat"' : ''}>${b[2]}<br>${b[3]}<br>${b[4] ? '<span style="white-space:nowrap;color:var(--ink)">' + b[4] + '</span>' : '&nbsp;'}</div>`).join('')}<div>Plan<br>/ wk</div><div style="text-align:right">Typical</div></div>`;
+  M12.slice().sort((a, b) => D.plan[a] - D.plan[b] || M12.indexOf(a) - M12.indexOf(b)).forEach(m => {
+    const plan = D.plan[m];
+    h += `<div class="mr" data-act="m:${m}"><div class="n">${MN[m]}</div>`;
+    BLOCKS.forEach(b => { const avg = (wkOf(b[0]).ms[m] + wkOf(b[1]).ms[m]) / 2, pct = avg / plan; h += `<div class="hc"><span class="n">${half(avg)}</span><span class="tr"><i class="b${binOf(pct)}" style="width:${f1(Math.min(pct, 1.25) / 1.25 * 38)}px"></i><u style="left:${f1(38 / 1.25)}px"></u></span></div>`; });
+    h += `<div class="pl">${half(plan)}</div><div class="ty">10–20</div></div>`;
+    if (st.mOpen === m) h += muscleDetail(m);
+  });
+  return h + '<div style="height:12px"></div>';
+}
+function muscleDetail(m) {
+  const plan = D.plan[m], ex = BLOCKS.map(b => (wkOf(b[0]).ms[m] + wkOf(b[1]).ms[m]) / 2);
+  let l = '';
+  ORDER.forEach(id => { const [pri, sec] = MAP[id]; const f = pri.includes(m) ? 1 : sec.includes(m) ? 0.5 : 0; if (!f) return; const n = presc(LIFTS[id]).sets; l += `<div class="l">${LIFTS[id].name} <span style="color:var(--muted)">· ${f === 1 ? 'primary' : 'secondary, ½'} · ${LIFTS[id].w}</span> <span class="m">${num(n * f)}</span></div>`; });
+  const fills = {}; fills[m] = 'var(--k4)';
+  return `<div class="mx"><div><div class="t">Sets per session, by lift</div>${l}<div class="e">Exact 2-week averages: ${ex.map(num).join(' · ')} · plan ${num(plan)} a week. Working sets only; forearms and traps counted but not listed.</div></div><div>${body('front', fills, 60)}${body('back', fills, 60)}</div></div>`;
+}
+
+/* ================= ledger: records ================= */
+/* ruling 16: bests use the record-kind names */
+function bestKinds(L) {
+  return Object.entries(L.rec).map(([k, v]) => {
+    const [txt, date] = v.split(' · ');
+    if (k === 'Heaviest set') return ['Heaviest weight', txt, date];
+    if (k === 'Best estimated 1RM') return ['Estimated 1RM', txt + ' (estimated)', date];
+    if (k === 'Least assistance') return [k, txt, date];
+    if (k === 'Heaviest added load') return ['Heaviest weight', txt, date];
+    if (k === 'Most reps in a set') return ['Rep record', 'BW × ' + txt, date];
+    if (k === 'Most reps, bodyweight only') return ['Rep record', 'BW × ' + txt, date];
+    const m = k.match(/^Most reps at (.+)$/); if (m) return ['Rep record', m[1] + ' × ' + txt, date];
+    return [k, txt, date];
+  });
+}
+function lastRec(L, st) { const ps = ptsFor(L, st).filter(p => p.pr); return ps[ps.length - 1]; }
+function recordsView(st) {
+  if (st.ds !== 'full') {
+    const rs = sessFor(st).flatMap(s => s.prs.map(r => ({ md: s.md, lift: r.split(' · ')[0] })));
+    return `<div class="empty">A lift's first session is its baseline, not a record. Records start from its second session${rs.length ? ': ' + rs.length + ' so far (' + rs.map(r => r.lift).join(', ') + ', ' + [...new Set(rs.map(r => lab(r.md)))].join(', ') + ').' : '.'}</div>`;
+  }
+  const ss = sessFor(st).filter(s => dnum(s.md) >= recSince(st));
+  const W = 358, base = 66, top = 18, slot = W / ss.length, uid = 'h' + (UID++);
+  const mxN = Math.max(...ss.map(s => s.prs.length));
+  let sv = `<svg width="${W}" height="96" viewBox="0 0 ${W} 96"><defs>${hatchDef(uid)}</defs>`;
+  ss.forEach((s, i) => {
+    const n = s.prs.length, cx = slot * i + slot / 2, h = n / 6 * (base - top);
+    if (s.dl) sv += `<rect x="${f1(cx - 8)}" y="${base - 6}" width="16" height="6" style="fill:url(#${uid})"/>`;
+    else sv += `<path d="M${f1(cx - 8)} ${base} V${f1(base - h + 3)} q0 -3 3 -3 h10 q3 0 3 3 V${base} Z" style="fill:var(--context)"/>`;
+    if (n === mxN || i === ss.length - 1) sv += `<text x="${f1(cx)}" y="${f1(base - h - 5)}" class="ctn" style="text-anchor:middle;fill:var(--secondary)">${n}</text>`;
+    sv += `<rect x="${f1(slot * i)}" y="0" width="${f1(slot)}" height="96" data-act="open:${s.md}" style="fill:transparent;cursor:pointer"/>`;
+    const d = dOf(dnum(s.md));
+    sv += `<text x="${f1(cx)}" y="${base + 15}" class="ct" style="text-anchor:middle">${d.getUTCDate()}</text>`;
+    if (i === 0 || d.getUTCDate() < dOf(dnum(ss[i - 1].md)).getUTCDate()) sv += `<text x="${f1(cx)}" y="${base + 29}" class="ct" style="text-anchor:middle">${MON[d.getUTCMonth()]}</text>`;
+  });
+  sv += `<line x1="0" x2="${W}" y1="${base + .5}" y2="${base + .5}" style="stroke:var(--context)"/>`;
+  const di = ss.map((s, i) => s.dl ? i : -1).filter(i => i >= 0);
+  if (di.length) sv += `<text x="${f1(slot * ((di[0] + di[di.length - 1]) / 2 + 0.5))}" y="${base - 14}" class="ct" style="text-anchor:middle">Deload · 0</text>`;
+  sv += '</svg>';
+  let h = `<div class="rs"><div class="t">Records per session · last 3 weeks</div><div class="s">At most one per lift per session · tap a bar for its session</div>${sv}</div>`;
+  h += `<div class="rh"><div>Lift · last record</div><div>Best</div><div>e1RM</div></div>`;
+  h += `<div class="rfn">e1RM is estimated (Epley), only for the 5 lifts programmed at ≤ 10 reps · — not estimated above 10 reps</div>`;
+  const ids = ORDER.slice().sort((a, b) => dn(lastRec(LIFTS[b], st)) - dn(lastRec(LIFTS[a], st)) || ORDER.indexOf(a) - ORDER.indexOf(b));
+  ids.forEach(id => {
+    const L = LIFTS[id], lr = lastRec(L, st), open = st.rOpen === id;
+    const [bk, bv] = Object.entries(L.rec)[0], [btxt, bdate] = bv.split(' · ');
+    const best = L.id === 'push-ups' ? 'BW×' + btxt : btxt.replace(' kg', '').replace(' × ', '×');
+    const e = L.rec['Best estimated 1RM'];
+    h += `<div class="rr${open ? ' open' : ''}" data-act="r:${id}"><div class="rn"><div class="nm">${L.name}</div><div class="l2">${lr.pr.kind} · ${lab(lr.md)}</div></div>`;
+    h += `<div class="rv"><div class="now">${best}</div><div class="ch">${bdate}</div></div>`;
+    h += `<div class="rv"><div class="e1${e ? '' : ' na'}">${e ? e.split(' · ')[0].replace(' kg', '') : '—'}</div><div class="ch">${e ? e.split(' · ')[1].replace(/^\w+ /, '') : '&nbsp;'}</div></div></div>`;
+    if (open) {
+      h += `<div class="rx"><div class="t">Bests</div>`;
+      bestKinds(L).forEach(([k, t, d]) => h += `<div class="b"><span>${k}</span><span class="m">${t} · ${d}</span></div>`);
+      const rec3 = ptsFor(L, st).filter(p => p.pr && dn(p) >= recSince(st)).reverse();
+      h += `<div class="t">Records, last 3 weeks</div>`;
+      if (!rec3.length) h += `<div class="l"><span></span><span>None</span><span>last: ${lr.pr.kind} · ${lr.pr.text}, ${lab(lr.md)}</span></div>`;
+      rec3.forEach(p => h += `<div class="l"><span>${sh(p.md)}</span><span>${p.pr.kind}</span><span class="m">${p.pr.text} · ${p.pr.gain}${L.e1 && p.also && /^Estimated 1RM ([\d.]+)/.test(p.also) && p.pr.kind !== 'Heaviest weight' ? ' · also e1RM ' + p.also.match(/^Estimated 1RM ([\d.]+)/)[1] + ' (estimated)' : ''}</span></div>`);
+      h += `</div>`;
+    }
+  });
+  return h;
+}
+
+/* ================= session (summary) ================= */
+function sessionView(st, md) {
+  const s = SESS.find(x => x.md === md), ids = ORDER.filter(id => LIFTS[id].w === s.w);
+  const prev = SESS.filter(x => x.w === s.w && dnum(x.md) < dnum(md)).pop();
+  const back = st.tab === 'sessions' ? 'Sessions' : 'Ledger';
+  let h = `<div class="nav"><button class="bk" data-act="back">‹ ${back}</button><div class="nt">${lab(md)}</div></div><div class="scr full" data-scroll>`;
+  h += `<div class="shd"><h2>Workout ${s.w}${s.dl ? ' · deload' : ''}</h2><div class="v">${s.ws} sets · ${plural(s.prs.length, 'record')} · ${s.dur} min · ${int(s.kg)} kg</div><div class="s">${s.wu} warm-ups not counted · + ${s.bwr} bodyweight reps</div></div>`;
+  if (st.hl) {
+    const L = LIFTS[st.hl], p = L.pts.find(p => p.md === md), all = ptsFor(L, st), lr = lastRecPt(L, st);
+    const vg = { moving: '▲ Moving', stalled: '■ Stalled', slipping: '▼ Slipping' }[L.verdict];
+    if (p) {
+      const since = all.filter(x => !x.dl && dn(x) > dnum(md)).length;
+      const what = p.pr ? `${p.pr.kind} · ${p.pr.text} · ${p.pr.gain}` : p.dl ? 'deload session, no record' : 'no record this session';
+      const tail = lr && lr.md === md ? (since === 0 ? 'Its latest record, set in its latest session.' : `Its last record: none in the ${plural(since, 'session')} since.`) : lr && dn(lr) > dnum(md) ? `Moved again since: ${lr.pr.kind}, ${lab(lr.md)}.` : '';
+      h += `<div class="shl"><b><span class="g">${vg.slice(0, 1)}</span>${vg.slice(1)}</b> · <b>${L.name}</b> here: ${what}. ${tail}</div>`;
+    }
+  }
+  h += `<div class="sth"><div>Exercise</div><div>Today</div><div>${prev ? sh(prev.md) : ''}</div><div>Lever vs ${prev ? 'last ' + s.w : '—'}</div></div>`;
+  ids.forEach(id => {
+    const L = LIFTS[id], p = L.pts.find(x => x.md === md), q = prev && L.pts.find(x => x.md === prev.md);
+    if (!p) return;
+    let g = '', t = 'baseline', sub = '';
+    if (q) {
+      if (p.lv !== q.lv) {
+        if (L.kind === 'assisted') { const d = (-p.lv) - (-q.lv); g = d < 0 ? '▲' : '▼'; t = (d < 0 ? '−' : '+') + num(Math.abs(d)) + ' kg assist.'; }
+        else { const d = p.lv - q.lv; g = d > 0 ? '▲' : '▼'; t = (d > 0 ? 'Up +' : 'Down −') + num(Math.abs(d)) + ' kg'; }
+      } else {
+        const a = repsAtTop(L, p).reduce((x, y) => x + y, 0), b = repsAtTop(L, q).reduce((x, y) => x + y, 0), d = a - b;
+        g = d > 0 ? '▲' : d < 0 ? '▼' : '='; t = d === 0 ? 'Same' : d > 0 ? '+' + plural(d, 'rep') + ' total' : a + ' vs ' + b + ' reps';
+      }
+      const lastP = lastND(ptsFor(L, st));
+      const lr = lastRecPt(L, st), nSince = lr ? ptsFor(L, st).filter(x => !x.dl && dn(x) > dn(lr)).length : 0;
+      sub = p.pr ? p.pr.kind : (L.verdict === 'stalled' && lastP && lastP.md === md) ? 'stalled ' + plural(nSince, 'session') : 'no record';
+    }
+    h += `<div class="str${st.hl === id ? ' hl' : ''}" data-act="lift:${id}"><div class="n">${L.name}</div><div class="td">${topC(L, p)}</div><div class="la">${q ? topC(L, q) : '—'}</div><div class="lv"><div>${g ? '<span class="g">' + g + '</span> ' : ''}${t}</div><div>${sub}</div></div></div>`;
+  });
+  if (prev) {
+    const d = Math.round((s.kg - prev.kg) / prev.kg * 100);
+    h += `<div class="svol"><div class="v">Volume ${int(s.kg)} kg vs ${int(prev.kg)} kg on ${lab(prev.md)} · <span class="g">${d < 0 ? '▼' : '▲'}</span> ${Math.abs(d)} %</div><div class="s">${d < 0 ? 'Lifts that stepped up to a heavier weight did fewer reps. ' : ''}Volume is context here, never the verdict.</div></div>`;
+  }
+  /* muscles worked, fractional working sets */
+  const ms = {}; M12.forEach(m => ms[m] = 0);
+  ids.forEach(id => { const p = LIFTS[id].pts.find(x => x.md === md); if (!p) return; const n = parseSets(p.sets).length; MAP[id][0].forEach(m => { if (m in ms) ms[m] += n; }); MAP[id][1].forEach(m => { if (m in ms) ms[m] += n / 2; }); });
+  const sorted = M12.slice().sort((a, b) => ms[b] - ms[a] || M12.indexOf(a) - M12.indexOf(b));
+  const fills = {}; M12.forEach(m => { const v = ms[m]; if (v > 0) fills[m] = v >= 10 ? 'var(--k4)' : v >= 6 ? 'var(--k3)' : v >= 3 ? 'var(--k2)' : 'var(--k1)'; });
+  const cell = m => `<td>${MN[m]}</td><td class="m${ms[m] ? '' : ' z'}">${ms[m] ? num(ms[m]) : '—'}</td>`;
+  let rows = ''; for (let i = 0; i < 6; i++) rows += `<tr>${cell(sorted[i])}${cell(sorted[i + 6])}</tr>`;
+  h += `<div class="smu"><div class="t">Muscles worked today · working sets, ½ for secondary</div><div><table>${rows}</table><div class="bleg">sets today<i style="background:var(--k1)"></i>1–2<i style="background:var(--k2)"></i>3–5<i style="background:var(--k3)"></i>6–9<i style="background:var(--k4)"></i>10+</div></div><div style="display:flex;gap:4px">${body('front', fills, 60)}${body('back', fills, 60)}</div></div>`;
+  return h + '<div style="height:16px"></div></div>';
+}
+
+/* ================= body map (front / back), simple paths ================= */
+function body(view, fills, w) {
+  const F = m => fills[m] || 'var(--rule)';
+  const ST = 'stroke:var(--page);stroke-width:.8;stroke-linejoin:round';
+  const sym = (d, fill) => `<path d="${d}" style="fill:${fill};${ST}"/><path d="${d}" transform="translate(60 0) scale(-1 1)" style="fill:${fill};${ST}"/>`;
+  const one = (d, fill) => `<path d="${d}" style="fill:${fill};${ST}"/>`;
+  /* outline: left half from the neck down the outside, back up the inside; mirrored for the right */
+  const Lh = [[27.2, 16.5], [26.8, 20.2], [21, 21.8], [16.4, 22.8], [13.6, 24.8], [12.3, 28.4], [11.7, 34], [10.9, 40], [10.3, 46], [9.5, 52], [9.1, 57], [9.3, 62], [8.5, 65.5], [8.9, 68.4], [10.7, 69.2], [12.1, 67], [12.7, 63], [13.7, 57], [14.9, 51], [15.9, 45.5], [16.9, 39.5], [18.5, 34], [19.2, 39], [20.3, 46], [20.1, 52], [19.5, 58], [19.3, 64], [19.5, 72], [20.3, 80], [21.1, 88], [20.7, 94], [20.7, 100], [21.7, 107], [22.3, 112], [20.9, 116], [21.5, 118.4], [27, 118.6], [27.2, 115], [26.7, 111], [27.9, 104], [28.5, 97], [28.3, 90], [28.9, 82], [29.5, 72], [29.9, 66], [30, 64.6]];
+  const outline = 'M' + Lh.concat(Lh.slice().reverse().map(([x, y]) => [60 - x, y])).map(([x, y]) => x + ' ' + y).join(' L') + ' Z';
+  let s = `<svg width="${w}" height="${w * 124 / 60}" viewBox="0 0 60 124" role="img" aria-label="Body map, ${view}">`;
+  s += `<ellipse cx="30" cy="9.4" rx="6" ry="7.4" style="fill:var(--rule)"/><path d="${outline}" style="fill:var(--rule)"/>`;
+  if (view === 'front') {
+    s += sym('M14.2 24 Q18.6 21.4 21.2 23.4 L20.2 30.2 Q16 30.4 12.4 31.8 Q12.5 26.4 14.2 24 Z', F('shoulders'));
+    s += sym('M21.4 23.2 Q25.4 22.4 29.6 23 V34.6 Q24.6 36.6 21 32.4 Z', F('chest'));
+    s += sym('M12.4 32.6 Q15.6 31.2 18.4 32.4 L16.8 44.6 Q13.8 45.8 11.2 44.2 Z', F('biceps'));
+    s += one('M23.4 36.4 Q30 38.4 36.6 36.4 L36.2 56.6 Q30 59.2 23.8 56.6 Z', F('abdominals'));
+    s += sym('M20 61 Q25 59.8 29.4 63.4 L28.6 87 Q25.4 89.6 21.8 87.6 Q19.4 74 20 61 Z', F('quadriceps'));
+    s += sym('M21.4 93 Q24 91.6 27.4 93.4 L26.4 110 H23 Q20.8 101 21.4 93 Z', F('calves'));
+  } else {
+    s += sym('M14.2 24 Q18.6 21.4 21.2 23.4 L20.2 30.2 Q16 30.4 12.4 31.8 Q12.5 26.4 14.2 24 Z', F('shoulders'));
+    s += one('M24.6 24.6 L30 22.4 L35.4 24.6 L34 38.6 L30 41 L26 38.6 Z', F('middle back'));
+    s += sym('M19 30 Q22 28 25.4 30.6 L28.6 45.4 Q24 46 20.6 43.8 Q18.8 37 19 30 Z', F('lats'));
+    s += one('M24.8 45.2 Q30 47.2 35.2 45.2 L36 56.8 Q30 58.8 24 56.8 Z', F('lower back'));
+    s += sym('M12.4 32.6 Q15.6 31.2 18.4 32.4 L16.8 44.6 Q13.8 45.8 11.2 44.2 Z', F('triceps'));
+    s += sym('M20.2 58.4 Q25 56.8 29.8 59 V69 Q24.6 71.4 19.8 68.4 Z', F('glutes'));
+    s += sym('M20 71 Q24.8 73.4 29.4 71.6 L28.6 88 Q25.4 90 21.8 88 Q19.6 79 20 71 Z', F('hamstrings'));
+    s += sym('M21 93 Q24.2 90.4 27.8 93 Q28.4 102 26.4 110 H23 Q20.4 101 21 93 Z', F('calves'));
+  }
+  return s + '</svg>';
+}
+
+/* ================= sessions tab ================= */
+function sessionsView(st) {
+  const ss = sessFor(st);
+  let h = `<div class="hA"><h1>Sessions</h1><span class="since">${ss.length ? plural(ss.length, 'session') : ''}</span></div><div class="scr" style="top:44px" data-scroll>`;
+  if (!ss.length) return h + `<div class="empty">No sessions yet. Your first workout appears here, with its summary one tap away.</div></div>`;
+  const today = dnum(STATES[st.ds].today), start = wkStart(today) - 35;
+  h += `<div class="cal"><div class="wh">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<div>${x}</div>`).join('')}<div style="text-align:right">sets</div></div>`;
+  for (let w = start; w <= wkStart(today); w += 7) {
+    h += `<div class="wr">`;
+    let n = 0;
+    for (let d = w; d < w + 7; d++) {
+      const s = ss.find(x => dnum(x.md) === d), day = dOf(d).getUTCDate();
+      if (s) n += s.ws;
+      h += `<div>${s ? `<span class="dd ${s.dl ? 'dl' : 'a'}" data-act="open:${s.md}">${s.w}</span>` : `<span class="dd${d === today ? ' td' : ''}">${day}</span>`}</div>`;
+    }
+    h += `<div class="wc">${n || ''}</div></div>`;
+  }
+  h += `</div>`;
+  ss.slice().reverse().forEach(s => h += `<div class="sl" data-act="open:${s.md}"><div><div class="n">${lab(s.md)} · Workout ${s.w}${s.dl ? ' · deload' : ''}</div><div class="s">${s.dur} min · ${s.ws} sets · ${plural(s.prs.length, 'record')}</div></div><div class="c">›</div></div>`);
+  return h + '</div>';
+}
+function otherView(st) {
+  const n = st.tab === 'train' ? 'Train' : 'Program';
+  return `<div class="hA"><h1>${n}</h1></div><div class="empty" style="margin-top:44px">${n} is outside this stats mock. ${st.tab === 'train' ? 'Its live projection, record moment and volume-vs-last-time point back to the Ledger row of the lift.' : 'Stats never edit the program; suggestions such as “Try ' + nextWeight(readyLift()) + ' next” live in the Ledger.'}</div>`;
+}
+
+/* ================= screen ================= */
+function ledgerView(st) {
+  const bar = st.seg === 'lifts' && st.ds === 'full';
+  let h = `<div class="hA"><h1>Ledger</h1><div class="segc">${['Lifts', 'Muscles', 'Records'].map(x => `<button data-act="seg:${x.toLowerCase()}" class="${st.seg === x.toLowerCase() ? 'on' : ''}">${x}</button>`).join('')}</div></div>`;
+  h += `<div class="scr${bar ? ' withbar' : ''}${st.scrub && st.seg === 'lifts' ? ' scrubbing' : ''}" data-scroll>${st.seg === 'lifts' ? liftsView(st) : st.seg === 'muscles' ? musclesView(st) : recordsView(st)}</div>`;
+  /* ruling 12: range, sort and baseline in a bottom bar, in thumb reach; 44 px targets, 8 px gaps */
+  if (bar) h += st.scrub
+    ? `<div class="cbar"><button class="wide" data-act="today">‹ Back to today</button><button class="wide" data-act="open:${st.scrub}">Open ${lab(st.scrub)} ›</button></div>`
+    : `<div class="cbar">${['1M', '3M', '1Y', 'All'].map(r => `<button class="rg${st.range === r ? ' on' : ''}" data-act="range:${r}">${r}</button>`).join('')}<button class="two" data-act="sort"><span>Sort</span>${{ att: 'Attention', prog: 'Program', ab: 'A/B' }[st.sort]}</button><button class="two" data-act="base"><span>Change vs</span>${st.base === '4w' ? '4 wk ago' : baseLabel(st).slice(3)}</button></div>`;
+  return h;
+}
+function render(st) {
+  let v;
+  if (st.stack.length) v = sessionView(st, st.stack[st.stack.length - 1]);
+  else if (st.tab === 'ledger') v = ledgerView(st);
+  else if (st.tab === 'sessions') v = sessionsView(st);
+  else v = otherView(st);
+  return statusBar() + `<div class="view">${v}</div>` + tabbar(st) + `<div class="home"></div>`;
+}
+const BASE = () => ({ ds: 'full', tab: 'ledger', seg: 'lifts', range: '3M', sort: 'att', base: 'start', open: null, scrub: null, focus: null, mOpen: null, rOpen: null, stack: [], hl: null });
+
+/* scroll helpers: show the row above an open row (context), or the end */
+function scrollToRow(el, id, above) {
+  const sc = el.querySelector('[data-scroll]'), r = sc.querySelector(`[data-row="${id}"]`);
+  if (!r) return;
+  let t = r; for (let i = 0; i < (above || 0) && t.previousElementSibling && t.previousElementSibling.classList.contains('row'); i++) t = t.previousElementSibling;
+  const stickyH = [...sc.children].filter(c => getComputedStyle(c).position === 'sticky').reduce((a, c) => a + c.offsetHeight, 0);
+  sc.scrollTop = t.offsetTop - stickyH;
+}
+const scrollEnd = el => { const sc = el.querySelector('[data-scroll]'); sc.scrollTop = sc.scrollHeight; };
+
+/* ================= live prototype ================= */
+function mountLive(el, st) {
+  const draw = keep => {
+    const sc = el.querySelector('[data-scroll]'), top = sc ? sc.scrollTop : 0;
+    el.innerHTML = render(st);
+    const n = el.querySelector('[data-scroll]'); if (n && keep) n.scrollTop = top;
+  };
+  el.__st = st; el.__draw = draw;
+  let drag = null;
+  const scrubAt = (clientX, g) => {
+    const drag = g, r = drag.rect, scale = r.width / drag.w, f = (clientX - r.left - drag.x0 * scale) / ((drag.x1 - drag.x0) * scale);
+    const dom = domainFor(st), day = dom.s + Math.min(1, Math.max(0, f)) * (dom.e - dom.s);
+    const cand = ptsFor(LIFTS[drag.id], st).filter(p => inDom(p, dom)).map(p => p.md);
+    if (!cand.length) return null;
+    return cand.reduce((a, b) => Math.abs(dnum(b) - day) < Math.abs(dnum(a) - day) ? b : a);
+  };
+  el.addEventListener('pointerdown', e => {
+    const sp = e.target.closest('[data-spark],[data-chart]');
+    drag = { x: e.clientX, moved: false, target: e.target };
+    if (sp && st.ds === 'full') Object.assign(drag, { kind: sp.dataset.chart ? 'chart' : 'spark', id: sp.dataset.chart || sp.dataset.spark, rect: sp.getBoundingClientRect(), w: +sp.getAttribute('width'), x0: +sp.dataset.x0, x1: +sp.dataset.x1 });
+  });
+  window.addEventListener('pointermove', e => {
+    if (!drag || !drag.kind) return;
+    if (Math.abs(e.clientX - drag.x) > 4) drag.moved = true;
+    if (drag.moved) { const md = scrubAt(e.clientX, drag); if (md && (md !== st.scrub || st.focus !== drag.id)) { st.scrub = md; st.focus = drag.id; draw(true); } }
+  });
+  window.addEventListener('pointerup', e => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    if (d.moved && d.kind) return;
+    if (d.kind === 'chart') { const md = scrubAt(e.clientX, d); if (md && st.scrub === md) act('open:' + md); else if (md) { st.scrub = md; st.focus = d.id; draw(true); } return; }
+    const a = d.target.closest('[data-act]'); if (a && el.contains(a)) act(a.dataset.act);
+  });
+  function act(a) {
+    const [k, v] = [a.slice(0, a.indexOf(':') < 0 ? a.length : a.indexOf(':')), a.indexOf(':') < 0 ? '' : a.slice(a.indexOf(':') + 1)];
+    if (k === 'tab') { st.tab = v; st.stack = []; st.hl = null; draw(false); }
+    else if (k === 'seg') { st.seg = v; st.scrub = null; draw(false); }
+    else if (k === 'range') { st.range = v; draw(true); }
+    else if (k === 'sort') { st.sort = { att: 'prog', prog: 'ab', ab: 'att' }[st.sort]; draw(true); }
+    else if (k === 'base') { st.base = st.base === '4w' ? 'start' : '4w'; draw(true); }
+    else if (k === 'toggle') { st.open = st.open === v ? null : v; if (st.focus && st.focus !== v) { st.scrub = null; st.focus = null; } draw(true); if (st.open) scrollToRow(el, v, 1); }
+    else if (k === 'today') { st.scrub = null; st.focus = null; draw(true); }
+    else if (k === 'open') { const sc = el.querySelector('[data-scroll]'); st.ret = sc ? sc.scrollTop : 0; st.hl = st.open || st.focus || null; st.stack.push(v); draw(false); }
+    else if (k === 'back') { st.stack.pop(); st.hl = null; draw(false); const sc = el.querySelector('[data-scroll]'); if (sc && st.ret) sc.scrollTop = st.ret; }
+    else if (k === 'm') { st.mOpen = st.mOpen === v ? null : v; draw(true); }
+    else if (k === 'r') { st.rOpen = st.rOpen === v ? null : v; draw(true); }
+    else if (k === 'tot') { const id = ATT.find(i => LIFTS[i].verdict === v); st.open = id; draw(true); scrollToRow(el, id, 0); }
+    else if (k === 'lift') { st.stack = []; st.tab = 'ledger'; st.seg = 'lifts'; st.open = v; st.hl = null; draw(false); scrollToRow(el, v, 1); }
+  }
+  el.__act = act;
+  draw(false);
+}
+
+/* ================= board ================= */
+const XS = [48, 494, 940, 1386, 1832, 2278], YS = [400, 1356, 2312];
+const FR = [
+  { id: 'P', c: 0, r: 0, t: 'P · Live prototype', n: 'tap rows, drag lines, bottom bar', live: true },
+  { id: 'S1', c: 1, r: 0, t: 'S1 · Ledger → Lifts', n: '3M · attention sort · totals row first' },
+  { id: 'S1b', c: 2, r: 0, t: 'S1b · Scrolled one screen', n: 'last rows · how to read · this week', after: scrollEnd },
+  { id: 'S2', c: 3, r: 0, t: 'S2 · Back squat, expanded in place', n: 'weight, reps, e1RM panels · last 6', st: { open: 'back-squat' }, after: el => scrollToRow(el, 'back-squat', 1) },
+  { id: 'S3', c: 4, r: 0, t: 'S3 · Assisted pull-ups, expanded', n: 'range All · less assistance plots higher', st: { open: 'assisted-pull-ups', range: 'All' }, after: el => scrollToRow(el, 'assisted-pull-ups', 1) },
+  { id: 'S3b', c: 5, r: 0, t: 'S3b · Hyper-extension, expanded', n: 'range All · one history, +5 kg annotated', st: { open: 'hyper-extension', range: 'All' }, after: el => scrollToRow(el, 'hyper-extension', 1) },
+  { id: 'S4', c: 0, r: 1, t: 'S4 · Ledger → Muscles', n: 'heat table · 2-week blocks vs plan', st: { seg: 'muscles' } },
+  { id: 'S5', c: 1, r: 1, t: 'S5 · Ledger → Records', n: 'records per session · table, squat open', st: { seg: 'records', rOpen: 'back-squat' } },
+  { id: 'S6', c: 2, r: 1, t: 'S6 · Summary, Wed 14 Oct', n: 'Sessions → the session · lever table', st: { tab: 'sessions', stack: ['10-14'] } },
+  { id: 'S7a', c: 3, r: 1, t: 'S7a · Fresh install', n: 'prescriptions in the now column, no axes', st: { ds: 'fresh' } },
+  { id: 'S7b', c: 4, r: 1, t: 'S7b · One session (Tue 23 Jun)', n: 'A rows: one baseline dot · B rows wait', st: { ds: 's1' } },
+  { id: 'S7c', c: 5, r: 1, t: 'S7c · Three sessions (Sat 27 Jun)', n: 'raw values only · verdicts after 4', st: { ds: 's3' } },
+  { id: 'S8a', c: 0, r: 2, t: 'S8a · Range 3M → 1Y', n: 'one global range redraws all rows', st: { range: '1Y' }, mk: [{ tap: '[data-act="range:1Y"]' }],
+    cap: ['Tap 1Y in the bottom bar · all 14 rows redraw over', '17 weeks; the holiday gap is one band in every row.'] },
+  { id: 'S8b', c: 1, r: 2, t: 'S8b · Linked scrub at Fri 9 Oct', n: 'one hairline through every row', st: { scrub: '10-09', focus: 'back-squat' }, mk: [{ drag: '[data-spark="back-squat"]', md: '10-09' }],
+    cap: ['Drag the squat line · snaps to squat sessions only;', 'B lifts read “—”. Back / Open sit in the bottom bar.'] },
+  { id: 'S8c', c: 2, r: 2, t: 'S8c · Compare: baseline switch', n: 'change column vs 4 weeks ago', st: { base: '4w' }, mk: [{ tap: '[data-act="base"]' }],
+    cap: ['Tap “Change vs 15 Jul” → 4 wk ago: moving rows re-measured', 'from ≤ 17 Sep; stalled/slipping keep their verdict window.'] },
+  { id: 'S8d', c: 3, r: 2, t: 'S8d · Drill-down destination', n: 'Fri 7 Aug, where the bench last moved', st: { stack: ['08-07'], hl: 'db-bench-press' },
+    cap: ['S1 → tap DB bench row → drag its chart to 7 Aug → tap', '“Open Fri 7 Aug ›” (bottom bar). “‹ Ledger” goes back.'] }
+];
+function mark(phone, spec) {
+  const pr = phone.getBoundingClientRect();
+  if (spec.tap) { const t = phone.querySelector(spec.tap); if (!t) return; const r = t.getBoundingClientRect(); const m = document.createElement('div'); m.className = 'mk'; m.style.left = (r.left + r.width / 2 - pr.left + phone.offsetLeft) + 'px'; m.style.top = (r.top + r.height / 2 - pr.top + phone.offsetTop) + 'px'; document.body.appendChild(m); }
+  if (spec.drag) {
+    const t = phone.querySelector(spec.drag); if (!t) return; const r = t.getBoundingClientRect();
+    const dom = domainFor(Object.assign(BASE(), {})), x = r.left + (SX0 + (dnum(spec.md) - dom.s) / (dom.e - dom.s) * (SX1 - SX0)) - pr.left + phone.offsetLeft;
+    const y = r.top + r.height / 2 - pr.top + phone.offsetTop;
+    const m = document.createElement('div'); m.className = 'mk'; m.style.left = x + 'px'; m.style.top = y + 'px'; document.body.appendChild(m);
+    const a = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); a.setAttribute('class', 'mkarrow'); a.setAttribute('width', '60'); a.setAttribute('height', '20');
+    a.style.left = (x + 24) + 'px'; a.style.top = (y - 10) + 'px';
+    a.innerHTML = '<path d="M56 10 H4 M12 4 L4 10 L12 16" style="fill:none;stroke:var(--board-mark);stroke-width:2;stroke-dasharray:5 4"/>';
+    document.body.appendChild(a);
+  }
+}
+function buildBoard() {
+  const board = document.getElementById('board');
+  FR.forEach(f => {
+    const x = XS[f.c], y = YS[f.r];
+    const l = document.createElement('div'); l.className = 'lbl'; l.style.left = x + 'px'; l.style.top = (y - 36) + 'px'; l.innerHTML = f.t + ' <span>· ' + f.n + '</span>'; board.appendChild(l);
+    const ph = document.createElement('div'); ph.className = 'phone'; ph.id = 'f-' + f.id; ph.style.left = x + 'px'; ph.style.top = y + 'px'; board.appendChild(ph);
+    const st = Object.assign(BASE(), f.st || {});
+    if (f.live) mountLive(ph, st);
+    else { ph.innerHTML = render(st); if (f.after) f.after(ph); }
+    if (f.cap) { const c = document.createElement('div'); c.className = 'cap'; c.style.left = x + 'px'; c.style.top = (y + 852) + 'px'; c.innerHTML = f.cap.join('<br>'); board.appendChild(c); }
+  });
+  FR.forEach(f => (f.mk || []).forEach(m => mark(document.getElementById('f-' + f.id), m)));
+  /* data-state switch for P, outside the phone */
+  const ds = document.createElement('div'); ds.className = 'dsc'; ds.style.left = '48px'; ds.style.top = '1258px';
+  ds.innerHTML = 'Data state <button data-ds="full" class="on">Full</button><button data-ds="s3">3 sessions</button><button data-ds="s1">1 session</button><button data-ds="fresh">Fresh</button>';
+  board.appendChild(ds);
+  ds.addEventListener('click', e => {
+    const b = e.target.closest('[data-ds]'); if (!b) return;
+    const p = document.getElementById('f-P'); Object.assign(p.__st, BASE(), { ds: b.dataset.ds }); p.__draw(false);
+    ds.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  });
+}
+buildBoard();
+
+</script>
+</body>
+</html>

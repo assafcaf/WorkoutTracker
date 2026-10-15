@@ -1,0 +1,41 @@
+{
+ "summaryTable": {
+  "tinyText": [],
+  "overflowX": [],
+  "smallTargets": [
+   "158x24 Chest, 7 sets",
+   "158x24 Shoulders, 10.5 sets",
+   "158x24 Triceps, 8 sets",
+   "158x24 Lats, 0 sets",
+   "158x24 Biceps, 0 sets",
+   "158x24 Quads, 7 sets",
+   "158x24 Lower back, 2 sets",
+   "158x24 Hamstrings, 3.5 sets",
+   "158x24 Glutes, 3.5 sets",
+   "158x24 Calves, 3.5 sets",
+   "158x24 Abs, 0 sets"
+  ],
+  "svgText": [
+   "16.0px tall · 12px rgb(98, 98, 111) \"0\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"5,000\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"10,000\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"14 Sep\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"25 Sep\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"2 Oct\"",
+   "16.0px tall · 12px rgb(98, 98, 111) \"14 Oct\"",
+   "16.0px tall · 12px rgb(22, 22, 29) \"4,185\""
+  ],
+  "clipped": [
+   "sessions-visually-hidden \"Region\"",
+   " \"Machine shoulder press\"",
+   " \"Cable push-down\""
+  ]
+ },
+ "liveNow": {
+  "tinyText": [],
+  "overflowX": [],
+  "smallTargets": [],
+  "svgText": [],
+  "clipped": []
+ }
+}
