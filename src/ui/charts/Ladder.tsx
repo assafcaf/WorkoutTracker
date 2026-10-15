@@ -190,6 +190,36 @@ export function Ladder({ view, title, variant = 'full', onOpenSession }: LadderP
             )
           })}
           {lineSvg}
+          {view.bracket ? (
+            <g className="ladder-bracket">
+              <path
+                className="ladder-bracket-line"
+                d={`M${xOf(view.bracket.from)} ${top - 2} V${top - 8} H${xOf(view.bracket.to)} V${top - 2}`}
+              />
+              <text
+                className="ladder-bracket-label"
+                x={(xOf(view.bracket.from) + xOf(view.bracket.to)) / 2}
+                y={top - 12}
+                textAnchor="middle"
+              >
+                {view.bracket.label}
+              </text>
+            </g>
+          ) : null}
+          {view.reference ? (
+            <g className="ladder-reference" data-at={view.reference.at} data-lever={view.reference.lever}>
+              <line
+                className="ladder-reference-line"
+                x1={xOf(view.reference.at) - 8}
+                x2={xOf(view.reference.at) + 8}
+                y1={yOf(view.reference.lever)}
+                y2={yOf(view.reference.lever)}
+              />
+              <text className="ladder-axis-label" x={xOf(view.reference.at) + 10} y={yOf(view.reference.lever)} dominantBaseline="middle">
+                {view.reference.label}
+              </text>
+            </g>
+          ) : null}
           {points.map((point, index) => (
             <circle
               key={point.id}
