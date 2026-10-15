@@ -14,6 +14,7 @@ import {
   setEffort,
   setRest,
   setNote,
+  setDeload,
   updateSet,
   setSwap,
   startOrResumeSession,
@@ -51,6 +52,7 @@ export type SessionService = {
   ): Promise<{ session: Session; removed: SetEntry }>
   restoreSet(sessionId: string, entry: SetEntry): Promise<Session>
   setNote(sessionId: string, note: string): Promise<Session>
+  setDeload(sessionId: string, on: boolean): Promise<Session>
   finish(sessionId: string): Promise<Session>
   save(session: Session): Promise<Session>
   lastEntriesFor(exerciseId: string): Promise<SetEntry[]>
@@ -190,6 +192,9 @@ export function createSessionService(deps: ServiceDeps): SessionService {
       return write(sessionId, () => restoreSet(sessionId, entry, now()), LOG_FAILED)
     },
 
+    async setDeload(sessionId, on) {
+      return write(sessionId, () => setDeload(sessionId, on, now()), SAVE_FAILED)
+    },
     async setNote(sessionId, note) {
       return write(sessionId, () => setNote(sessionId, note, now()), SAVE_FAILED)
     },

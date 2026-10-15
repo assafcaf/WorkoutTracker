@@ -19,6 +19,7 @@ import {
 } from './protocol'
 import { createChangeBus } from '../services/changes'
 import { createPreferenceService } from '../services/preferences'
+import { createSessionService } from '../services/sessions'
 import { createSyncService, type SyncResult, type SyncService } from '../services/sync'
 
 // E11-T7: every call below goes through `services.sync`, the only way the UI reaches sync. One
@@ -1015,4 +1016,21 @@ test('E16-T1 O3 a Bodyweight override device A sets is answered by PreferenceSer
     updatedAt: T0 + 500,
   })
   expect(await preferencesAt(T0 + 900).bodyweightOverrides()).toEqual({ 'bench-press': true })
+})
+
+// --- E18-T2 O3: the deload mark reaches the other device through sync -------------------------
+
+test('O3 a deload mark device A sets arrives on device B after A syncs and B syncs, an unmarked one has no field', async () => {
+  await putLocalSession(session('marked', T0 + 100))
+  await putLocalSession(session('plain', T0 + 100))
+  await createSessionService({ now: () => T0 + 200, bus: createChangeBus(), storageAvailable: true }).setDeload('marked', true)
+  await syncNow({ fetch: server.fetch })
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  const sessions = await localSessions()
+  expect(sessions.find((s) => s.id === 'marked')?.deload).toBe(true)
+  expect('deload' in (sessions.find((s) => s.id === 'plain') as Session)).toBe(false)
 })

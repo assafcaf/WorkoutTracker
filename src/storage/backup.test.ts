@@ -18,6 +18,7 @@ import {
 import { BACKUP_SCHEMA_VERSION, backupFileName, importPlan, type BackupFile } from './backup'
 import { createChangeBus } from '../services/changes'
 import { ServiceError } from '../services/errors'
+import { createSessionService } from '../services/sessions'
 import { createBackupService, type BackupService } from '../services/backup'
 import type { Session, SetEntry, UserProgram } from '../types'
 
@@ -219,6 +220,22 @@ test('S16 given a session with swaps and a saved equipment list, exporting and i
   const [imported] = await listSessions()
   expect(imported.swaps).toEqual({ 'back-squat': 'leg-press' })
   expect(await getGymEquipment()).toEqual(['barbell', 'dumbbell', 'bench'])
+})
+
+test('O3 a deload mark survives export and import, and an unmarked Session stays without the field', async () => {
+  const [a, b] = sessionsFixture(2)
+  await db.sessions.put(a)
+  await db.sessions.put(b)
+  await createSessionService({ now: () => BASE, bus: createChangeBus(), storageAvailable: true }).setDeload(a.id, true)
+
+  const file = await exportThroughService()
+  expect(file.schemaVersion).toBe(1)
+  await db.sessions.clear()
+  await importThroughService(file)
+
+  const imported = await listSessions()
+  expect(imported.find((s) => s.id === a.id)?.deload).toBe(true)
+  expect('deload' in (imported.find((s) => s.id === b.id) as Session)).toBe(false)
 })
 
 test('S16 a schemaVersion 1 backup made before this epic, with neither swaps nor gymEquipment, still imports', async () => {
