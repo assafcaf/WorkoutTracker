@@ -2,6 +2,8 @@
 // the Dashboard's gear, the Program tab's Program | Exercises switch, and the Live session --
 // full screen with no tabs, minimised to a live strip pinned over every tab, and back again
 // exactly where it was.
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
@@ -10,6 +12,7 @@ import { db } from './storage/db'
 import { getActiveSession } from './storage/sessionStore'
 import { setActiveProgramId } from './storage/settingsStore'
 import { FakeSyncServer } from './test/fakeSyncServer'
+import type { Session } from './types'
 
 vi.mock('virtual:pwa-register', () => ({
   registerSW() {
@@ -228,4 +231,31 @@ test('the tab bar reads Train, Progress, Sessions, Program, and Progress opens i
   await pressTab(user, 'Progress')
   expect(await screen.findByRole('heading', { level: 1, name: 'Progress' }, SETTLE)).toBeVisible()
   expect(within(mainNav()).getByRole('button', { name: 'Progress' })).toHaveAttribute('aria-current', 'page')
+})
+
+test('Progress to a lift to a Session is two taps, and Back returns each step', async () => {
+  const sessions = JSON.parse(
+    readFileSync(join(process.cwd(), 'src/test/fixtures/stats/sessions.json'), 'utf8'),
+  ) as Session[]
+  await db.sessions.bulkPut(sessions)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 9, 15, 18, 5))
+  try {
+    const user = userEvent.setup()
+    await renderApp()
+    await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
+
+    await pressTab(user, 'Progress')
+    const rows = await screen.findAllByRole('button', { name: /Push-ups/ }, SETTLE)
+    await user.click(rows[0])
+    const lastMoved = await screen.findByRole('button', { name: /^Last moved/ }, SETTLE)
+
+    await user.click(lastMoved)
+    const done = await screen.findByRole('button', { name: 'Done' }, SETTLE)
+    expect(done).toBeVisible()
+    await user.click(done)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sessions' }, SETTLE)).toBeVisible()
+  } finally {
+    vi.useRealTimers()
+  }
 })
