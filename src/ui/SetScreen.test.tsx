@@ -1261,16 +1261,16 @@ function badgesOnRow(name: string): HTMLElement[] {
 test('O14 logging a Set that sets one record shows a toast naming it and the Set', async () => {
   const { user } = renderSetScreen({
     earlierSessions: [earlierSession],
-    lastEntries: [historyEntry(1, 75, 12)],
+    lastEntries: [historyEntry(1, 85, 5)],
   })
 
   await user.click(logButton())
 
-  // S5a: the toast's headline names the record, the line under it the Set and how far past the
-  // old record it went (e1RM 101.3 -> 105.0), with the record's sparkline.
-  expect(await screen.findByText('New PR · Best estimated 1RM')).toBeVisible()
-  expect(screen.getByText('75 kg × 12 · +3.7 kg')).toBeVisible()
-  expect(screen.getByRole('img', { name: 'Best estimated 1RM history' })).toBeInTheDocument()
+  // S5a: the toast's headline names the record (R-R), the line under it the Set and how far past
+  // the old record it went, with the record's sparkline.
+  expect(await screen.findByText('New PR · Heaviest weight')).toBeVisible()
+  expect(screen.getByText('85 kg × 5 · +5 kg')).toBeVisible()
+  expect(screen.getByRole('img', { name: 'Heaviest weight history' })).toBeInTheDocument()
 })
 
 test('O14 the toast joins every record label with a comma', async () => {
@@ -1281,9 +1281,7 @@ test('O14 the toast joins every record label with a comma', async () => {
 
   await user.click(logButton())
 
-  expect(
-    await screen.findByText('New PR · Heaviest set, Most reps at the heaviest weight'),
-  ).toBeVisible()
+  expect(await screen.findByText('New PR · Heaviest weight')).toBeVisible()
   expect(screen.getByText('85 kg × 5 · +5 kg')).toBeVisible()
 })
 
@@ -1316,7 +1314,7 @@ test('O14 a first-ever Exercise Session (no earlier Sessions) shows no toast', a
 test('O14 a record toast is not a modal', async () => {
   const { user } = renderSetScreen({
     earlierSessions: [earlierSession],
-    lastEntries: [historyEntry(1, 75, 12)],
+    lastEntries: [historyEntry(1, 85, 5)],
   })
 
   await user.click(logButton())
@@ -1330,7 +1328,7 @@ test('O14 the record toast goes away after 3 s', async () => {
   vi.useFakeTimers()
   renderSetScreen({
     earlierSessions: [earlierSession],
-    lastEntries: [historyEntry(1, 75, 12)],
+    lastEntries: [historyEntry(1, 85, 5)],
   })
 
   await tapWithFakeTimers(logButton())
@@ -4317,7 +4315,7 @@ test('S5a a record shows a toast pinned at the top with the PR tag, and goes in 
   const toast = document.querySelector('.toast') as HTMLElement
   expect(toast).not.toBeNull()
   expect(within(toast).getByText('PR')).toHaveClass('tag-pr')
-  expect(within(toast).getByRole('img', { name: 'Heaviest set history' })).toBeInTheDocument()
+  expect(within(toast).getByRole('img', { name: 'Heaviest weight history' })).toBeInTheDocument()
   await vi.advanceTimersByTimeAsync(3100)
   expect(document.querySelector('.toast')).toBeNull()
 })

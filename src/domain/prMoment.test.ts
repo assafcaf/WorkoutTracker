@@ -39,12 +39,10 @@ test('S5a a heavier Set reads New PR · Heaviest set, the Set and the gain, with
 
   const moment = prMoment(squat, plan, earlier, today(entry), entry)
 
-  expect(moment?.title).toBe(
-    'New PR · Heaviest set, Best estimated 1RM, Most reps at the heaviest weight',
-  )
+  expect(moment?.title).toBe('New PR · Heaviest weight')
   expect(moment?.detail).toBe('62.5 kg × 8 · +2.5 kg')
   expect(moment?.values).toEqual([55, 60, 62.5])
-  expect(moment?.label).toBe('Heaviest set history')
+  expect(moment?.label).toBe('Heaviest weight history')
 })
 
 test('S5a a Set that sets no record has no moment', () => {
