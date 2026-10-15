@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { ProgressFeature } from './ProgressFeature'
 import type { ProgressPage, ProgressPages } from './pages'
 
@@ -48,4 +48,17 @@ test('a page pushes over the last and Back returns each step', async () => {
   await user.click(screen.getByRole('button', { name: 'Back' }))
   expect(screen.getByText('home')).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+})
+
+test('the group hands its navigate to the page on screen, so a page can open a Session', async () => {
+  const user = userEvent.setup()
+  const navigate = vi.fn()
+  const opening: ProgressPages = {
+    ...pages,
+    home: (p) => <button onClick={() => p.navigate?.({ tab: 'history', sessionId: 's1' })}>Open session</button>,
+  }
+  render(<ProgressFeature pages={opening} navigate={navigate} />)
+
+  await user.click(screen.getByRole('button', { name: 'Open session' }))
+  expect(navigate).toHaveBeenCalledWith({ tab: 'history', sessionId: 's1' })
 })
