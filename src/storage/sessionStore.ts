@@ -260,10 +260,14 @@ export async function setDeload(
   on: boolean,
   now: number = Date.now(),
 ): Promise<Session> {
-  void sessionId
-  void on
-  void now
-  throw new Error('NotImplementedError: setDeload')
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    const { deload: _previous, ...rest } = session
+    void _previous
+    const updated: Session = on ? { ...rest, deload: true, updatedAt: now } : { ...rest, updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
 }
 
 /** Removes one logged Set, renumbering the Exercise's later Sets down by one. */
