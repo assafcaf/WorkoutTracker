@@ -5,21 +5,20 @@ import { DashboardView, type DashboardData, type DashboardViewProps } from './Da
 
 const READY: DashboardData = {
   kind: 'ready',
-  sessionsPerWeek: 3,
-  thisWeek: { sessions: 1, sets: 23, volumeKg: 8920 },
-  lastWeek: { sessions: 3, sets: 75, volumeKg: 27240 },
-  muscles: [
-    { muscle: 'chest', done: 7, planned: 7 },
-    { muscle: 'lats', done: 11, planned: 22 },
-    { muscle: 'quadriceps', done: 6.5, planned: 7.5 },
-    { muscle: 'calves', done: 0, planned: 0 },
-  ],
-  gaps: ['calves', 'abdominals'],
-  lifts: [
-    { exerciseId: 'back-squat', name: 'Back squat', values: [66.7, 68, 70, 72, 74.2], latest: 74.2, delta: 7.5 },
-    { exerciseId: 'db-bench-press', name: 'DB bench press', values: [14.8], latest: 14.8, delta: null },
-  ],
-  hint: { name: 'Back squat', nextWeightKg: 62.5 },
+  card: {
+    name: 'Workout A',
+    minutes: 48,
+    estimate: 'logged',
+    lifts: [
+      { exerciseId: 'deadlift', name: 'Deadlift', step: { reps: 14, target: 20, at: '70 kg', suggest: null } },
+      {
+        exerciseId: 'seated-biceps-curl',
+        name: 'Seated biceps curls',
+        step: { reps: 36, target: 36, at: '12.5 kg', suggest: 'try 15 kg' },
+      },
+      { exerciseId: 'face-pull', name: 'Face pulls', step: null },
+    ],
+  },
   due: { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', summary: '7 exercises · 23 sets · ~53 min' },
 }
 
@@ -56,12 +55,10 @@ describe('DashboardView S1', () => {
 
   test('this week reads three KPI cards against last week', () => {
     renderView()
-    expect(screen.getByText('1/3')).toBeTruthy()
-    expect(screen.getByText('vs 3')).toBeTruthy()
-    expect(screen.getByText('23')).toBeTruthy()
-    expect(screen.getByText('vs 75')).toBeTruthy()
-    expect(screen.getByText('8,920')).toBeTruthy()
-    expect(screen.getByText('vs 27,240')).toBeTruthy()
+    // Train no longer shows the KPI tiles (O24).
+    expect(screen.queryByText('This week')).toBeNull()
+    expect(screen.queryByText('Sessions')).toBeNull()
+    expect(screen.queryByText('Volume, kg')).toBeNull()
   })
 
   test('the muscle week shows sets done of planned in heat bands, the legend and the gaps', () => {
@@ -75,54 +72,71 @@ describe('DashboardView S1', () => {
         onStartWorkout={vi.fn()}
       />,
     )
-    const lats = container.querySelector('[data-muscle="lats"]') as HTMLElement
-    expect(within(lats).getByText('Lats')).toBeTruthy()
-    expect(within(lats).getByText('11').getAttribute('data-band')).toBe('2')
-    expect(within(lats).getByText('of 22')).toBeTruthy()
-    const quads = container.querySelector('[data-muscle="quadriceps"]') as HTMLElement
-    expect(within(quads).getByText('Quads')).toBeTruthy()
-    expect(within(quads).getByText('7').getAttribute('data-band')).toBe('1')
-    expect(within(quads).getByText('of 8')).toBeTruthy()
-    expect(screen.getByText('sets / week')).toBeTruthy()
-    expect(screen.getByText('No direct calves work')).toBeTruthy()
-    expect(screen.getByText('No direct abdominals work')).toBeTruthy()
+    // Train no longer shows the Muscle week (O24).
+    expect(screen.queryByText('Muscle week')).toBeNull()
+    expect(container.querySelector('[data-muscle]')).toBeNull()
+    expect(screen.queryByText('sets / week')).toBeNull()
+    expect(screen.queryByText(/No direct/)).toBeNull()
   })
 
   test('more than two gaps read as one list', () => {
-    renderView({ data: { ...READY, gaps: ['middle back', 'glutes', 'calves'] } })
-    const notes = ['No direct middle back work', 'No direct glutes work', 'No direct calves work'].map((text) =>
-      screen.getByText(text),
+    const { container } = render(
+      <DashboardView
+        today="Tue 13 Oct"
+        sync={{ kind: 'local' }}
+        data={READY}
+        onSync={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onStartWorkout={vi.fn()}
+      />,
     )
-    const list = notes[0].parentElement as HTMLElement
-    expect(list).toHaveClass('dashboard-gaps')
-    for (const note of notes) expect(note.parentElement).toBe(list)
+    expect(container.querySelector('.dashboard-gaps')).toBeNull()
   })
 
   test('a gap muscle the program still plans sets for gets no note', () => {
-    renderView({
-      data: {
-        ...READY,
-        muscles: [...READY.muscles, { muscle: 'hamstrings', done: 7, planned: 10 }],
-        gaps: ['hamstrings', 'calves'],
-      },
-    })
-    expect(screen.queryByText(/hamstrings/)).toBeNull()
-    expect(screen.getByText('No direct calves work')).toBeTruthy()
+    renderView()
+    expect(screen.queryByText(/No direct/)).toBeNull()
   })
 
   test('the lifts card hints the next weight and lists each lift with its trend and change', () => {
     renderView()
-    expect(screen.getByText('Back squat — try 62.5 kg')).toBeTruthy()
-    expect(screen.getByRole('img', { name: 'Back squat e1RM' })).toBeTruthy()
-    expect(screen.getByText('74.2')).toBeTruthy()
-    expect(screen.getByText('+7.5')).toBeTruthy()
-    expect(screen.getByText('14.8')).toBeTruthy()
-    expect(screen.getByText('—')).toBeTruthy()
+    // The sparklines and the hint are gone; the due workout card lists each lift's next step.
+    expect(screen.queryByRole('img', { name: /e1RM/ })).toBeNull()
+    expect(screen.queryByText(/— try /)).toBeNull()
+    const list = screen.getByRole('list', { name: 'Workout A lifts' })
+    const rows = within(list).getAllByRole('listitem')
+    expect(rows).toHaveLength(3)
+    expect(within(rows[0]).getByText('Deadlift')).toBeTruthy()
+    expect(within(rows[0]).getByText('14 of 20')).toBeTruthy()
+    expect(within(rows[0]).getByText('at 70 kg')).toBeTruthy()
+    const bar = within(rows[0]).getByRole('progressbar', { name: 'Deadlift 14 of 20' })
+    expect(bar.getAttribute('aria-valuenow')).toBe('14')
+    expect(bar.getAttribute('aria-valuemax')).toBe('20')
+    expect(within(rows[1]).getByText('36 of 36 → try 15 kg')).toBeTruthy()
+    expect(within(rows[2]).getByText('Face pulls')).toBeTruthy()
+    expect(within(rows[2]).getByText('No sets yet')).toBeTruthy()
   })
 
   test('with no lifts yet the card says they come after the first workout', () => {
-    renderView({ data: { ...READY, lifts: [], hint: null } })
-    expect(screen.getByText('Your lifts show here after your first workout.')).toBeTruthy()
+    renderView({ data: { ...READY, card: { ...READY.card!, lifts: [] } } })
+    expect(screen.queryByText('Your lifts show here after your first workout.')).toBeNull()
+    expect(screen.queryByRole('list', { name: 'Workout A lifts' })).toBeNull()
+  })
+
+  test('the card names the workout and its duration estimate, logged or planned', () => {
+    renderView()
+    expect(screen.getByRole('heading', { level: 2, name: 'Workout A' })).toBeTruthy()
+    expect(screen.getByText('~48 min · from your logged workouts')).toBeTruthy()
+  })
+
+  test('the heading says how many more workouts the week still plans', () => {
+    renderView({ data: { ...READY, card: { ...READY.card!, more: 1 } } })
+    expect(screen.getByText('next · 1 more this week')).toBeTruthy()
+  })
+
+  test('a planned estimate says so', () => {
+    renderView({ data: { ...READY, card: { ...READY.card!, estimate: 'plan' } } })
+    expect(screen.getByText('~48 min · planned')).toBeTruthy()
   })
 
   test('the dock names the workout due and starts it', () => {
