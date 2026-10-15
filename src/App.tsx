@@ -196,7 +196,12 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
       ) : (
         <>
           {shown.tab === 'sessions' ? (
-            <SessionsScreen key={visit} navigate={navigate} onInSession={ignoreInSession} />
+            <SessionsScreen
+              key={visit}
+              navigate={navigate}
+              onInSession={ignoreInSession}
+              initialSessionId={shown.sessionId}
+            />
           ) : null}
           {shown.tab === 'lifts' ? (
             <ProgressFeature key={visit} />
