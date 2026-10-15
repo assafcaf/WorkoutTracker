@@ -2,7 +2,8 @@ import { useState } from 'react'
 import type { Exercise, LibraryExercise, Muscle, Program, Session, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { workoutEstimate } from '../domain/dashboard'
-import { toRegionCounts, weekSets, type MuscleFamily } from '../domain/muscles'
+import { muscleSets, toRegionCounts, type MuscleFamily } from '../domain/muscles'
+import { weeksOf } from '../domain/stats/weeks'
 import { nextLoadText } from '../domain/planLoad'
 import { visiblePrograms } from '../domain/programs'
 import {
@@ -43,9 +44,9 @@ export type ProgramPageProps = {
    * and defaults to `[]` -- only because this task does not own `App.tsx`; E5-T20 wires it.
    */
   sessions?: Session[]
-  /** "Now", for `weekSets`'s 7-day window (M15). Defaults to `Date.now()`. */
+  /** "Now", for the calendar week "This week" covers (R-K). Defaults to `Date.now()`. */
   now?: number
-  /** Resolves a set entry's exerciseId for `weekSets` (M15). Defaults to a catalog lookup. */
+  /** Resolves a set entry's exerciseId for the done map (M15). Defaults to a catalog lookup. */
   resolve?: (id: string) => Exercise | undefined
   /** Program tab actions (E9-T3). Optional here -- E9-T9 wires all of these from `App.tsx`. */
   onNewProgram?(): void
@@ -132,8 +133,14 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const prescribedRegionCounts = toRegionCounts(prescribedMuscleCounts)
   const gaps = programGaps(prescribedMuscleCounts)
 
-  // "This week"'s done side (M15): real sets logged in the last 7 days up to `now`.
-  const doneMuscleCounts = weekSets(sessions, now, resolve, library)
+  // "This week"'s done side (M15, R-K): sets of the Sessions that started in the calendar week
+  // `now` falls in (Monday 00:00 local), the one in progress included.
+  const thisCalendarWeek = weeksOf(sessions, now).find((week) => week.inProgress)
+  const doneMuscleCounts = muscleSets(
+    (thisCalendarWeek?.sessions ?? []).flatMap((session) => session.entries),
+    resolve,
+    library,
+  )
   const doneRegionCounts = toRegionCounts(doneMuscleCounts)
   const noSetsThisWeek = doneMuscleCounts.size === 0
 
