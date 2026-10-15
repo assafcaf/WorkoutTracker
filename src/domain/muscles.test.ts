@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { muscleSets, weekSets, regionsFor, toRegionCounts, familyOf } from './muscles'
+import { contributors, muscleSets, weekSets, regionsFor, toRegionCounts, familyOf } from './muscles'
 import type { Resolve, MuscleFamily, Region } from './muscles'
 import { musclesForRegion } from '../ui/regionMuscles'
 import type { Exercise, LibraryExercise, Muscle, Session, SetEntry } from '../types'
@@ -308,6 +308,28 @@ test('O3 weekSets answers what it answers with the warm-up Sets removed', () => 
 
   expect(result.get('quadriceps')).toBe(1)
   expect(result.get('glutes')).toBe(0.5)
+})
+
+test('O15 contributors does not count warm-up Sets toward an exercise', () => {
+  const entries = [
+    setEntry({ exerciseId: 'back-squat', kind: 'warmup' }),
+    setEntry({ exerciseId: 'back-squat', kind: 'warmup' }),
+    setEntry({ exerciseId: 'back-squat' }),
+    setEntry({ exerciseId: 'back-squat', kind: 'drop' }),
+  ]
+
+  expect(contributors(entries, 'quadriceps', squatResolve, squatLibraryMap)).toEqual([
+    { exerciseId: 'back-squat', name: 'Fixture Exercise', sets: 2 },
+  ])
+  expect(contributors(entries, 'glutes', squatResolve, squatLibraryMap)).toEqual([
+    { exerciseId: 'back-squat', name: 'Fixture Exercise', sets: 1 },
+  ])
+})
+
+test('O15 contributors lists nothing for an exercise that only has warm-up Sets', () => {
+  const entries = [setEntry({ exerciseId: 'back-squat', kind: 'warmup' })]
+
+  expect(contributors(entries, 'quadriceps', squatResolve, squatLibraryMap)).toEqual([])
 })
 
 test('O6 every Region musclesForRegion returns muscles that all share one family', () => {

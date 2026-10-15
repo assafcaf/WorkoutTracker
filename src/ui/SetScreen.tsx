@@ -7,7 +7,6 @@ import { projectSet } from '../domain/liveProgress'
 import { formatSet, formatSetCompact } from '../domain/setText'
 import { presetForSet, presetFromSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
-import { recordsSetBy } from '../domain/records'
 import { prMoment } from '../domain/prMoment'
 import type { PrMoment } from '../domain/prMoment'
 import { formatPlates, platesFor } from '../domain/plates'
@@ -154,7 +153,7 @@ export type SetScreenProps = {
    */
   family?: MuscleFamily
   /**
-   * Finished Sessions started before this one (E13-T6), the baseline `recordsSetBy` measures a
+   * Finished Sessions started before this one (E13-T6), the baseline the record rule measures a
    * Set against. Optional; omitted or empty means no Set is a record.
    */
   earlierSessions?: Session[]
@@ -557,7 +556,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     entries: props.logged ?? [],
   }
   const isRecordSet = (entry: SetEntry): boolean =>
-    earlier.length > 0 && recordsSetBy(exercise, plan, earlier, thisSession, entry).length > 0
+    earlier.length > 0 && prMoment(exercise, plan, earlier, thisSession, entry) !== null
 
   const rest: RestState | null =
     restFrom === null ? null : restAfter(restFrom.entry, restFrom.planRestSeconds, now)

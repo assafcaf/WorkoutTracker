@@ -3,8 +3,8 @@ import type { Services } from './services'
 import type { Muscle } from './types'
 import { ExercisesFeature } from './features/exercises/ExercisesFeature'
 import type { LibraryFilters } from './features/exercises/ExercisesFeature'
-import { LiftsScreen } from './features/lifts/LiftsScreen'
 import { ProgramFeature } from './features/program/ProgramFeature'
+import { ProgressFeature } from './features/progress/ProgressFeature'
 import type { AppRoute } from './features/routes'
 import { ServicesProvider } from './features/ServicesProvider'
 import { SessionsScreen } from './features/sessions/SessionsScreen'
@@ -27,7 +27,7 @@ type ProgramSide = 'program' | 'exercises'
  * The tab on screen; on the Program tab the side showing, and for Exercises the muscles a
  * region panel's "Browse exercises" opened it on (M9) -- `null` when reached any other way.
  */
-type Shown = { tab: Tab; side: ProgramSide; muscles: Muscle[] | null }
+type Shown = { tab: Tab; side: ProgramSide; muscles: Muscle[] | null; sessionId?: string }
 
 /**
  * What a screen group reports about being inside a session or an editor. The shell needs no
@@ -63,7 +63,9 @@ function destinationOf(to: AppRoute): Shown {
     case 'exercises':
       return { tab: 'program', side: 'exercises', muscles: to.muscles }
     case 'history':
-      return { tab: 'sessions', side: 'program', muscles: null }
+      return { tab: 'sessions', side: 'program', muscles: null, sessionId: to.sessionId }
+    case 'progress':
+      return { tab: 'lifts', side: 'program', muscles: null }
     case 'program':
       return { tab: 'program', side: 'program', muscles: null }
     case 'workout':
@@ -72,7 +74,7 @@ function destinationOf(to: AppRoute): Shown {
 }
 
 /**
- * The four tabs (Dashboard, Sessions, Lifts, Program), the full-screen Settings page off the
+ * The four tabs (Train, Progress, Sessions, Program), the full-screen Settings page off the
  * Dashboard's gear, and the Live session.
  *
  * A workout in progress is a full-screen Live session with the tabs hidden. Its chevron
@@ -194,12 +196,10 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
       ) : (
         <>
           {shown.tab === 'sessions' ? (
-            <SessionsScreen key={visit} navigate={navigate} onInSession={ignoreInSession} />
+            <SessionsScreen key={visit} navigate={navigate} onInSession={ignoreInSession} initialSessionId={shown.sessionId} />
           ) : null}
           {shown.tab === 'lifts' ? (
-            <AppShell key={visit} title="Lifts">
-              <LiftsScreen />
-            </AppShell>
+            <ProgressFeature key={visit} navigate={navigate} />
           ) : null}
           {shown.tab === 'program' && shown.side === 'program' ? (
             <ProgramFeature key={visit} navigate={navigate} onInSession={ignoreInSession} />

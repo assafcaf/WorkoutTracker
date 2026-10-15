@@ -2,7 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import { ExerciseList } from './ExerciseList'
 import { SessionSummary } from './SessionSummary'
-import { Stats } from './Stats'
+import { LiftPageView } from '../features/progress/LiftPage'
 import type { Exercise, LibraryExercise, Program, Session, SetEntry } from '../types'
 
 // E14 O7, at the screens: warm-up Sets logged heavier than the Exercise's record change nothing
@@ -41,28 +41,31 @@ function finished(entries: SetEntry[]): Session {
 const WORKING = [working(1, BASE + 10)]
 const WARMED = [warmup(1, BASE + 5), warmup(2, BASE + 6), warmup(3, BASE + 7), warmup(4, BASE + 8), ...WORKING]
 
-function renderStats(entries: SetEntry[]): HTMLElement {
-  const { container } = render(<Stats sessions={[finished(entries)]} resolve={resolve} programs={[program]} />)
+function renderLift(entries: SetEntry[]): HTMLElement {
+  const { container } = render(
+    <LiftPageView exerciseId="bench" sessions={[finished(entries)]} program={program} resolve={resolve} now={BASE + DAY} />,
+  )
   return container
 }
 
-function statsFacts(container: HTMLElement) {
-  const bar = container.querySelector('.bar-chart-bar')
+function liftFacts(container: HTMLElement) {
   return {
-    volume: bar?.getAttribute('data-value'),
-    records: Array.from(container.querySelectorAll('.stats-record')).map((li) => li.textContent),
-    progress: screen.queryByRole('progressbar')?.getAttribute('aria-valuenow') ?? null,
+    hero: container.querySelector('.lift-hero-value')?.textContent ?? null,
+    bests: Array.from(container.querySelectorAll('.lift-bests tbody tr')).map((tr) => tr.textContent),
   }
 }
 
 test('O7 Stats shows the same volume, records and progression with warm-up Sets heavier than the record as without them', () => {
-  const without = statsFacts(renderStats(WORKING))
+  const plain = renderLift(WORKING)
+  const without = liftFacts(plain)
+  expect(plain.querySelector('.lift-warmups')).toBeNull()
   cleanup()
-  const withWarmups = statsFacts(renderStats(WARMED))
+  const warmed = renderLift(WARMED)
+  const withWarmups = liftFacts(warmed)
 
-  expect(without.volume).toBe('300')
-  expect(without.records.join(' ')).toContain('60 kg')
+  expect(without.hero).toContain('60')
   expect(withWarmups).toEqual(without)
+  expect(warmed.querySelector('.lift-warmups')?.textContent).toMatch(/Warm-ups .* not counted/)
 })
 
 test('O7 the exercise list shows the same volume against the baseline with warm-up Sets logged as without them', () => {

@@ -1,11 +1,8 @@
 import { useContext, useState, type ReactNode } from 'react'
-import { band } from '../../domain/band'
-import type { LiftTrend, MuscleWeekRow, WeekTotals } from '../../domain/dashboard'
-import type { Muscle } from '../../types'
 import { SettingsButton, ShellChromeContext } from '../../ui/AppShell'
-import { Sparkline } from '../../ui/charts/Sparkline'
 import { Icon } from '../../ui/icons'
 import './DashboardScreen.css'
+import type { TrainCard } from './trainCard'
 
 /** How the header's second line reads the phone's cloud copy. */
 export type DashboardSync =
@@ -35,13 +32,8 @@ export type DashboardData =
     }
   | {
       kind: 'ready'
-      sessionsPerWeek: number
-      thisWeek: WeekTotals
-      lastWeek: WeekTotals
-      muscles: MuscleWeekRow[]
-      gaps: Muscle[]
-      lifts: LiftTrend[]
-      hint: { name: string; nextWeightKg: number } | null
+      /** The workout due with each lift's next step; `null` when the Program has no workout. */
+      card: TrainCard | null
       due: DockWorkout | null
       /**
        * Every workout of the Program the dock can offer in place of the one due, in Program
@@ -70,34 +62,6 @@ export type DashboardViewProps = {
   resume?: DashboardResume | null
 }
 
-const MUSCLE_LABELS: Partial<Record<Muscle, string>> = {
-  quadriceps: 'Quads',
-  abdominals: 'Abs',
-  'middle back': 'Mid back',
-}
-
-function muscleLabel(muscle: Muscle): string {
-  return MUSCLE_LABELS[muscle] ?? muscle.charAt(0).toUpperCase() + muscle.slice(1)
-}
-
-/** A set count at a glance: the half sets a secondary muscle earns round to whole ones. */
-function count(value: number): string {
-  return String(Math.round(value))
-}
-
-const kg = (value: number): string => Math.round(value).toLocaleString('en-US')
-
-function delta(value: number | null): string {
-  if (value === null) return '—'
-  const rounded = Math.round(value * 10) / 10
-  if (rounded === 0) return '0.0'
-  return `${rounded > 0 ? '+' : '−'}${Math.abs(rounded).toFixed(1)}`
-}
-
-function weight(value: number): string {
-  return String(Math.round(value * 100) / 100)
-}
-
 function SyncLine({ today, sync }: { today: string; sync: DashboardSync }): JSX.Element {
   if (sync.kind === 'offline') {
     return (
@@ -116,108 +80,76 @@ function SyncLine({ today, sync }: { today: string; sync: DashboardSync }): JSX.
   return <p className="dashboard-status">{`${today} · ${tail}`}</p>
 }
 
-function Kpi({ label, value, was }: { label: string; value: string; was: string }): JSX.Element {
+function DueCard({ card }: { card: TrainCard }): JSX.Element {
+  const ready = card.lifts.filter((lift) => lift.step?.suggest)
+  const note = card.estimate === 'logged' ? 'from your logged workouts' : 'planned'
   return (
-    <div className="dashboard-kpi">
-      <span className="dashboard-kpi-label">{label}</span>
-      <span className="dashboard-kpi-value">{value}</span>
-      <span className="dashboard-kpi-was">{`vs ${was}`}</span>
-    </div>
-  )
-}
-
-function MuscleRow({ row }: { row: MuscleWeekRow }): JSX.Element {
-  return (
-    <div className="dashboard-muscle-row" data-muscle={row.muscle}>
-      <span className="dashboard-muscle-name">{muscleLabel(row.muscle)}</span>
-      <span className="dashboard-heat" data-band={band(row.done, 'week')}>
-        {count(row.done)}
-      </span>
-      <span className="dashboard-muscle-of">{`of ${count(row.planned)}`}</span>
-    </div>
-  )
-}
-
-const LEGEND = ['0', '1–9', '10–20', '21+']
-
-function MuscleWeek({ rows, gaps }: { rows: MuscleWeekRow[]; gaps: Muscle[] }): JSX.Element {
-  const half = Math.ceil(rows.length / 2)
-  // A note only where the card's own numbers agree (S1): a gap muscle the program still plans
-  // sets for, through a secondary muscle, reads "of N" above and gets no "No direct" note.
-  const unplanned = gaps.filter((muscle) => (rows.find((row) => row.muscle === muscle)?.planned ?? 0) === 0)
-  return (
-    <section className="card dashboard-card" aria-labelledby="dashboard-muscle-week">
+    <section className="dashboard-train" aria-labelledby="dashboard-train-title">
       <div className="dashboard-card-head">
-        <h2 className="dashboard-card-title" id="dashboard-muscle-week">
-          Muscle week
-        </h2>
-        <span className="dashboard-card-note">sets done · of planned</span>
-      </div>
-      <div className="dashboard-muscles">
-        <div className="dashboard-muscle-col">
-          {rows.slice(0, half).map((row) => (
-            <MuscleRow key={row.muscle} row={row} />
-          ))}
-        </div>
-        <div className="dashboard-muscle-col">
-          {rows.slice(half).map((row) => (
-            <MuscleRow key={row.muscle} row={row} />
-          ))}
-        </div>
-      </div>
-      <div className="dashboard-legend">
-        {LEGEND.map((label, index) => (
-          <span key={label} className="dashboard-legend-item">
-            <i className="dashboard-legend-swatch" data-band={index} />
-            {label}
+        <div className="dashboard-card-heading">
+          <h2 className="dashboard-card-title" id="dashboard-train-title">
+            {card.name}
+          </h2>
+          <span className="dashboard-card-next">
+            {card.more && card.more > 0 ? `next · ${card.more} more this week` : 'next'}
           </span>
-        ))}
-        <span className="dashboard-legend-unit">sets / week</span>
-      </div>
-      {unplanned.length > 0 ? (
-        <div className="dashboard-gaps">
-          {unplanned.map((muscle) => (
-            <span key={muscle}>{`No direct ${muscle} work`}</span>
-          ))}
         </div>
-      ) : null}
-    </section>
-  )
-}
-
-function Lifts({
-  lifts,
-  hint,
-}: {
-  lifts: LiftTrend[]
-  hint: { name: string; nextWeightKg: number } | null
-}): JSX.Element {
-  return (
-    <section className="card dashboard-card dashboard-lifts" aria-labelledby="dashboard-lifts">
-      <div className="dashboard-card-head dashboard-lifts-head">
-        <h2 className="dashboard-card-title" id="dashboard-lifts">
-          Lifts
-        </h2>
-        <span className="dashboard-card-note">e1RM, kg · 3 weeks</span>
       </div>
-      {hint ? (
-        <p className="dashboard-hint">
+      <p className="dashboard-step-estimate">{`~${card.minutes} min · ${note}`}</p>
+      {ready.length > 0 ? (
+        <p className="dashboard-step-summary">
           <Icon name="ArrowUp" size={16} />
-          {`${hint.name} — try ${weight(hint.nextWeightKg)} kg`}
+          {`${ready.length} ${ready.length === 1 ? 'lift' : 'lifts'} ready to step up: ${ready.map((lift) => lift.name.toLowerCase()).join(', ')}. ${ready
+            .map((lift) => lift.step!.suggest!.replace(/^try /, 'Try '))
+            .join(', ')} next.`}
         </p>
       ) : null}
-      {lifts.length === 0 ? (
-        <p className="dashboard-empty">Your lifts show here after your first workout.</p>
-      ) : (
-        lifts.map((lift) => (
-          <div key={lift.exerciseId} className="dashboard-lift">
-            <span className="dashboard-lift-name">{lift.name}</span>
-            <Sparkline values={lift.values} label={`${lift.name} e1RM`} />
-            <span className="dashboard-lift-value">{lift.latest.toFixed(1)}</span>
-            <span className="dashboard-lift-delta">{delta(lift.delta)}</span>
-          </div>
-        ))
-      )}
+      {card.lifts.length > 0 ? (
+        <p className="dashboard-step-legend">
+          <span>Reps at the current weight against the next step</span>
+          <span className="dashboard-step-key">
+            <i aria-hidden="true" /> = next step
+          </span>
+        </p>
+      ) : null}
+      {card.lifts.length > 0 ? (
+        <ul className="dashboard-steps" aria-label={`${card.name} lifts`}>
+          {card.lifts.map((lift) => (
+            <li key={lift.exerciseId} className="dashboard-step">
+              <div className="dashboard-step-line">
+                <span className="dashboard-step-name">{lift.name}</span>
+                {lift.step ? (
+                  <span className="dashboard-step-text">
+                    {lift.step.suggest ? (
+                      <span className="dashboard-step-ready">{`${lift.step.reps} of ${lift.step.target} → ${lift.step.suggest}`}</span>
+                    ) : (
+                      <>
+                        <span className="dashboard-step-count">{`${lift.step.reps} of ${lift.step.target}`}</span>
+                        <span className="dashboard-step-at">{`at ${lift.step.at}`}</span>
+                      </>
+                    )}
+                  </span>
+                ) : (
+                  <span className="dashboard-step-at">No sets yet</span>
+                )}
+              </div>
+              {lift.step ? (
+                <div
+                  className="dashboard-step-bar"
+                  role="progressbar"
+                  aria-label={`${lift.name} ${lift.step.reps} of ${lift.step.target}`}
+                  aria-valuemin={0}
+                  aria-valuenow={lift.step.reps}
+                  aria-valuemax={lift.step.target}
+                  data-ready={lift.step.suggest ? 'true' : undefined}
+                >
+                  <i style={{ width: `${Math.min(100, (lift.step.reps / Math.max(1, lift.step.target)) * 100)}%` }} />
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   )
 }
@@ -311,9 +243,8 @@ function StartDock({
 }
 
 /**
- * The Dashboard home screen (Progress Dashboard S1, S8): this week against last, the muscle week
- * against the plan, the lifts' e1RM over three weeks, and the workout due with its start button
- * docked at the bottom. With no Program yet it offers the Programs to pick from instead.
+ * The Train home screen (E18 O24): the workout due with each lift's next step and a duration
+ * estimate, and its start button docked at the bottom. With no Program yet it offers the Programs to pick from instead.
  */
 export function DashboardView(props: DashboardViewProps): JSX.Element {
   const { data } = props
@@ -377,26 +308,8 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
       </div>
     )
   } else if (data.kind === 'ready') {
-    const { thisWeek, lastWeek, due } = data
-    body = (
-      <>
-        <div className="dashboard-week-head">
-          <h2 className="dashboard-caption">This week</h2>
-          <span className="dashboard-card-note">vs last week</span>
-        </div>
-        <div className="dashboard-kpis">
-          <Kpi
-            label="Sessions"
-            value={`${thisWeek.sessions}/${data.sessionsPerWeek}`}
-            was={String(lastWeek.sessions)}
-          />
-          <Kpi label="Sets" value={String(thisWeek.sets)} was={String(lastWeek.sets)} />
-          <Kpi label="Volume, kg" value={kg(thisWeek.volumeKg)} was={kg(lastWeek.volumeKg)} />
-        </div>
-        <MuscleWeek rows={data.muscles} gaps={data.gaps} />
-        <Lifts lifts={data.lifts} hint={data.hint} />
-      </>
-    )
+    const { due } = data
+    body = data.card ? <DueCard card={data.card} /> : null
     if (!dock && due) {
       dock = <StartDock key={due.workoutId} due={due} workouts={data.workouts ?? [due]} onStart={props.onStartWorkout} />
     }

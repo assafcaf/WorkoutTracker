@@ -3,18 +3,17 @@ import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import {
   dueWorkout,
-  liftTrends,
-  muscleWeek,
-  progressionHint,
   timeAgo,
-  weekVsLast,
   workoutEstimate,
 } from '../../domain/dashboard'
 import { formatDay } from '../../domain/dates'
 import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
+import { buildLiftHistories } from '../../domain/stats/liftHistory'
+import { dueWorkoutCard } from '../../domain/stats/train'
+import { thisWeek } from '../../domain/stats/weeks'
 import { ServiceError, type Services, type SyncView } from '../../services'
-import type { Exercise, LibraryExercise, Program, Session, Workout } from '../../types'
+import type { Exercise, ExercisePlan, Program, Session, Workout } from '../../types'
 import { useServices, useSyncControls } from '../ServicesProvider'
 import { useServiceData } from '../useServiceData'
 import {
@@ -25,6 +24,7 @@ import {
   type DockWorkout,
   type ProgramOption,
 } from './DashboardView'
+import { trainCardOf } from './trainCard'
 
 export type DashboardScreenProps = {
   /** Starts (or resumes) `workoutId` of the active Program. */
@@ -44,7 +44,6 @@ type Loaded = {
   storageAvailable: boolean
   sessions: Session[]
   resolve: Resolve
-  library: Map<string, LibraryExercise>
 }
 
 async function load(s: Services): Promise<Loaded> {
@@ -64,12 +63,11 @@ async function load(s: Services): Promise<Loaded> {
       storageAvailable: true,
       sessions,
       resolve,
-      library: libraryMap,
     }
   } catch (error) {
     if (!(error instanceof ServiceError) || error.code !== 'storage-unavailable') throw error
     // Nothing can be stored: the bundled Programs are offered, and none can be taken up.
-    return { programs: bundledPrograms, activeProgramId: null, storageAvailable: false, sessions, resolve, library: libraryMap }
+    return { programs: bundledPrograms, activeProgramId: null, storageAvailable: false, sessions, resolve }
   }
 }
 
@@ -81,9 +79,9 @@ function programSummary(program: Program): string {
 }
 
 /** `7 exercises · 23 sets · ~53 min`. */
-function workoutSummary(workout: Workout): string {
+function workoutSummary(workout: Workout, loggedMinutes?: number): string {
   const { exercises, sets, minutes } = workoutEstimate(workout)
-  return `${exercises} exercises · ${sets} sets · ~${minutes} min`
+  return `${exercises} exercises · ${sets} sets · ~${loggedMinutes ?? minutes} min`
 }
 
 function syncOf(view: SyncView, now: number): DashboardSync {
@@ -96,9 +94,9 @@ function syncOf(view: SyncView, now: number): DashboardSync {
 }
 
 /**
- * The Dashboard tab's container (Progress Dashboard S1, S8): reads the Programs, the finished
- * Sessions, the catalog and the sync state through the services, works the numbers out with the
- * pure functions in `src/domain/dashboard.ts`, and renders `DashboardView`. Picking a Program
+ * The Train tab's container (E18 O24): reads the Programs, the finished Sessions, the catalog and
+ * the sync state through the services, works the due workout's next steps out with the pure
+ * functions in `src/domain/stats/`, and renders `DashboardView`. Picking a Program
  * here (a new trainee) makes it the active one through `programs.setActive`.
  */
 export function DashboardScreen({
@@ -125,7 +123,7 @@ export function DashboardScreen({
   let data: DashboardData = { kind: 'loading' }
 
   if (loaded.status === 'ready') {
-    const { programs, activeProgramId, storageAvailable, sessions, resolve, library } = loaded.data
+    const { programs, activeProgramId, storageAvailable, sessions, resolve } = loaded.data
     const active = programs.find((program) => program.id === activeProgramId)
     if (!active) {
       const offered = visiblePrograms(programs)
@@ -147,10 +145,12 @@ export function DashboardScreen({
       }
     } else {
       const program = visiblePrograms([active])[0] ?? active
-      const { thisWeek, lastWeek } = weekVsLast(sessions, at, resolve)
-      const { rows, gaps } = muscleWeek(sessions, at, program, resolve, library)
-      const hint = progressionHint(sessions, program, resolve)
       const due = dueWorkout(program, sessions)
+      const plans = new Map<string, ExercisePlan>()
+      for (const workout of program.workouts) for (const plan of workout.exercises) plans.set(plan.exerciseId, plan)
+      const histories = buildLiftHistories(sessions, resolve, (id) => plans.get(id))
+      const week = thisWeek(sessions, at, program.sessionsPerWeek)
+      const dueCard =dueWorkoutCard(program, sessions, resolve, histories)
       const dockWorkout = (workout: Workout): DockWorkout => {
         const done = sessions
           .filter((session) => session.programId === program.id && session.workoutId === workout.id)
@@ -160,24 +160,18 @@ export function DashboardScreen({
           workoutId: workout.id,
           name: workout.name,
           last: last === null ? null : formatDay(new Date(last), new Date(at)),
-          summary: workoutSummary(workout),
+          summary: workoutSummary(workout, workout.id === due?.workout.id ? dueCard?.minutes : undefined),
         }
       }
       data = {
         kind: 'ready',
-        sessionsPerWeek: program.sessionsPerWeek,
-        thisWeek,
-        lastWeek,
-        muscles: rows,
-        gaps,
-        lifts: liftTrends(sessions, program, resolve, at),
-        hint,
+        card: dueCard ? trainCardOf(dueCard, histories, Math.max(0, week.planned - week.done - 1)) : null,
         due: due
           ? {
               workoutId: due.workout.id,
               name: due.workout.name,
               last: due.lastDoneAt === null ? null : formatDay(new Date(due.lastDoneAt), new Date(at)),
-              summary: workoutSummary(due.workout),
+              summary: workoutSummary(due.workout, dueCard?.minutes),
             }
           : null,
         workouts: program.workouts.filter((workout) => !workout.hidden).map(dockWorkout),

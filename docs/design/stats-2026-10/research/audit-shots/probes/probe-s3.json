@@ -1,0 +1,25 @@
+{
+ "liveSet": {
+  "tinyText": [],
+  "overflowX": [],
+  "smallTargets": [],
+  "svgText": [],
+  "clipped": [
+   "dial-heading \"Weight (kg)\"",
+   "dial-ghost \"62.5\"",
+   "dial-ghost \"57.5\"",
+   "dial-heading \"Reps\"",
+   "dial-ghost \"11\"",
+   "dial-ghost \"9\""
+  ]
+ },
+ "liveRest": {
+  "tinyText": [],
+  "overflowX": [],
+  "smallTargets": [],
+  "svgText": [],
+  "clipped": [
+   "set-logged \"Set 1 logged · 60 kg × 10\""
+  ]
+ }
+}

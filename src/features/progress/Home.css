@@ -1,0 +1,297 @@
+/* The Progress home and All lifts (E18-T10, O20). Composes the global `.card`, `.btn-*` roles;
+ * every colour, size and radius is a token. */
+
+.progress-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-6);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.progress-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) 0;
+}
+
+.progress-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: 34px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+}
+
+.progress-date {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.progress-sentence {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 28px;
+  font-weight: var(--weight-semibold);
+}
+
+.progress-climbed {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.progress-counts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 0;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline);
+  list-style: none;
+}
+
+.progress-count {
+  display: flex;
+  flex-direction: column;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--color-hairline);
+}
+
+.progress-count:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.progress-count-n {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+.progress-count-label {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.progress-card-date {
+  display: block;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  text-align: right;
+}
+
+.progress-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.progress-card-open {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  text-align: left;
+}
+
+.progress-card-name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.progress-card-kind {
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.progress-card-sentence,
+.progress-card-suggestion {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.progress-card-chart {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.progress-card-value,
+.progress-row-value {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+.progress-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.progress-why {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.progress-why-lines {
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  border-top: 1px solid var(--color-hairline);
+  list-style: none;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.progress-mini {
+  flex: 1;
+  min-width: 0;
+  max-width: 160px;
+}
+
+/* ---- the week ---- */
+
+.progress-tile {
+  padding: var(--space-3);
+}
+
+.progress-tile-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.progress-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.progress-day-today .progress-day-name,
+.progress-day-today .progress-day-date {
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+}
+
+.progress-day-done {
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.progress-day-rest {
+  width: var(--space-1);
+  height: var(--space-1);
+  margin: calc(var(--tap-min) / 2 - var(--space-1) / 2) 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-muted);
+}
+
+/* ---- links and rows ---- */
+
+.progress-link,
+.progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--space-2) 0;
+  border: 0;
+  border-top: 1px solid var(--color-hairline);
+  text-align: left;
+}
+
+.progress-link-main,
+.progress-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.progress-link-title,
+.progress-row-name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.progress-link-sub,
+.progress-row-note {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.progress-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress-all {
+  padding: var(--space-2) var(--space-4) var(--space-6);
+}
+
+.progress-all .progress-mini {
+  flex: 0 0 96px;
+}
+
+.progress-expect {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-muted);
+  font-size: var(--text-md);
+  line-height: 24px;
+}
+
+.progress-start {
+  min-height: var(--tap-min);
+  border: 0;
+}

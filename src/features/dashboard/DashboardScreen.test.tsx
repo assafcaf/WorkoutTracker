@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { createServices, type Services, type SyncService } from '../../services'
 import { db } from '../../storage/db'
@@ -80,10 +80,11 @@ describe('DashboardScreen', () => {
 
     await waitFor(() => expect(screen.getByText('Workout A due')).toBeTruthy(), SETTLE)
     expect(screen.getByText('· last Fri 9 Oct')).toBeTruthy()
-    expect(screen.getByText('1/3')).toBeTruthy()
-    expect(screen.getByText('800')).toBeTruthy()
-    expect(screen.getByText('vs 1,200')).toBeTruthy()
-    expect(screen.getByText('Back squat — try 62.5 kg')).toBeTruthy()
+    expect(screen.queryByText('1/3')).toBeNull()
+    expect(screen.queryByText('Muscle week')).toBeNull()
+    const lifts = screen.getByRole('list', { name: 'Workout A lifts' })
+    const squatRow = within(lifts).getByText('Back squat').closest('li') as HTMLElement
+    expect(within(squatRow).getByText(/^20 of 20 → try /)).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Tue 13 Oct · Synced 2 min ago')).toBeTruthy(), SETTLE)
 
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
@@ -96,7 +97,23 @@ describe('DashboardScreen', () => {
     const use = screen.getByRole('button', { name: /^Use / })
     fireEvent.click(use)
     await waitFor(() => expect(screen.getByText(/ due$/)).toBeTruthy(), SETTLE)
-    expect(screen.getByText('Your lifts show here after your first workout.')).toBeTruthy()
+    expect(screen.queryByText('Your lifts show here after your first workout.')).toBeNull()
+    expect(screen.getAllByText('No sets yet').length).toBeGreaterThan(0)
+  })
+
+  test("the estimate is the median of the workout's last logged durations once there are three", async () => {
+    await db.sessions.bulkPut([
+      session('a1', 'workout-a', at(8, 20), [squat(60, 10, at(8, 20), 0)]),
+      session('a2', 'workout-a', at(8, 27), [squat(60, 10, at(8, 27), 0)]),
+      session('a3', 'workout-a', at(9, 2), [squat(60, 10, at(9, 2), 0)]),
+      session('b1', 'workout-b', at(9, 12), [
+        { exerciseId: 'deadlift', setIndex: 0, weightKg: 100, reps: 8, loggedAt: at(9, 12) },
+      ]),
+    ])
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+    // Each Session ran 3,000,000 ms: 50 minutes. Workout A is due after B.
+    await waitFor(() => expect(screen.getByText('~50 min · from your logged workouts')).toBeTruthy(), SETTLE)
   })
 
   test('settings opens from the header', async () => {

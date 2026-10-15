@@ -6,18 +6,15 @@ import type { Resolve } from '../../domain/muscles'
 import {
   calendarWeeks,
   dayMonth,
-  formatSetCount,
-  heatRowsFor,
-  sessionRowStats,
   sessionsByWeek,
   sessionsInWeeks,
-  volumeBars,
-  weeklyRegionSets,
+  startOfWeek,
   workingSetCount,
-  type HeatRow,
-  type WeekRegionSets,
 } from '../../domain/sessionsView'
-import type { LibraryExercise, Muscle, Program, Session } from '../../types'
+import { muscleWeeks, STATS_MUSCLES } from '../../domain/stats/muscles'
+import { computeRecords, recordCount } from '../../domain/stats/records'
+import { sessionVolume } from '../../domain/volume'
+import type { ExercisePlan, LibraryExercise, Muscle, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { BarChart } from '../../ui/charts/BarChart'
 import { HeatCell, HeatLegend } from '../../ui/RegionHeat'
@@ -33,11 +30,29 @@ export type SessionsScreenProps = {
   onInSession(inSession: boolean): void
   /** The clock the calendar and the week groups read; the device's by default. */
   now?: () => number
+  /** A Session to open the summary of on arrival (the `{ tab: 'history', sessionId }` route). */
+  initialSessionId?: string
 }
 
 const CALENDAR_WEEKS = 6
 const HEAT_WEEKS = 4
+const VOLUME_LIMIT = 12
 const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+const MUSCLE_LABELS: Record<string, string> = {
+  chest: 'Chest',
+  shoulders: 'Shoulders',
+  triceps: 'Triceps',
+  lats: 'Lats',
+  'middle back': 'Mid back',
+  biceps: 'Biceps',
+  quadriceps: 'Quads',
+  hamstrings: 'Hamstrings',
+  glutes: 'Glutes',
+  calves: 'Calves',
+  'lower back': 'Lower back',
+  abdominals: 'Abs',
+}
 
 /** The Session's Workout name from `programs`, else its stored `workoutId`. */
 function workoutNameOf(session: Session, programs: Program[]): string {
@@ -97,33 +112,41 @@ function SessionsCalendar({ sessions, now }: { sessions: Session[]; now: number 
   )
 }
 
+/** One calendar week's column of the muscle table: its Monday and each muscle's sets. */
+type MuscleColumn = { start: number; inProgress: boolean; sets: Map<Muscle, number> }
+
 /** One half of the week heat table: a row label and one heat square per week. */
-function WeekHeatHalf({ rows, weeks }: { rows: HeatRow[]; weeks: WeekRegionSets[] }): JSX.Element {
+function WeekHeatHalf({ muscles, weeks }: { muscles: readonly Muscle[]; weeks: MuscleColumn[] }): JSX.Element {
   return (
     <table className="week-heat">
       <thead>
         <tr>
           <th scope="col">
-            <span className="sessions-visually-hidden">Region</span>
+            <span className="sessions-visually-hidden">Muscle</span>
           </th>
           {weeks.map((week) => (
-            <th key={week.start} scope="col" className="week-heat-week">
+            <th
+              key={week.start}
+              scope="col"
+              className="week-heat-week"
+              data-in-progress={week.inProgress || undefined}
+            >
               {new Date(week.start).getDate()}
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <tr key={row.region} data-region={row.region}>
+        {muscles.map((muscle) => (
+          <tr key={muscle} data-muscle={muscle}>
             <th scope="row" className="week-heat-label">
-              {row.label}
+              {MUSCLE_LABELS[muscle]}
             </th>
             {weeks.map((week) => {
-              const count = week.counts.get(row.region) ?? 0
+              const count = Math.round(week.sets.get(muscle) ?? 0)
               return (
                 <td key={week.start}>
-                  <HeatCell count={count} scale="week" title={`${row.label} ${formatSetCount(count)} sets`} />
+                  <HeatCell count={count} scale="week" title={`${MUSCLE_LABELS[muscle]} ${count} sets`} />
                 </td>
               )
             })}
@@ -134,7 +157,25 @@ function WeekHeatHalf({ rows, weeks }: { rows: HeatRow[]; weeks: WeekRegionSets[
   )
 }
 
-/** Muscle sets by week: the regions down, the last four weeks across, heat-banded. */
+/** The last `count` calendar weeks ending with `now`'s, empty weeks included, oldest first. */
+function lastWeeks(
+  sessions: Session[],
+  now: number,
+  count: number,
+  resolve: Resolve,
+  library: Map<string, LibraryExercise>,
+): MuscleColumn[] {
+  const byStart = new Map(muscleWeeks(sessions, now, resolve, library).map((week) => [week.start, week] as const))
+  const current = startOfWeek(now)
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(current)
+    date.setDate(date.getDate() - 7 * (count - 1 - index))
+    const start = date.getTime()
+    return byStart.get(start) ?? { start, inProgress: false, sets: new Map<Muscle, number>() }
+  })
+}
+
+/** Muscle sets by calendar week: the 12 muscles down, the last four weeks across, heat-banded. */
 function MuscleWeeks({
   sessions,
   now,
@@ -146,9 +187,8 @@ function MuscleWeeks({
   resolve: Resolve
   library: Map<string, LibraryExercise>
 }): JSX.Element {
-  const weeks = weeklyRegionSets(sessions, now, HEAT_WEEKS, resolve, library)
-  const rows = heatRowsFor(weeks.map((week) => week.counts))
-  const half = Math.ceil(rows.length / 2)
+  const weeks = lastWeeks(sessions, now, HEAT_WEEKS, resolve, library)
+  const half = Math.ceil(STATS_MUSCLES.length / 2)
   return (
     <section className="sessions-card card" aria-label="Muscle sets by week">
       <div className="sessions-card-head">
@@ -158,24 +198,83 @@ function MuscleWeeks({
         </span>
       </div>
       <div className="week-heat-halves">
-        <WeekHeatHalf rows={rows.slice(0, half)} weeks={weeks} />
-        <WeekHeatHalf rows={rows.slice(half)} weeks={weeks} />
+        <WeekHeatHalf muscles={STATS_MUSCLES.slice(0, half)} weeks={weeks} />
+        <WeekHeatHalf muscles={STATS_MUSCLES.slice(half)} weeks={weeks} />
       </div>
       <HeatLegend scale="week" />
     </section>
   )
 }
 
+/** Volume per Session, one chart per Workout: A is compared with A and B with B. */
+function VolumeByWorkout({
+  sessions,
+  programs,
+  resolve,
+}: {
+  sessions: Session[]
+  programs: Program[]
+  resolve: Resolve
+}): JSX.Element {
+  const groups = new Map<string, { position: number; sessions: Session[] }>()
+  for (const session of [...sessions].sort((a, b) => a.startedAt - b.startedAt)) {
+    const name = workoutNameOf(session, programs)
+    const position = programs
+      .find((program) => program.id === session.programId)
+      ?.workouts.findIndex((workout) => workout.id === session.workoutId)
+    const group = groups.get(name) ?? {
+      position: position !== undefined && position >= 0 ? position : 99,
+      sessions: [],
+    }
+    group.sessions.push(session)
+    groups.set(name, group)
+  }
+  const ordered = [...groups.entries()].sort(
+    ([nameA, a], [nameB, b]) => a.position - b.position || nameA.localeCompare(nameB),
+  )
+  return (
+    <section className="sessions-card card" aria-label="Volume per session, kg">
+      <div className="sessions-card-head">
+        <h2 className="sessions-card-title">Volume per session, kg</h2>
+      </div>
+      {ordered.map(([name, group]) => (
+        <div key={name} className="sessions-volume-workout">
+          <h3 className="sessions-volume-name">{name}</h3>
+          <BarChart
+            title={`${name} volume per session, kg`}
+            bars={group.sessions.slice(-VOLUME_LIMIT).map((session) => ({
+              at: session.startedAt,
+              label: name,
+              value: Math.round(sessionVolume(session, resolve).kg),
+            }))}
+          />
+        </div>
+      ))}
+    </section>
+  )
+}
+
+/** A row's record count in words, from the engine's one count: `1 record`, `4 records`. */
+function recordsText(count: number): string {
+  return `${count} ${count === 1 ? 'record' : 'records'}`
+}
+
 /**
  * The Sessions tab (Progress Dashboard S6a) as its own container over services: the last six
- * weeks as a calendar, the regions' sets per week, each Session's volume, and every finished
- * Session grouped by week. A row opens the Session's summary, whose Edit opens the History
- * editor (save, delete); both refresh on the `'sessions'` topic without a reload.
+ * weeks as a calendar, the 12 muscles' sets per calendar week, each Workout's volume, and every
+ * finished Session grouped by week. A row opens the Session's summary (so does a route naming
+ * one), whose Edit opens the History editor (save, delete); both refresh on the `'sessions'`
+ * topic without a reload.
  *
  * Like the History group it replaces, it never puts the trainee mid-session.
  */
-export function SessionsScreen({ navigate, onInSession, now = Date.now }: SessionsScreenProps): JSX.Element {
-  const [summarySessionId, setSummarySessionId] = useState<string | null>(null)
+export function SessionsScreen({
+  navigate,
+  onInSession,
+  now = Date.now,
+  initialSessionId,
+}: SessionsScreenProps): JSX.Element {
+  const [summarySessionId, setSummarySessionId] = useState<string | null>(initialSessionId ?? null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const services = useServices()
 
@@ -185,7 +284,11 @@ export function SessionsScreen({ navigate, onInSession, now = Date.now }: Sessio
 
   const sessionsData = useServiceData((services) => services.sessions.list(), ['sessions'])
   const programsData = useServiceData(
-    (services) => services.programs.load().then((loaded) => loaded.programs),
+    (services) =>
+      services.programs.load().then((loaded) => ({
+        programs: loaded.programs,
+        activeProgramId: loaded.activeProgramId,
+      })),
     ['programs'],
   )
   const catalogData = useServiceData((services) => services.catalog.load(), [])
@@ -199,7 +302,7 @@ export function SessionsScreen({ navigate, onInSession, now = Date.now }: Sessio
   }
 
   const sessions = sessionsData.data.filter((session) => session.finishedAt !== null)
-  const programs = programsData.data
+  const { programs, activeProgramId } = programsData.data
   const { catalog, library } = catalogData.data
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
   const overrides = bodyweightOverridesData.status === 'ready' ? bodyweightOverridesData.data : {}
@@ -215,6 +318,14 @@ export function SessionsScreen({ navigate, onInSession, now = Date.now }: Sessio
   const earlierThan = (session: Session) =>
     sessions.filter((other) => other.id !== session.id && other.startedAt < session.startedAt)
   const today = now()
+
+  // The engine's one record count, for every row: plans come from the active Program.
+  const activeProgram = programs.find((program) => program.id === activeProgramId) ?? programs[0]
+  const activePlans = new Map<string, ExercisePlan>()
+  for (const workout of activeProgram?.workouts ?? []) {
+    for (const plan of workout.exercises) activePlans.set(plan.exerciseId, plan)
+  }
+  const records = computeRecords(sessions, resolve, (id) => activePlans.get(id))
 
   const editSession = editingId ? sessions.find((session) => session.id === editingId) ?? null : null
   if (editSession) {
@@ -241,7 +352,6 @@ export function SessionsScreen({ navigate, onInSession, now = Date.now }: Sessio
   const summarySession = summarySessionId
     ? sessions.find((session) => session.id === summarySessionId) ?? null
     : null
-  const bars = volumeBars(sessions, resolve, programs)
 
   return (
     <AppShell title="Sessions">
@@ -251,28 +361,18 @@ export function SessionsScreen({ navigate, onInSession, now = Date.now }: Sessio
         <div className="sessions-screen">
           <SessionsCalendar sessions={sessions} now={today} />
           <MuscleWeeks sessions={sessions} now={today} resolve={resolve} library={libraryMap} />
-          <section className="sessions-card card" aria-label="Volume per session, kg">
-            <div className="sessions-card-head">
-              <h2 className="sessions-card-title">Volume per session, kg</h2>
-              {bars.legend.length > 1 ? (
-                <span className="sessions-series-legend">
-                  {bars.legend.map((item) => (
-                    <span key={item.label} className="sessions-series-key">
-                      <i className="sessions-series-swatch" data-series={item.series ?? 'a'} aria-hidden="true" />
-                      {item.label}
-                    </span>
-                  ))}
-                </span>
-              ) : null}
-            </div>
-            <BarChart bars={bars.bars} title="Volume per session, kg" />
-          </section>
+          <VolumeByWorkout sessions={sessions} programs={programs} resolve={resolve} />
           {sessionsByWeek(sessions, today).map((week) => (
             <section key={week.start} className="sessions-week" aria-label={week.label}>
               <h2 className="sessions-caption">{week.label}</h2>
               <ul className="sessions-list card">
                 {week.sessions.map((session) => {
-                  const stats = sessionRowStats(session, earlierThan(session), resolve, planFor(session))
+                  const count = recordCount(records, session.id)
+                  const minutes = Math.max(
+                    0,
+                    Math.round(((session.finishedAt ?? session.startedAt) - session.startedAt) / 60_000),
+                  )
+                  const volumeKg = Math.round(sessionVolume(session, resolve).kg)
                   return (
                     <li key={session.id} className="sessions-list-item">
                       <button
@@ -286,10 +386,10 @@ export function SessionsScreen({ navigate, onInSession, now = Date.now }: Sessio
                         </span>
                         <span className="session-row-side">
                           <span className="session-row-tags">
-                            {stats.prs > 0 ? <span className="tag tag-pr">{`${stats.prs} PR`}</span> : null}
+                            {count > 0 ? <span className="tag tag-pr">{recordsText(count)}</span> : null}
                           </span>
                           <span className="session-row-stats">
-                            {`${stats.minutes} min · ${workingSetCount(session)} sets · ${stats.volumeKg.toLocaleString('en-US')} kg`}
+                            {`${minutes} min · ${workingSetCount(session)} sets · ${volumeKg.toLocaleString('en-US')} kg`}
                           </span>
                         </span>
                       </button>

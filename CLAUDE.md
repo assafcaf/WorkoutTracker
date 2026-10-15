@@ -1,7 +1,7 @@
 ## Delivering work
 
 New work flows through `/spec` (idea → outcomes), `/tickets` (outcomes → tracker tasks) and
-`/batch-implement` (tasks → red-then-green, merged code, tracker updated as it goes). The
+`/pad-run` (tasks → red-then-green, merged code, tracker updated as it goes). The
 definition of done is `.claude/workflow/definition-of-done.md`; per-repo settings are in
 `.claude/workflow/config.md`. Durable decisions go in `docs/decisions/`.
 
@@ -10,7 +10,7 @@ go in your own gitignored `CLAUDE.local.md`.
 
 ## A local app during a batch run
 
-While `/batch-implement` runs, the orchestrator keeps the app running locally in dev mode, so
+While `/pad-run` runs, the orchestrator keeps the app running locally in dev mode, so
 the operator can see and debug each merge without waiting for a deployment:
 
 - Start it from the **epic worktree** (the merger's checkout) once the baseline is green:

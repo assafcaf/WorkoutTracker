@@ -2,8 +2,9 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import { SessionSummary } from './SessionSummary'
+import { nextTime } from '../domain/stats/moves'
 import type { Region } from '../domain/muscles'
-import type { Exercise, ExercisePlan, LibraryExercise, Muscle, Session, SetEntry } from '../types'
+import type { Exercise, ExercisePlan, LibraryExercise, Muscle, Program, Session, SetEntry } from '../types'
 
 // E5-T20 [M16] and [M9], on the summary itself. Synthetic catalog and library entries, so every
 // count below is hand-derived from the fixtures:
@@ -381,9 +382,9 @@ test('O16 SessionSummary lists a PR set in the Session as Bench press · Heavies
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  // Title kept (weakened-tests gate); E17 S5b: the record's label heads its row, the Exercise,
-  // the set and the gain over the old record read beneath it.
-  expect(recordRows(dialog)).toContain('Heaviest set | Bench press · 85 kg × 5 · +5 kg')
+  // Title kept (weakened-tests gate); E18 R-R: the record's kind (`Heaviest weight`) heads its
+  // row, the Exercise, the set and the gain over the old record read beneath it.
+  expect(recordRows(dialog)).toContain('Heaviest weight | Bench press · 85 kg × 5 · +5 kg')
   const line = within(dialog).getByText('Bench press · 85 kg × 5 · +5 kg')
   expect(line).toBeVisible()
   expect(line.closest('li')).not.toBeNull()
@@ -410,13 +411,13 @@ test('O16 SessionSummary shows duration, volume and PRs above the body map', () 
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  // Title kept (weakened-tests gate); E17 S5b: the region heat list stands where the map was.
+  // Title kept (weakened-tests gate); E18 O26: duration and the records come first, volume is
+  // the last quiet line, after the body map.
   const map = dialog.querySelector('[data-region]')!
   expect(kpiValue(dialog, 'duration')).toBe('52 min')
-  expect(kpiValue(dialog, 'volume')).toBe('1,275 kg')
+  expect(kpiValue(dialog, 'volume')).toMatch(/^1,275 kg/)
   const elements = [
     dialog.querySelector('[data-kpi="duration"]') as HTMLElement,
-    dialog.querySelector('[data-kpi="volume"]') as HTMLElement,
     within(dialog).getByText('Bench press · 85 kg × 5 · +5 kg'),
   ]
   for (const element of elements) {
@@ -426,6 +427,8 @@ test('O16 SessionSummary shows duration, volume and PRs above the body map', () 
       `${text} must come before the body map`,
     ).toBeTruthy()
   }
+  const volume = dialog.querySelector('[data-kpi="volume"]') as HTMLElement
+  expect(volume.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
 })
 
 test('O16 SessionSummary with no PRs shows no PR list', () => {
@@ -469,25 +472,27 @@ test('S5b the KPI strip reads duration, volume against the last same Workout, wo
   session.entries.push({ kind: 'warmup', exerciseId: 'bench', setIndex: 0, weightKg: 40, reps: 5, loggedAt: BASE + 500 })
   const dialog = renderS5b(session, [earlier])
 
+  // Title kept (weakened-tests gate); E18 O26: one figures line, the volume line last.
   expect(kpiValue(dialog, 'duration')).toBe('52 min')
-  expect(kpiValue(dialog, 'volume')).toBe('1,275 kg')
-  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-note')?.textContent).toBe('+6.3% vs last A')
+  expect(kpiValue(dialog, 'volume')).toMatch(/^1,275 kg · up 6 % on /)
   expect(kpiValue(dialog, 'sets')).toBe('3')
-  expect(kpiValue(dialog, 'prs')).toBe('3')
+  expect(kpiValue(dialog, 'prs')).toBe('1')
+  expect(dialog.querySelector('.session-summary-figures')?.textContent).toBe('52 min · 3 working sets · 1 record')
 })
 
 test('S5b each record row carries a PR tag and a sparkline of that record over the Sessions', () => {
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderS5b(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
+  // Title kept (weakened-tests gate); E18 R-R: one row per counted record, the PR tag and the
+  // word of its kind carry it (no sparkline), the lower kinds beaten the same day are readout only.
   const section = within(dialog).getByRole('region', { name: 'Records' })
   const rows = within(section).getAllByRole('listitem')
-  expect(rows).toHaveLength(3)
+  expect(rows).toHaveLength(1)
   for (const row of rows) {
     expect(row.querySelector('.tag.tag-pr')?.textContent).toBe('PR')
-    expect(row.querySelector('svg.record-spark')).not.toBeNull()
+    expect(row.querySelector('svg.record-spark')).toBeNull()
   }
-  expect(recordRows(dialog)).toContain('Best estimated 1RM | Bench press · 99.2 kg · +5.8 kg')
 })
 
 test('S5b Worked today lists the regions as heat squares on the session scale', () => {
@@ -504,20 +509,11 @@ test('S5b the exercise table gives each Exercise its best set, volume and change
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderS5b(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  const table = within(dialog).getByRole('table')
-  expect(within(table).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
-    'Exercise',
-    'Best set',
-    'Volume, kg',
-    'Δ vs last',
-  ])
-  const [, bench] = within(table).getAllByRole('row')
-  expect(within(bench).getAllByRole('cell').map((td) => td.textContent)).toEqual([
-    'Bench press',
-    '85 × 5 PR',
-    '1,275',
-    '+75',
-  ])
+  // Title kept (weakened-tests gate); E18 O26: no table; each lift's move in words beside its top set.
+  expect(within(dialog).queryByRole('table')).toBeNull()
+  const row = within(dialog).getByText('Bench press', { selector: '.session-summary-move-name' }).closest('.session-summary-move') as HTMLElement
+  expect(row.querySelector('.session-summary-move-top')?.textContent).toBe('85 kg × 5')
+  expect(row.querySelector('.session-summary-move-text')?.textContent).toBe('Stepped up to 85 kg · +5 kg · record')
 })
 
 test('S5b the dock offers Share as the secondary action beside Done', () => {
@@ -542,4 +538,157 @@ test('S5b the finish summary, given no onEdit, has no Edit session', () => {
   const dialog = renderS5b(benchSession('e', BASE, 52, 1, 40, 5))
 
   expect(within(dialog).queryByRole('button', { name: 'Edit session' })).toBeNull()
+})
+
+
+// --- E18-T15 [O26]: what the session did for your week -------------------------------------
+
+const WEEK_PROGRAM: Program = {
+  id: 'assaf-ab-2026',
+  name: 'A / B',
+  units: 'kg',
+  sessionsPerWeek: 3,
+  workouts: [
+    { id: 'workout-a', name: 'Workout A', exercises: [PLANS.bench] },
+    {
+      id: 'workout-b',
+      name: 'Workout B',
+      exercises: [{ exerciseId: 'pulldown', sets: 3, repRange: [8, 12], restSeconds: 90 }],
+    },
+  ],
+}
+
+const WED = new Date(2026, 9, 14, 18).getTime()
+const DAY_MS = 24 * 60 * MINUTE
+
+/** Mon 12 Oct: Workout B, 3 pulldown sets; Wed 7 Oct: Workout A, 3 bench sets at 80 kg. */
+function weekSessions(): { earlier: Session[]; wed: Session } {
+  const bench = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
+  const monday: Session = {
+    id: 'mon-12',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-b',
+    startedAt: WED - 2 * DAY_MS,
+    finishedAt: WED - 2 * DAY_MS + 40 * MINUTE,
+    entries: sets('pulldown', 3, 1000).map((e) => ({ ...e, loggedAt: WED - 2 * DAY_MS + e.loggedAt - BASE })),
+  }
+  const wed = benchSession('wed-14', WED, 71, 3, 85, 5)
+  wed.entries.push(
+    { kind: 'warmup', exerciseId: 'bench', setIndex: 0, weightKg: 40, reps: 5, loggedAt: WED + 10 },
+    { kind: 'warmup', exerciseId: 'bench', setIndex: 0, weightKg: 60, reps: 3, loggedAt: WED + 20 },
+  )
+  return { earlier: [bench, monday], wed }
+}
+
+function renderWeek(extra: { onDeloadChange?: (on: boolean) => void; deload?: boolean } = {}): HTMLElement {
+  const { earlier, wed } = weekSessions()
+  render(
+    <SessionSummary
+      session={extra.deload ? { ...wed, deload: true } : wed}
+      earlierSessions={earlier}
+      planFor={planFor}
+      program={WEEK_PROGRAM}
+      resolve={resolve}
+      library={LIBRARY}
+      workoutName="Workout A"
+      onClose={vi.fn()}
+      onDeloadChange={extra.onDeloadChange}
+    />,
+  )
+  return summaryDialog()
+}
+
+test('O26 the summary reads "What Wed did for your week" with 2 of 3 sessions and 6 of 9 sets', () => {
+  const dialog = renderWeek()
+
+  expect(within(dialog).getByRole('heading', { name: 'What Wed did for your week' })).toBeVisible()
+  expect(dialog.querySelector('.session-summary-week')?.textContent).toContain('2 of 3 sessions · 6 of 9 sets')
+})
+
+test('O26 a 71-minute Session reads 1 h 11 min on its own line, apart from the week figures', () => {
+  const dialog = renderWeek()
+
+  expect(kpiValue(dialog, 'duration')).toBe('1 h 11 min')
+  const duration = dialog.querySelector('[data-kpi="duration"]') as HTMLElement
+  const week = dialog.querySelector('.session-summary-week') as HTMLElement
+  expect(week.contains(duration)).toBe(false)
+  expect(duration.textContent).not.toContain('sessions')
+})
+
+test('O26 each lift reads its move in words beside its top set', () => {
+  const dialog = renderWeek()
+
+  const move = dialog.querySelector('.session-summary-move') as HTMLElement
+  expect(move.querySelector('.session-summary-move-name')?.textContent).toBe('Bench press')
+  expect(move.querySelector('.session-summary-move-top')?.textContent).toBe('85 kg × 5')
+  expect(move.querySelector('.session-summary-move-text')?.textContent).toBe('Stepped up to 85 kg · +5 kg · record')
+})
+
+test('O26 the records list counts the Session records once, with the kind and its gain', () => {
+  const dialog = renderWeek()
+
+  const section = within(dialog).getByRole('region', { name: 'Records' })
+  expect(within(section).getAllByRole('listitem')).toHaveLength(1)
+  expect(recordRows(dialog)).toContain('Heaviest weight | Bench press · 85 kg × 5 · +5 kg')
+  expect(dialog.querySelector('.session-summary-figures')?.textContent).toContain('1 record')
+})
+
+test('O26 Next time lists what the next Session should do', () => {
+  const dialog = renderWeek()
+  const { earlier, wed } = weekSessions()
+  const lines = nextTime(wed.id, [...earlier, wed], resolve, WEEK_PROGRAM)
+  expect(lines.length).toBeGreaterThan(0)
+
+  const next = within(dialog).getByRole('region', { name: 'Next time' })
+  expect(within(next).getByText('Next time')).toBeVisible()
+  expect([...next.querySelectorAll('.session-summary-next-line')].map((e) => e.textContent)).toEqual(lines)
+})
+
+test('O26 Worked today lists the 12 muscles, in sets, with warm-ups left out', () => {
+  const dialog = renderWeek()
+
+  const rows = [...dialog.querySelectorAll('.session-summary-muscles [data-muscle]')]
+  expect(rows.map((r) => r.getAttribute('data-muscle'))).toEqual([
+    'chest', 'shoulders', 'triceps', 'lats', 'middle back', 'biceps',
+    'quadriceps', 'hamstrings', 'glutes', 'calves', 'lower back', 'abdominals',
+  ])
+  const chest = dialog.querySelector('.session-summary-muscles [data-muscle="chest"]') as HTMLElement
+  expect(chest.textContent).toBe('Chest3')
+  expect(chest).toHaveAttribute('data-band', '2')
+  expect(dialog.querySelector('.session-summary-muscles [data-muscle="triceps"]')?.textContent).toBe('Triceps1.5')
+})
+
+test('O26 the summary says 2 warm-ups not counted', () => {
+  const dialog = renderWeek()
+
+  expect(dialog.querySelector('.session-summary-warmups')?.textContent).toBe('2 warm-ups not counted')
+})
+
+test('O26 volume is the last quiet line of the summary body, after the muscles and Next time', () => {
+  const dialog = renderWeek()
+
+  const volume = dialog.querySelector('[data-kpi="volume"]') as HTMLElement
+  expect(volume.textContent).toMatch(/^1,275 kg · up 6 % on /)
+  const body = dialog.querySelector('.session-summary-body') as HTMLElement
+  expect(body.lastElementChild).toBe(volume.closest('.session-summary-volume'))
+  const muscles = dialog.querySelector('.session-summary-muscles') as HTMLElement
+  expect(muscles.compareDocumentPosition(volume) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('O26 the Deload session switch reflects the Session and reports a change', async () => {
+  const onDeloadChange = vi.fn()
+  const dialog = renderWeek({ onDeloadChange })
+  const toggle = within(dialog).getByRole('switch', { name: 'Deload session' })
+  expect(toggle).not.toBeChecked()
+
+  await userEvent.setup().click(toggle)
+
+  expect(onDeloadChange).toHaveBeenCalledWith(true)
+  expect(toggle).toBeChecked()
+})
+
+test('O26 a deload Session shows the Deload session switch on', () => {
+  const dialog = renderWeek({ deload: true })
+
+  expect(within(dialog).getByRole('switch', { name: 'Deload session' })).toBeChecked()
 })

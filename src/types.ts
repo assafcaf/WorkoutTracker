@@ -133,6 +133,8 @@ export type Session = {
   deletedAt?: number
   /** The trainee's free-text Session note, 500 characters at most (E14-T4). Absent when none. */
   note?: string
+  /** The trainee marked this Session a deload (E18-T2). Absent unless marked. */
+  deload?: true
 }
 
 /**

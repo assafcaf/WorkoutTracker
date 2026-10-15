@@ -607,6 +607,37 @@ test('M15 with no sets in the last 7 days, "This week" reads "No sets logged in 
   ).toBeGreaterThan(0)
 })
 
+// --- E18-T17 (O28, R-K): "This week" is the calendar week, Monday 00:00 local, not 7 days -----
+test('O28 "This week" done map counts the calendar week (R-K), not the last 7 days', () => {
+  // Wednesday 14 Oct 2026, noon local. Sunday 11 Oct is 3 days back: inside a rolling 7 days,
+  // but in the previous calendar week.
+  const wednesday = new Date(2026, 9, 14, 12).getTime()
+  const sunday = new Date(2026, 9, 11, 10).getTime()
+  const sundaySession: Session = {
+    id: 'sunday-session',
+    programId: 'quad-solo',
+    workoutId: 'quad-workout',
+    startedAt: sunday,
+    finishedAt: sunday + 1000,
+    entries: [{ exerciseId: 'ham-exercise', setIndex: 0, weightKg: 40, reps: 10, loggedAt: sunday }],
+  }
+  const { container } = render(
+    <ProgramPage
+      programs={[allMusclesProgram]}
+      activeProgramId="all-muscles"
+      catalog={new Map([...allMusclesCatalog, [hamstringExercise.id, hamstringExercise]])}
+      library={new Map([...allMusclesLibrary, [hamstringLibrary.id, hamstringLibrary]])}
+      onChooseProgram={vi.fn()}
+      sessions={[sundaySession]}
+      now={wednesday}
+    />,
+  )
+
+  expect(screen.getByText('No sets logged in the last 7 days')).toBeVisible()
+  // Done map empty: the prescribed side bands every tracked region, so a zero can only be done's.
+  expect(container.querySelectorAll('[data-region="quadriceps"][data-band="0"]').length).toBeGreaterThan(0)
+})
+
 // --- O22: "This week"'s two maps are captioned Planned/Done, each wrapped in a <figure> --------
 
 test('O22 "This week" wraps its prescribed map in a figure captioned "Planned"', () => {

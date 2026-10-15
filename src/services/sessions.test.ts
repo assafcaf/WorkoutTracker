@@ -101,6 +101,7 @@ describe('O5 the session service', () => {
       'restoreSet',
       'resumeActive',
       'save',
+      'setDeload',
       'setEffort',
       'setNote',
       'setRest',
@@ -859,6 +860,70 @@ describe('E14-T4 the session service stores a Session note', () => {
   test("O12 setNote on a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
     const { service, emitted } = harness()
     const rejection = service.setNote('missing', 'x')
+    await expect(rejection).rejects.toBeInstanceOf(ServiceError)
+    await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
+    expect(emitted()).toBe(0)
+  })
+})
+
+// --- E18-T2: the deload mark through the service -------------------------------------------
+
+describe('E18-T2 the session service marks a Session a deload', () => {
+  const seed = (): Session =>
+    storedSession({
+      id: 'done',
+      startedAt: NOW - 2 * HOUR,
+      finishedAt: NOW - HOUR,
+      entries: [entry('squat', 1, 60, 8, NOW - 5400 * SECOND)],
+      updatedAt: NOW - 50 * SECOND,
+    })
+
+  test('O3 setDeload(id, true) stores deload: true with a new updatedAt and announces sessions once', async () => {
+    await putSessions([seed()])
+    const { service, emitted } = harness()
+
+    const updated = await service.setDeload('done', true)
+
+    expect(updated).toEqual({ ...seed(), deload: true, updatedAt: NOW })
+    expect(await stored('done')).toEqual({ ...seed(), deload: true, updatedAt: NOW })
+    expect(emitted()).toBe(1)
+  })
+
+  test('O3 setDeload(id, false) removes the field, stamps updatedAt and announces sessions once', async () => {
+    await putSessions([{ ...seed(), deload: true }])
+    const { service, emitted } = harness()
+
+    const updated = await service.setDeload('done', false)
+
+    expect('deload' in updated).toBe(false)
+    expect(await stored('done')).toEqual({ ...seed(), updatedAt: NOW })
+    expect('deload' in ((await stored('done')) as Session)).toBe(false)
+    expect(emitted()).toBe(1)
+  })
+
+  test('O3 a Session never marked has no deload field, and unmarking it adds none', async () => {
+    await putSessions([seed()])
+    const { service } = harness()
+
+    expect('deload' in ((await stored('done')) as Session)).toBe(false)
+    const updated = await service.setDeload('done', false)
+
+    expect('deload' in updated).toBe(false)
+    expect('deload' in ((await stored('done')) as Session)).toBe(false)
+  })
+
+  test('O3 setDeload changes nothing else on the Session', async () => {
+    await putSessions([{ ...seed(), note: 'kept', swaps: { squat: 'leg-press' } }])
+    const { service } = harness()
+
+    const updated = await service.setDeload('done', true)
+
+    expect(updated).toEqual({ ...seed(), note: 'kept', swaps: { squat: 'leg-press' }, deload: true, updatedAt: NOW })
+  })
+
+  test("O3 setDeload on a missing Session rejects with ServiceError 'not-found' and announces nothing", async () => {
+    const { service, emitted } = harness()
+    const rejection = service.setDeload('missing', true)
     await expect(rejection).rejects.toBeInstanceOf(ServiceError)
     await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
     expect(emitted()).toBe(0)
