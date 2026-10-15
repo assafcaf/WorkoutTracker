@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import type { ComponentType, FunctionComponent } from 'react'
 import { AppShell } from '../../ui/AppShell'
+import { MusclesPage } from './MusclesPage'
 
 /** The pages the Progress tab pushes. `home` is the tab's own screen; the others push over it. */
 export type ProgressPage =
@@ -37,5 +38,5 @@ export const PROGRESS_PAGES: ProgressPages = {
   home: placeholder('Progress'),
   lift: placeholder('Lift'),
   lifts: placeholder('All lifts'),
-  muscles: placeholder('Muscles'),
+  muscles: MusclesPage,
 }
