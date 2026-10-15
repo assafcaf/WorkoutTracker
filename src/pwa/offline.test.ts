@@ -227,7 +227,8 @@ test('O4 with the network down the program picker renders the active program', a
   // week planned against it; the program's own name is the Program tab's heading.
   const text = await screenText()
   expect(text).toContain('Workout A due')
-  expect(text).toContain('Muscle week')
+  expect(text).toContain('Workout A')
+  expect(text).toContain('Reps at the current weight against the next step')
 }, LAUNCH_TIMEOUT)
 
 test('O4 with the network down the program picker offers the workouts to start', async () => {
