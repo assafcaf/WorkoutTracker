@@ -1,11 +1,28 @@
-import type { ProgressPages } from './pages'
+import { useState } from 'react'
+import type { ComponentType } from 'react'
+import { PROGRESS_PAGES } from './pages'
+import type { ProgressPage, ProgressPageKind, ProgressPageProps, ProgressPages } from './pages'
 
 export type ProgressFeatureProps = {
   /** The pages to draw; the registered ones by default. */
   pages?: ProgressPages
 }
 
-export function ProgressFeature(props: ProgressFeatureProps): JSX.Element {
-  void props
-  return <div />
+/**
+ * The Progress tab's screen group: it stays mounted while the trainee moves between its pages,
+ * so what a page loaded is loaded once. A page pushes over the one below and Back returns to
+ * it; the home page is the tab itself and has no Back.
+ */
+export function ProgressFeature({ pages = PROGRESS_PAGES }: ProgressFeatureProps): JSX.Element {
+  const [stack, setStack] = useState<ProgressPage[]>([{ kind: 'home' }])
+  const page = stack[stack.length - 1]
+  const Page = pages[page.kind] as ComponentType<ProgressPageProps<ProgressPageKind>>
+
+  return (
+    <Page
+      page={page}
+      push={(next) => setStack((current) => [...current, next])}
+      onBack={stack.length > 1 ? () => setStack((current) => current.slice(0, -1)) : undefined}
+    />
+  )
 }
