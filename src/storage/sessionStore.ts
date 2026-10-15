@@ -254,6 +254,18 @@ export async function setNote(
   })
 }
 
+/** Marks the Session a deload, or removes the mark (E18-T2). */
+export async function setDeload(
+  sessionId: string,
+  on: boolean,
+  now: number = Date.now(),
+): Promise<Session> {
+  void sessionId
+  void on
+  void now
+  throw new Error('NotImplementedError: setDeload')
+}
+
 /** Removes one logged Set, renumbering the Exercise's later Sets down by one. */
 export async function deleteSet(
   sessionId: string,
