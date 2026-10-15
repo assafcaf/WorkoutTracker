@@ -1,7 +1,8 @@
 import type { Resolve } from './muscles'
-import { recordsFor, recordsSetBy } from './records'
 import { latestSet } from './rest'
 import { epley } from './series'
+import { buildLiftHistories } from './stats/liftHistory'
+import { computeRecords, liftBests, recordCount } from './stats/records'
 import { workingSets } from './setKind'
 import { sessionVolume } from './volume'
 import type { Exercise, ExercisePlan, Session, SetEntry, Workout } from '../types'
@@ -85,13 +86,10 @@ export function liveProgress(args: {
   const before = earlier.filter(
     (other) => other.id !== session.id && other.finishedAt !== null && other.startedAt < session.startedAt,
   )
-  let prs = 0
-  for (const entry of today) {
-    const exercise = resolve(entry.exerciseId)
-    const plan = planFor(workout, session, entry.exerciseId)
-    if (!exercise || !plan) continue
-    if (recordsSetBy(exercise, plan, before, session, entry).length > 0) prs += 1
-  }
+  const prs = recordCount(
+    computeRecords([...before, session], resolve, (id) => planFor(workout, session, id)),
+    session.id,
+  )
 
   return {
     volumeKg: sessionVolume(session, resolve).kg,
@@ -135,11 +133,19 @@ export function projectSet(args: {
   set: Pick<SetEntry, 'weightKg' | 'reps' | 'loadKg' | 'kind'>
 }): SetProjection {
   const { exercise, plan, earlier, session, set } = args
+  const resolve: Resolve = (id) => (id === exercise.id ? exercise : undefined)
+  const planOf = (id: string): ExercisePlan | undefined => (id === exercise.id ? plan : undefined)
+  // R-E: only an e1RM lift (not Bodyweight, Plan top rep <= 10), from a straight set of <= 10 reps.
+  const e1rmLift = !exercise.bodyweight && plan.repRange[1] <= 10
   const e1rm =
-    exercise.bodyweight || set.weightKg === null || set.reps <= 0 ? null : epley(set.weightKg, set.reps)
-  const best = exercise.bodyweight
-    ? undefined
-    : recordsFor(exercise, plan, [...earlier, session]).find((record) => record.kind === 'best-e1rm')
+    !e1rmLift || set.kind === 'drop' || set.weightKg === null || set.reps <= 0 || set.reps > 10
+      ? null
+      : epley(set.weightKg, set.reps)
+  const history = buildLiftHistories([...earlier, session], resolve, planOf).get(exercise.id)
+  const record =
+    e1rmLift && history
+      ? (liftBests(history).find((row) => row.label === 'Best estimated 1RM')?.e1rm ?? null)
+      : null
   const candidate: SetEntry = {
     exerciseId: exercise.id,
     setIndex: Number.MAX_SAFE_INTEGER,
@@ -149,11 +155,19 @@ export function projectSet(args: {
     ...(set.loadKg ? { loadKg: set.loadKg } : {}),
     ...(set.kind ? { kind: set.kind } : {}),
   }
+  const recordOf = (entries: SetEntry[]) =>
+    computeRecords([...earlier, { ...session, entries }], resolve, planOf).find(
+      (found) => found.sessionId === session.id && found.exerciseId === exercise.id,
+    )
+  const now = recordOf(session.entries)
+  const next = recordOf([...session.entries, candidate])
   const isPr =
     set.kind !== 'warmup' &&
+    set.kind !== 'drop' &&
     set.reps > 0 &&
-    recordsSetBy(exercise, plan, earlier, session, candidate).length > 0
-  return { e1rm, record: best?.value ?? null, isPr }
+    next !== undefined &&
+    (now === undefined || now.kind !== next.kind || now.lever !== next.lever || now.reps !== next.reps)
+  return { e1rm, record, isPr }
 }
 
 /** `1,530`: a kg figure rounded to whole kg with thousands separators. */

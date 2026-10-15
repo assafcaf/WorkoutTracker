@@ -118,6 +118,74 @@ test('projectSet never calls a Warm-up a PR, and gives a Bodyweight Exercise no 
   expect(projectSet({ exercise: pushup, plan: plan('pushup', 3), earlier: [lastA], session: today, set: { weightKg: null, reps: 15 } }).e1rm).toBeNull()
 })
 
+// E18-T16 [O27]: the strip's PR count and the projection follow R-R and R-E.
+test('O27 liveProgress counts one record per lift per Session, not one per Set', () => {
+  const today = session('today', 5000, [
+    set('squat', 1, 62.5, 8, 5001),
+    set('squat', 2, 65, 8, 5002),
+    set('squat', 3, 67.5, 8, 5003),
+  ], false)
+
+  expect(liveProgress({ workout, session: today, earlier: [lastA], resolve }).prs).toBe(1)
+})
+
+test('O27 liveProgress does not count a rep drop after a weight bump', () => {
+  const today = session('today', 5000, [
+    set('squat', 1, 62.5, 8, 5001),
+    set('squat', 2, 62.5, 6, 5002),
+  ], false)
+
+  expect(liveProgress({ workout, session: today, earlier: [lastA], resolve }).prs).toBe(1)
+})
+
+test('O27 liveProgress counts no record in a deload Session', () => {
+  const today = { ...session('today', 5000, [set('squat', 1, 65, 8, 5001)], false), deload: true as const }
+
+  expect(liveProgress({ workout, session: today, earlier: [lastA], resolve }).prs).toBe(0)
+})
+
+test('O27 liveProgress counts no record from a drop Set', () => {
+  const today = session('today', 5000, [set('squat', 1, 70, 8, 5001, { kind: 'drop' })], false)
+
+  expect(liveProgress({ workout, session: today, earlier: [lastA], resolve }).prs).toBe(0)
+})
+
+test('O27 projectSet gives no e1RM above 10 reps', () => {
+  const today = session('today', 5000, [], false)
+  const projection = projectSet({ exercise: squat, plan: plan('squat', 4), earlier: [lastA], session: today, set: { weightKg: 50, reps: 12 } })
+
+  expect(projection.e1rm).toBeNull()
+})
+
+test('O27 projectSet gives a lift whose Plan tops out above 10 reps no e1RM and no record', () => {
+  const today = session('today', 5000, [], false)
+  const high: ExercisePlan = { exerciseId: 'lunge', sets: 3, repRange: [12, 15], restSeconds: 90 }
+  const projection = projectSet({ exercise: lunge, plan: high, earlier: [lastA], session: today, set: { weightKg: 10, reps: 12 } })
+
+  expect(projection.e1rm).toBeNull()
+  expect(projection.record).toBeNull()
+})
+
+test('O27 projectSet gives a drop Set no e1RM and no PR', () => {
+  const today = session('today', 5000, [], false)
+  const projection = projectSet({ exercise: squat, plan: plan('squat', 4), earlier: [lastA], session: today, set: { weightKg: 100, reps: 5, kind: 'drop' } })
+
+  expect(projection.e1rm).toBeNull()
+  expect(projection.isPr).toBe(false)
+})
+
+test('O27 projectSet is no PR in a deload Session', () => {
+  const today = { ...session('today', 5000, [], false), deload: true as const }
+
+  expect(projectSet({ exercise: squat, plan: plan('squat', 4), earlier: [lastA], session: today, set: { weightKg: 100, reps: 5 } }).isPr).toBe(false)
+})
+
+test('O27 projectSet is no PR for a rep drop once the weight bump is already logged', () => {
+  const today = session('today', 5000, [set('squat', 1, 62.5, 8, 5001)], false)
+
+  expect(projectSet({ exercise: squat, plan: plan('squat', 4), earlier: [lastA], session: today, set: { weightKg: 62.5, reps: 6 } }).isPr).toBe(false)
+})
+
 test('formatKg rounds to whole kg with thousands separators', () => {
   expect(formatKg(1530.4)).toBe('1,530')
   expect(formatKg(0)).toBe('0')
