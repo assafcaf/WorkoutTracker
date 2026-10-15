@@ -1,5 +1,5 @@
-/* The session summary (Progress Dashboard S5b): heading and day, the KPI strip, the records,
- * the regions worked and the Exercise table, over a Share / Done dock.
+/* The session summary (E18 O26): heading and day, the week line, the figures, each lift's move,
+ * the records, Next time, the muscles worked and the volume, over a Share / Done dock.
  *
  * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
  * one definition site.
@@ -52,49 +52,60 @@
   border-radius: var(--radius-md);
 }
 
-/* The KPI strip: four cells divided by hairlines, the volume cell taking the slack. */
-.session-summary-kpis {
-  display: grid;
-  grid-template-columns: 84px 1fr 62px 56px;
-  padding: 0;
-}
-
-.session-summary-kpi {
+/* "What Wed did for your week": the heading and its one line of week figures. */
+.session-summary-week {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  padding: 10px 10px 10px var(--space-3);
+  gap: 2px;
 }
 
-.session-summary-kpi + .session-summary-kpi {
-  border-left: 1px solid var(--color-hairline);
+.session-summary-week-heading {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
 }
 
-.session-summary-kpi-label,
-.session-summary-kpi-note {
-  font-size: var(--text-xs);
-  line-height: 16px;
-  color: var(--color-muted);
-}
-
-.session-summary-kpi-note {
+.session-summary-week-line {
+  margin: 0;
   color: var(--color-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The figures: duration, working sets and records on their own line, never inside another cell. */
+.session-summary-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-summary-figures,
+.session-summary-warmups,
+.session-summary-quiet,
+.session-summary-volume {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.session-summary-figures {
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.session-summary-warmups,
+.session-summary-quiet,
+.session-summary-volume,
+.session-summary-kpi-note {
+  color: var(--color-muted);
 }
 
 .session-summary-kpi-value {
-  white-space: nowrap;
-}
-
-.session-summary-kpi-number {
-  font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
-  line-height: 34px;
-  letter-spacing: -0.02em;
 }
 
-.session-summary-kpi-unit {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
+.session-summary-volume .session-summary-kpi-value {
+  font-weight: var(--weight-regular);
 }
 
 .session-summary-section {
@@ -170,54 +181,67 @@
   font-size: var(--text-xs);
 }
 
-.session-summary-table-card {
-  padding: var(--space-1) var(--space-3);
+/* Lift by lift: name and top set on one line, the move in words beneath. */
+.session-summary-moves {
+  padding: 0 var(--space-3);
 }
 
-.session-summary-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
+.session-summary-move {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: var(--space-2);
+  padding: 10px 0;
 }
 
-.session-summary-table th {
-  padding: var(--space-2) 0 var(--space-2) var(--space-2);
-  border-bottom: 1px solid var(--color-hairline);
-  color: var(--color-secondary);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-regular);
-  text-align: right;
-  white-space: nowrap;
+.session-summary-move + .session-summary-move {
+  border-top: 1px solid var(--color-hairline);
 }
 
-.session-summary-table td {
-  height: 40px;
-  padding: 0 0 0 var(--space-2);
-  border-bottom: 1px solid var(--color-hairline);
-  text-align: right;
-  white-space: nowrap;
-}
-
-.session-summary-table tr:last-child td {
-  border-bottom: 0;
-}
-
-.session-summary-table th:first-child,
-.session-summary-table td:first-child {
-  max-width: 100px;
-  padding-left: 0;
-  overflow: hidden;
-  text-align: left;
-  text-overflow: ellipsis;
-}
-
-.session-summary-best {
+.session-summary-move-name {
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
 }
 
-.session-summary-delta {
+.session-summary-move-top {
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.session-summary-move-text {
+  grid-column: 1 / -1;
   color: var(--color-secondary);
+  font-size: var(--text-sm);
+}
+
+.session-summary-next {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-summary-next-line {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+/* The 12 muscles: two columns of `name  [sets]`. */
+.session-summary-muscles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--space-4);
+}
+
+.session-summary-muscle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  font-size: var(--text-sm);
+}
+
+.session-summary-deload {
+  min-height: var(--tap-min);
 }
 
 /* The dock: Share and Done, pinned under the scrolling body. */
@@ -252,16 +276,4 @@
   color: var(--color-on-primary);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-}
-
-/* The table's PR mark is the mock's small tag (S5b): 16 px, a 1 px accent ring. */
-.session-summary-table .tag-pr {
-  min-height: 16px;
-  padding: 0 4px;
-  border-width: 1px;
-  letter-spacing: 0.02em;
-}
-
-.session-summary-table th {
-  white-space: nowrap;
 }

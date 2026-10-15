@@ -400,8 +400,8 @@ test('O16 opening a Session from History shows its duration, volume and the PR i
   // record as its label over `Exercise · set · gain`.
   const kpi = (name: string) => dialog.querySelector(`[data-kpi="${name}"] .session-summary-kpi-value`)?.textContent
   expect(kpi('duration')).toBe('1 h 05 min')
-  expect(kpi('volume')).toBe('700 kg')
-  const record = within(dialog).getByText('Heaviest set').closest('li') as HTMLElement
+  expect(kpi('volume')).toMatch(/^700 kg/)
+  const record = within(dialog).getByText('Heaviest weight').closest('li') as HTMLElement
   expect(record).toBeVisible()
   expect(within(record).getByText(/^Back squat · 70 kg × 5/)).toBeVisible()
 })
