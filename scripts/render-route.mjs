@@ -8,18 +8,31 @@
 // driven over the DevTools protocol with `ws`. Both are shut down on success and on failure.
 //
 // The app has no URL routes -- the shell switches tabs in React state -- so <route> names a
-// screen and the renderer clicks its way there:
+// screen and the renderer clicks its way there. Syntax:
+//
+//   <route> := /<screen>[|<tap>]...
+//
+// <screen> is one of the legacy names below, or the visible label of a bottom-bar tab
+// (case-insensitive, e.g. /progress, /train, /sessions), which taps that tab:
 //   /  or /dashboard   the Dashboard (where the app launches)
 //   /sessions          the Sessions tab
 //   /lifts             the Lifts tab
 //   /program           the Program tab
 //   /exercises         the Program tab's Exercises side
 //   /settings          Settings, from the Dashboard's gear
+// Each `|<tap>` then taps the control whose visible text (or aria-label) is exactly <tap>,
+// falling back to the first control whose text contains it. The route is one shell argument
+// (it may hold spaces and `|`), so quote it:
+//   bash scripts/render-route.sh '/progress|Back squat|3M' 390 844 out.png scripts/render-states/stats-45.json
 //
 // [state.json], when given and non-empty, is seeded into the app's IndexedDB
 // (`workout-tracker`: `sessions` and `settings`) before the route is shown. Its shape is
 // `{ "sessions": Session[], "settings": { <setting key>: <value> } }` -- a backup file's
 // sessions and settings (src/storage/backup.ts). Without it the render is a fresh install.
+// Optional keys: `now` (an ISO instant with offset; the page's clock starts there and keeps
+// running), `timezone` (an IANA zone for the page) and `dpr` (device scale factor, default 1;
+// the stats states use 2). The stats states come from scripts/stats-fixture/build.mjs:
+// stats-45 (all 45 Sessions), stats-1 and stats-3 (the sparse cuts).
 //
 // Chrome is found at $CHROME, else at the usual install path for the platform.
 
@@ -42,11 +55,12 @@ const ROUTES = {
 const TOTAL_TIMEOUT_MS = 120_000
 
 const [routeArg, widthArg, heightArg, outArg, stateArg = ''] = process.argv.slice(2)
-const route = (routeArg ?? '').replace(/\/+$/, '') || '/'
+const [screenPart, ...taps] = (routeArg ?? '').split('|').map((t) => t.trim())
+const route = screenPart.replace(/\/+$/, '') || '/'
 const width = Number(widthArg)
 const height = Number(heightArg)
-if (!(route in ROUTES) || !(width > 0) || !(height > 0) || !outArg) {
-  console.error(`usage: render-route.mjs <route> <width> <height> <out.png> [state.json]\n  routes: ${Object.keys(ROUTES).join(' ')}`)
+if (!/^\//.test(route) || taps.some((t) => !t) || !(width > 0) || !(height > 0) || !outArg) {
+  console.error(`usage: render-route.mjs <route> <width> <height> <out.png> [state.json]\n  routes: ${Object.keys(ROUTES).join(' ')} or /<tab label>, then |<tap by visible text> ...`)
   process.exit(64)
 }
 const out = resolve(outArg)
@@ -208,6 +222,23 @@ function connect(wsUrl) {
   })
 }
 
+// An expression that finds the element a step taps: `tab:<label>` is a bottom-bar tab,
+// `text:<t>` a control by its visible text or aria-label (exact match first, then contains),
+// anything else a CSS selector.
+function finderFor(step) {
+  if (step.startsWith('tab:')) {
+    const want = JSON.stringify(step.slice(4).toLowerCase())
+    return `[...document.querySelectorAll('nav[aria-label="Main"] button')].find((e) => [e.getAttribute('aria-label'), e.textContent].some((t) => (t ?? '').trim().toLowerCase() === ${want}))`
+  }
+  if (step.startsWith('text:')) {
+    const want = JSON.stringify(step.slice(5))
+    const names = `(e) => [e.getAttribute('aria-label'), e.textContent.replace(/\\s+/g, ' ').trim()]`
+    const all = `[...document.querySelectorAll('button, label, summary, a, [role="tab"], [role="button"]')]`
+    return `(${all}.find((e) => (${names})(e).includes(${want})) ?? ${all}.find((e) => (${names})(e).some((x) => x && x.includes(${want}))))`
+  }
+  return `document.querySelector(${JSON.stringify(step)})`
+}
+
 async function main() {
   const exe = findChrome()
   const [viteUp, chromeUp] = await Promise.all([startVite(), startChrome(exe)])
@@ -241,7 +272,23 @@ async function main() {
 
   await cdp.send('Page.enable')
   await cdp.send('Runtime.enable')
-  await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: true })
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: Number(state?.dpr) || 1, mobile: true })
+  if (state?.timezone) await cdp.send('Emulation.setTimezoneOverride', { timezoneId: state.timezone })
+  if (state?.now) {
+    // Start the page's clock at `now` and let it run: the app sees the pinned day, timers still work.
+    const at = Date.parse(state.now)
+    if (Number.isNaN(at)) throw new Error(`state.now is not a date: ${state.now}`)
+    await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `(() => {
+        const Real = Date, offset = ${at} - Real.now()
+        class PinnedDate extends Real {
+          constructor(...a) { a.length ? super(...a) : super(Real.now() + offset) }
+          static now() { return Real.now() + offset }
+        }
+        globalThis.Date = PinnedDate
+      })()`,
+    })
+  }
   await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true })
   await load(false)
 
@@ -273,10 +320,9 @@ async function main() {
     await load(true)
   }
 
-  for (const step of ROUTES[route]) {
-    const finder = step.startsWith('text:')
-      ? `[...document.querySelectorAll('button, label, [role="tab"], a')].find((e) => e.textContent.trim() === ${JSON.stringify(step.slice(5))})`
-      : `document.querySelector(${JSON.stringify(step)})`
+  const screenSteps = ROUTES[route] ?? [`tab:${route.slice(1)}`]
+  for (const step of [...screenSteps, ...taps.map((t) => `text:${t}`)]) {
+    const finder = finderFor(step)
     await waitFor(`!!(${finder})`, step, 20_000)
     await evaluate(`(${finder}).click(), true`)
     await sleep(300)

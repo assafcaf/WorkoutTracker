@@ -5,8 +5,11 @@
 #
 # Brings up its own Vite dev server (free port, never 5173) and headless Chrome, and shuts both
 # down on success and on failure. <route> is one of / /dashboard /sessions /lifts /program
-# /exercises /settings (the app has no URL routes; the renderer clicks to the screen). An empty
-# or absent [state.json] renders a fresh install; otherwise it is seeded into IndexedDB first.
+# /exercises /settings, or /<tab label> (/progress, /train), optionally followed by taps by
+# visible text: '/progress|Back squat|3M' (quote it). The app has no URL routes; the renderer
+# clicks to the screen. An empty or absent [state.json] renders a fresh install; otherwise it
+# is seeded into IndexedDB first (scripts/render-states/stats-45.json, stats-1.json and
+# stats-3.json also pin the clock and the zone, and render at DPR 2).
 # See scripts/render-route.mjs for details. Chrome is taken from $CHROME when set.
 set -euo pipefail
 
