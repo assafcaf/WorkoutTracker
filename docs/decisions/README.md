@@ -53,3 +53,4 @@ rewrite history.
 - [0014](0014-set-kind-effort-load-and-notes-are-optional-fields.md): a Set's kind, effort and load and the notes are optional fields, and only warm-ups leave the stats
 - [0015](0015-plate-inventory-is-a-synced-setting-and-the-warm-up-ramp-is-not-stored.md): the Plate inventory is one synced setting, and the Warm-up ramp and Warm-up rest are derived, not stored
 - [0016](0016-bodyweight-is-a-per-exercise-setting-and-load-is-signed.md): Bodyweight is a per-Exercise synced setting, a higher signed Load is better (`invertProgress` gone), and one Dial serves weight and Load
+- [0017](0017-stats-are-verdicts-from-tested-rules.md): stats are verdicts from tested rules in `src/domain/stats/` (one record per lift per Session, ladders on a calendar axis, muscles against the plan) in a Progress tab
