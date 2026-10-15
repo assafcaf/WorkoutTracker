@@ -484,7 +484,7 @@ describe('Screen groups resolve Exercises through applyBodyweight (E16-T13 O6)',
   test('O6 the Workout, History and Exercises Screen groups that import resolveExercise also import applyBodyweight', () => {
     const screenGroups = [
       'src/features/workout/WorkoutFeature.tsx',
-      'src/features/history/HistoryFeature.tsx',
+      'src/features/sessions/SessionsScreen.tsx',
       'src/features/exercises/ExercisesFeature.tsx',
     ]
     const importsName = (file: string, name: string): boolean =>
