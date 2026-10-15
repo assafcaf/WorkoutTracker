@@ -1,0 +1,60 @@
+/* The ladder's docked scrub readout (E18-T8): pinned just above the fixed tab bar (the bar is
+ * `.tab-bar-tab`'s height plus `--safe-bottom`, src/ui/TabBar.css), in thumb reach. Tokens only. */
+
+.ladder-readout {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tap-min) + var(--space-1) + var(--safe-bottom));
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sheet);
+}
+
+.ladder-readout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.ladder-readout-title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.ladder-readout-open {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.ladder-readout-sets {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.ladder-readout-line {
+  margin: 0;
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+}
+
+.ladder-readout-muted {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
