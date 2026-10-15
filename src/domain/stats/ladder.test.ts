@@ -218,7 +218,7 @@ describe('E18-T6 O21 the 4 weeks ago compare', () => {
   it('O21 Assisted pull-ups BW-21 then and BW-19 now is up (less assistance)', () => {
     const c = compareAgo(history('assisted-pull-ups'), NOW)!
     expect(c.then).toMatchObject({ lever: -21, reps: 5 })
-    expect(c.now).toMatchObject({ lever: -19, reps: 5 })
+    expect(c.now).toMatchObject({ lever: -19, reps: 6 })
     expect(c.change).toBe('up')
   })
 
