@@ -62,7 +62,9 @@ cfg="$main/.claude/workflow/config.md"
 paths="$(sed -n 's/^| Test paths | *`\([^`]*\)`.*/\1/p' "$cfg" 2>/dev/null | head -n 1)"
 [ -n "$paths" ] || paths="tests/"
 tdir="${paths%% *}"
-case "$tdir" in */) ;; *) tdir="tests/" ;; esac
+# A glob first pathspec (`src/**/*.test.ts`) is no directory: fall back to tests/, and add it to
+# the pathspecs, so the rehearsal's own test file counts as a test and not as a write outside Owns.
+case "$tdir" in */) ;; *) tdir="tests/"; paths="$paths tests/" ;; esac
 test_file="${tdir}pad-rehearsal.sh"
 
 id="pad-rehearsal-$$-$(date +%s)"
