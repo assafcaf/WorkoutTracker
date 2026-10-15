@@ -1,6 +1,6 @@
 // E18-T3 [O5 O6 O7]: records, the one record count and the bests table against the stats fixture
 // (expected.json), plus hand-built Sessions for the rank order and the failure paths.
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import expectedJson from '../../test/fixtures/stats/expected.json'
 import sessionsJson from '../../test/fixtures/stats/sessions.json'
 import { loadCatalog, loadPrograms } from '../../data/catalog'
@@ -54,10 +54,12 @@ type Records = ReturnType<typeof computeRecords>
 let cachedRecords: Records | undefined
 /** Computed on first use, so a missing implementation fails a test, not the collection. */
 const allRecords = () => (cachedRecords ??= computeRecords(sessions, resolve, planOf))
-const lazyRecords = () => new Proxy([] as Records, { get: (_t, k) => Reflect.get(allRecords(), k) })
 
 describe('E18-T3 O5 records on the fixture', () => {
-  const records = lazyRecords()
+  let records: Records
+  beforeAll(() => {
+    records = allRecords()
+  })
   it('O5 totals 201 records in 45 Sessions, and never more than one per lift per Session', () => {
     expect(records).toHaveLength(201)
     const keys = records.map((r) => `${r.sessionId}|${r.exerciseId}`)
@@ -149,7 +151,10 @@ describe('E18-T3 O5 records on the fixture', () => {
 })
 
 describe('E18-T3 O6 the one record count', () => {
-  const records = lazyRecords()
+  let records: Records
+  beforeAll(() => {
+    records = allRecords()
+  })
   it('O6 answers for every Session with the fixture count: Wed 14 Oct is 4, Mon 12 Oct is 5', () => {
     expect(recordCount(records, sessionOn('2026-10-14').id)).toBe(4)
     expect(recordCount(records, sessionOn('2026-10-12').id)).toBe(5)
