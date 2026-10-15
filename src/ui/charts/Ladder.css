@@ -128,3 +128,20 @@
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
+
+.ladder-reference-line {
+  stroke: var(--color-text);
+  stroke-width: 2px;
+  stroke-dasharray: 3 2;
+}
+
+.ladder-bracket-line {
+  fill: none;
+  stroke: var(--color-warn);
+  stroke-width: 1.5px;
+}
+
+.ladder-bracket-label {
+  fill: var(--color-warn);
+  font-size: var(--text-xs);
+}

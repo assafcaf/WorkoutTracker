@@ -227,3 +227,23 @@ test('[O19] no Sessions draws no svg', () => {
   const { container } = render(<Ladder view={view({ points: [], gaps: [], treads: [] })} title="x" />)
   expect(container.querySelector('svg')).toBeNull()
 })
+
+test('[O19] an optional reference tick and stall bracket are drawn with their labels, and absent draw nothing', () => {
+  const plain = render(<Ladder view={view()} title="x" />)
+  expect(plain.container.querySelector('.ladder-reference')).toBeNull()
+  expect(plain.container.querySelector('.ladder-bracket')).toBeNull()
+  plain.unmount()
+  const { container } = render(
+    <Ladder
+      view={view({
+        reference: { at: T0 + 20 * DAY, lever: 55, label: '4 weeks ago' },
+        bracket: { from: T0 + 20 * DAY, to: T0 + 70 * DAY, label: 'Stalled' },
+      })}
+      title="x"
+    />,
+  )
+  const ref = container.querySelector('.ladder-reference') as Element
+  expect(ref.getAttribute('data-lever')).toBe('55')
+  expect(ref.textContent).toContain('4 weeks ago')
+  expect(container.querySelector('.ladder-bracket')?.textContent).toContain('Stalled')
+})

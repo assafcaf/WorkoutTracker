@@ -61,6 +61,10 @@ export type LadderView = {
   gaps: LadderGap[]
   /** X-axis labels: a date (epoch ms) and its text. */
   dates: { at: number; label: string }[]
+  /** A reference tick at an earlier date's top set (`4 weeks ago`); absent draws nothing. */
+  reference?: { at: number; lever: number; label: string } | null
+  /** A bracket over a stall, `from`..`to` (epoch ms), above the weight panel; absent draws nothing. */
+  bracket?: { from: number; to: number; label: string } | null
 }
 
 /** The index of the point nearest `at`, or -1 with no points. A tie goes to the earlier. */
