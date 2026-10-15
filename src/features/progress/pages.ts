@@ -38,5 +38,7 @@ export const PROGRESS_PAGES: ProgressPages = {
   home: placeholder('Progress'),
   lift: placeholder('Lift'),
   lifts: placeholder('All lifts'),
-  muscles: MusclesPage,
+  muscles: placeholder('Muscles'),
 }
+
+PROGRESS_PAGES.muscles = MusclesPage
