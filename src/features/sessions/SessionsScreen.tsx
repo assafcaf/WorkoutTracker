@@ -33,6 +33,8 @@ export type SessionsScreenProps = {
   onInSession(inSession: boolean): void
   /** The clock the calendar and the week groups read; the device's by default. */
   now?: () => number
+  /** A Session to open the summary of on arrival (the `{ tab: 'history', sessionId }` route). */
+  initialSessionId?: string
 }
 
 const CALENDAR_WEEKS = 6
