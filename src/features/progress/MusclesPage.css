@@ -1,0 +1,156 @@
+/* The Muscles page (training-week S4): 12 bullet rows against the plan. Tokens only. */
+
+.muscles-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-5);
+  color: var(--color-text);
+}
+
+.muscles-range {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.muscles-lead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.muscles-sentence {
+  flex: 1;
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: 22px;
+}
+
+.muscles-map {
+  flex: 0 0 auto;
+  width: 120px;
+}
+
+.muscles-legend,
+.muscles-note {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}
+
+.muscles-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.muscles-item {
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.muscles-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--space-2) 0;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.muscles-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.muscles-row-name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+}
+
+.muscles-row-value {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.muscles-row-plan {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+
+/* The bullet: a track, the muted typical band, the done bar, the still-planned segment
+ * outlined, and the plan tick across the full height. */
+.muscles-bullet {
+  position: relative;
+  display: block;
+  height: 14px;
+}
+
+.muscles-bullet::before {
+  content: '';
+  position: absolute;
+  inset: 2px 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-hairline);
+}
+
+.muscles-bullet-band {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  background: var(--color-control);
+  opacity: 0.55;
+}
+
+.muscles-bullet-done {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  border-radius: var(--radius-sm);
+  background: var(--heat-2);
+  color: var(--color-text);
+}
+
+.muscles-bullet-done[data-under='true'] {
+  background: var(--color-warn);
+}
+
+.muscles-bullet-still {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  box-sizing: border-box;
+  border: 1px solid var(--heat-2);
+  border-radius: var(--radius-sm);
+  background: var(--heat-0);
+  color: var(--color-text);
+}
+
+.muscles-bullet-plan {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-text);
+}
+
+.muscles-contrib {
+  margin: 0;
+  padding: 0 0 var(--space-3);
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
