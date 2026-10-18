@@ -8,10 +8,13 @@ export type UseSync = {
   replaceRemote(): Promise<void>
 }
 
+/** What a sync resolves with once the Worker has refused this version of the app (E20). */
+type UpdateRequired = { status: 'update-required' }
+
 const NOT_SYNCED: SyncView = { accountEmail: null, lastSyncedAt: null, status: 'idle' }
 
 /** A finished call's result as Settings shows it, over the account and time now stored. */
-function toView(result: SyncResult, state: SyncState): SyncView {
+function toView(result: SyncResult | UpdateRequired, state: SyncState): SyncView {
   switch (result.status) {
     case 'ok':
     case 'offline':
@@ -26,6 +29,8 @@ function toView(result: SyncResult, state: SyncState): SyncView {
         status: 'account-mismatch',
         signedInEmail: result.signedInEmail,
       }
+    case 'update-required':
+      return { ...state, status: 'update-required' }
   }
 }
 
@@ -57,7 +62,7 @@ export function useSync(sync: SyncService): UseSync {
 
   /** Starts `call` first, so the request goes out at once, then shows it running and its result. */
   const run = useCallback(
-    async (call: (service: SyncService) => Promise<SyncResult>): Promise<void> => {
+    async (call: (service: SyncService) => Promise<SyncResult | UpdateRequired>): Promise<void> => {
       try {
         const pending = call(serviceRef.current)
         let done = false
@@ -86,7 +91,7 @@ export function useSync(sync: SyncService): UseSync {
   const waitingSync = useRef<Promise<void> | null>(null)
 
   const enqueue = useCallback(
-    (call: (service: SyncService) => Promise<SyncResult>, coalesce: boolean): Promise<void> => {
+    (call: (service: SyncService) => Promise<SyncResult | UpdateRequired>, coalesce: boolean): Promise<void> => {
       if (coalesce && waitingSync.current) return waitingSync.current
       const next: Promise<void> = tail.current.then(() => {
         if (waitingSync.current === next) waitingSync.current = null
