@@ -17,7 +17,9 @@ import { latestSet, restLengthOf } from '../../domain/rest'
 import { countsTowardStats } from '../../domain/setKind'
 import { applySessionChanges } from '../../domain/sessionChanges'
 import { ServiceError } from '../../services'
+import { bodyweightOn } from '../../domain/bodyLog'
 import type {
+  BodyLog,
   Exercise,
   LibraryExercise,
   Program,
@@ -254,6 +256,11 @@ export function WorkoutFeature({
     (s) => orElse<Record<string, boolean>>(s.preferences.bodyweightOverrides(), {}),
     ['preferences'],
   )
+  const bodyLogData = useServiceData(
+    (s) => orElse<BodyLog>(s.preferences.bodyLog(), []),
+    ['preferences'],
+  )
+  const bodyLog = bodyLogData.status === 'ready' ? bodyLogData.data : []
   const sessionsData = useServiceData(
     (s) => orElse<Session[]>(s.sessions.list(), []),
     ['sessions'],
@@ -775,6 +782,7 @@ export function WorkoutFeature({
           session,
           earlier: sessions,
           resolve: resolveListExercise,
+          bodyweightKg: bodyweightOn(bodyLog, Date.now())?.kg ?? null,
         })}
         workoutName={located.workout.name}
         view={shown}
@@ -1059,6 +1067,7 @@ export function WorkoutFeature({
         <SessionSummary
           weekStartsOn={weekStartData.status === 'ready' ? weekStartData.data : 1}
           session={summarySession}
+          bodyLog={bodyLog}
           resolve={resolveListExercise}
           library={libraryMap}
           workoutName={

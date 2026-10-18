@@ -54,6 +54,17 @@
   color: var(--color-on-primary);
 }
 
+/* Tappable points (E22-T5): only with `selectable`. The selected point is primary, ringed in text. */
+.line-chart-point[role='button'] {
+  cursor: pointer;
+}
+
+.line-chart-point[aria-pressed='true'] {
+  fill: var(--color-primary);
+  color: var(--color-on-primary);
+  stroke: var(--color-text);
+}
+
 .line-chart-axis-label,
 .line-chart-unit {
   fill: var(--color-muted);

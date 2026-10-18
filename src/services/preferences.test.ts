@@ -31,6 +31,7 @@ test('O5 createPreferenceService exposes exactly the preference operations', () 
 
   expect(Object.keys(service).sort()).toEqual(
     [
+      'bodyLog',
       'bodyweightOverrides',
       'deloadWeek',
       'exerciseNote',
@@ -38,6 +39,8 @@ test('O5 createPreferenceService exposes exactly the preference operations', () 
       'keepScreenOnDuringRest',
       'lastExportedAt',
       'plateInventory',
+      'removeBodyEntry',
+      'saveBodyEntry',
       'setBodyweight',
       'setDeloadWeek',
       'setExerciseNote',
@@ -582,4 +585,83 @@ test.each([
 ])('E21-T4 O12 deloadWeek answers null for a stored value that is %s', async (_n, value) => {
   await db.settings.put({ key: 'deloadWeek', value, updatedAt: 1 })
   expect(await createPreferenceService(deps()).deloadWeek()).toBeNull()
+})
+
+// --- E22-T2 O6: the body log ---
+
+const W1 = { day: '2023-10-01', weightKg: 80 }
+const W2 = { day: '2023-10-15', weightKg: 78.5 }
+
+test('E22-T2 O6 bodyLog answers [] when nothing is stored', async () => {
+  expect(await createPreferenceService(deps()).bodyLog()).toEqual([])
+})
+
+test('E22-T2 O6 bodyLog reads a stored row through validateBodyLog', async () => {
+  await db.settings.put({
+    key: 'bodyLog',
+    value: [W2, { day: 'bad', weightKg: 80 }, W1],
+    updatedAt: 1,
+  })
+
+  expect(await createPreferenceService(deps()).bodyLog()).toEqual([W1, W2])
+})
+
+test('E22-T2 O6 saveBodyEntry writes one bodyLog row of the upserted log stamped with now and notifies preferences once', async () => {
+  await db.settings.put({ key: 'bodyLog', value: [W2], updatedAt: 1 })
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+  const service = createPreferenceService(deps({ bus }))
+
+  await service.saveBodyEntry(W1)
+
+  expect(await db.settings.get('bodyLog')).toEqual({
+    key: 'bodyLog',
+    value: [W1, W2],
+    updatedAt: 1_700_000_000_000,
+  })
+  expect(listener).toHaveBeenCalledTimes(1)
+})
+
+test('E22-T2 O6 saveBodyEntry replaces the entry already on that day', async () => {
+  const service = createPreferenceService(deps())
+  await service.saveBodyEntry(W1)
+
+  await service.saveBodyEntry({ day: '2023-10-01', weightKg: 79 })
+
+  expect(await service.bodyLog()).toEqual([{ day: '2023-10-01', weightKg: 79 }])
+})
+
+test.each([
+  ['a weight out of range', { day: '2023-10-01', weightKg: 5 }],
+  ['a bad day', { day: '2023-13-40', weightKg: 80 }],
+  ['a day after today', { day: '2999-01-01', weightKg: 80 }],
+  ['no measurement', { day: '2023-10-01' }],
+])('E22-T2 O6 saveBodyEntry refuses %s with a ServiceError, storing nothing and notifying no one', async (_n, entry) => {
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+  const service = createPreferenceService(deps({ bus }))
+
+  await expect(service.saveBodyEntry(entry)).rejects.toBeInstanceOf(ServiceError)
+
+  expect(await db.settings.get('bodyLog')).toBeUndefined()
+  expect(listener).not.toHaveBeenCalled()
+})
+
+test('E22-T2 O6 removeBodyEntry writes the log without that day and notifies preferences once', async () => {
+  await db.settings.put({ key: 'bodyLog', value: [W1, W2], updatedAt: 1 })
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+  const service = createPreferenceService(deps({ bus }))
+
+  await service.removeBodyEntry('2023-10-01')
+
+  expect(await db.settings.get('bodyLog')).toEqual({
+    key: 'bodyLog',
+    value: [W2],
+    updatedAt: 1_700_000_000_000,
+  })
+  expect(listener).toHaveBeenCalledTimes(1)
 })

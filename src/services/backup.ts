@@ -21,6 +21,7 @@ import {
   VOLUME_BASELINE_KEY,
   WEIGHT_STEPS_KEY,
   BODYWEIGHT_OVERRIDES_KEY,
+  BODY_LOG_KEY,
   CUSTOM_EXERCISES_KEY,
   KEEP_SCREEN_ON_KEY,
   WEEK_START_KEY,
@@ -38,7 +39,7 @@ import {
 } from '../storage/settingsStore'
 import { inTransaction } from '../storage/transaction'
 import type { SettingRow } from '../storage/db'
-import type { CustomExercise, PlateInventory } from '../types'
+import type { BodyLog, CustomExercise, PlateInventory } from '../types'
 import type { SyncResult } from '../sync/syncClient'
 import { CHANGE_TOPICS } from './changes'
 import { callStorage, ServiceError } from './errors'
@@ -73,6 +74,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     deloadWeekRow,
     keepScreenOnRow,
     customExercisesRow,
+    bodyLogRow,
   ] = await Promise.all([
     listSessions(),
     readRow(ACTIVE_PROGRAM_ID_KEY),
@@ -89,6 +91,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     readRow(DELOAD_WEEK_KEY),
     readRow(KEEP_SCREEN_ON_KEY),
     readRow(CUSTOM_EXERCISES_KEY),
+    readRow(BODY_LOG_KEY),
   ])
   const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
 
@@ -110,6 +113,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
       ...(deloadWeekRow ? { deloadWeek: deloadWeekRow.value as number } : {}),
       ...(keepScreenOnRow ? { keepScreenOnDuringRest: keepScreenOnRow.value as boolean } : {}),
       ...(customExercisesRow ? { customExercises: customExercisesRow.value as CustomExercise[] } : {}),
+      ...(bodyLogRow ? { bodyLog: bodyLogRow.value as BodyLog } : {}),
       ...(plateInventoryRow ? { plateInventory: plateInventoryRow.value as PlateInventory } : {}),
     },
   }
@@ -249,6 +253,9 @@ export function createBackupService(
 
             if (file.settings.customExercises === undefined) toDelete.push(CUSTOM_EXERCISES_KEY)
             else toPut.push({ key: CUSTOM_EXERCISES_KEY, value: file.settings.customExercises, updatedAt: now })
+
+            if (file.settings.bodyLog === undefined) toDelete.push(BODY_LOG_KEY)
+            else toPut.push({ key: BODY_LOG_KEY, value: file.settings.bodyLog, updatedAt: now })
 
             if (toPut.length > 0) await putRows(toPut)
             if (toDelete.length > 0) await deleteKeys(toDelete)

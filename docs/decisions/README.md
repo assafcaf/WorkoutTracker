@@ -57,3 +57,4 @@ rewrite history.
 - [0018](0018-custom-exercises-session-additions-and-the-trainees-week.md): custom Exercises and Session additions are synced data saved back to the Program on request, search forgives, the week starts on the trainee's day, and the screen stays awake during rest
 - [0019](0019-a-versioned-contract-and-a-layered-worker.md): a versioned contract in `src/contract/` checks both sides (no header means v1, outside v1..v2 is `426`), and the Worker is routes → handlers → services → repositories
 - [0020](0020-effort-aware-steps-and-planned-deloads.md): the next step reads Effort (2 steps, hold), "last time" skips deloads, and a deload is planned a week at a time (extends 0006)
+- [0021](0021-bodyweight-counts-in-volume.md): Bodyweight Sets count (bodyweight + Load) x reps in kg volume at the latest weigh-in, reps only before one (amends 0017)

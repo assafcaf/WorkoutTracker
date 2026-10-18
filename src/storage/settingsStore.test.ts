@@ -6,12 +6,15 @@ import {
   DELOAD_WEEK_KEY,
   GYM_EQUIPMENT_KEY,
   KEEP_SCREEN_ON_KEY,
+  BODY_LOG_KEY,
   PLATE_INVENTORY_KEY,
   USER_PROGRAMS_KEY,
   WEEK_START_KEY,
   deleteKeys,
   deleteProgram,
   getActiveProgramId,
+  getBodyLog,
+  setBodyLog,
   getCustomExercises,
   getDeloadWeek,
   getKeepScreenOnDuringRest,
@@ -1020,5 +1023,54 @@ describe('E21-T4 O12 the deloadWeek setting', () => {
     await db.settings.clear()
     await db.settings.put({ key: 'deloadWeek', value, updatedAt: 1 })
     expect(await getDeloadWeek()).toBeNull()
+  })
+})
+
+describe('E22-T2 O6 the bodyLog setting', () => {
+  const log = [
+    { day: '2023-10-01', weightKg: 80 },
+    { day: '2023-10-15', weightKg: 78.5, waistCm: 84 },
+  ]
+
+  test('getBodyLog answers [] when nothing is stored, writing nothing', async () => {
+    await db.settings.clear()
+    expect(await getBodyLog()).toEqual([])
+    expect(await db.settings.get('bodyLog')).toBeUndefined()
+  })
+
+  test('setBodyLog stores the whole log in the one bodyLog row stamped with now', async () => {
+    await db.settings.clear()
+    await setBodyLog(log, 1234)
+    expect(BODY_LOG_KEY).toBe('bodyLog')
+    expect(await db.settings.get('bodyLog')).toEqual({ key: 'bodyLog', value: log, updatedAt: 1234 })
+    expect(await getBodyLog()).toEqual(log)
+  })
+
+  test('getBodyLog reads a stored row through validateBodyLog, dropping invalid entries', async () => {
+    await db.settings.clear()
+    await db.settings.put({
+      key: 'bodyLog',
+      value: [
+        { day: '2023-10-15', weightKg: 78.54 },
+        { day: 'nope', weightKg: 80 },
+        { day: '2023-10-02', weightKg: 5 },
+        { day: '2023-10-01', weightKg: 80 },
+      ],
+      updatedAt: 1,
+    })
+    expect(await getBodyLog()).toEqual([
+      { day: '2023-10-01', weightKg: 80 },
+      { day: '2023-10-15', weightKg: 78.5 },
+    ])
+  })
+
+  test.each([
+    ['an object', { day: '2023-10-01' }],
+    ['a string', 'x'],
+    ['null', null],
+  ])('getBodyLog answers [] for a stored value that is %s', async (_n, value) => {
+    await db.settings.clear()
+    await db.settings.put({ key: 'bodyLog', value, updatedAt: 1 })
+    expect(await getBodyLog()).toEqual([])
   })
 })

@@ -1,5 +1,12 @@
 import { expect, test } from 'vitest'
-import { exerciseFamily, familyImpact, familyWeekly, prescribedWeekly, programGaps } from './programVolume'
+import {
+  exerciseFamily,
+  familyImpact,
+  familyWeekly,
+  plannedContributors,
+  prescribedWeekly,
+  programGaps,
+} from './programVolume'
 import type { Exercise, LibraryExercise, Muscle, Program, Workout } from '../types'
 
 // Hand-rolled free-exercise-db-shaped fixtures, matching muscles.test.ts's convention --
@@ -248,4 +255,95 @@ test('familyImpact names only the families whose planned weekly Sets changed, be
     { family: 'legs', before: 6, after: 7.5 },
   ])
   expect(familyImpact(abProgram(4), abProgram(4), resolveFamily, familyLibrary)).toEqual([])
+})
+
+// plannedContributors ---------------------------------------------------------------------
+
+test('plannedContributors gives each Exercise its planned weekly Sets for the listed muscles, primary x1 and secondary x0.5, largest first', () => {
+  expect(plannedContributors(twoWorkoutProgram, ['quadriceps', 'glutes', 'chest'], catalog, library)).toEqual([
+    { exerciseId: 'back-squat', sets: 9 },
+    { exerciseId: 'db-bench-press', sets: 3 },
+  ])
+  expect(plannedContributors(twoWorkoutProgram, ['glutes'], catalog, library)).toEqual([
+    { exerciseId: 'back-squat', sets: 3 },
+  ])
+})
+
+test('plannedContributors omits Exercises that touch none of the listed muscles', () => {
+  expect(plannedContributors(twoWorkoutProgram, ['lats'], catalog, library)).toEqual([])
+  expect(plannedContributors(twoWorkoutProgram, [], catalog, library)).toEqual([])
+})
+
+test('plannedContributors merges an Exercise planned in several Workouts into one entry', () => {
+  const both = program({
+    id: 'both',
+    sessionsPerWeek: 3,
+    workouts: [
+      workout({ id: 'a', exercises: [{ exerciseId: 'back-squat', sets: 4, repRange: [8, 10], restSeconds: 180 }] }),
+      workout({ id: 'b', exercises: [{ exerciseId: 'back-squat', sets: 2, repRange: [8, 10], restSeconds: 180 }] }),
+    ],
+  })
+  // (4 + 2) sets * 1.5 weight = 9 on quadriceps.
+  expect(plannedContributors(both, ['quadriceps'], catalog, library)).toEqual([
+    { exerciseId: 'back-squat', sets: 9 },
+  ])
+})
+
+test('plannedContributors breaks a tie in Sets by exerciseId ascending', () => {
+  const twinLibrary = libraryExercise({ id: 'twin-lib', name: 'Twin', primaryMuscles: ['quadriceps'] })
+  const twinCatalog = new Map([
+    ['zeta', exercise({ id: 'zeta', libraryId: 'twin-lib' })],
+    ['alpha', exercise({ id: 'alpha', libraryId: 'twin-lib' })],
+  ])
+  const tied = program({
+    id: 'tied',
+    sessionsPerWeek: 1,
+    workouts: [
+      workout({
+        id: 'w',
+        exercises: [
+          { exerciseId: 'zeta', sets: 3, repRange: [8, 10], restSeconds: 90 },
+          { exerciseId: 'alpha', sets: 3, repRange: [8, 10], restSeconds: 90 },
+        ],
+      }),
+    ],
+  })
+  expect(plannedContributors(tied, ['quadriceps'], twinCatalog, new Map([[twinLibrary.id, twinLibrary]]))).toEqual([
+    { exerciseId: 'alpha', sets: 3 },
+    { exerciseId: 'zeta', sets: 3 },
+  ])
+})
+
+test('plannedContributors skips a Plan whose Exercise or library entry is unknown', () => {
+  const ghost = exercise({ id: 'ghost', libraryId: 'no-such-lib' })
+  const withUnknown = program({
+    id: 'unknown',
+    sessionsPerWeek: 1,
+    workouts: [
+      workout({
+        id: 'w',
+        exercises: [
+          { exerciseId: 'missing', sets: 5, repRange: [8, 10], restSeconds: 90 },
+          { exerciseId: 'ghost', sets: 5, repRange: [8, 10], restSeconds: 90 },
+          { exerciseId: 'back-squat', sets: 2, repRange: [8, 10], restSeconds: 90 },
+        ],
+      }),
+    ],
+  })
+  const withGhost = new Map(catalog).set(ghost.id, ghost)
+  expect(plannedContributors(withUnknown, ['quadriceps'], withGhost, library)).toEqual([
+    { exerciseId: 'back-squat', sets: 2 },
+  ])
+})
+
+test('plannedContributors Sets sum to the muscles prescribedWeekly totals', () => {
+  const muscles: Muscle[] = ['quadriceps', 'glutes', 'chest', 'triceps']
+  const prescribed = prescribedWeekly(twoWorkoutProgram, catalog, library)
+  const expected = muscles.reduce((sum, m) => sum + (prescribed.get(m) ?? 0), 0)
+  const actual = plannedContributors(twoWorkoutProgram, muscles, catalog, library).reduce(
+    (sum, c) => sum + c.sets,
+    0,
+  )
+  expect(actual).toBeCloseTo(expected, 9)
+  expect(expected).toBeGreaterThan(0)
 })

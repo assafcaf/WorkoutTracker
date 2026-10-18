@@ -164,3 +164,24 @@ describe('E19 O4 the summary week follows the week start', () => {
     })
   })
 })
+
+describe('E22-T3 O9 volumeLine counts each Session at its own bodyweight', () => {
+  const pullup = { id: 'pullup', name: 'Pull-ups', weightStep: 1, startWeight: null, bodyweight: true, libraryId: 'x' }
+  const mk = (id: string, d: number): Session => ({
+    id, programId: 'p', workoutId: 'A', startedAt: new Date(2026, 9, d, 12).getTime(),
+    finishedAt: new Date(2026, 9, d, 13).getTime(),
+    entries: [{ exerciseId: 'pullup', setIndex: 0, weightKg: null, reps: 10, loggedAt: 1 }],
+  })
+  const sessions = [mk('prev', 2), mk('now', 9)]
+  const res = (id: string) => (id === 'pullup' ? pullup : undefined)
+  const log = [{ day: '2026-10-01', weightKg: 70 }, { day: '2026-10-08', weightKg: 80 }]
+
+  it('O9 compares 800 kg (at 80) with 700 kg (at 70)', () => {
+    expect(volumeLine('now', sessions, res, log)).toBe('800 kg · up 14 % on Fri 2 Oct')
+  })
+
+  it('O9 without a log reads as before', () => {
+    expect(volumeLine('now', sessions, res)).toBe('0 kg')
+    expect(volumeLine('now', sessions, res, [])).toBe('0 kg')
+  })
+})

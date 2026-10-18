@@ -217,3 +217,62 @@ test('O3 volumeSeries answers what it answers with the warm-up Sets removed', ()
     { at: 5, workoutName: 'fixture-workout', kg: 480, bodyweightReps: 12 },
   ])
 })
+
+// E22-T3 [O7 O8]: a bodyweight makes Bodyweight Sets count (bodyweight + loadKg) x reps kg.
+const pullup = exercise({ id: 'pullup', bodyweight: true, weightStep: 1, startWeight: null })
+const bwSquat = exercise({ id: 'squat' })
+const bwResolve: Resolve = (id) => [pullup, bwSquat].find((e) => e.id === id)
+const bwSession = (startedAt: number, entries: SetEntry[]): Session => ({
+  id: `s${startedAt}`, programId: 'nope', workoutId: 'w', startedAt, finishedAt: startedAt + 1, entries,
+})
+const bwSets: SetEntry[] = [
+  setEntry({ exerciseId: 'pullup', setIndex: 0, weightKg: null, reps: 8, loadKg: 10 }),
+  setEntry({ exerciseId: 'pullup', setIndex: 1, weightKg: null, reps: 10, loadKg: -20 }),
+  setEntry({ exerciseId: 'pullup', setIndex: 2, weightKg: null, reps: 12 }),
+  setEntry({ exerciseId: 'pullup', setIndex: 3, weightKg: null, reps: 5, kind: 'warmup' }),
+  setEntry({ exerciseId: 'squat', setIndex: 0, weightKg: 50, reps: 10 }),
+]
+
+test('O7 sessionVolume at 80 kg counts BW+10 x 8, assisted BW-20 x 10 and BW x 12, plus loaded sets', () => {
+  const out = sessionVolume(bwSession(1, bwSets), bwResolve, 80)
+  expect(out.kg).toBe(720 + 600 + 960 + 500)
+  expect(out.bodyweightReps).toBe(0)
+  expect(out.bodyweightKg).toBe(80)
+})
+
+test('O7 sessionVolume floors a Set at 0 when assistance outweighs the bodyweight', () => {
+  const s = bwSession(1, [setEntry({ exerciseId: 'pullup', weightKg: null, reps: 10, loadKg: -90 })])
+  expect(sessionVolume(s, bwResolve, 80).kg).toBe(0)
+})
+
+test('O7 sessionVolume without a bodyweight (null or omitted) reads as before and answers no bodyweightKg', () => {
+  for (const out of [sessionVolume(bwSession(1, bwSets), bwResolve), sessionVolume(bwSession(1, bwSets), bwResolve, null)]) {
+    expect(out.kg).toBe(500)
+    expect(out.bodyweightReps).toBe(30)
+    expect(out.bodyweightKg).toBeUndefined()
+  }
+})
+
+const noon = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12).getTime()
+
+test('O8 volumeSeries counts each point at the bodyweight on its day and names it', () => {
+  const log = [{ day: '2026-10-01', weightKg: 70 }, { day: '2026-10-08', weightKg: 80 }]
+  const early = bwSession(noon(2026, 10, 2), [setEntry({ exerciseId: 'pullup', weightKg: null, reps: 10 })])
+  const late = bwSession(noon(2026, 10, 9), [setEntry({ exerciseId: 'pullup', weightKg: null, reps: 10 })])
+  const points = volumeSeries([late, early], bwResolve, [], log)
+  expect(points.map((p) => p.kg)).toEqual([700, 800])
+  expect(points.map((p) => p.bodyweight)).toEqual([
+    { kg: 70, day: '2026-10-01' },
+    { kg: 80, day: '2026-10-08' },
+  ])
+  expect(points.map((p) => p.bodyweightReps)).toEqual([0, 0])
+})
+
+test('O8 volumeSeries counts a Session before the first weighed day as reps only, with no bodyweight named', () => {
+  const log = [{ day: '2026-10-08', weightKg: 80 }]
+  const before = bwSession(noon(2026, 10, 2), [setEntry({ exerciseId: 'pullup', weightKg: null, reps: 10 })])
+  const [point] = volumeSeries([before], bwResolve, [], log)
+  expect(point.kg).toBe(0)
+  expect(point.bodyweightReps).toBe(10)
+  expect(point.bodyweight).toBeUndefined()
+})

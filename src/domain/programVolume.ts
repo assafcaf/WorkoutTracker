@@ -131,6 +131,43 @@ export function familyImpact(
   }))
 }
 
+/** One Exercise's planned weekly Sets toward a set of muscles. */
+export type PlannedContributor = { exerciseId: string; sets: number }
+
+/**
+ * The Exercises whose Plans count toward any of `muscles`, with their planned weekly Sets for
+ * those muscles (`prescribedWeekly`'s rule), merged across Workouts, largest first.
+ */
+export function plannedContributors(
+  program: Program,
+  muscles: readonly Muscle[],
+  catalog: Map<string, Exercise>,
+  library: Map<string, LibraryExercise>,
+): PlannedContributor[] {
+  const weight = program.sessionsPerWeek / program.workouts.length
+  const wanted = new Set<Muscle>(muscles)
+  const byExercise = new Map<string, number>()
+
+  for (const workout of program.workouts) {
+    for (const plan of workout.exercises) {
+      const exercise = catalog.get(plan.exerciseId)
+      if (!exercise) continue
+      const libraryExercise = library.get(exercise.libraryId)
+      if (!libraryExercise) continue
+
+      let share = 0
+      for (const muscle of libraryExercise.primaryMuscles) if (wanted.has(muscle)) share += 1
+      for (const muscle of libraryExercise.secondaryMuscles) if (wanted.has(muscle)) share += 0.5
+      if (share === 0) continue
+      byExercise.set(plan.exerciseId, (byExercise.get(plan.exerciseId) ?? 0) + plan.sets * weight * share)
+    }
+  }
+
+  return [...byExercise]
+    .map(([exerciseId, sets]) => ({ exerciseId, sets }))
+    .sort((a, b) => b.sets - a.sets || (a.exerciseId < b.exerciseId ? -1 : a.exerciseId > b.exerciseId ? 1 : 0))
+}
+
 function finite(value: number): number {
   return Number.isFinite(value) ? value : 0
 }
