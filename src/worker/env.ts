@@ -6,4 +6,6 @@ export type Env = {
   ACCESS_TEAM_DOMAIN?: string
   ACCESS_AUD?: string
   DEV_USER_EMAIL?: string
+  VAPID_PRIVATE_KEY?: string
+  VAPID_SUBJECT?: string
 }
