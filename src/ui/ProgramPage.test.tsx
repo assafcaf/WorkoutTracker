@@ -1120,3 +1120,31 @@ test('S7a a hidden workout of the active program gets no card', () => {
   expect(screen.queryByRole('heading', { name: 'Retired' })).toBeNull()
   expect(screen.getByText('3× per week · 2 workouts · 14 exercises')).toBeVisible()
 })
+
+test('E19-T5 O7 "This week" done map counts from the week start it is given', () => {
+  // Wednesday 14 Oct 2026; Sunday 11 Oct is in this week on a Sunday week start.
+  const wednesday = new Date(2026, 9, 14, 12).getTime()
+  const sunday = new Date(2026, 9, 11, 10).getTime()
+  const sundaySession: Session = {
+    id: 'sunday-session',
+    programId: 'quad-solo',
+    workoutId: 'quad-workout',
+    startedAt: sunday,
+    finishedAt: sunday + 1000,
+    entries: [{ exerciseId: 'ham-exercise', setIndex: 0, weightKg: 40, reps: 10, loggedAt: sunday }],
+  }
+  render(
+    <ProgramPage
+      programs={[allMusclesProgram]}
+      activeProgramId="all-muscles"
+      catalog={new Map([...allMusclesCatalog, [hamstringExercise.id, hamstringExercise]])}
+      library={new Map([...allMusclesLibrary, [hamstringLibrary.id, hamstringLibrary]])}
+      onChooseProgram={vi.fn()}
+      sessions={[sundaySession]}
+      now={wednesday}
+      weekStartsOn={0}
+    />,
+  )
+
+  expect(screen.queryByText('No sets logged in the last 7 days')).toBeNull()
+})
