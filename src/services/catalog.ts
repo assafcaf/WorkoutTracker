@@ -1,5 +1,5 @@
 import type { ServiceDeps } from './deps'
-import type { Exercise, LibraryExercise, Program, Video } from '../types'
+import type { CustomExercise, Exercise, LibraryExercise, Program, Video } from '../types'
 import { assertPlansAreInCatalog, loadCatalog, loadPrograms } from '../data/catalog'
 import { loadLibrary, loadVideos } from '../data/library'
 import { resolveExercise } from '../data/resolve'
@@ -19,6 +19,8 @@ export type CatalogData = {
 export type CatalogService = {
   load(): Promise<CatalogData>
   resolve(id: string): Exercise | null
+  /** Validates and stores one custom Exercise, replacing the same id in place (E19-T10). */
+  saveCustomExercise(exercise: CustomExercise): Promise<void>
 }
 
 /**
@@ -54,6 +56,9 @@ export function createCatalogService(_deps: ServiceDeps): CatalogService {
     resolve(id: string): Exercise | null {
       if (!catalog || !library) return null
       return resolveExercise(id, catalog, library) ?? null
+    },
+    async saveCustomExercise(_exercise: CustomExercise): Promise<void> {
+      throw new Error('not implemented')
     },
   }
 }

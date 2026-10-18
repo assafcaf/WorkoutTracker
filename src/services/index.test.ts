@@ -95,7 +95,7 @@ describe('O5 createServices returns exactly the service API', () => {
   })
 
   test('O5 the catalog service has exactly the CatalogService operations', () => {
-    expect(ownKeys(services().catalog)).toEqual(['load', 'resolve'])
+    expect(ownKeys(services().catalog)).toEqual(['load', 'resolve', 'saveCustomExercise'])
   })
 
   test('O5 the backup service has exactly the BackupService operations', () => {
