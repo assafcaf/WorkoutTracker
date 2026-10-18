@@ -12,6 +12,7 @@ import {
   humanDate,
   leverText,
   nextStepText,
+  stallSuggestion,
   suggestionText,
   topText,
   verdictLabel,
@@ -145,7 +146,7 @@ describe('E18-T7 O11 the home on the fixture at Thu 15 Oct 18:05', () => {
   it('O11 a stalled card gives its weeks whole, its sessions and its date', () => {
     expect(home.cards[1].sentence).toBe('Push-ups: stalled for 10 weeks, 11 sessions without a record since Mon 3 Aug.')
     expect(home.cards[2].sentence).toBe('DB bench press: stalled for 10 weeks, 10 sessions without a record since Fri 7 Aug.')
-    expect(home.cards[2].suggestion).toBe('Consider a lighter week or a variation')
+    expect(home.cards[2].suggestion).toBe('Try a deload: 12 kg for one session')
   })
 
   it('O11 a ready card is phrased as a suggestion', () => {
@@ -228,5 +229,72 @@ describe('E19 O4 the home follows the week start', () => {
 
   it('E19 O4 without a week start it is still 2 of 3 this week', () => {
     expect(homeCopy(program, fixtureSessions, resolve, NOW).adherence).toBe('2 of 3 this week')
+  })
+})
+
+describe('E21-T3 O8 a stalled lift names its deload weight', () => {
+  const histories = buildLiftHistories(fixtureSessions, resolve, planOf)
+
+  it('O8 stallSuggestion of a stalled loaded lift names the deload weight of its top lever', () => {
+    expect(stallSuggestion(histories.get('db-bench-press')!, resolve('db-bench-press')!)).toBe(
+      'Try a deload: 12 kg for one session',
+    )
+  })
+
+  it('O8 stallSuggestion of a stalled Bodyweight lift keeps the lighter-week line', () => {
+    expect(stallSuggestion(histories.get('push-ups')!, resolve('push-ups')!)).toBe(
+      'Consider a lighter week or a variation',
+    )
+  })
+
+  it('O8 the stalled cards: loaded names the deload weight, Bodyweight keeps the line; Why? unchanged', () => {
+    const home = homeCopy(program, fixtureSessions, resolve, NOW)
+    const bench = home.cards.find((c) => c.exerciseId === 'db-bench-press')!
+    const pushUps = home.cards.find((c) => c.exerciseId === 'push-ups')!
+    expect(bench.suggestion).toBe('Try a deload: 12 kg for one session')
+    expect(pushUps.suggestion).toBe('Consider a lighter week or a variation')
+    expect(bench.why[0]).toBe('Stalled: none of the last 4 sessions of this lift set a record.')
+    expect(bench.why.some((l) => l.includes('A record needs 13 kg × 10'))).toBe(true)
+  })
+})
+
+describe('E21-T3 O9 two steps and hold in words', () => {
+  const step = (over: Partial<NextStep>): NextStep => ({ repsAtTop: 30, target: 30, lever: 65, ready: true, ...over })
+
+  it('O9 two steps read "Try 67.5 kg next · 2 steps"', () => {
+    expect(suggestionText(step({ steps: 2, suggest: { kind: 'lever', lever: 67.5 } }), false)).toBe(
+      'Try 67.5 kg next · 2 steps',
+    )
+  })
+
+  it('O9 one step reads as today', () => {
+    expect(suggestionText(step({ suggest: { kind: 'lever', lever: 67.5 } }), false)).toBe('Try 67.5 kg next')
+  })
+
+  it('O9 a hold reads "Stay at 60 kg: every set at RIR 0" from the step lever', () => {
+    expect(suggestionText(step({ lever: 60, ready: false, hold: true }), false)).toBe(
+      'Stay at 60 kg: every set at RIR 0',
+    )
+  })
+
+  const withCurlsRir = (rir: 0 | 2) =>
+    fixtureSessions.map((s) =>
+      s.id !== 'seed-43'
+        ? s
+        : { ...s, entries: s.entries.map((e) => (e.exerciseId === 'seated-biceps-curls' ? { ...e, rir } : e)) },
+    )
+
+  it('O9 a held lift is not counted ready and gets no card', () => {
+    const home = homeCopy(program, withCurlsRir(0), resolve, NOW)
+    expect(home.counts).toContain('↑ 0 ready')
+    expect(home.cards.some((c) => c.exerciseId === 'seated-biceps-curls')).toBe(false)
+  })
+
+  it('O9 an easy full bar is counted ready and its card reads two steps', () => {
+    const home = homeCopy(program, withCurlsRir(2), resolve, NOW)
+    expect(home.counts).toContain('↑ 1 ready')
+    expect(home.cards.find((c) => c.exerciseId === 'seated-biceps-curls')!.suggestion).toBe(
+      'Try 16 kg next · 2 steps',
+    )
   })
 })
