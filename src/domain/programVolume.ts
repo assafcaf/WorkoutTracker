@@ -131,6 +131,22 @@ export function familyImpact(
   }))
 }
 
+/** One Exercise's planned weekly Sets toward a set of muscles. */
+export type PlannedContributor = { exerciseId: string; sets: number }
+
+/**
+ * The Exercises whose Plans count toward any of `muscles`, with their planned weekly Sets for
+ * those muscles (`prescribedWeekly`'s rule), merged across Workouts, largest first.
+ */
+export function plannedContributors(
+  _program: Program,
+  _muscles: readonly Muscle[],
+  _catalog: Map<string, Exercise>,
+  _library: Map<string, LibraryExercise>,
+): PlannedContributor[] {
+  throw new Error('NotImplementedError')
+}
+
 function finite(value: number): number {
   return Number.isFinite(value) ? value : 0
 }
