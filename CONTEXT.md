@@ -108,6 +108,10 @@ _Avoid_: Area, zone, body part
 Push, pull, legs or core: the group every muscle and Region belongs to, and its chip's tint.
 _Avoid_: Muscle group, category, colour group
 
+**Weekly set range**:
+The 10-20 Sets a week a muscle is planned to get; below it is `below`, above it `above`, both ends `within`. Set in `src/domain/setRange.ts`.
+_Avoid_: Volume target, MEV/MRV
+
 **Shell**:
 The frame around the screen showing: header, tab bar and Action bar. Not the **precache**.
 _Avoid_: Chrome, frame, layout, app shell
