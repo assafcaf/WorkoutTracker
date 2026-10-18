@@ -122,3 +122,25 @@ describe('DashboardScreen', () => {
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('DashboardScreen week start (E19-T5 O7)', () => {
+  test('E19-T5 O7 Train counts this week from the stored week start', async () => {
+    // Sunday 11 Oct: last week on a Monday start, this week on a Sunday start.
+    await db.sessions.put(session('sun', 'workout-a', at(9, 11), [squat(60, 10, at(9, 11), 0)]))
+    await db.settings.put({ key: 'weekStart', value: 0, updatedAt: NOW })
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+
+    await waitFor(() => expect(screen.getByText('Workout B due')).toBeTruthy(), SETTLE)
+    expect(screen.getByText('next · 1 more this week')).toBeTruthy()
+  })
+
+  test('E19-T5 O7 Train counts this week from Monday when no week start is stored', async () => {
+    await db.sessions.put(session('sun', 'workout-a', at(9, 11), [squat(60, 10, at(9, 11), 0)]))
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+
+    await waitFor(() => expect(screen.getByText('Workout B due')).toBeTruthy(), SETTLE)
+    expect(screen.getByText('next · 2 more this week')).toBeTruthy()
+  })
+})

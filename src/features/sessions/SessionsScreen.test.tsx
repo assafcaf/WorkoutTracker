@@ -246,3 +246,22 @@ test('S6a a Session finished through services shows on the Sessions tab without 
   const thisWeek = await screen.findByRole('region', { name: 'This week' }, SETTLE)
   expect(within(thisWeek).getByText('Workout A')).toBeVisible()
 })
+
+test('E19-T5 O7 the calendar, week groups and muscle table follow a Sunday week start', async () => {
+  await db.settings.put({ key: 'weekStart', value: 0, updatedAt: NOW })
+  await seedSession('sun', at(10, 11), 'workout-b', 3)
+  await seedSession('tue', at(10, 13), 'workout-a', 3)
+  renderScreen()
+
+  const calendar = await screen.findByRole('region', { name: 'Calendar' }, SETTLE)
+  const initials = [...calendar.querySelectorAll('.sessions-calendar-weekday')].map((el) => el.textContent)
+  expect(initials).toEqual(['S', 'M', 'T', 'W', 'T', 'F', 'S'])
+  expect(within(calendar).getByText('11 Oct')).toBeVisible()
+  expect(within(calendar).queryByText('12 Oct')).toBeNull()
+
+  const thisWeek = await screen.findByRole('region', { name: 'This week' }, SETTLE)
+  expect(within(thisWeek).getAllByRole('button')).toHaveLength(2)
+
+  const card = await screen.findByRole('region', { name: 'Muscle sets by week' }, SETTLE)
+  expect(within(card).getByText('weeks of 20 Sep – 11 Oct')).toBeVisible()
+})

@@ -7,6 +7,7 @@ import { sessionVolume } from '../domain/volume'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { numberText, topText } from '../domain/stats/copy'
 import { nextTime, sessionMoves, summaryWeek, volumeLine } from '../domain/stats/moves'
+import type { Weekday } from '../domain/stats/weeks'
 import { STATS_MUSCLES } from '../domain/stats/muscles'
 import { computeRecords, recordCount } from '../domain/stats/records'
 import type { SessionRecord } from '../domain/stats/records'
@@ -38,6 +39,8 @@ export type SessionSummaryProps = {
   program?: Program
   /** The `Deload session` switch was flipped (E18-T15); the caller stores it. */
   onDeloadChange?(on: boolean): void
+  /** The weekday the week starts on, 0 = Sunday ... 6 = Saturday; Monday by default (E19-T5). */
+  weekStartsOn?: Weekday
 }
 
 /** The duration KPI's value and unit: `52` `min`, or `1 h 05` `min` from an hour up. */
@@ -109,6 +112,7 @@ export function SessionSummary({
   onEdit,
   program,
   onDeloadChange,
+  weekStartsOn = 1,
 }: SessionSummaryProps): JSX.Element {
   const [openRegion, setOpenRegion] = useState<Region | null>(null)
   const [deload, setDeload] = useState(session.deload === true)
@@ -120,7 +124,7 @@ export function SessionSummary({
   const prs = recordCount(records, session.id)
   const moves = sessionMoves(session.id, all, resolve, stats)
   const next = nextTime(session.id, all, resolve, stats)
-  const week = program ? summaryWeek(session.id, all, program) : null
+  const week = program ? summaryWeek(session.id, all, program, weekStartsOn) : null
   const working = workingSets(session.entries).length
   const warmups = session.entries.filter((entry) => !countsTowardStats(entry)).length
   const [durationValue, durationUnit] = durationParts((session.finishedAt ?? session.startedAt) - session.startedAt)
