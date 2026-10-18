@@ -435,3 +435,46 @@ test('O9 unticking Track effort stores false under effortTracking', async () => 
     expect((await db.settings.get('effortTracking'))?.value).toBe(false)
   }, SETTLE)
 })
+
+// --- E19-T3: Week starts on, Keep screen on during rest ---------------------------------------
+
+test('O5 SettingsFeature shows Week starts on as Monday when nothing is stored', async () => {
+  renderFeature(buildServices(fakeSync()))
+
+  const picker = await screen.findByRole('combobox', { name: 'Week starts on' }, SETTLE)
+  expect(picker).toHaveValue('1')
+})
+
+test('O5 choosing a day in Week starts on stores it under weekStart and keeps it shown', async () => {
+  const user = userEvent.setup()
+  renderFeature(buildServices(fakeSync()))
+  const picker = await screen.findByRole('combobox', { name: 'Week starts on' }, SETTLE)
+  await user.selectOptions(picker, 'Sunday')
+
+  await waitFor(async () => {
+    expect((await db.settings.get('weekStart'))?.value).toBe(0)
+  }, SETTLE)
+  await waitFor(() => {
+    expect(screen.getByRole('combobox', { name: 'Week starts on' })).toHaveValue('0')
+  }, SETTLE)
+})
+
+test('O14 SettingsFeature shows Keep screen on during rest on when nothing is stored', async () => {
+  renderFeature(buildServices(fakeSync()))
+
+  const box = await screen.findByRole('switch', { name: 'Keep screen on during rest' }, SETTLE)
+  expect(box).toBeChecked()
+})
+
+test('O14 turning Keep screen on during rest off stores false and shows it off', async () => {
+  const user = userEvent.setup()
+  renderFeature(buildServices(fakeSync()))
+  await user.click(await screen.findByRole('switch', { name: 'Keep screen on during rest' }, SETTLE))
+
+  await waitFor(async () => {
+    expect((await db.settings.get('keepScreenOnDuringRest'))?.value).toBe(false)
+  }, SETTLE)
+  await waitFor(() => {
+    expect(screen.getByRole('switch', { name: 'Keep screen on during rest' })).not.toBeChecked()
+  }, SETTLE)
+})

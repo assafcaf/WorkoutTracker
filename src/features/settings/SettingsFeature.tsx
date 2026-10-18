@@ -41,6 +41,19 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     if (trackEffortData.status !== 'ready') return
     setChosenEffort((chosen) => (chosen === trackEffortData.data ? null : chosen))
   }, [trackEffortData])
+  const weekStartData = useServiceData((s) => s.preferences.weekStart(), ['preferences'])
+  const [chosenWeekStart, setChosenWeekStart] = useState<number | null>(null)
+  // Dropped once the stored choice reads back as the one made.
+  useEffect(() => {
+    if (weekStartData.status !== 'ready') return
+    setChosenWeekStart((chosen) => (chosen === weekStartData.data ? null : chosen))
+  }, [weekStartData])
+  const keepScreenOnData = useServiceData((s) => s.preferences.keepScreenOnDuringRest(), ['preferences'])
+  const [chosenKeepScreenOn, setChosenKeepScreenOn] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (keepScreenOnData.status !== 'ready') return
+    setChosenKeepScreenOn((chosen) => (chosen === keepScreenOnData.data ? null : chosen))
+  }, [keepScreenOnData])
   const plateInventoryData = useServiceData((s) => s.preferences.plateInventory(), ['preferences'])
   const [plateError, setPlateError] = useState<string | null>(null)
   const catalogData = useServiceData((s) => s.catalog.load(), [])
@@ -105,6 +118,20 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     })
   }
 
+  function handleWeekStartChange(day: number): void {
+    setChosenWeekStart(day)
+    services.preferences.setWeekStart(day).catch(() => {
+      setChosenWeekStart(null)
+    })
+  }
+
+  function handleKeepScreenOnChange(on: boolean): void {
+    setChosenKeepScreenOn(on)
+    services.preferences.setKeepScreenOnDuringRest(on).catch(() => {
+      setChosenKeepScreenOn(null)
+    })
+  }
+
   function handlePlateInventoryChange(inventory: PlateInventory): void {
     setPlateError(null)
     services.preferences.setPlateInventory(inventory).catch((error: unknown) => {
@@ -162,6 +189,12 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
         plateInventory={plateInventoryData.status === 'ready' ? plateInventoryData.data : undefined}
         onPlateInventoryChange={handlePlateInventoryChange}
         plateInventoryError={plateError}
+        weekStart={chosenWeekStart ?? (weekStartData.status === 'ready' ? weekStartData.data : undefined)}
+        onWeekStartChange={handleWeekStartChange}
+        keepScreenOnDuringRest={
+          chosenKeepScreenOn ?? (keepScreenOnData.status === 'ready' ? keepScreenOnData.data : undefined)
+        }
+        onKeepScreenOnDuringRestChange={handleKeepScreenOnChange}
         sync={syncControls.sync}
         onSyncNow={() => {
           void syncControls.syncNow()
