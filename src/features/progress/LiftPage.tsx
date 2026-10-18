@@ -4,7 +4,7 @@ import { applyBodyweight } from '../../domain/bodyweight'
 import type { Resolve } from '../../domain/muscles'
 import { buildLadder, compareAgo, cutLadder } from '../../domain/stats/ladder'
 import type { LadderRange } from '../../domain/stats/ladder'
-import { humanDate, leverText, nextStepText, numberText, suggestionText, topText, verdictLabel, compareText } from '../../domain/stats/copy'
+import { humanDate, leverText, nextStepText, numberText, stallSuggestion, suggestionText, topText, verdictLabel, compareText } from '../../domain/stats/copy'
 import { buildLiftHistories, leverOf } from '../../domain/stats/liftHistory'
 import type { LiftHistory, LiftPoint } from '../../domain/stats/liftHistory'
 import { computeRecords, liftBests } from '../../domain/stats/records'
@@ -243,6 +243,7 @@ export function LiftPageView({ exerciseId, sessions, program, resolve, now, week
       ? `${plural(treadLevers.length - 1, 'step')} up in this range: ${treadLevers.join(' → ')}.${view.points.some((p) => p.deload) ? ' Hollow = deload, never a loss.' : ''}`
       : null
   const suggestion = step ? suggestionText(step, bw) : null
+  const stallText = verdict.kind === 'stalled' && exercise ? stallSuggestion(history, exercise) : null
 
   return (
     <div className="lift-page">
@@ -284,6 +285,7 @@ export function LiftPageView({ exerciseId, sessions, program, resolve, now, week
         </div>
         {rangeCaption ? <p className="lift-range-caption">{rangeCaption}</p> : null}
         {compare && cmp ? <p className="lift-compare-text">{compareText(cmp, bw)}</p> : null}
+        {stallText ? <p className="lift-stall-suggestion">{stallText}</p> : null}
         {lastMoved ? (
           <button type="button" className="btn-quiet lift-last-moved" onClick={() => onOpenSession?.(lastMoved)}>
             {`Last moved: ${humanDate(verdict.since ?? 0)} ›`}

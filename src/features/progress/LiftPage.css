@@ -93,6 +93,7 @@
 }
 
 .lift-range-caption,
+.lift-stall-suggestion,
 .lift-compare-text {
   margin: 0;
   color: var(--color-secondary);
