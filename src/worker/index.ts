@@ -7,6 +7,7 @@ import { versionGate } from './version'
 
 export function createHandler(deps: { keys?: JWTVerifyGetKey } = {}): {
   fetch(request: Request, env: Env): Promise<Response>
+  scheduled(controller: { scheduledTime: number }, env: Env): Promise<void>
 } {
   return {
     async fetch(request, env) {
@@ -22,6 +23,9 @@ export function createHandler(deps: { keys?: JWTVerifyGetKey } = {}): {
       const route = apiRoutes[`${request.method} ${pathname}`]
       if (!route) return json({ error: 'not found' }, 404)
       return route(request, env, email)
+    },
+    async scheduled() {
+      // stub: not implemented
     },
   }
 }
