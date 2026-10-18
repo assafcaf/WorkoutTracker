@@ -22,6 +22,8 @@ export type LibraryListProps = {
   initialMuscles?: Muscle[]
   /** When given, each row shows a `Pick` button calling it with the row's id (E9-T7). */
   onPick?(id: string): void
+  /** When given, a `New exercise` button calls it (E19-T11). */
+  onNew?(): void
 }
 
 /**
@@ -43,6 +45,7 @@ export function LibraryList({
   gymEquipment,
   initialMuscles,
   onPick,
+  onNew,
 }: LibraryListProps): JSX.Element {
   const [gymOnly, setGymOnly] = useState(true)
   const [page, setPage] = useState(0)
@@ -83,6 +86,11 @@ export function LibraryList({
 
   return (
     <div className="library-list-container">
+      {onNew === undefined ? null : (
+        <button type="button" className="btn-secondary" onClick={onNew}>
+          New exercise
+        </button>
+      )}
       <button
         type="button"
         className="library-gym-only-chip chip"

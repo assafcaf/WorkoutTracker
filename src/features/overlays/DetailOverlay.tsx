@@ -14,6 +14,8 @@ export type DetailOverlayProps = {
   onBack(): void
   onOpenDetail(libraryId: string): void
   onSwap?(libraryId: string): void
+  /** Offers `Edit` on the detail (E19-T11); the Exercises tab passes it for a custom Exercise only. */
+  onEdit?(libraryId: string): void
 }
 
 /**
@@ -31,6 +33,7 @@ export function DetailOverlay({
   onBack,
   onOpenDetail,
   onSwap,
+  onEdit,
 }: DetailOverlayProps): JSX.Element | null {
   const entry = library.find((candidate) => candidate.id === libraryId)
   if (!entry) return null
@@ -49,6 +52,7 @@ export function DetailOverlay({
       gymEquipment={gymEquipment}
       onOpenDetail={onOpenDetail}
       onChoose={plannedId !== undefined ? onSwap : undefined}
+      onEdit={onEdit === undefined ? undefined : () => onEdit(entry.id)}
     />
   )
 }
