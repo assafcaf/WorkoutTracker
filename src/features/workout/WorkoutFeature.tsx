@@ -46,7 +46,9 @@ import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
 import { useServices, useSyncControls } from '../ServicesProvider'
 import { useServiceData } from '../useServiceData'
+import { useAppBadge } from '../../ui/useAppBadge'
 import { useWakeLock } from '../../ui/useWakeLock'
+import { useRestPush } from './useRestPush'
 
 export type WorkoutFeatureProps = {
   /** Sends the app to another tab: the Program tab from "Choose a program", Exercises from a summary. */
@@ -381,6 +383,9 @@ export function WorkoutFeature({
       restEndsAt !== null &&
       restEndsAt > Date.now(),
   )
+  // The rest's "Rest over" push, and the app icon badge for the whole Session (E24-T10).
+  useRestPush(restEndsAt, liveStatus === null ? null : liveStatus.next)
+  useAppBadge(inSession)
 
   if (catalogData.status === 'error' || programsData.status === 'error') {
     const error = catalogData.status === 'error' ? catalogData.error : programsData.error
