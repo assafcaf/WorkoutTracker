@@ -1,4 +1,4 @@
-import type { PlateInventory, Program, UserProgram, VolumeBaseline } from '../types'
+import type { CustomExercise, PlateInventory, Program, UserProgram, VolumeBaseline } from '../types'
 import { DEFAULT_PLATE_INVENTORY, validatePlateInventory } from '../domain/plates'
 import { db, type SettingRow } from './db'
 
@@ -223,6 +223,51 @@ export async function setPlateInventory(
     value: { barKg: inventory.barKg, plates },
     updatedAt: now,
   })
+}
+
+/** The `settings` table key the first day of the week is kept under, an integer 0-6 (E19-T1). */
+export const WEEK_START_KEY = 'weekStart'
+
+/** The first day of the week, 0 = Sunday ... 6 = Saturday; 1 (Monday) when unset or invalid. */
+export async function getWeekStart(): Promise<number> {
+  throw new Error('NotImplementedError: getWeekStart')
+}
+
+/** Stores `day` in the one `weekStart` row. */
+export async function setWeekStart(day: number, now: number = Date.now()): Promise<void> {
+  void day
+  void now
+  throw new Error('NotImplementedError: setWeekStart')
+}
+
+/** The `settings` table key the keep-screen-on-during-rest choice is kept under, a boolean (E19-T1). */
+export const KEEP_SCREEN_ON_KEY = 'keepScreenOnDuringRest'
+
+/** Whether the screen stays on during rest; `true` when unset. */
+export async function getKeepScreenOnDuringRest(): Promise<boolean> {
+  throw new Error('NotImplementedError: getKeepScreenOnDuringRest')
+}
+
+/** Stores the keep-screen-on choice. */
+export async function setKeepScreenOnDuringRest(on: boolean, now: number = Date.now()): Promise<void> {
+  void on
+  void now
+  throw new Error('NotImplementedError: setKeepScreenOnDuringRest')
+}
+
+/** The `settings` table key every Custom Exercise is kept under, in one row (E19-T1). */
+export const CUSTOM_EXERCISES_KEY = 'customExercises'
+
+/** Every stored Custom Exercise; `[]` when none is stored or the stored value is not an array. */
+export async function getCustomExercises(): Promise<CustomExercise[]> {
+  throw new Error('NotImplementedError: getCustomExercises')
+}
+
+/** Replaces every stored Custom Exercise with `list`, in the one `customExercises` row. */
+export async function setCustomExercises(list: CustomExercise[], now: number = Date.now()): Promise<void> {
+  void list
+  void now
+  throw new Error('NotImplementedError: setCustomExercises')
 }
 
 /** The `settings` table key the volume baseline choice is stored under (E8). */

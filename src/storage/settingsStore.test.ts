@@ -2,13 +2,19 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { db } from './db'
 import {
   ACTIVE_PROGRAM_ID_KEY,
+  CUSTOM_EXERCISES_KEY,
   GYM_EQUIPMENT_KEY,
+  KEEP_SCREEN_ON_KEY,
   PLATE_INVENTORY_KEY,
   USER_PROGRAMS_KEY,
+  WEEK_START_KEY,
   deleteKeys,
   deleteProgram,
   getActiveProgramId,
+  getCustomExercises,
+  getKeepScreenOnDuringRest,
   getUserPrograms,
+  getWeekStart,
   getGymEquipment,
   getPlateInventory,
   getVolumeBaseline,
@@ -19,8 +25,11 @@ import {
   resetProgram,
   saveUserProgram,
   setActiveProgramId,
+  setCustomExercises,
   setGymEquipment,
+  setKeepScreenOnDuringRest,
   setPlateInventory,
+  setWeekStart,
   setLastExportedAt,
   setUserPrograms,
   setVolumeBaseline,
@@ -28,6 +37,7 @@ import {
   setWeightSteps,
 } from './settingsStore'
 import { DEFAULT_PLATE_INVENTORY } from '../domain/plates'
+import type { CustomExercise } from '../types'
 import { mergePrograms } from '../domain/programs'
 import { createChangeBus } from '../services/changes'
 import { createProgramService } from '../services/programs'
@@ -844,5 +854,128 @@ describe('O4 the plateInventory setting', () => {
     await db.settings.clear()
     await db.settings.put({ key: 'plateInventory', value, updatedAt: 1 })
     expect(await getPlateInventory()).toEqual(DEFAULT_PLATE_INVENTORY)
+  })
+})
+
+// --- E19-T1 O3: week start, keep-screen-on and Custom Exercises rows ---
+
+describe('E19-T1 O3 the weekStart setting', () => {
+  test('getWeekStart answers 1 (Monday) when nothing is stored, writing nothing', async () => {
+    await db.settings.clear()
+    expect(await getWeekStart()).toBe(1)
+    expect(await db.settings.get('weekStart')).toBeUndefined()
+  })
+
+  test('setWeekStart stores the day in the weekStart row stamped with now', async () => {
+    await db.settings.clear()
+    await setWeekStart(6, 1234)
+    expect(WEEK_START_KEY).toBe('weekStart')
+    expect(await db.settings.get('weekStart')).toEqual({ key: 'weekStart', value: 6, updatedAt: 1234 })
+    expect(await getWeekStart()).toBe(6)
+  })
+
+  test('getWeekStart answers Sunday (0) as stored, not as the default', async () => {
+    await db.settings.clear()
+    await setWeekStart(0, 1)
+    expect(await getWeekStart()).toBe(0)
+  })
+
+  test.each([
+    ['7', 7],
+    ['negative', -1],
+    ['a fraction', 1.5],
+    ['a string', '2'],
+    ['null', null],
+    ['an object', {}],
+  ])('getWeekStart answers 1 for a stored value that is %s', async (_n, value) => {
+    await db.settings.clear()
+    await db.settings.put({ key: 'weekStart', value, updatedAt: 1 })
+    expect(await getWeekStart()).toBe(1)
+  })
+})
+
+describe('E19-T1 O3 the keepScreenOnDuringRest setting', () => {
+  test('getKeepScreenOnDuringRest answers true when nothing is stored, writing nothing', async () => {
+    await db.settings.clear()
+    expect(await getKeepScreenOnDuringRest()).toBe(true)
+    expect(await db.settings.get('keepScreenOnDuringRest')).toBeUndefined()
+  })
+
+  test('setKeepScreenOnDuringRest stores the choice in its row stamped with now, off included', async () => {
+    await db.settings.clear()
+    await setKeepScreenOnDuringRest(false, 1234)
+    expect(KEEP_SCREEN_ON_KEY).toBe('keepScreenOnDuringRest')
+    expect(await db.settings.get('keepScreenOnDuringRest')).toEqual({
+      key: 'keepScreenOnDuringRest',
+      value: false,
+      updatedAt: 1234,
+    })
+    expect(await getKeepScreenOnDuringRest()).toBe(false)
+  })
+
+  test('getKeepScreenOnDuringRest answers true for a stored value that is not a boolean', async () => {
+    await db.settings.clear()
+    await db.settings.put({ key: 'keepScreenOnDuringRest', value: 'no', updatedAt: 1 })
+    expect(await getKeepScreenOnDuringRest()).toBe(true)
+  })
+})
+
+describe('E19-T1 O3 the customExercises setting', () => {
+  const mine: CustomExercise[] = [
+    {
+      id: 'custom-1',
+      name: 'Cable Row',
+      primaryMuscles: ['middle back'],
+      secondaryMuscles: ['biceps'],
+      equipment: 'cable',
+      bodyweight: false,
+      weightStep: 2.5,
+      createdAt: 100,
+    },
+    {
+      id: 'custom-2',
+      name: 'Ring Dip',
+      primaryMuscles: ['triceps'],
+      secondaryMuscles: [],
+      equipment: null,
+      bodyweight: true,
+      weightStep: 1,
+      createdAt: 200,
+    },
+  ]
+
+  test('getCustomExercises reads as [] when nothing is stored, writing nothing', async () => {
+    await db.settings.clear()
+    expect(await getCustomExercises()).toEqual([])
+    expect(await db.settings.get('customExercises')).toBeUndefined()
+  })
+
+  test('setCustomExercises stores the whole list in the customExercises row stamped with now', async () => {
+    await db.settings.clear()
+    await setCustomExercises(mine, 1234)
+    expect(CUSTOM_EXERCISES_KEY).toBe('customExercises')
+    expect(await db.settings.get('customExercises')).toEqual({
+      key: 'customExercises',
+      value: mine,
+      updatedAt: 1234,
+    })
+    expect(await getCustomExercises()).toEqual(mine)
+  })
+
+  test('setCustomExercises replaces the list rather than adding to it', async () => {
+    await db.settings.clear()
+    await setCustomExercises(mine, 1)
+    await setCustomExercises([mine[1]], 2)
+    expect(await getCustomExercises()).toEqual([mine[1]])
+  })
+
+  test.each([
+    ['an object', { id: 'custom-1' }],
+    ['a string', 'x'],
+    ['null', null],
+  ])('getCustomExercises reads as [] for a stored value that is %s', async (_n, value) => {
+    await db.settings.clear()
+    await db.settings.put({ key: 'customExercises', value, updatedAt: 1 })
+    expect(await getCustomExercises()).toEqual([])
   })
 })

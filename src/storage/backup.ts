@@ -1,4 +1,4 @@
-import type { PlateInventory, Session, UserProgram, VolumeBaseline } from '../types'
+import type { CustomExercise, PlateInventory, Session, UserProgram, VolumeBaseline } from '../types'
 
 /** Bumped whenever the shape below changes in a way `readBackup` cannot translate on its own. */
 export const BACKUP_SCHEMA_VERSION = 1
@@ -33,6 +33,12 @@ export type BackupFile = {
     plateInventory?: PlateInventory
     /** Per-Exercise Bodyweight overrides (E16). Absent when none are set, and on a backup made before E16. */
     bodyweightOverrides?: Record<string, boolean>
+    /** The first day of the week, 0-6 (E19). Absent when never set. */
+    weekStart?: number
+    /** Keep the screen on during rest (E19). Absent when never set. */
+    keepScreenOnDuringRest?: boolean
+    /** The trainee's own Exercises (E19). Absent when none exist. */
+    customExercises?: CustomExercise[]
   }
 }
 
