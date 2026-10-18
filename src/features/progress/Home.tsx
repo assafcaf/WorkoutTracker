@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
+import { bodyweightOn } from '../../domain/bodyLog'
 import { applyBodyweight } from '../../domain/bodyweight'
 import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
@@ -13,10 +14,12 @@ import { plannedPerWeek, windowAverage } from '../../domain/stats/muscles'
 import { computeRecords } from '../../domain/stats/records'
 import { verdicts } from '../../domain/stats/verdict'
 import type { Verdict } from '../../domain/stats/verdict'
+import { lastWeekCard } from '../../domain/stats/weekCard'
+import type { LastWeekCard } from '../../domain/stats/weekCard'
 import { weeksOf } from '../../domain/stats/weeks'
 import type { Weekday } from '../../domain/stats/weeks'
 import type { Services } from '../../services'
-import type { Exercise, ExercisePlan, LibraryExercise, Program, Session } from '../../types'
+import type { BodyLog, Exercise, ExercisePlan, LibraryExercise, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { Ladder as LadderChart } from '../../ui/charts/Ladder'
 import type { LadderView } from '../../ui/charts/ladderView'
@@ -34,6 +37,8 @@ export type ProgressData = {
   library: Map<string, LibraryExercise>
   /** The weekday weeks begin on (E19-T1); 1 (Monday) when unread. */
   weekStart: Weekday
+  /** The trainee's body log (E22-T2); empty when unread. */
+  bodyLog: BodyLog
 }
 
 export async function loadProgress(s: Services): Promise<ProgressData | null> {
@@ -58,7 +63,8 @@ export async function loadProgress(s: Services): Promise<ProgressData | null> {
   if (!program) return null
   const stored = await s.preferences.weekStart().catch(() => 1)
   const weekStart = (Number.isInteger(stored) && stored >= 0 && stored <= 6 ? stored : 1) as Weekday
-  return { program, sessions, resolve, library: libraryMap, weekStart }
+  const bodyLog = await s.preferences.bodyLog().catch((): BodyLog => [])
+  return { program, sessions, resolve, library: libraryMap, weekStart, bodyLog }
 }
 
 /** Everything the Progress pages draw, worked out once from `ProgressData`. */
@@ -261,7 +267,66 @@ function musclesFinding(model: ProgressModel): { line: string; fewest: string } 
   }
 }
 
-type HomeProps = ProgressPageProps<'home'> & {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** `10–16 Oct`, or `28 Sep–4 Oct` across a month. */
+function rangeText(startMs: number, endExclusive: number): string {
+  const a = new Date(startMs)
+  const b = new Date(endExclusive)
+  b.setDate(b.getDate() - 1)
+  const to = `${b.getDate()} ${MONTHS[b.getMonth()]}`
+  return a.getMonth() === b.getMonth() ? `${a.getDate()}–${to}` : `${a.getDate()} ${MONTHS[a.getMonth()]}–${to}`
+}
+
+const thousands = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
+function diffText(last: number, before: number): string {
+  const d = last - before
+  return d === 0 ? 'same' : d > 0 ? `+${d}` : `−${-d}`
+}
+
+function percentText(last: number, before: number): string {
+  if (last === before) return 'same'
+  if (before === 0) return ''
+  const p = Math.round(((last - before) / before) * 100)
+  return p === 0 ? 'same' : p > 0 ? `+${p} %` : `−${-p} %`
+}
+
+/** `15 Oct` for a `YYYY-MM-DD` day. */
+function dayText(day: string): string {
+  const [, m, d] = day.split('-').map(Number)
+  return `${d} ${MONTHS[m - 1]}`
+}
+
+function LastWeek({ card }: { card: LastWeekCard }): JSX.Element {
+  const { last, before } = card
+  const first = before.sessions === 0
+  const rows: { label: string; value: string; change: string }[] = [
+    { label: 'Sessions', value: String(last.sessions), change: diffText(last.sessions, before.sessions) },
+    { label: 'Sets', value: String(last.sets), change: diffText(last.sets, before.sets) },
+    { label: 'Volume', value: `${thousands(last.volumeKg)} kg`, change: percentText(last.volumeKg, before.volumeKg) },
+    { label: 'PRs', value: String(last.prs), change: diffText(last.prs, before.prs) },
+  ]
+  return (
+    <section className="card progress-tile progress-lastweek" aria-label="Last week">
+      <p className="progress-tile-title">
+        <span>Last week</span> <span className="progress-lastweek-dates">{rangeText(card.start, card.end)}</span>
+      </p>
+      <ul className="progress-lastweek-rows">
+        {rows.map((r) => (
+          <li key={r.label} className="progress-lastweek-row">
+            <span className="progress-lastweek-label">{r.label}</span>
+            <span className="progress-lastweek-value">{r.value}</span>
+            {first ? null : <span className="progress-lastweek-change">{r.change}</span>}
+          </li>
+        ))}
+      </ul>
+      {first ? <p className="progress-lastweek-first">First week on record</p> : null}
+    </section>
+  )
+}
+
+type HomeProps =ProgressPageProps<'home'> & {
   navigate?: (to: AppRoute) => void
   /** The clock; `Date.now` unless a test fixes it. */
   now?: () => number
@@ -277,8 +342,18 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
   const start = () => navigate?.({ tab: 'workout' })
 
   if (!model) return <AppShell title="Progress">{null}</AppShell>
-  const { copy } = model
+  const { copy, data } = model
   const movingIds = model.order.filter((id) => model.verdicts.get(id)?.kind === 'moving')
+  const lastWeek = lastWeekCard(
+    data.sessions,
+    at,
+    data.resolve,
+    (id) => model.plans.get(id),
+    data.weekStart,
+    data.bodyLog,
+  )
+  const weekCard = lastWeek ? <LastWeek card={lastWeek} /> : null
+  const latestWeight = bodyweightOn(data.bodyLog, at)
   const finding = copy.stage === 'full' ? musclesFinding(model) : null
 
   return (
@@ -313,6 +388,7 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
                 </li>
               ))}
             </ul>
+            {weekCard}
             <button type="button" className="btn-primary progress-start" onClick={start}>
               Start workout
             </button>
@@ -339,6 +415,8 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
                 <Card key={card.exerciseId + card.kind} model={model} card={card} onOpen={open} />
               ))}
             </div>
+
+            {weekCard}
 
             <section className="card progress-tile" aria-label="This week">
               <p className="progress-tile-title">{copy.adherence}</p>
@@ -392,6 +470,18 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
             </button>
           </>
         ) : null}
+
+        {copy.stage === 'empty' ? null : (
+          <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'body' })}>
+            <span className="progress-link-main">
+              <span className="progress-link-title">Body</span>
+              <span className="progress-link-sub">
+                {latestWeight ? `${latestWeight.kg} kg · ${dayText(latestWeight.day)}` : 'Log your bodyweight'}
+              </span>
+            </span>
+            <Icon name="ChevronRight" size={20} />
+          </button>
+        )}
       </div>
     </AppShell>
   )
