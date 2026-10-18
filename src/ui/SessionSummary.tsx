@@ -14,7 +14,7 @@ import { computeRecords, recordCount } from '../domain/stats/records'
 import type { SessionRecord } from '../domain/stats/records'
 import type { Region, Resolve } from '../domain/muscles'
 import type { SessionChange } from '../domain/sessionChanges'
-import type { ExercisePlan, LibraryExercise, Muscle, Program, Session, Workout } from '../types'
+import type { BodyLog, ExercisePlan,LibraryExercise, Muscle, Program, Session, Workout } from '../types'
 import { Switch } from './controls'
 import { Icon } from './icons'
 import { HeatCell, HeatLegend, RegionHeatList } from './RegionHeat'
@@ -47,6 +47,8 @@ export type SessionSummaryProps = {
   workout?: Workout
   /** Save the listed changes to the Program; omitted means no offer. */
   onSaveChanges?(changes: SessionChange[]): void | Promise<void>
+  /** The Body log: the Session's volume counts Bodyweight Sets at its bodyweight (E22-T11). */
+  bodyLog?: BodyLog
 }
 
 /** The duration KPI's value and unit: `52` `min`, or `1 h 05` `min` from an hour up. */
