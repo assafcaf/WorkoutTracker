@@ -159,3 +159,10 @@ The Warm-up Sets proposed before the first working Set of a barbell Exercise.
 **Week start**:
 The trainee's first weekday (`Date.getDay()` numbering, Monday when unset); every week goes
 through `weekStart(ms, weekStartsOn)`.
+
+**Deload**:
+A lighter week: its loaded Sets open 10 % under last time (`deloadWeight`, in whole weight
+steps); Bodyweight Exercises and start weights are left alone.
+
+**Deload week**:
+The stored week the trainee chose to deload; `isDeloadWeek` places it through `weekStart`.
