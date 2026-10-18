@@ -100,6 +100,7 @@ function buildServices(sync: SyncService): Services {
     preferences: createPreferenceService(deps),
     catalog: createCatalogService(deps),
     backup: createBackupService({ ...deps, replaceRemote: sync.replaceRemote }),
+    transfer: {} as Services['transfer'],
     sync,
     push: {} as Services['push'],
     bus,

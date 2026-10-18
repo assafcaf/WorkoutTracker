@@ -10,6 +10,7 @@ import { ServiceError, type PendingImport } from '../../services'
 import type { NotificationStatus } from '../../ui/NotificationSettings'
 import type { Reminders } from '../../contract'
 import type { PlateInventory, VolumeBaseline } from '../../types'
+import { DataTransfer } from './DataTransfer'
 
 export type SettingsFeatureProps = {
   navigate(to: AppRoute): void
@@ -264,6 +265,7 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
       {lastExportedAtData.status === 'ready' ? (
         <BackupBadge lastExportedAt={lastExportedAtData.data} now={Date.now()} />
       ) : null}
+      <DataTransfer />
       {importError ? <div role="alert">{importError}</div> : null}
       {pendingImport ? (
         <ImportConfirm
