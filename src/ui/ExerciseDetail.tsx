@@ -24,6 +24,8 @@ export type ExerciseDetailProps = {
    * offers "Do this instead" (E5-T15).
    */
   onChoose?(id: string): void
+  /** When given, an `Edit` button calls it; passed only for a custom Exercise (E19-T11). */
+  onEdit?(): void
 }
 
 /** What `entry` trains, per region: 1 per primary muscle, 0.5 per secondary muscle (M10). */
@@ -77,6 +79,7 @@ export function ExerciseDetail({
   gymEquipment,
   onOpenDetail,
   onChoose,
+  onEdit,
 }: ExerciseDetailProps): JSX.Element {
   const [failedPhotos, setFailedPhotos] = useState<Set<number>>(new Set())
 
@@ -91,6 +94,11 @@ export function ExerciseDetail({
         Back
       </button>
       <h1 className="exercise-detail-heading">{heading ?? entry.name}</h1>
+      {onEdit === undefined ? null : (
+        <button type="button" className="btn-secondary" onClick={onEdit}>
+          Edit
+        </button>
+      )}
 
       <div className="exercise-detail-profile">
         <p className="exercise-detail-field">Primary muscle: {muscleChips(entry.primaryMuscles)}</p>
