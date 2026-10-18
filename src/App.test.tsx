@@ -3034,8 +3034,8 @@ describe('E8-T4', { timeout: 15_000 }, () => {
   })
 
   test('O1 pressing Finish exercise returns to the Workout’s exercise list', async () => {
-    // Finish exercise always returns to the All list (E19 O8); here every other Exercise is
-    // done, so nothing is marked next: seed those, log back squat's last Set, finish.
+    // Finish exercise leads on to the next unfinished Exercise (E13-T12), so it returns to the
+    // list only when every other Exercise is done: seed those, log back squat's last Set, finish.
     const user = userEvent.setup()
     const now = Date.now()
     const done = (exerciseId: string, count: number, offset: number): SetEntry[] =>
