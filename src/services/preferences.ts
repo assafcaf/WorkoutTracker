@@ -10,6 +10,7 @@ import {
   getPlateInventory,
   getKeepScreenOnDuringRest,
   getTrackEffort,
+  getDeloadWeek,
   getWeekStart,
   getVolumeBaseline,
   getWeightStep,
@@ -19,6 +20,7 @@ import {
   setPlateInventory as storePlateInventory,
   setKeepScreenOnDuringRest,
   setTrackEffort as storeTrackEffort,
+  setDeloadWeek,
   setWeekStart,
   setVolumeBaseline as storeVolumeBaseline,
   setWeightStep as storeWeightStep,
@@ -56,6 +58,9 @@ export type PreferenceService = {
   /** The first day of the week, 0 = Sunday ... 6 = Saturday; 1 when unset or invalid (E19-T1). */
   weekStart(): Promise<number>
   setWeekStart(day: number): Promise<void>
+  /** The deload week's epoch ms, or null when unset (E21-T4). */
+  deloadWeek(): Promise<number | null>
+  setDeloadWeek(ms: number | null): Promise<void>
   /** Whether the screen stays on during rest; `true` when unset (E19-T1). */
   keepScreenOnDuringRest(): Promise<boolean>
   setKeepScreenOnDuringRest(on: boolean): Promise<void>
@@ -111,6 +116,8 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       }),
     weekStart: () => callStorage(deps, getWeekStart, 'weekStart read failed'),
     setWeekStart: (day) => write(() => setWeekStart(day, deps.now())),
+    deloadWeek: () => callStorage(deps, getDeloadWeek, 'deloadWeek read failed'),
+    setDeloadWeek: (ms) => write(() => setDeloadWeek(ms, deps.now())),
     keepScreenOnDuringRest: () =>
       callStorage(deps, getKeepScreenOnDuringRest, 'keepScreenOnDuringRest read failed'),
     setKeepScreenOnDuringRest: (on) => write(() => setKeepScreenOnDuringRest(on, deps.now())),

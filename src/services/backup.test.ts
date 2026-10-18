@@ -557,3 +557,44 @@ test('E19-T1 O2 a backup made before this epic imports and leaves all three unse
   expect(await db.settings.get('keepScreenOnDuringRest')).toBeUndefined()
   expect(await db.settings.get('customExercises')).toBeUndefined()
 })
+
+test('E21-T4 O11 export leaves deloadWeek out when none is stored, and writes it when stored', async () => {
+  expect('deloadWeek' in (await exportedFile()).settings).toBe(false)
+  await db.settings.put({ key: 'deloadWeek', value: 1_800_000_000_000, updatedAt: BASE })
+  vi.restoreAllMocks()
+  installDownloadFallback()
+
+  const file = await exportedFile()
+
+  expect(file.settings.deloadWeek).toBe(1_800_000_000_000)
+  expect(file.schemaVersion).toBe(1)
+})
+
+test('E21-T4 O11 deloadWeek survives export then import into an empty app', async () => {
+  await db.settings.put({ key: 'deloadWeek', value: 1_800_000_000_000, updatedAt: BASE })
+  const file = await exportedFile()
+  vi.restoreAllMocks()
+  await db.settings.clear()
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(file)))
+
+  expect((await db.settings.get('deloadWeek'))?.value).toBe(1_800_000_000_000)
+})
+
+test('E21-T4 O11 a backup made before this epic imports and leaves deloadWeek unset', async () => {
+  await db.settings.put({ key: 'deloadWeek', value: 1_800_000_000_000, updatedAt: BASE })
+  installDownloadFallback()
+  const old = {
+    schemaVersion: 1,
+    exportedAt: BASE,
+    sessions: [],
+    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+  }
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(old)))
+
+  expect(await db.settings.get('deloadWeek')).toBeUndefined()
+})

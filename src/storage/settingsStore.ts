@@ -239,6 +239,21 @@ export async function setWeekStart(day: number, now: number = Date.now()): Promi
   await db.settings.put({ key: WEEK_START_KEY, value: day, updatedAt: now })
 }
 
+/** The `settings` table key the deload week is kept under, an epoch-ms number (E21-T4). */
+export const DELOAD_WEEK_KEY = 'deloadWeek'
+
+/** The stored deload week (epoch ms), or null when unset or not a finite number. */
+export async function getDeloadWeek(): Promise<number | null> {
+  const value = (await db.settings.get(DELOAD_WEEK_KEY))?.value
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+/** Stores `ms` in the one `deloadWeek` row; null deletes the row. */
+export async function setDeloadWeek(ms: number | null, now: number = Date.now()): Promise<void> {
+  if (ms === null) await db.settings.delete(DELOAD_WEEK_KEY)
+  else await db.settings.put({ key: DELOAD_WEEK_KEY, value: ms, updatedAt: now })
+}
+
 /** The `settings` table key the keep-screen-on-during-rest choice is kept under, a boolean (E19-T1). */
 export const KEEP_SCREEN_ON_KEY = 'keepScreenOnDuringRest'
 
