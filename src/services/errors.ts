@@ -1,6 +1,7 @@
 export type ServiceErrorCode =
   | 'not-found'
   | 'invalid-backup'
+  | 'invalid-import'
   | 'in-progress'
   | 'storage-unavailable'
   | 'storage-failed'
