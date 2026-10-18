@@ -34,17 +34,21 @@ test('O5 createPreferenceService exposes exactly the preference operations', () 
       'bodyweightOverrides',
       'exerciseNote',
       'gymEquipment',
+      'keepScreenOnDuringRest',
       'lastExportedAt',
       'plateInventory',
       'setBodyweight',
       'setExerciseNote',
       'setGymEquipment',
+      'setKeepScreenOnDuringRest',
       'setPlateInventory',
       'setTrackEffort',
       'setVolumeBaseline',
+      'setWeekStart',
       'setWeightStep',
       'trackEffort',
       'volumeBaseline',
+      'weekStart',
       'weightStep',
     ].sort(),
   )
@@ -461,4 +465,69 @@ test('E16-T1 O3 bodyweightOverrides is a synced setting on the preferences topic
   expect(syncedSettingKeys()).toContain('bodyweightOverrides')
   expect(topicOfSetting('bodyweightOverrides')).toBe('preferences')
   expect([...SYNCED_SETTING_KEYS] as string[]).toContain('bodyweightOverrides')
+})
+
+// --- E19-T1 O3: week start and keep-screen-on ---
+
+test('E19-T1 O3 weekStart answers 1 (Monday) when nothing is stored', async () => {
+  expect(await createPreferenceService(deps()).weekStart()).toBe(1)
+})
+
+test('E19-T1 O3 setWeekStart then weekStart answers it, Sunday (0) included', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setWeekStart(6)
+  expect(await service.weekStart()).toBe(6)
+  await service.setWeekStart(0)
+  expect(await service.weekStart()).toBe(0)
+})
+
+test('E19-T1 O3 setWeekStart writes one weekStart row stamped with now and notifies the preferences topic once', async () => {
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+
+  await createPreferenceService(deps({ bus })).setWeekStart(6)
+
+  expect(await db.settings.get('weekStart')).toEqual({ key: 'weekStart', value: 6, updatedAt: 1_700_000_000_000 })
+  expect(listener).toHaveBeenCalledTimes(1)
+})
+
+test.each([
+  ['7', 7],
+  ['-1', -1],
+  ['a fraction', 2.5],
+  ['a string', '3'],
+  ['null', null],
+])('E19-T1 O3 weekStart answers 1 for a stored value that is %s', async (_n, value) => {
+  await db.settings.put({ key: 'weekStart', value, updatedAt: 1 })
+  expect(await createPreferenceService(deps()).weekStart()).toBe(1)
+})
+
+test('E19-T1 O3 keepScreenOnDuringRest answers true when nothing is stored', async () => {
+  expect(await createPreferenceService(deps()).keepScreenOnDuringRest()).toBe(true)
+})
+
+test('E19-T1 O3 setKeepScreenOnDuringRest then keepScreenOnDuringRest answers it, off included', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setKeepScreenOnDuringRest(false)
+  expect(await service.keepScreenOnDuringRest()).toBe(false)
+  await service.setKeepScreenOnDuringRest(true)
+  expect(await service.keepScreenOnDuringRest()).toBe(true)
+})
+
+test('E19-T1 O3 setKeepScreenOnDuringRest writes one keepScreenOnDuringRest row stamped with now and notifies the preferences topic once', async () => {
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+
+  await createPreferenceService(deps({ bus })).setKeepScreenOnDuringRest(false)
+
+  expect(await db.settings.get('keepScreenOnDuringRest')).toEqual({
+    key: 'keepScreenOnDuringRest',
+    value: false,
+    updatedAt: 1_700_000_000_000,
+  })
+  expect(listener).toHaveBeenCalledTimes(1)
 })

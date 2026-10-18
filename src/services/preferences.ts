@@ -8,14 +8,18 @@ import {
   getGymEquipment,
   getLastExportedAt,
   getPlateInventory,
+  getKeepScreenOnDuringRest,
   getTrackEffort,
+  getWeekStart,
   getVolumeBaseline,
   getWeightStep,
   setBodyweightOverrides,
   setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
   setPlateInventory as storePlateInventory,
+  setKeepScreenOnDuringRest,
   setTrackEffort as storeTrackEffort,
+  setWeekStart,
   setVolumeBaseline as storeVolumeBaseline,
   setWeightStep as storeWeightStep,
 } from '../storage/settingsStore'
@@ -49,6 +53,12 @@ export type PreferenceService = {
    * equals the Exercise's own `defaultValue` (E16-T1).
    */
   setBodyweight(exerciseId: string, value: boolean, defaultValue: boolean): Promise<void>
+  /** The first day of the week, 0 = Sunday ... 6 = Saturday; 1 when unset or invalid (E19-T1). */
+  weekStart(): Promise<number>
+  setWeekStart(day: number): Promise<void>
+  /** Whether the screen stays on during rest; `true` when unset (E19-T1). */
+  keepScreenOnDuringRest(): Promise<boolean>
+  setKeepScreenOnDuringRest(on: boolean): Promise<void>
 }
 
 /**
@@ -99,5 +109,10 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
         else overrides[exerciseId] = value
         await setBodyweightOverrides(overrides, deps.now())
       }),
+    weekStart: () => callStorage(deps, getWeekStart, 'weekStart read failed'),
+    setWeekStart: (day) => write(() => setWeekStart(day, deps.now())),
+    keepScreenOnDuringRest: () =>
+      callStorage(deps, getKeepScreenOnDuringRest, 'keepScreenOnDuringRest read failed'),
+    setKeepScreenOnDuringRest: (on) => write(() => setKeepScreenOnDuringRest(on, deps.now())),
   }
 }

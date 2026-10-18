@@ -2,13 +2,15 @@ import { beforeEach, expect, test, vi } from 'vitest'
 import { db, type SettingRow } from '../storage/db'
 import { discardSession, getActiveSession, listSessions, logSet } from '../storage/sessionStore'
 import {
+  getCustomExercises,
   getUserPrograms,
   getWeightStep,
   saveUserProgram,
+  setCustomExercises,
   setVolumeBaseline,
   setWeightStep,
 } from '../storage/settingsStore'
-import type { Session, SetEntry, UserProgram } from '../types'
+import type { CustomExercise, Session, SetEntry, UserProgram } from '../types'
 import {
   SYNCED_SETTING_KEYS,
   type ReplaceRequest,
@@ -710,12 +712,15 @@ test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides active
   expect([...SYNCED_SETTING_KEYS].sort()).toEqual([
     'activeProgramId',
     'bodyweightOverrides',
+    'customExercises',
     'effortTracking',
     'exerciseNotes',
     'gymEquipment',
+    'keepScreenOnDuringRest',
     'plateInventory',
     'userPrograms',
     'volumeBaseline',
+    'weekStart',
     'weightSteps',
   ])
 })
@@ -1016,6 +1021,52 @@ test('E16-T1 O3 a Bodyweight override device A sets is answered by PreferenceSer
     updatedAt: T0 + 500,
   })
   expect(await preferencesAt(T0 + 900).bodyweightOverrides()).toEqual({ 'bench-press': true })
+})
+
+// --- E19-T1 O1: three more settings reach the other device through sync -----------------------
+
+test('E19-T1 O1 weekStart and keepScreenOnDuringRest device A sets are answered on device B after A syncs and B syncs', async () => {
+  await preferencesAt(T0 + 500).setWeekStart(6)
+  await preferencesAt(T0 + 600).setKeepScreenOnDuringRest(false)
+  await syncNow({ fetch: server.fetch })
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  const pushed = server.syncRequests()[0].settings
+  expect(pushed).toContainEqual({ key: 'weekStart', value: 6, updatedAt: T0 + 500 })
+  expect(pushed).toContainEqual({ key: 'keepScreenOnDuringRest', value: false, updatedAt: T0 + 600 })
+  expect(await preferencesAt(T0 + 900).weekStart()).toBe(6)
+  expect(await preferencesAt(T0 + 900).keepScreenOnDuringRest()).toBe(false)
+})
+
+test('E19-T1 O1 customExercises device A stores are read back on device B after A syncs and B syncs', async () => {
+  const mine = [
+    {
+      id: 'custom-1',
+      name: 'Cable Row',
+      primaryMuscles: ['middle back'],
+      secondaryMuscles: ['biceps'],
+      equipment: 'cable',
+      bodyweight: false,
+      weightStep: 2.5,
+      createdAt: T0,
+    },
+  ]
+  await setCustomExercises(mine as CustomExercise[], T0 + 500)
+  await syncNow({ fetch: server.fetch })
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(server.syncRequests()[0].settings).toContainEqual({
+    key: 'customExercises',
+    value: mine,
+    updatedAt: T0 + 500,
+  })
+  expect(await getCustomExercises()).toEqual(mine)
 })
 
 // --- E18-T2 O3: the deload mark reaches the other device through sync -------------------------

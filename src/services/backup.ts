@@ -21,6 +21,9 @@ import {
   VOLUME_BASELINE_KEY,
   WEIGHT_STEPS_KEY,
   BODYWEIGHT_OVERRIDES_KEY,
+  CUSTOM_EXERCISES_KEY,
+  KEEP_SCREEN_ON_KEY,
+  WEEK_START_KEY,
   getBodyweightOverrides,
   deleteKeys,
   getGymEquipment,
@@ -34,7 +37,7 @@ import {
 } from '../storage/settingsStore'
 import { inTransaction } from '../storage/transaction'
 import type { SettingRow } from '../storage/db'
-import type { PlateInventory } from '../types'
+import type { CustomExercise, PlateInventory } from '../types'
 import type { SyncResult } from '../sync/syncClient'
 import { CHANGE_TOPICS } from './changes'
 import { callStorage, ServiceError } from './errors'
@@ -65,6 +68,9 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     effortTracking,
     plateInventoryRow,
     bodyweightOverrides,
+    weekStartRow,
+    keepScreenOnRow,
+    customExercisesRow,
   ] = await Promise.all([
     listSessions(),
     readRow(ACTIVE_PROGRAM_ID_KEY),
@@ -77,6 +83,9 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     getTrackEffort(),
     readRow(PLATE_INVENTORY_KEY),
     getBodyweightOverrides(),
+    readRow(WEEK_START_KEY),
+    readRow(KEEP_SCREEN_ON_KEY),
+    readRow(CUSTOM_EXERCISES_KEY),
   ])
   const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
 
@@ -94,6 +103,9 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
       ...(Object.keys(exerciseNotes).length > 0 ? { exerciseNotes } : {}),
       ...(effortTracking ? { effortTracking } : {}),
       ...(Object.keys(bodyweightOverrides).length > 0 ? { bodyweightOverrides } : {}),
+      ...(weekStartRow ? { weekStart: weekStartRow.value as number } : {}),
+      ...(keepScreenOnRow ? { keepScreenOnDuringRest: keepScreenOnRow.value as boolean } : {}),
+      ...(customExercisesRow ? { customExercises: customExercisesRow.value as CustomExercise[] } : {}),
       ...(plateInventoryRow ? { plateInventory: plateInventoryRow.value as PlateInventory } : {}),
     },
   }
@@ -221,6 +233,15 @@ export function createBackupService(
             else {
               toPut.push({ key: BODYWEIGHT_OVERRIDES_KEY, value: file.settings.bodyweightOverrides, updatedAt: now })
             }
+
+            if (file.settings.weekStart === undefined) toDelete.push(WEEK_START_KEY)
+            else toPut.push({ key: WEEK_START_KEY, value: file.settings.weekStart, updatedAt: now })
+
+            if (file.settings.keepScreenOnDuringRest === undefined) toDelete.push(KEEP_SCREEN_ON_KEY)
+            else toPut.push({ key: KEEP_SCREEN_ON_KEY, value: file.settings.keepScreenOnDuringRest, updatedAt: now })
+
+            if (file.settings.customExercises === undefined) toDelete.push(CUSTOM_EXERCISES_KEY)
+            else toPut.push({ key: CUSTOM_EXERCISES_KEY, value: file.settings.customExercises, updatedAt: now })
 
             if (toPut.length > 0) await putRows(toPut)
             if (toDelete.length > 0) await deleteKeys(toDelete)

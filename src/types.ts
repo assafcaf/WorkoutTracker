@@ -44,6 +44,18 @@ export type LibraryExercise = {
   images: string[]
 }
 
+/** An Exercise the trainee created; merged into the catalog by `CatalogService` (E19). */
+export type CustomExercise = {
+  id: string
+  name: string
+  primaryMuscles: Muscle[]
+  secondaryMuscles: Muscle[]
+  equipment: string | null
+  bodyweight: boolean
+  weightStep: number
+  createdAt: number
+}
+
 /** One size of plate and how many pairs of it the trainee has. */
 export type Plate = { kg: number; pairs: number }
 
