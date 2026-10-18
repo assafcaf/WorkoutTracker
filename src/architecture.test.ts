@@ -181,7 +181,10 @@ describe('only storage touches Dexie (O3)', () => {
   })
 })
 
-describe('lint refuses each layer-breaking import (O4)', () => {
+// Every test here runs ESLint in-process; the first run loads the TypeScript parser and the
+// whole-tree one lints every file under src/. Under load (several suites at once) that exceeds
+// vitest's 15 s default (E19-T2 merge gate), so the budget fits the work, not a sleep.
+describe('lint refuses each layer-breaking import (O4)', { timeout: 120_000 }, () => {
   test('domain importing storage is refused as "[layers] domain is pure"', async () => {
     const messages = await lintFixture(
       'src/domain/fixture.ts',
