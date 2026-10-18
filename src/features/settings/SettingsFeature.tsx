@@ -7,6 +7,8 @@ import { Settings } from '../../ui/Settings'
 import { BackupBadge } from '../../ui/BackupBadge'
 import { ImportConfirm } from '../../ui/ImportConfirm'
 import { ServiceError, type PendingImport } from '../../services'
+import type { NotificationStatus } from '../../ui/NotificationSettings'
+import type { Reminders } from '../../contract'
 import type { PlateInventory, VolumeBaseline } from '../../types'
 
 export type SettingsFeatureProps = {
@@ -64,6 +66,23 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     const stored = JSON.stringify(volumeBaselineData.data)
     setSavedBaseline((chosen) => (JSON.stringify(chosen) === stored ? null : chosen))
   }, [volumeBaselineData])
+  const [pushStatus, setPushStatus] = useState<NotificationStatus | null>(null)
+  const [pushFailed, setPushFailed] = useState(false)
+  useEffect(() => {
+    let live = true
+    Promise.resolve()
+      .then(() => services.push.status())
+      .then((status) => {
+        if (live) setPushStatus(status)
+      })
+      .catch(() => {
+        if (live) setPushStatus('unsupported')
+      })
+    return () => {
+      live = false
+    }
+  }, [services])
+  const remindersData = useServiceData(async (s) => s.push.reminders(), ['preferences'])
   const lastExportedAtData = useServiceData(
     (s) => s.preferences.lastExportedAt().catch(() => null),
     ['preferences'],
@@ -140,6 +159,32 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     })
   }
 
+  function handleEnableNotifications(): void {
+    setPushFailed(false)
+    services.push
+      .enable()
+      .then((result) => {
+        if (result === 'failed') setPushFailed(true)
+        else setPushStatus(result)
+      })
+      .catch(() => setPushFailed(true))
+  }
+
+  function handleDisableNotifications(): void {
+    services.push
+      .disable()
+      .then(setPushStatus)
+      .catch(() => {
+        // Still subscribed; the section keeps showing Turn off.
+      })
+  }
+
+  function handleRemindersChange(value: Reminders | null): void {
+    services.push.setReminders(value).catch(() => {
+      // Not saved: the stored reminders show again.
+    })
+  }
+
   function handleExport(): void {
     setImportError(null)
     services.backup.export().catch(() => {
@@ -195,6 +240,19 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
           chosenKeepScreenOn ?? (keepScreenOnData.status === 'ready' ? keepScreenOnData.data : undefined)
         }
         onKeepScreenOnDuringRestChange={handleKeepScreenOnChange}
+        notifications={
+          pushStatus
+            ? {
+                status: pushStatus,
+                failed: pushFailed,
+                onEnable: handleEnableNotifications,
+                onDisable: handleDisableNotifications,
+                reminders: remindersData.status === 'ready' ? remindersData.data : null,
+                onRemindersChange: handleRemindersChange,
+                weekStart: chosenWeekStart ?? (weekStartData.status === 'ready' ? weekStartData.data : undefined),
+              }
+            : undefined
+        }
         sync={syncControls.sync}
         onSyncNow={() => {
           void syncControls.syncNow()
