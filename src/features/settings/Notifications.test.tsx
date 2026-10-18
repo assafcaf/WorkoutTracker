@@ -52,6 +52,7 @@ function build(initial: PushStatus, enableResult: PushEnableResult = 'on') {
     preferences: createPreferenceService(deps),
     catalog: createCatalogService(deps),
     backup: createBackupService({ ...deps, replaceRemote: async () => ok }),
+    transfer: {} as Services['transfer'],
     sync: {
       state: async () => ({ accountEmail: null, lastSyncedAt: null }),
       syncNow: async () => ok,

@@ -16,8 +16,8 @@ _Avoid_: Movement, lift, activity
 An Exercise the trainee created (synced `customExercises`, merged into the catalog).
 
 **Plan**:
-A program's prescription for one exercise: how many sets, the rep range, the rest between them,
-and its place in the order. A Plan points at an Exercise; it does not contain one.
+A program's prescription for one exercise: sets, rep range, rest and order. It points at an
+Exercise; it does not contain one.
 _Avoid_: ExerciseConfig, prescription, slot
 
 **Program**:
@@ -40,7 +40,7 @@ Free text (up to 500 characters) on an Exercise, shown above the Dials.
 
 **Set**:
 One performed set — a weight and a rep count, recorded against a Session and referencing the
-catalog Exercise rather than the Program's Plan.
+catalog Exercise, not the Plan.
 See `docs/decisions/0002-pwa-local-first-workout-tracker.md`.
 _Avoid_: Entry, rep log, record
 
@@ -49,16 +49,15 @@ How a Set was performed, stored as the Set's optional `kind`: `warmup`, `drop`, 
 `amrap`. A normal (working) Set has no `kind`.
 
 **AMRAP**:
-A Set taken to as many reps as possible: its kind is `amrap`, and the Plan's bottom rep count is
-a floor, not a target, so the set counter reads "8+ reps". A Plan's `amrapLast` opens its last
-planned Set on it.
+A Set of kind `amrap`: the Plan's bottom rep count is a floor, so the counter reads "8+ reps".
+A Plan's `amrapLast` opens its last planned Set on it.
 
 **Warm-up**:
-A Set of kind `warmup`. It is logged and shown, but does not count toward stats: records, the
-e1RM series and progression ignore it (`countsTowardStats`).
+A Set of kind `warmup`: logged and shown, but records, the e1RM series and progression ignore
+it (`countsTowardStats`).
 
 **Rest**:
-The time after a Set, from its `loggedAt` and rest length (its `restSeconds`, else the Plan's); the **rest timer** shows it.
+The time after a Set, from its `loggedAt` and `restSeconds` (else the Plan's); the **rest timer** shows it.
 
 **Record**:
 The best Set of one kind for an Exercise (heaviest, best estimated 1RM, and so on), as
@@ -163,7 +162,7 @@ steps); Bodyweight Exercises and start weights are left alone.
 The stored week the trainee chose to deload; `isDeloadWeek` places it through `weekStart`.
 
 **Rest push**:
-The "Rest over" notification the Worker sends at a rest's end.
+The "Rest over" push the Worker sends at a rest's end.
 
 **Reminder**:
-A weekday-and-time push to train; one synced setting (`workoutReminders`).
+A weekday-and-time push to train (synced `workoutReminders`).
