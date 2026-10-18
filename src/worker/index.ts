@@ -27,3 +27,4 @@ export function createHandler(deps: { keys?: JWTVerifyGetKey } = {}): {
 }
 
 export default createHandler()
+export { RestAlarm } from './restAlarm'
