@@ -1,0 +1,33 @@
+/* Settings' "Your data" group: the rows reuse Settings' card styling; this adds the hidden file
+ * input over its row (kept in the tab order, as Settings' backup import) and the inline lines. */
+
+.data-transfer {
+  margin-top: var(--space-4);
+}
+
+.data-transfer-file {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.data-transfer-result,
+.data-transfer-problem {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  line-height: 20px;
+}
+
+.data-transfer-result {
+  color: var(--color-muted);
+}
+
+.data-transfer-problem {
+  color: var(--color-danger);
+}
