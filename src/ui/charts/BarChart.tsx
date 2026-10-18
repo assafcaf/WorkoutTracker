@@ -1,4 +1,7 @@
+import { useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import './BarChart.css'
+import { ChartReadout } from './ChartReadout'
 import { dateLabel, spacedIndexes, ticksFor } from './axis'
 
 export type BarChartBar = {
@@ -7,8 +10,19 @@ export type BarChartBar = {
   value: number
   /** 'b' marks a bar of the chart's second series (E17-T10, O19). */
   series?: 'b'
+  /** The Session the bar stands for; any bar with one makes the chart tappable (E22-T5, O12). */
+  sessionId?: string
+  /** The readout's detail line. */
+  detail?: string
 }
-export type BarChartProps = { bars: BarChartBar[]; title: string }
+export type BarChartProps = {
+  bars: BarChartBar[]
+  title: string
+  /** The unit the readout puts after a bar's value. */
+  unit?: string
+  /** Handed the Session id when the readout's `Open session` is pressed. */
+  onOpenSession?: (sessionId: string) => void
+}
 
 // The mock's volume chart (S6a): 334 x 124 inside a card, the plot inset for the y labels on
 // the left and the last bar's value label above.
@@ -43,9 +57,27 @@ function shortDate(at: number, now: Date): string {
  * last always), and the last bar carries its own value (S6a, E17-T10, O19). Empty `bars`
  * renders no `<svg>`.
  */
-export function BarChart({ bars, title }: BarChartProps): JSX.Element {
+export function BarChart({ bars, title, unit, onOpenSession }: BarChartProps): JSX.Element {
+  const [selected, setSelected] = useState<number | null>(null)
+  const root = useRef<HTMLDivElement>(null)
   if (bars.length === 0) {
     return <div className="bar-chart" />
+  }
+
+  const selectable = bars.some((bar) => bar.sessionId !== undefined)
+  const chosen = selectable && selected !== null && selected < bars.length ? bars[selected] : null
+  const toggle = (index: number): void => setSelected((current) => (current === index ? null : index))
+  const move = (from: number, step: number): void => {
+    root.current?.querySelectorAll<SVGElement>('.bar-chart-bar[role="button"]')[from + step]?.focus()
+  }
+  const onKey = (event: KeyboardEvent, index: number): void => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      toggle(index)
+    } else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault()
+      move(index, event.key === 'ArrowRight' ? 1 : -1)
+    }
   }
 
   const ticks = ticksFor(0, Math.max(...bars.map((bar) => bar.value), 0), Y_TICK_TARGET)
@@ -65,7 +97,7 @@ export function BarChart({ bars, title }: BarChartProps): JSX.Element {
   )
 
   return (
-    <div className="bar-chart">
+    <div className="bar-chart" ref={root}>
       <svg className="bar-chart-svg" role="img" aria-label={title} viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}>
         {ticks.map((tick) => (
           <line
@@ -124,6 +156,16 @@ export function BarChart({ bars, title }: BarChartProps): JSX.Element {
               // Rounded on top only: the rounded foot hangs under the baseline and is clipped.
               height={height > 0 ? height + BAR_RADIUS : 0}
               rx={Math.min(BAR_RADIUS, height)}
+              {...(selectable
+                ? {
+                    role: 'button',
+                    tabIndex: 0,
+                    'aria-pressed': selected === index,
+                    'aria-label': `${dateLabel(bar.at, now)} · ${bar.label} · ${formatAmount(bar.value)}`,
+                    onClick: () => toggle(index),
+                    onKeyDown: (event: KeyboardEvent) => onKey(event, index),
+                  }
+                : {})}
             >
               <title>{`${dateLabel(bar.at, now)} · ${bar.label} · ${formatAmount(bar.value)}`}</title>
             </rect>
@@ -138,6 +180,16 @@ export function BarChart({ bars, title }: BarChartProps): JSX.Element {
           {formatAmount(bars[last].value)}
         </text>
       </svg>
+      {chosen ? (
+        <ChartReadout
+          date={dateLabel(chosen.at, now)}
+          value={unit ? `${formatAmount(chosen.value)} ${unit}` : formatAmount(chosen.value)}
+          label={chosen.label}
+          detail={chosen.detail}
+          sessionId={chosen.sessionId}
+          onOpenSession={onOpenSession}
+        />
+      ) : null}
     </div>
   )
 }

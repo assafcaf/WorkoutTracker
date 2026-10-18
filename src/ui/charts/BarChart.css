@@ -35,6 +35,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Tappable bars (E22-T5): only when a bar carries a Session id. The selected bar is primary. */
+.bar-chart-bar[role='button'] {
+  cursor: pointer;
+}
+
+.bar-chart-bar[aria-pressed='true'] {
+  fill: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
 .bar-chart-bar[data-series='b'] {
   fill: var(--chart-b);
 }
