@@ -90,7 +90,7 @@ test('S6a the calendar fills each day with a Session, outlines today and counts 
   renderScreen()
 
   const calendar = await screen.findByRole('region', { name: 'Calendar' }, SETTLE)
-  expect(within(calendar).getByRole('img', { name: 'Last 6 weeks: 3 sessions' })).toBeVisible()
+  expect(within(calendar).getByRole('group', { name: 'Last 6 weeks: 3 sessions' })).toBeVisible()
   const days = calendar.querySelectorAll('.sessions-calendar-grid .sessions-calendar-day')
   expect(days).toHaveLength(42)
   expect(calendar.querySelectorAll('.sessions-calendar-grid [data-trained]')).toHaveLength(3)
