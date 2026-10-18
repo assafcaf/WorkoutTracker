@@ -39,6 +39,8 @@ export type PulledTopic = "sessions" | "programs" | "preferences";
 export type SyncDeps = {
   fetch?: typeof fetch;
   now?: () => number;
+  /** The contract version sent on every request; defaults to the current one. */
+  contractVersion?: number;
   /** Told, once the pull has committed, every topic it wrote rows of; not called when none. */
   onPulled?: (topics: ReadonlySet<PulledTopic>) => void;
 };
