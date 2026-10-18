@@ -14,6 +14,14 @@ database_name = "workout-tracker"
 database_id = "85c69e30-8c54-40a6-9c88-d895707358d2"
 migrations_dir = "migrations"
 
+[[durable_objects.bindings]]
+name = "REST_ALARM"
+class_name = "RestAlarm"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RestAlarm"]
+
 [vars]
 # The Access application in front of this Worker (Zero Trust team patient-heart-afff). Neither is
 # a secret: the AUD only names the application. Empty values mean every /api/* request is refused.
