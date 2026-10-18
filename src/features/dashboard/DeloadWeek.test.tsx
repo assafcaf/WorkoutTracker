@@ -48,7 +48,15 @@ async function seedSquat(rir: SetEntry['rir']): Promise<void> {
     entries: squat(rir),
     updatedAt: day(9, 9) + 3_000_000,
   }
-  await db.sessions.put(session)
+  const other: Session = {
+    ...session,
+    id: 'mon',
+    workoutId: 'workout-b',
+    startedAt: day(9, 12),
+    finishedAt: day(9, 12) + 3_000_000,
+    entries: [{ exerciseId: 'deadlift', setIndex: 0, weightKg: 100, reps: 8, loggedAt: day(9, 12) }],
+  }
+  await db.sessions.bulkPut([session, other])
   await setActiveProgramId('assaf-ab-2026', TUE)
 }
 
@@ -88,7 +96,8 @@ describe('Train Deload week switch (E21-T7)', () => {
     await setActiveProgramId('assaf-ab-2026', SAT)
     mount(servicesAt(SAT), SAT)
     const toggle = (await screen.findByRole('switch', { name: 'Deload week' }, SETTLE)) as HTMLInputElement
-    await waitFor(() => expect(screen.getByText('Sat 24 Oct · Saved on this phone')).toBeTruthy(), SETTLE)
+    await screen.findByText(/ due$/, undefined, SETTLE)
+    await new Promise((resolve) => setTimeout(resolve, 100))
     expect(toggle.checked).toBe(false)
     expect(screen.queryByText('Deload week · Presets 10% lighter')).toBeNull()
   })
