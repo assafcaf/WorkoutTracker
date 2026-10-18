@@ -5,11 +5,12 @@
 // ("as of that Session"); later Sessions are ignored.
 //   sessionMoves(sessionId, sessions, resolve, program) -> LiftMove[]
 //   nextTime(sessionId, sessions, resolve, program)     -> string[]
-//   volumeLine(sessionId, sessions, resolve)            -> string
+//   volumeLine(sessionId, sessions, resolve, log?)      -> string
 //   summaryWeek(sessionId, sessions, program)           -> { heading, line }
 import type { BodyLog, ExercisePlan, Program, Session } from '../../types'
 import type { Resolve } from '../muscles'
 import { workingSets } from '../setKind'
+import { bodyweightOn } from '../bodyLog'
 import { sessionVolume } from '../volume'
 import { humanDate, leverText, nextStepText, numberText, topText, weekdayName } from './copy'
 import { buildLiftHistories, leverOf, straightSets } from './liftHistory'
@@ -181,12 +182,12 @@ export function volumeLine(
   sessionId: string,
   sessions: Session[],
   resolve: Resolve,
-  _log: BodyLog = [],
+  log: BodyLog = [],
 ): string {
   const live = sessions.filter((s) => s.deletedAt === undefined)
   const target = live.find((s) => s.id === sessionId)
   if (!target) return ''
-  const kg = sessionVolume(target, resolve).kg
+  const kg = sessionVolume(target, resolve, bodyweightOn(log, target.startedAt)?.kg ?? null).kg
   const head = `${thousands(kg)} kg`
   const prev = live
     .filter(
@@ -198,7 +199,7 @@ export function volumeLine(
     )
     .sort((a, b) => b.startedAt - a.startedAt)[0]
   if (!prev) return head
-  const before = sessionVolume(prev, resolve).kg
+  const before = sessionVolume(prev, resolve, bodyweightOn(log, prev.startedAt)?.kg ?? null).kg
   if (before <= 0) return head
   const pct = Math.round(((kg - before) / before) * 100)
   const on = humanDate(prev.startedAt)
