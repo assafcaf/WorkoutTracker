@@ -15,6 +15,7 @@ export type SyncedSettingKey =
   | 'deloadWeek'
   | 'keepScreenOnDuringRest'
   | 'customExercises'
+  | 'bodyLog'
 export type SyncedSetting = { key: SyncedSettingKey; value: unknown; updatedAt: number }
 export type SyncRequest = { since: number; sessions: SyncedSession[]; settings: SyncedSetting[] }
 export type SyncResponse = { cursor: number; sessions: SyncedSession[]; settings: SyncedSetting[] }
@@ -41,6 +42,7 @@ export const SYNCED_SETTING_KEYS: readonly SyncedSettingKey[] = [
   'deloadWeek',
   'keepScreenOnDuringRest',
   'customExercises',
+  'bodyLog',
 ]
 export const MAX_BODY_BYTES = 2 * 1024 * 1024
 

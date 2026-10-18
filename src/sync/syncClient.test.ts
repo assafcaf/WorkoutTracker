@@ -722,6 +722,7 @@ test('O11 the sync after adopting b@x pulls all of b@x data from since 0 and pus
 test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides activeProgramId and gymEquipment', () => {
   expect([...SYNCED_SETTING_KEYS].sort()).toEqual([
     'activeProgramId',
+    'bodyLog',
     'bodyweightOverrides',
     'customExercises',
     'deloadWeek',
@@ -1111,4 +1112,27 @@ test('E21-T4 O10 deloadWeek device A sets is answered on device B after A syncs 
   const pushed = server.syncRequests()[0].settings
   expect(pushed).toContainEqual({ key: 'deloadWeek', value: 1_700_000_000_000, updatedAt: T0 + 500 })
   expect(await preferencesAt(T0 + 900).deloadWeek()).toBe(1_700_000_000_000)
+})
+
+// --- E22-T2 O4: the body log reaches the other device through sync ----------------------------
+
+test('E22-T2 O4 a body log device A stores is answered by PreferenceService.bodyLog on device B after A syncs and B syncs', async () => {
+  const mine = [
+    { day: '2023-10-01', weightKg: 80 },
+    { day: '2023-10-15', weightKg: 78.5, waistCm: 84 },
+  ]
+  await preferencesAt(T0 + 500).saveBodyEntry(mine[0])
+  await preferencesAt(T0 + 500).saveBodyEntry(mine[1])
+  await syncNow({ fetch: server.fetch })
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(server.syncRequests()[0].settings).toContainEqual({
+    key: 'bodyLog',
+    value: mine,
+    updatedAt: T0 + 500,
+  })
+  expect(await preferencesAt(T0 + 900).bodyLog()).toEqual(mine)
 })
