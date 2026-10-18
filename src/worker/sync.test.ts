@@ -3,7 +3,11 @@ import { beforeAll, beforeEach, expect, test } from 'vitest'
 import { createHandler } from './index'
 import type { D1Database } from './d1'
 import type { Env } from './env'
-import { HttpError, handleReplace, handleSync, nextSeq, parseSessions, parseSettings, readJsonBody } from './sync'
+import { handleReplace } from './handlers/replace'
+import { handleSync } from './handlers/sync'
+import { readJsonBody } from './http'
+import { nextSeq } from './repositories/counters'
+import { HttpError, checkReplaceRequest, checkSyncRequest } from '../contract'
 import {
   MAX_BODY_BYTES,
   type ReplaceResponse,
@@ -446,7 +450,7 @@ test('O6 readJsonBody returns the parsed body', async () => {
 test('O6 parseSessions throws HttpError 400 for a session without a string id', () => {
   let error: unknown
   try {
-    parseSessions([{ ...session('s1', 1000), id: 7 }])
+    checkSyncRequest({ since: 0, sessions: [{ ...session('s1', 1000), id: 7 }], settings: [] })
   } catch (e) {
     error = e
   }
@@ -456,7 +460,7 @@ test('O6 parseSessions throws HttpError 400 for a session without a string id', 
 })
 
 test('O6 parseSessions returns well-formed sessions whole', () => {
-  expect(parseSessions([session('s1', 1000), session('s2', 2000, 3)])).toEqual([
+  expect(checkSyncRequest({ since: 0, sessions: [session('s1', 1000), session('s2', 2000, 3)], settings: [] }).sessions).toEqual([
     session('s1', 1000),
     session('s2', 2000, 3),
   ])
@@ -465,7 +469,7 @@ test('O6 parseSessions returns well-formed sessions whole', () => {
 test('O6 parseSettings throws HttpError 400 for a key outside SYNCED_SETTING_KEYS', () => {
   let error: unknown
   try {
-    parseSettings([{ key: 'accountEmail', value: X, updatedAt: 1000 }])
+    checkReplaceRequest({ sessions: [], settings: [{ key: 'accountEmail', value: X, updatedAt: 1000 }] })
   } catch (e) {
     error = e
   }
@@ -476,7 +480,10 @@ test('O6 parseSettings throws HttpError 400 for a key outside SYNCED_SETTING_KEY
 
 test('O6 parseSettings returns settings with synced keys whole', () => {
   expect(
-    parseSettings([setting('activeProgramId', 'ppl', 1000), setting('gymEquipment', { barbell: true }, 2000)]),
+    checkReplaceRequest({
+      sessions: [],
+      settings: [setting('activeProgramId', 'ppl', 1000), setting('gymEquipment', { barbell: true }, 2000)],
+    }).settings,
   ).toEqual([setting('activeProgramId', 'ppl', 1000), setting('gymEquipment', { barbell: true }, 2000)])
 })
 
@@ -593,12 +600,70 @@ test('O7 a malformed replace body posted through the router is refused with 400'
 
 test('O3 parseSettings accepts weightSteps and volumeBaseline and returns them whole', () => {
   expect(
-    parseSettings([
-      setting('weightSteps', { 'back-squat': 5 }, 3000),
-      setting('volumeBaseline', { period: '3m', aggregate: 'max' }, 4000),
-    ]),
+    checkReplaceRequest({
+      sessions: [],
+      settings: [
+        setting('weightSteps', { 'back-squat': 5 }, 3000),
+        setting('volumeBaseline', { period: '3m', aggregate: 'max' }, 4000),
+      ],
+    }).settings,
   ).toEqual([
     setting('weightSteps', { 'back-squat': 5 }, 3000),
     setting('volumeBaseline', { period: '3m', aggregate: 'max' }, 4000),
   ])
+})
+
+// --- E20-T2 O8: the contract's Session check guards the writes; unknown fields survive ---
+
+const { workoutId: _droppedWorkout, ...sessionWithoutWorkoutId } = session('s1', 1000)
+
+test('O8 a pushed session failing the contract check (no workoutId) is 400 with an error and nothing is written', async () => {
+  const body = JSON.stringify({ since: 0, sessions: [sessionWithoutWorkoutId], settings: [] })
+
+  await expectRefused(await post(X, body), 400)
+
+  expect(await tableCounts()).toEqual(EMPTY)
+})
+
+test('O8 a pushed session with a non-array entries is 400 and the stored rows stay unchanged', async () => {
+  const before = await sync(X, { sessions: [session('s1', 1000, 8)] })
+  const body = JSON.stringify({ since: 0, sessions: [{ ...session('s2', 2000), entries: 'none' }], settings: [] })
+
+  await expectRefused(await post(X, body), 400)
+
+  expect(await sync(X, { since: 0 })).toEqual({ cursor: before.cursor, sessions: [session('s1', 1000, 8)], settings: [] })
+})
+
+test('O8 a replace carrying a session failing the contract check is 400 and nothing is deleted or written', async () => {
+  await sync(X, { sessions: [session('a', 1000)], settings: [setting('activeProgramId', 'assaf-ab', 1000)] })
+  const counts = await tableCounts()
+  const body = JSON.stringify({ sessions: [sessionWithoutWorkoutId], settings: [] })
+
+  await expectRefused(await handleReplace(replaceRequest(body), env, X), 400)
+
+  expect(await tableCounts()).toEqual(counts)
+  expect(await storedSessions(X)).toEqual([session('a', 1000)])
+  expect(await storedSettings(X)).toEqual([setting('activeProgramId', 'assaf-ab', 1000)])
+})
+
+test('O8 a replace carrying a session failing the contract check, posted through the router, is 400 with nothing written', async () => {
+  const token = await access.sign({ email: X })
+  const body = JSON.stringify({ sessions: [sessionWithoutWorkoutId], settings: [] })
+
+  const response = await worker.fetch(
+    apiRequest('/api/replace', token, { method: 'POST', body, headers: { 'Content-Type': 'application/json' } }),
+    env,
+  )
+
+  await expectRefused(response, 400)
+  expect(await tableCounts()).toEqual(EMPTY)
+})
+
+test('O8 a session with unknown extra fields is stored and comes back whole on pull', async () => {
+  const extended = { ...session('s1', 1000), added: { note: 'later' }, futureField: [1, 2, 3] } as unknown as SyncedSession
+
+  await sync(X, { sessions: [extended] })
+  const answer = await sync(X, { since: 0 })
+
+  expect(answer.sessions).toEqual([extended])
 })

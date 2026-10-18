@@ -1,3 +1,4 @@
+import { HttpError } from '../contract'
 import type { D1Database, D1PreparedStatement } from './d1'
 import type { Env } from './env'
 import { json } from './index'
@@ -11,16 +12,7 @@ import {
   type SyncedSetting,
 } from '../sync/protocol'
 
-/** A failure the caller should see as this HTTP status, with the message as its `error`. */
-export class HttpError extends Error {
-  status: number
-
-  constructor(status: number, message: string) {
-    super(message)
-    this.name = 'HttpError'
-    this.status = status
-  }
-}
+export { HttpError } from '../contract'
 
 /** POST /api/sync: store the caller's newer rows, answer every row of theirs past `since`. */
 export async function handleSync(request: Request, env: Env, email: string): Promise<Response> {
