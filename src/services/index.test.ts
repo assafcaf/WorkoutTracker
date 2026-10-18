@@ -73,12 +73,14 @@ describe('O5 createServices returns exactly the service API', () => {
   test('O5 the preferences service has exactly the PreferenceService operations', () => {
     expect(ownKeys(services().preferences)).toEqual([
       'bodyweightOverrides',
+      'deloadWeek',
       'exerciseNote',
       'gymEquipment',
       'keepScreenOnDuringRest',
       'lastExportedAt',
       'plateInventory',
       'setBodyweight',
+      'setDeloadWeek',
       'setExerciseNote',
       'setGymEquipment',
       'setKeepScreenOnDuringRest',

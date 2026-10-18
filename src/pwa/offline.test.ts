@@ -65,12 +65,20 @@ type OfflineLaunch = {
 
 let launch: Promise<OfflineLaunch> | undefined
 
+/** Polls until the condition holds in the cached window, or the deadline passes. */
+async function waitForCached(_window: unknown, done: () => boolean, ms: number): Promise<void> {
+  const deadline = Date.now() + ms
+  while (Date.now() < deadline && !done()) {
+    await new Promise((resolve) => setTimeout(resolve, 25))
+  }
+}
+
 /**
  * The time limit for a test that calls `launchFromCache`. Whichever such test runs first pays
  * for the whole launch — a rollup relink plus up to 10s waiting for the first render — which
  * vitest's default 5s cannot hold on a loaded machine.
  */
-const LAUNCH_TIMEOUT = 60_000
+const LAUNCH_TIMEOUT = 120_000
 
 /**
  * Starts the app the way a cold launch with no network does, and hands back the window it is
@@ -186,11 +194,17 @@ async function runLaunch(): Promise<OfflineLaunch> {
   // so the harness fires the event either way.
   dom.window.dispatchEvent(new dom.window.Event('load'))
 
-  const deadline = Date.now() + 10_000
-  while (Date.now() < deadline && (dom.window.document.body.textContent ?? '') === '') {
-    await new Promise((resolve) => setTimeout(resolve, 25))
-  }
-  await new Promise((resolve) => setTimeout(resolve, 200))
+  // The first render is done when the tab bar is there and the Dashboard has read the active
+  // Program out of IndexedDB (its dock offers the workout to start). The tab bar alone comes
+  // first, and "any body text" first of all; on a loaded host the module graph and the reads
+  // can take far longer than any fixed wait.
+  await waitForCached(
+    dom.window,
+    () =>
+      dom.window.document.querySelector('[aria-label="Program"]') !== null &&
+      (dom.window.document.body.textContent ?? '').includes('Start Workout A'),
+    40_000,
+  )
 
   return { window: dom.window, html, registeredWorkers }
 }
@@ -243,6 +257,7 @@ test('O4 with the network down the program picker offers the workouts to start',
 test('O4 with the network down the Program tab names exercises out of the cached catalog', async () => {
   const { window } = await launchFromCache()
 
+  await waitForCached(window, () => window.document.querySelector('[aria-label="Program"]') !== null, 20_000)
   const programTab = window.document.querySelector('[aria-label="Program"]')
   if (!programTab) throw new Error('no Program tab button in the cached app')
   programTab.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
@@ -250,10 +265,7 @@ test('O4 with the network down the Program tab names exercises out of the cached
   // Progress Dashboard S7a's workout table: the row's name cell runs straight into its
   // `Sets × reps` cell in the page's text.
   const expected = 'Back squat4 × 8–10'
-  const deadline = Date.now() + 30_000
-  while (Date.now() < deadline && !(window.document.body.textContent ?? '').includes(expected)) {
-    await new Promise((resolve) => setTimeout(resolve, 25))
-  }
+  await waitForCached(window, () => (window.document.body.textContent ?? '').includes(expected), 30_000)
 
   expect(window.document.body.textContent ?? '').toContain(expected)
 }, LAUNCH_TIMEOUT)

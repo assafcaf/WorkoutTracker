@@ -814,3 +814,9 @@ button.set-cell--current {
   display: flex;
   flex-direction: column;
 }
+
+.set-deload {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}

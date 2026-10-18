@@ -24,6 +24,7 @@ import {
   CUSTOM_EXERCISES_KEY,
   KEEP_SCREEN_ON_KEY,
   WEEK_START_KEY,
+  DELOAD_WEEK_KEY,
   getBodyweightOverrides,
   deleteKeys,
   getGymEquipment,
@@ -69,6 +70,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     plateInventoryRow,
     bodyweightOverrides,
     weekStartRow,
+    deloadWeekRow,
     keepScreenOnRow,
     customExercisesRow,
   ] = await Promise.all([
@@ -84,6 +86,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     readRow(PLATE_INVENTORY_KEY),
     getBodyweightOverrides(),
     readRow(WEEK_START_KEY),
+    readRow(DELOAD_WEEK_KEY),
     readRow(KEEP_SCREEN_ON_KEY),
     readRow(CUSTOM_EXERCISES_KEY),
   ])
@@ -104,6 +107,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
       ...(effortTracking ? { effortTracking } : {}),
       ...(Object.keys(bodyweightOverrides).length > 0 ? { bodyweightOverrides } : {}),
       ...(weekStartRow ? { weekStart: weekStartRow.value as number } : {}),
+      ...(deloadWeekRow ? { deloadWeek: deloadWeekRow.value as number } : {}),
       ...(keepScreenOnRow ? { keepScreenOnDuringRest: keepScreenOnRow.value as boolean } : {}),
       ...(customExercisesRow ? { customExercises: customExercisesRow.value as CustomExercise[] } : {}),
       ...(plateInventoryRow ? { plateInventory: plateInventoryRow.value as PlateInventory } : {}),
@@ -236,6 +240,9 @@ export function createBackupService(
 
             if (file.settings.weekStart === undefined) toDelete.push(WEEK_START_KEY)
             else toPut.push({ key: WEEK_START_KEY, value: file.settings.weekStart, updatedAt: now })
+
+            if (file.settings.deloadWeek === undefined) toDelete.push(DELOAD_WEEK_KEY)
+            else toPut.push({ key: DELOAD_WEEK_KEY, value: file.settings.deloadWeek, updatedAt: now })
 
             if (file.settings.keepScreenOnDuringRest === undefined) toDelete.push(KEEP_SCREEN_ON_KEY)
             else toPut.push({ key: KEEP_SCREEN_ON_KEY, value: file.settings.keepScreenOnDuringRest, updatedAt: now })

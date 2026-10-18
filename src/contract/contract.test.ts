@@ -275,6 +275,7 @@ describe('O5 protocol re-exports the contract', () => {
       'plateInventory',
       'bodyweightOverrides',
       'weekStart',
+      'deloadWeek',
       'keepScreenOnDuringRest',
       'customExercises',
     ])

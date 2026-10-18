@@ -12,6 +12,7 @@ export type SyncedSettingKey =
   | 'plateInventory'
   | 'bodyweightOverrides'
   | 'weekStart'
+  | 'deloadWeek'
   | 'keepScreenOnDuringRest'
   | 'customExercises'
 export type SyncedSetting = { key: SyncedSettingKey; value: unknown; updatedAt: number }
@@ -37,6 +38,7 @@ export const SYNCED_SETTING_KEYS: readonly SyncedSettingKey[] = [
   'plateInventory',
   'bodyweightOverrides',
   'weekStart',
+  'deloadWeek',
   'keepScreenOnDuringRest',
   'customExercises',
 ]

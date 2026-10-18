@@ -19,6 +19,8 @@ export type UpNextRowsProps = {
   volumeBaseline: VolumeBaseline
   /** The Exercise on the steppers, which is left out. */
   currentId: string
+  /** The Session is a deload (E21): each row's Preset is the deloaded one. */
+  deload?: boolean
   /** Opens `exerciseId` at Set `setIndex`. */
   onOpen(exerciseId: string, setIndex: number): void
 }
@@ -48,6 +50,7 @@ export function UpNextRows(props: UpNextRowsProps): JSX.Element {
                 setIndex: today.length + 1,
                 lastEntries: lastEntries.get(id) ?? [],
                 today,
+                deload: props.deload,
               })
         const load =
           preset === null ? '' : exercise?.bodyweight ? loadText({ weightKg: null, loadKg: preset.loadKg }) : `${loadText(preset)} kg`

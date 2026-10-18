@@ -14,7 +14,6 @@ _Avoid_: Movement, lift, activity
 
 **Custom Exercise**:
 An Exercise the trainee created (synced `customExercises`, merged into the catalog).
-_Avoid_: User exercise
 
 **Plan**:
 A program's prescription for one exercise: how many sets, the rep range, the rest between them,
@@ -35,11 +34,9 @@ _Avoid_: Log, entry, instance
 
 **Session note**:
 Free text (up to 500 characters) on a Session (`Session.note`).
-_Avoid_: Comment, memo
 
 **Exercise note**:
 Free text (up to 500 characters) on an Exercise, shown above the Dials.
-_Avoid_: Comment, memo, Session note
 
 **Set**:
 One performed set — a weight and a rep count, recorded against a Session and referencing the
@@ -91,22 +88,21 @@ An Alternative standing in for a planned Exercise for one Session.
 **Bodyweight**:
 An Exercise logged with no weight (absent, not `0`), only an optional Load. The catalog sets
 the default; the trainee's synced override wins.
-_Avoid_: Unweighted, freeweight, no-load
 
 **Load**:
 The signed weight on a Bodyweight Set, in kg: positive when added (a belt), negative when assisted
 (a band or machine). Never `0`; absent on a plain Bodyweight Set and on loaded Sets. The Weight
 Dial sets it on a Bodyweight Exercise; its `BW` Rung means no Load.
-_Avoid_: Offset, modifier
 
 **Region**:
 A zone of the body map, shaded by how many sets reached it. Each of the 17 muscles maps to at
 least one.
-_Avoid_: Area, zone, body part
 
 **Muscle family**:
 Push, pull, legs or core: the group every muscle and Region belongs to, and its chip's tint.
-_Avoid_: Muscle group, category, colour group
+
+**Weekly set range**:
+The 10-20 Sets a week a muscle is planned to get; below it is `below`, above it `above`, both ends `within`. Set in `src/domain/setRange.ts`.
 
 **Shell**:
 The frame around the screen showing: header, tab bar and Action bar. Not the **precache**.
@@ -118,11 +114,9 @@ _Avoid_: Footer, toolbar, CTA bar, bottom bar
 
 **Token**:
 One of the 49 custom properties (a closed set) that alone define a colour, space, radius or type size.
-_Avoid_: Variable, custom property, theme value
 
 **Palette**:
 The colour Tokens: one light "Court" palette, no dark mode.
-_Avoid_: Theme, colour scheme, skin
 
 **Service**:
 The only way the UI reads or writes the trainee's data or reaches sync. Each stamps its writes
@@ -131,20 +125,16 @@ _Avoid_: Store, manager, controller
 
 **Repository**:
 A storage module: the only code that touches the device database.
-_Avoid_: DAO, data access layer, model
 
 **Screen group (feature)**:
 One tab's container, reading and writing only through Services; in code, a `*Feature`.
-_Avoid_: Page, container, view
 
 **Change topic**:
 Sessions, programs or preferences: what a write announces, so only the screens reading it
 re-read.
-_Avoid_: Event, channel, subscription
 
 **Effort**:
 Reps left (RIR, 0 to 3+) on a logged Set, from chips when **Track effort** is on. Optional.
-_Avoid_: Intensity, RPE
 
 **Plate inventory**:
 The bar weight and pairs of plates the trainee has; one synced setting.
@@ -161,3 +151,10 @@ through `weekStart(ms, weekStartsOn)`.
 
 **Contract version**:
 `CONTRACT_VERSION` (`src/contract`), sent as `X-Contract-Version`; no header means 1.
+
+**Deload**:
+A lighter week: its loaded Sets open 10 % under last time (`deloadWeight`, in whole weight
+steps); Bodyweight Exercises and start weights are left alone.
+
+**Deload week**:
+The stored week the trainee chose to deload; `isDeloadWeek` places it through `weekStart`.

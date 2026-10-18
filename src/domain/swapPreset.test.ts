@@ -148,3 +148,34 @@ test('O23 a Bodyweight chosen Exercise logged before opens on its own last Load'
 
   expect(result).toEqual({ weightKg: null, reps: 15, loadKg: 10 })
 })
+
+test('O7 a deload swap opens the chosen Exercise on its own last time deloaded, carrying the weight it came from', () => {
+  const result = swapPreset({
+    planned,
+    chosen: machineCurl,
+    plan,
+    setIndex: 1,
+    plannedLast: [entry('seated-biceps-curls', 1, 12, 10)],
+    chosenLast: [entry('Machine_Curl', 1, 35, 6)],
+    today: [],
+    deload: true,
+  })
+
+  expect(result).toEqual({ weightKg: 30, reps: 6, deloadFromKg: 35 })
+})
+
+test('O7 a deload swap to a never-logged Exercise opens lighter than the planned last time', () => {
+  const result = swapPreset({
+    planned,
+    chosen: cableCurl,
+    plan,
+    setIndex: 1,
+    plannedLast: [entry('seated-biceps-curls', 1, 40, 10)],
+    chosenLast: [],
+    today: [],
+    deload: true,
+  })
+
+  expect(result.weightKg).toBeLessThan(40)
+  expect(result.reps).toBe(10)
+})

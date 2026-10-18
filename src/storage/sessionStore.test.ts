@@ -531,6 +531,83 @@ test('O3 getLastEntriesFor still reaches the two hundredth most recent session',
   expect(await getLastEntriesFor('back-squat')).toEqual(justInside)
 })
 
+describe('E21-T5 O14 getLastEntriesFor skips deload Sessions', () => {
+  const lastWeek = [entry('back-squat', 0, 100, 5, BASE - 7 * DAY + 60 * SECOND)]
+  const deloaded = [entry('back-squat', 0, 90, 5, BASE - DAY + 60 * SECOND)]
+
+  test('O14 getLastEntriesFor answers the newest non-deload Session over a newer deload one', async () => {
+    await db.sessions.bulkPut([
+      storedSession({ id: 'normal', startedAt: BASE - 7 * DAY, finishedAt: BASE - 7 * DAY + 3600 * SECOND, entries: lastWeek }),
+      storedSession({ id: 'deload', startedAt: BASE - DAY, finishedAt: BASE - DAY + 3600 * SECOND, entries: deloaded, deload: true }),
+    ])
+
+    expect(await getLastEntriesFor('back-squat')).toEqual(lastWeek)
+  })
+
+  test('O14 getLastEntriesFor answers the newest deload Session when only deloads hold the Exercise', async () => {
+    const older = [entry('back-squat', 0, 85, 5, BASE - 8 * DAY + 60 * SECOND)]
+    await db.sessions.bulkPut([
+      storedSession({ id: 'd-old', startedAt: BASE - 8 * DAY, finishedAt: BASE - 8 * DAY + 3600 * SECOND, entries: older, deload: true }),
+      storedSession({ id: 'd-new', startedAt: BASE - DAY, finishedAt: BASE - DAY + 3600 * SECOND, entries: deloaded, deload: true }),
+    ])
+
+    expect(await getLastEntriesFor('back-squat')).toEqual(deloaded)
+  })
+
+  test('O14 getLastEntriesFor still answers the newest Session when it is not a deload', async () => {
+    const newest = [entry('back-squat', 0, 105, 5, BASE + 60 * SECOND)]
+    await db.sessions.bulkPut([
+      storedSession({ id: 'older', startedAt: BASE - 7 * DAY, finishedAt: BASE - 7 * DAY + 3600 * SECOND, entries: lastWeek }),
+      storedSession({ id: 'newest', startedAt: BASE, entries: newest }),
+    ])
+
+    expect(await getLastEntriesFor('back-squat')).toEqual(newest)
+  })
+
+  test('O14 getLastEntriesFor ignores a deload Session that does not hold the Exercise', async () => {
+    await db.sessions.bulkPut([
+      storedSession({ id: 'normal', startedAt: BASE - 7 * DAY, finishedAt: BASE - 7 * DAY + 3600 * SECOND, entries: lastWeek }),
+      storedSession({
+        id: 'deload-bench',
+        startedAt: BASE - DAY,
+        finishedAt: BASE - DAY + 3600 * SECOND,
+        entries: [entry('bench', 0, 50, 8, BASE - DAY + 60 * SECOND)],
+        deload: true,
+      }),
+    ])
+
+    expect(await getLastEntriesFor('back-squat')).toEqual(lastWeek)
+  })
+})
+
+describe('E21-T5 O13 startOrResumeSession stores the deload flag in its first write', () => {
+  test('O13 startOrResumeSession with deload true stores the Session with deload true', async () => {
+    const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE, true)
+
+    expect(started.deload).toBe(true)
+    expect((await db.sessions.get(started.id))?.deload).toBe(true)
+  })
+
+  test('O13 startOrResumeSession without the flag stores no deload field', async () => {
+    const plain = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+    expect('deload' in (await db.sessions.get(plain.id))!).toBe(false)
+
+    await db.sessions.clear()
+    const explicitFalse = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE, false)
+    expect('deload' in (await db.sessions.get(explicitFalse.id))!).toBe(false)
+  })
+
+  test('O13 startOrResumeSession resuming returns the active Session untouched, whatever the flag', async () => {
+    const active = storedSession({ id: 'active', startedAt: BASE - 60 * SECOND, finishedAt: null, updatedAt: BASE - 60 * SECOND })
+    await db.sessions.put(active)
+
+    const resumed = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE, true)
+
+    expect(resumed.id).toBe('active')
+    expect('deload' in (await db.sessions.get('active'))!).toBe(false)
+  })
+})
+
 // --- isStorageAvailable, the boundary O19's banner hangs on -------------------------------
 
 type OpenFailure = 'throws' | 'errors'

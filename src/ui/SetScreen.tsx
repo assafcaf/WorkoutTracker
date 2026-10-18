@@ -5,6 +5,7 @@ import { validateEntry } from '../domain/dial'
 import { formatDay } from '../domain/dates'
 import { projectSet } from '../domain/liveProgress'
 import { formatSet, formatSetCompact } from '../domain/setText'
+import { deloadText } from '../domain/deload'
 import { presetForSet, presetFromSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { prMoment } from '../domain/prMoment'
@@ -38,6 +39,8 @@ import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind
 const EXERCISE_NOTE_MAX = 500
 
 export type SetScreenProps = {
+  /** The Session is a deload (E21): loaded Sets open on a lighter Preset, with a line saying so. */
+  deload?: boolean
   /**
    * The Plate inventory (E15-T6), given only for a barbell Exercise; the Plate line under the
    * weight Dial reads from it. `null` or omitted shows no Plate line.
@@ -259,6 +262,8 @@ type OpenSet = {
   reps: number
   kind: SetKind | null
   loadKg: number
+  /** A deload Preset's weight and the last-time weight it came from (E21). */
+  deloaded?: { kg: number; from: number }
 }
 
 /** The `loadKg` a Set on the dials is logged with: none at plain bodyweight (E14-T14). */
@@ -312,6 +317,7 @@ function openSetFor(
   setIndex: number,
   lastEntries: SetEntry[],
   logged?: SetEntry[],
+  deload?: boolean,
 ): OpenSet {
   // The Plan's last Set opens on AMRAP when the Plan marks it (E14-T13).
   const position =
@@ -319,14 +325,17 @@ function openSetFor(
       ? setIndex
       : 1 + workingSets(logged).filter((entry) => entry.setIndex < setIndex).length
   const kind = plan.amrapLast === true && position === plan.sets ? 'amrap' : null
-  const { loadKg, ...preset } = presetForSet({
+  const { loadKg, deloadFromKg, ...preset } = presetForSet({
     exercise,
     plan,
     setIndex,
     lastEntries,
     today: logged,
+    deload,
   })
-  return { setIndex, ...preset, kind, loadKg: exercise.bodyweight ? (loadKg ?? 0) : 0 }
+  const deloaded =
+    deloadFromKg === undefined || preset.weightKg === null ? {} : { deloaded: { kg: preset.weightKg, from: deloadFromKg } }
+  return { setIndex, ...preset, kind, loadKg: exercise.bodyweight ? (loadKg ?? 0) : 0, ...deloaded }
 }
 
 /**
@@ -428,6 +437,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       props.setIndex,
       props.lastEntries,
       props.logged?.filter((entry) => entry.exerciseId === exercise.id),
+      props.deload,
     ),
   )
   // An extra set opened by "Add set" stays open until it is logged; past the plan, anything
@@ -706,7 +716,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
       setEffort({ setIndex: open.setIndex, rir: null })
       setNextExpanded(false)
-      const next = openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter))
+      const next = openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter), props.deload)
       const nextStep = ramp === null ? undefined : ramp.steps[ramp.index + 1]
       if (ramp === null) {
         setOpen(next)
@@ -805,7 +815,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     setDraft(null)
     setExtraOpen(false)
     setRamp(null)
-    setOpen(openSetFor(exercise, plan, next, from, today(sets)))
+    setOpen(openSetFor(exercise, plan, next, from, today(sets), props.deload))
   }
 
   async function saveSet(): Promise<void> {
@@ -938,6 +948,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         setIndex: open.setIndex + (at - position),
         lastEntries: history,
         today: today(loggedSets),
+        deload: props.deload,
       })
       cells.push({ position: at, current: false, weightKg: preset.weightKg, reps: preset.reps, loadKg: preset.loadKg ?? 0 })
     }
@@ -1361,6 +1372,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 </span>
               )}
             </p>
+            {open.deloaded === undefined || open.deloaded.kg !== open.weightKg ? null : (
+              <p className="set-deload">{deloadText(open.deloaded.kg, open.deloaded.from)}</p>
+            )}
           </div>
           <button
             type="button"

@@ -9,9 +9,10 @@
 //   suggestionText(step, bodyweight)  -> 'Try 15 kg next' | 'Try one more set next' | null
 //   compareText(compare, bodyweight)  -> '13 × 9 → 13 × 9 · no change' | null
 //   homeCopy(program, sessions, resolve, now) -> HomeCopy
-import type { ExercisePlan, Program, Session } from '../../types'
+import type { Exercise, ExercisePlan, Program, Session } from '../../types'
 import type { Resolve } from '../muscles'
 import type { Compare } from './ladder'
+import { deloadWeight } from '../deload'
 import { buildLiftHistories, leverOf, straightSets } from './liftHistory'
 import type { LiftHistory, LiftPoint } from './liftHistory'
 import { computeRecords } from './records'
@@ -104,10 +105,18 @@ export function nextStepText(step: NextStep, bodyweight: boolean): string {
 }
 
 export function suggestionText(step: NextStep, bodyweight: boolean): string | null {
+  if (step.hold) return `Stay at ${leverText(step.lever, bodyweight)}: every set at RIR 0`
   if (!step.ready || !step.suggest) return null
-  return step.suggest.kind === 'set'
-    ? 'Try one more set next'
-    : `Try ${leverText(step.suggest.lever, bodyweight)} next`
+  if (step.suggest.kind === 'set') return 'Try one more set next'
+  const text = `Try ${leverText(step.suggest.lever, bodyweight)} next`
+  return step.steps === 2 ? `${text} · 2 steps` : text
+}
+
+/** A stalled loaded lift: its deload weight for one session; a Bodyweight lift: a lighter week. */
+export function stallSuggestion(history: LiftHistory, exercise: Exercise): string {
+  const latest = history.points.filter((p) => !p.deload && p.top !== null).at(-1)
+  if (history.bodyweight || !latest || !latest.top) return LIGHTER
+  return `Try a deload: ${leverText(deloadWeight(latest.top.lever, exercise.weightStep), false)} for one session`
 }
 
 export function compareText(compare: Compare | null, bodyweight: boolean): string | null {
@@ -257,6 +266,7 @@ export function homeCopy(
   for (const id of stalled) {
     const h = histories.get(id)!
     const v = verdictOf(id)
+    const ex = resolve(id)
     const top = realPoints(h).pop()!.top
     const need = maxRepsAt(h, top.lever) + 1
     const bar = h.bodyweight
@@ -268,7 +278,7 @@ export function homeCopy(
       exerciseId: id,
       kind: 'stalled',
       sentence: `${nameOf(id)}: stalled for ${plural(Math.round(v.weeks ?? 0), 'week')}, ${plural(v.sessionsSince ?? 0, 'session')} without a record since ${humanDate(v.since ?? 0)}.`,
-      suggestion: LIGHTER,
+      suggestion: ex ? stallSuggestion(h, ex) : LIGHTER,
       why: ['Stalled: none of the last 4 sessions of this lift set a record.', ...lastFourLines(h), bar],
     })
   }

@@ -7,7 +7,7 @@ export type TrainLiftRow = {
   exerciseId: string
   name: string
   /** `null` while the lift has no sets yet. */
-  step: { reps: number; target: number; at: string; suggest: string | null } | null
+  step: { reps: number; target: number; at: string; suggest: string | null; hold?: true } | null
 }
 
 /** Train's card: the due workout, its duration estimate and each lift's next step. */
@@ -17,6 +17,8 @@ export type TrainCard = {
   estimate: 'logged' | 'plan'
   /** Workouts still planned this week after this one; unset or 0 reads as none. */
   more?: number
+  /** This week is the deload week: the card says Presets run 10% lighter. */
+  deload?: boolean
   lifts: TrainLiftRow[]
 }
 
@@ -35,7 +37,8 @@ function stepRow(step: NextStep, bodyweight: boolean): NonNullable<TrainLiftRow[
     : step.suggest.kind === 'set'
       ? 'add a set'
       : `try ${leverText(step.suggest.lever, bodyweight)}`
-  return { reps: step.repsAtTop, target: step.target, at: leverText(step.lever, bodyweight), suggest }
+  const row = { reps: step.repsAtTop, target: step.target, at: leverText(step.lever, bodyweight), suggest }
+  return step.hold ? { ...row, hold: true } : row
 }
 
 /** The card's strings, from the engine's due workout and the lifts' histories. */
@@ -43,12 +46,14 @@ export function trainCardOf(
   card: DueWorkoutCard,
   histories: Map<string, LiftHistory>,
   more = 0,
+  deload = false,
 ): TrainCard {
   return {
     name: card.workout.name,
     minutes: card.minutes,
     estimate: card.estimate,
     more,
+    deload,
     lifts: card.lifts.map((lift) => ({
       exerciseId: lift.exerciseId,
       name: lift.name,

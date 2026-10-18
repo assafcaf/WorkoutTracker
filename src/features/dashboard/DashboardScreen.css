@@ -73,6 +73,18 @@
 
 /* ---- cards ---- */
 
+.dashboard-deload-week {
+  margin-top: var(--space-3);
+  min-height: var(--tap-min);
+}
+
+.dashboard-step-deload {
+  margin: 0;
+  color: var(--color-secondary);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}
+
 .dashboard-train {
   margin-top: var(--space-3);
   padding-top: var(--space-2);

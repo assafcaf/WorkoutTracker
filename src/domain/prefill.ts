@@ -1,8 +1,9 @@
+import { deloadWeight } from './deload'
 import { workingSets } from './setKind'
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
 
 /** A Preset: the dial values a Set opens with. */
-type Preset = { weightKg: number | null; reps: number; loadKg?: number }
+type Preset = { weightKg: number | null; reps: number; loadKg?: number; deloadFromKg?: number }
 
 /** The bounds a Preset's value is kept within: a weight, or a Bodyweight Exercise's signed Load. */
 const WEIGHT_BOUNDS = { min: 0, max: 500 }
@@ -67,9 +68,17 @@ export function presetForSet(args: {
   lastEntries: SetEntry[]
   /** This Session's Sets for the Exercise so far (E16-T6), passed apart from last time's. */
   today?: SetEntry[]
+  /** Open a deload Session's loaded Sets 10 % lighter (E21). */
+  deload?: boolean
 }): Preset {
-  const { exercise, plan, setIndex, lastEntries, today } = args
+  const { exercise, plan, setIndex, lastEntries, today, deload } = args
   const asPreset = (set: SetEntry): Preset => presetFromSet({ exercise, plan, set })
+  // A last-time Set as a Preset; on a deload Session a loaded weight is deloaded and remembered.
+  const asLastPreset = (set: SetEntry): Preset => {
+    const preset = asPreset(set)
+    if (!deload || exercise.bodyweight || set.weightKg === null) return preset
+    return { ...preset, weightKg: deloadWeight(set.weightKg, exercise.weightStep), deloadFromKg: set.weightKg }
+  }
 
   const before = bySetIndex(workingSets(today ?? [])).filter(
     (entry) => entry.setIndex < setIndex,
@@ -83,16 +92,17 @@ export function presetForSet(args: {
     const lastAtAnchor = sequence[anchorAt]
     const lastAtNext = sequence[position - 1]
     if (lastAtAnchor === undefined || lastAtNext === undefined) return anchor
-    const next = asPreset(lastAtNext)
-    const from = valueOf(exercise, asPreset(lastAtAnchor))
+    const next = asLastPreset(lastAtNext)
+    const from = valueOf(exercise, asLastPreset(lastAtAnchor))
     const to = valueOf(exercise, anchor)
     const value = valueOf(exercise, next)
     if (from === null || to === null || value === null) return anchor
-    return presetOf(exercise, clamp(exercise, value + (to - from)), next.reps)
+    const shifted = presetOf(exercise, clamp(exercise, value + (to - from)), next.reps)
+    return next.deloadFromKg === undefined ? shifted : { ...shifted, deloadFromKg: next.deloadFromKg }
   }
 
   const match = sequence[position - 1] ?? sequence[sequence.length - 1]
-  if (match !== undefined) return asPreset(match)
+  if (match !== undefined) return asLastPreset(match)
 
   return presetOf(
     exercise,

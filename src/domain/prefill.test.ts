@@ -609,3 +609,48 @@ test('O12 presetFromSet keeps a Set already in the current mode as it is', () =>
     }),
   ).toEqual({ weightKg: null, reps: 9, loadKg: -27 })
 })
+
+test('O7 deload opens a loaded Set on last time deloaded, with its reps, carrying the weight it came from', () => {
+  const lastEntries: SetEntry[] = [
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 80, reps: 8, loggedAt: 1 },
+  ]
+  expect(
+    presetForSet({ exercise: squatExercise, plan: squatPlan, setIndex: 1, lastEntries, deload: true }),
+  ).toEqual({ weightKg: 72.5, reps: 8, deloadFromKg: 80 })
+})
+
+test('O7 deload measures the anchor shift against the deloaded last-time values', () => {
+  const lastEntries: SetEntry[] = [
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 80, reps: 8, loggedAt: 1 },
+    { exerciseId: 'back-squat', setIndex: 2, weightKg: 100, reps: 6, loggedAt: 2 },
+  ]
+  const today: SetEntry[] = [
+    { exerciseId: 'back-squat', setIndex: 1, weightKg: 70, reps: 8, loggedAt: 3 },
+  ]
+  // last 80 -> 72.5 and 100 -> 90; today's 70 is 2.5 under 72.5, so set 2 opens on 90 - 2.5.
+  const result = presetForSet({
+    exercise: squatExercise,
+    plan: squatPlan,
+    setIndex: 2,
+    lastEntries,
+    today,
+    deload: true,
+  })
+  expect(result.weightKg).toBe(87.5)
+  expect(result.reps).toBe(6)
+})
+
+test('O7 deload leaves the start weight alone when there is no last time', () => {
+  expect(
+    presetForSet({ exercise: squatExercise, plan: squatPlan, setIndex: 1, lastEntries: [], deload: true }),
+  ).toEqual({ weightKg: 50, reps: 8 })
+})
+
+test('O7 deload leaves a Bodyweight Exercise alone', () => {
+  const lastEntries: SetEntry[] = [
+    { exerciseId: 'push-ups', setIndex: 1, weightKg: null, reps: 9, loadKg: 20, loggedAt: 1 },
+  ]
+  expect(
+    presetForSet({ exercise: pushUpsExercise, plan: pushUpsPlan, setIndex: 1, lastEntries, deload: true }),
+  ).toEqual({ weightKg: null, reps: 9, loadKg: 20 })
+})

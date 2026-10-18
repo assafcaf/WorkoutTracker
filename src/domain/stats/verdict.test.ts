@@ -490,3 +490,71 @@ describe('E18-T5 O10 steps climbed', () => {
     expect(r).toMatchObject({ climbed: 1, ids: ['x'], of: 1 })
   })
 })
+
+describe('E21-T1 O3 next step reads effort and skips deloads', () => {
+  const rirSets = (lever: number, reps: number, rirs: Array<0 | 1 | 2 | 3 | undefined>): SetEntry[] =>
+    rirs.map((rir) => ({ ...set(lever, reps), ...(rir === undefined ? {} : { rir }) }))
+  const ex = exercise({ weightStep: 2.5 })
+  const pl = plan(3, 8, 10)
+
+  it('O3 a full bar at RIRs 2, 3, 2 suggests two weightSteps up with steps 2', () => {
+    const h = history([withSets(0, rirSets(60, 10, [2, 3, 2]), [60, 10])])
+    const step = nextStep(h, pl, ex)!
+    expect(step).toMatchObject({ ready: true, lever: 60, steps: 2 })
+    expect(step.suggest).toEqual({ kind: 'lever', lever: 65 })
+    expect(step.hold).toBeUndefined()
+  })
+
+  it('O3 a full bar at RIR 0 throughout is not ready, holds, and has no suggestion', () => {
+    const h = history([withSets(0, rirSets(60, 10, [0, 0, 0]), [60, 10])])
+    const step = nextStep(h, pl, ex)!
+    expect(step).toMatchObject({ repsAtTop: 30, target: 30, lever: 60, ready: false, hold: true })
+    expect(step.suggest).toBeUndefined()
+    expect(step.steps).toBeUndefined()
+  })
+
+  it('O3 a full bar with no RIR is one step with neither steps nor hold', () => {
+    const h = history([withSets(0, rirSets(60, 10, [undefined, undefined, undefined]), [60, 10])])
+    const step = nextStep(h, pl, ex)!
+    expect(step.ready).toBe(true)
+    expect(step.suggest).toEqual({ kind: 'lever', lever: 62.5 })
+    expect(step.steps).toBeUndefined()
+    expect(step.hold).toBeUndefined()
+  })
+
+  it('O3 a bar that is not full carries no hold or steps whatever the RIRs', () => {
+    const h = history([withSets(0, rirSets(60, 9, [0, 0, 0]), [60, 9])])
+    const step = nextStep(h, pl, ex)!
+    expect(step).toMatchObject({ ready: false })
+    expect(step.hold).toBeUndefined()
+    expect(step.steps).toBeUndefined()
+    expect(step.suggest).toBeUndefined()
+  })
+
+  it('O3 a latest deload Session is skipped: the step reads the newest non-deload Session', () => {
+    const easy = withSets(0, rirSets(60, 10, [3, 3, 3]), [60, 10])
+    const deload = { ...withSets(1, rirSets(54, 10, [3, 3, 3]), [54, 10]), deload: true }
+    const step = nextStep(history([easy, deload]), pl, ex)!
+    expect(step).toMatchObject({ lever: 60, ready: true, steps: 2 })
+    expect(step.suggest).toEqual({ kind: 'lever', lever: 65 })
+  })
+
+  it('O3 a history of only deload Sessions has no next step', () => {
+    const d = { ...withSets(0, rirSets(54, 10, [3, 3, 3]), [54, 10]), deload: true }
+    expect(nextStep(history([d]), pl, ex)).toBeNull()
+  })
+
+  it('O3 a plain Bodyweight lift after an easy full bar still suggests one more set, never two', () => {
+    const h = history([withSets(0, rirSets(0, 15, [3, 3, 3]).map((s) => ({ ...s, weightKg: null })), [0, 15])], true)
+    const step = nextStep(h, plan(3, 10, 15), exercise({ bodyweight: true, weightStep: 1 }))!
+    expect(step.suggest).toEqual({ kind: 'set' })
+  })
+
+  it('O3 on the E18 fixture only Seated biceps curls is ready, suggesting 15 kg, with nothing held', () => {
+    const { histories } = analyse(fixtureSessions)
+    const steps = Object.keys(expectedLifts).map((id) => [id, nextStep(histories.get(id)!, planOf(id), resolve(id)!)!] as const)
+    expect(steps.filter(([, s]) => s.ready).map(([id]) => id)).toEqual(['seated-biceps-curls'])
+    expect(steps.filter(([, s]) => s.hold).map(([id]) => id)).toEqual([])
+    expect(steps.find(([id]) => id === 'seated-biceps-curls')![1].suggest).toEqual({ kind: 'lever', lever: 15 })
+  })
+})
