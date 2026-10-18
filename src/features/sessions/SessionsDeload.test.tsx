@@ -39,7 +39,7 @@ test('O21 a deload Session row carries a Deload label in words and a plain Sessi
       <SessionsScreen navigate={() => {}} onInSession={() => {}} now={() => NOW} />
     </ServicesProvider>,
   )
-  const rows = await screen.findAllByRole('button', { name: /Workout A/ }, SETTLE)
+  const rows = await screen.findAllByRole('button', { name: /Workout A.*sets/ }, SETTLE)
   expect(rows).toHaveLength(2)
   const [first, second] = rows
   expect(first).toHaveTextContent('Tue 13 Oct')
