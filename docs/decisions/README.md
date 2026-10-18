@@ -58,3 +58,4 @@ rewrite history.
 - [0019](0019-a-versioned-contract-and-a-layered-worker.md): a versioned contract in `src/contract/` checks both sides (no header means v1, outside v1..v2 is `426`), and the Worker is routes → handlers → services → repositories
 - [0020](0020-effort-aware-steps-and-planned-deloads.md): the next step reads Effort (2 steps, hold), "last time" skips deloads, and a deload is planned a week at a time (extends 0006)
 - [0021](0021-bodyweight-counts-in-volume.md): Bodyweight Sets count (bodyweight + Load) x reps in kg volume at the latest weigh-in, reps only before one (amends 0017)
+- [0022](0022-imports-append-and-sets-export-as-csv.md): imports of Strong/Hevy history append (duplicates skipped, nothing written before Import) and the sets export as a BOM-prefixed CSV that does not stamp `lastExportedAt`
