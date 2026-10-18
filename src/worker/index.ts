@@ -3,6 +3,7 @@ import { requireUser } from './auth'
 import type { Env } from './env'
 import { json } from './http'
 import { apiRoutes } from './routes'
+import { sendDueReminders } from './services/reminders'
 import { versionGate } from './version'
 
 export function createHandler(deps: { keys?: JWTVerifyGetKey } = {}): {
@@ -24,8 +25,8 @@ export function createHandler(deps: { keys?: JWTVerifyGetKey } = {}): {
       if (!route) return json({ error: 'not found' }, 404)
       return route(request, env, email)
     },
-    async scheduled() {
-      // stub: not implemented
+    async scheduled(controller, env) {
+      await sendDueReminders(env, controller.scheduledTime)
     },
   }
 }
