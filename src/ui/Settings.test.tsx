@@ -572,3 +572,68 @@ test('O9 unticking Track effort calls onTrackEffortChange with false', async () 
 
   expect(onTrackEffortChange).toHaveBeenCalledWith(false)
 })
+
+// --- E19-T3: Week starts on, Keep screen on during rest ---------------------------------------
+
+function renderWithWeekAndRest(over: {
+  weekStart?: number
+  onWeekStartChange?: (day: number) => void
+  keepScreenOnDuringRest?: boolean
+  onKeepScreenOnDuringRestChange?: (on: boolean) => void
+}) {
+  render(
+    <Settings
+      programs={programs}
+      activeProgramId="assaf-ab-2026"
+      onActiveProgramChange={vi.fn()}
+      equipmentTypes={equipmentTypes}
+      gymEquipment={null}
+      onGymEquipmentChange={vi.fn()}
+      {...over}
+    />,
+  )
+}
+
+test('O5 Week starts on offers the seven days and reads Monday when unset', () => {
+  renderWithWeekAndRest({})
+
+  const picker = screen.getByRole('combobox', { name: 'Week starts on' })
+  expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual([
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ])
+  expect(picker).toHaveValue('1')
+})
+
+test('O5 Week starts on shows the stored day and reports the chosen one as a number', async () => {
+  const user = userEvent.setup()
+  const onWeekStartChange = vi.fn()
+  renderWithWeekAndRest({ weekStart: 0, onWeekStartChange })
+
+  const picker = screen.getByRole('combobox', { name: 'Week starts on' })
+  expect(picker).toHaveValue('0')
+  await user.selectOptions(picker, 'Saturday')
+
+  expect(onWeekStartChange).toHaveBeenCalledWith(6)
+})
+
+test('O14 Keep screen on during rest is on when unset', () => {
+  renderWithWeekAndRest({})
+
+  expect(screen.getByRole('switch', { name: 'Keep screen on during rest' })).toBeChecked()
+})
+
+test('O14 turning Keep screen on during rest off reports false', async () => {
+  const user = userEvent.setup()
+  const onKeepScreenOnDuringRestChange = vi.fn()
+  renderWithWeekAndRest({ onKeepScreenOnDuringRestChange })
+
+  await user.click(screen.getByRole('switch', { name: 'Keep screen on during rest' }))
+
+  expect(onKeepScreenOnDuringRestChange).toHaveBeenCalledWith(false)
+})
