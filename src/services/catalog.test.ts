@@ -40,7 +40,11 @@ test('O5 load resolves both bundled programs, already validated against the cata
 
   const { bundledPrograms, catalog } = await service.load()
 
-  expect(bundledPrograms.map((p) => p.id).sort()).toEqual(['assaf-ab-2026', 'full-body-starter'])
+  expect(bundledPrograms.map((p) => p.id).sort()).toEqual([
+    'assaf-ab-2026',
+    'full-body-starter',
+    'upper-lower',
+  ])
   for (const program of bundledPrograms) {
     expect(() => assertPlansAreInCatalog(program, catalog)).not.toThrow()
   }

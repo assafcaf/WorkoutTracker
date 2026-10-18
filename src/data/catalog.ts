@@ -2,11 +2,13 @@ import type { Exercise, LibraryExercise, Program } from '../types'
 import exercisesJson from './exercises.json'
 import assafAb2026 from './programs/assaf-ab-2026.json'
 import fullBodyStarter from './programs/full-body-starter.json'
+import upperLower from './programs/upper-lower.json'
 
 // The bundled data files. JSON modules widen `repRange` to number[] and `units` to string, so
 // each is asserted back to its declared shape here, once, rather than at every call site.
 const seededExercises = exercisesJson as Exercise[]
 const bundledPrograms = [assafAb2026, fullBodyStarter] as unknown as Program[]
+bundledPrograms.push(upperLower as unknown as Program)
 
 /**
  * The exercise catalog, keyed by exercise id, read from `src/data/exercises.json`.

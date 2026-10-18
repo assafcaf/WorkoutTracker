@@ -66,10 +66,17 @@ describe('O1 mergePrograms', () => {
 
     const merged = mergePrograms(bundled, [created, edited])
 
-    expect(merged.map((p) => p.id)).toEqual(['assaf-ab-2026', 'full-body-starter', 'p-new'])
+    expect(merged.map((p) => p.id)).toEqual([
+      'assaf-ab-2026',
+      'full-body-starter',
+      'upper-lower',
+      'p-new',
+    ])
     expect(merged[0].name).toBe('Assaf A/B edited')
     expect(merged[1]).toEqual(bundled[1])
-    expect(merged[2].name).toBe('New program')
+    expect(merged[2]).toEqual(bundled[2])
+    expect(merged[2].name).toBe('Upper/Lower')
+    expect(merged[3].name).toBe('New program')
   })
 
   test('O1 user Programs follow the bundled ones ordered by createdAt, not stored order', () => {
@@ -83,6 +90,7 @@ describe('O1 mergePrograms', () => {
     expect(merged.map((p) => p.id)).toEqual([
       'assaf-ab-2026',
       'full-body-starter',
+      'upper-lower',
       'p-early',
       'p-middle',
       'p-late',
@@ -94,7 +102,7 @@ describe('O1 mergePrograms', () => {
 
     const merged = mergePrograms(bundled, [])
 
-    expect(merged.map((p) => p.id)).toEqual(['assaf-ab-2026', 'full-body-starter'])
+    expect(merged.map((p) => p.id)).toEqual(['assaf-ab-2026', 'full-body-starter', 'upper-lower'])
     expect(merged).toEqual(bundled)
   })
 
@@ -104,8 +112,9 @@ describe('O1 mergePrograms', () => {
 
     const merged = mergePrograms(bundled, [edited])
 
-    expect(merged.map((p) => p.id)).toEqual(['assaf-ab-2026', 'full-body-starter'])
+    expect(merged.map((p) => p.id)).toEqual(['assaf-ab-2026', 'full-body-starter', 'upper-lower'])
     expect(merged[1].name).toBe('Starter edited')
+    expect(merged[2].name).toBe('Upper/Lower')
   })
 })
 

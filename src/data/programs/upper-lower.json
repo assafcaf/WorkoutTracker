@@ -1,0 +1,31 @@
+{
+  "id": "upper-lower",
+  "name": "Upper/Lower",
+  "units": "kg",
+  "sessionsPerWeek": 4,
+  "workouts": [
+    {
+      "id": "upper",
+      "name": "Upper",
+      "exercises": [
+        { "exerciseId": "db-bench-press", "sets": 4, "repRange": [8, 10], "restSeconds": 90 },
+        { "exerciseId": "machine-row", "sets": 4, "repRange": [8, 10], "restSeconds": 90 },
+        { "exerciseId": "machine-shoulder-press", "sets": 3, "repRange": [8, 10], "restSeconds": 90 },
+        { "exerciseId": "narrow-grip-pull-down", "sets": 3, "repRange": [10, 12], "restSeconds": 90 },
+        { "exerciseId": "lateral-raises", "sets": 3, "repRange": [10, 15], "restSeconds": 90 },
+        { "exerciseId": "cable-push-down", "sets": 3, "repRange": [10, 12], "restSeconds": 90 },
+        { "exerciseId": "seated-biceps-curls", "sets": 3, "repRange": [10, 12], "restSeconds": 90 }
+      ]
+    },
+    {
+      "id": "lower",
+      "name": "Lower",
+      "exercises": [
+        { "exerciseId": "back-squat", "sets": 4, "repRange": [6, 8], "restSeconds": 180 },
+        { "exerciseId": "deadlift", "sets": 3, "repRange": [6, 8], "restSeconds": 180 },
+        { "exerciseId": "lunges", "sets": 3, "repRange": [10, 12], "restSeconds": 90 },
+        { "exerciseId": "hyper-extension", "sets": 3, "repRange": [10, 15], "restSeconds": 90 }
+      ]
+    }
+  ]
+}
