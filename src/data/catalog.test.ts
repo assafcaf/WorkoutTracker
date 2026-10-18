@@ -100,7 +100,7 @@ test('L2 loadCatalog carries no infoUrl on any catalog exercise any more', () =>
 test('O1 loadPrograms returns both bundled programs', () => {
   const programs = loadPrograms(fixtureCatalog())
 
-  expect(programs.map((p) => p.id).sort()).toEqual(['assaf-ab-2026', 'full-body-starter'])
+  expect(programs.map((p) => p.id).sort()).toEqual(['assaf-ab-2026', 'full-body-starter', 'upper-lower'])
   expect(programs.every((p) => p.units === 'kg')).toBe(true)
   expect(workoutOf(programs, 'full-body-starter', 'full-body').exercises.map((p) => p.exerciseId))
     .toContain('back-squat')
@@ -109,7 +109,7 @@ test('O1 loadPrograms returns both bundled programs', () => {
 test('O1 loadPrograms validates against the bundled catalog when none is passed', () => {
   const programs = loadPrograms()
 
-  expect(programs.map((p) => p.id).sort()).toEqual(['assaf-ab-2026', 'full-body-starter'])
+  expect(programs.map((p) => p.id).sort()).toEqual(['assaf-ab-2026', 'full-body-starter', 'upper-lower'])
 })
 
 test('O1 loadPrograms gives Workout A its seven plans in the prescribed order', () => {
@@ -237,4 +237,23 @@ test('O2 loadPrograms throws on an empty catalog instead of returning programs',
   expect(thrown).toBeInstanceOf(Error)
   expect((thrown as Error).message).toContain('assaf-ab-2026')
   expect((thrown as Error).message).toContain('back-squat')
+})
+
+test('O37 loadPrograms offers Upper/Lower with an Upper and a Lower Workout, four Sessions a week', () => {
+  const programs = loadPrograms(fixtureCatalog())
+
+  const upperLower = programs.find((p) => p.id === 'upper-lower')
+  expect(upperLower?.name).toBe('Upper/Lower')
+  expect(upperLower?.sessionsPerWeek).toBe(4)
+  expect(upperLower?.hidden).toBeUndefined()
+  expect(upperLower?.workouts.map((w) => w.name)).toEqual(['Upper', 'Lower'])
+  expect(visiblePrograms(programs).map((p) => p.id)).toEqual(['assaf-ab-2026', 'upper-lower'])
+})
+
+test('O37 every Upper/Lower plan names a catalog Exercise', () => {
+  const upperLower = loadPrograms().find((p) => p.id === 'upper-lower')
+
+  const ids = upperLower?.workouts.flatMap((w) => w.exercises.map((x) => x.exerciseId)) ?? []
+  expect(ids.length).toBeGreaterThan(0)
+  expect(ids.filter((id) => !seeded.some((e) => e.id === id))).toEqual([])
 })
