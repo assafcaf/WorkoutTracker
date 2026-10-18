@@ -183,3 +183,23 @@ test('S12 tapping "Show all equipment" lifts the equipment filter for this list 
   expect(screen.getByText('Machine Only Candidate')).toBeVisible()
   expect(screen.queryByText("No alternatives with your gym's equipment")).not.toBeInTheDocument()
 })
+
+test('O34 the search box forgives a typo and word order', async () => {
+  const { library, target } = await alternativesFixture()
+  const user = userEvent.setup()
+
+  render(
+    <AlternativesList
+      target={target}
+      library={library}
+      gymEquipment={null}
+      onChoose={vi.fn()}
+      onOpenDetail={vi.fn()}
+    />,
+  )
+
+  await user.type(screen.getByRole('searchbox', { name: /search/i }), 'hammer crosz body')
+
+  const rows = screen.getAllByRole('listitem')
+  expect(rows.map(rowName)).toContain('Cross Body Hammer Curl')
+})

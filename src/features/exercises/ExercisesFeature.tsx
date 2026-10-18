@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Muscle } from '../../types'
 import { MUSCLES } from '../../data/library'
+import { matchesQuery } from '../../domain/search'
 import { LibraryList } from '../../ui/LibraryList'
 import { Select } from '../../ui/controls'
 import { Icon } from '../../ui/icons'
@@ -63,10 +64,8 @@ export function ExercisesFeature({
     })
     .map((option) => option ?? 'none')
 
-  const trimmedSearch = search.trim().toLowerCase()
   const filteredLibrary = library.filter((exercise) => {
-    const matchesSearch =
-      trimmedSearch === '' || exercise.name.toLowerCase().includes(trimmedSearch)
+    const matchesSearch = matchesQuery(exercise.name, search)
     const matchesMuscle = muscle === '' || exercise.primaryMuscles.includes(muscle as Muscle)
     const matchesEquipment =
       equipment === ''
