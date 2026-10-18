@@ -1,4 +1,5 @@
 import type { BodyLog, CustomExercise, PlateInventory, Program, UserProgram, VolumeBaseline } from '../types'
+import { validateBodyLog } from '../domain/bodyLog'
 import { DEFAULT_PLATE_INVENTORY, validatePlateInventory } from '../domain/plates'
 import { db, type SettingRow } from './db'
 
@@ -230,14 +231,12 @@ export const BODY_LOG_KEY = 'bodyLog'
 
 /** The stored body log through `validateBodyLog`; `[]` when unset. */
 export async function getBodyLog(): Promise<BodyLog> {
-  throw new Error('NotImplementedError: getBodyLog')
+  return validateBodyLog((await db.settings.get(BODY_LOG_KEY))?.value)
 }
 
 /** Stores the whole `log` in the one `bodyLog` row. */
 export async function setBodyLog(log: BodyLog, now: number = Date.now()): Promise<void> {
-  void log
-  void now
-  throw new Error('NotImplementedError: setBodyLog')
+  await db.settings.put({ key: BODY_LOG_KEY, value: log, updatedAt: now })
 }
 
 /** The `settings` table key the first day of the week is kept under, an integer 0-6 (E19-T1). */

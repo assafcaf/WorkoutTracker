@@ -1,9 +1,12 @@
 import type { ServiceDeps } from './deps'
 import type { BodyEntry, BodyLog, PlateInventory, VolumeBaseline } from '../types'
 import { validatePlateInventory } from '../domain/plates'
-import { callStorage } from './errors'
+import { upsertBodyEntry, removeBodyEntry as dropBodyEntry, validateBodyEntry } from '../domain/bodyLog'
+import { callStorage, ServiceError } from './errors'
 import {
+  getBodyLog,
   getBodyweightOverrides,
+  setBodyLog,
   getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
@@ -127,14 +130,13 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
     keepScreenOnDuringRest: () =>
       callStorage(deps, getKeepScreenOnDuringRest, 'keepScreenOnDuringRest read failed'),
     setKeepScreenOnDuringRest: (on) => write(() => setKeepScreenOnDuringRest(on, deps.now())),
-    bodyLog: async () => {
-      throw new Error('NotImplementedError: bodyLog')
+    bodyLog: () => callStorage(deps, getBodyLog, 'bodyLog read failed'),
+    saveBodyEntry: async (entry) => {
+      const valid = validateBodyEntry(entry, deps.now())
+      if (!valid) throw new ServiceError('storage-failed', 'the body entry is not valid')
+      await write(async () => setBodyLog(upsertBodyEntry(await getBodyLog(), valid), deps.now()))
     },
-    saveBodyEntry: async () => {
-      throw new Error('NotImplementedError: saveBodyEntry')
-    },
-    removeBodyEntry: async () => {
-      throw new Error('NotImplementedError: removeBodyEntry')
-    },
+    removeBodyEntry: (day) =>
+      write(async () => setBodyLog(dropBodyEntry(await getBodyLog(), day), deps.now())),
   }
 }

@@ -9,6 +9,7 @@ import {
   EFFORT_TRACKING_KEY,
   GYM_EQUIPMENT_KEY,
   LAST_EXPORTED_AT_KEY,
+  BODY_LOG_KEY,
   PLATE_INVENTORY_KEY,
   USER_PROGRAMS_KEY,
   VOLUME_BASELINE_KEY,
@@ -37,6 +38,7 @@ export const SETTING_KEYS: readonly SettingKeyInfo[] = [
   { key: DELOAD_WEEK_KEY, synced: true, topic: 'preferences' },
   { key: KEEP_SCREEN_ON_KEY, synced: true, topic: 'preferences' },
   { key: CUSTOM_EXERCISES_KEY, synced: true, topic: 'preferences' },
+  { key: BODY_LOG_KEY, synced: true, topic: 'preferences' },
   // Device-local: each device remembers its own last export.
   { key: LAST_EXPORTED_AT_KEY, synced: false, topic: 'preferences' },
   // Sync's own bookkeeping (syncClient.ts): never pushed, and no topic changes with it.
