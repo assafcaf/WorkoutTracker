@@ -14,6 +14,7 @@ import { computeRecords } from '../../domain/stats/records'
 import { verdicts } from '../../domain/stats/verdict'
 import type { Verdict } from '../../domain/stats/verdict'
 import { weeksOf } from '../../domain/stats/weeks'
+import type { Weekday } from '../../domain/stats/weeks'
 import type { Services } from '../../services'
 import type { Exercise, ExercisePlan, LibraryExercise, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
@@ -31,6 +32,8 @@ export type ProgressData = {
   sessions: Session[]
   resolve: Resolve
   library: Map<string, LibraryExercise>
+  /** The weekday weeks begin on (E19-T1); 1 (Monday) when unread. */
+  weekStart: Weekday
 }
 
 export async function loadProgress(s: Services): Promise<ProgressData | null> {
@@ -53,7 +56,9 @@ export async function loadProgress(s: Services): Promise<ProgressData | null> {
   }
   const program = programs.find((p) => p.id === activeId) ?? visiblePrograms(programs)[0] ?? programs[0]
   if (!program) return null
-  return { program, sessions, resolve, library: libraryMap }
+  const stored = await s.preferences.weekStart().catch(() => 1)
+  const weekStart = (Number.isInteger(stored) && stored >= 0 && stored <= 6 ? stored : 1) as Weekday
+  return { program, sessions, resolve, library: libraryMap, weekStart }
 }
 
 /** Everything the Progress pages draw, worked out once from `ProgressData`. */
@@ -85,7 +90,7 @@ export function progressModel(data: ProgressData, now: number): ProgressModel {
   return {
     data,
     now,
-    copy: homeCopy(data.program, data.sessions, data.resolve, now),
+    copy: homeCopy(data.program, data.sessions, data.resolve, now, data.weekStart),
     plans,
     order: [...planOrder, ...[...histories.keys()].filter((id) => !plans.has(id))],
     histories,
@@ -128,7 +133,7 @@ function miniView(ladder: Ladder): LadderView {
 export function MiniLadder({ model, exerciseId }: { model: ProgressModel; exerciseId: string }): JSX.Element | null {
   const history = model.histories.get(exerciseId)
   if (!history) return null
-  const ladder = buildLadder(history, { sessions: model.data.sessions, program: model.data.program })
+  const ladder = buildLadder(history, { sessions: model.data.sessions, program: model.data.program }, model.data.weekStart)
   return (
     <div className="progress-mini">
       <LadderChart view={miniView(ladder)} title={model.nameOf(exerciseId)} variant="mini" />
@@ -199,10 +204,12 @@ function Card({ model, card, onOpen }: { model: ProgressModel; card: AttentionCa
 }
 
 function DayStrip({ model, onOpenSession }: { model: ProgressModel; onOpenSession(id: string): void }): JSX.Element {
-  const week = weeksOf(model.data.sessions, model.now).find((w) => w.inProgress)
+  const week = weeksOf(model.data.sessions, model.now, model.data.weekStart).find((w) => w.inProgress)
   const monday = week?.start ?? 0
-  const todayIndex = (new Date(model.now).getDay() + 6) % 7
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const first = model.data.weekStart
+  const todayIndex = (new Date(model.now).getDay() - first + 7) % 7
+  const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const days = names.map((_, i) => names[(first + i) % 7])
   const workoutName = (id: string) =>
     model.data.program.workouts.find((w) => w.id === id)?.name.replace(/^Workout\s+/i, '') ?? ''
   return (
@@ -240,7 +247,7 @@ function DayStrip({ model, onOpenSession }: { model: ProgressModel; onOpenSessio
 function musclesFinding(model: ProgressModel): { line: string; fewest: string } | null {
   const { data, now } = model
   const library = data.library
-  const avg = windowAverage(data.sessions, now, data.resolve, library)
+  const avg = windowAverage(data.sessions, now, data.resolve, library, undefined, data.weekStart)
   if (avg.size === 0) return null
   const planned = plannedPerWeek(data.program, data.resolve, library)
   const rows = [...planned.keys()]

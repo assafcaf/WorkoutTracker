@@ -11,6 +11,7 @@ import {
   thisWeekMuscles,
   windowAverage,
 } from '../../domain/stats/muscles'
+import type { Weekday } from '../../domain/stats/weeks'
 import type { Exercise, LibraryExercise, Muscle, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { BodyMap } from '../../ui/body/BodyMap'
@@ -27,6 +28,8 @@ export type MusclesData = {
   program: Program
   resolve: Resolve
   library: Map<string, LibraryExercise>
+  /** The weekday weeks begin on; Monday when omitted. */
+  weekStart?: Weekday
 }
 
 export type MusclesViewProps = { data: MusclesData; now: number; onBack: (() => void) | undefined }
@@ -70,12 +73,13 @@ type Model = {
 
 function build(data: MusclesData, now: number, span: Span): Model {
   const { sessions, program, resolve, library } = data
+  const weekStart = data.weekStart ?? 1
   const planned = plannedPerWeek(program, resolve, library)
-  const weeks = muscleWeeks(sessions, now, resolve, library)
+  const weeks = muscleWeeks(sessions, now, resolve, library, weekStart)
 
   if (span === 'this-week') {
     const current = weeks.find((w) => w.inProgress)
-    const owed = thisWeekMuscles(sessions, program, now, resolve, library)
+    const owed = thisWeekMuscles(sessions, program, now, resolve, library, weekStart)
     const rows = STATS_MUSCLES.map((muscle): Row => {
       const value = owed.get(muscle)
       const done = value?.done ?? 0
@@ -93,7 +97,7 @@ function build(data: MusclesData, now: number, span: Span): Model {
   }
 
   const complete = weeks.filter((w) => !w.inProgress).slice(-2)
-  const average = windowAverage(sessions, now, resolve, library)
+  const average = windowAverage(sessions, now, resolve, library, undefined, weekStart)
   const rows = STATS_MUSCLES.map(
     (muscle): Row => ({
       muscle,
@@ -280,7 +284,9 @@ async function load(s: Services): Promise<{ data: MusclesData | null }> {
   const sessions = await s.sessions.list().catch((): Session[] => [])
   const { programs, activeProgramId } = await s.programs.load()
   const program = programs.find((p) => p.id === activeProgramId)
-  return { data: program ? { sessions, program, resolve, library: libraryMap } : null }
+  const stored = await s.preferences.weekStart().catch(() => 1)
+  const weekStart = (Number.isInteger(stored) && stored >= 0 && stored <= 6 ? stored : 1) as Weekday
+  return { data: program ? { sessions, program, resolve, library: libraryMap, weekStart } : null }
 }
 
 /** The Progress tab's Muscles page: loads the Sessions and the active Program, then draws them. */

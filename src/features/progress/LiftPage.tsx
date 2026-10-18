@@ -10,6 +10,7 @@ import type { LiftHistory, LiftPoint } from '../../domain/stats/liftHistory'
 import { computeRecords, liftBests } from '../../domain/stats/records'
 import type { BestRow, SessionRecord } from '../../domain/stats/records'
 import { sessionMoves } from '../../domain/stats/moves'
+import type { Weekday } from '../../domain/stats/weeks'
 import { nextStep, verdictOf } from '../../domain/stats/verdict'
 import type { Verdict } from '../../domain/stats/verdict'
 import type { ExercisePlan, Program, Session, SetEntry } from '../../types'
@@ -28,6 +29,8 @@ export type LiftPageViewProps = {
   program: Program | undefined
   resolve: Resolve
   now: number
+  /** The weekday weeks begin on; Monday when omitted. */
+  weekStart?: Weekday
   /** Opens a Session's summary (the ladder readout, `Last moved ›`). */
   onOpenSession?: (sessionId: string) => void
 }
@@ -111,9 +114,10 @@ function ladderView(
   program: Program | undefined,
   range: LadderRange,
   now: number,
+  weekStart: Weekday = 1,
 ): LadderView {
-  const full = buildLadder(history, { sessions, program })
-  const cut = cutLadder(full, range, now)
+  const full = buildLadder(history, { sessions, program }, weekStart)
+  const cut = cutLadder(full, range, now, weekStart)
   const bw = history.bodyweight
   const byId = new Map(history.points.map((p) => [p.sessionId, p]))
   const sessionById = new Map(sessions.map((s) => [s.id, s]))
@@ -195,7 +199,7 @@ function gainText(record: SessionRecord): string {
  * not counted; a stalled lift adds its bracket and `Last moved ›`, and `4 weeks ago` draws a
  * reference tick. Every sentence comes from src/domain/stats.
  */
-export function LiftPageView({ exerciseId, sessions, program, resolve, now, onOpenSession }: LiftPageViewProps): JSX.Element {
+export function LiftPageView({ exerciseId, sessions, program, resolve, now, weekStart, onOpenSession }: LiftPageViewProps): JSX.Element {
   const [range, setRange] = useState<LadderRange>('step')
   const [compare, setCompare] = useState(false)
 
@@ -219,7 +223,7 @@ export function LiftPageView({ exerciseId, sessions, program, resolve, now, onOp
   const latest = [...history.points].reverse().find((p) => p.top !== null)
   const bests = liftBests(history)
   const cmp = compareAgo(history, now)
-  const view = ladderView(history, records, live, program, range, now)
+  const view = ladderView(history, records, live, program, range, now, weekStart)
 
   const stallTo = history.points[history.points.length - 1].startedAt
   const lastMoved =
@@ -346,6 +350,7 @@ export function LiftPage({ page, onBack, navigate, now = Date.now }: LiftPagePro
   const sessionsData = useServiceData((services) => services.sessions.list(), ['sessions'])
   const programsData = useServiceData((services) => services.programs.load(), ['programs'])
   const catalogData = useServiceData((services) => services.catalog.load(), [])
+  const weekStartData = useServiceData((services) => services.preferences.weekStart().catch(() => 1), ['preferences'])
   const overridesData = useServiceData(
     (services) => services.preferences.bodyweightOverrides().catch((): Record<string, boolean> => ({})),
     ['preferences'],
@@ -370,6 +375,7 @@ export function LiftPage({ page, onBack, navigate, now = Date.now }: LiftPagePro
         program={programs.find((p) => p.id === activeProgramId)}
         resolve={resolve}
         now={now()}
+        weekStart={weekStartData.status === 'ready' && weekStartData.data >= 0 && weekStartData.data <= 6 ? (weekStartData.data as Weekday) : 1}
         onOpenSession={navigate ? (sessionId) => navigate({ tab: 'history', sessionId }) : undefined}
       />
     )
