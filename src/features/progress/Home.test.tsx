@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import sessionsJson from '../../test/fixtures/stats/sessions.json'
 import { createServices } from '../../services'
 import { db } from '../../storage/db'
-import { setActiveProgramId } from '../../storage/settingsStore'
+import { setActiveProgramId, setWeekStart } from '../../storage/settingsStore'
 import type { Session } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
 import { Home } from './Home'
@@ -105,5 +105,33 @@ describe('E18-T10 O20 the sparse states', () => {
     await waitFor(() => expect(screen.getByText('Too early to call')).toBeTruthy(), SETTLE)
     expect(screen.queryByText(/lifts moving/)).toBeNull()
     expect(screen.queryByText(/Why\?/)).toBeNull()
+  })
+})
+
+describe('E19-T4 O6 the day strip follows the stored week start', () => {
+  test('O6 with Sunday stored the strip runs Sun to Sat and marks Thursday as today', async () => {
+    await setWeekStart(0, NOW)
+    await mount(fixture)
+    const tile = await waitFor(() => screen.getByRole('region', { name: 'This week' }), SETTLE)
+    const days = within(tile).getAllByRole('listitem')
+    expect(days.map((d) => d.querySelector('.progress-day-name')?.textContent)).toEqual([
+      'Sun',
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+    ])
+    expect(days[0].querySelector('.progress-day-date')?.textContent).toBe('11')
+    expect(days.map((d) => d.classList.contains('progress-day-today'))).toEqual([false, false, false, false, true, false, false])
+  })
+
+  test('O6 with nothing stored the strip still runs Mon to Sun', async () => {
+    await mount(fixture)
+    const tile = await waitFor(() => screen.getByRole('region', { name: 'This week' }), SETTLE)
+    const days = within(tile).getAllByRole('listitem')
+    expect(days[0].querySelector('.progress-day-name')?.textContent).toBe('Mon')
+    expect(days[3].classList.contains('progress-day-today')).toBe(true)
   })
 })
