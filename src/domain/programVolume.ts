@@ -139,12 +139,33 @@ export type PlannedContributor = { exerciseId: string; sets: number }
  * those muscles (`prescribedWeekly`'s rule), merged across Workouts, largest first.
  */
 export function plannedContributors(
-  _program: Program,
-  _muscles: readonly Muscle[],
-  _catalog: Map<string, Exercise>,
-  _library: Map<string, LibraryExercise>,
+  program: Program,
+  muscles: readonly Muscle[],
+  catalog: Map<string, Exercise>,
+  library: Map<string, LibraryExercise>,
 ): PlannedContributor[] {
-  throw new Error('NotImplementedError')
+  const weight = program.sessionsPerWeek / program.workouts.length
+  const wanted = new Set<Muscle>(muscles)
+  const byExercise = new Map<string, number>()
+
+  for (const workout of program.workouts) {
+    for (const plan of workout.exercises) {
+      const exercise = catalog.get(plan.exerciseId)
+      if (!exercise) continue
+      const libraryExercise = library.get(exercise.libraryId)
+      if (!libraryExercise) continue
+
+      let share = 0
+      for (const muscle of libraryExercise.primaryMuscles) if (wanted.has(muscle)) share += 1
+      for (const muscle of libraryExercise.secondaryMuscles) if (wanted.has(muscle)) share += 0.5
+      if (share === 0) continue
+      byExercise.set(plan.exerciseId, (byExercise.get(plan.exerciseId) ?? 0) + plan.sets * weight * share)
+    }
+  }
+
+  return [...byExercise]
+    .map(([exerciseId, sets]) => ({ exerciseId, sets }))
+    .sort((a, b) => b.sets - a.sets || (a.exerciseId < b.exerciseId ? -1 : a.exerciseId > b.exerciseId ? 1 : 0))
 }
 
 function finite(value: number): number {
