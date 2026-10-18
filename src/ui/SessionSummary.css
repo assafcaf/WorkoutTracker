@@ -277,3 +277,14 @@
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
 }
+
+/* Save changes to program: the inline offer under Worked today (E19-T15). */
+.session-summary-save-list {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.session-summary-save-actions {
+  display: flex;
+  gap: var(--space-3);
+}

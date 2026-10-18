@@ -15,6 +15,7 @@ import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
 import { latestSet, restLengthOf } from '../../domain/rest'
 import { countsTowardStats } from '../../domain/setKind'
+import { applySessionChanges } from '../../domain/sessionChanges'
 import { ServiceError } from '../../services'
 import type {
   Exercise,
@@ -1074,6 +1075,20 @@ export function WorkoutFeature({
               ?.exercises.find((plan) => plan.exerciseId === exerciseId)
             ?? summarySession.added?.find((plan) => plan.exerciseId === exerciseId)
           }
+          workout={programs
+            .find((program) => program.id === summarySession.programId)
+            ?.workouts.find((workout) => workout.id === summarySession.workoutId)}
+          onSaveChanges={async (changes) => {
+            // The user's copy of the Program; a bundled Program becomes one on first save.
+            const { programs: current, userPrograms } = await services.programs.load()
+            const program = current.find((candidate) => candidate.id === summarySession.programId)
+            if (program === undefined) throw new Error('The Program is gone')
+            const stored = userPrograms.find((candidate) => candidate.id === program.id)
+            await services.programs.save({
+              ...applySessionChanges(program, summarySession.workoutId, changes),
+              createdAt: stored?.createdAt ?? Date.now(),
+            })
+          }}
           onClose={() => setSummarySession(null)}
           onBrowse={(muscles) => {
             setSummarySession(null)

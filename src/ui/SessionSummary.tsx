@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { band } from '../domain/band'
 import { formatDay } from '../domain/dates'
 import { contributors, muscleSets, toRegionCounts } from '../domain/muscles'
+import { sessionChanges } from '../domain/sessionChanges'
 import { heatRowsFor } from '../domain/sessionsView'
 import { sessionVolume } from '../domain/volume'
 import { countsTowardStats, workingSets } from '../domain/setKind'
@@ -12,7 +13,8 @@ import { STATS_MUSCLES } from '../domain/stats/muscles'
 import { computeRecords, recordCount } from '../domain/stats/records'
 import type { SessionRecord } from '../domain/stats/records'
 import type { Region, Resolve } from '../domain/muscles'
-import type { ExercisePlan, LibraryExercise, Muscle, Program, Session } from '../types'
+import type { SessionChange } from '../domain/sessionChanges'
+import type { ExercisePlan, LibraryExercise, Muscle, Program, Session, Workout } from '../types'
 import { Switch } from './controls'
 import { Icon } from './icons'
 import { HeatCell, HeatLegend, RegionHeatList } from './RegionHeat'
@@ -41,6 +43,10 @@ export type SessionSummaryProps = {
   onDeloadChange?(on: boolean): void
   /** The weekday the week starts on, 0 = Sunday ... 6 = Saturday; Monday by default (E19-T5). */
   weekStartsOn?: Weekday
+  /** The Workout the Session ran: its changes are offered for saving when `onSaveChanges` is given (E19-T15). */
+  workout?: Workout
+  /** Save the listed changes to the Program; omitted means no offer. */
+  onSaveChanges?(changes: SessionChange[]): void | Promise<void>
 }
 
 /** The duration KPI's value and unit: `52` `min`, or `1 h 05` `min` from an hour up. */
@@ -113,9 +119,13 @@ export function SessionSummary({
   program,
   onDeloadChange,
   weekStartsOn = 1,
+  workout,
+  onSaveChanges,
 }: SessionSummaryProps): JSX.Element {
   const [openRegion, setOpenRegion] = useState<Region | null>(null)
   const [deload, setDeload] = useState(session.deload === true)
+  const [offerOpen, setOfferOpen] = useState(true)
+  const changes = workout && onSaveChanges ? sessionChanges(session, workout) : []
   const counts = toRegionCounts(muscleSets(session.entries, resolve, library))
   const muscles = muscleSets(session.entries, resolve, library)
   const all = [...earlierSessions.filter((other) => other.id !== session.id), session]
@@ -129,6 +139,18 @@ export function SessionSummary({
   const warmups = session.entries.filter((entry) => !countsTowardStats(entry)).length
   const [durationValue, durationUnit] = durationParts((session.finishedAt ?? session.startedAt) - session.startedAt)
   const bodyweightReps = sessionVolume(session, resolve).bodyweightReps
+
+  async function saveChanges(): Promise<void> {
+    setOfferOpen(false)
+    await onSaveChanges?.(changes)
+  }
+
+  function changeLine(change: SessionChange): string {
+    const name = (id: string): string => resolve(id)?.name ?? id
+    if (change.kind === 'swap') return `${name(change.from)} swapped for ${name(change.to)}`
+    if (change.kind === 'add') return `${name(change.plan.exerciseId)} added, ${plural(change.plan.sets, 'set', 'sets')}`
+    return `${name(change.exerciseId)}: ${change.from} to ${change.to} sets`
+  }
 
   function toggleDeload(on: boolean): void {
     setDeload(on)
@@ -268,6 +290,25 @@ export function SessionSummary({
           <RegionHeatList rows={heatRowsFor([counts])} counts={counts} scale="session" onRegionTap={setOpenRegion} />
           <HeatLegend scale="session" />
         </section>
+
+        {offerOpen && changes.length > 0 ? (
+          <section className="session-summary-save card" aria-label="Save changes to program">
+            <h3 className="session-summary-caption">Save changes to program</h3>
+            <ul className="session-summary-save-list">
+              {changes.map((change) => (
+                <li key={changeLine(change)}>{changeLine(change)}</li>
+              ))}
+            </ul>
+            <div className="session-summary-save-actions">
+              <button type="button" className="btn-primary" onClick={() => void saveChanges()}>
+                Save
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setOfferOpen(false)}>
+                Not now
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <div className="session-summary-deload">
           <Switch label="Deload session" checked={deload} onChange={toggleDeload} />
