@@ -1,0 +1,67 @@
+/* The Session's "Add exercise" picker (E19-T13): heading and close, a search box, one row per
+ * Exercise. Every colour comes through a `var(--...)` from src/styles/tokens.css.
+ */
+
+.exercise-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+}
+
+.exercise-picker-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg);
+}
+
+.exercise-picker-heading {
+  margin: 0;
+  font-size: var(--text-xl);
+  color: var(--color-text);
+}
+
+.exercise-picker-close {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.exercise-picker-search {
+  min-height: var(--tap-min);
+  margin: 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.exercise-picker-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-4) var(--space-4);
+  margin: 0;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.exercise-picker-pick {
+  width: 100%;
+  min-height: var(--tap-min);
+  text-align: left;
+}
+
+/* The Add exercise row at the end of the Session's list (ExerciseList). */
+.exercise-add {
+  min-height: var(--tap-min);
+  align-self: flex-start;
+}

@@ -68,6 +68,8 @@ export type ExerciseListProps = {
   currentId?: string | null
   /** A done cell tapped: opens that logged Set to edit. Absent, it opens the next Set instead. */
   onOpenLogged?(exerciseId: string, setIndex: number): void
+  /** Opens the Add exercise picker (E19-T13); no control is shown when absent. */
+  onAddExercise?(): void
 }
 
 const KIND_LETTERS: Record<SetKind, string> = { warmup: 'W', drop: 'D', failure: 'F', amrap: 'A' }
@@ -329,6 +331,11 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         )
       })}
     </ul>
+    {props.onAddExercise === undefined ? null : (
+      <button type="button" className="exercise-add btn-quiet" onClick={props.onAddExercise}>
+        Add exercise
+      </button>
+    )}
     {note === undefined || note === '' ? null : <p className="exercise-note">{note}</p>}
     {onSaveNote === undefined ? null : editingNote ? (
       <div className="exercise-note-editor">
