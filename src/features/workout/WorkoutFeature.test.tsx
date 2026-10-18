@@ -664,6 +664,10 @@ test('O11 Finish exercise opens the next Exercise on Set 1 of its plan', async (
 
   await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
 
+  // E19 O8: Finish exercise lands on the All list, Lunges' Set 1 marked next; the user opens it.
+  await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)
+  expect(screen.queryByText('Set 1 of 3')).toBeNull()
+  await user.click(await screen.findByRole('button', { name: /^Set 1 · .* · next$/ }))
   expect(await screen.findByText('Set 1 of 3', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('heading', { name: 'Lunges' })).toBeVisible()
 })
@@ -674,6 +678,8 @@ test('O11 after Finish exercise the next set screen still counts the rest from t
   await openExercise(user, 'Back squat')
 
   await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
+  await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)
+  await user.click(await screen.findByRole('button', { name: /^Set 1 · .* · next$/ }))
 
   // Back squat's 180 s from T0, 100 s gone.
   await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
@@ -693,6 +699,9 @@ test('O11 Finish exercise skips a next Exercise whose Sets are all logged', asyn
   expect(await screen.findByText('Up next: DB bench press', undefined, SETTLE)).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Finish exercise' }))
 
+  // E19 O8: the All list, with the skipped Exercise's successor marked next.
+  await screen.findByRole('button', { name: /^DB bench press/ }, SETTLE)
+  await user.click(await screen.findByRole('button', { name: /^Set 1 · .* · next$/ }))
   expect(await screen.findByText('Set 1 of 4', undefined, SETTLE)).toBeVisible()
 })
 
