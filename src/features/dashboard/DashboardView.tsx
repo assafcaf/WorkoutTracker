@@ -1,5 +1,6 @@
 import { useContext, useState, type ReactNode } from 'react'
 import { SettingsButton, ShellChromeContext } from '../../ui/AppShell'
+import { Switch } from '../../ui/controls'
 import { Icon } from '../../ui/icons'
 import './DashboardScreen.css'
 import type { TrainCard } from './trainCard'
@@ -40,6 +41,8 @@ export type DashboardData =
        * order (the due one among them). Omitted or one long: the dock offers the due one only.
        */
       workouts?: DockWorkout[]
+      /** The Deload week switch; omitted draws none. */
+      deloadWeek?: { on: boolean; onChange(on: boolean): void }
     }
 
 /** A workout the dock offers to start: its name, when it was last done and its size. */
@@ -96,6 +99,7 @@ function DueCard({ card }: { card: TrainCard }): JSX.Element {
         </div>
       </div>
       <p className="dashboard-step-estimate">{`~${card.minutes} min · ${note}`}</p>
+      {card.deload ? <p className="dashboard-step-deload">Deload week · Presets 10% lighter</p> : null}
       {ready.length > 0 ? (
         <p className="dashboard-step-summary">
           <Icon name="ArrowUp" size={16} />
@@ -120,7 +124,12 @@ function DueCard({ card }: { card: TrainCard }): JSX.Element {
                 <span className="dashboard-step-name">{lift.name}</span>
                 {lift.step ? (
                   <span className="dashboard-step-text">
-                    {lift.step.suggest ? (
+                    {lift.step.hold ? (
+                      <>
+                        <span className="dashboard-step-count">{`${lift.step.reps} of ${lift.step.target}`}</span>
+                        <span className="dashboard-step-at">{`stay at ${lift.step.at}`}</span>
+                      </>
+                    ) : lift.step.suggest ? (
                       <span className="dashboard-step-ready">{`${lift.step.reps} of ${lift.step.target} → ${lift.step.suggest}`}</span>
                     ) : (
                       <>
@@ -309,7 +318,16 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     )
   } else if (data.kind === 'ready') {
     const { due } = data
-    body = data.card ? <DueCard card={data.card} /> : null
+    body = (
+      <>
+        {data.deloadWeek ? (
+          <div className="dashboard-deload-week">
+            <Switch label="Deload week" checked={data.deloadWeek.on} onChange={data.deloadWeek.onChange} />
+          </div>
+        ) : null}
+        {data.card ? <DueCard card={data.card} /> : null}
+      </>
+    )
     if (!dock && due) {
       dock = <StartDock key={due.workoutId} due={due} workouts={data.workouts ?? [due]} onStart={props.onStartWorkout} />
     }
