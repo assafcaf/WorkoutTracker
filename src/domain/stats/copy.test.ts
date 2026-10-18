@@ -220,3 +220,13 @@ describe('E18-T7 O11 the sparse homes', () => {
     expect(text).not.toContain('slipping')
   })
 })
+
+describe('E19 O4 the home follows the week start', () => {
+  it('E19 O4 with Wednesday the adherence on Thu 15 Oct is 1 of 3 this week', () => {
+    expect(homeCopy(program, fixtureSessions, resolve, NOW, 3).adherence).toBe('1 of 3 this week')
+  })
+
+  it('E19 O4 without a week start it is still 2 of 3 this week', () => {
+    expect(homeCopy(program, fixtureSessions, resolve, NOW).adherence).toBe('2 of 3 this week')
+  })
+})

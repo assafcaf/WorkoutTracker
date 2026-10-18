@@ -3,6 +3,7 @@
 import type { Program, Session } from '../../types'
 import { leverOf, straightSets, type LiftHistory, type LiftPoint } from './liftHistory'
 import { weekStart } from './weeks'
+import type { Weekday } from './weeks'
 
 export type LadderPoint = {
   sessionId: string
@@ -69,7 +70,7 @@ function nextWeek(start: number): number {
 }
 
 /** Treads, off-tread deload points, labelled gaps and rep bars with target for one lift. */
-export function buildLadder(history: LiftHistory, ctx: LadderContext): Ladder {
+export function buildLadder(history: LiftHistory, ctx: LadderContext, weekStartsOn: Weekday = 1): Ladder {
   const found = planFor(ctx.program, history.exerciseId)
   const points: LadderPoint[] = []
   const treads: Tread[] = []
@@ -93,13 +94,13 @@ export function buildLadder(history: LiftHistory, ctx: LadderContext): Ladder {
 
   const gaps: LadderGap[] = []
   if (points.length > 0) {
-    const have = new Set(points.map((p) => weekStart(p.startedAt)))
+    const have = new Set(points.map((p) => weekStart(p.startedAt, weekStartsOn)))
     const anyDone = new Set(
-      ctx.sessions.filter((s) => s.deletedAt === undefined).map((s) => weekStart(s.startedAt)),
+      ctx.sessions.filter((s) => s.deletedAt === undefined).map((s) => weekStart(s.startedAt, weekStartsOn)),
     )
     const name = found?.workout.name.replace(/^Workout\s+/i, '')
-    const end = weekStart(points[points.length - 1].startedAt)
-    for (let w = weekStart(points[0].startedAt); w <= end; w = nextWeek(w)) {
+    const end = weekStart(points[points.length - 1].startedAt, weekStartsOn)
+    for (let w = weekStart(points[0].startedAt, weekStartsOn); w <= end; w = nextWeek(w)) {
       if (have.has(w)) continue
       gaps.push({ weekStart: w, label: anyDone.has(w) && name ? `No ${name} session` : 'No sessions' })
     }
@@ -108,7 +109,7 @@ export function buildLadder(history: LiftHistory, ctx: LadderContext): Ladder {
 }
 
 /** Cuts a ladder to a range: Step (current tread and two before) or by date. Pure. */
-export function cutLadder(ladder: Ladder, range: LadderRange, now: number): Ladder {
+export function cutLadder(ladder: Ladder, range: LadderRange, now: number, weekStartsOn: Weekday = 1): Ladder {
   if (range === '1Y' || range === 'all') return ladder
   let from: number
   if (range === 'step') {
@@ -126,7 +127,7 @@ export function cutLadder(ladder: Ladder, range: LadderRange, now: number): Ladd
   const treads = ladder.treads
     .map((t) => ({ ...t, sessionIds: t.sessionIds.filter((id) => ids.has(id)) }))
     .filter((t) => t.sessionIds.length > 0)
-  const gapFrom = weekStart(from)
+  const gapFrom = weekStart(from, weekStartsOn)
   return { ...ladder, points, treads, gaps: ladder.gaps.filter((g) => g.weekStart >= gapFrom) }
 }
 

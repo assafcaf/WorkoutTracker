@@ -241,3 +241,36 @@ describe('timeAgo', () => {
     expect(timeAgo(NOW - 2 * DAY, NOW)).toBe('2 d ago')
   })
 })
+
+describe('E19 O4 Saturday-start weeks (now is Mon 19 Oct 2026)', () => {
+  const MON19 = new Date(2026, 9, 19, 17, 58).getTime()
+
+  test('startOfWeek with Saturday is Saturday 00:00, without it the Monday', () => {
+    expect(startOfWeek(MON19, 6)).toBe(new Date(2026, 9, 17).getTime())
+    expect(startOfWeek(new Date(2026, 9, 16, 23).getTime(), 6)).toBe(new Date(2026, 9, 10).getTime())
+    expect(startOfWeek(MON19)).toBe(new Date(2026, 9, 19).getTime())
+  })
+
+  test('weekVsLast with Saturday counts Sat 17 Oct this week and Fri 16 Oct last week', () => {
+    const sessions = [
+      session('sat', 'a', at(9, 17), [set('squat', 60, 10, at(9, 17))]),
+      session('fri', 'b', at(9, 16), [set('deadlift', 100, 10, at(9, 16)), set('deadlift', 100, 8, at(9, 16), 1)]),
+    ]
+    const { thisWeek, lastWeek } = weekVsLast(sessions, MON19, resolve, 6)
+    expect(thisWeek).toEqual({ sessions: 1, sets: 1, volumeKg: 600 })
+    expect(lastWeek).toEqual({ sessions: 1, sets: 2, volumeKg: 1800 })
+    expect(weekVsLast(sessions, MON19, resolve).thisWeek.sessions).toBe(0)
+  })
+
+  test('muscleWeek with Saturday counts Sets logged since Sat 17 Oct, not those of Fri 16 Oct', () => {
+    const sessions = [
+      session('sat', 'a', at(9, 17), [set('squat', 60, 10, at(9, 17)), set('squat', 60, 10, at(9, 17), 1)]),
+      session('fri', 'a', at(9, 16), [set('squat', 60, 10, at(9, 16))]),
+    ]
+    const row = (rows: { muscle: string }[], m: string) => rows.find((r) => r.muscle === m)
+    const saturday = muscleWeek(sessions, MON19, PROGRAM, resolve, LIBRARY, 6).rows
+    expect(row(saturday, 'quadriceps')).toEqual({ muscle: 'quadriceps', done: 2, planned: 3 })
+    const monday = muscleWeek(sessions, MON19, PROGRAM, resolve, LIBRARY).rows
+    expect(row(monday, 'quadriceps')).toEqual({ muscle: 'quadriceps', done: 0, planned: 3 })
+  })
+})

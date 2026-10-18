@@ -9,11 +9,14 @@ export type Week = {
   inProgress: boolean
 }
 
-/** Monday 00:00 local of the calendar week `ms` falls in. */
-export function weekStart(ms: number): number {
+/** 0 = Sunday ... 6 = Saturday, as `Date.getDay()`. */
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
+
+/** Local midnight of the latest `weekStartsOn` weekday on or before `ms` (DST-safe). */
+export function weekStart(ms: number, weekStartsOn: Weekday = 1): number {
   const d = new Date(ms)
-  const sinceMonday = (d.getDay() + 6) % 7
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - sinceMonday).getTime()
+  const since = (d.getDay() - weekStartsOn + 7) % 7
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - since).getTime()
 }
 
 /** The Monday 00:00 local that follows the week starting at `start` (DST-safe). */
@@ -26,11 +29,11 @@ function nextWeek(start: number): number {
  * Every calendar week from the first Session's week to `now`'s week, empty weeks included,
  * oldest first. No Sessions: an empty list. A deleted Session (`deletedAt`) is ignored.
  */
-export function weeksOf(sessions: Session[], now: number): Week[] {
+export function weeksOf(sessions: Session[], now: number, weekStartsOn: Weekday = 1): Week[] {
   const live = sessions.filter((s) => s.deletedAt === undefined)
   if (live.length === 0) return []
-  const current = weekStart(now)
-  const first = Math.min(weekStart(Math.min(...live.map((s) => s.startedAt))), current)
+  const current = weekStart(now, weekStartsOn)
+  const first = Math.min(weekStart(Math.min(...live.map((s) => s.startedAt)), weekStartsOn), current)
   const weeks: Week[] = []
   const byStart = new Map<number, Week>()
   for (let start = first; start <= current; start = nextWeek(start)) {
@@ -39,7 +42,7 @@ export function weeksOf(sessions: Session[], now: number): Week[] {
     byStart.set(start, week)
   }
   for (const s of [...live].sort((a, b) => a.startedAt - b.startedAt)) {
-    byStart.get(weekStart(s.startedAt))?.sessions.push(s)
+    byStart.get(weekStart(s.startedAt, weekStartsOn))?.sessions.push(s)
   }
   return weeks
 }
@@ -50,8 +53,9 @@ export function adherence(
   now: number,
   sessionsPerWeek: number,
   fullWeeks: number,
+  weekStartsOn: Weekday = 1,
 ): { done: number; planned: number } {
-  const complete = weeksOf(sessions, now).filter((w) => !w.inProgress)
+  const complete = weeksOf(sessions, now, weekStartsOn).filter((w) => !w.inProgress)
   const last = fullWeeks > 0 ? complete.slice(-fullWeeks) : []
   return {
     done: last.reduce((sum, w) => sum + w.sessions.length, 0),
@@ -64,7 +68,8 @@ export function thisWeek(
   sessions: Session[],
   now: number,
   sessionsPerWeek: number,
+  weekStartsOn: Weekday = 1,
 ): { done: number; planned: number } {
-  const current = weeksOf(sessions, now).find((w) => w.inProgress)
+  const current = weeksOf(sessions, now, weekStartsOn).find((w) => w.inProgress)
   return { done: current?.sessions.length ?? 0, planned: sessionsPerWeek }
 }
