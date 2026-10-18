@@ -3,6 +3,7 @@
 import type { Program, Session } from '../../types'
 import { leverOf, straightSets, type LiftHistory, type LiftPoint } from './liftHistory'
 import { weekStart } from './weeks'
+import type { Weekday } from './weeks'
 
 export type LadderPoint = {
   sessionId: string
@@ -69,7 +70,7 @@ function nextWeek(start: number): number {
 }
 
 /** Treads, off-tread deload points, labelled gaps and rep bars with target for one lift. */
-export function buildLadder(history: LiftHistory, ctx: LadderContext): Ladder {
+export function buildLadder(history: LiftHistory, ctx: LadderContext, _weekStartsOn: Weekday = 1): Ladder {
   const found = planFor(ctx.program, history.exerciseId)
   const points: LadderPoint[] = []
   const treads: Tread[] = []
@@ -108,7 +109,7 @@ export function buildLadder(history: LiftHistory, ctx: LadderContext): Ladder {
 }
 
 /** Cuts a ladder to a range: Step (current tread and two before) or by date. Pure. */
-export function cutLadder(ladder: Ladder, range: LadderRange, now: number): Ladder {
+export function cutLadder(ladder: Ladder, range: LadderRange, now: number, _weekStartsOn: Weekday = 1): Ladder {
   if (range === '1Y' || range === 'all') return ladder
   let from: number
   if (range === 'step') {

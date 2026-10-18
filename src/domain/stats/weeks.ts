@@ -9,8 +9,11 @@ export type Week = {
   inProgress: boolean
 }
 
+/** 0 = Sunday ... 6 = Saturday, as `Date.getDay()`. */
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
+
 /** Monday 00:00 local of the calendar week `ms` falls in. */
-export function weekStart(ms: number): number {
+export function weekStart(ms: number, _weekStartsOn: Weekday = 1): number {
   const d = new Date(ms)
   const sinceMonday = (d.getDay() + 6) % 7
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - sinceMonday).getTime()
@@ -26,7 +29,7 @@ function nextWeek(start: number): number {
  * Every calendar week from the first Session's week to `now`'s week, empty weeks included,
  * oldest first. No Sessions: an empty list. A deleted Session (`deletedAt`) is ignored.
  */
-export function weeksOf(sessions: Session[], now: number): Week[] {
+export function weeksOf(sessions: Session[], now: number, _weekStartsOn: Weekday = 1): Week[] {
   const live = sessions.filter((s) => s.deletedAt === undefined)
   if (live.length === 0) return []
   const current = weekStart(now)
@@ -50,6 +53,7 @@ export function adherence(
   now: number,
   sessionsPerWeek: number,
   fullWeeks: number,
+  _weekStartsOn: Weekday = 1,
 ): { done: number; planned: number } {
   const complete = weeksOf(sessions, now).filter((w) => !w.inProgress)
   const last = fullWeeks > 0 ? complete.slice(-fullWeeks) : []
@@ -64,6 +68,7 @@ export function thisWeek(
   sessions: Session[],
   now: number,
   sessionsPerWeek: number,
+  _weekStartsOn: Weekday = 1,
 ): { done: number; planned: number } {
   const current = weeksOf(sessions, now).find((w) => w.inProgress)
   return { done: current?.sessions.length ?? 0, planned: sessionsPerWeek }

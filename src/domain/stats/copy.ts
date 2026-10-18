@@ -18,6 +18,7 @@ import { computeRecords } from './records'
 import { nextStep, stepsClimbed, verdicts } from './verdict'
 import type { NextStep, Verdict, VerdictKind } from './verdict'
 import { thisWeek } from './weeks'
+import type { Weekday } from './weeks'
 
 export type HomeStage = 'empty' | 'starting' | 'early' | 'full'
 
@@ -155,7 +156,13 @@ function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`
 }
 
-export function homeCopy(program: Program, sessions: Session[], resolve: Resolve, now: number): HomeCopy {
+export function homeCopy(
+  program: Program,
+  sessions: Session[],
+  resolve: Resolve,
+  now: number,
+  _weekStartsOn: Weekday = 1,
+): HomeCopy {
   const live = sessions.filter((s) => s.deletedAt === undefined)
   const plans = new Map<string, ExercisePlan>()
   const planOrder: string[] = []

@@ -18,6 +18,7 @@ import { computeRecords } from './records'
 import type { SessionRecord } from './records'
 import { nextStep, verdictOf } from './verdict'
 import { weekStart } from './weeks'
+import type { Weekday } from './weeks'
 
 export type LiftMove = {
   exerciseId: string
@@ -204,6 +205,7 @@ export function summaryWeek(
   sessionId: string,
   sessions: Session[],
   program: Program,
+  _weekStartsOn: Weekday = 1,
 ): { heading: string; line: string } {
   const live = sessions.filter((s) => s.deletedAt === undefined)
   const target = live.find((s) => s.id === sessionId)

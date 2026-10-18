@@ -1,6 +1,7 @@
 import type { LibraryExercise, Muscle, Program, Session, Workout } from '../../types'
 import { contributors, muscleSets, type Resolve } from '../muscles'
 import { weeksOf } from './weeks'
+import type { Weekday } from './weeks'
 
 /** The 12 muscles of R-M, in the order the table shows them. */
 export const STATS_MUSCLES: readonly Muscle[] = [
@@ -30,6 +31,7 @@ export function muscleWeeks(
   now: number,
   resolve: Resolve,
   library: Map<string, LibraryExercise>,
+  _weekStartsOn: Weekday = 1,
 ): MuscleWeek[] {
   return weeksOf(sessions, now).map((w) => ({
     start: w.start,
@@ -79,6 +81,7 @@ export function windowAverage(
   resolve: Resolve,
   library: Map<string, LibraryExercise>,
   weeks = 2,
+  _weekStartsOn: Weekday = 1,
 ): Map<Muscle, number> {
   const complete = muscleWeeks(sessions, now, resolve, library).filter((w) => !w.inProgress)
   const last = weeks > 0 ? complete.slice(-weeks) : []
@@ -98,6 +101,7 @@ export function thisWeekMuscles(
   now: number,
   resolve: Resolve,
   library: Map<string, LibraryExercise>,
+  _weekStartsOn: Weekday = 1,
 ): Map<Muscle, ThisWeekMuscle> {
   const out = new Map<Muscle, ThisWeekMuscle>()
   const current = muscleWeeks(sessions, now, resolve, library).find((w) => w.inProgress)

@@ -137,3 +137,62 @@ test('S6a formatSetCount keeps a half set and drops a whole one’s decimals', (
   expect(formatSetCount(2.5)).toBe('2.5')
   expect(formatSetCount(0)).toBe('0')
 })
+
+// E19-T2 [O4]: Saturday-start weeks; "now" is Mon 19 Oct 2026, so this week runs Sat 17 Oct to Fri 23 Oct.
+const MON19 = at(10, 19)
+
+test('E19 O4 startOfWeek with Saturday is the Saturday midnight, Monday without it', () => {
+  expect(startOfWeek(MON19, 6)).toBe(new Date(2026, 9, 17).getTime())
+  expect(startOfWeek(at(10, 16, 23), 6)).toBe(new Date(2026, 9, 10).getTime())
+  expect(startOfWeek(MON19)).toBe(new Date(2026, 9, 19).getTime())
+  expect(startOfWeek(at(10, 18), 1)).toBe(new Date(2026, 9, 12).getTime())
+})
+
+test('E19 O4 calendarWeeks with Saturday run Sat to Fri, marking Mon 19 Oct today and Sat 17 trained', () => {
+  const weeks = calendarWeeks([session('sat', at(10, 17, 10))], MON19, 2, 6)
+  expect(weeks.map((week) => dayMonth(week.start, MON19))).toEqual(['10 Oct', '17 Oct'])
+  expect(weeks[1].days.map((d) => new Date(d.at).getDay())).toEqual([6, 0, 1, 2, 3, 4, 5])
+  expect(weeks[1].days[0]).toMatchObject({ trained: true, today: false, future: false })
+  expect(weeks[1].days[2]).toMatchObject({ trained: false, today: true, future: false })
+  expect(weeks[1].days[3].future).toBe(true)
+})
+
+test('E19 O4 sessionsInWeeks with Saturday counts a Sat 17 Oct Session in this week', () => {
+  const sessions = [session('sat', at(10, 17, 10)), session('old', at(10, 9, 10))]
+  expect(sessionsInWeeks(sessions, MON19, 1, 6)).toBe(1)
+  expect(sessionsInWeeks(sessions, MON19, 1)).toBe(0)
+})
+
+test('E19 O4 weeklyRegionSets with Saturday puts Sat 17 Oct sets in the week starting that day', () => {
+  const sets = (startedAt: number, count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      exerciseId: 'squat',
+      setIndex: index,
+      weightKg: 60,
+      reps: 8,
+      loggedAt: startedAt + index,
+    }))
+  const weeks = weeklyRegionSets(
+    [session('sat', at(10, 17, 10), sets(at(10, 17, 10), 3)), session('fri', at(10, 16), sets(at(10, 16), 4))],
+    MON19,
+    2,
+    resolve,
+    LIBRARY,
+    6,
+  )
+  expect(weeks.map((week) => dayMonth(week.start, MON19))).toEqual(['10 Oct', '17 Oct'])
+  expect(weeks[1].counts.get('quadriceps')).toBe(3)
+  expect(weeks[0].counts.get('quadriceps')).toBe(4)
+})
+
+test('E19 O4 sessionsByWeek with Saturday groups This week, Last week, Week of from Saturdays', () => {
+  const groups = sessionsByWeek(
+    [session('sun', at(10, 18, 9)), session('sat', at(10, 17, 9)), session('fri', at(10, 16)), session('old', at(10, 2))],
+    MON19,
+    6,
+  )
+  expect(groups.map((group) => group.label)).toEqual(['This week', 'Last week', 'Week of 26 Sep'])
+  expect(groups[0].sessions.map((s) => s.id)).toEqual(['sun', 'sat'])
+  expect(groups[1].sessions.map((s) => s.id)).toEqual(['fri'])
+  expect(groups[2].sessions.map((s) => s.id)).toEqual(['old'])
+})

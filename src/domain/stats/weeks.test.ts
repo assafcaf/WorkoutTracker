@@ -72,3 +72,77 @@ test('O12 a single Session today leaves this week the only week, in progress', (
   expect(weeks).toHaveLength(1)
   expect(weeks[0].inProgress).toBe(true)
 })
+
+// E19-T2 [O4]: a configurable week start, default Monday.
+test('E19 O4 weekStart with Saturday answers the latest Saturday midnight on or before the time', () => {
+  expect(weekStart(local(2026, 10, 17, 10), 6)).toBe(local(2026, 10, 17))
+  expect(weekStart(local(2026, 10, 16, 23, 59), 6)).toBe(local(2026, 10, 10))
+  expect(weekStart(local(2026, 10, 19, 8), 6)).toBe(local(2026, 10, 17))
+})
+
+test('E19 O4 weekStart with Monday or no weekday puts Sat 17 Oct in the week of Mon 12 Oct', () => {
+  expect(weekStart(local(2026, 10, 17, 10), 1)).toBe(local(2026, 10, 12))
+  expect(weekStart(local(2026, 10, 17, 10))).toBe(local(2026, 10, 12))
+})
+
+test('E19 O4 weekStart with Sunday and with Wednesday', () => {
+  expect(weekStart(local(2026, 10, 17, 10), 0)).toBe(local(2026, 10, 11))
+  expect(weekStart(local(2026, 10, 14, 0), 3)).toBe(local(2026, 10, 14))
+  expect(weekStart(local(2026, 10, 13, 23), 3)).toBe(local(2026, 10, 7))
+})
+
+test('E19 O4 weekStart is local midnight across the clock change of Sun 25 Oct 2026', () => {
+  expect(weekStart(local(2026, 10, 30, 12), 6)).toBe(local(2026, 10, 24))
+  expect(weekStart(local(2026, 10, 25, 12), 6)).toBe(local(2026, 10, 24))
+  expect(weekStart(local(2026, 10, 25, 12), 0)).toBe(local(2026, 10, 25))
+  expect(weekStart(local(2026, 10, 31, 12), 6)).toBe(local(2026, 10, 31))
+  expect(new Date(weekStart(local(2026, 10, 30, 12), 6)).getHours()).toBe(0)
+})
+
+test('E19 O4 weeksOf with Saturday runs Saturday to Friday and puts Sat 17 Oct in the week in progress on Mon 19 Oct', () => {
+  const now = local(2026, 10, 19, 9)
+  const weeks = weeksOf([session('fri', local(2026, 10, 16, 18)), session('sat', local(2026, 10, 17, 10))], now, 6)
+  expect(weeks.map((w) => day(w.start))).toEqual(['2026-10-10', '2026-10-17'])
+  expect(weeks.map((w) => w.inProgress)).toEqual([false, true])
+  expect(weeks.map((w) => w.sessions.map((s) => s.id))).toEqual([['fri'], ['sat']])
+})
+
+test('E19 O4 weeksOf with Saturday keeps every fixture Session and starts on Saturdays', () => {
+  const weeks = weeksOf(fixture, NOW, 6)
+  expect(weeks.every((w) => new Date(w.start).getDay() === 6)).toBe(true)
+  expect(day(weeks[0].start)).toBe('2026-06-20')
+  expect(day(weeks[weeks.length - 1].start)).toBe('2026-10-10')
+  expect(weeks.reduce((n, w) => n + w.sessions.length, 0)).toBe(fixture.length)
+})
+
+test('E19 O4 weeksOf with Wednesday groups the fixture by Wednesday weeks, 1 Session in the week of 14 Oct', () => {
+  const weeks = weeksOf(fixture, NOW, 3)
+  expect(day(weeks[0].start)).toBe('2026-06-17')
+  expect(day(weeks[weeks.length - 1].start)).toBe('2026-10-14')
+  expect(weeks).toHaveLength(18)
+  expect(weeks[weeks.length - 1].sessions).toHaveLength(1)
+  expect(weeks[0].sessions).toHaveLength(1)
+})
+
+test('E19 O4 thisWeek with Saturday counts the Sat and Sun Sessions on Mon 19 Oct, not with Monday', () => {
+  const sessions = [session('sat', local(2026, 10, 17, 10)), session('sun', local(2026, 10, 18, 10))]
+  const now = local(2026, 10, 19, 9)
+  expect(thisWeek(sessions, now, 3, 6)).toEqual({ done: 2, planned: 3 })
+  expect(thisWeek(sessions, now, 3)).toEqual({ done: 0, planned: 3 })
+})
+
+test('E19 O4 adherence with Saturday takes the last complete week as Sat 10 to Fri 16 Oct', () => {
+  const sessions = [
+    session('fri', local(2026, 10, 16, 18)),
+    session('sat', local(2026, 10, 17, 10)),
+    session('sun', local(2026, 10, 18, 10)),
+  ]
+  const now = local(2026, 10, 19, 9)
+  expect(adherence(sessions, now, 3, 1, 6)).toEqual({ done: 1, planned: 3 })
+  expect(adherence(sessions, now, 3, 1)).toEqual({ done: 2, planned: 3 })
+})
+
+test('E19 O4 thisWeek on the fixture with Wednesday is 1 of 3 on Thu 15 Oct, with the default 2 of 3', () => {
+  expect(thisWeek(fixture, NOW, 3, 3)).toEqual({ done: 1, planned: 3 })
+  expect(thisWeek(fixture, NOW, 3)).toEqual({ done: 2, planned: 3 })
+})
