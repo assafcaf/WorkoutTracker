@@ -3,6 +3,9 @@ import type { CustomExercise, Exercise, LibraryExercise, Program, Video } from '
 import { assertPlansAreInCatalog, loadCatalog, loadPrograms } from '../data/catalog'
 import { loadLibrary, loadVideos } from '../data/library'
 import { resolveExercise } from '../data/resolve'
+import { mergeCustomExercises, validateCustomExercise } from '../domain/customExercises'
+import { getCustomExercises, setCustomExercises } from '../storage/settingsStore'
+import { ServiceError, callStorage } from './errors'
 
 /** Everything `App.tsx` loads up front: the bundled catalog, programs, library and videos. */
 export type CatalogData = {
@@ -28,20 +31,24 @@ export type CatalogService = {
  * `src/data/resolve.ts`: `load` loads the catalog, validates `assertPlansAreInCatalog` the way
  * `App.tsx` does, and loads the library and videos; `resolve` answers `resolveExercise` against
  * what `load` resolved, once it has.
- *
- * STUB (E11-T6 test-designer): not implemented yet.
  */
-export function createCatalogService(_deps: ServiceDeps): CatalogService {
+export function createCatalogService(deps: ServiceDeps): CatalogService {
   let catalog: Map<string, Exercise> | null = null
   let library: Map<string, LibraryExercise> | null = null
 
   return {
     async load(): Promise<CatalogData> {
-      const loadedCatalog = loadCatalog()
-      const bundledPrograms = loadPrograms(loadedCatalog)
-      for (const program of bundledPrograms) assertPlansAreInCatalog(program, loadedCatalog)
-      const loadedLibrary = await loadLibrary()
+      const bundledCatalog = loadCatalog()
+      const bundledPrograms = loadPrograms(bundledCatalog)
+      for (const program of bundledPrograms) assertPlansAreInCatalog(program, bundledCatalog)
+      const bundledLibrary = await loadLibrary()
       const videos = await loadVideos()
+      const custom = await callStorage(deps, getCustomExercises, 'custom exercises read failed')
+      const { catalog: loadedCatalog, library: loadedLibrary } = mergeCustomExercises(
+        custom,
+        bundledCatalog,
+        bundledLibrary,
+      )
 
       catalog = loadedCatalog
       library = loadedLibrary
@@ -57,8 +64,23 @@ export function createCatalogService(_deps: ServiceDeps): CatalogService {
       if (!catalog || !library) return null
       return resolveExercise(id, catalog, library) ?? null
     },
-    async saveCustomExercise(_exercise: CustomExercise): Promise<void> {
-      throw new Error('not implemented')
+    async saveCustomExercise(exercise: CustomExercise): Promise<void> {
+      const problem = validateCustomExercise(exercise, {
+        catalog: loadCatalog(),
+        library: await loadLibrary(),
+      })
+      if (problem !== null) throw new ServiceError('storage-failed', problem)
+      await callStorage(
+        deps,
+        async () => {
+          const stored = await getCustomExercises()
+          const at = stored.findIndex((c) => c.id === exercise.id)
+          const next = at === -1 ? [...stored, exercise] : stored.map((c, i) => (i === at ? exercise : c))
+          await setCustomExercises(next, deps.now())
+        },
+        'custom exercise write failed',
+      )
+      deps.bus.emit('preferences')
     },
   }
 }
