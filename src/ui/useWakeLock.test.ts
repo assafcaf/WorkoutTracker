@@ -140,7 +140,7 @@ test('O20 logging a set still works when the set screen mounts with no Wake Lock
 
   renderSetScreen()
 
-  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: 'Log set' }))
 
   await waitFor(async () => {
     expect(await storedEntries()).toHaveLength(1)
@@ -162,11 +162,60 @@ test('O20 logging a set still works when the Wake Lock API rejects the request',
     expect(request).toHaveBeenCalledWith('screen')
   })
 
-  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: 'Log set' }))
 
   await waitFor(async () => {
     expect(await storedEntries()).toHaveLength(1)
   })
   expect(await screen.findByText('Set 3 of 4')).toBeVisible()
   expect(screen.queryByRole('alert')).toBeNull()
+})
+
+// ---- E19-T7 O11: the lock is requested again when the page becomes visible again ----
+
+function setVisibility(state: 'hidden' | 'visible'): void {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
+  document.dispatchEvent(new Event('visibilitychange'))
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(document as unknown as Record<string, unknown>, 'visibilityState')
+})
+
+test('O11 useWakeLock requests the lock again when the page becomes visible after being hidden', async () => {
+  const request = vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) })
+  stubWakeLock(request)
+  renderHook(() => useWakeLock(true))
+  await waitFor(() => expect(request).toHaveBeenCalledTimes(1))
+
+  setVisibility('hidden')
+  setVisibility('visible')
+
+  await waitFor(() => expect(request).toHaveBeenCalledTimes(2))
+})
+
+test('O11 useWakeLock requests nothing on becoming visible when it is not active', async () => {
+  const request = vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) })
+  stubWakeLock(request)
+  const { rerender } = renderHook(({ active }) => useWakeLock(active), {
+    initialProps: { active: true },
+  })
+  await waitFor(() => expect(request).toHaveBeenCalledTimes(1))
+  rerender({ active: false })
+
+  setVisibility('hidden')
+  setVisibility('visible')
+
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  expect(request).toHaveBeenCalledTimes(1)
+})
+
+test('O11 useWakeLock stays a silent no-op on becoming visible with no Wake Lock API', async () => {
+  expect((navigator as { wakeLock?: unknown }).wakeLock).toBeUndefined()
+  renderHook(() => useWakeLock(true))
+
+  expect(() => {
+    setVisibility('hidden')
+    setVisibility('visible')
+  }).not.toThrow()
 })
