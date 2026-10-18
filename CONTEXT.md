@@ -117,8 +117,7 @@ The Shell's sticky bottom slot; the screen showing decides what goes in it.
 _Avoid_: Footer, toolbar, CTA bar, bottom bar
 
 **Token**:
-One of the 49 custom properties that alone define a colour, space, radius or type size. A
-closed set. See `docs/decisions/0009-court-a-light-mellow-sport-design-language.md`.
+One of the 49 custom properties (a closed set) that alone define a colour, space, radius or type size.
 _Avoid_: Variable, custom property, theme value
 
 **Palette**:
@@ -161,5 +160,4 @@ The trainee's first weekday (`Date.getDay()` numbering, Monday when unset); ever
 through `weekStart(ms, weekStartsOn)`.
 
 **Contract version**:
-The number (`CONTRACT_VERSION`, in `src/contract`) the phone sends in `X-Contract-Version` and the
-Worker checks against its supported range; a request without the header counts as version 1.
+`CONTRACT_VERSION` (`src/contract`), sent as `X-Contract-Version`; no header means 1.

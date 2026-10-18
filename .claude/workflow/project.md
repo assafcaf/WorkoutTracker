@@ -125,7 +125,7 @@ Found by the scans of 2026-09-23 to 2026-10-13, not yet ruled on: facts with pat
 
 - **"Replace" names three writes.** `src/sync/syncClient.ts` `replaceRemote` overwrites the
   server; `src/storage/sessionStore.ts` `replaceAllSessions` overwrites the device;
-  `src/worker/sync.ts` `replaceAll` overwrites D1.
+  `src/worker/services/sync.ts` `replaceAll` overwrites D1.
 - **Change topics are declared three times:** `src/services/changes.ts` `ChangeTopic`,
   `src/storage/settingKeys.ts` `SettingKeyInfo.topic`, `src/sync/syncClient.ts` `PulledTopic`.
 - **Two resolvers.** The `Resolve` type in `src/domain/muscles.ts` and `resolveExercise` in
