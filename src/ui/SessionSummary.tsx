@@ -4,6 +4,7 @@ import { formatDay } from '../domain/dates'
 import { contributors, muscleSets, toRegionCounts } from '../domain/muscles'
 import { sessionChanges } from '../domain/sessionChanges'
 import { heatRowsFor } from '../domain/sessionsView'
+import { bodyweightOn } from '../domain/bodyLog'
 import { sessionVolume } from '../domain/volume'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { numberText, topText } from '../domain/stats/copy'
@@ -14,7 +15,7 @@ import { computeRecords, recordCount } from '../domain/stats/records'
 import type { SessionRecord } from '../domain/stats/records'
 import type { Region, Resolve } from '../domain/muscles'
 import type { SessionChange } from '../domain/sessionChanges'
-import type { ExercisePlan, LibraryExercise, Muscle, Program, Session, Workout } from '../types'
+import type { BodyLog, ExercisePlan,LibraryExercise, Muscle, Program, Session, Workout } from '../types'
 import { Switch } from './controls'
 import { Icon } from './icons'
 import { HeatCell, HeatLegend, RegionHeatList } from './RegionHeat'
@@ -47,6 +48,8 @@ export type SessionSummaryProps = {
   workout?: Workout
   /** Save the listed changes to the Program; omitted means no offer. */
   onSaveChanges?(changes: SessionChange[]): void | Promise<void>
+  /** The Body log: the Session's volume counts Bodyweight Sets at its bodyweight (E22-T11). */
+  bodyLog?: BodyLog
 }
 
 /** The duration KPI's value and unit: `52` `min`, or `1 h 05` `min` from an hour up. */
@@ -57,6 +60,13 @@ function durationParts(ms: number): [string, string] {
 }
 
 const MINUS = '−'
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** A local YYYY-MM-DD day as `1 Oct`. */
+function dayMonth(day: string): string {
+  const [, month, date] = day.split('-').map(Number)
+  return `${date} ${MONTHS[month - 1]}`
+}
 
 /** A record row's detail: `Bench press · 85 kg × 5 · +5 kg`, `Pull-up · BW × 12 · +2 reps`. */
 function recordDetail(record: SessionRecord, name: string, bodyweight: boolean): string {
@@ -121,6 +131,7 @@ export function SessionSummary({
   weekStartsOn = 1,
   workout,
   onSaveChanges,
+  bodyLog = [],
 }: SessionSummaryProps): JSX.Element {
   const [openRegion, setOpenRegion] = useState<Region | null>(null)
   const [deload, setDeload] = useState(session.deload === true)
@@ -138,7 +149,9 @@ export function SessionSummary({
   const working = workingSets(session.entries).length
   const warmups = session.entries.filter((entry) => !countsTowardStats(entry)).length
   const [durationValue, durationUnit] = durationParts((session.finishedAt ?? session.startedAt) - session.startedAt)
-  const bodyweightReps = sessionVolume(session, resolve).bodyweightReps
+  const weighed = bodyweightOn(bodyLog, session.startedAt)
+  const bodyweightReps = sessionVolume(session, resolve, weighed?.kg ?? null).bodyweightReps
+  const hasBodyweightSets = sessionVolume(session, resolve).bodyweightReps > 0
 
   async function saveChanges(): Promise<void> {
     setOfferOpen(false)
@@ -162,7 +175,7 @@ export function SessionSummary({
       `${workoutName ?? 'Workout'} · ${formatDay(new Date(session.startedAt), new Date())}`,
       `${durationValue} ${durationUnit} · ${plural(working, 'working set', 'working sets')} · ${plural(prs, 'record', 'records')}`,
       ...moves.map((move) => `${move.name}: ${move.top} · ${move.text}`),
-      volumeLine(session.id, all, resolve),
+      volumeLine(session.id, all, resolve, bodyLog),
     ].join('\n')
     try {
       if (navigator.share) await navigator.share({ title: workoutName ?? 'Workout', text })
@@ -316,9 +329,14 @@ export function SessionSummary({
 
         <p className="session-summary-volume">
           <span data-kpi="volume">
-            <span className="session-summary-kpi-value">{volumeLine(session.id, all, resolve)}</span>
+            <span className="session-summary-kpi-value">{volumeLine(session.id, all, resolve, bodyLog)}</span>
             {bodyweightReps > 0 ? (
               <span className="session-summary-kpi-note">{` · ${bodyweightReps} bodyweight reps`}</span>
+            ) : null}
+            {weighed && hasBodyweightSets ? (
+              <span className="session-summary-kpi-note">
+                {` · bodyweight ${numberText(weighed.kg)} kg (${dayMonth(weighed.day)})`}
+              </span>
             ) : null}
           </span>
         </p>
