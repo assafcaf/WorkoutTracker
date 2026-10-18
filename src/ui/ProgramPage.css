@@ -413,5 +413,5 @@
 
 .program-page-range-row[data-standing='below'],
 .program-page-range-row[data-standing='above'] {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
