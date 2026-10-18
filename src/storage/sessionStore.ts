@@ -97,6 +97,7 @@ export async function startOrResumeSession(
   programId: string,
   workoutId: string,
   now: number,
+  _deload?: boolean,
 ): Promise<Session> {
   return db.transaction('rw', db.sessions, async () => {
     await finishStaleSession(now)
