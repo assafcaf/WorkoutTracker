@@ -101,6 +101,7 @@ function buildServices(sync: SyncService): Services {
     catalog: createCatalogService(deps),
     backup: createBackupService({ ...deps, replaceRemote: sync.replaceRemote }),
     sync,
+    push: {} as Services['push'],
     bus,
   }
 }

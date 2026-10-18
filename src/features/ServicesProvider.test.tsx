@@ -31,6 +31,7 @@ function servicesWith(sync: SyncService): Services {
     catalog: {} as Services['catalog'],
     backup: {} as Services['backup'],
     sync,
+    push: {} as Services['push'],
     bus: createChangeBus(),
   }
 }

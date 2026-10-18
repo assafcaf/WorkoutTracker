@@ -36,7 +36,7 @@ function ownKeys(value: object): string[] {
 describe('O5 createServices returns exactly the service API', () => {
   test('O5 createServices returns exactly sessions, programs, preferences, catalog, backup, sync and the bus', () => {
     expect(ownKeys(services())).toEqual(
-      ['backup', 'bus', 'catalog', 'preferences', 'programs', 'sessions', 'sync'],
+      ['backup', 'bus', 'catalog', 'preferences', 'programs', 'push', 'sessions', 'sync'],
     )
   })
 
