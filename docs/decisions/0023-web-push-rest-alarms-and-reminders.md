@@ -39,3 +39,9 @@ a rest ends and a "Time to train" reminder. The Worker is on the Cloudflare Work
   A reminder can fire on a day whose Session has not synced yet.
 - Deploying needs the `VAPID_PRIVATE_KEY` secret, the Durable Object migration (`new_sqlite_classes`)
   and the cron to be accepted by wrangler 3.x; the first deploy checks all three (E24-T12).
+
+## Outcome
+Built as E24 (E24-T1 to E24-T11), with E23 integrated at the end. Host tests cover the contract,
+the RFC 8291 Appendix A vector, the VAPID JWT, the D1 routes, the alarm and the cron. Delivery
+on a locked iPhone, the badge, the Shortcut and the first deploy of the Durable Object and the cron
+are the operator's check after merge (E24-T12).

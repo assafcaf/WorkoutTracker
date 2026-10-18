@@ -59,3 +59,4 @@ rewrite history.
 - [0020](0020-effort-aware-steps-and-planned-deloads.md): the next step reads Effort (2 steps, hold), "last time" skips deloads, and a deload is planned a week at a time (extends 0006)
 - [0021](0021-bodyweight-counts-in-volume.md): Bodyweight Sets count (bodyweight + Load) x reps in kg volume at the latest weigh-in, reps only before one (amends 0017)
 - [0022](0022-imports-append-and-sets-export-as-csv.md): imports of Strong/Hevy history append (duplicates skipped, nothing written before Import) and the sets export as a BOM-prefixed CSV that does not stamp `lastExportedAt`
+- [0023](0023-web-push-rest-alarms-and-reminders.md): Web Push from the Worker (RFC 8291/8292, VAPID key a secret): a Durable Object alarm per user sends "Rest over", a minute cron sends at most one reminder a day; subscriptions in D1 (extends 0007, 0019)
