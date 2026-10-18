@@ -55,3 +55,4 @@ rewrite history.
 - [0016](0016-bodyweight-is-a-per-exercise-setting-and-load-is-signed.md): Bodyweight is a per-Exercise synced setting, a higher signed Load is better (`invertProgress` gone), and one Dial serves weight and Load
 - [0017](0017-stats-are-verdicts-from-tested-rules.md): stats are verdicts from tested rules in `src/domain/stats/` (one record per lift per Session, ladders on a calendar axis, muscles against the plan) in a Progress tab
 - [0018](0018-custom-exercises-session-additions-and-the-trainees-week.md): custom Exercises and Session additions are synced data saved back to the Program on request, search forgives, the week starts on the trainee's day, and the screen stays awake during rest
+- [0020](0020-effort-aware-steps-and-planned-deloads.md): the next step reads Effort (2 steps, hold), "last time" skips deloads, and a deload is planned a week at a time (extends 0006)
