@@ -149,6 +149,9 @@ The Warm-up Sets proposed before the first working Set of a barbell Exercise.
 The trainee's first weekday (`Date.getDay()` numbering, Monday when unset); every week goes
 through `weekStart(ms, weekStartsOn)`.
 
+**Last week card**:
+The full week before this one: Sessions, Sets, volume, PRs against the week before (`lastWeekCard`).
+
 **Contract version**:
 `CONTRACT_VERSION` (`src/contract`), sent as `X-Contract-Version`; no header means 1.
 
