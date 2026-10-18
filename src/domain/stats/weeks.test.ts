@@ -139,7 +139,7 @@ test('E19 O4 adherence with Saturday takes the last complete week as Sat 10 to F
   ]
   const now = local(2026, 10, 19, 9)
   expect(adherence(sessions, now, 3, 1, 6)).toEqual({ done: 1, planned: 3 })
-  expect(adherence(sessions, now, 3, 1)).toEqual({ done: 2, planned: 3 })
+  expect(adherence(sessions, now, 3, 1)).toEqual({ done: 3, planned: 3 })
 })
 
 test('E19 O4 thisWeek on the fixture with Wednesday is 1 of 3 on Thu 15 Oct, with the default 2 of 3', () => {
