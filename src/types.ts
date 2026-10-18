@@ -162,3 +162,12 @@ export type VolumeBaseline =
   | { period: 'last' }
   | { period: '1w' | '1m' | '3m' | '6m'; aggregate: 'avg' | 'max' }
   | { period: 'since'; since: number; aggregate: 'avg' | 'max' }
+
+/** A Body metric the trainee logs: Bodyweight in kg, or a measurement in cm (E22). */
+export type BodyMetric = 'weightKg' | 'waistCm' | 'chestCm' | 'armsCm' | 'thighsCm'
+
+/** One Body entry: a local `YYYY-MM-DD` day and any of the metrics (E22). */
+export type BodyEntry = { day: string } & Partial<Record<BodyMetric, number>>
+
+/** The Body log: entries oldest first, one per day (E22). */
+export type BodyLog = BodyEntry[]
