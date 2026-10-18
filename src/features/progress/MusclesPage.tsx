@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { regionsFor, toRegionCounts, type Region, type Resolve } from '../../domain/muscles'
+import { WEEKLY_SET_RANGE } from '../../domain/setRange'
 import { numberText } from '../../domain/stats/copy'
 import {
   muscleContributors,
@@ -49,7 +50,7 @@ const label = (muscle: Muscle): string => LABELS[muscle] ?? muscle.charAt(0).toU
 /** Whole numbers, half up. */
 const whole = (n: number): string => String(Math.round(n))
 
-const BAND = { from: 10, to: 20 } as const
+const BAND = { from: WEEKLY_SET_RANGE.min, to: WEEKLY_SET_RANGE.max } as const
 const WEEK_MS_DAYS = 7
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const dayMonth = (ms: number): string => `${new Date(ms).getDate()} ${MONTHS[new Date(ms).getMonth()]}`
