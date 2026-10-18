@@ -231,7 +231,9 @@ export const WORKOUT_REMINDERS_KEY = 'workoutReminders'
 
 /** The stored reminders object, or null when unset or turned off. Storage checks only object-or-null. */
 export async function getWorkoutReminders(): Promise<Record<string, unknown> | null> {
-  return null
+  const value = (await db.settings.get(WORKOUT_REMINDERS_KEY))?.value
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+  return value as Record<string, unknown>
 }
 
 /** Stores `value` (an object, or null for off) in the one `workoutReminders` row. */
@@ -239,8 +241,7 @@ export async function setWorkoutReminders(
   value: Record<string, unknown> | null,
   now: number = Date.now(),
 ): Promise<void> {
-  void value
-  void now
+  await db.settings.put({ key: WORKOUT_REMINDERS_KEY, value, updatedAt: now })
 }
 
 /** The `settings` table key the body log is kept under, in one row (E22-T2). */
