@@ -3,10 +3,12 @@ import { requireUser } from './auth'
 import type { Env } from './env'
 import { json } from './http'
 import { apiRoutes } from './routes'
+import { sendDueReminders } from './services/reminders'
 import { versionGate } from './version'
 
 export function createHandler(deps: { keys?: JWTVerifyGetKey } = {}): {
   fetch(request: Request, env: Env): Promise<Response>
+  scheduled(controller: { scheduledTime: number }, env: Env): Promise<void>
 } {
   return {
     async fetch(request, env) {
@@ -22,6 +24,9 @@ export function createHandler(deps: { keys?: JWTVerifyGetKey } = {}): {
       const route = apiRoutes[`${request.method} ${pathname}`]
       if (!route) return json({ error: 'not found' }, 404)
       return route(request, env, email)
+    },
+    async scheduled(controller, env) {
+      await sendDueReminders(env, controller.scheduledTime)
     },
   }
 }

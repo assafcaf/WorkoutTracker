@@ -18,6 +18,9 @@ migrations_dir = "migrations"
 name = "REST_ALARM"
 class_name = "RestAlarm"
 
+[triggers]
+crons = ["* * * * *"]
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["RestAlarm"]

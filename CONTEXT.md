@@ -161,3 +161,9 @@ steps); Bodyweight Exercises and start weights are left alone.
 
 **Deload week**:
 The stored week the trainee chose to deload; `isDeloadWeek` places it through `weekStart`.
+
+**Rest push**:
+The "Rest over" notification the Worker sends at a rest's end.
+
+**Reminder**:
+A weekday-and-time push to train; one synced setting (`workoutReminders`).
