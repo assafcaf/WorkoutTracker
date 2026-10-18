@@ -134,3 +134,22 @@ test('O15 contributors over a 2-week window sum to the muscle total, never count
 test('O15 a muscle nothing trained in the window has no contributors', () => {
   expect(muscleContributors(fixture, 'chest', local(2026, 8, 10), local(2026, 8, 17), resolveExercise, library)).toEqual([])
 })
+
+test('E19 O4 muscleWeeks with Wednesday runs Wednesday weeks, the one from Wed 14 Oct in progress', () => {
+  const weeks = muscleWeeks(fixture, NOW, resolveExercise, library, 3)
+  expect(day(weeks[0].start)).toBe('2026-06-17')
+  expect(day(weeks[weeks.length - 1].start)).toBe('2026-10-14')
+  expect(weeks.filter((w) => w.inProgress).map((w) => day(w.start))).toEqual(['2026-10-14'])
+  expect(weeks.every((w) => new Date(w.start).getDay() === 3)).toBe(true)
+})
+
+test('E19 O4 thisWeekMuscles with Wednesday has only Wed 14 Oct done: Chest 7 + 7 still planned, Lats 0 + 12.5', () => {
+  const week = thisWeekMuscles(fixture, program, NOW, resolveExercise, library, 3)
+  expect(week.get('chest')).toEqual({ done: 7, stillPlanned: 7 })
+  expect(week.get('lats')).toEqual({ done: 0, stillPlanned: 12.5 })
+})
+
+test('E19 O4 windowAverage with Wednesday takes the last complete Wednesday week, 7 Oct to 13 Oct: Chest 7', () => {
+  // Wed 7 (B), Fri 9 (A), Mon 12 (B): one chest session of 7. Monday weeks give 14.
+  expect(windowAverage(fixture, NOW, resolveExercise, library, 1, 3).get('chest')).toBe(7)
+})

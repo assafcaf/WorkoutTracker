@@ -3,7 +3,7 @@ import type { Exercise, LibraryExercise, Muscle, Program, Session, Workout } fro
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { workoutEstimate } from '../domain/dashboard'
 import { muscleSets, toRegionCounts, type MuscleFamily } from '../domain/muscles'
-import { weeksOf } from '../domain/stats/weeks'
+import { weeksOf, type Weekday } from '../domain/stats/weeks'
 import { nextLoadText } from '../domain/planLoad'
 import { visiblePrograms } from '../domain/programs'
 import {
@@ -46,6 +46,8 @@ export type ProgramPageProps = {
   sessions?: Session[]
   /** "Now", for the calendar week "This week" covers (R-K). Defaults to `Date.now()`. */
   now?: number
+  /** The weekday "This week" starts on, 0 = Sunday ... 6 = Saturday; Monday by default (E19-T5). */
+  weekStartsOn?: Weekday
   /** Resolves a set entry's exerciseId for the done map (M15). Defaults to a catalog lookup. */
   resolve?: (id: string) => Exercise | undefined
   /** Program tab actions (E9-T3). Optional here -- E9-T9 wires all of these from `App.tsx`. */
@@ -93,6 +95,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     onChooseProgram,
     sessions = [],
     now = Date.now(),
+    weekStartsOn = 1,
     resolve = (id: string) => catalog.get(id),
     onNewProgram,
     onEditProgram,
@@ -134,8 +137,8 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const gaps = programGaps(prescribedMuscleCounts)
 
   // "This week"'s done side (M15, R-K): sets of the Sessions that started in the calendar week
-  // `now` falls in (Monday 00:00 local), the one in progress included.
-  const thisCalendarWeek = weeksOf(sessions, now).find((week) => week.inProgress)
+  // `now` falls in (the week start's 00:00 local), the one in progress included.
+  const thisCalendarWeek = weeksOf(sessions, now, weekStartsOn).find((week) => week.inProgress)
   const doneMuscleCounts = muscleSets(
     (thisCalendarWeek?.sessions ?? []).flatMap((session) => session.entries),
     resolve,

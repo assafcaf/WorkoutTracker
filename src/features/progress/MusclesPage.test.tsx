@@ -92,6 +92,17 @@ test('O22 This week adds the still-planned segment: Lats 12.5 done and 12.5 to c
   expect(chest.querySelector('[data-part="still"]')).toBeNull()
 })
 
+test('E19-T4 O6 the 2-week window is cut on the stored week start', () => {
+  render(
+    <MusclesView
+      data={{ sessions: existing, program, resolve: (id) => catalog.get(id), library, weekStart: 4 }}
+      now={NOW}
+      onBack={vi.fn()}
+    />,
+  )
+  expect(screen.getByText('1 Oct – 14 Oct')).toBeVisible()
+})
+
 test('O22 the body map is an index: a region opens its muscle row', async () => {
   const user = userEvent.setup()
   const { container } = show()

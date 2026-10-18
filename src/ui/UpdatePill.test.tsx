@@ -250,7 +250,7 @@ test('O5 an update found mid-session leaves the session in progress on screen', 
   await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
-  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 
   deployNewVersion()

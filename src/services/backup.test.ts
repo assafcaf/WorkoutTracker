@@ -475,3 +475,85 @@ test('E16-T9 O4 a backup made before this epic imports with overrides reading as
 
   expect(await getBodyweightOverrides()).toEqual({})
 })
+
+// --- E19-T1 O2: week start, keep-screen-on and Custom Exercises travel in the backup ----------
+
+const CUSTOM_ROWS = [
+  {
+    id: 'custom-1',
+    name: 'Cable Row',
+    primaryMuscles: ['middle back'],
+    secondaryMuscles: ['biceps'],
+    equipment: 'cable',
+    bodyweight: false,
+    weightStep: 2.5,
+    createdAt: BASE,
+  },
+]
+
+async function storeThree(): Promise<void> {
+  await db.settings.bulkPut([
+    { key: 'weekStart', value: 6, updatedAt: BASE },
+    { key: 'keepScreenOnDuringRest', value: false, updatedAt: BASE },
+    { key: 'customExercises', value: CUSTOM_ROWS, updatedAt: BASE },
+  ])
+}
+
+test('E19-T1 O2 export leaves the three keys out when none is stored', async () => {
+  const file = await exportedFile()
+
+  expect('weekStart' in file.settings).toBe(false)
+  expect('keepScreenOnDuringRest' in file.settings).toBe(false)
+  expect('customExercises' in file.settings).toBe(false)
+  expect(file.schemaVersion).toBe(1)
+})
+
+test('E19-T1 O2 export writes each of the three when stored, keepScreenOnDuringRest off included', async () => {
+  await storeThree()
+
+  const file = await exportedFile()
+
+  expect(file.settings.weekStart).toBe(6)
+  expect(file.settings.keepScreenOnDuringRest).toBe(false)
+  expect(file.settings.customExercises).toEqual(CUSTOM_ROWS)
+  expect(file.schemaVersion).toBe(1)
+})
+
+test('E19-T1 O2 export writes weekStart 0 (Sunday) rather than dropping it as falsy', async () => {
+  await db.settings.put({ key: 'weekStart', value: 0, updatedAt: BASE })
+
+  expect((await exportedFile()).settings.weekStart).toBe(0)
+})
+
+test('E19-T1 O2 each of the three survives export then import into an empty app', async () => {
+  await storeThree()
+  const file = await exportedFile()
+  vi.restoreAllMocks()
+  await db.settings.clear()
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(file)))
+
+  expect((await db.settings.get('weekStart'))?.value).toBe(6)
+  expect((await db.settings.get('keepScreenOnDuringRest'))?.value).toBe(false)
+  expect((await db.settings.get('customExercises'))?.value).toEqual(CUSTOM_ROWS)
+})
+
+test('E19-T1 O2 a backup made before this epic imports and leaves all three unset', async () => {
+  await storeThree()
+  installDownloadFallback()
+  const old = {
+    schemaVersion: 1,
+    exportedAt: BASE,
+    sessions: [],
+    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+  }
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(old)))
+
+  expect(await db.settings.get('weekStart')).toBeUndefined()
+  expect(await db.settings.get('keepScreenOnDuringRest')).toBeUndefined()
+  expect(await db.settings.get('customExercises')).toBeUndefined()
+})

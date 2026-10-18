@@ -692,3 +692,60 @@ test('O26 a deload Session shows the Deload session switch on', () => {
 
   expect(within(dialog).getByRole('switch', { name: 'Deload session' })).toBeChecked()
 })
+
+// --- E19-T15 O26: Save changes to program ----------------------------------------------------
+
+const PLAN_WORKOUT = {
+  id: 'workout-b',
+  name: 'Workout B',
+  exercises: [
+    { exerciseId: 'pulldown', sets: 3, repRange: [8, 10] as [number, number], restSeconds: 90 },
+    { exerciseId: 'row', sets: 2, repRange: [8, 10] as [number, number], restSeconds: 90 },
+  ],
+}
+
+test('O26 an extended Exercise is listed and Save hands the changes up', async () => {
+  const onSaveChanges = vi.fn()
+  render(
+    <SessionSummary
+      session={SESSION}
+      resolve={resolve}
+      library={LIBRARY}
+      workout={PLAN_WORKOUT}
+      onSaveChanges={onSaveChanges}
+      onClose={vi.fn()}
+    />,
+  )
+  const offer = screen.getByRole('region', { name: 'Save changes to program' })
+  expect(within(offer).getByText(/Pulldown/)).toBeVisible()
+
+  await userEvent.setup().click(within(offer).getByRole('button', { name: 'Save' }))
+
+  expect(onSaveChanges).toHaveBeenCalledWith([{ kind: 'extend', exerciseId: 'pulldown', from: 3, to: 4 }])
+})
+
+test('O26 Not now hides the offer and saves nothing', async () => {
+  const onSaveChanges = vi.fn()
+  render(
+    <SessionSummary
+      session={SESSION}
+      resolve={resolve}
+      library={LIBRARY}
+      workout={PLAN_WORKOUT}
+      onSaveChanges={onSaveChanges}
+      onClose={vi.fn()}
+    />,
+  )
+
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Not now' }))
+
+  expect(screen.queryByRole('region', { name: 'Save changes to program' })).toBeNull()
+  expect(onSaveChanges).not.toHaveBeenCalled()
+})
+
+test('O26 without a handler the summary offers no save', () => {
+  render(
+    <SessionSummary session={SESSION} resolve={resolve} library={LIBRARY} workout={PLAN_WORKOUT} onClose={vi.fn()} />,
+  )
+  expect(screen.queryByRole('region', { name: 'Save changes to program' })).toBeNull()
+})

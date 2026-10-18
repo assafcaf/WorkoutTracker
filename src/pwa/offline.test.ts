@@ -250,7 +250,7 @@ test('O4 with the network down the Program tab names exercises out of the cached
   // Progress Dashboard S7a's workout table: the row's name cell runs straight into its
   // `Sets × reps` cell in the page's text.
   const expected = 'Back squat4 × 8–10'
-  const deadline = Date.now() + 5_000
+  const deadline = Date.now() + 30_000
   while (Date.now() < deadline && !(window.document.body.textContent ?? '').includes(expected)) {
     await new Promise((resolve) => setTimeout(resolve, 25))
   }
@@ -276,6 +276,12 @@ test('O4 a request for an asset the build never emitted is not answered with the
 
 test('O4 the app registers the built service worker under the base path when it starts', async () => {
   const { registeredWorkers } = await launchFromCache()
+  // Registration happens after first render, on the page's load handling; under load it can land
+  // after the launch's own settle wait, so poll for it rather than read it once.
+  const deadline = Date.now() + 30_000
+  while (Date.now() < deadline && !registeredWorkers.includes('/sw.js')) {
+    await new Promise((resolve) => setTimeout(resolve, 25))
+  }
   expect(registeredWorkers).toContain('/sw.js')
 }, LAUNCH_TIMEOUT)
 

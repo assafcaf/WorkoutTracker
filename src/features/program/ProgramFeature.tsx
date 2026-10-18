@@ -6,6 +6,7 @@ import { ServiceError, type ProgramsLoad } from '../../services'
 import { IN_PROGRESS_MESSAGE } from '../../services/programs'
 import { AppShell } from '../../ui/AppShell'
 import { ProgramEditor } from '../../ui/ProgramEditor'
+import type { Weekday } from '../../domain/stats/weeks'
 import { ProgramPage } from '../../ui/ProgramPage'
 import { ProgramHeadActions } from '../../ui/program/ProgramHead'
 import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
@@ -59,6 +60,10 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   const catalogData = useServiceData((s) => s.catalog.load(), [])
   const gymEquipmentData = useServiceData(
     (s) => s.preferences.gymEquipment().catch(() => null),
+    ['preferences'],
+  )
+  const weekStartData = useServiceData(
+    (s) => s.preferences.weekStart().then((day): Weekday => day as Weekday).catch((): Weekday => 1),
     ['preferences'],
   )
   // Every finished Session and the one in progress, so "This week" (E5-T20) counts them all.
@@ -225,6 +230,7 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         onChooseProgram={handleActiveProgramChange}
         sessions={sessions}
         now={Date.now()}
+        weekStartsOn={weekStartData.status === 'ready' ? weekStartData.data : 1}
         resolve={resolveListExercise}
         onNewProgram={handleNewProgram}
         onEditProgram={handleEditProgram}

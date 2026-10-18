@@ -148,3 +148,19 @@ describe('E18-T7 O26 the summary week heading', () => {
     })
   })
 })
+
+describe('E19 O4 the summary week follows the week start', () => {
+  it('E19 O4 with Wednesday, Wed 14 Oct is 1 of 3 sessions and 24 of 69 sets', () => {
+    expect(summaryWeek(idOf('Wed 14 Oct'), fixtureSessions, program, 3)).toEqual({
+      heading: 'What Wed did for your week',
+      line: '1 of 3 sessions · 24 of 69 sets',
+    })
+  })
+
+  it('E19 O4 with Wednesday, Fri 9 Oct counts Wed 7 and Fri 9: 2 of 3 sessions, 46 of 69 sets', () => {
+    expect(summaryWeek(idOf('Fri 9 Oct'), fixtureSessions, program, 3)).toEqual({
+      heading: 'What Fri did for your week',
+      line: '2 of 3 sessions · 46 of 69 sets',
+    })
+  })
+})

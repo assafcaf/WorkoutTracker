@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import type { Muscle } from '../../types'
 import { MUSCLES } from '../../data/library'
+import { uuid } from '../../domain/programs'
+import { matchesQuery } from '../../domain/search'
+import { CustomExerciseForm, type CustomExerciseValues } from '../../ui/CustomExerciseForm'
 import { LibraryList } from '../../ui/LibraryList'
 import { Select } from '../../ui/controls'
 import { Icon } from '../../ui/icons'
 import type { AppRoute } from '../routes'
 import { DetailOverlay } from '../overlays/DetailOverlay'
+import { useServices } from '../ServicesProvider'
 import { useServiceData } from '../useServiceData'
 
 /** The Exercises tab's search text and its muscle and equipment filters; `''` means none. */
@@ -48,7 +52,12 @@ export function ExercisesFeature({
   }
   const [openLibraryId, setOpenLibraryId] = useState<string | null>(null)
 
-  const catalogData = useServiceData((s) => s.catalog.load(), [])
+  // The form writes through the catalog service, which emits 'preferences', so the catalog is
+  // read again with the new or renamed custom Exercise in it (E19-T11).
+  const services = useServices()
+  const [form, setForm] = useState<{ editing: string | null } | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const catalogData = useServiceData((s) => s.catalog.load(), ['preferences'])
   const gymEquipment = useServiceData((s) => s.preferences.gymEquipment(), ['preferences'])
 
   if (catalogData.status !== 'ready' || gymEquipment.status !== 'ready') return null
@@ -63,10 +72,40 @@ export function ExercisesFeature({
     })
     .map((option) => option ?? 'none')
 
-  const trimmedSearch = search.trim().toLowerCase()
+  const bundledEquipment = equipmentOptions.filter((option) => option !== 'none')
+
+  async function saveCustom(values: CustomExerciseValues): Promise<void> {
+    const editing = form?.editing ?? null
+    try {
+      await services.catalog.saveCustomExercise({
+        ...values,
+        id: editing ?? 'custom-' + uuid(),
+        createdAt: Date.now(),
+      })
+      setFormError(null)
+      setForm(null)
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Couldn’t save — try again')
+    }
+  }
+
+  function editingValues(): CustomExerciseValues | undefined {
+    if (form === null || form.editing === null) return undefined
+    const entry = library.find((candidate) => candidate.id === form.editing)
+    const exercise = catalog.get(form.editing)
+    if (!entry || !exercise) return undefined
+    return {
+      name: entry.name,
+      primaryMuscles: entry.primaryMuscles,
+      secondaryMuscles: entry.secondaryMuscles,
+      equipment: entry.equipment,
+      bodyweight: exercise.bodyweight,
+      weightStep: exercise.weightStep,
+    }
+  }
+
   const filteredLibrary = library.filter((exercise) => {
-    const matchesSearch =
-      trimmedSearch === '' || exercise.name.toLowerCase().includes(trimmedSearch)
+    const matchesSearch = matchesQuery(exercise.name, search)
     const matchesMuscle = muscle === '' || exercise.primaryMuscles.includes(muscle as Muscle)
     const matchesEquipment =
       equipment === ''
@@ -124,6 +163,10 @@ export function ExercisesFeature({
         onOpen={setOpenLibraryId}
         gymEquipment={gymEquipment.data}
         initialMuscles={initialMuscles ?? undefined}
+        onNew={() => {
+          setFormError(null)
+          setForm({ editing: null })
+        }}
       />
       {openLibraryId === null ? null : (
         <DetailOverlay
@@ -134,6 +177,24 @@ export function ExercisesFeature({
           gymEquipment={gymEquipment.data}
           onBack={() => setOpenLibraryId(null)}
           onOpenDetail={setOpenLibraryId}
+          onEdit={
+            openLibraryId.startsWith('custom-')
+              ? (id) => {
+                  setFormError(null)
+                  setForm({ editing: id })
+                }
+              : undefined
+          }
+        />
+      )}
+      {form === null ? null : (
+        <CustomExerciseForm
+          key={form.editing ?? 'new'}
+          initial={editingValues()}
+          equipmentOptions={bundledEquipment}
+          error={formError}
+          onSave={(values) => void saveCustom(values)}
+          onCancel={() => setForm(null)}
         />
       )}
     </>

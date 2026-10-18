@@ -60,6 +60,18 @@ test('O11 the search box narrows the library by name, as today', async () => {
   }, SETTLE)
 })
 
+test('O35 the search box forgives a typo and word order', async () => {
+  renderFeature()
+  const search = await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)
+  const user = userEvent.setup()
+  await user.type(search, 'curl hammr')
+
+  await waitFor(() => {
+    const rows = screen.getAllByRole('listitem')
+    expect(rows.some((row) => /hammer curl/i.test(row.textContent ?? ''))).toBe(true)
+  }, SETTLE)
+})
+
 test('O11 the muscle and equipment filters narrow the library further, as today', async () => {
   renderFeature()
   await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)

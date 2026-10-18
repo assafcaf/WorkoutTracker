@@ -1,3 +1,4 @@
+import type { Weekday } from '../../domain/stats/weeks'
 import { swapPreset } from '../../domain/swapPreset'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
@@ -7,12 +8,14 @@ import { validateEntry } from '../../domain/dial'
 import { nextExerciseAfter } from '../../domain/flow'
 import { currentExerciseId, liveProgress, planFor } from '../../domain/liveProgress'
 import { presetForSet } from '../../domain/prefill'
+import { sessionPlans } from '../../domain/sessionPlans'
 import { workingSets } from '../../domain/setKind'
 import { formatSet } from '../../domain/setText'
 import { isBarbell } from '../../domain/plates'
 import { familyOf } from '../../domain/muscles'
 import { latestSet, restLengthOf } from '../../domain/rest'
 import { countsTowardStats } from '../../domain/setKind'
+import { applySessionChanges } from '../../domain/sessionChanges'
 import { ServiceError } from '../../services'
 import type {
   Exercise,
@@ -35,11 +38,13 @@ import { LiveSessionBar } from '../../ui/live/LiveSessionBar'
 import type { LiveView } from '../../ui/live/LiveSessionBar'
 import { UpNextRows } from '../../ui/live/UpNextRows'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
+import { ExercisePicker } from '../../ui/ExercisePicker'
 import { DashboardScreen } from '../dashboard/DashboardScreen'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
 import { useServices, useSyncControls } from '../ServicesProvider'
 import { useServiceData } from '../useServiceData'
+import { useWakeLock } from '../../ui/useWakeLock'
 
 export type WorkoutFeatureProps = {
   /** Sends the app to another tab: the Program tab from "Choose a program", Exercises from a summary. */
@@ -118,6 +123,10 @@ function locateSession(
 ): { program: Program; workout: Workout } | null {
   const program = programs.find((candidate) => candidate.id === session.programId)
   const workout = program?.workouts.find((candidate) => candidate.id === session.workoutId)
+  // The Plans added to the Session follow the Workout's own (E19-T13), so every view sees them.
+  if (program && workout && session.added?.length) {
+    return { program, workout: { ...workout, exercises: sessionPlans(workout, session) } }
+  }
   return program && workout ? { program, workout } : null
 }
 
@@ -229,6 +238,14 @@ export function WorkoutFeature({
     (s) => orElse(s.preferences.trackEffort(), false),
     ['preferences'],
   )
+  const keepScreenOnData = useServiceData(
+    (s) => orElse(s.preferences.keepScreenOnDuringRest(), true),
+    ['preferences'],
+  )
+  const weekStartData = useServiceData(
+    (s) => orElse<Weekday>(s.preferences.weekStart().then((day) => day as Weekday), 1),
+    ['preferences'],
+  )
   const plateInventoryData = useServiceData(
     (s) => orElse(s.preferences.plateInventory(), null),
     ['preferences'],
@@ -248,6 +265,7 @@ export function WorkoutFeature({
   const [openSet, setOpenSet] = useState<OpenSet | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
   const [historyFor, setHistoryFor] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   const [summarySession, setSummarySession] = useState<Session | null>(null)
   const [lastSwaps, setLastSwaps] = useState<Record<string, string>>({})
   const [lastEntries, setLastEntries] = useState<Map<string, SetEntry[]>>(new Map())
@@ -338,6 +356,24 @@ export function WorkoutFeature({
   useEffect(() => {
     onLive?.(latestLiveStatus.current)
   }, [liveKey, onLive])
+
+  // The screen stays on while a rest runs, on every view of the Session, when the setting is on.
+  // The timeout re-renders at the rest's end so the lock is let go then.
+  const restEndsAt = liveStatus === null ? null : liveStatus.restEndsAt
+  const [, setRestTick] = useState(0)
+  useEffect(() => {
+    if (restEndsAt === null) return
+    const remaining = restEndsAt - Date.now()
+    if (remaining <= 0) return
+    const timer = setTimeout(() => setRestTick((tick) => tick + 1), remaining)
+    return () => clearTimeout(timer)
+  }, [restEndsAt])
+  useWakeLock(
+    keepScreenOnData.status === 'ready' &&
+      keepScreenOnData.data &&
+      restEndsAt !== null &&
+      restEndsAt > Date.now(),
+  )
 
   if (catalogData.status === 'error' || programsData.status === 'error') {
     const error = catalogData.status === 'error' ? catalogData.error : programsData.error
@@ -620,6 +656,18 @@ export function WorkoutFeature({
     void syncNow()
   }
 
+  /** `ExercisePicker.onPick`: adds the Exercise to the Session in progress as a 3 x 8-12 Plan. */
+  async function handleAddExercise(exerciseId: string): Promise<void> {
+    if (!session) return
+    try {
+      setSession(await services.sessions.addExercise(session.id, exerciseId))
+      loadLastEntriesOf(exerciseId)
+      setAdding(false)
+    } catch {
+      // The picker stays up; nothing was added.
+    }
+  }
+
   /** `ExerciseList.onDiscard`: discards the Session in progress and returns to the picker. */
   function handleDiscard(): void {
     if (!session) return
@@ -886,16 +934,7 @@ export function WorkoutFeature({
             onOpenAlternatives={handleOpenAlternatives}
             onOpenHistory={setHistoryFor}
             upNext={nextName}
-            onFinishExercise={() => {
-              if (nextId === null) {
-                setView('list')
-                return
-              }
-              const loggedNext = session.entries.filter(
-                (entry) => entry.exerciseId === nextId,
-              ).length
-              handleOpenSet(nextId, loggedNext + 1)
-            }}
+            onFinishExercise={() => setView('list')}
           />
         </AppShell>
       )
@@ -934,6 +973,7 @@ export function WorkoutFeature({
           onDiscard={handleDiscard}
           note={session.note}
           onSaveNote={handleSaveNote}
+          onAddExercise={() => setAdding(true)}
         />
       </AppShell>
     )
@@ -1013,6 +1053,7 @@ export function WorkoutFeature({
       ) : null}
       {summarySession ? (
         <SessionSummary
+          weekStartsOn={weekStartData.status === 'ready' ? weekStartData.data : 1}
           session={summarySession}
           resolve={resolveListExercise}
           library={libraryMap}
@@ -1032,7 +1073,22 @@ export function WorkoutFeature({
               .find((program) => program.id === summarySession.programId)
               ?.workouts.find((workout) => workout.id === summarySession.workoutId)
               ?.exercises.find((plan) => plan.exerciseId === exerciseId)
+            ?? summarySession.added?.find((plan) => plan.exerciseId === exerciseId)
           }
+          workout={programs
+            .find((program) => program.id === summarySession.programId)
+            ?.workouts.find((workout) => workout.id === summarySession.workoutId)}
+          onSaveChanges={async (changes) => {
+            // The user's copy of the Program; a bundled Program becomes one on first save.
+            const { programs: current, userPrograms } = await services.programs.load()
+            const program = current.find((candidate) => candidate.id === summarySession.programId)
+            if (program === undefined) throw new Error('The Program is gone')
+            const stored = userPrograms.find((candidate) => candidate.id === program.id)
+            await services.programs.save({
+              ...applySessionChanges(program, summarySession.workoutId, changes),
+              createdAt: stored?.createdAt ?? Date.now(),
+            })
+          }}
           onClose={() => setSummarySession(null)}
           onBrowse={(muscles) => {
             setSummarySession(null)
@@ -1041,6 +1097,17 @@ export function WorkoutFeature({
         />
       ) : null}
       {liveOnScreen ? historyOverlay : null}
+      {liveOnScreen && adding && session && located ? (
+        <ExercisePicker
+          library={library}
+          taken={[
+            ...located.workout.exercises.map((plan) => plan.exerciseId),
+            ...Object.values(session.swaps ?? {}),
+          ]}
+          onPick={(id) => void handleAddExercise(id)}
+          onClose={() => setAdding(false)}
+        />
+      ) : null}
       {liveOnScreen && overlay?.kind === 'alternatives' ? (
         <AlternativesOverlay
           plannedId={overlay.plannedId}

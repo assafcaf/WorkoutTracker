@@ -12,6 +12,7 @@ import {
   workingSetCount,
 } from '../../domain/sessionsView'
 import { muscleWeeks, STATS_MUSCLES } from '../../domain/stats/muscles'
+import type { Weekday } from '../../domain/stats/weeks'
 import { computeRecords, recordCount } from '../../domain/stats/records'
 import { sessionVolume } from '../../domain/volume'
 import type { ExercisePlan, LibraryExercise, Muscle, Program, Session } from '../../types'
@@ -37,7 +38,7 @@ export type SessionsScreenProps = {
 const CALENDAR_WEEKS = 6
 const HEAT_WEEKS = 4
 const VOLUME_LIMIT = 12
-const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 const MUSCLE_LABELS: Record<string, string> = {
   chest: 'Chest',
@@ -61,9 +62,17 @@ function workoutNameOf(session: Session, programs: Program[]): string {
 }
 
 /** The six-week calendar: one square per day, Sessions filled, today outlined. */
-function SessionsCalendar({ sessions, now }: { sessions: Session[]; now: number }): JSX.Element {
-  const weeks = calendarWeeks(sessions, now, CALENDAR_WEEKS)
-  const count = sessionsInWeeks(sessions, now, CALENDAR_WEEKS)
+function SessionsCalendar({
+  sessions,
+  now,
+  weekStartsOn,
+}: {
+  sessions: Session[]
+  now: number
+  weekStartsOn: Weekday
+}): JSX.Element {
+  const weeks = calendarWeeks(sessions, now, CALENDAR_WEEKS, weekStartsOn)
+  const count = sessionsInWeeks(sessions, now, CALENDAR_WEEKS, weekStartsOn)
   return (
     <section className="sessions-calendar card" aria-label="Calendar">
       <div
@@ -72,7 +81,7 @@ function SessionsCalendar({ sessions, now }: { sessions: Session[]; now: number 
         aria-label={`Last ${CALENDAR_WEEKS} weeks: ${count} ${count === 1 ? 'session' : 'sessions'}`}
       >
         <span aria-hidden="true" />
-        {WEEKDAY_INITIALS.map((initial, index) => (
+        {Array.from({ length: 7 }, (_, index) => WEEKDAY_INITIALS[(index + weekStartsOn) % 7]).map((initial, index) => (
           <span key={index} className="sessions-calendar-weekday" aria-hidden="true">
             {initial}
           </span>
@@ -164,9 +173,10 @@ function lastWeeks(
   count: number,
   resolve: Resolve,
   library: Map<string, LibraryExercise>,
+  weekStartsOn: Weekday,
 ): MuscleColumn[] {
-  const byStart = new Map(muscleWeeks(sessions, now, resolve, library).map((week) => [week.start, week] as const))
-  const current = startOfWeek(now)
+  const byStart = new Map(muscleWeeks(sessions, now, resolve, library, weekStartsOn).map((week) => [week.start, week] as const))
+  const current = startOfWeek(now, weekStartsOn)
   return Array.from({ length: count }, (_, index) => {
     const date = new Date(current)
     date.setDate(date.getDate() - 7 * (count - 1 - index))
@@ -181,13 +191,15 @@ function MuscleWeeks({
   now,
   resolve,
   library,
+  weekStartsOn,
 }: {
   sessions: Session[]
   now: number
   resolve: Resolve
   library: Map<string, LibraryExercise>
+  weekStartsOn: Weekday
 }): JSX.Element {
-  const weeks = lastWeeks(sessions, now, HEAT_WEEKS, resolve, library)
+  const weeks = lastWeeks(sessions, now, HEAT_WEEKS, resolve, library, weekStartsOn)
   const half = Math.ceil(STATS_MUSCLES.length / 2)
   return (
     <section className="sessions-card card" aria-label="Muscle sets by week">
@@ -292,10 +304,16 @@ export function SessionsScreen({
     ['programs'],
   )
   const catalogData = useServiceData((services) => services.catalog.load(), [])
+  const weekStartData = useServiceData(
+    (services) => services.preferences.weekStart().then((day): Weekday => day as Weekday).catch((): Weekday => 1),
+    ['preferences'],
+  )
   const bodyweightOverridesData = useServiceData(
     (services) => services.preferences.bodyweightOverrides().catch((): Record<string, boolean> => ({})),
     ['preferences'],
   )
+
+  const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
 
   if (sessionsData.status !== 'ready' || programsData.status !== 'ready' || catalogData.status !== 'ready') {
     return <AppShell title="Sessions">{null}</AppShell>
@@ -359,10 +377,16 @@ export function SessionsScreen({
         <p className="sessions-empty">No finished workouts yet. Finish one and it appears here.</p>
       ) : (
         <div className="sessions-screen">
-          <SessionsCalendar sessions={sessions} now={today} />
-          <MuscleWeeks sessions={sessions} now={today} resolve={resolve} library={libraryMap} />
+          <SessionsCalendar sessions={sessions} now={today} weekStartsOn={weekStartsOn} />
+          <MuscleWeeks
+            sessions={sessions}
+            now={today}
+            resolve={resolve}
+            library={libraryMap}
+            weekStartsOn={weekStartsOn}
+          />
           <VolumeByWorkout sessions={sessions} programs={programs} resolve={resolve} />
-          {sessionsByWeek(sessions, today).map((week) => (
+          {sessionsByWeek(sessions, today, weekStartsOn).map((week) => (
             <section key={week.start} className="sessions-week" aria-label={week.label}>
               <h2 className="sessions-caption">{week.label}</h2>
               <ul className="sessions-list card">

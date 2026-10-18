@@ -250,3 +250,38 @@ describe('E18-T6 O21 the 4 weeks ago compare', () => {
     expect(compareAgo(h, NOW)).toBeNull()
   })
 })
+
+describe('E19 O4 gaps follow the week start', () => {
+  const set = (n: number, w: number): SetEntry => ({
+    exerciseId: 'db-bench-press',
+    setIndex: n,
+    weightKg: w,
+    reps: 8,
+    loggedAt: n,
+  })
+  const sess = (id: string, startedAt: number): Session => ({
+    id,
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt,
+    finishedAt: startedAt + 1,
+    entries: [set(0, 10), set(1, 10)],
+  })
+
+  it('E19 O4 Sessions on Fri 4 and Sat 12 Sep leave the Saturday week of 5 Sep as the gap with Saturday, none with Monday', () => {
+    const ss = [sess('fri', new Date(2026, 8, 4, 10).getTime()), sess('sat', new Date(2026, 8, 12, 10).getTime())]
+    const h = buildLiftHistories(ss, resolve, planOf).get('db-bench-press')!
+    expect(buildLadder(h, { sessions: ss, program }, 6).gaps).toEqual([
+      { weekStart: new Date(2026, 8, 5).getTime(), label: 'No sessions' },
+    ])
+    expect(buildLadder(h, { sessions: ss, program }).gaps).toEqual([])
+  })
+
+  it('E19 O4 cutLadder with Wednesday keeps the gap of the Wednesday week holding the cut', () => {
+    const gap = (m: number, d: number) => ({ weekStart: new Date(2026, m - 1, d).getTime(), label: 'No sessions' })
+    const ladder = { exerciseId: 'db-bench-press', treads: [], points: [], gaps: [gap(9, 30), gap(10, 7)] }
+    const now = new Date(2027, 0, 12, 10).getTime() // 3M back is Mon 12 Oct 2026
+    expect(cutLadder(ladder, '3M', now, 3).gaps).toEqual([gap(10, 7)])
+    expect(cutLadder(ladder, '3M', now).gaps).toEqual([])
+  })
+})

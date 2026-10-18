@@ -88,6 +88,7 @@ describe('O5 the session service', () => {
   test('O5 createSessionService has exactly the eleven session operations', () => {
     const { service } = harness()
     expect(Object.keys(service).sort()).toEqual([
+      'addExercise',
       'applySwap',
       'deleteSet',
       'discard',
@@ -1052,5 +1053,120 @@ describe('E14-T14 the session service edits a Bodyweight Set Load', () => {
     await expect(rejection).rejects.toBeInstanceOf(ServiceError)
     expect((await stored('active'))?.entries).toEqual([pushUp1, pushUp2])
     expect(emitted()).toBe(0)
+  })
+})
+
+// --- E19-T12 O22: an extra Exercise on the Session in progress ------------------------------
+// The service reads the Workout from the bundled Programs merged with the stored User Programs,
+// so these Sessions point at the bundled assaf-ab-2026 / workout-a (it plans lunges, not deadlift).
+
+describe('O22 addExercise', () => {
+  const inProgress = (over: Partial<Session> = {}): Session =>
+    storedSession({
+      id: 'live',
+      programId: 'assaf-ab-2026',
+      workoutId: 'workout-a',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      updatedAt: NOW - HOUR,
+      ...over,
+    })
+
+  test('O22 adding an Exercise stores a new Plan for it in Session.added and returns the Session', async () => {
+    await putSessions([inProgress()])
+
+    const result = await harness().service.addExercise('live', 'deadlift')
+
+    const plan = { exerciseId: 'deadlift', sets: 3, repRange: [8, 12], restSeconds: 90 }
+    expect(result.added).toEqual([plan])
+    expect((await stored('live'))?.added).toEqual([plan])
+    expect((await stored('live'))?.updatedAt).toBe(NOW)
+  })
+
+  test('O22 a second added Exercise is appended after the first', async () => {
+    await putSessions([inProgress()])
+    const { service } = harness()
+
+    await service.addExercise('live', 'deadlift')
+    await service.addExercise('live', 'machine-row')
+
+    expect((await stored('live'))?.added?.map((plan) => plan.exerciseId)).toEqual([
+      'deadlift',
+      'machine-row',
+    ])
+  })
+
+  test('O22 adding announces once on the sessions topic', async () => {
+    await putSessions([inProgress()])
+    const { service, emitted } = harness()
+
+    await service.addExercise('live', 'deadlift')
+
+    expect(emitted()).toBe(1)
+  })
+
+  test('O22 an Exercise already in the Workout is refused and nothing is stored or announced', async () => {
+    const before = inProgress()
+    await putSessions([before])
+    const { service, emitted } = harness()
+
+    await expect(service.addExercise('live', 'lunges')).rejects.toMatchObject({
+      name: 'ServiceError',
+      code: 'storage-failed',
+    })
+
+    expect(await stored('live')).toEqual(before)
+    expect(emitted()).toBe(0)
+  })
+
+  test('O22 an Exercise already added is refused and added stays as it was', async () => {
+    await putSessions([inProgress()])
+    const { service, emitted } = harness()
+    await service.addExercise('live', 'deadlift')
+    const countBefore = emitted()
+
+    await expect(service.addExercise('live', 'deadlift')).rejects.toMatchObject({
+      code: 'storage-failed',
+    })
+
+    expect((await stored('live'))?.added).toHaveLength(1)
+    expect(emitted()).toBe(countBefore)
+  })
+
+  test('O22 a finished Session is refused', async () => {
+    const finished = inProgress({ id: 'done', finishedAt: NOW - HOUR + 1_000 })
+    await putSessions([finished])
+
+    await expect(harness().service.addExercise('done', 'deadlift')).rejects.toMatchObject({
+      code: 'storage-failed',
+    })
+
+    expect(await stored('done')).toEqual(finished)
+  })
+
+  test('O22 an unknown Session is refused as not-found', async () => {
+    await expect(harness().service.addExercise('nope', 'deadlift')).rejects.toMatchObject({
+      code: 'not-found',
+    })
+  })
+
+  test('O22 with storage unavailable it is refused as storage-unavailable', async () => {
+    const service = createSessionService({
+      now: () => NOW,
+      bus: createChangeBus(),
+      storageAvailable: false,
+    })
+
+    await expect(service.addExercise('live', 'deadlift')).rejects.toMatchObject({
+      code: 'storage-unavailable',
+    })
+  })
+
+  test('O22 a Session never added to keeps no added field', async () => {
+    await putSessions([inProgress()])
+
+    await harness().service.setNote('live', 'felt fine')
+
+    expect('added' in ((await stored('live')) as Session)).toBe(false)
   })
 })

@@ -50,12 +50,15 @@ describe('D3 every setting key is declared once in settingKeys', () => {
     expect([...syncedSettingKeys()].sort()).toEqual([
       'activeProgramId',
       'bodyweightOverrides',
+      'customExercises',
       'effortTracking',
       'exerciseNotes',
       'gymEquipment',
+      'keepScreenOnDuringRest',
       'plateInventory',
       'userPrograms',
       'volumeBaseline',
+      'weekStart',
       'weightSteps',
     ])
   })
@@ -71,6 +74,17 @@ describe('D3 every setting key is declared once in settingKeys', () => {
       topic: 'preferences',
     })
   })
+
+  test.each(['weekStart', 'keepScreenOnDuringRest', 'customExercises'])(
+    'E19-T1 O1 %s is declared synced on the preferences topic',
+    (key) => {
+      expect(SETTING_KEYS.find((info) => info.key === key)).toEqual({
+        key,
+        synced: true,
+        topic: 'preferences',
+      })
+    },
+  )
 
   test('E16-T1 O3 bodyweightOverrides is declared synced on the preferences topic', () => {
     expect(SETTING_KEYS.find((info) => info.key === 'bodyweightOverrides')).toEqual({

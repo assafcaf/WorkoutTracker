@@ -96,3 +96,42 @@ describe('E18-T11 O21 lift page', () => {
     expect(screen.queryByRole('img')).toBeNull()
   })
 })
+
+describe('E19-T4 O6 lift page gap weeks', () => {
+  const base = sessions.find((s) => s.entries.some((e) => e.exerciseId === 'back-squat')) as Session
+  const at = (id: string, d: Date): Session => {
+    const shift = d.getTime() - base.startedAt
+    return {
+      ...base,
+      id,
+      startedAt: base.startedAt + shift,
+      finishedAt: (base.finishedAt ?? base.startedAt) + shift,
+      entries: base.entries.map((e) => ({ ...e, loggedAt: e.loggedAt + shift })),
+    }
+  }
+  // Sat 3 Oct and Sun 11 Oct 2026.
+  const pair = [at('gap-a', new Date(2026, 9, 3, 10, 0)), at('gap-b', new Date(2026, 9, 11, 10, 0))]
+
+  function ladderWith(weekStart: 0 | 1) {
+    return render(
+      <LiftPageView
+        exerciseId="back-squat"
+        sessions={pair}
+        program={program}
+        resolve={resolve}
+        now={NOW}
+        weekStart={weekStart}
+      />,
+    )
+  }
+
+  it('O6 with Monday weeks Sat 3 and Sun 11 Oct sit in adjacent weeks, so no gap', () => {
+    const { container } = ladderWith(1)
+    expect(container.querySelectorAll('.ladder-gap')).toHaveLength(0)
+  })
+
+  it('O6 with Sunday weeks the same two Sessions leave an empty week between them', () => {
+    const { container } = ladderWith(0)
+    expect(container.querySelectorAll('.ladder-gap')).toHaveLength(1)
+  })
+})

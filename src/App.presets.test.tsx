@@ -102,6 +102,39 @@ test('O21 with an active program the Program tab still does not list Full body s
   expect(screen.queryByText('Full body starter')).toBeNull()
 })
 
+// --- O37: Upper/Lower is offered next to A/B Split --------------------------------------------
+
+test('O37 a new user Program tab offers Upper/Lower next to A/B Split', async () => {
+  const user = userEvent.setup()
+  await renderApp()
+
+  await openProgramTab(user)
+
+  expect(await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('button', { name: 'Use this Upper/Lower' }, SETTLE)).toBeVisible()
+})
+
+test('O37 pressing Use this on Upper/Lower stores it and the Workout tab offers Upper and Lower', async () => {
+  const user = userEvent.setup()
+  await renderApp()
+
+  await openProgramTab(user)
+  await user.click(await screen.findByRole('button', { name: 'Use this Upper/Lower' }, SETTLE))
+
+  await waitFor(async () => {
+    expect((await db.settings.get('activeProgramId'))?.value).toBe('upper-lower')
+  }, SETTLE)
+  await user.click(await screen.findByRole('button', { name: 'Train' }, SETTLE))
+  expect(await workoutsOffered(user)).toEqual(['Upper', 'Lower'])
+})
+
+test('O37 nothing is active for a new user, so A/B Split stays the default', async () => {
+  await renderApp()
+
+  await screen.findByRole('button', { name: 'Program' }, SETTLE)
+  expect((await db.settings.get('activeProgramId'))?.value).toBeUndefined()
+})
+
 test('O21 with an active program Settings still does not list Full body starter', async () => {
   const user = userEvent.setup()
   await db.settings.put({ key: 'activeProgramId', value: 'assaf-ab-2026', updatedAt: Date.now() })

@@ -44,6 +44,18 @@ export type LibraryExercise = {
   images: string[]
 }
 
+/** An Exercise the trainee created; merged into the catalog by `CatalogService` (E19). */
+export type CustomExercise = {
+  id: string
+  name: string
+  primaryMuscles: Muscle[]
+  secondaryMuscles: Muscle[]
+  equipment: string | null
+  bodyweight: boolean
+  weightStep: number
+  createdAt: number
+}
+
 /** One size of plate and how many pairs of it the trainee has. */
 export type Plate = { kg: number; pairs: number }
 
@@ -135,6 +147,11 @@ export type Session = {
   note?: string
   /** The trainee marked this Session a deload (E18-T2). Absent unless marked. */
   deload?: true
+  /**
+   * Exercises the trainee added to this Session beyond the Workout's Plans (E19-T12), in the
+   * order added. Absent when none was added.
+   */
+  added?: ExercisePlan[]
 }
 
 /**

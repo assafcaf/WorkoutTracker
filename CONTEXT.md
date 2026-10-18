@@ -12,6 +12,10 @@ A lift as the catalog defines it — its weight step, start weight, whether it i
 where to see it demonstrated. Independent of any program that prescribes it.
 _Avoid_: Movement, lift, activity
 
+**Custom Exercise**:
+An Exercise the trainee created (synced `customExercises`, merged into the catalog).
+_Avoid_: User exercise
+
 **Plan**:
 A program's prescription for one exercise: how many sets, the rep range, the rest between them,
 and its place in the order. A Plan points at an Exercise; it does not contain one.
@@ -30,11 +34,11 @@ One visit to the gym: a Workout performed, with the sets logged against it. What
 _Avoid_: Log, entry, instance
 
 **Session note**:
-Free text of up to 500 characters the trainee attaches to a Session, in progress or finished (`Session.note`). Empty removes it.
+Free text (up to 500 characters) on a Session (`Session.note`).
 _Avoid_: Comment, memo
 
 **Exercise note**:
-Free text of up to 500 characters kept for an Exercise, shown above the Dials. Empty removes it.
+Free text (up to 500 characters) on an Exercise, shown above the Dials.
 _Avoid_: Comment, memo, Session note
 
 **Set**:
@@ -57,7 +61,7 @@ A Set of kind `warmup`. It is logged and shown, but does not count toward stats:
 e1RM series and progression ignore it (`countsTowardStats`).
 
 **Rest**:
-The time after a Set before the next, derived from the Set's `loggedAt` and its rest length (its own `restSeconds`, else the Plan's). The **rest timer** shows it.
+The time after a Set, from its `loggedAt` and rest length (its `restSeconds`, else the Plan's); the **rest timer** shows it.
 
 **Record**:
 The best Set of one kind for an Exercise (heaviest, best estimated 1RM, and so on), as
@@ -105,8 +109,7 @@ Push, pull, legs or core: the group every muscle and Region belongs to, and its 
 _Avoid_: Muscle group, category, colour group
 
 **Shell**:
-The frame around the screen showing: header, tab bar and Action bar. Not the precached bundle
-(the **precache**). See `docs/decisions/0004-one-palette-one-shell-audited-as-data.md`.
+The frame around the screen showing: header, tab bar and Action bar. Not the **precache**.
 _Avoid_: Chrome, frame, layout, app shell
 
 **Action bar**:
@@ -141,8 +144,7 @@ re-read.
 _Avoid_: Event, channel, subscription
 
 **Effort**:
-How many reps the trainee had left (RIR, 0 to 3+) on a logged Set, recorded from chips after the
-log when **Track effort** is on in Settings. Optional, never blocks the next Set.
+Reps left (RIR, 0 to 3+) on a logged Set, from chips when **Track effort** is on. Optional.
 _Avoid_: Intensity, RPE
 
 **Plate inventory**:
@@ -153,3 +155,7 @@ The plates for one side of the bar, for the weight on the Dial.
 
 **Warm-up ramp**:
 The Warm-up Sets proposed before the first working Set of a barbell Exercise.
+
+**Week start**:
+The trainee's first weekday (`Date.getDay()` numbering, Monday when unset); every week goes
+through `weekStart(ms, weekStartsOn)`.

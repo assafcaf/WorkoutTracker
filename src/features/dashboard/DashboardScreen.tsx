@@ -11,7 +11,7 @@ import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
 import { buildLiftHistories } from '../../domain/stats/liftHistory'
 import { dueWorkoutCard } from '../../domain/stats/train'
-import { thisWeek } from '../../domain/stats/weeks'
+import { thisWeek, type Weekday } from '../../domain/stats/weeks'
 import { ServiceError, type Services, type SyncView } from '../../services'
 import type { Exercise, ExercisePlan, Program, Session, Workout } from '../../types'
 import { useServices, useSyncControls } from '../ServicesProvider'
@@ -109,6 +109,11 @@ export function DashboardScreen({
   const services = useServices()
   const { sync, syncNow } = useSyncControls()
   const loaded = useServiceData(load, ['programs', 'sessions', 'preferences'])
+  const weekStartData = useServiceData(
+    (s) => s.preferences.weekStart().then((day): Weekday => day as Weekday).catch((): Weekday => 1),
+    ['preferences'],
+  )
+  const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [, setTick] = useState(0)
 
@@ -149,7 +154,7 @@ export function DashboardScreen({
       const plans = new Map<string, ExercisePlan>()
       for (const workout of program.workouts) for (const plan of workout.exercises) plans.set(plan.exerciseId, plan)
       const histories = buildLiftHistories(sessions, resolve, (id) => plans.get(id))
-      const week = thisWeek(sessions, at, program.sessionsPerWeek)
+      const week = thisWeek(sessions, at, program.sessionsPerWeek, weekStartsOn)
       const dueCard =dueWorkoutCard(program, sessions, resolve, histories)
       const dockWorkout = (workout: Workout): DockWorkout => {
         const done = sessions
