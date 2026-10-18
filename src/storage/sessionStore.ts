@@ -1,4 +1,5 @@
-import type { ExercisePlan, Session, SetEntry, SetKind } from '../types'
+import type { Session, SetEntry, SetKind } from '../types'
+import type { ExercisePlan } from '../types'
 import { db } from './db'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 import { validateEntry } from '../domain/dial'
