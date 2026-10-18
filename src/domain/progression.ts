@@ -1,4 +1,5 @@
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
+import { effortSteps } from './effortStep'
 import { workingSets as excludeWarmups } from './setKind'
 
 // An assisted Set is a negative Load on a Bodyweight Exercise, so less assistance is `add-load`.
@@ -31,6 +32,13 @@ export function workingAssistance(entries: SetEntry[]): number | null {
 const sumReps = (entries: SetEntry[]): number =>
   entries.reduce((total, entry) => total + entry.reps, 0)
 
+function loadSuggestion(atLoad: SetEntry[], load: number, weightStep: number): Suggestion {
+  const steps = effortSteps(atLoad)
+  return steps === 0
+    ? { kind: 'hold', nextLoadKg: load }
+    : { kind: 'add-load', nextLoadKg: load + steps * weightStep }
+}
+
 /**
  * How close the last session of an exercise came to the top of its rep range, and what should
  * change next time. Pure: the caller supplies the last session's entries for this exercise.
@@ -40,6 +48,9 @@ const sumReps = (entries: SetEntry[]): number =>
  * - Bodyweight with Loads: the same, at the highest signed Load -> add one `weightStep` to it.
  *   An assisted Set is a negative Load, so less assistance is simply a higher Load.
  * - Bodyweight without Loads: every entry counts against `plan.sets` x top of range -> add a set.
+ *
+ * A full bar moves by `effortSteps` of its counted Sets: 2 steps after an easy bar, `hold` when
+ * every Set was at RIR 0, else 1 (a plain Bodyweight lift adds one set, never two).
  *
  * `nextWeightKg` is exact arithmetic, not snapped to a rung.
  */
@@ -73,9 +84,7 @@ export function progression(
         achievedReps: sumReps(atLoad),
         targetReps: loadedTarget,
         isFull: loadedFull,
-        suggestion: loadedFull
-          ? { kind: 'add-load', nextLoadKg: load + exercise.weightStep }
-          : null,
+        suggestion: loadedFull ? loadSuggestion(atLoad, load, exercise.weightStep) : null,
       }
     }
     const targetReps = plan.sets * topReps
@@ -86,7 +95,7 @@ export function progression(
       achievedReps,
       targetReps,
       isFull,
-      suggestion: isFull ? { kind: 'add-set' } : null,
+      suggestion: isFull ? (effortSteps(lastEntries) === 0 ? { kind: 'hold' } : { kind: 'add-set' }) : null,
     }
   }
 
@@ -96,7 +105,11 @@ export function progression(
 
   let suggestion: Suggestion | null = null
   if (isFull && working !== null) {
-    suggestion = { kind: 'add-weight', nextWeightKg: working + exercise.weightStep }
+    const steps = effortSteps(workingSets)
+    suggestion =
+      steps === 0
+        ? { kind: 'hold', nextWeightKg: working }
+        : { kind: 'add-weight', nextWeightKg: working + steps * exercise.weightStep }
   }
 
   return {

@@ -8,6 +8,7 @@
 //   stepsClimbed(histories, records, now)   -> StepsClimbed
 // `records` is computeRecords(...) output (all lifts). `now` is epoch ms; "today" is its local day.
 import type { Exercise, ExercisePlan } from '../../types'
+import { effortSteps } from '../effortStep'
 import { leverOf, straightSets } from './liftHistory'
 import type { LiftHistory } from './liftHistory'
 import type { SessionRecord } from './records'
@@ -121,7 +122,7 @@ export function nextStep(
   plan: ExercisePlan | undefined,
   exercise: Exercise,
 ): NextStep | null {
-  const latest = history.points.at(-1)
+  const latest = history.points.filter((p) => !p.deload).at(-1)
   if (!plan || !latest || !latest.top) return null
   const lever = latest.top.lever
   const atTop = straightSets(latest.workingSets).filter(
@@ -129,13 +130,16 @@ export function nextStep(
   )
   const repsAtTop = atTop.reduce((sum, s) => sum + s.reps, 0)
   const target = atTop.length * plan.repRange[1]
-  const ready = repsAtTop >= target
-  const step: NextStep = { repsAtTop, target, lever, ready }
-  if (ready) {
+  const full = repsAtTop >= target
+  const effort = full ? effortSteps(atTop) : 1
+  if (full && effort === 0) return { repsAtTop, target, lever, ready: false, hold: true }
+  const step: NextStep = { repsAtTop, target, lever, ready: full }
+  if (full) {
+    if (effort === 2) step.steps = 2
     step.suggest =
       history.bodyweight && lever === 0
         ? { kind: 'set' }
-        : { kind: 'lever', lever: Math.round((lever + exercise.weightStep) * 100) / 100 }
+        : { kind: 'lever', lever: Math.round((lever + effort * exercise.weightStep) * 100) / 100 }
   }
   return step
 }

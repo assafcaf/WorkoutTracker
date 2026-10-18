@@ -5,6 +5,8 @@ import type { SetEntry } from '../types'
  * `rir` >= 2, 0 when every one carries `rir` 0, else 1 (a mix, or any Set without `rir`).
  */
 export function effortSteps(sets: SetEntry[]): 0 | 1 | 2 {
-  void sets
-  return 1 // stub
+  if (sets.length === 0) return 1
+  if (sets.every((set) => set.rir !== undefined && set.rir >= 2)) return 2
+  if (sets.every((set) => set.rir === 0)) return 0
+  return 1
 }

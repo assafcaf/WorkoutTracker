@@ -182,10 +182,11 @@ export function liftTrends(
   return trends
 }
 
-/** The working Sets of `exerciseId` in the newest Session holding one, or none. */
+/** The working Sets of `exerciseId` in the newest non-deload Session holding one, or none. */
 function lastEntriesOf(sessions: Session[], exerciseId: string): SetEntry[] {
   const newestFirst = [...sessions].sort((a, b) => b.startedAt - a.startedAt)
   for (const session of newestFirst) {
+    if (session.deload) continue
     const entries = workingSets(session.entries).filter((entry) => entry.exerciseId === exerciseId)
     if (entries.length > 0) return entries
   }
