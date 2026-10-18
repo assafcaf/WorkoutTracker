@@ -26,6 +26,9 @@ export default defineConfig({
         // added by the plugin itself). The bundled exercise photos in public/library-photos/
         // are .jpg, so they are named here too, or they would not work offline.
         globPatterns: ['**/*.{js,wasm,css,html,jpg,woff2}'],
+        // The push and notificationclick listeners live in public/sw-push.js (E24); the
+        // generated worker stays generateSW so the precache is unchanged.
+        importScripts: ['sw-push.js'],
         // The Worker answers /api/ itself (E7-T1) and Access owns /cdn-cgi/; without this the
         // navigation fallback would answer both from the cached SPA shell instead of letting
         // them reach the Worker.
