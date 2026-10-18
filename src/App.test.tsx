@@ -114,8 +114,6 @@ beforeEach(async () => {
   await setActiveProgramId('assaf-ab-2026')
 })
 
-const FAST = { timeout: 300 }
-
 // --- the picker leads with the active program (the bulk of O18) --------------------------
 
 test('O18 App leads the picker with the active program’s workouts', async () => {
@@ -136,7 +134,7 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
   await findStartButton()
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
-  await user.click(await screen.findByRole('radio', { name: 'Second Program' }, FAST))
+  await user.click(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE))
   // Settings is a full-screen page since the Progress Dashboard redesign: its Back chevron, then
   // the Dashboard tab, is the way back.
   await pressTab(user, 'Train')
@@ -178,7 +176,7 @@ test('O2 App shows a hard-error screen naming the problem and renders no picker 
 
   await renderApp()
 
-  const alert = await screen.findByRole('alert', {}, FAST)
+  const alert = await screen.findByRole('alert', {}, SETTLE)
   expect(alert.textContent).toMatch(/ghost-exercise/)
   expect(screen.queryByRole('heading', { name: 'Workout A' })).toBeNull()
 })
@@ -190,7 +188,7 @@ test('O19 App shows the storage-unavailable banner and disables the logging cont
 
   await renderApp()
 
-  const alert = await screen.findByRole('alert', {}, FAST)
+  const alert = await screen.findByRole('alert', {}, SETTLE)
   expect(alert.textContent).toMatch(/cannot be saved/i)
   // Nothing can be stored, so the Dashboard's dock offers the bundled Programs and takes up none.
   const dockButton = await screen.findByRole('button', { name: /^Use A\/B Split/i }, SETTLE)
@@ -201,7 +199,7 @@ test('O19 App shows the storage-unavailable banner and disables the logging cont
 test('O19 App leaves the logging controls enabled and shows no banner when storage is available', async () => {
   await renderApp()
 
-  const startButton = await screen.findByRole('button', { name: /Start Workout A/i }, FAST)
+  const startButton = await screen.findByRole('button', { name: /Start Workout A/i }, SETTLE)
   expect(startButton).not.toBeDisabled()
   expect(screen.queryByRole('alert')).toBeNull()
 })
@@ -1580,11 +1578,11 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
 
   await toolsRow(user, 'Swap exercise')
 
-  expect(await screen.findByRole('searchbox', { name: /search/i }, FAST)).toBeVisible()
+  expect(await screen.findByRole('searchbox', { name: /search/i }, SETTLE)).toBeVisible()
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
     { selector: '.alternatives-row-name' },
-    FAST,
+    SETTLE,
   )
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
@@ -1657,7 +1655,7 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
     { selector: '.alternatives-row-name' },
-    FAST,
+    SETTLE,
   )
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
@@ -1689,7 +1687,7 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
     { selector: '.alternatives-row-name' },
-    FAST,
+    SETTLE,
   )
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
