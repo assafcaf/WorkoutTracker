@@ -97,6 +97,7 @@ export async function startOrResumeSession(
   programId: string,
   workoutId: string,
   now: number,
+  deload?: boolean,
 ): Promise<Session> {
   return db.transaction('rw', db.sessions, async () => {
     await finishStaleSession(now)
@@ -110,6 +111,7 @@ export async function startOrResumeSession(
       startedAt: now,
       finishedAt: null,
       entries: [],
+      ...(deload ? { deload: true as const } : {}),
       updatedAt: now,
     }
     await db.sessions.put(session)
@@ -331,18 +333,24 @@ export async function finishSession(sessionId: string, now: number): Promise<Ses
 }
 
 /**
- * The entries for `exerciseId` from the most recent finished session that contains it, in
+ * The entries for `exerciseId` from the most recent finished non-deload session that contains it (else the most recent deload one), in
  * `setIndex` order, across every program. Scans at most 200 sessions.
  */
 export async function getLastEntriesFor(exerciseId: string): Promise<SetEntry[]> {
+  // The newest finished Session holding the exercise wins, but a deload is only the fallback:
+  // an older non-deload one is the better "last time" (E21-T5).
+  let deloadEntries: SetEntry[] | null = null
   for (const session of await finishedSessionsNewestFirst(HISTORY_SCAN_LIMIT)) {
     const entries = session.entries.filter((entry) => entry.exerciseId === exerciseId)
     // The first session holding the exercise is the answer; older ones are not merged in.
-    if (entries.length > 0) {
-      return entries.map(normalizeLegacySet).sort((one, other) => one.setIndex - other.setIndex)
+    if (entries.length === 0) continue
+    if (session.deload) {
+      deloadEntries ??= entries
+      continue
     }
+    return entries.map(normalizeLegacySet).sort((one, other) => one.setIndex - other.setIndex)
   }
-  return []
+  return (deloadEntries ?? []).map(normalizeLegacySet).sort((one, other) => one.setIndex - other.setIndex)
 }
 
 /**

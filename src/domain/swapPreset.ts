@@ -15,15 +15,18 @@ export function swapPreset(args: {
   plannedLast: SetEntry[]
   chosenLast: SetEntry[]
   today: SetEntry[]
-}): { weightKg: number | null; reps: number; loadKg?: number } {
-  const { planned, chosen, plan, setIndex, plannedLast, chosenLast, today } = args
+  deload?: boolean
+}): { weightKg: number | null; reps: number; loadKg?: number; deloadFromKg?: number } {
+  const { planned, chosen, plan, setIndex, plannedLast, chosenLast, today, deload } = args
   if (chosenLast.length > 0) {
-    return presetForSet({ exercise: chosen, plan, setIndex, lastEntries: chosenLast, today })
+    return presetForSet({ exercise: chosen, plan, setIndex, lastEntries: chosenLast, today, deload })
   }
-  const wanted = presetForSet({ exercise: planned, plan, setIndex, lastEntries: plannedLast, today })
+  const wanted = presetForSet({ exercise: planned, plan, setIndex, lastEntries: plannedLast, today, deload })
   if (chosen.bodyweight) return { weightKg: null, reps: wanted.reps }
   const value = wanted.weightKg ?? chosen.startWeight ?? 0
   const ladder = buildLadder(chosen)
   const rung = ladder.filter((candidate) => candidate <= value).pop() ?? ladder[0] ?? value
-  return { weightKg: rung, reps: wanted.reps }
+  return wanted.deloadFromKg === undefined
+    ? { weightKg: rung, reps: wanted.reps }
+    : { weightKg: rung, reps: wanted.reps, deloadFromKg: wanted.deloadFromKg }
 }

@@ -25,7 +25,9 @@ import { loadCatalog, loadPrograms } from '../data/catalog'
 import { mergePrograms, newPlan } from '../domain/programs'
 import type { Program, Session, SetEntry, SetKind, Workout } from '../types'
 import type { ServiceDeps } from './deps'
-import { getUserPrograms } from '../storage/settingsStore'
+import { isDeloadWeek } from '../domain/deload'
+import type { Weekday } from '../domain/stats/weeks'
+import { getDeloadWeek, getUserPrograms, getWeekStart } from '../storage/settingsStore'
 import { callStorage, ServiceError } from './errors'
 
 export type SessionService = {
@@ -170,7 +172,13 @@ export function createSessionService(deps: ServiceDeps): SessionService {
       return callStorage(
         deps,
         async () => {
-          const started = await startOrResumeSession(programId, workoutId, now())
+          const at = now()
+          const deload = isDeloadWeek(
+            await getDeloadWeek(),
+            at,
+            (await getWeekStart()) as Weekday,
+          )
+          const started = await startOrResumeSession(programId, workoutId, at, deload)
           bus.emit('sessions')
           return started
         },

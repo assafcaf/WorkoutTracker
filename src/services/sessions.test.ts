@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from 'vitest'
 import { allSessions, putSessions, replaceAllSessions } from '../storage/sessionStore'
+import { setDeloadWeek, setWeekStart } from '../storage/settingsStore'
 import type { Program, Session, SetEntry } from '../types'
 import { createChangeBus } from './changes'
 import { ServiceError } from './errors'
@@ -9,6 +10,8 @@ import { createSessionService, type SessionService } from './sessions'
 // empty `sessions` table, seeded through the storage layer rather than `db`.
 beforeEach(async () => {
   await replaceAllSessions([])
+  await setDeloadWeek(null)
+  await setWeekStart(1)
 })
 
 const SECOND = 1_000
@@ -434,6 +437,100 @@ describe('O5 the session service', () => {
 })
 
 // --- O6: a missing Session ----------------------------------------------------------------
+
+describe('E21-T5 the session service starts a Session in a deload week', () => {
+  test('O13 start stores deload true when the stored deload week is the week of now', async () => {
+    await setDeloadWeek(NOW - 2 * DAY)
+
+    const started = await harness().service.start('p1', 'w1')
+
+    expect(started.deload).toBe(true)
+    expect((await stored(started.id))?.deload).toBe(true)
+  })
+
+  test('O13 start stores no deload field when the stored deload week is another week', async () => {
+    await setDeloadWeek(NOW - 14 * DAY)
+
+    const started = await harness().service.start('p1', 'w1')
+
+    expect('deload' in (await stored(started.id))!).toBe(false)
+  })
+
+  test('O13 start stores no deload field when no deload week is stored', async () => {
+    const started = await harness().service.start('p1', 'w1')
+
+    expect('deload' in (await stored(started.id))!).toBe(false)
+  })
+
+  test('O13 start reads the stored weekStart: a deload day before the week boundary is another week', async () => {
+    // NOW is a Friday; with weeks starting on Saturday (6), Wednesday is the previous week.
+    await setWeekStart(6)
+    await setDeloadWeek(NOW - 2 * DAY)
+
+    const started = await harness().service.start('p1', 'w1')
+
+    expect('deload' in (await stored(started.id))!).toBe(false)
+  })
+
+  test('O13 start resuming a Session in progress leaves it as stored, in a deload week', async () => {
+    await setDeloadWeek(NOW - 2 * DAY)
+    await putSessions([
+      storedSession({ id: 'active', startedAt: NOW - 60 * SECOND, finishedAt: null, updatedAt: NOW - 60 * SECOND }),
+    ])
+
+    const resumed = await harness().service.start('p1', 'w2')
+
+    expect(resumed.id).toBe('active')
+    expect('deload' in (await stored('active'))!).toBe(false)
+  })
+
+  test('O14 lastEntriesFor answers the newest non-deload finished Session over a newer deload one', async () => {
+    await putSessions([
+      storedSession({ id: 'normal', startedAt: BASE, finishedAt: BASE + HOUR, entries: [entry('bench', 0, 60, 8, BASE + 60 * SECOND)] }),
+      storedSession({
+        id: 'deload',
+        startedAt: BASE + DAY,
+        finishedAt: BASE + DAY + HOUR,
+        entries: [entry('bench', 0, 54, 8, BASE + DAY + 60 * SECOND)],
+        deload: true,
+      }),
+    ])
+
+    await expect(harness().service.lastEntriesFor('bench')).resolves.toEqual([entry('bench', 0, 60, 8, BASE + 60 * SECOND)])
+  })
+
+  test('O14 lastEntriesFor answers the newest deload Session when only deloads hold the Exercise', async () => {
+    await putSessions([
+      storedSession({
+        id: 'deload',
+        startedAt: BASE + DAY,
+        finishedAt: BASE + DAY + HOUR,
+        entries: [entry('bench', 0, 54, 8, BASE + DAY + 60 * SECOND)],
+        deload: true,
+      }),
+    ])
+
+    await expect(harness().service.lastEntriesFor('bench')).resolves.toEqual([entry('bench', 0, 54, 8, BASE + DAY + 60 * SECOND)])
+  })
+
+  test('O14 lastEntriesForSession keys the newest non-deload entries, skipping a newer deload', async () => {
+    await putSessions([
+      storedSession({ id: 'normal', startedAt: BASE, finishedAt: BASE + HOUR, entries: [entry('bench', 0, 60, 8, BASE + 60 * SECOND)] }),
+      storedSession({
+        id: 'deload',
+        startedAt: BASE + DAY,
+        finishedAt: BASE + DAY + HOUR,
+        entries: [entry('bench', 0, 54, 8, BASE + DAY + 60 * SECOND)],
+        deload: true,
+      }),
+    ])
+    const current = storedSession({ id: 'active', startedAt: NOW - HOUR, finishedAt: null })
+
+    const found = await harness().service.lastEntriesForSession(current, [PROGRAM])
+
+    expect(found.get('bench')).toEqual([entry('bench', 0, 60, 8, BASE + 60 * SECOND)])
+  })
+})
 
 describe("O6 a missing Session is 'not-found'", () => {
   beforeEach(async () => {

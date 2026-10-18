@@ -11,7 +11,8 @@ import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
 import { buildLiftHistories } from '../../domain/stats/liftHistory'
 import { dueWorkoutCard } from '../../domain/stats/train'
-import { thisWeek, type Weekday } from '../../domain/stats/weeks'
+import { isDeloadWeek } from '../../domain/deload'
+import { thisWeek, weekStart, type Weekday } from '../../domain/stats/weeks'
 import { ServiceError, type Services, type SyncView } from '../../services'
 import type { Exercise, ExercisePlan, Program, Session, Workout } from '../../types'
 import { useServices, useSyncControls } from '../ServicesProvider'
@@ -115,6 +116,7 @@ export function DashboardScreen({
     ['preferences'],
   )
   const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
+  const deloadData = useServiceData((s) => s.preferences.deloadWeek().catch((): null => null), ['preferences'])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [, setTick] = useState(0)
 
@@ -126,6 +128,7 @@ export function DashboardScreen({
 
   const at = now()
   const today = formatDay(new Date(at), new Date(at))
+  const deloadOn = deloadData.status === 'ready' && isDeloadWeek(deloadData.data, at, weekStartsOn)
   let data: DashboardData = { kind: 'loading' }
 
   if (loaded.status === 'ready') {
@@ -171,7 +174,13 @@ export function DashboardScreen({
       }
       data = {
         kind: 'ready',
-        card: dueCard ? trainCardOf(dueCard, histories, Math.max(0, week.planned - week.done - 1)) : null,
+        card: dueCard ? trainCardOf(dueCard, histories, Math.max(0, week.planned - week.done - 1), deloadOn) : null,
+        deloadWeek: {
+          on: deloadOn,
+          onChange: (on) => {
+            void services.preferences.setDeloadWeek(on ? weekStart(at, weekStartsOn) : null).catch(() => undefined)
+          },
+        },
         due: due
           ? {
               workoutId: due.workout.id,

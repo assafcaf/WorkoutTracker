@@ -4,14 +4,20 @@ import { progression } from './progression'
 import { loadText } from './setText'
 import { workingSets } from './setKind'
 
-/** The working Sets of `exerciseId` in the newest Session holding one, or none. */
+/**
+ * The working Sets of `exerciseId` in the newest non-deload Session holding one, else in the
+ * newest deload one, or none.
+ */
 function lastEntriesOf(sessions: Session[], exerciseId: string): SetEntry[] {
   const newestFirst = [...sessions].sort((a, b) => b.startedAt - a.startedAt)
+  let deloaded: SetEntry[] = []
   for (const session of newestFirst) {
     const entries = workingSets(session.entries).filter((entry) => entry.exerciseId === exerciseId)
-    if (entries.length > 0) return entries
+    if (entries.length === 0) continue
+    if (!session.deload) return entries
+    if (deloaded.length === 0) deloaded = entries
   }
-  return []
+  return deloaded
 }
 
 /**
@@ -24,6 +30,10 @@ function lastEntriesOf(sessions: Session[], exerciseId: string): SetEntry[] {
 export function nextLoad(exercise: Exercise, plan: ExercisePlan, sessions: Session[]): number | null {
   const last = lastEntriesOf(sessions, plan.exerciseId)
   const suggestion = progression(exercise, plan, last).suggestion
+  if (suggestion?.kind === 'hold') {
+    const held = suggestion.nextWeightKg ?? suggestion.nextLoadKg
+    if (held !== undefined) return held
+  }
   if (suggestion?.kind === 'add-weight' && suggestion.nextWeightKg !== undefined) {
     return suggestion.nextWeightKg
   }

@@ -14,6 +14,7 @@ import {
   programGaps,
 } from '../domain/programVolume'
 import { formatRest } from '../domain/rest'
+import { plannedAgainstRange, WEEKLY_SET_RANGE } from '../domain/setRange'
 import { BodyMap } from './body/BodyMap'
 import { BodyMapLegend } from './body/BodyMapLegend'
 import { Segmented } from './controls'
@@ -135,6 +136,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     : new Map<Muscle, number>()
   const prescribedRegionCounts = toRegionCounts(prescribedMuscleCounts)
   const gaps = programGaps(prescribedMuscleCounts)
+  const planRange = active ? plannedAgainstRange(active, lookup, library) : []
 
   // "This week"'s done side (M15, R-K): sets of the Sessions that started in the calendar week
   // `now` falls in (the week start's 00:00 local), the one in progress included.
@@ -376,6 +378,21 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
               <BodyMap counts={prescribedRegionCounts} scale="week" />
             </div>
             <BodyMapLegend scale="week" />
+            <p className="program-page-range-note">
+              Sets per week, against {WEEKLY_SET_RANGE.min}–{WEEKLY_SET_RANGE.max}
+            </p>
+            <ul className="program-page-range">
+              {planRange.map(({ muscle, planned, standing }) => (
+                <li key={muscle} className="program-page-range-row" data-standing={standing}>
+                  <span>{muscle.charAt(0).toUpperCase() + muscle.slice(1)}</span>
+                  <span>
+                    {planned}
+                    {standing === 'below' && ` · below ${WEEKLY_SET_RANGE.min}`}
+                    {standing === 'above' && ` · above ${WEEKLY_SET_RANGE.max}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
             {gaps.length > 0 && (
               <ul className="program-page-gaps">
                 {gaps.map((muscle) => (

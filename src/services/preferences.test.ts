@@ -32,12 +32,14 @@ test('O5 createPreferenceService exposes exactly the preference operations', () 
   expect(Object.keys(service).sort()).toEqual(
     [
       'bodyweightOverrides',
+      'deloadWeek',
       'exerciseNote',
       'gymEquipment',
       'keepScreenOnDuringRest',
       'lastExportedAt',
       'plateInventory',
       'setBodyweight',
+      'setDeloadWeek',
       'setExerciseNote',
       'setGymEquipment',
       'setKeepScreenOnDuringRest',
@@ -530,4 +532,54 @@ test('E19-T1 O3 setKeepScreenOnDuringRest writes one keepScreenOnDuringRest row 
     updatedAt: 1_700_000_000_000,
   })
   expect(listener).toHaveBeenCalledTimes(1)
+})
+
+test('E21-T4 O12 deloadWeek answers null when nothing is stored', async () => {
+  expect(await createPreferenceService(deps()).deloadWeek()).toBeNull()
+})
+
+test('E21-T4 O12 setDeloadWeek then deloadWeek answers it, and setDeloadWeek(null) clears it', async () => {
+  const service = createPreferenceService(deps())
+
+  await service.setDeloadWeek(1_700_000_000_000)
+  expect(await service.deloadWeek()).toBe(1_700_000_000_000)
+  await service.setDeloadWeek(null)
+  expect(await service.deloadWeek()).toBeNull()
+  expect(await db.settings.get('deloadWeek')).toBeUndefined()
+})
+
+test('E21-T4 O12 setDeloadWeek writes one deloadWeek row stamped with now and notifies the preferences topic once', async () => {
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+
+  await createPreferenceService(deps({ bus })).setDeloadWeek(1_800_000_000_000)
+
+  expect(await db.settings.get('deloadWeek')).toEqual({
+    key: 'deloadWeek',
+    value: 1_800_000_000_000,
+    updatedAt: 1_700_000_000_000,
+  })
+  expect(listener).toHaveBeenCalledTimes(1)
+})
+
+test('E21-T4 O12 setDeloadWeek(null) notifies the preferences topic once', async () => {
+  await db.settings.put({ key: 'deloadWeek', value: 1_800_000_000_000, updatedAt: 1 })
+  const bus = createChangeBus()
+  const listener = vi.fn()
+  bus.subscribe('preferences', listener)
+
+  await createPreferenceService(deps({ bus })).setDeloadWeek(null)
+
+  expect(listener).toHaveBeenCalledTimes(1)
+})
+
+test.each([
+  ['a string', '1700000000000'],
+  ['NaN', Number.NaN],
+  ['Infinity', Number.POSITIVE_INFINITY],
+  ['an object', {}],
+])('E21-T4 O12 deloadWeek answers null for a stored value that is %s', async (_n, value) => {
+  await db.settings.put({ key: 'deloadWeek', value, updatedAt: 1 })
+  expect(await createPreferenceService(deps()).deloadWeek()).toBeNull()
 })

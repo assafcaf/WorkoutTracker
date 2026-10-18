@@ -3,6 +3,7 @@ import { db } from './db'
 import {
   ACTIVE_PROGRAM_ID_KEY,
   CUSTOM_EXERCISES_KEY,
+  DELOAD_WEEK_KEY,
   GYM_EQUIPMENT_KEY,
   KEEP_SCREEN_ON_KEY,
   PLATE_INVENTORY_KEY,
@@ -12,6 +13,7 @@ import {
   deleteProgram,
   getActiveProgramId,
   getCustomExercises,
+  getDeloadWeek,
   getKeepScreenOnDuringRest,
   getUserPrograms,
   getWeekStart,
@@ -26,6 +28,7 @@ import {
   saveUserProgram,
   setActiveProgramId,
   setCustomExercises,
+  setDeloadWeek,
   setGymEquipment,
   setKeepScreenOnDuringRest,
   setPlateInventory,
@@ -977,5 +980,45 @@ describe('E19-T1 O3 the customExercises setting', () => {
     await db.settings.clear()
     await db.settings.put({ key: 'customExercises', value, updatedAt: 1 })
     expect(await getCustomExercises()).toEqual([])
+  })
+})
+
+describe('E21-T4 O12 the deloadWeek setting', () => {
+  test('getDeloadWeek answers null when nothing is stored, writing nothing', async () => {
+    await db.settings.clear()
+    expect(await getDeloadWeek()).toBeNull()
+    expect(await db.settings.get('deloadWeek')).toBeUndefined()
+  })
+
+  test('setDeloadWeek stores the epoch ms in the deloadWeek row stamped with now', async () => {
+    await db.settings.clear()
+    await setDeloadWeek(1_700_000_000_000, 1234)
+    expect(DELOAD_WEEK_KEY).toBe('deloadWeek')
+    expect(await db.settings.get('deloadWeek')).toEqual({
+      key: 'deloadWeek',
+      value: 1_700_000_000_000,
+      updatedAt: 1234,
+    })
+    expect(await getDeloadWeek()).toBe(1_700_000_000_000)
+  })
+
+  test('setDeloadWeek(null) deletes the row', async () => {
+    await db.settings.clear()
+    await setDeloadWeek(1_700_000_000_000, 1)
+    await setDeloadWeek(null, 2)
+    expect(await db.settings.get('deloadWeek')).toBeUndefined()
+    expect(await getDeloadWeek()).toBeNull()
+  })
+
+  test.each([
+    ['a string', '1700000000000'],
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['null', null],
+    ['an object', {}],
+  ])('getDeloadWeek answers null for a stored value that is %s', async (_n, value) => {
+    await db.settings.clear()
+    await db.settings.put({ key: 'deloadWeek', value, updatedAt: 1 })
+    expect(await getDeloadWeek()).toBeNull()
   })
 })
