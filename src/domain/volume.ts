@@ -1,9 +1,13 @@
-import type { Program, Session } from '../types'
+import type { BodyLog, Program, Session } from '../types'
 import type { Resolve } from './muscles'
 import { workingSets } from './setKind'
 
 /** One Session's loaded volume and bodyweight reps, by the rule `volumeSeries` uses. */
-export function sessionVolume(session: Session, resolve: Resolve): { kg: number; bodyweightReps: number } {
+export function sessionVolume(
+  session: Session,
+  resolve: Resolve,
+  _bodyweightKg: number | null = null,
+): { kg: number; bodyweightReps: number; bodyweightKg?: number } {
   let kg = 0
   let bodyweightReps = 0
 
@@ -21,7 +25,13 @@ export function sessionVolume(session: Session, resolve: Resolve): { kg: number;
   return { kg, bodyweightReps }
 }
 
-export type VolumePoint ={ at: number; workoutName: string; kg: number; bodyweightReps: number }
+export type VolumePoint = {
+  at: number
+  workoutName: string
+  kg: number
+  bodyweightReps: number
+  bodyweight?: { kg: number; day: string }
+}
 
 /**
  * One `VolumePoint` per session, ascending by `at` (`session.startedAt`). `kg` sums
@@ -31,7 +41,7 @@ export type VolumePoint ={ at: number; workoutName: string; kg: number; bodyweig
  * neither total. `workoutName` falls back to `session.workoutId` when the program or workout is
  * gone, as `summarise` in `src/ui/HistoryList.tsx` does.
  */
-export function volumeSeries(sessions: Session[], resolve: Resolve, programs: Program[]): VolumePoint[] {
+export function volumeSeries(sessions: Session[], resolve: Resolve, programs: Program[], _log: BodyLog = []): VolumePoint[] {
   return [...sessions]
     .sort((a, b) => a.startedAt - b.startedAt)
     .map((session) => {

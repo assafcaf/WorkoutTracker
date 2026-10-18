@@ -42,6 +42,18 @@ test('liveProgress counts today against last time only as far as today has gone'
   expect(progress.setsPlanned).toBe(10)
 })
 
+test('E22-T3 O9 liveProgress given a bodyweightKg counts Bodyweight Sets in the live volume', () => {
+  const today = session('today', 5000, [
+    set('squat', 1, 60, 10, 5001),
+    set('pushup', 1, null, 10, 5002, { loadKg: 10 }),
+    set('pushup', 2, null, 10, 5003, { kind: 'warmup' }),
+  ], false)
+
+  expect(liveProgress({ workout, session: today, earlier: [], resolve, bodyweightKg: 80 }).volumeKg).toBe(600 + 900)
+  expect(liveProgress({ workout, session: today, earlier: [], resolve, bodyweightKg: null }).volumeKg).toBe(600)
+  expect(liveProgress({ workout, session: today, earlier: [], resolve }).volumeKg).toBe(600)
+})
+
 test('liveProgress has no last volume without a finished Session of the same Workout', () => {
   const today = session('today', 5000, [set('squat', 1, 60, 10, 5001)], false)
   const other = { ...lastA, workoutId: 'B' }

@@ -64,6 +64,7 @@ export function liveProgress(args: {
   session: Session
   earlier: Session[]
   resolve: Resolve
+  bodyweightKg?: number | null
 }): LiveProgress {
   const { workout, session, earlier, resolve } = args
   const today = workingSets(session.entries)

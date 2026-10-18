@@ -7,7 +7,7 @@
 //   nextTime(sessionId, sessions, resolve, program)     -> string[]
 //   volumeLine(sessionId, sessions, resolve)            -> string
 //   summaryWeek(sessionId, sessions, program)           -> { heading, line }
-import type { ExercisePlan, Program, Session } from '../../types'
+import type { BodyLog, ExercisePlan, Program, Session } from '../../types'
 import type { Resolve } from '../muscles'
 import { workingSets } from '../setKind'
 import { sessionVolume } from '../volume'
@@ -177,7 +177,12 @@ export function nextTime(
 
 const thousands = (n: number) => Math.round(n).toLocaleString('en-US')
 
-export function volumeLine(sessionId: string, sessions: Session[], resolve: Resolve): string {
+export function volumeLine(
+  sessionId: string,
+  sessions: Session[],
+  resolve: Resolve,
+  _log: BodyLog = [],
+): string {
   const live = sessions.filter((s) => s.deletedAt === undefined)
   const target = live.find((s) => s.id === sessionId)
   if (!target) return ''
