@@ -1,36 +1,3 @@
-import type { Session } from '../types'
-export type SyncedSession = Session & { updatedAt: number }
-export type SyncedSettingKey =
-  | 'activeProgramId'
-  | 'gymEquipment'
-  | 'weightSteps'
-  | 'volumeBaseline'
-  | 'userPrograms'
-  | 'exerciseNotes'
-  | 'effortTracking'
-  | 'plateInventory'
-  | 'bodyweightOverrides'
-  | 'weekStart'
-  | 'keepScreenOnDuringRest'
-  | 'customExercises'
-export const SYNCED_SETTING_KEYS: readonly SyncedSettingKey[] = [
-  'activeProgramId',
-  'gymEquipment',
-  'weightSteps',
-  'volumeBaseline',
-  'userPrograms',
-  'exerciseNotes',
-  'effortTracking',
-  'plateInventory',
-  'bodyweightOverrides',
-  'weekStart',
-  'keepScreenOnDuringRest',
-  'customExercises',
-]
-export type SyncedSetting = { key: SyncedSettingKey; value: unknown; updatedAt: number }
-export type SyncRequest = { since: number; sessions: SyncedSession[]; settings: SyncedSetting[] }
-export type SyncResponse = { cursor: number; sessions: SyncedSession[]; settings: SyncedSetting[] }
-export type ReplaceRequest = { sessions: SyncedSession[]; settings: SyncedSetting[] }
-export type ReplaceResponse = { cursor: number }
+// The wire contract lives in src/contract; this file keeps every existing importer unchanged.
+export * from '../contract'
 export type MeResponse = { email: string }
-export const MAX_BODY_BYTES = 2 * 1024 * 1024

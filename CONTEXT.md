@@ -117,8 +117,7 @@ The Shell's sticky bottom slot; the screen showing decides what goes in it.
 _Avoid_: Footer, toolbar, CTA bar, bottom bar
 
 **Token**:
-One of the 49 custom properties that alone define a colour, space, radius or type size. A
-closed set. See `docs/decisions/0009-court-a-light-mellow-sport-design-language.md`.
+One of the 49 custom properties (a closed set) that alone define a colour, space, radius or type size.
 _Avoid_: Variable, custom property, theme value
 
 **Palette**:
@@ -159,3 +158,6 @@ The Warm-up Sets proposed before the first working Set of a barbell Exercise.
 **Week start**:
 The trainee's first weekday (`Date.getDay()` numbering, Monday when unset); every week goes
 through `weekStart(ms, weekStartsOn)`.
+
+**Contract version**:
+`CONTRACT_VERSION` (`src/contract`), sent as `X-Contract-Version`; no header means 1.

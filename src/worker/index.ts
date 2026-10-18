@@ -1,27 +1,9 @@
 import type { JWTVerifyGetKey } from 'jose'
 import { requireUser } from './auth'
 import type { Env } from './env'
-import { handleReplace, handleSync } from './sync'
-import type { MeResponse } from '../sync/protocol'
-
-export function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
-  })
-}
-
-/** Authenticated API routes, keyed `'<METHOD> <path>'`. */
-export const apiRoutes: Record<
-  string,
-  (request: Request, env: Env, email: string) => Promise<Response>
-> = {
-  'GET /api/me': async (_request, _env, email) => json({ email } satisfies MeResponse),
-  // Access has already signed the user in by the time this runs; send them back to the app.
-  'GET /api/login': async () => new Response(null, { status: 302, headers: { Location: '/' } }),
-  'POST /api/sync': handleSync,
-  'POST /api/replace': handleReplace,
-}
+import { json } from './http'
+import { apiRoutes } from './routes'
+import { versionGate } from './version'
 
 export function createHandler(deps: { keys?: JWTVerifyGetKey } = {}): {
   fetch(request: Request, env: Env): Promise<Response>
@@ -33,6 +15,9 @@ export function createHandler(deps: { keys?: JWTVerifyGetKey } = {}): {
 
       const email = await requireUser(request, env, deps.keys)
       if (email === null) return json({ error: 'unauthenticated' }, 401)
+
+      const stale = versionGate(request)
+      if (stale) return stale
 
       const route = apiRoutes[`${request.method} ${pathname}`]
       if (!route) return json({ error: 'not found' }, 404)

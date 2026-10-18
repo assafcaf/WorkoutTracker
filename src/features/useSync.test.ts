@@ -286,3 +286,22 @@ test('O14 replaceRemote shows its result in the view', async () => {
 
   expect(result.current.sync.status).toBe('error')
 })
+
+// --- E20-T5 O15: a version the Worker refuses -----------------------------------------------
+
+test('E20-T5 O15 a 426 answer shows status update-required, and a later ok sync clears it', async () => {
+  server.failures.set('/api/me', 426)
+  server.failures.set('/api/sync', 426)
+
+  const { result } = mount()
+
+  await waitFor(() => {
+    expect(result.current.sync.status).toBe('update-required')
+  }, SETTLE)
+
+  server.failures.clear()
+  await act(async () => {
+    await result.current.syncNow()
+  })
+  expect(result.current.sync.status).toBe('ok')
+})

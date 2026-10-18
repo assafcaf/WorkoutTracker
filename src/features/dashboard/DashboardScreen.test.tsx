@@ -123,6 +123,34 @@ describe('DashboardScreen', () => {
   })
 })
 
+describe('DashboardScreen when the Worker refuses this version (E20-T5 O16)', () => {
+  test('E20-T5 O16 the sync line shows its failed state, and a Session still starts and a Set is stored', async () => {
+    const refused = (): ReturnType<SyncService['syncNow']> =>
+      Promise.resolve({ status: 'update-required' } as unknown as Awaited<ReturnType<SyncService['syncNow']>>)
+    const base = createServices({ now: () => NOW, storageAvailable: true })
+    const s: Services = {
+      ...base,
+      sync: {
+        state: async () => ({ accountEmail: 'me@example.com', lastSyncedAt: null }),
+        syncNow: refused,
+        replaceRemote: refused,
+        adoptAccount: async () => {},
+      },
+    }
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    const { onStartWorkout } = mount(s)
+
+    await waitFor(() => expect(screen.getByText(/Not synced · saved on this phone/)).toBeTruthy(), SETTLE)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
+    expect(onStartWorkout).toHaveBeenCalledTimes(1)
+
+    const started = await s.sessions.start('assaf-ab-2026', 'workout-a')
+    await s.sessions.logSet(started.id, squat(60, 10, NOW, 1))
+    expect((await db.sessions.get(started.id))?.entries).toHaveLength(1)
+  })
+})
+
 describe('DashboardScreen week start (E19-T5 O7)', () => {
   test('E19-T5 O7 Train counts this week from the stored week start', async () => {
     // Sunday 11 Oct: last week on a Monday start, this week on a Sunday start.
