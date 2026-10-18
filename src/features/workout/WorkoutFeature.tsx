@@ -7,6 +7,7 @@ import { validateEntry } from '../../domain/dial'
 import { nextExerciseAfter } from '../../domain/flow'
 import { currentExerciseId, liveProgress, planFor } from '../../domain/liveProgress'
 import { presetForSet } from '../../domain/prefill'
+import { sessionPlans } from '../../domain/sessionPlans'
 import { workingSets } from '../../domain/setKind'
 import { formatSet } from '../../domain/setText'
 import { isBarbell } from '../../domain/plates'
@@ -35,6 +36,7 @@ import { LiveSessionBar } from '../../ui/live/LiveSessionBar'
 import type { LiveView } from '../../ui/live/LiveSessionBar'
 import { UpNextRows } from '../../ui/live/UpNextRows'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
+import { ExercisePicker } from '../../ui/ExercisePicker'
 import { DashboardScreen } from '../dashboard/DashboardScreen'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
@@ -119,6 +121,10 @@ function locateSession(
 ): { program: Program; workout: Workout } | null {
   const program = programs.find((candidate) => candidate.id === session.programId)
   const workout = program?.workouts.find((candidate) => candidate.id === session.workoutId)
+  // The Plans added to the Session follow the Workout's own (E19-T13), so every view sees them.
+  if (program && workout && session.added?.length) {
+    return { program, workout: { ...workout, exercises: sessionPlans(workout, session) } }
+  }
   return program && workout ? { program, workout } : null
 }
 
@@ -253,6 +259,7 @@ export function WorkoutFeature({
   const [openSet, setOpenSet] = useState<OpenSet | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
   const [historyFor, setHistoryFor] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   const [summarySession, setSummarySession] = useState<Session | null>(null)
   const [lastSwaps, setLastSwaps] = useState<Record<string, string>>({})
   const [lastEntries, setLastEntries] = useState<Map<string, SetEntry[]>>(new Map())
@@ -643,6 +650,18 @@ export function WorkoutFeature({
     void syncNow()
   }
 
+  /** `ExercisePicker.onPick`: adds the Exercise to the Session in progress as a 3 x 8-12 Plan. */
+  async function handleAddExercise(exerciseId: string): Promise<void> {
+    if (!session) return
+    try {
+      setSession(await services.sessions.addExercise(session.id, exerciseId))
+      loadLastEntriesOf(exerciseId)
+      setAdding(false)
+    } catch {
+      // The picker stays up; nothing was added.
+    }
+  }
+
   /** `ExerciseList.onDiscard`: discards the Session in progress and returns to the picker. */
   function handleDiscard(): void {
     if (!session) return
@@ -948,6 +967,7 @@ export function WorkoutFeature({
           onDiscard={handleDiscard}
           note={session.note}
           onSaveNote={handleSaveNote}
+          onAddExercise={() => setAdding(true)}
         />
       </AppShell>
     )
@@ -1046,6 +1066,7 @@ export function WorkoutFeature({
               .find((program) => program.id === summarySession.programId)
               ?.workouts.find((workout) => workout.id === summarySession.workoutId)
               ?.exercises.find((plan) => plan.exerciseId === exerciseId)
+            ?? summarySession.added?.find((plan) => plan.exerciseId === exerciseId)
           }
           onClose={() => setSummarySession(null)}
           onBrowse={(muscles) => {
@@ -1055,6 +1076,17 @@ export function WorkoutFeature({
         />
       ) : null}
       {liveOnScreen ? historyOverlay : null}
+      {liveOnScreen && adding && session && located ? (
+        <ExercisePicker
+          library={library}
+          taken={[
+            ...located.workout.exercises.map((plan) => plan.exerciseId),
+            ...Object.values(session.swaps ?? {}),
+          ]}
+          onPick={(id) => void handleAddExercise(id)}
+          onClose={() => setAdding(false)}
+        />
+      ) : null}
       {liveOnScreen && overlay?.kind === 'alternatives' ? (
         <AlternativesOverlay
           plannedId={overlay.plannedId}

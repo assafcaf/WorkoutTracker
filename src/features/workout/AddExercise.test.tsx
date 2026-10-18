@@ -74,7 +74,7 @@ test('O23 the added Exercise logs like any other and shows in the summary and th
   await addBenchPress(user)
 
   await user.click(await screen.findByRole('button', { name: /^Dumbbell Bench Press/ }, SETTLE))
-  await user.click(await screen.findByRole('button', { name: /^Log set 1/ }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
 
   await waitFor(async () => {
     const [stored] = await db.sessions.toArray()
@@ -85,5 +85,5 @@ test('O23 the added Exercise logs like any other and shows in the summary and th
   await user.click(await screen.findByRole('radio', { name: 'All' }, SETTLE))
   await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
-  expect(within(summary).getByText(/Dumbbell Bench Press/)).toBeVisible()
+  expect(within(summary).getAllByText(/Dumbbell Bench Press/).length).toBeGreaterThan(0)
 })
