@@ -18,3 +18,13 @@ no body mass was known. E22 adds a body log, so Pull-ups and assisted lifts can 
 
 ## Consequences
 Past Sessions' volume moves when an earlier weigh-in is logged or removed; nothing is stored.
+
+## Outcome
+Built as E22 (11 tickets on `epic/E22-body-and-deeper-stats`; evidence in `.work/runs/E22/`), with
+roadmap R7: a body log (bodyweight and optional measurements) as the synced `bodyLog` setting and a
+Body page in Progress; bodyweight counted in Session, series, summary and live volume; tappable bar
+and line charts with **Open session**; the Sessions tab calendar days coloured by Workout and
+tappable; Progress home's **Last week** card against the trainee's week start; and tappable body maps
+on the Program tab. Departures: there is no Stats tab any more, so everything lands in Progress; the
+"month calendar in History" is the shipped six-week grid made tappable; bodyweight is logged on the
+Body page only; per-Exercise volume and lift series keep reps or signed load.

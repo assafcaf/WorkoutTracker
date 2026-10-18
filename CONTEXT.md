@@ -119,8 +119,8 @@ One of the 49 custom properties (a closed set) that alone define a colour, space
 The colour Tokens: one light "Court" palette, no dark mode.
 
 **Service**:
-The only way the UI reads or writes the trainee's data or reaches sync. Each stamps its writes
-and announces them on a Change topic. See `docs/decisions/0011-layered-client-services.md`.
+The only way the UI reads or writes the trainee's data or reaches sync. Each announces its writes on a
+Change topic.
 _Avoid_: Store, manager, controller
 
 **Repository**:
@@ -150,7 +150,7 @@ The trainee's first weekday (`Date.getDay()` numbering, Monday when unset); ever
 through `weekStart(ms, weekStartsOn)`.
 
 **Last week card**:
-The full week before this one: Sessions, Sets, volume, PRs against the week before (`lastWeekCard`).
+Last full week against the one before (`lastWeekCard`).
 
 **Contract version**:
 `CONTRACT_VERSION` (`src/contract`), sent as `X-Contract-Version`; no header means 1.
