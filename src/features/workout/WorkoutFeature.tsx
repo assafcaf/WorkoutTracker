@@ -40,6 +40,7 @@ import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
 import { useServices, useSyncControls } from '../ServicesProvider'
 import { useServiceData } from '../useServiceData'
+import { useWakeLock } from '../../ui/useWakeLock'
 
 export type WorkoutFeatureProps = {
   /** Sends the app to another tab: the Program tab from "Choose a program", Exercises from a summary. */
@@ -229,6 +230,10 @@ export function WorkoutFeature({
     (s) => orElse(s.preferences.trackEffort(), false),
     ['preferences'],
   )
+  const keepScreenOnData = useServiceData(
+    (s) => orElse(s.preferences.keepScreenOnDuringRest(), true),
+    ['preferences'],
+  )
   const plateInventoryData = useServiceData(
     (s) => orElse(s.preferences.plateInventory(), null),
     ['preferences'],
@@ -338,6 +343,24 @@ export function WorkoutFeature({
   useEffect(() => {
     onLive?.(latestLiveStatus.current)
   }, [liveKey, onLive])
+
+  // The screen stays on while a rest runs, on every view of the Session, when the setting is on.
+  // The timeout re-renders at the rest's end so the lock is let go then.
+  const restEndsAt = liveStatus === null ? null : liveStatus.restEndsAt
+  const [, setRestTick] = useState(0)
+  useEffect(() => {
+    if (restEndsAt === null) return
+    const remaining = restEndsAt - Date.now()
+    if (remaining <= 0) return
+    const timer = setTimeout(() => setRestTick((tick) => tick + 1), remaining)
+    return () => clearTimeout(timer)
+  }, [restEndsAt])
+  useWakeLock(
+    keepScreenOnData.status === 'ready' &&
+      keepScreenOnData.data &&
+      restEndsAt !== null &&
+      restEndsAt > Date.now(),
+  )
 
   if (catalogData.status === 'error' || programsData.status === 'error') {
     const error = catalogData.status === 'error' ? catalogData.error : programsData.error
