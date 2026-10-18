@@ -35,4 +35,14 @@ already shipped the deload mark, the stall rule and the Muscles page. The operat
 - The Set screen's **Last time** line names the last non-deload Session after a deload week.
 
 ## Outcome
-Left for the end of the epic.
+Built as E21 (12 tickets merged on `epic/E21-smarter-progression`; evidence in `.work/runs/E21/`).
+Departures from the scope:
+- E18 had already shipped the deload mark, the stall verdict and the done-Sets band, so E21
+  kept E18's stall rule ("no record in the last 4 non-deload Sessions") instead of the roadmap's
+  "3 Sessions with no gain", and labels below/above the range only on the Program tab's planned Sets.
+- The roadmap's deload "toggle at start" is a **Deload week** switch on Train; a one-Session
+  deload after a stall stays a suggestion.
+- E21-T11 fixed two suite flakes under load (the App test's 300 ms waits after navigation, and
+  the offline launch harness treating the Shell's own text as "rendered"), test bodies only.
+- E21-T12 merged E20 into the branch: `deloadWeek` joined the contract's synced-setting keys in
+  `src/contract/`.
