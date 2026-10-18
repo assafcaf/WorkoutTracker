@@ -349,6 +349,14 @@ export function Settings(props: SettingsProps): JSX.Element {
                 </button>
               </>
             ) : null}
+            {sync.status === 'update-required' ? (
+              <>
+                <p className="settings-account-update settings-account-offline">Update the app to keep syncing.</p>
+                <p className="settings-account-update-reason settings-account-offline">
+                  This version is too old to sync. Your workouts stay saved on this phone.
+                </p>
+              </>
+            ) : null}
             {sync.status === 'offline' ? (
               <p className="settings-account-offline">
                 This phone is offline; it will sync later.

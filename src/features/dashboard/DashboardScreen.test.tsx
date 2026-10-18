@@ -142,7 +142,7 @@ describe('DashboardScreen when the Worker refuses this version (E20-T5 O16)', ()
 
     await waitFor(() => expect(screen.getByText(/Not synced · saved on this phone/)).toBeTruthy(), SETTLE)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
     expect(onStartWorkout).toHaveBeenCalledTimes(1)
 
     const started = await s.sessions.start('assaf-ab-2026', 'workout-a')

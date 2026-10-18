@@ -2,7 +2,7 @@
 export type SyncView = {
   accountEmail: string | null
   lastSyncedAt: number | null
-  status: 'idle' | 'syncing' | 'ok' | 'offline' | 'signed-out' | 'error' | 'account-mismatch'
+  status: 'idle' | 'syncing' | 'ok' | 'offline' | 'signed-out' | 'error' | 'account-mismatch' | 'update-required'
   // Present when status is 'account-mismatch'.
   signedInEmail?: string
   // Present when status is 'error'.

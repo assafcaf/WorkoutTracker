@@ -88,6 +88,7 @@ function syncOf(view: SyncView, now: number): DashboardSync {
   const offline = view.status === 'offline' || (typeof navigator !== 'undefined' && navigator.onLine === false)
   if (offline) return { kind: 'offline' }
   if (view.status === 'syncing') return { kind: 'syncing' }
+  if (view.status === 'update-required') return { kind: 'failed' }
   if (view.status === 'error' || view.status === 'account-mismatch') return { kind: 'failed' }
   if (view.lastSyncedAt !== null) return { kind: 'synced', ago: timeAgo(view.lastSyncedAt, now) }
   return { kind: 'local' }
