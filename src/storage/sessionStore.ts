@@ -1,4 +1,5 @@
 import type { Session, SetEntry, SetKind } from '../types'
+import type { ExercisePlan } from '../types'
 import { db } from './db'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 import { validateEntry } from '../domain/dial'
@@ -442,4 +443,32 @@ export async function getLastSwap(
     if (doneId !== undefined) return doneId
   }
   return null
+}
+
+/**
+ * Appends `plan` to the Session's `added` Plans in one write (E19-T12). Rejects when the Session
+ * is finished or `plan`'s Exercise is in `plannedIds` or already added.
+ */
+export async function addPlan(
+  sessionId: string,
+  plan: ExercisePlan,
+  plannedIds: string[],
+  now: number = Date.now(),
+): Promise<Session> {
+  return db.transaction('rw', db.sessions, async () => {
+    const session = await requireSession(sessionId)
+    if (isFinished(session)) throw new Error(`session ${sessionId} is finished`)
+    const added = session.added ?? []
+    if (plannedIds.includes(plan.exerciseId) || added.some((p) => p.exerciseId === plan.exerciseId)) {
+      throw new Error(`${plan.exerciseId} is already in session ${sessionId}`)
+    }
+    const updated: Session = { ...session, added: [...added, plan], updatedAt: now }
+    await db.sessions.put(updated)
+    return updated
+  })
+}
+
+/** The stored Session, or null for an id it does not hold. */
+export async function getSession(sessionId: string): Promise<Session | null> {
+  return (await db.sessions.get(sessionId)) ?? null
 }

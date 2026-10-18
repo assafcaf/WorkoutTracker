@@ -374,6 +374,17 @@ test('O9 a pulled setting with the same updatedAt as the local value leaves the 
   ])
 })
 
+test('O22 a Session with added Plans is pushed with them, and one pulled keeps them', async () => {
+  const added = [{ exerciseId: 'deadlift', sets: 3, repRange: [8, 12] as [number, number], restSeconds: 90 }]
+  await putLocalSession({ ...session('mine', T0 + 100), added })
+  server.seedSession('a@x', { ...session('theirs', T0 + 200), added })
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(server.syncRequests()[0].sessions.find((s) => s.id === 'mine')?.added).toEqual(added)
+  expect((await localSessions()).find((s) => s.id === 'theirs')?.added).toEqual(added)
+})
+
 test('O9 a finished session without updatedAt is pushed and stamped locally with its finishedAt', async () => {
   const { updatedAt: _dropped, ...legacy } = session('old', T0 + 999)
   await putLocalSession(legacy)

@@ -147,6 +147,11 @@ export type Session = {
   note?: string
   /** The trainee marked this Session a deload (E18-T2). Absent unless marked. */
   deload?: true
+  /**
+   * Exercises the trainee added to this Session beyond the Workout's Plans (E19-T12), in the
+   * order added. Absent when none was added.
+   */
+  added?: ExercisePlan[]
 }
 
 /**
