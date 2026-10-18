@@ -26,6 +26,9 @@ function toView(result: SyncResult, state: SyncState): SyncView {
         status: 'account-mismatch',
         signedInEmail: result.signedInEmail,
       }
+    default:
+      // Stub: a status this view does not know yet.
+      return { ...state, status: 'error', message: 'unknown sync result' }
   }
 }
 

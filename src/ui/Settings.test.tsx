@@ -637,3 +637,17 @@ test('O14 turning Keep screen on during rest off reports false', async () => {
 
   expect(onKeepScreenOnDuringRestChange).toHaveBeenCalledWith(false)
 })
+
+test('E20-T5 O15 status update-required says to update the app, with Sync now and no Sign in link', () => {
+  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: null, status: 'update-required' })
+
+  expect(screen.getByText('Update the app to keep syncing.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Sync now' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
+})
+
+test('E20-T5 O15 the update line is gone when the status is ok', () => {
+  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: null, status: 'ok' })
+
+  expect(screen.queryByText('Update the app to keep syncing.')).toBeNull()
+})
