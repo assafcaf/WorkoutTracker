@@ -1,0 +1,90 @@
+/* The import review (E23-T8): unmapped names first, then the mapped ones, the unit choice when a
+ * file states none, and the Import button at the foot. Every colour and size comes through a
+ * `var(--...)` from src/styles/tokens.css.
+ */
+
+.import-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.import-review-heading {
+  margin: 0;
+  font-size: var(--text-xl);
+  color: var(--color-text);
+}
+
+.import-review-unit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.import-review-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.import-review-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.import-review-name {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  overflow-wrap: anywhere;
+}
+
+.import-review-guess {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.import-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.import-review-action {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+}
+
+.import-review-foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  background: var(--color-bg);
+}
+
+.import-review-cancel,
+.import-review-import {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.import-review-import:disabled {
+  opacity: 0.5;
+}

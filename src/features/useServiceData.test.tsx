@@ -46,6 +46,7 @@ function buildServices(): Services {
     preferences: createPreferenceService(deps),
     catalog: createCatalogService(deps),
     backup: createBackupService({ ...deps, replaceRemote: sync.replaceRemote }),
+    transfer: {} as Services['transfer'],
     sync,
     bus,
   }

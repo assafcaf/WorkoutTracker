@@ -5,6 +5,7 @@ import { createPreferenceService, type PreferenceService } from './preferences'
 import { createProgramService, type ProgramService } from './programs'
 import { createSessionService, type SessionService } from './sessions'
 import { createSyncService, type SyncService } from './sync'
+import { createTransferService, type TransferService } from './transfer'
 
 export { ServiceError } from './errors'
 export type { ServiceErrorCode } from './errors'
@@ -15,6 +16,7 @@ export type { ProgramService, ProgramsLoad } from './programs'
 export type { PreferenceService } from './preferences'
 export type { CatalogService, CatalogData } from './catalog'
 export type { BackupService, PendingImport, ImportPlan } from './backup'
+export type { PendingTransfer, TransferResult, TransferService } from './transfer'
 export type { SyncService, SyncResult, SyncState, SyncView } from './sync'
 
 /** The whole service API a screen group reaches through `ServicesProvider` (E11-T9, O5). */
@@ -24,6 +26,7 @@ export type Services = {
   preferences: PreferenceService
   catalog: CatalogService
   backup: BackupService
+  transfer: TransferService
   sync: SyncService
   bus: ChangeBus
 }
@@ -40,13 +43,15 @@ export function createServices(deps: {
   const bus = createChangeBus()
   const serviceDeps = { now: deps.now, storageAvailable: deps.storageAvailable, bus }
   const sync = createSyncService({ ...serviceDeps, fetch: deps.fetch })
+  const catalog = createCatalogService(serviceDeps)
 
   return {
     sessions: createSessionService(serviceDeps),
     programs: createProgramService(serviceDeps),
     preferences: createPreferenceService(serviceDeps),
-    catalog: createCatalogService(serviceDeps),
+    catalog,
     backup: createBackupService({ ...serviceDeps, replaceRemote: sync.replaceRemote }),
+    transfer: createTransferService({ ...serviceDeps, catalog }),
     sync,
     bus,
   }
