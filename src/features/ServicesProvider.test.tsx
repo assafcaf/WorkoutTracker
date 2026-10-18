@@ -30,6 +30,7 @@ function servicesWith(sync: SyncService): Services {
     preferences: {} as Services['preferences'],
     catalog: {} as Services['catalog'],
     backup: {} as Services['backup'],
+    transfer: {} as Services['transfer'],
     sync,
     bus: createChangeBus(),
   }
