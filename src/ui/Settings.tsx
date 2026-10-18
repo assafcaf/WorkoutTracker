@@ -5,6 +5,7 @@ import { formatDay } from '../domain/dates'
 import { PlateInventoryEditor } from './PlateInventoryEditor'
 import { Segmented, Select, Switch } from './controls'
 import { Icon } from './icons'
+import { NotificationSettings, type NotificationSettingsProps } from './NotificationSettings'
 import './Settings.css'
 
 export type { SyncView }
@@ -67,6 +68,8 @@ export type SettingsProps = {
   keepScreenOnDuringRest?: boolean
   /** Called with the next value when "Keep screen on during rest" is toggled. */
   onKeepScreenOnDuringRestChange?(on: boolean): void
+  /** Push notifications and reminders (E24-T9); omitted, the Notifications sections do not render. */
+  notifications?: NotificationSettingsProps
 }
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -111,6 +114,7 @@ export function Settings(props: SettingsProps): JSX.Element {
     onWeekStartChange,
     keepScreenOnDuringRest = true,
     onKeepScreenOnDuringRestChange,
+    notifications,
   } = props
 
   const currentAggregate = 'aggregate' in volumeBaseline ? volumeBaseline.aggregate : 'avg'
@@ -288,6 +292,7 @@ export function Settings(props: SettingsProps): JSX.Element {
           </div>
         </div>
       </fieldset>
+      {notifications ? <NotificationSettings {...notifications} /> : null}
       <section className="settings-group" aria-label="Backup">
         <h2 className="settings-legend">Backup</h2>
         <div className="settings-card card">
