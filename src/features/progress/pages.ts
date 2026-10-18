@@ -6,6 +6,7 @@ import type { AppRoute } from '../routes'
 import { LiftPage } from './LiftPage'
 import { AllLifts } from './AllLifts'
 import { Home } from './Home'
+import { BodyPage } from './BodyPage'
 
 /** The pages the Progress tab pushes. `home` is the tab's own screen; the others push over it. */
 export type ProgressPage =
@@ -13,6 +14,7 @@ export type ProgressPage =
   | { kind: 'lifts' }
   | { kind: 'lift'; exerciseId: string }
   | { kind: 'muscles' }
+  | { kind: 'body' }
 
 export type ProgressPageKind = ProgressPage['kind']
 
@@ -27,7 +29,12 @@ export type ProgressPageProps<K extends ProgressPageKind = ProgressPageKind> = {
   onBack: (() => void) | undefined
 }
 
-export type ProgressPages = { [K in ProgressPageKind]: ComponentType<ProgressPageProps<K>> }
+export type ProgressPages = {
+  [K in Exclude<ProgressPageKind, 'body'>]: ComponentType<ProgressPageProps<K>>
+} & {
+  /** Optional so a group built before the Body page (E22-T7) still types; the registered group has it. */
+  body?: ComponentType<ProgressPageProps<'body'>>
+}
 
 function placeholder(title: string): FunctionComponent<Pick<ProgressPageProps, 'onBack'>> {
   const Placeholder = ({ onBack }: Pick<ProgressPageProps, 'onBack'>): JSX.Element =>
@@ -54,3 +61,6 @@ PROGRESS_PAGES.lift = LiftPage
 // E18-T10 registers its pages (append-only, so tickets adding other pages never touch these lines).
 PROGRESS_PAGES.home = Home
 PROGRESS_PAGES.lifts = AllLifts
+
+// E22-T7: the Body page (append-only).
+PROGRESS_PAGES.body = BodyPage
