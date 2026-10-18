@@ -43,7 +43,7 @@ export function createCatalogService(deps: ServiceDeps): CatalogService {
       for (const program of bundledPrograms) assertPlansAreInCatalog(program, bundledCatalog)
       const bundledLibrary = await loadLibrary()
       const videos = await loadVideos()
-      const custom = await callStorage(deps, getCustomExercises, 'custom exercises read failed')
+      const custom = deps.storageAvailable ? await getCustomExercises().catch(() => []) : []
       const { catalog: loadedCatalog, library: loadedLibrary } = mergeCustomExercises(
         custom,
         bundledCatalog,
