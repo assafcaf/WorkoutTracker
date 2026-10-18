@@ -35,6 +35,7 @@ export type BackupFile = {
     bodyweightOverrides?: Record<string, boolean>
     /** The first day of the week, 0-6 (E19). Absent when never set. */
     weekStart?: number
+    deloadWeek?: number
     /** Keep the screen on during rest (E19). Absent when never set. */
     keepScreenOnDuringRest?: boolean
     /** The trainee's own Exercises (E19). Absent when none exist. */

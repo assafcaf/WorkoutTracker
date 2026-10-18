@@ -724,6 +724,7 @@ test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides active
     'activeProgramId',
     'bodyweightOverrides',
     'customExercises',
+    'deloadWeek',
     'effortTracking',
     'exerciseNotes',
     'gymEquipment',
@@ -1095,4 +1096,19 @@ test('O3 a deload mark device A sets arrives on device B after A syncs and B syn
   const sessions = await localSessions()
   expect(sessions.find((s) => s.id === 'marked')?.deload).toBe(true)
   expect('deload' in (sessions.find((s) => s.id === 'plain') as Session)).toBe(false)
+})
+
+// --- E21-T4 O10: the deload week reaches the other device through sync ------------------------
+
+test('E21-T4 O10 deloadWeek device A sets is answered on device B after A syncs and B syncs', async () => {
+  await preferencesAt(T0 + 500).setDeloadWeek(1_700_000_000_000)
+  await syncNow({ fetch: server.fetch })
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  const pushed = server.syncRequests()[0].settings
+  expect(pushed).toContainEqual({ key: 'deloadWeek', value: 1_700_000_000_000, updatedAt: T0 + 500 })
+  expect(await preferencesAt(T0 + 900).deloadWeek()).toBe(1_700_000_000_000)
 })
