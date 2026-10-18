@@ -1,3 +1,4 @@
+import type { Weekday } from '../../domain/stats/weeks'
 import { swapPreset } from '../../domain/swapPreset'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
@@ -232,6 +233,10 @@ export function WorkoutFeature({
   )
   const keepScreenOnData = useServiceData(
     (s) => orElse(s.preferences.keepScreenOnDuringRest(), true),
+    ['preferences'],
+  )
+  const weekStartData = useServiceData(
+    (s) => orElse<Weekday>(s.preferences.weekStart().then((day) => day as Weekday), 1),
     ['preferences'],
   )
   const plateInventoryData = useServiceData(
@@ -1027,6 +1032,7 @@ export function WorkoutFeature({
       ) : null}
       {summarySession ? (
         <SessionSummary
+          weekStartsOn={weekStartData.status === 'ready' ? weekStartData.data : 1}
           session={summarySession}
           resolve={resolveListExercise}
           library={libraryMap}

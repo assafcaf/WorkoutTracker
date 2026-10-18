@@ -95,6 +95,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     onChooseProgram,
     sessions = [],
     now = Date.now(),
+    weekStartsOn = 1,
     resolve = (id: string) => catalog.get(id),
     onNewProgram,
     onEditProgram,
@@ -136,8 +137,8 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const gaps = programGaps(prescribedMuscleCounts)
 
   // "This week"'s done side (M15, R-K): sets of the Sessions that started in the calendar week
-  // `now` falls in (Monday 00:00 local), the one in progress included.
-  const thisCalendarWeek = weeksOf(sessions, now).find((week) => week.inProgress)
+  // `now` falls in (the week start's 00:00 local), the one in progress included.
+  const thisCalendarWeek = weeksOf(sessions, now, weekStartsOn).find((week) => week.inProgress)
   const doneMuscleCounts = muscleSets(
     (thisCalendarWeek?.sessions ?? []).flatMap((session) => session.entries),
     resolve,
