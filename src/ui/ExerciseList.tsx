@@ -18,6 +18,8 @@ import type {
 } from '../types'
 
 export type ExerciseListProps = {
+  /** The Session is a deload (E21): planned Sets show their deloaded Preset. */
+  deload?: boolean
   program: Program
   workout: Workout
   /**
@@ -86,6 +88,7 @@ function SetCells(props: {
   earlier: Session[]
   lastEntries: SetEntry[]
   current: boolean
+  deload?: boolean
   onOpenNext(): void
   onOpenLogged(setIndex: number): void
 }): JSX.Element {
@@ -103,6 +106,7 @@ function SetCells(props: {
       setIndex: today.length + 1 + (position - working.length - 1),
       lastEntries,
       today,
+      deload: props.deload,
     })
     upcoming.push({ position, ...preset })
   }
@@ -303,6 +307,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
                 earlier={earlier}
                 lastEntries={props.lastEntries.get(effectiveId) ?? []}
                 current={props.currentId === effectiveId}
+                deload={props.deload}
                 onOpenNext={open}
                 onOpenLogged={(setIndex) =>
                   props.onOpenLogged === undefined ? open() : props.onOpenLogged(effectiveId, setIndex)

@@ -582,6 +582,7 @@ export function WorkoutFeature({
       setIndex,
       lastEntries: lastEntries.get(id) ?? [],
       today,
+      deload: session.deload === true,
     })
     const entry: SetEntry = {
       exerciseId: id,
@@ -827,9 +828,11 @@ export function WorkoutFeature({
                 sessions={sessions}
                 volumeBaseline={volumeBaseline}
                 currentId={openSet.exerciseId}
+                deload={session.deload === true}
                 onOpen={handleOpenSet}
               />
             }
+            deload={session.deload === true}
             exercise={exercise}
             plates={isBarbell(libraryMap.get(exercise.libraryId)) ? (plateInventoryData.status === 'ready' ? plateInventoryData.data : null) : null}
             plan={plan}
@@ -956,6 +959,7 @@ export function WorkoutFeature({
         }
       >
         <ExerciseList
+          deload={session.deload === true}
           currentId={currentExerciseId(located.workout, session)}
           onOpenLogged={handleOpenLogged}
           program={located.program}
