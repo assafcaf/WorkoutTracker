@@ -1,4 +1,5 @@
 import {
+  addPlan,
   clearSwap,
   discardSession,
   finishSession,
@@ -6,6 +7,7 @@ import {
   getActiveSession,
   getLastEntriesFor,
   getLastSwap,
+  getSession,
   listSessions,
   logSet,
   deleteSet,
@@ -19,8 +21,11 @@ import {
   setSwap,
   startOrResumeSession,
 } from '../storage/sessionStore'
+import { loadCatalog, loadPrograms } from '../data/catalog'
+import { mergePrograms, newPlan } from '../domain/programs'
 import type { Program, Session, SetEntry, SetKind, Workout } from '../types'
 import type { ServiceDeps } from './deps'
+import { getUserPrograms } from '../storage/settingsStore'
 import { callStorage, ServiceError } from './errors'
 
 export type SessionService = {
@@ -76,6 +81,7 @@ const HISTORY_FAILED = 'the history could not be read'
 const LOG_FAILED = 'the set could not be saved'
 /** The History editor shows a failed save's message under its Sets (E12-T6). */
 const SAVE_FAILED = 'the workout could not be saved'
+const ADD_FAILED = 'the exercise could not be added'
 const DISCARD_FAILED = 'the workout could not be deleted'
 
 /** `sessionStore`'s rejection for an id it does not hold (`requireSession`). */
@@ -128,8 +134,19 @@ export function createSessionService(deps: ServiceDeps): SessionService {
   }
 
   return {
-    async addExercise(_sessionId, _exerciseId) {
-      throw new Error('addExercise is not implemented')
+    /** Adds a Plan for `exerciseId` to the Session in progress; refused as `'storage-failed'` when it is a repeat or the Session is finished. */
+    async addExercise(sessionId, exerciseId) {
+      return write(
+        sessionId,
+        async () => {
+          const session = await getSession(sessionId)
+          const programs = mergePrograms(loadPrograms(loadCatalog()), await getUserPrograms())
+          const located = session ? locateSession(programs, session) : null
+          const plannedIds = located ? located.workout.exercises.map((plan) => plan.exerciseId) : []
+          return addPlan(sessionId, newPlan(exerciseId), plannedIds, now())
+        },
+        ADD_FAILED,
+      )
     },
 
     /**
