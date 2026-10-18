@@ -38,6 +38,10 @@ export type NextStep = {
   /** The latest Session's top lever (R-L). */
   lever: number
   ready: boolean
+  /** Only when ready after an easy full bar (every Set RIR >= 2): the suggestion is two steps. */
+  steps?: 2
+  /** Only after a full bar with every Set at RIR 0: hold the lever; not ready, no `suggest`. */
+  hold?: true
   /** Only when ready: one step up in lever, or one more set for a plain Bodyweight lift. */
   suggest?: { kind: 'lever'; lever: number } | { kind: 'set' }
 }

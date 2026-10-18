@@ -345,3 +345,90 @@ test('O16 push-ups with no loaded Set, or only load 0, still answer by the whole
     expect(result.suggestion).toEqual({ kind: 'add-set' })
   }
 })
+
+// --- E21-T1 O2: effort moves the suggestion ---
+
+type Rir = 0 | 1 | 2 | 3 | undefined
+const withRir = (entries: SetEntry[], rirs: Rir[]): SetEntry[] =>
+  entries.map((entry, i) => (rirs[i] === undefined ? entry : { ...entry, rir: rirs[i] }))
+
+test('O2 a full loaded bar at 60 kg with RIRs 2, 3, 2 suggests add-weight 65', () => {
+  const last = withRir(sets('back-squat', [[60, 10], [60, 10], [60, 10]]), [2, 3, 2])
+  const result = progression(squat, squatPlan, last)
+  expect(result.suggestion).toEqual({ kind: 'add-weight', nextWeightKg: 65 })
+})
+
+test('O2 a full loaded bar at 60 kg with RIRs 0, 0, 0 holds at 60 and is still full', () => {
+  const last = withRir(sets('back-squat', [[60, 10], [60, 10], [60, 10]]), [0, 0, 0])
+  const result = progression(squat, squatPlan, last)
+  expect(result.isFull).toBe(true)
+  expect(result.workingWeightKg).toBe(60)
+  expect(result.suggestion).toEqual({ kind: 'hold', nextWeightKg: 60 })
+})
+
+test('O2 a full loaded bar with no RIR or a mixed RIR suggests 62.5', () => {
+  const none = sets('back-squat', [[60, 10], [60, 10], [60, 10]])
+  expect(progression(squat, squatPlan, none).suggestion).toEqual({ kind: 'add-weight', nextWeightKg: 62.5 })
+  const mixed = withRir(none, [2, 1, 2])
+  expect(progression(squat, squatPlan, mixed).suggestion).toEqual({ kind: 'add-weight', nextWeightKg: 62.5 })
+  const partial = withRir(none, [3, 3, undefined])
+  expect(progression(squat, squatPlan, partial).suggestion).toEqual({ kind: 'add-weight', nextWeightKg: 62.5 })
+})
+
+test('O2 effort reads only the working-weight Sets of the bar, not a lighter earlier Set', () => {
+  const last = withRir(sets('back-squat', [[50, 6], [60, 10], [60, 10]]), [0, 3, 2])
+  expect(progression(squat, squatPlan, last).suggestion).toEqual({ kind: 'add-weight', nextWeightKg: 65 })
+})
+
+test('O2 a bar that is not full suggests nothing whatever the RIRs', () => {
+  const easy = withRir(sets('back-squat', [[60, 10], [60, 10], [60, 9]]), [3, 3, 3])
+  expect(progression(squat, squatPlan, easy)).toMatchObject({ isFull: false, suggestion: null })
+  const hard = withRir(sets('back-squat', [[60, 10], [60, 10], [60, 9]]), [0, 0, 0])
+  expect(progression(squat, squatPlan, hard)).toMatchObject({ isFull: false, suggestion: null })
+})
+
+test('O2 a Bodyweight Exercise with a Load moves its Load by 2 / 0 / 1 steps', () => {
+  const full = (rirs: Rir[]) => withRir(loaded([[10, 15], [10, 15], [10, 15]]), rirs)
+  expect(progression(weightedPushUps, pushUpsPlan, full([2, 2, 3])).suggestion).toEqual({
+    kind: 'add-load',
+    nextLoadKg: 15,
+  })
+  expect(progression(weightedPushUps, pushUpsPlan, full([0, 0, 0]))).toMatchObject({
+    isFull: true,
+    suggestion: { kind: 'hold', nextLoadKg: 10 },
+  })
+  expect(progression(weightedPushUps, pushUpsPlan, full([undefined, undefined, undefined])).suggestion).toEqual({
+    kind: 'add-load',
+    nextLoadKg: 12.5,
+  })
+})
+
+test('O2 an assisted Exercise moves toward less assistance by 2 steps after an easy full bar', () => {
+  const last = withRir(
+    [-27, -27, -27].map((loadKg, i) => ({
+      exerciseId: 'assisted-pull-ups',
+      setIndex: i + 1,
+      weightKg: null,
+      loadKg,
+      reps: pullUpsPlan.repRange[1],
+      loggedAt: 1000 + i,
+    })),
+    [2, 2, 2],
+  )
+  expect(progression(assistedPullUps, pullUpsPlan, last).suggestion).toEqual({
+    kind: 'add-load',
+    nextLoadKg: -25,
+  })
+})
+
+test('O2 a plain Bodyweight bar adds one set after an easy bar, never two, and holds at RIR 0', () => {
+  const full = (rirs: Rir[]) => withRir(sets('push-ups', [[null, 15], [null, 15], [null, 15]]), rirs)
+  expect(progression(pushUps, pushUpsPlan, full([3, 3, 3])).suggestion).toEqual({ kind: 'add-set' })
+  expect(progression(pushUps, pushUpsPlan, full([undefined, undefined, undefined])).suggestion).toEqual({
+    kind: 'add-set',
+  })
+  expect(progression(pushUps, pushUpsPlan, full([0, 0, 0]))).toMatchObject({
+    isFull: true,
+    suggestion: { kind: 'hold' },
+  })
+})

@@ -2,7 +2,7 @@ import type { Exercise, ExercisePlan, SetEntry } from '../types'
 import { workingSets as excludeWarmups } from './setKind'
 
 // An assisted Set is a negative Load on a Bodyweight Exercise, so less assistance is `add-load`.
-export type SuggestionKind = 'add-weight' | 'add-set' | 'add-load'
+export type SuggestionKind = 'add-weight' | 'add-set' | 'add-load' | 'hold'
 export type Suggestion = { kind: SuggestionKind; nextWeightKg?: number; nextLoadKg?: number }
 export type Progression = {
   workingWeightKg: number | null
