@@ -886,16 +886,7 @@ export function WorkoutFeature({
             onOpenAlternatives={handleOpenAlternatives}
             onOpenHistory={setHistoryFor}
             upNext={nextName}
-            onFinishExercise={() => {
-              if (nextId === null) {
-                setView('list')
-                return
-              }
-              const loggedNext = session.entries.filter(
-                (entry) => entry.exerciseId === nextId,
-              ).length
-              handleOpenSet(nextId, loggedNext + 1)
-            }}
+            onFinishExercise={() => setView('list')}
           />
         </AppShell>
       )
