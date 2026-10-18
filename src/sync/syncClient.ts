@@ -8,15 +8,19 @@ import { topicOfSetting, syncedSettingKeys } from "../storage/settingKeys";
 import { deleteKeys, putRows, readRow } from "../storage/settingsStore";
 import { inTransaction } from "../storage/transaction";
 import type { Session } from "../types";
+import {
+  checkReplaceResponse,
+  checkSyncResponse,
+  CONTRACT_VERSION,
+  VERSION_HEADER,
+} from "../contract";
 import type {
   MeResponse,
   ReplaceRequest,
-  ReplaceResponse,
   SyncedSession,
   SyncedSetting,
   SyncedSettingKey,
   SyncRequest,
-  SyncResponse,
 } from "./protocol";
 
 export type SyncResult =
@@ -39,6 +43,8 @@ export type PulledTopic = "sessions" | "programs" | "preferences";
 export type SyncDeps = {
   fetch?: typeof fetch;
   now?: () => number;
+  /** The contract version sent on every request; defaults to the current one. */
+  contractVersion?: number;
   /** Told, once the pull has committed, every topic it wrote rows of; not called when none. */
   onPulled?: (topics: ReadonlySet<PulledTopic>) => void;
 };
@@ -58,9 +64,15 @@ const SYNC_CURSOR_KEY = "syncCursor";
 const LAST_PUSHED_AT_KEY = "lastPushedAt";
 const LAST_SYNCED_AT_KEY = "lastSyncedAt";
 
+/**
+ * What a call can resolve with once the Worker has refused the version. E20-T5 folds this into
+ * `SyncResult` with the views that show it; until then `shared` hands it out as one.
+ */
+type UpdateRequired = { status: "update-required" };
+
 /** A request that ended without an answer the caller can use; carries the result to report. */
 class SyncStop extends Error {
-  constructor(readonly result: SyncResult) {
+  constructor(readonly result: SyncResult | UpdateRequired) {
     super(result.status);
   }
 }
@@ -81,18 +93,20 @@ async function request<T>(
       method: body === undefined ? "GET" : "POST",
       credentials: "same-origin",
       redirect: "manual",
-      ...(body === undefined
-        ? {}
-        : {
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(body),
-          }),
+      headers: {
+        [VERSION_HEADER]: String(deps.contractVersion ?? CONTRACT_VERSION),
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   } catch {
     throw new SyncStop({ status: "offline" });
   }
   if (response.type === "opaqueredirect" || response.status === 401) {
     throw new SyncStop({ status: "signed-out" });
+  }
+  if (response.status === 426) {
+    throw new SyncStop({ status: "update-required" });
   }
   if (!response.ok) {
     throw new SyncStop({
@@ -101,6 +115,13 @@ async function request<T>(
     });
   }
   return (await response.json()) as T;
+}
+
+function malformed(path: string): SyncStop {
+  return new SyncStop({
+    status: "error",
+    message: `${path} answered a body the app cannot read`,
+  });
 }
 
 async function readSetting(key: string): Promise<unknown> {
@@ -297,7 +318,10 @@ async function runSync(deps: SyncDeps): Promise<SyncResult> {
     (await readNumber(LAST_PUSHED_AT_KEY)) ?? 0,
   );
   const body: SyncRequest = { since, ...outgoing };
-  const answer = await request<SyncResponse>(deps, "/api/sync", body);
+  const answer = checkSyncResponse(
+    await request<unknown>(deps, "/api/sync", body),
+  );
+  if (answer === null) throw malformed("/api/sync");
   const at = (deps.now ?? Date.now)();
   const { written, topics } = await applyAnswer(
     outgoing,
@@ -322,7 +346,10 @@ async function runReplace(deps: SyncDeps): Promise<SyncResult> {
   await bindAccount(deps);
   const outgoing = await collectAll();
   const body: ReplaceRequest = outgoing;
-  const answer = await request<ReplaceResponse>(deps, "/api/replace", body);
+  const answer = checkReplaceResponse(
+    await request<unknown>(deps, "/api/replace", body),
+  );
+  if (answer === null) throw malformed("/api/replace");
   const at = (deps.now ?? Date.now)();
   await applyAnswer(outgoing, { sessions: [], settings: [] }, answer.cursor, at);
   return {
@@ -341,7 +368,7 @@ export function createSyncClient(deps: SyncDeps = {}): SyncClient {
     if (running) return running;
     const call = run(deps)
       .catch((error: unknown) => {
-        if (error instanceof SyncStop) return error.result;
+        if (error instanceof SyncStop) return error.result as SyncResult;
         return {
           status: "error",
           message: error instanceof Error ? error.message : String(error),
