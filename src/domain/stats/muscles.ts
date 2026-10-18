@@ -31,9 +31,9 @@ export function muscleWeeks(
   now: number,
   resolve: Resolve,
   library: Map<string, LibraryExercise>,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): MuscleWeek[] {
-  return weeksOf(sessions, now).map((w) => ({
+  return weeksOf(sessions, now, weekStartsOn).map((w) => ({
     start: w.start,
     inProgress: w.inProgress,
     sets: muscleSets(
@@ -81,9 +81,9 @@ export function windowAverage(
   resolve: Resolve,
   library: Map<string, LibraryExercise>,
   weeks = 2,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): Map<Muscle, number> {
-  const complete = muscleWeeks(sessions, now, resolve, library).filter((w) => !w.inProgress)
+  const complete = muscleWeeks(sessions, now, resolve, library, weekStartsOn).filter((w) => !w.inProgress)
   const last = weeks > 0 ? complete.slice(-weeks) : []
   const out = new Map<Muscle, number>()
   if (last.length === 0) return out
@@ -101,15 +101,15 @@ export function thisWeekMuscles(
   now: number,
   resolve: Resolve,
   library: Map<string, LibraryExercise>,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): Map<Muscle, ThisWeekMuscle> {
   const out = new Map<Muscle, ThisWeekMuscle>()
-  const current = muscleWeeks(sessions, now, resolve, library).find((w) => w.inProgress)
+  const current = muscleWeeks(sessions, now, resolve, library, weekStartsOn).find((w) => w.inProgress)
   const done = current?.sets ?? new Map<Muscle, number>()
   const owed = new Map<Muscle, number>()
 
   const live = sessions.filter((s) => s.deletedAt === undefined)
-  const inWeek = weeksOf(sessions, now).find((w) => w.inProgress)?.sessions.length ?? 0
+  const inWeek = weeksOf(sessions, now, weekStartsOn).find((w) => w.inProgress)?.sessions.length ?? 0
   const remaining = Math.max(0, Math.round(program.sessionsPerWeek - inWeek))
   const count = program.workouts.length
   if (count > 0) {

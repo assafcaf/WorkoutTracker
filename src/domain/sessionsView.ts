@@ -3,7 +3,7 @@ import { muscleSets, toRegionCounts, type Region, type Resolve } from './muscles
 import { workingSets } from './setKind'
 import { recordCount, summarize } from './summary'
 import { volumeSeries } from './volume'
-import type { Weekday } from './stats/weeks'
+import { weekStart, type Weekday } from './stats/weeks'
 
 // What the Sessions tab (Progress Dashboard S6a) draws, derived purely from Sessions and a
 // `now`: a calendar of the last weeks, the regions' sets per week, and the Sessions grouped by
@@ -26,10 +26,8 @@ function addDays(at: number, days: number): number {
 }
 
 /** Local midnight of the Monday of the week `at` falls in. */
-export function startOfWeek(at: number, _weekStartsOn: Weekday = 1): number {
-  const day = new Date(startOfDay(at))
-  const sinceMonday = (day.getDay() + 6) % 7
-  return addDays(day.getTime(), -sinceMonday)
+export function startOfWeek(at: number, weekStartsOn: Weekday = 1): number {
+  return weekStart(at, weekStartsOn)
 }
 
 /** A day as `7 Sep`, with the year added when it is not `now`'s: `7 Sep 2025`. */
@@ -43,8 +41,8 @@ export type CalendarDay = { at: number; trained: boolean; today: boolean; future
 export type CalendarWeek = { start: number; days: CalendarDay[] }
 
 /** The week starts of the `count` weeks ending with `now`'s, oldest first. */
-export function weekStarts(now: number, count: number, _weekStartsOn: Weekday = 1): number[] {
-  const current = startOfWeek(now)
+export function weekStarts(now: number, count: number, weekStartsOn: Weekday = 1): number[] {
+  const current = startOfWeek(now, weekStartsOn)
   return Array.from({ length: count }, (_, index) => addDays(current, -7 * (count - 1 - index)))
 }
 
@@ -56,11 +54,11 @@ export function calendarWeeks(
   sessions: Session[],
   now: number,
   count: number,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): CalendarWeek[] {
   const today = startOfDay(now)
   const trainedDays = new Set(sessions.map((session) => startOfDay(session.startedAt)))
-  return weekStarts(now, count).map((start) => ({
+  return weekStarts(now, count, weekStartsOn).map((start) => ({
     start,
     days: Array.from({ length: 7 }, (_, index) => {
       const at = addDays(start, index)
@@ -74,9 +72,9 @@ export function sessionsInWeeks(
   sessions: Session[],
   now: number,
   count: number,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): number {
-  const from = weekStarts(now, count)[0]
+  const from = weekStarts(now, count, weekStartsOn)[0]
   return sessions.filter((session) => session.startedAt >= from && session.startedAt <= now).length
 }
 
@@ -93,9 +91,9 @@ export function weeklyRegionSets(
   count: number,
   resolve: Resolve,
   library: Map<string, LibraryExercise>,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): WeekRegionSets[] {
-  return weekStarts(now, count).map((start) => {
+  return weekStarts(now, count, weekStartsOn).map((start) => {
     const end = addDays(start, 7)
     const entries = sessions
       .filter((session) => session.startedAt >= start && session.startedAt < end)
@@ -110,12 +108,12 @@ export type SessionWeek = { start: number; label: string; sessions: Session[] }
  * The Sessions grouped by the week they started in, newest week and newest Session first:
  * `This week`, `Last week`, then `Week of 21 Sep`.
  */
-export function sessionsByWeek(sessions: Session[], now: number, _weekStartsOn: Weekday = 1): SessionWeek[] {
-  const thisWeek = startOfWeek(now)
+export function sessionsByWeek(sessions: Session[], now: number, weekStartsOn: Weekday = 1): SessionWeek[] {
+  const thisWeek = startOfWeek(now, weekStartsOn)
   const lastWeek = addDays(thisWeek, -7)
   const weeks = new Map<number, Session[]>()
   for (const session of [...sessions].sort((a, b) => b.startedAt - a.startedAt)) {
-    const start = startOfWeek(session.startedAt)
+    const start = startOfWeek(session.startedAt, weekStartsOn)
     weeks.set(start, [...(weeks.get(start) ?? []), session])
   }
   return [...weeks.entries()]

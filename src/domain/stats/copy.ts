@@ -161,7 +161,7 @@ export function homeCopy(
   sessions: Session[],
   resolve: Resolve,
   now: number,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): HomeCopy {
   const live = sessions.filter((s) => s.deletedAt === undefined)
   const plans = new Map<string, ExercisePlan>()
@@ -228,7 +228,7 @@ export function homeCopy(
   ]
   if (count('too new') > 0) parts.push(`○ ${count('too new')} too new`)
   const climbed = stepsClimbed(histories, records, now)
-  const week = thisWeek(live, now, program.sessionsPerWeek)
+  const week = thisWeek(live, now, program.sessionsPerWeek, weekStartsOn)
 
   const cards: AttentionCard[] = []
   const verdictOf = (id: string): Verdict => vs.get(id)!

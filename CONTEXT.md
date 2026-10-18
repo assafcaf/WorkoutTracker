@@ -153,3 +153,7 @@ The plates for one side of the bar, for the weight on the Dial.
 
 **Warm-up ramp**:
 The Warm-up Sets proposed before the first working Set of a barbell Exercise.
+
+**Week start**:
+The weekday (0 = Sunday ... 6 = Saturday, as `Date.getDay()`) a calendar week begins on, Monday when unset; `weekStart(ms, weekStartsOn)` in `src/domain/stats/weeks.ts` is the one implementation every week computation uses.
+_Avoid_: First day of week

@@ -205,13 +205,13 @@ export function summaryWeek(
   sessionId: string,
   sessions: Session[],
   program: Program,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): { heading: string; line: string } {
   const live = sessions.filter((s) => s.deletedAt === undefined)
   const target = live.find((s) => s.id === sessionId)
   if (!target) return { heading: '', line: '' }
-  const start = weekStart(target.startedAt)
-  const inWeek = live.filter((s) => weekStart(s.startedAt) === start && s.startedAt <= target.startedAt)
+  const start = weekStart(target.startedAt, weekStartsOn)
+  const inWeek = live.filter((s) => weekStart(s.startedAt, weekStartsOn) === start && s.startedAt <= target.startedAt)
   const done = inWeek.reduce((n, s) => n + workingSets(s.entries).length, 0)
   const workoutSets = program.workouts.map((w) => w.exercises.reduce((n, e) => n + e.sets, 0))
   const average = workoutSets.length ? workoutSets.reduce((a, b) => a + b, 0) / workoutSets.length : 0

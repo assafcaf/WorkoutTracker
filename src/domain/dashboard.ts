@@ -5,15 +5,13 @@ import { progression } from './progression'
 import { seriesFor } from './series'
 import { workingSets } from './setKind'
 import { sessionVolume } from './volume'
-import type { Weekday } from './stats/weeks'
+import { weekStart, type Weekday } from './stats/weeks'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /** Monday 00:00 local time of the calendar week holding `now`. */
-export function startOfWeek(now: number, _weekStartsOn: Weekday = 1): number {
-  const day = new Date(now)
-  const sinceMonday = (day.getDay() + 6) % 7
-  return new Date(day.getFullYear(), day.getMonth(), day.getDate() - sinceMonday).getTime()
+export function startOfWeek(now: number, weekStartsOn: Weekday = 1): number {
+  return weekStart(now, weekStartsOn)
 }
 
 /** One week's Sessions, working Sets and loaded volume. */
@@ -38,10 +36,10 @@ export function weekVsLast(
   sessions: Session[],
   now: number,
   resolve: Resolve,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): { thisWeek: WeekTotals; lastWeek: WeekTotals } {
-  const thisStart = startOfWeek(now)
-  const lastStart = startOfWeek(thisStart - DAY_MS)
+  const thisStart = startOfWeek(now, weekStartsOn)
+  const lastStart = startOfWeek(thisStart - DAY_MS, weekStartsOn)
   const inRange = (from: number, to: number): Session[] =>
     sessions.filter((session) => session.startedAt >= from && session.startedAt < to)
   return {
@@ -105,9 +103,9 @@ export function muscleWeek(
   program: Program,
   resolve: Resolve,
   library: Map<string, LibraryExercise>,
-  _weekStartsOn: Weekday = 1,
+  weekStartsOn: Weekday = 1,
 ): { rows: MuscleWeekRow[]; gaps: Muscle[] } {
-  const from = startOfWeek(now)
+  const from = startOfWeek(now, weekStartsOn)
   const entries = sessions.flatMap((session) =>
     session.entries.filter((entry) => entry.loggedAt >= from && entry.loggedAt <= now),
   )
