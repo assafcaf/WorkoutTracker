@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { alternativesFor } from '../domain/alternatives'
+import { matchesQuery } from '../domain/search'
 import type { LibraryExercise } from '../types'
 import './AlternativesList.css'
 
@@ -54,10 +55,7 @@ export function AlternativesList({
     )
   }
 
-  const search = query.trim().toLowerCase()
-  const matching = search === '' ? ranked : ranked.filter((alternative) =>
-    alternative.name.toLowerCase().includes(search),
-  )
+  const matching = ranked.filter((alternative) => matchesQuery(alternative.name, query))
   const shown = limit === undefined ? matching : matching.slice(0, limit)
 
   return (
