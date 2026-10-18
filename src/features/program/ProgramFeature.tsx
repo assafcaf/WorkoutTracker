@@ -242,6 +242,7 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         bundledProgramIds={new Set(bundledPrograms.map((program) => program.id))}
         programsOpen={programsOpen}
         onProgramsOpenChange={setProgramsOpen}
+        onBrowse={(muscles) => props.navigate({ tab: 'exercises', muscles })}
       />
     </AppShell>
   )
