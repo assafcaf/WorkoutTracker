@@ -336,7 +336,7 @@ async function expectHammerCurlsOnSet2(
   expect(screen.getByText('Set 2 of 3')).toBeVisible()
   expect(screen.queryByRole('dialog')).toBeNull()
   // Never logged before: it opens on what the Seated biceps curls would have (8 kg x 10 here).
-  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
   await waitFor(async () => {
     const stored = await storedActiveSession()
     const hammer = stored?.entries.filter((e) => e.exerciseId === chosenId)
@@ -1086,7 +1086,7 @@ test('O13 lunges last time 10×12 ×3, Set 1 logged at 11 × 12: Sets 2 and 3 op
   expect(readoutsNow()).toEqual(['10', '12'])
   unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
-  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
 
   expect(await screen.findByText('Set 2 of 3', undefined, SETTLE)).toBeVisible()
   expect(readoutsNow()).toEqual(['11', '12'])
@@ -1271,7 +1271,7 @@ test('O19 with the kind row, the Load Dial, a note and effort on, a Set matching
   expect(await screen.findByText('hands under shoulders', undefined, SETTLE)).toBeVisible()
   await user.keyboard('{Escape}')
 
-  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
 
   expect(await screen.findByText('Set 2 of 3', undefined, SETTLE)).toBeVisible()
   await waitFor(async () => expect((await storedActiveSession())?.entries).toHaveLength(1), SETTLE)
@@ -1294,7 +1294,7 @@ test('O17 a push-ups Set logged at BW−20 on the Load Dial is stored with loadK
 
   const ladder = await screen.findByRole('listbox', { name: 'Weight ladder' }, SETTLE)
   await user.click(within(ladder).getByRole('option', { name: 'BW−20' }))
-  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
 
   await waitFor(async () => {
     expect((await storedActiveSession())?.entries[0]).toMatchObject({
@@ -1422,7 +1422,7 @@ test('O13 on Back squat with the Plate line and Add warm-ups showing, one tap on
   await waitFor(() => expect(addWarmupsOffer()).not.toBeNull(), SETTLE)
   await user.keyboard('{Escape}')
 
-  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
 
   await waitFor(async () => {
     expect((await storedActiveSession())?.entries).toHaveLength(1)
@@ -1509,7 +1509,16 @@ test('O21 closing History returns to the same open Set with its logged Set and r
   )
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('list', { name: 'Sets logged' }).querySelectorAll('li')).toHaveLength(1)
-  expect((await restReadoutText()).slice(0, 2)).toBe(restBefore.slice(0, 2))
+  // Rest intact: still counting down from where it was, neither reset (up) nor far off. A tick
+  // from 3:00 to 2:59 between the two reads must not fail it, so compare seconds with a tolerance.
+  const seconds = (text: string): number => {
+    const match = /(\d+):(\d{2})/.exec(text)
+    if (match === null) throw new Error(`no m:ss in the rest readout "${text}"`)
+    return Number(match[1]) * 60 + Number(match[2])
+  }
+  const restAfter = seconds(await restReadoutText())
+  expect(restAfter).toBeLessThanOrEqual(seconds(restBefore))
+  expect(seconds(restBefore) - restAfter).toBeLessThanOrEqual(30)
   expect((await storedActiveSession())?.entries).toHaveLength(1)
 })
 
