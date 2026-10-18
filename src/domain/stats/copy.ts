@@ -9,7 +9,7 @@
 //   suggestionText(step, bodyweight)  -> 'Try 15 kg next' | 'Try one more set next' | null
 //   compareText(compare, bodyweight)  -> '13 × 9 → 13 × 9 · no change' | null
 //   homeCopy(program, sessions, resolve, now) -> HomeCopy
-import type { ExercisePlan, Program, Session } from '../../types'
+import type { Exercise, ExercisePlan, Program, Session } from '../../types'
 import type { Resolve } from '../muscles'
 import type { Compare } from './ladder'
 import { buildLiftHistories, leverOf, straightSets } from './liftHistory'
@@ -108,6 +108,10 @@ export function suggestionText(step: NextStep, bodyweight: boolean): string | nu
   return step.suggest.kind === 'set'
     ? 'Try one more set next'
     : `Try ${leverText(step.suggest.lever, bodyweight)} next`
+}
+
+export function stallSuggestion(_history: LiftHistory, _exercise: Exercise): string {
+  return LIGHTER
 }
 
 export function compareText(compare: Compare | null, bodyweight: boolean): string | null {
