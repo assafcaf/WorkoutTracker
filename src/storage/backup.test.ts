@@ -238,6 +238,22 @@ test('O3 a deload mark survives export and import, and an unmarked Session stays
   expect('deload' in (imported.find((s) => s.id === b.id) as Session)).toBe(false)
 })
 
+test('O22 added Plans survive export and import, and schemaVersion stays 1', async () => {
+  const [a, b] = sessionsFixture(2)
+  const added = [{ exerciseId: 'deadlift', sets: 3, repRange: [8, 12] as [number, number], restSeconds: 90 }]
+  await db.sessions.put({ ...a, added })
+  await db.sessions.put(b)
+
+  const file = await exportThroughService()
+  expect(file.schemaVersion).toBe(1)
+  await db.sessions.clear()
+  await importThroughService(file)
+
+  const imported = await listSessions()
+  expect(imported.find((s) => s.id === a.id)?.added).toEqual(added)
+  expect('added' in (imported.find((s) => s.id === b.id) as Session)).toBe(false)
+})
+
 test('S16 a schemaVersion 1 backup made before this epic, with neither swaps nor gymEquipment, still imports', async () => {
   const legacyBackup = {
     schemaVersion: 1,

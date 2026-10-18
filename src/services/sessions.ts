@@ -24,6 +24,7 @@ import type { ServiceDeps } from './deps'
 import { callStorage, ServiceError } from './errors'
 
 export type SessionService = {
+  addExercise(sessionId: string, exerciseId: string): Promise<Session>
   resumeActive(): Promise<Session | null>
   start(programId: string, workoutId: string): Promise<Session>
   logSet(sessionId: string, entry: SetEntry): Promise<Session>
@@ -127,6 +128,10 @@ export function createSessionService(deps: ServiceDeps): SessionService {
   }
 
   return {
+    async addExercise(_sessionId, _exerciseId) {
+      throw new Error('addExercise is not implemented')
+    },
+
     /**
      * The session in progress, or null when there is none or storage cannot be read. A stale
      * one is finished (or deleted, when empty) first, and that write is announced.

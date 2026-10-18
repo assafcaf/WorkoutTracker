@@ -2010,3 +2010,17 @@ describe('E16-T3 old assisted-pull-up Sets read back normalised', () => {
     expect('updatedAt' in read).toBe(false)
   })
 })
+
+// --- E19-T12 O22: Session.added is stored whole ---------------------------------------------
+
+test('O22 a Session with added Plans reads back with them, and a later write keeps them', async () => {
+  const added = [{ exerciseId: 'deadlift', sets: 3, repRange: [8, 12] as [number, number], restSeconds: 90 }]
+  const started = await startOrResumeSession('assaf-ab-2026', 'workout-a', BASE)
+  await db.sessions.put({ ...started, added })
+
+  const [read] = await allSessions()
+  expect(read.added).toEqual(added)
+
+  await setSwap(started.id, 'back-squat', 'leg-press')
+  expect((await db.sessions.get(started.id))?.added).toEqual(added)
+})
