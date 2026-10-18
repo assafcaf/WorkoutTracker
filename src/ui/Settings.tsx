@@ -59,7 +59,17 @@ export type SettingsProps = {
   onPlateInventoryChange?(inventory: PlateInventory): void
   /** The service's message for a refused change, shown inline. */
   plateInventoryError?: string | null
+  /** The first day of the week, 0 = Sunday ... 6 = Saturday (E19-T3); omitted reads as Monday. */
+  weekStart?: number
+  /** Called with the chosen weekday when "Week starts on" changes. */
+  onWeekStartChange?(day: number): void
+  /** Whether the screen stays on during rest (E19-T3); omitted reads as on. */
+  keepScreenOnDuringRest?: boolean
+  /** Called with the next value when "Keep screen on during rest" is toggled. */
+  onKeepScreenOnDuringRestChange?(on: boolean): void
 }
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 /**
  * Lets the trainee choose which program is active, and export a backup of the database.
@@ -97,6 +107,10 @@ export function Settings(props: SettingsProps): JSX.Element {
     plateInventory,
     onPlateInventoryChange,
     plateInventoryError,
+    weekStart = 1,
+    onWeekStartChange,
+    keepScreenOnDuringRest = true,
+    onKeepScreenOnDuringRestChange,
   } = props
 
   const currentAggregate = 'aggregate' in volumeBaseline ? volumeBaseline.aggregate : 'avg'
@@ -240,6 +254,36 @@ export function Settings(props: SettingsProps): JSX.Element {
               checked={trackEffort}
               onChange={(next) => onTrackEffortChange?.(next)}
               label="Track effort"
+            />
+          </div>
+        </div>
+      </fieldset>
+      <fieldset className="settings-group">
+        <legend className="settings-legend">Week</legend>
+        <div className="settings-card card">
+          <label className="settings-action">
+            <span className="settings-action-label">Week starts on</span>
+            <Select
+              value={String(weekStart)}
+              onChange={(event) => onWeekStartChange?.(Number(event.target.value))}
+            >
+              {WEEKDAYS.map((name, day) => (
+                <option key={name} value={String(day)}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+      </fieldset>
+      <fieldset className="settings-group">
+        <legend className="settings-legend">Rest</legend>
+        <div className="settings-card card">
+          <div className="settings-action">
+            <Switch
+              checked={keepScreenOnDuringRest}
+              onChange={(next) => onKeepScreenOnDuringRestChange?.(next)}
+              label="Keep screen on during rest"
             />
           </div>
         </div>
