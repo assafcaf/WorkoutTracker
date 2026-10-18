@@ -410,6 +410,7 @@ export function SessionsScreen({
                         </span>
                         <span className="session-row-side">
                           <span className="session-row-tags">
+                            {session.deload ? <span className="tag session-row-deload">Deload</span> : null}
                             {count > 0 ? <span className="tag tag-pr">{recordsText(count)}</span> : null}
                           </span>
                           <span className="session-row-stats">
