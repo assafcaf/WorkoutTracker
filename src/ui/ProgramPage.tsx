@@ -76,6 +76,8 @@ export type ProgramPageProps = {
    * shell's large page title (`ProgramHeadActions`, `programSizeLine`). Defaults to `inline`.
    */
   head?: 'inline' | 'none'
+  /** "Browse exercises" on a tapped region's panel: the region's muscles (E22-T10). */
+  onBrowse?(muscles: Muscle[]): void
 }
 
 /**
