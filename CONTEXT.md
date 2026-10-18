@@ -12,6 +12,12 @@ A lift as the catalog defines it — its weight step, start weight, whether it i
 where to see it demonstrated. Independent of any program that prescribes it.
 _Avoid_: Movement, lift, activity
 
+**Custom Exercise**:
+An Exercise the trainee created: a name, muscles, equipment, whether it is bodyweight and a weight
+step. Stored as the synced `customExercises` setting and merged into the catalog and library by
+`CatalogService`; a bundled id always wins over it.
+_Avoid_: User exercise, own exercise
+
 **Plan**:
 A program's prescription for one exercise: how many sets, the rep range, the rest between them,
 and its place in the order. A Plan points at an Exercise; it does not contain one.
