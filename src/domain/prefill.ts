@@ -2,7 +2,7 @@ import { workingSets } from './setKind'
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
 
 /** A Preset: the dial values a Set opens with. */
-type Preset = { weightKg: number | null; reps: number; loadKg?: number }
+type Preset = { weightKg: number | null; reps: number; loadKg?: number; deloadFromKg?: number }
 
 /** The bounds a Preset's value is kept within: a weight, or a Bodyweight Exercise's signed Load. */
 const WEIGHT_BOUNDS = { min: 0, max: 500 }
@@ -67,6 +67,8 @@ export function presetForSet(args: {
   lastEntries: SetEntry[]
   /** This Session's Sets for the Exercise so far (E16-T6), passed apart from last time's. */
   today?: SetEntry[]
+  /** Open a deload Session's loaded Sets 10 % lighter (E21). */
+  deload?: boolean
 }): Preset {
   const { exercise, plan, setIndex, lastEntries, today } = args
   const asPreset = (set: SetEntry): Preset => presetFromSet({ exercise, plan, set })

@@ -15,7 +15,8 @@ export function swapPreset(args: {
   plannedLast: SetEntry[]
   chosenLast: SetEntry[]
   today: SetEntry[]
-}): { weightKg: number | null; reps: number; loadKg?: number } {
+  deload?: boolean
+}): { weightKg: number | null; reps: number; loadKg?: number; deloadFromKg?: number } {
   const { planned, chosen, plan, setIndex, plannedLast, chosenLast, today } = args
   if (chosenLast.length > 0) {
     return presetForSet({ exercise: chosen, plan, setIndex, lastEntries: chosenLast, today })
