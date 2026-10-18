@@ -1,5 +1,5 @@
 import type { ServiceDeps } from './deps'
-import type { PlateInventory, VolumeBaseline } from '../types'
+import type { BodyEntry, BodyLog, PlateInventory, VolumeBaseline } from '../types'
 import { validatePlateInventory } from '../domain/plates'
 import { callStorage } from './errors'
 import {
@@ -64,6 +64,12 @@ export type PreferenceService = {
   /** Whether the screen stays on during rest; `true` when unset (E19-T1). */
   keepScreenOnDuringRest(): Promise<boolean>
   setKeepScreenOnDuringRest(on: boolean): Promise<void>
+  /** The body log, oldest day first; `[]` when none is stored (E22-T2). */
+  bodyLog(): Promise<BodyLog>
+  /** Upserts a valid entry; rejects with a ServiceError when the entry is refused (E22-T2). */
+  saveBodyEntry(entry: BodyEntry): Promise<void>
+  /** Drops the entry of `day` (E22-T2). */
+  removeBodyEntry(day: string): Promise<void>
 }
 
 /**
@@ -121,5 +127,14 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
     keepScreenOnDuringRest: () =>
       callStorage(deps, getKeepScreenOnDuringRest, 'keepScreenOnDuringRest read failed'),
     setKeepScreenOnDuringRest: (on) => write(() => setKeepScreenOnDuringRest(on, deps.now())),
+    bodyLog: async () => {
+      throw new Error('NotImplementedError: bodyLog')
+    },
+    saveBodyEntry: async () => {
+      throw new Error('NotImplementedError: saveBodyEntry')
+    },
+    removeBodyEntry: async () => {
+      throw new Error('NotImplementedError: removeBodyEntry')
+    },
   }
 }

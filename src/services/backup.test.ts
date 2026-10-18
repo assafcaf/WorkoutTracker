@@ -598,3 +598,45 @@ test('E21-T4 O11 a backup made before this epic imports and leaves deloadWeek un
 
   expect(await db.settings.get('deloadWeek')).toBeUndefined()
 })
+
+const BODY_LOG = [
+  { day: '2023-10-01', weightKg: 80 },
+  { day: '2023-10-15', weightKg: 78.5, waistCm: 84 },
+]
+
+test('E22-T2 O5 bodyLog survives export then import into an empty app, schemaVersion staying 1', async () => {
+  await db.settings.put({ key: 'bodyLog', value: BODY_LOG, updatedAt: BASE })
+  const file = await exportedFile()
+  expect(file.schemaVersion).toBe(1)
+  expect(file.settings.bodyLog).toEqual(BODY_LOG)
+  vi.restoreAllMocks()
+  await db.settings.clear()
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(file)))
+
+  expect((await db.settings.get('bodyLog'))?.value).toEqual(BODY_LOG)
+})
+
+test('E22-T2 O5 an unset bodyLog is not written to the export file', async () => {
+  const file = await exportedFile()
+
+  expect(file.settings).not.toHaveProperty('bodyLog')
+})
+
+test('E22-T2 O5 a backup made before this epic imports and leaves bodyLog unset', async () => {
+  await db.settings.put({ key: 'bodyLog', value: BODY_LOG, updatedAt: BASE })
+  installDownloadFallback()
+  const old = {
+    schemaVersion: 1,
+    exportedAt: BASE,
+    sessions: [],
+    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+  }
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(old)))
+
+  expect(await db.settings.get('bodyLog')).toBeUndefined()
+})
