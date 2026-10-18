@@ -53,7 +53,8 @@ async function setup(): Promise<{ env: Env; rest: FakeDurableObjectNamespace; sv
 }
 
 async function call(env: Env, method: string, email: string, body?: unknown): Promise<Response> {
-  const token = await access.sign({ email })
+  // The faked clock sits at T0, so the token must outlive T0, not the real now.
+  const token = await access.sign({ email, exp: Math.floor(T0 / 1000) + 3600 })
   return worker.fetch(
     apiRequest('/api/push/rest', token, { method, body: body === undefined ? undefined : JSON.stringify(body) }),
     env,
