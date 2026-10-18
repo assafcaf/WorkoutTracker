@@ -138,4 +138,17 @@ export default tseslint.config(
       ],
     },
   },
+  // E20-T1 (O5): the wire contract imports only itself and src/types.ts.
+  {
+    files: ['src/contract/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [{ regex: '^(?!\\./|\\.\\./types$)', message: '[layers] contract is shared' }],
+        },
+      ],
+    },
+  },
 )

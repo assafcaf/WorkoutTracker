@@ -165,6 +165,22 @@ describe('ui and features reach only services (O1)', () => {
   })
 })
 
+describe('the contract is shared (O5)', () => {
+  test('O5 src/contract/** imports only src/contract/** and src/types.ts', () => {
+    const files = productionFiles('src/contract/**')
+    expect(files.length).toBeGreaterThan(0)
+
+    const offenders = files.flatMap((file) =>
+      importsOf(file)
+        .map((imp) => ({ imp, target: resolveImport(file, imp.source) }))
+        .filter(({ target }) => target === null || (target !== 'src/types' && !target.startsWith('src/contract/')))
+        .map(({ imp }) => `${file} -> ${imp.source}`),
+    )
+
+    expect(offenders).toEqual([])
+  })
+})
+
 describe('only storage touches Dexie (O3)', () => {
   test('every reader of db.sessions lives in src/storage: no file outside src/storage imports src/storage/db or dexie except as a type', () => {
     const files = O3_SCANNED_FILES().filter((file) => !file.startsWith('src/storage/'))
@@ -301,6 +317,38 @@ describe('lint refuses each layer-breaking import (O4)', { timeout: 120_000 }, (
     expect(
       messages.some((message) => message.includes('[layers] only storage touches Dexie')),
     ).toBe(false)
+  })
+
+  test('O5 contract importing storage is refused as "[layers] contract is shared"', async () => {
+    const messages = await lintFixture(
+      'src/contract/fixture.ts',
+      "import { db } from '../storage/db'\nexport const usesDb = db\n",
+    )
+    expect(messages.some((message) => message.includes('[layers] contract is shared'))).toBe(true)
+  })
+
+  test('O5 contract importing sync is refused as "[layers] contract is shared"', async () => {
+    const messages = await lintFixture(
+      'src/contract/fixture.ts',
+      "import { MAX_BODY_BYTES } from '../sync/protocol'\nexport const size = MAX_BODY_BYTES\n",
+    )
+    expect(messages.some((message) => message.includes('[layers] contract is shared'))).toBe(true)
+  })
+
+  test('O5 contract importing react is refused as "[layers] contract is shared"', async () => {
+    const messages = await lintFixture(
+      'src/contract/fixture.ts',
+      "import { useState } from 'react'\nexport const usesState = useState\n",
+    )
+    expect(messages.some((message) => message.includes('[layers] contract is shared'))).toBe(true)
+  })
+
+  test('O5 contract importing src/types and itself is allowed', async () => {
+    const messages = await lintFixture(
+      'src/contract/fixture.ts',
+      "import type { Session } from '../types'\nimport { HttpError } from './index'\nexport type S = Session\nexport const E = HttpError\n",
+    )
+    expect(messages.some((message) => message.includes('[layers] contract is shared'))).toBe(false)
   })
 
   test('npx eslint . is clean on the real tree: no [layers] message anywhere', async () => {

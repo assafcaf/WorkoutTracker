@@ -159,3 +159,7 @@ The Warm-up Sets proposed before the first working Set of a barbell Exercise.
 **Week start**:
 The trainee's first weekday (`Date.getDay()` numbering, Monday when unset); every week goes
 through `weekStart(ms, weekStartsOn)`.
+
+**Contract version**:
+The number (`CONTRACT_VERSION`, in `src/contract`) the phone sends in `X-Contract-Version` and the
+Worker checks against its supported range; a request without the header counts as version 1.
