@@ -279,6 +279,7 @@ describe('O5 protocol re-exports the contract', () => {
       'keepScreenOnDuringRest',
       'customExercises',
       'bodyLog',
+      'workoutReminders',
     ])
     expect(protocol.SYNCED_SETTING_KEYS).toBe(SYNCED_SETTING_KEYS)
   })

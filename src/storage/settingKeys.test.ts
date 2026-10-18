@@ -62,6 +62,7 @@ describe('D3 every setting key is declared once in settingKeys', () => {
       'volumeBaseline',
       'weekStart',
       'weightSteps',
+      'workoutReminders',
     ])
   })
 
@@ -72,6 +73,14 @@ describe('D3 every setting key is declared once in settingKeys', () => {
   test('E22-T2 O4 bodyLog is declared synced on the preferences topic', () => {
     expect(SETTING_KEYS.find((info) => info.key === 'bodyLog')).toEqual({
       key: 'bodyLog',
+      synced: true,
+      topic: 'preferences',
+    })
+  })
+
+  test('E24-T2 O4 workoutReminders is declared synced on the preferences topic', () => {
+    expect(SETTING_KEYS.find((info) => info.key === 'workoutReminders')).toEqual({
+      key: 'workoutReminders',
       synced: true,
       topic: 'preferences',
     })
