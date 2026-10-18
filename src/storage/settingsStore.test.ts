@@ -8,6 +8,9 @@ import {
   KEEP_SCREEN_ON_KEY,
   BODY_LOG_KEY,
   PLATE_INVENTORY_KEY,
+  WORKOUT_REMINDERS_KEY,
+  getWorkoutReminders,
+  setWorkoutReminders,
   USER_PROGRAMS_KEY,
   WEEK_START_KEY,
   deleteKeys,
@@ -1072,5 +1075,51 @@ describe('E22-T2 O6 the bodyLog setting', () => {
     await db.settings.clear()
     await db.settings.put({ key: 'bodyLog', value, updatedAt: 1 })
     expect(await getBodyLog()).toEqual([])
+  })
+})
+
+// --- E24-T2 O4: the workoutReminders row ---
+
+describe('E24-T2 O4 the workoutReminders setting', () => {
+  const reminders = { time: '18:00', days: [1, 3, 5], timezone: 'Asia/Jerusalem' }
+
+  test('E24-T2 O4 getWorkoutReminders answers null and writes no row when nothing is stored', async () => {
+    await db.settings.clear()
+    expect(await getWorkoutReminders()).toBeNull()
+    expect(await db.settings.get('workoutReminders')).toBeUndefined()
+  })
+
+  test('E24-T2 O4 setWorkoutReminders stores the object in the workoutReminders row stamped with now', async () => {
+    await db.settings.clear()
+    await setWorkoutReminders(reminders, 1234)
+    expect(WORKOUT_REMINDERS_KEY).toBe('workoutReminders')
+    expect(await db.settings.get('workoutReminders')).toEqual({
+      key: 'workoutReminders',
+      value: reminders,
+      updatedAt: 1234,
+    })
+    expect(await getWorkoutReminders()).toEqual(reminders)
+  })
+
+  test('E24-T2 O4 setWorkoutReminders(null) keeps a row holding null, so the off state syncs', async () => {
+    await db.settings.clear()
+    await setWorkoutReminders(reminders, 1)
+    await setWorkoutReminders(null, 2)
+    expect(await db.settings.get('workoutReminders')).toEqual({
+      key: 'workoutReminders',
+      value: null,
+      updatedAt: 2,
+    })
+    expect(await getWorkoutReminders()).toBeNull()
+  })
+
+  test.each([
+    ['a string', 'x'],
+    ['a number', 7],
+    ['an array', [1]],
+  ])('E24-T2 O4 getWorkoutReminders answers null for a stored value that is %s', async (_n, value) => {
+    await db.settings.clear()
+    await db.settings.put({ key: 'workoutReminders', value, updatedAt: 1 })
+    expect(await getWorkoutReminders()).toBeNull()
   })
 })

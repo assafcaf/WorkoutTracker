@@ -226,6 +226,23 @@ export async function setPlateInventory(
   })
 }
 
+/** The `settings` table key the workout reminders are kept under, in one row (E24-T2). */
+export const WORKOUT_REMINDERS_KEY = 'workoutReminders'
+
+/** The stored reminders object, or null when unset or turned off. Storage checks only object-or-null. */
+export async function getWorkoutReminders(): Promise<Record<string, unknown> | null> {
+  return null
+}
+
+/** Stores `value` (an object, or null for off) in the one `workoutReminders` row. */
+export async function setWorkoutReminders(
+  value: Record<string, unknown> | null,
+  now: number = Date.now(),
+): Promise<void> {
+  void value
+  void now
+}
+
 /** The `settings` table key the body log is kept under, in one row (E22-T2). */
 export const BODY_LOG_KEY = 'bodyLog'
 
