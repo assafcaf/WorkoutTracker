@@ -1,4 +1,7 @@
+import { useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import './LineChart.css'
+import { ChartReadout } from './ChartReadout'
 import type { Series, SeriesKind } from '../../domain/series'
 import { shortDay } from '../../domain/lifts'
 import { dateLabel, formatValue, labelledIndexes, spacedIndexes, ticksFor } from './axis'
@@ -17,6 +20,14 @@ export type LineChartProps = {
    * touching are labelled (always the first and the last).
    */
   compactDates?: boolean
+  /** Points can be tapped (or focused and pressed) to read their date and value (E22-T5, O13). */
+  selectable?: boolean
+  /** The readout's unit after the value; defaults to the series kind's. */
+  unit?: string
+  /** The Session each point stands for, by the point's `at`. */
+  sessionIds?: Record<number, string>
+  /** Handed the Session id when the readout's `Open session` is pressed. */
+  onOpenSession?: (sessionId: string) => void
 }
 
 const VIEW_WIDTH = 320
@@ -44,7 +55,17 @@ const UNITS: Record<SeriesKind, string> = {
  * A `[data-axis="y"]` group labels the value ticks and a `[data-axis="x"]` group labels the
  * points' dates (E17-T10, O19). No points renders no `<svg>`.
  */
-export function LineChart({ series, title, recordAts, compactDates }: LineChartProps): JSX.Element {
+export function LineChart({
+  series,
+  title,
+  recordAts,
+  compactDates,
+  selectable,
+  unit: unitProp,
+  sessionIds,
+  onOpenSession,
+}: LineChartProps): JSX.Element {
+  const [selected, setSelected] = useState<number | null>(null)
   const { points, kind } = series
   if (points.length === 0) {
     return <div className="line-chart" />
@@ -66,7 +87,9 @@ export function LineChart({ series, title, recordAts, compactDates }: LineChartP
 
   const placed = points.map((point, index) => ({ ...point, x: xOf(index), y: yOf(point.value) }))
   const latest = placed[placed.length - 1]
-  const unit = UNITS[kind]
+  const unit = unitProp ?? UNITS[kind]
+  const chosen = selectable && selected !== null && selected < placed.length ? placed[selected] : null
+  const toggle = (index: number): void => setSelected((current) => (current === index ? null : index))
   const now = new Date()
   const lastIndex = placed.length - 1
 
@@ -134,12 +157,35 @@ export function LineChart({ series, title, recordAts, compactDates }: LineChartP
             cx={point.x}
             cy={point.y}
             r={POINT_RADIUS}
+            {...(selectable
+              ? {
+                  role: 'button',
+                  tabIndex: 0,
+                  'aria-pressed': selected === index,
+                  'aria-label': `${dateLabel(point.at, now)} · ${formatValue(point.value)} ${unit}`,
+                  onClick: () => toggle(index),
+                  onKeyDown: (event: KeyboardEvent) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      toggle(index)
+                    }
+                  },
+                }
+              : {})}
           />
         ))}
         <text className="line-chart-latest" x={latest.x} y={latest.y - POINT_RADIUS - 6} textAnchor="end">
           {formatValue(latest.value)}
         </text>
       </svg>
+      {chosen ? (
+        <ChartReadout
+          date={dateLabel(chosen.at, now)}
+          value={`${formatValue(chosen.value)} ${unit}`}
+          sessionId={sessionIds?.[chosen.at]}
+          onOpenSession={onOpenSession}
+        />
+      ) : null}
     </div>
   )
 }
