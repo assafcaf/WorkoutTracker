@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
+import { bodyweightOn } from '../../domain/bodyLog'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { formatDay } from '../../domain/dates'
 import type { Resolve } from '../../domain/muscles'
@@ -15,7 +16,7 @@ import { muscleWeeks, STATS_MUSCLES } from '../../domain/stats/muscles'
 import type { Weekday } from '../../domain/stats/weeks'
 import { computeRecords, recordCount } from '../../domain/stats/records'
 import { sessionVolume } from '../../domain/volume'
-import type { ExercisePlan, LibraryExercise, Muscle, Program, Session } from '../../types'
+import type { BodyLog, ExercisePlan, LibraryExercise, Muscle, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { BarChart } from '../../ui/charts/BarChart'
 import { HeatCell, HeatLegend } from '../../ui/RegionHeat'
@@ -61,57 +62,127 @@ function workoutNameOf(session: Session, programs: Program[]): string {
   return program?.workouts.find((workout) => workout.id === session.workoutId)?.name ?? session.workoutId
 }
 
-/** The six-week calendar: one square per day, Sessions filled, today outlined. */
+/** The data tokens a Workout takes by its index in its Program, cycling (E22-T6, O15). */
+const WORKOUT_COLORS = ['push', 'pull', 'legs', 'core'] as const
+
+/** A Session's Workout colour key: its index in its Program, cycling; `gone` when the Workout is. */
+function workoutColorOf(session: Session, programs: Program[]): string {
+  const index = programs
+    .find((program) => program.id === session.programId)
+    ?.workouts.findIndex((workout) => workout.id === session.workoutId)
+  return index === undefined || index < 0 ? 'gone' : WORKOUT_COLORS[index % WORKOUT_COLORS.length]
+}
+
+/** The local midnight of `ms`. */
+function midnightOf(ms: number): number {
+  const day = new Date(ms)
+  day.setHours(0, 0, 0, 0)
+  return day.getTime()
+}
+
+/**
+ * The six-week calendar: one square per day, each trained day a button coloured and named by its
+ * Workout, today outlined. A day with one Session opens its summary; a day with two lists both.
+ */
 function SessionsCalendar({
   sessions,
+  programs,
   now,
   weekStartsOn,
+  onOpen,
 }: {
   sessions: Session[]
+  programs: Program[]
   now: number
   weekStartsOn: Weekday
+  onOpen: (sessionId: string) => void
 }): JSX.Element {
+  const [openDay, setOpenDay] = useState<number | null>(null)
   const weeks = calendarWeeks(sessions, now, CALENDAR_WEEKS, weekStartsOn)
   const count = sessionsInWeeks(sessions, now, CALENDAR_WEEKS, weekStartsOn)
+  const byDay = new Map<number, Session[]>()
+  for (const session of [...sessions].sort((a, b) => a.startedAt - b.startedAt)) {
+    const key = midnightOf(session.startedAt)
+    byDay.set(key, [...(byDay.get(key) ?? []), session])
+  }
+  const shown = new Map<string, string>()
+  for (const week of weeks) {
+    for (const day of week.days) {
+      for (const session of byDay.get(day.at) ?? []) {
+        shown.set(workoutNameOf(session, programs), workoutColorOf(session, programs))
+      }
+    }
+  }
+  const listed = openDay !== null ? byDay.get(openDay) ?? [] : []
   return (
     <section className="sessions-calendar card" aria-label="Calendar">
-      <div
-        className="sessions-calendar-grid"
-        role="img"
-        aria-label={`Last ${CALENDAR_WEEKS} weeks: ${count} ${count === 1 ? 'session' : 'sessions'}`}
-      >
-        <span aria-hidden="true" />
-        {Array.from({ length: 7 }, (_, index) => WEEKDAY_INITIALS[(index + weekStartsOn) % 7]).map((initial, index) => (
-          <span key={index} className="sessions-calendar-weekday" aria-hidden="true">
-            {initial}
-          </span>
-        ))}
-        {weeks.map((week) => (
-          <div key={week.start} className="sessions-calendar-week">
-            <span className="sessions-calendar-week-label">
-              {dayMonth(week.start, now)}
+      <div className="sessions-calendar-main">
+        <div
+          className="sessions-calendar-grid"
+          role="group"
+          aria-label={`Last ${CALENDAR_WEEKS} weeks: ${count} ${count === 1 ? 'session' : 'sessions'}`}
+        >
+          <span aria-hidden="true" />
+          {Array.from({ length: 7 }, (_, index) => WEEKDAY_INITIALS[(index + weekStartsOn) % 7]).map((initial, index) => (
+            <span key={index} className="sessions-calendar-weekday" aria-hidden="true">
+              {initial}
             </span>
-            {week.days.map((day) => (
-              <span
-                key={day.at}
-                className="sessions-calendar-day"
-                data-trained={day.trained || undefined}
-                data-today={day.today || undefined}
-                data-future={day.future || undefined}
-                title={formatDay(new Date(day.at), new Date(now))}
-              />
+          ))}
+          {weeks.map((week) => (
+            <div key={week.start} className="sessions-calendar-week">
+              <span className="sessions-calendar-week-label">{dayMonth(week.start, now)}</span>
+              {week.days.map((day) => {
+                const title = formatDay(new Date(day.at), new Date(now))
+                const trained = byDay.get(day.at) ?? []
+                const flags = {
+                  'data-trained': day.trained || undefined,
+                  'data-today': day.today || undefined,
+                  'data-future': day.future || undefined,
+                }
+                if (trained.length === 0) {
+                  return <span key={day.at} className="sessions-calendar-day" title={title} {...flags} />
+                }
+                const names = [...new Set(trained.map((session) => workoutNameOf(session, programs)))].join(' and ')
+                return (
+                  <button
+                    key={day.at}
+                    type="button"
+                    className="sessions-calendar-day cell"
+                    title={title}
+                    aria-label={`${title}: ${names}`}
+                    data-workout={workoutColorOf(trained[0], programs)}
+                    onClick={() =>
+                      trained.length === 1 ? onOpen(trained[0].id) : setOpenDay(openDay === day.at ? null : day.at)
+                    }
+                    {...flags}
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+        {listed.length > 1 && openDay !== null ? (
+          <ul className="sessions-calendar-day-list" aria-label={formatDay(new Date(openDay), new Date(now))}>
+            {listed.map((session) => (
+              <li key={session.id}>
+                <button type="button" className="btn-quiet" onClick={() => onOpen(session.id)}>
+                  {workoutNameOf(session, programs)}
+                </button>
+              </li>
             ))}
-          </div>
-        ))}
+          </ul>
+        ) : null}
       </div>
       <div className="sessions-calendar-side">
         <span className="sessions-muted-xs">{`Last ${CALENDAR_WEEKS} weeks`}</span>
         <span className="sessions-calendar-count">{count}</span>
         <span className="sessions-muted-xs sessions-calendar-count-unit">{count === 1 ? 'session' : 'sessions'}</span>
-        <span className="sessions-calendar-key">
-          <i className="sessions-calendar-day" data-trained aria-hidden="true" />
-          Session
-        </span>
+        {[...shown].map(([name, color]) => (
+          <span key={name} className="sessions-calendar-key">
+            <i className="sessions-calendar-day" data-workout={color} aria-hidden="true" />
+            {name}
+          </span>
+        ))}
         <span className="sessions-calendar-key">
           <i className="sessions-calendar-day" data-today aria-hidden="true" />
           Today
@@ -223,10 +294,16 @@ function VolumeByWorkout({
   sessions,
   programs,
   resolve,
+  bodyLog,
+  now,
+  onOpen,
 }: {
   sessions: Session[]
   programs: Program[]
   resolve: Resolve
+  bodyLog: BodyLog
+  now: number
+  onOpen: (sessionId: string) => void
 }): JSX.Element {
   const groups = new Map<string, { position: number; sessions: Session[] }>()
   for (const session of [...sessions].sort((a, b) => a.startedAt - b.startedAt)) {
@@ -254,11 +331,23 @@ function VolumeByWorkout({
           <h3 className="sessions-volume-name">{name}</h3>
           <BarChart
             title={`${name} volume per session, kg`}
-            bars={group.sessions.slice(-VOLUME_LIMIT).map((session) => ({
-              at: session.startedAt,
-              label: name,
-              value: Math.round(sessionVolume(session, resolve).kg),
-            }))}
+            unit="kg"
+            onOpenSession={onOpen}
+            bars={group.sessions.slice(-VOLUME_LIMIT).map((session) => {
+              const weighed = bodyweightOn(bodyLog, session.startedAt)
+              const counted = weighed !== null && session.entries.some((entry) => resolve(entry.exerciseId)?.bodyweight)
+              const [year, month, day] = (weighed?.day ?? '').split('-').map(Number)
+              return {
+                at: session.startedAt,
+                label: name,
+                value: Math.round(sessionVolume(session, resolve, weighed?.kg ?? null).kg),
+                sessionId: session.id,
+                detail:
+                  counted && weighed
+                    ? `Bodyweight ${weighed.kg} kg (${dayMonth(new Date(year, month - 1, day).getTime(), now)}) counted`
+                    : undefined,
+              }
+            })}
           />
         </div>
       ))}
@@ -313,6 +402,11 @@ export function SessionsScreen({
     ['preferences'],
   )
 
+  const bodyLogData = useServiceData(
+    (services) => services.preferences.bodyLog().catch((): BodyLog => []),
+    ['preferences'],
+  )
+
   const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
 
   if (sessionsData.status !== 'ready' || programsData.status !== 'ready' || catalogData.status !== 'ready') {
@@ -336,6 +430,7 @@ export function SessionsScreen({
   const earlierThan = (session: Session) =>
     sessions.filter((other) => other.id !== session.id && other.startedAt < session.startedAt)
   const today = now()
+  const bodyLog = bodyLogData.status === 'ready' ? bodyLogData.data : []
 
   // The engine's one record count, for every row: plans come from the active Program.
   const activeProgram = programs.find((program) => program.id === activeProgramId) ?? programs[0]
@@ -377,7 +472,13 @@ export function SessionsScreen({
         <p className="sessions-empty">No finished workouts yet. Finish one and it appears here.</p>
       ) : (
         <div className="sessions-screen">
-          <SessionsCalendar sessions={sessions} now={today} weekStartsOn={weekStartsOn} />
+          <SessionsCalendar
+            sessions={sessions}
+            programs={programs}
+            now={today}
+            weekStartsOn={weekStartsOn}
+            onOpen={setSummarySessionId}
+          />
           <MuscleWeeks
             sessions={sessions}
             now={today}
@@ -385,7 +486,14 @@ export function SessionsScreen({
             library={libraryMap}
             weekStartsOn={weekStartsOn}
           />
-          <VolumeByWorkout sessions={sessions} programs={programs} resolve={resolve} />
+          <VolumeByWorkout
+            sessions={sessions}
+            programs={programs}
+            resolve={resolve}
+            bodyLog={bodyLog}
+            now={today}
+            onOpen={setSummarySessionId}
+          />
           {sessionsByWeek(sessions, today, weekStartsOn).map((week) => (
             <section key={week.start} className="sessions-week" aria-label={week.label}>
               <h2 className="sessions-caption">{week.label}</h2>
@@ -434,6 +542,7 @@ export function SessionsScreen({
           workoutName={workoutNameOf(summarySession, programs)}
           earlierSessions={earlierThan(summarySession)}
           planFor={planFor(summarySession)}
+          bodyLog={bodyLog}
           onClose={() => setSummarySessionId(null)}
           onEdit={() => {
             setSummarySessionId(null)
