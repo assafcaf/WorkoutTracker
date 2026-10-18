@@ -49,23 +49,15 @@ export function lastSessionOf(session: Session, sessions: Session[]): Session | 
   return last
 }
 
-function loadedKg(entries: SetEntry[], resolve: Resolve): number {
-  let kg = 0
-  for (const entry of entries) {
-    const exercise = resolve(entry.exerciseId)
-    if (exercise && !exercise.bodyweight && entry.weightKg !== null) kg += entry.weightKg * entry.reps
-  }
-  return kg
-}
-
 /** Every number the projection line shows; `earlier` is every finished Session, any order. */
 export function liveProgress(args: {
   workout: Workout
   session: Session
   earlier: Session[]
   resolve: Resolve
+  bodyweightKg?: number | null
 }): LiveProgress {
-  const { workout, session, earlier, resolve } = args
+  const { workout, session, earlier, resolve, bodyweightKg = null } = args
   const today = workingSets(session.entries)
   const last = lastSessionOf(session, earlier)
 
@@ -80,7 +72,7 @@ export function liveProgress(args: {
         .sort((a, b) => a.setIndex - b.setIndex)
       counted.push(...lastSets.slice(0, n))
     }
-    lastVolumeKg = loadedKg(counted, resolve)
+    lastVolumeKg = sessionVolume({ ...last, entries: counted }, resolve, bodyweightKg).kg
   }
 
   const before = earlier.filter(
@@ -92,7 +84,7 @@ export function liveProgress(args: {
   )
 
   return {
-    volumeKg: sessionVolume(session, resolve).kg,
+    volumeKg: sessionVolume(session, resolve, bodyweightKg).kg,
     lastVolumeKg,
     setsDone: today.length,
     setsPlanned: workout.exercises.reduce((sum, plan) => sum + plan.sets, 0),
