@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
-import { expect, test, vi } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { SessionSummary } from './SessionSummary'
 import { healthShortcutUrl } from './healthShortcut'
 import type { Exercise, LibraryExercise, Session } from '../types'
@@ -15,6 +15,8 @@ const SESSION: Session = {
   entries: [],
 }
 const resolve = (): Exercise | undefined => undefined
+
+beforeEach(() => localStorage.clear())
 
 function show(openUrl: (url: string) => void): void {
   render(
@@ -49,4 +51,30 @@ test('O31 the setup doc names the Shortcut, its text input and the actions', () 
   expect(doc).toContain('Shortcut Input')
   expect(doc).toContain('Get Dictionary from Input')
   expect(doc).toContain('Log Workout')
+})
+
+test('O2 the first Send to Apple Health opens the guide and still opens the Shortcut', () => {
+  const openUrl = vi.fn()
+  show(openUrl)
+  expect(screen.queryByRole('list', { name: 'Apple Health setup steps' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Send to Apple Health' }))
+  expect(openUrl).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('list', { name: 'Apple Health setup steps' })).toBeTruthy()
+})
+
+test('O2 after Done, it is set up the guide stays closed on Send and is remembered', () => {
+  const openUrl = vi.fn()
+  show(openUrl)
+  fireEvent.click(screen.getByRole('button', { name: 'Set up Apple Health' }))
+  fireEvent.click(screen.getByRole('button', { name: "Done, it's set up" }))
+  expect(localStorage.getItem('healthShortcutReady')).not.toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Set up Apple Health' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Send to Apple Health' }))
+  expect(openUrl).toHaveBeenCalledTimes(1)
+  expect(screen.queryByRole('list', { name: 'Apple Health setup steps' })).toBeNull()
+})
+
+test('O3 the summary shows the hint until the setup is confirmed', () => {
+  show(vi.fn())
+  expect(screen.getByText("If iOS says it can't find the shortcut, set it up first.")).toBeTruthy()
 })
