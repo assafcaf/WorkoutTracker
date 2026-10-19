@@ -3,7 +3,7 @@ import type { Env } from '../env'
 import { deleteSubscription, subscriptionsOf } from '../repositories/pushSubscriptions'
 import { claimReminderDay, reminderRows, sessionStartsSince } from '../repositories/reminders'
 import { readVapidKey } from './push'
-import { sendPush } from './webPush/send'
+import { logSend, sendPush } from './webPush/send'
 
 const DEFAULT_SUBJECT = 'mailto:admin@workout-tracker.invalid'
 const REMINDER_TTL_SECONDS = 3600
@@ -70,7 +70,8 @@ export async function sendDueReminders(env: Env, now: number): Promise<void> {
           ttl: REMINDER_TTL_SECONDS,
           topic: 'reminder',
         })
-        if (result === 'gone') await deleteSubscription(env.DB, row.user, sub.endpoint)
+        logSend(sub.endpoint, result)
+        if (result.result === 'gone') await deleteSubscription(env.DB, row.user, sub.endpoint)
       }),
     )
   }

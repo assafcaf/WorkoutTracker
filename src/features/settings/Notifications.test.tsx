@@ -9,6 +9,7 @@ import { createPreferenceService } from '../../services/preferences'
 import { createProgramService } from '../../services/programs'
 import { createSessionService } from '../../services/sessions'
 import type { PushEnableResult, PushStatus, Services, SyncResult } from '../../services'
+import type { PushTestOutcome } from '../../services/push'
 import type { Reminders } from '../../contract'
 import { ServicesProvider } from '../ServicesProvider'
 import { SettingsFeature } from './SettingsFeature'
@@ -22,7 +23,11 @@ beforeEach(async () => {
   await db.settings.clear()
 })
 
-function build(initial: PushStatus, enableResult: PushEnableResult = 'on') {
+function build(
+  initial: PushStatus,
+  enableResult: PushEnableResult = 'on',
+  testAnswer: PushTestOutcome = { subscriptions: 1, results: [{ host: 'web.push.apple.com', result: 'sent', status: 201, reason: null }] },
+) {
   const bus = createChangeBus()
   const deps = { now: () => NOW, bus, storageAvailable: true }
   const ok: SyncResult = { status: 'ok', at: NOW, pushed: 0, pulled: 0 }
@@ -40,6 +45,7 @@ function build(initial: PushStatus, enableResult: PushEnableResult = 'on') {
     }),
     scheduleRest: vi.fn(async () => {}),
     cancelRest: vi.fn(async () => {}),
+    test: vi.fn(async () => testAnswer),
     reminders: vi.fn(async () => stored),
     setReminders: vi.fn(async (value: Reminders | null) => {
       stored = value
@@ -105,4 +111,32 @@ test('O26 Off stores null', async () => {
   await userEvent.click(await screen.findByRole('button', { name: 'Sunday' }))
   await userEvent.click(await screen.findByRole('button', { name: 'Off' }))
   await waitFor(() => expect(push.setReminders).toHaveBeenLastCalledWith(null))
+})
+
+test('E25-T1 O5 on shows Send a test notification; the tap calls the service and reads Sent to 1 device', async () => {
+  const push = build('on')
+  await userEvent.click(await screen.findByRole('button', { name: 'Send a test notification' }))
+  expect(push.test).toHaveBeenCalledTimes(1)
+  expect(await screen.findByText('Sent to 1 device')).toBeTruthy()
+})
+
+test('E25-T1 O5 a failing push service reads Failed with its status and reason', async () => {
+  build('on', 'on', {
+    subscriptions: 1,
+    results: [{ host: 'web.push.apple.com', result: 'failed', status: 403, reason: 'BadJwtToken' }],
+  })
+  await userEvent.click(await screen.findByRole('button', { name: 'Send a test notification' }))
+  expect(await screen.findByText('Failed: 403 BadJwtToken')).toBeTruthy()
+})
+
+test('E25-T1 O5 no subscribed device reads the turn-off-and-on line', async () => {
+  build('on', 'on', { subscriptions: 0, results: [] })
+  await userEvent.click(await screen.findByRole('button', { name: 'Send a test notification' }))
+  expect(await screen.findByText('No device is subscribed. Turn notifications off and on again.')).toBeTruthy()
+})
+
+test('E25-T1 O5 off shows no test button', async () => {
+  build('off')
+  await screen.findByRole('button', { name: 'Turn on notifications' })
+  expect(screen.queryByRole('button', { name: 'Send a test notification' })).toBeNull()
 })

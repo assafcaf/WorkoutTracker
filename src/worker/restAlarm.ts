@@ -40,7 +40,10 @@ export class RestAlarm {
   async alarm(): Promise<void> {
     const { storage } = this.state
     const pending = await storage.get<Pending>(KEY)
-    if (!pending) return
+    if (!pending) {
+      console.log(JSON.stringify({ event: 'push.alarm.empty' }))
+      return
+    }
     await storage.delete(KEY)
     await sendRestOver(this.env, pending.user, pending)
   }

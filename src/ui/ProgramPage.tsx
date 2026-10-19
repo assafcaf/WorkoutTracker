@@ -480,7 +480,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
               </figure>
             </div>
             <BodyMapLegend scale="week" />
-            {noSetsThisWeek && <p className="program-page-empty">No sets logged in the last 7 days</p>}
+            {noSetsThisWeek && <p className="program-page-empty">No sets logged this week</p>}
           </section>
         </>
       )}

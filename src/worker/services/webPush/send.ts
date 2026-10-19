@@ -14,7 +14,20 @@ export type SendOptions = {
   fetch?: typeof fetch
 }
 
-export type SendResult = 'sent' | 'gone' | 'failed'
+export type SendResult = { result: 'sent' | 'gone' | 'failed'; status: number | null; reason: string | null }
+
+const REASON_LIMIT = 200
+
+/** Logs one `push.send` line: the endpoint's host only, never a key, a path or the payload. */
+export function logSend(endpoint: string, answer: SendResult): void {
+  let host = ''
+  try {
+    host = new URL(endpoint).host
+  } catch {
+    // an unparseable endpoint has no host to log
+  }
+  console.log(JSON.stringify({ event: 'push.send', host, ...answer }))
+}
 
 export async function sendPush(
   target: PushSubscriptionTarget,
@@ -34,10 +47,12 @@ export async function sendPush(
     }
     if (options.topic) headers.Topic = options.topic
     const res = await (options.fetch ?? fetch)(target.endpoint, { method: 'POST', headers, body })
-    if (res.status >= 200 && res.status < 300) return 'sent'
-    if (res.status === 404 || res.status === 410) return 'gone'
-    return 'failed'
-  } catch {
-    return 'failed'
+    const reason = (await res.text().catch(() => '')).slice(0, REASON_LIMIT)
+    const status = res.status
+    if (status >= 200 && status < 300) return { result: 'sent', status, reason }
+    if (status === 404 || status === 410) return { result: 'gone', status, reason }
+    return { result: 'failed', status, reason }
+  } catch (error) {
+    return { result: 'failed', status: null, reason: error instanceof Error ? error.message : String(error) }
   }
 }

@@ -34,6 +34,7 @@ import libraryFixture from './data/library/exercises.json'
 import { FakeSyncServer } from './test/fakeSyncServer'
 import { findStartButton, startFromDashboard, workoutsOffered } from './test/dashboard'
 import { adoptSignedInAccount } from './sync/syncClient'
+import { weekStart } from './domain/stats/weeks'
 import type { SyncedSession } from './sync/protocol'
 
 
@@ -543,6 +544,7 @@ test('O17 the finished session appears in the history list with its date, progra
 // `importBackup` here instead would prove nothing about the wiring.
 
 const DAY_MS = 24 * 60 * 60 * 1000
+const HOUR_MS = 60 * 60 * 1000
 
 /**
  * `count` finished sessions, one per day ending at `startedAt`, newest first -- the order
@@ -2333,7 +2335,11 @@ function thisWeekSection(): HTMLElement {
 
 test('the Program tab’s This week reflects sets actually logged in the last 7 days', async () => {
   const user = userEvent.setup()
-  await finishedBackSquatSessionAt(Date.now() - DAY_MS)
+  // Inside the current calendar week whatever day the suite runs.
+  const startOfWeek = weekStart(Date.now())
+  await finishedBackSquatSessionAt(
+    startOfWeek + HOUR_MS <= Date.now() ? startOfWeek + HOUR_MS : Date.now() - HOUR_MS,
+  )
   await renderApp()
   await findStartButton()
 
@@ -2347,14 +2353,14 @@ test('the Program tab’s This week reflects sets actually logged in the last 7 
     const doneQuadriceps = maps[1].querySelector('[data-region="quadriceps"]')
     expect(doneQuadriceps).not.toBeNull()
     expect(doneQuadriceps).not.toHaveAttribute('data-band', '0')
-    expect(within(thisWeekSection()).queryByText('No sets logged in the last 7 days')).toBeNull()
+    expect(within(thisWeekSection()).queryByText('No sets logged this week')).toBeNull()
   }, SETTLE)
 })
 
 test('with nothing logged in the last 7 days the Program tab’s This week still reads No sets logged in the last 7 days', async () => {
   const user = userEvent.setup()
-  // Logged, but eight days ago: outside the window, so it must not count as this week.
-  await finishedBackSquatSessionAt(Date.now() - 8 * DAY_MS)
+  // Logged the day before the current calendar week: it must not count as this week.
+  await finishedBackSquatSessionAt(weekStart(Date.now()) - DAY_MS)
   await renderApp()
   await findStartButton()
 
@@ -2362,7 +2368,7 @@ test('with nothing logged in the last 7 days the Program tab’s This week still
   await screen.findByRole('heading', { name: 'This week' }, SETTLE)
 
   expect(
-    within(thisWeekSection()).getByText('No sets logged in the last 7 days'),
+    within(thisWeekSection()).getByText('No sets logged this week'),
   ).toBeVisible()
 })
 

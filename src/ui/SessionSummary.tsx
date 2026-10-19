@@ -19,6 +19,8 @@ import type { BodyLog, ExercisePlan,LibraryExercise, Muscle, Program, Session, W
 import { Switch } from './controls'
 import { Icon } from './icons'
 import { HEALTH_SETUP_URL, healthShortcutUrl } from './healthShortcut'
+import { markHealthReady, readHealthReady } from './healthShortcut'
+import { HealthSetup } from './HealthSetup'
 import { HeatCell, HeatLegend, RegionHeatList } from './RegionHeat'
 import { RegionPanel } from './RegionPanel'
 import { musclesForRegion } from './regionMuscles'
@@ -142,6 +144,8 @@ export function SessionSummary({
   const [openRegion, setOpenRegion] = useState<Region | null>(null)
   const [deload, setDeload] = useState(session.deload === true)
   const [offerOpen, setOfferOpen] = useState(true)
+  const [healthGuideOpen, setHealthGuideOpen] = useState(false)
+  const [healthReady, setHealthReady] = useState(readHealthReady)
   const changes = workout && onSaveChanges ? sessionChanges(session, workout) : []
   const counts = toRegionCounts(muscleSets(session.entries, resolve, library))
   const muscles = muscleSets(session.entries, resolve, library)
@@ -339,6 +343,16 @@ export function SessionSummary({
           </a>
         </p>
 
+        <HealthSetup
+          open={healthGuideOpen}
+          ready={healthReady}
+          onToggle={() => setHealthGuideOpen((o) => !o)}
+          onReady={() => {
+            markHealthReady()
+            setHealthReady(true)
+          }}
+        />
+
         <p className="session-summary-volume">
           <span data-kpi="volume">
             <span className="session-summary-kpi-value">{volumeLine(session.id, all, resolve, bodyLog)}</span>
@@ -363,6 +377,9 @@ export function SessionSummary({
           type="button"
           className="btn-secondary"
           onClick={() => openUrl(healthShortcutUrl(session, workoutName ?? 'Workout'))}
+          onClickCapture={() => {
+            if (!healthReady) setHealthGuideOpen(true)
+          }}
         >
           Send to Apple Health
         </button>

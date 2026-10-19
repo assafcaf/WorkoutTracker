@@ -3,6 +3,7 @@ import { handleLogin } from './handlers/login'
 import { handleMe } from './handlers/me'
 import { handlePushKey, handleSubscribe, handleUnsubscribe } from './handlers/push'
 import { handleCancelRest, handleScheduleRest } from './handlers/restPush'
+import { handlePushTest } from './handlers/pushTest'
 import { handleReplace } from './handlers/replace'
 import { handleSync } from './handlers/sync'
 
@@ -15,6 +16,7 @@ export const apiRoutes: Record<string, (request: Request, env: Env, email: strin
   'GET /api/push/key': handlePushKey,
   'POST /api/push/rest': handleScheduleRest,
   'POST /api/push/subscription': handleSubscribe,
+  'POST /api/push/test': handlePushTest,
   'POST /api/replace': handleReplace,
   'POST /api/sync': handleSync,
 }

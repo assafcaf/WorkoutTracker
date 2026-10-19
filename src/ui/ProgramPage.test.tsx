@@ -589,7 +589,7 @@ test('M15 with no sets in the last 7 days, "This week" reads "No sets logged in 
     />,
   )
 
-  expect(screen.getByText('No sets logged in the last 7 days')).toBeVisible()
+  expect(screen.getByText('No sets logged this week')).toBeVisible()
 
   // allMusclesProgram prescribes every tracked muscle, so every prescribed-derived map (the
   // workout card and the prescribed week map) bands quadriceps and triceps non-zero -- a
@@ -633,7 +633,7 @@ test('O28 "This week" done map counts the calendar week (R-K), not the last 7 da
     />,
   )
 
-  expect(screen.getByText('No sets logged in the last 7 days')).toBeVisible()
+  expect(screen.getByText('No sets logged this week')).toBeVisible()
   // Done map empty: the prescribed side bands every tracked region, so a zero can only be done's.
   expect(container.querySelectorAll('[data-region="quadriceps"][data-band="0"]').length).toBeGreaterThan(0)
 })
@@ -1146,5 +1146,5 @@ test('E19-T5 O7 "This week" done map counts from the week start it is given', ()
     />,
   )
 
-  expect(screen.queryByText('No sets logged in the last 7 days')).toBeNull()
+  expect(screen.queryByText('No sets logged this week')).toBeNull()
 })

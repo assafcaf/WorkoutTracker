@@ -1,10 +1,21 @@
-import { CONTRACT_VERSION, VERSION_HEADER, checkPushKeyResponse, parseReminders, type Reminders } from '../contract'
+import {
+  CONTRACT_VERSION,
+  VERSION_HEADER,
+  checkPushKeyResponse,
+  checkPushTestResponse,
+  parseReminders,
+  type PushTestResponse,
+  type Reminders,
+} from '../contract'
 import { getWorkoutReminders, setWorkoutReminders } from '../storage/settingsStore'
 import type { ServiceDeps } from './deps'
 import { callStorage, ServiceError } from './errors'
 
 export type PushStatus = 'unsupported' | 'not-installed' | 'denied' | 'on' | 'off'
 export type PushEnableResult = PushStatus | 'unconfigured' | 'signed-out' | 'failed'
+
+/** What PushService.test() answers: the Worker's answer, or why there is none. */
+export type PushTestOutcome = PushTestResponse | { error: 'signed-out' | 'unconfigured' | 'failed' }
 
 /** One push subscription as the browser hands it out. */
 export type PushSubscriptionLike = {
@@ -35,6 +46,8 @@ export type PushService = {
   disable(): Promise<PushStatus>
   scheduleRest(endsAt: number, label: string): Promise<void>
   cancelRest(): Promise<void>
+  /** Asks the Worker to send a test notification now; never throws. */
+  test(): Promise<PushTestOutcome>
   reminders(): Promise<Reminders | null>
   setReminders(value: Reminders | null): Promise<void>
 }
@@ -44,6 +57,7 @@ export type PushDeps = ServiceDeps & { fetch?: typeof fetch; env?: PushEnv }
 const KEY_PATH = '/api/push/key'
 const SUBSCRIPTION_PATH = '/api/push/subscription'
 const REST_PATH = '/api/push/rest'
+const TEST_PATH = '/api/push/test'
 
 /** The browser's own facts; a missing global reads as unsupported. */
 function browserEnv(): PushEnv {
@@ -162,6 +176,14 @@ export function createPushService(deps: PushDeps): PushService {
     async cancelRest() {
       if ((await status()) !== 'on') return
       await send('DELETE', REST_PATH)
+    },
+    async test() {
+      const response = await send('POST', TEST_PATH)
+      if (!response) return { error: 'failed' }
+      if (signedOut(response)) return { error: 'signed-out' }
+      if (response.status === 503) return { error: 'unconfigured' }
+      if (!response.ok) return { error: 'failed' }
+      return checkPushTestResponse(await response.json().catch(() => null)) ?? { error: 'failed' }
     },
     async reminders() {
       const stored = await callStorage(deps, getWorkoutReminders, 'workoutReminders read failed')
