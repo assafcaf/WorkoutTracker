@@ -1,4 +1,4 @@
-import type { PushSubscriptionRequest } from '../../contract'
+import type { PushSubscriptionRequest, PushTestResponse } from '../../contract'
 import type { D1Database } from '../d1'
 import type { Env } from '../env'
 import { deleteSubscription, subscriptionsOf, upsertSubscription } from '../repositories/pushSubscriptions'
@@ -63,4 +63,28 @@ export async function pushToUser(
       if (result.result === 'gone') await deleteSubscription(env.DB, user, sub.endpoint)
     }),
   )
+}
+
+const TEST_TTL_SECONDS = 60
+
+/** Sends a test notification at once to every subscription of the user; null when push is not configured. */
+export async function sendTestPush(env: Env, user: string): Promise<PushTestResponse | null> {
+  const jwk = readVapidKey(env)
+  if (!jwk) return null
+  const subs = await subscriptionsOf(env.DB, user)
+  const payload = JSON.stringify({ title: 'Test notification', body: 'If you see this, push works.', tag: 'test', url: '/' })
+  const results = await Promise.all(
+    subs.map(async (sub) => {
+      const answer = await sendPush({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload, {
+        jwk,
+        subject: env.VAPID_SUBJECT ?? DEFAULT_SUBJECT,
+        ttl: TEST_TTL_SECONDS,
+        topic: 'test',
+      })
+      logSend(sub.endpoint, answer)
+      if (answer.result === 'gone') await deleteSubscription(env.DB, user, sub.endpoint)
+      return { host: new URL(sub.endpoint).host, ...answer }
+    }),
+  )
+  return { subscriptions: subs.length, results }
 }
