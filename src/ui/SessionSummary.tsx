@@ -18,6 +18,7 @@ import type { SessionChange } from '../domain/sessionChanges'
 import type { BodyLog, ExercisePlan,LibraryExercise, Muscle, Program, Session, Workout } from '../types'
 import { Switch } from './controls'
 import { Icon } from './icons'
+import { HEALTH_SETUP_URL, healthShortcutUrl } from './healthShortcut'
 import { HeatCell, HeatLegend, RegionHeatList } from './RegionHeat'
 import { RegionPanel } from './RegionPanel'
 import { musclesForRegion } from './regionMuscles'
@@ -50,6 +51,8 @@ export type SessionSummaryProps = {
   onSaveChanges?(changes: SessionChange[]): void | Promise<void>
   /** The Body log: the Session's volume counts Bodyweight Sets at its bodyweight (E22-T11). */
   bodyLog?: BodyLog
+  /** Opens a URL (the Apple Health Shortcut, E24-T11); defaults to navigating the page to it. */
+  openUrl?(url: string): void
 }
 
 /** The duration KPI's value and unit: `52` `min`, or `1 h 05` `min` from an hour up. */
@@ -132,6 +135,9 @@ export function SessionSummary({
   workout,
   onSaveChanges,
   bodyLog = [],
+  openUrl = (url: string): void => {
+    window.location.href = url
+  },
 }: SessionSummaryProps): JSX.Element {
   const [openRegion, setOpenRegion] = useState<Region | null>(null)
   const [deload, setDeload] = useState(session.deload === true)
@@ -327,6 +333,12 @@ export function SessionSummary({
           <Switch label="Deload session" checked={deload} onChange={toggleDeload} />
         </div>
 
+        <p className="session-summary-quiet">
+          <a className="session-summary-health-help" href={HEALTH_SETUP_URL} target="_blank" rel="noreferrer">
+            How to set it up
+          </a>
+        </p>
+
         <p className="session-summary-volume">
           <span data-kpi="volume">
             <span className="session-summary-kpi-value">{volumeLine(session.id, all, resolve, bodyLog)}</span>
@@ -346,6 +358,13 @@ export function SessionSummary({
         <button type="button" className="session-summary-share btn-secondary" onClick={() => void share()}>
           <Icon name="Share" size={20} />
           Share
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => openUrl(healthShortcutUrl(session, workoutName ?? 'Workout'))}
+        >
+          Send to Apple Health
         </button>
         <button type="button" className="session-summary-done btn-primary" onClick={onClose}>
           Done

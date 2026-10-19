@@ -43,6 +43,8 @@ export type BackupFile = {
     customExercises?: CustomExercise[]
     /** The body log (E22). Absent when never set. */
     bodyLog?: BodyLog
+    /** The workout reminders, or null when turned off (E24). Absent when never set. */
+    workoutReminders?: Record<string, unknown> | null
   }
 }
 

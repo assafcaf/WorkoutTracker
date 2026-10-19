@@ -640,3 +640,43 @@ test('E22-T2 O5 a backup made before this epic imports and leaves bodyLog unset'
 
   expect(await db.settings.get('bodyLog')).toBeUndefined()
 })
+
+// --- E24-T2 O5: workout reminders travel in the backup ---------------------------------------
+
+test('E24-T2 O5 a backup made before reminders imports and leaves workoutReminders unset', async () => {
+  const oldFile = {
+    schemaVersion: 1,
+    exportedAt: BASE,
+    sessions: sessionsFixture(1),
+    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+  }
+  await db.settings.bulkPut([
+    { key: 'workoutReminders', value: { time: '18:00', days: [1] }, updatedAt: BASE },
+  ])
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(JSON.stringify(oldFile)))
+
+  expect(await db.settings.get('workoutReminders')).toBeUndefined()
+})
+
+test('E24-T2 O5 workoutReminders survives export and import into an empty app; unset is not written', async () => {
+  const mine = { time: '18:00', days: [1, 3, 5], timezone: 'Asia/Jerusalem' }
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+
+  await service.export()
+  const first = await ((URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls[0][0] as Blob).text()
+  expect(JSON.parse(first).settings).not.toHaveProperty('workoutReminders')
+
+  await db.settings.bulkPut([{ key: 'workoutReminders', value: mine, updatedAt: BASE }])
+  await service.export()
+  const second = await ((URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls[1][0] as Blob).text()
+  expect(JSON.parse(second).schemaVersion).toBe(1)
+  expect(JSON.parse(second).settings.workoutReminders).toEqual(mine)
+
+  await db.settings.clear()
+  await service.confirmImport(await service.read(second))
+  expect((await db.settings.get('workoutReminders'))?.value).toEqual(mine)
+})

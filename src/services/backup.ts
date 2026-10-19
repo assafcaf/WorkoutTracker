@@ -20,6 +20,7 @@ import {
   getTrackEffort,
   VOLUME_BASELINE_KEY,
   WEIGHT_STEPS_KEY,
+  WORKOUT_REMINDERS_KEY,
   BODYWEIGHT_OVERRIDES_KEY,
   BODY_LOG_KEY,
   CUSTOM_EXERCISES_KEY,
@@ -75,6 +76,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     keepScreenOnRow,
     customExercisesRow,
     bodyLogRow,
+    workoutRemindersRow,
   ] = await Promise.all([
     listSessions(),
     readRow(ACTIVE_PROGRAM_ID_KEY),
@@ -92,6 +94,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     readRow(KEEP_SCREEN_ON_KEY),
     readRow(CUSTOM_EXERCISES_KEY),
     readRow(BODY_LOG_KEY),
+    readRow(WORKOUT_REMINDERS_KEY),
   ])
   const activeProgramId = typeof activeProgramRow?.value === 'string' ? activeProgramRow.value : ''
 
@@ -114,6 +117,9 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
       ...(keepScreenOnRow ? { keepScreenOnDuringRest: keepScreenOnRow.value as boolean } : {}),
       ...(customExercisesRow ? { customExercises: customExercisesRow.value as CustomExercise[] } : {}),
       ...(bodyLogRow ? { bodyLog: bodyLogRow.value as BodyLog } : {}),
+      ...(workoutRemindersRow
+        ? { workoutReminders: workoutRemindersRow.value as Record<string, unknown> | null }
+        : {}),
       ...(plateInventoryRow ? { plateInventory: plateInventoryRow.value as PlateInventory } : {}),
     },
   }
@@ -236,6 +242,9 @@ export function createBackupService(
 
             if (file.settings.plateInventory === undefined) toDelete.push(PLATE_INVENTORY_KEY)
             else toPut.push({ key: PLATE_INVENTORY_KEY, value: file.settings.plateInventory, updatedAt: now })
+
+            if (file.settings.workoutReminders === undefined) toDelete.push(WORKOUT_REMINDERS_KEY)
+            else toPut.push({ key: WORKOUT_REMINDERS_KEY, value: file.settings.workoutReminders, updatedAt: now })
 
             if (file.settings.bodyweightOverrides === undefined) toDelete.push(BODYWEIGHT_OVERRIDES_KEY)
             else {

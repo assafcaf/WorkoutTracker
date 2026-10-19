@@ -1,0 +1,26 @@
+/* The Notifications and Reminders groups reuse the Settings card and row classes; only the
+ * explaining line, the weekday chip row and the time field are new. Tokens only. */
+
+.notify-note {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.notify-days {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.notify-chip:disabled {
+  opacity: 0.5;
+}
+
+.notify-time {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}

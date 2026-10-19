@@ -14,6 +14,7 @@ import {
   USER_PROGRAMS_KEY,
   VOLUME_BASELINE_KEY,
   WEIGHT_STEPS_KEY,
+  WORKOUT_REMINDERS_KEY,
 } from './settingsStore'
 
 /** One key of the `settings` table: whether sync pushes it, and which topic it belongs to. */
@@ -39,6 +40,7 @@ export const SETTING_KEYS: readonly SettingKeyInfo[] = [
   { key: KEEP_SCREEN_ON_KEY, synced: true, topic: 'preferences' },
   { key: CUSTOM_EXERCISES_KEY, synced: true, topic: 'preferences' },
   { key: BODY_LOG_KEY, synced: true, topic: 'preferences' },
+  { key: WORKOUT_REMINDERS_KEY, synced: true, topic: 'preferences' },
   // Device-local: each device remembers its own last export.
   { key: LAST_EXPORTED_AT_KEY, synced: false, topic: 'preferences' },
   // Sync's own bookkeeping (syncClient.ts): never pushed, and no topic changes with it.

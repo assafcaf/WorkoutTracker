@@ -16,6 +16,7 @@ export type SyncedSettingKey =
   | 'keepScreenOnDuringRest'
   | 'customExercises'
   | 'bodyLog'
+  | 'workoutReminders'
 export type SyncedSetting = { key: SyncedSettingKey; value: unknown; updatedAt: number }
 export type SyncRequest = { since: number; sessions: SyncedSession[]; settings: SyncedSetting[] }
 export type SyncResponse = { cursor: number; sessions: SyncedSession[]; settings: SyncedSetting[] }
@@ -43,6 +44,7 @@ export const SYNCED_SETTING_KEYS: readonly SyncedSettingKey[] = [
   'keepScreenOnDuringRest',
   'customExercises',
   'bodyLog',
+  'workoutReminders',
 ]
 export const MAX_BODY_BYTES = 2 * 1024 * 1024
 
@@ -141,3 +143,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
+export * from './push'

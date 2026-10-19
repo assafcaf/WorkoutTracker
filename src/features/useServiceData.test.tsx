@@ -48,6 +48,7 @@ function buildServices(): Services {
     backup: createBackupService({ ...deps, replaceRemote: sync.replaceRemote }),
     transfer: {} as Services['transfer'],
     sync,
+    push: {} as Services['push'],
     bus,
   }
 }

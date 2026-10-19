@@ -735,6 +735,7 @@ test('O3 SYNCED_SETTING_KEYS holds weightSteps and volumeBaseline besides active
     'volumeBaseline',
     'weekStart',
     'weightSteps',
+    'workoutReminders',
   ])
 })
 
@@ -1135,4 +1136,26 @@ test('E22-T2 O4 a body log device A stores is answered by PreferenceService.body
     updatedAt: T0 + 500,
   })
   expect(await preferencesAt(T0 + 900).bodyLog()).toEqual(mine)
+})
+
+// --- E24-T2 O4: workout reminders reach the other device through sync -------------------------
+
+test.each([
+  ['an object', { time: '18:00', days: [1, 3, 5], timezone: 'Asia/Jerusalem' }],
+  ['null (reminders off)', null],
+])('E24-T2 O4 workoutReminders set to %s on device A is the value on device B after A syncs and B syncs', async (_n, mine) => {
+  await db.settings.put({ key: 'workoutReminders', value: mine, updatedAt: T0 + 500 })
+  await syncNow({ fetch: server.fetch })
+  // Device B: a fresh store, same account, never synced.
+  await db.sessions.clear()
+  await db.settings.clear()
+
+  await syncNow({ fetch: server.fetch })
+
+  expect(server.syncRequests()[0].settings).toContainEqual({
+    key: 'workoutReminders',
+    value: mine,
+    updatedAt: T0 + 500,
+  })
+  expect((await db.settings.get('workoutReminders'))?.value).toEqual(mine)
 })

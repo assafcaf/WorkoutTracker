@@ -3,6 +3,7 @@ import { createCatalogService, type CatalogService } from './catalog'
 import { createChangeBus, type ChangeBus } from './changes'
 import { createPreferenceService, type PreferenceService } from './preferences'
 import { createProgramService, type ProgramService } from './programs'
+import { createPushService, type PushService } from './push'
 import { createSessionService, type SessionService } from './sessions'
 import { createSyncService, type SyncService } from './sync'
 import { createTransferService, type TransferService } from './transfer'
@@ -14,6 +15,7 @@ export type { ServiceDeps } from './deps'
 export type { SessionService } from './sessions'
 export type { ProgramService, ProgramsLoad } from './programs'
 export type { PreferenceService } from './preferences'
+export type { PushService, PushStatus, PushEnableResult } from './push'
 export type { CatalogService, CatalogData } from './catalog'
 export type { BackupService, PendingImport, ImportPlan } from './backup'
 export type { PendingTransfer, TransferResult, TransferService } from './transfer'
@@ -28,6 +30,7 @@ export type Services = {
   backup: BackupService
   transfer: TransferService
   sync: SyncService
+  push: PushService
   bus: ChangeBus
 }
 
@@ -53,6 +56,7 @@ export function createServices(deps: {
     backup: createBackupService({ ...serviceDeps, replaceRemote: sync.replaceRemote }),
     transfer: createTransferService({ ...serviceDeps, catalog }),
     sync,
+    push: createPushService({ ...serviceDeps, fetch: deps.fetch }),
     bus,
   }
 }
