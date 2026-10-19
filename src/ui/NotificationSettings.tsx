@@ -39,12 +39,21 @@ const EXPLANATIONS: Partial<Record<NotificationStatus, string>> = {
   'signed-out': 'Sign in to turn on notifications.',
 }
 
+/** The one line under Send a test notification. */
+function testLine(outcome: PushTestOutcome): string {
+  if ('error' in outcome) return `Failed: ${outcome.error}`
+  if (outcome.subscriptions === 0) return 'No device is subscribed. Turn notifications off and on again.'
+  const bad = outcome.results.find((r) => r.result !== 'sent')
+  if (bad) return `Failed: ${[bad.status, bad.reason].filter((p) => p !== null && p !== '').join(' ')}`.trimEnd()
+  return `Sent to ${outcome.subscriptions} ${outcome.subscriptions === 1 ? 'device' : 'devices'}`
+}
+
 /**
  * The Notifications section (E24-T9, O25, O26): one tap to turn push on when it can work, one
  * line saying why when it can't, and, with push on, the reminder weekdays and time.
  */
 export function NotificationSettings(props: NotificationSettingsProps): JSX.Element {
-  const { status, failed, onEnable, onDisable, reminders, onRemindersChange, weekStart = 1 } = props
+  const { status, failed, onEnable, onDisable, onTest, testResult, reminders, onRemindersChange, weekStart = 1 } = props
   const [draftDays, setDraftDays] = useState<number[]>([])
   const [draftTime, setDraftTime] = useState(DEFAULT_TIME)
   const on = status === 'on'
@@ -83,6 +92,12 @@ export function NotificationSettings(props: NotificationSettingsProps): JSX.Elem
               <span className="settings-action-label">Turn off</span>
             </button>
           ) : null}
+          {on && onTest ? (
+            <button type="button" className="settings-action btn-quiet" onClick={onTest}>
+              <span className="settings-action-label">Send a test notification</span>
+            </button>
+          ) : null}
+          {on && testResult ? <p className="settings-action notify-note">{testLine(testResult)}</p> : null}
           {failed && status === 'off' ? (
             <p className="settings-action notify-note">Notifications could not be turned on. Try again.</p>
           ) : null}

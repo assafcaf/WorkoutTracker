@@ -2,7 +2,7 @@ import type { PushSubscriptionRequest } from '../../contract'
 import type { D1Database } from '../d1'
 import type { Env } from '../env'
 import { deleteSubscription, subscriptionsOf, upsertSubscription } from '../repositories/pushSubscriptions'
-import { sendPush } from './webPush/send'
+import { logSend, sendPush } from './webPush/send'
 import { vapidPublicKey, type VapidJwk } from './webPush/vapid'
 
 const DEFAULT_SUBJECT = 'mailto:admin@workout-tracker.invalid'
@@ -59,7 +59,8 @@ export async function pushToUser(
         payload,
         { jwk, subject: env.VAPID_SUBJECT ?? DEFAULT_SUBJECT, fetch: options.fetch },
       )
-      if (result === 'gone') await deleteSubscription(env.DB, user, sub.endpoint)
+      logSend(sub.endpoint, result)
+      if (result.result === 'gone') await deleteSubscription(env.DB, user, sub.endpoint)
     }),
   )
 }

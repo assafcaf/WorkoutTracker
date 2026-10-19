@@ -2,6 +2,7 @@ import {
   CONTRACT_VERSION,
   VERSION_HEADER,
   checkPushKeyResponse,
+  checkPushTestResponse,
   parseReminders,
   type PushTestResponse,
   type Reminders,
@@ -56,6 +57,7 @@ export type PushDeps = ServiceDeps & { fetch?: typeof fetch; env?: PushEnv }
 const KEY_PATH = '/api/push/key'
 const SUBSCRIPTION_PATH = '/api/push/subscription'
 const REST_PATH = '/api/push/rest'
+const TEST_PATH = '/api/push/test'
 
 /** The browser's own facts; a missing global reads as unsupported. */
 function browserEnv(): PushEnv {
@@ -176,7 +178,12 @@ export function createPushService(deps: PushDeps): PushService {
       await send('DELETE', REST_PATH)
     },
     async test() {
-      return { error: 'failed' } as PushTestOutcome
+      const response = await send('POST', TEST_PATH)
+      if (!response) return { error: 'failed' }
+      if (signedOut(response)) return { error: 'signed-out' }
+      if (response.status === 503) return { error: 'unconfigured' }
+      if (!response.ok) return { error: 'failed' }
+      return checkPushTestResponse(await response.json().catch(() => null)) ?? { error: 'failed' }
     },
     async reminders() {
       const stored = await callStorage(deps, getWorkoutReminders, 'workoutReminders read failed')

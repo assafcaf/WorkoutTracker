@@ -48,8 +48,19 @@ export function checkPushKeyResponse(body: unknown): PushKeyResponse | null {
 }
 
 /** The answer of POST /api/push/test whole, or null when it is not one. */
-export function checkPushTestResponse(_body: unknown): PushTestResponse | null {
-  return null
+export function checkPushTestResponse(body: unknown): PushTestResponse | null {
+  if (!isRecord(body) || !Array.isArray(body.results)) return null
+  const { subscriptions, results } = body
+  if (typeof subscriptions !== 'number' || !Number.isInteger(subscriptions) || subscriptions < 0) return null
+  const devices: PushTestDevice[] = []
+  for (const r of results) {
+    if (!isRecord(r) || typeof r.host !== 'string') return null
+    if (r.result !== 'sent' && r.result !== 'gone' && r.result !== 'failed') return null
+    if (r.status !== null && typeof r.status !== 'number') return null
+    if (r.reason !== null && typeof r.reason !== 'string') return null
+    devices.push({ host: r.host, result: r.result, status: r.status, reason: r.reason })
+  }
+  return { subscriptions, results: devices }
 }
 
 /** The reminders a settings value holds, or null when it is not a usable schedule. */
