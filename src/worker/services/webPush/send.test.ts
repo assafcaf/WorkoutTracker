@@ -28,7 +28,7 @@ async function send(
     fetch: fetchImpl ?? svc.fetch,
     ...extra,
   })
-  return { result, svc }
+  return { result: result.result, svc }
 }
 
 describe('O8: sendPush', () => {
@@ -63,7 +63,7 @@ describe('O8: sendPush', () => {
       now: NOW,
       fetch: svc.fetch,
     })
-    expect(result).toBe('sent')
+    expect(result.result).toBe('sent')
   })
 
   test.each([404, 410])('answers gone for %i', async (status) => {
@@ -75,7 +75,7 @@ describe('O8: sendPush', () => {
       now: NOW,
       fetch: svc.fetch,
     })
-    expect(result).toBe('gone')
+    expect(result.result).toBe('gone')
   })
 
   test.each([400, 401, 403, 413, 429, 500, 503])('answers failed for %i', async (status) => {
@@ -87,7 +87,7 @@ describe('O8: sendPush', () => {
       now: NOW,
       fetch: svc.fetch,
     })
-    expect(result).toBe('failed')
+    expect(result.result).toBe('failed')
   })
 
   test('answers failed, not a throw, when fetch throws', async () => {
@@ -99,7 +99,7 @@ describe('O8: sendPush', () => {
       now: NOW,
       fetch: svc.fetch,
     })
-    expect(result).toBe('failed')
+    expect(result.result).toBe('failed')
   })
 
   test('nothing under services/webPush imports a node: module', () => {

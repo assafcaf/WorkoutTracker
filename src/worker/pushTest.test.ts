@@ -58,12 +58,12 @@ async function setup(vapid = true): Promise<{ env: Env; rest: FakeDurableObjectN
   return { env, rest, svc }
 }
 
-async function call(env: Env, method: string, path: string, email: string, body?: unknown, version = true) {
+async function call(env: Env, method: string, path: string, email: string, body?: unknown, version: boolean | string = true) {
   const token = await access.sign({ email, exp: Math.floor(T0 / 1000) + 3600 })
   return worker.fetch(
     apiRequest(path, token, {
       method,
-      headers: version ? { [VERSION_HEADER]: String(CONTRACT_VERSION) } : {},
+      headers: version ? { [VERSION_HEADER]: version === true ? String(CONTRACT_VERSION) : version } : {},
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
     env,
@@ -141,7 +141,7 @@ describe('O2: POST /api/push/test', () => {
 
   test('O2 without a contract version answers 426', async () => {
     const { env } = await setup()
-    expect((await call(env, 'POST', '/api/push/test', 'a@x.com', undefined, false)).status).toBe(426)
+    expect((await call(env, 'POST', '/api/push/test', 'a@x.com', undefined, '99')).status).toBe(426)
   })
 
   test('O2 without Access answers 401', async () => {
