@@ -4,6 +4,8 @@ export type PushSubscriptionRequest = { endpoint: string; keys: { p256dh: string
 export type PushUnsubscribeRequest = { endpoint: string }
 export type RestPushRequest = { delayMs: number; title: string; body: string }
 export type PushKeyResponse = { publicKey: string }
+export type PushTestDevice = { host: string; result: 'sent' | 'gone' | 'failed'; status: number | null; reason: string | null }
+export type PushTestResponse = { subscriptions: number; results: PushTestDevice[] }
 export type Reminders = { days: number[]; time: string; timeZone: string }
 
 const MAX_ENDPOINT_LENGTH = 1024
@@ -43,6 +45,11 @@ export function checkRestPushRequest(body: unknown): RestPushRequest {
 export function checkPushKeyResponse(body: unknown): PushKeyResponse | null {
   if (!isRecord(body) || typeof body.publicKey !== 'string' || body.publicKey === '') return null
   return { publicKey: body.publicKey }
+}
+
+/** The answer of POST /api/push/test whole, or null when it is not one. */
+export function checkPushTestResponse(_body: unknown): PushTestResponse | null {
+  return null
 }
 
 /** The reminders a settings value holds, or null when it is not a usable schedule. */

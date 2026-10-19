@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { CONTRACT_VERSION, VERSION_HEADER } from '../contract'
 import { db } from '../storage/db'
 import { createChangeBus } from './changes'
 import { ServiceError } from './errors'
@@ -220,5 +221,62 @@ describe('O24 rest push and reminders', () => {
     await expect(service.setReminders(bad)).rejects.toBeInstanceOf(ServiceError)
     expect(seen).not.toHaveBeenCalled()
     expect(await db.settings.get('workoutReminders')).toBeUndefined()
+  })
+})
+
+describe('E25-T1 O4: test', () => {
+  const ANSWER = {
+    subscriptions: 1,
+    results: [{ host: 'web.push.apple.com', result: 'failed', status: 403, reason: 'BadJwtToken' }],
+  }
+
+  function testFetch(reply: () => Response | Promise<Response>) {
+    const calls: Call[] = []
+    const fn = vi.fn(async (url: string, init: RequestInit = {}) => {
+      calls.push({ url, method: init.method ?? 'GET', headers: init.headers as Record<string, string> })
+      return reply()
+    })
+    return { calls, fetch: fn as unknown as typeof fetch }
+  }
+
+  test('O4 posts to /api/push/test with the contract version and returns the answer', async () => {
+    const f = testFetch(() => new Response(JSON.stringify(ANSWER), { status: 200 }))
+    expect(await build(makeEnv({ subscribed: sub() }), f.fetch).service.test()).toEqual(ANSWER)
+    expect(f.calls).toHaveLength(1)
+    expect(f.calls[0].url).toBe('/api/push/test')
+    expect(f.calls[0].method).toBe('POST')
+    expect(f.calls[0].headers[VERSION_HEADER]).toBe(String(CONTRACT_VERSION))
+  })
+
+  test('O4 a 401 is signed-out', async () => {
+    const f = testFetch(() => new Response('{}', { status: 401 }))
+    expect(await build(makeEnv(), f.fetch).service.test()).toEqual({ error: 'signed-out' })
+  })
+
+  test('O4 an opaque redirect (Access login) is signed-out', async () => {
+    const f = testFetch(() => ({ type: 'opaqueredirect', status: 0, ok: false }) as unknown as Response)
+    expect(await build(makeEnv(), f.fetch).service.test()).toEqual({ error: 'signed-out' })
+  })
+
+  test('O4 a 503 is unconfigured', async () => {
+    const f = testFetch(() => new Response('{"error":"push not configured"}', { status: 503 }))
+    expect(await build(makeEnv(), f.fetch).service.test()).toEqual({ error: 'unconfigured' })
+  })
+
+  test('O4 a 500 is failed', async () => {
+    const f = testFetch(() => new Response('{}', { status: 500 }))
+    expect(await build(makeEnv(), f.fetch).service.test()).toEqual({ error: 'failed' })
+  })
+
+  test('O4 a 200 whose body is not the answer is failed', async () => {
+    const f = testFetch(() => new Response('{"nope":true}', { status: 200 }))
+    expect(await build(makeEnv(), f.fetch).service.test()).toEqual({ error: 'failed' })
+  })
+
+  test('O4 a network error is failed and never throws', async () => {
+    const f = testFetch(() => {
+      throw new TypeError('offline')
+    })
+    await expect(build(makeEnv(), f.fetch).service.test()).resolves.toEqual({ error: 'failed' })
   })
 })

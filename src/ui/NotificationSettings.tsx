@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Reminders } from '../contract'
+import type { PushTestOutcome } from '../services/push'
 import './NotificationSettings.css'
 
 export type NotificationStatus =
@@ -17,6 +18,10 @@ export type NotificationSettingsProps = {
   failed?: boolean
   onEnable(): void
   onDisable(): void
+  /** Taps Send a test notification; shown with push on. */
+  onTest?(): void
+  /** The last test's answer, shown as one line under the button. */
+  testResult?: PushTestOutcome | null
   reminders: Reminders | null
   onRemindersChange(value: Reminders | null): void
   /** The first day of the week, 0 = Sunday ... 6 = Saturday; omitted reads as Monday. */

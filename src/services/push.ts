@@ -1,10 +1,20 @@
-import { CONTRACT_VERSION, VERSION_HEADER, checkPushKeyResponse, parseReminders, type Reminders } from '../contract'
+import {
+  CONTRACT_VERSION,
+  VERSION_HEADER,
+  checkPushKeyResponse,
+  parseReminders,
+  type PushTestResponse,
+  type Reminders,
+} from '../contract'
 import { getWorkoutReminders, setWorkoutReminders } from '../storage/settingsStore'
 import type { ServiceDeps } from './deps'
 import { callStorage, ServiceError } from './errors'
 
 export type PushStatus = 'unsupported' | 'not-installed' | 'denied' | 'on' | 'off'
 export type PushEnableResult = PushStatus | 'unconfigured' | 'signed-out' | 'failed'
+
+/** What PushService.test() answers: the Worker's answer, or why there is none. */
+export type PushTestOutcome = PushTestResponse | { error: 'signed-out' | 'unconfigured' | 'failed' }
 
 /** One push subscription as the browser hands it out. */
 export type PushSubscriptionLike = {
@@ -35,6 +45,8 @@ export type PushService = {
   disable(): Promise<PushStatus>
   scheduleRest(endsAt: number, label: string): Promise<void>
   cancelRest(): Promise<void>
+  /** Asks the Worker to send a test notification now; never throws. */
+  test(): Promise<PushTestOutcome>
   reminders(): Promise<Reminders | null>
   setReminders(value: Reminders | null): Promise<void>
 }
@@ -162,6 +174,9 @@ export function createPushService(deps: PushDeps): PushService {
     async cancelRest() {
       if ((await status()) !== 'on') return
       await send('DELETE', REST_PATH)
+    },
+    async test() {
+      return { error: 'failed' } as PushTestOutcome
     },
     async reminders() {
       const stored = await callStorage(deps, getWorkoutReminders, 'workoutReminders read failed')
