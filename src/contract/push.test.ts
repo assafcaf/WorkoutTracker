@@ -3,6 +3,7 @@ import {
   CONTRACT_VERSION,
   HttpError,
   checkPushKeyResponse,
+  checkPushTestResponse,
   checkRestPushRequest,
   checkSubscriptionRequest,
   checkUnsubscribeRequest,
@@ -168,6 +169,36 @@ describe('checkPushKeyResponse', () => {
       expect(checkPushKeyResponse(body)).toBeNull()
     },
   )
+})
+
+describe('E25-T1 O2: checkPushTestResponse', () => {
+  const device = { host: 'web.push.apple.com', result: 'failed', status: 403, reason: 'BadJwtToken' }
+
+  it('answers the whole { subscriptions, results } body', () => {
+    expect(checkPushTestResponse({ subscriptions: 1, results: [device] })).toEqual({ subscriptions: 1, results: [device] })
+  })
+
+  it('accepts an empty answer and null status and reason', () => {
+    expect(checkPushTestResponse({ subscriptions: 0, results: [] })).toEqual({ subscriptions: 0, results: [] })
+    const thrown = { host: 'fcm.googleapis.com', result: 'failed', status: null, reason: null }
+    expect(checkPushTestResponse({ subscriptions: 1, results: [thrown] })?.results).toEqual([thrown])
+  })
+
+  it.each([
+    ['null', null],
+    ['a string', 'x'],
+    ['an array', []],
+    ['no results', { subscriptions: 1 }],
+    ['a fractional count', { subscriptions: 1.5, results: [] }],
+    ['a negative count', { subscriptions: -1, results: [] }],
+    ['results not an array', { subscriptions: 1, results: {} }],
+    ['an unknown result', { subscriptions: 1, results: [{ ...device, result: 'ok' }] }],
+    ['a host that is not a string', { subscriptions: 1, results: [{ ...device, host: 5 }] }],
+    ['a status that is a string', { subscriptions: 1, results: [{ ...device, status: '403' }] }],
+    ['a reason that is a number', { subscriptions: 1, results: [{ ...device, reason: 5 }] }],
+  ])('answers null for %s', (_name, body) => {
+    expect(checkPushTestResponse(body)).toBeNull()
+  })
 })
 
 describe('parseReminders', () => {

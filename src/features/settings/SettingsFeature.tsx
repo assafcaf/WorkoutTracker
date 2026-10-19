@@ -7,6 +7,7 @@ import { Settings } from '../../ui/Settings'
 import { BackupBadge } from '../../ui/BackupBadge'
 import { ImportConfirm } from '../../ui/ImportConfirm'
 import { ServiceError, type PendingImport } from '../../services'
+import type { PushTestOutcome } from '../../services/push'
 import type { NotificationStatus } from '../../ui/NotificationSettings'
 import type { Reminders } from '../../contract'
 import type { PlateInventory, VolumeBaseline } from '../../types'
@@ -69,6 +70,7 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
   }, [volumeBaselineData])
   const [pushStatus, setPushStatus] = useState<NotificationStatus | null>(null)
   const [pushFailed, setPushFailed] = useState(false)
+  const [testResult, setTestResult] = useState<PushTestOutcome | null>(null)
   useEffect(() => {
     let live = true
     Promise.resolve()
@@ -180,6 +182,13 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
       })
   }
 
+  function handleTestNotification(): void {
+    services.push
+      .test()
+      .then(setTestResult)
+      .catch(() => setTestResult({ error: 'failed' }))
+  }
+
   function handleRemindersChange(value: Reminders | null): void {
     services.push.setReminders(value).catch(() => {
       // Not saved: the stored reminders show again.
@@ -248,6 +257,8 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
                 failed: pushFailed,
                 onEnable: handleEnableNotifications,
                 onDisable: handleDisableNotifications,
+                onTest: handleTestNotification,
+                testResult,
                 reminders: remindersData.status === 'ready' ? remindersData.data : null,
                 onRemindersChange: handleRemindersChange,
                 weekStart: chosenWeekStart ?? (weekStartData.status === 'ready' ? weekStartData.data : undefined),

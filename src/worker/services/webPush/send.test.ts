@@ -28,7 +28,7 @@ async function send(
     fetch: fetchImpl ?? svc.fetch,
     ...extra,
   })
-  return { result, svc }
+  return { result: result.result, svc }
 }
 
 describe('O8: sendPush', () => {
@@ -63,7 +63,7 @@ describe('O8: sendPush', () => {
       now: NOW,
       fetch: svc.fetch,
     })
-    expect(result).toBe('sent')
+    expect(result.result).toBe('sent')
   })
 
   test.each([404, 410])('answers gone for %i', async (status) => {
@@ -75,7 +75,7 @@ describe('O8: sendPush', () => {
       now: NOW,
       fetch: svc.fetch,
     })
-    expect(result).toBe('gone')
+    expect(result.result).toBe('gone')
   })
 
   test.each([400, 401, 403, 413, 429, 500, 503])('answers failed for %i', async (status) => {
@@ -87,7 +87,7 @@ describe('O8: sendPush', () => {
       now: NOW,
       fetch: svc.fetch,
     })
-    expect(result).toBe('failed')
+    expect(result.result).toBe('failed')
   })
 
   test('answers failed, not a throw, when fetch throws', async () => {
@@ -99,7 +99,7 @@ describe('O8: sendPush', () => {
       now: NOW,
       fetch: svc.fetch,
     })
-    expect(result).toBe('failed')
+    expect(result.result).toBe('failed')
   })
 
   test('nothing under services/webPush imports a node: module', () => {
@@ -109,5 +109,47 @@ describe('O8: sendPush', () => {
     for (const f of files) {
       expect(readFileSync(join(dir, f), 'utf8'), f).not.toMatch(/(?:from|import\s*\(|require\()\s*['"]node:/)
     }
+  })
+})
+
+describe('E25-T1 O1: sendPush answers the push service reply', () => {
+  const answering = (status: number, text: string): typeof fetch =>
+    (async () => new Response(text, { status })) as unknown as typeof fetch
+
+  async function sendWith(fetchImpl: typeof fetch) {
+    svc = await createFakePushService()
+    return sendPush({ endpoint: ENDPOINT, keys: svc.keys }, 'x', {
+      jwk,
+      subject: 'mailto:ops@example.com',
+      now: NOW,
+      fetch: fetchImpl,
+    })
+  }
+
+  test('O1 a 2xx answers sent with its status', async () => {
+    expect(await sendWith(answering(201, ''))).toMatchObject({ result: 'sent', status: 201 })
+  })
+
+  test('O1 a 403 answers failed with the status and the body text as reason', async () => {
+    const answer = await sendWith(answering(403, '{"reason":"BadJwtToken"}'))
+    expect(answer).toEqual({ result: 'failed', status: 403, reason: '{"reason":"BadJwtToken"}' })
+  })
+
+  test.each([404, 410])('O1 a %i answers gone with its status', async (status) => {
+    expect(await sendWith(answering(status, 'expired'))).toEqual({ result: 'gone', status, reason: 'expired' })
+  })
+
+  test('O1 the reason is the first 200 characters of the body', async () => {
+    const answer = await sendWith(answering(500, 'x'.repeat(500)))
+    expect(answer).toMatchObject({ result: 'failed', status: 500, reason: 'x'.repeat(200) })
+  })
+
+  test('O1 a thrown error answers failed with a null status and the error message', async () => {
+    const answer = await sendWith(
+      (async () => {
+        throw new Error('network down')
+      }) as unknown as typeof fetch,
+    )
+    expect(answer).toEqual({ result: 'failed', status: null, reason: 'network down' })
   })
 })
