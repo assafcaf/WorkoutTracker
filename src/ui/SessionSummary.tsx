@@ -18,7 +18,8 @@ import type { SessionChange } from '../domain/sessionChanges'
 import type { BodyLog, ExercisePlan,LibraryExercise, Muscle, Program, Session, Workout } from '../types'
 import { Switch } from './controls'
 import { Icon } from './icons'
-import { HEALTH_SETUP_URL, healthShortcutUrl, markHealthReady, readHealthReady } from './healthShortcut'
+import { HEALTH_SETUP_URL, healthShortcutUrl } from './healthShortcut'
+import { markHealthReady, readHealthReady } from './healthShortcut'
 import { HealthSetup } from './HealthSetup'
 import { HeatCell, HeatLegend, RegionHeatList } from './RegionHeat'
 import { RegionPanel } from './RegionPanel'
@@ -375,9 +376,9 @@ export function SessionSummary({
         <button
           type="button"
           className="btn-secondary"
-          onClick={() => {
+          onClick={() => openUrl(healthShortcutUrl(session, workoutName ?? 'Workout'))}
+          onClickCapture={() => {
             if (!healthReady) setHealthGuideOpen(true)
-            openUrl(healthShortcutUrl(session, workoutName ?? 'Workout'))
           }}
         >
           Send to Apple Health
