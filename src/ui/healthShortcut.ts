@@ -18,13 +18,44 @@ export interface HealthShortcutStep {
   key: string
 }
 
-export const HEALTH_SHORTCUT_STEPS: readonly HealthShortcutStep[] = []
+/** The Shortcut's build steps; `docs/apple-health-shortcut.md` "Build it" says the same (E25 O4). */
+export const HEALTH_SHORTCUT_STEPS: readonly HealthShortcutStep[] = [
+  {
+    text: `Open Shortcuts, tap +, and name the Shortcut ${HEALTH_SHORTCUT_NAME} (the name must match, including the capitals).`,
+    key: HEALTH_SHORTCUT_NAME,
+  },
+  { text: "In the Shortcut's settings, set it to accept Text as its input.", key: 'as its input' },
+  { text: 'Add Get Dictionary from Input (input: Shortcut Input).', key: 'Get Dictionary from Input' },
+  {
+    text: 'Add Get Dictionary Value for workout, then again for start, end and minutes.',
+    key: 'Get Dictionary Value',
+  },
+  {
+    text: 'Add Get Dates from Input on start and again on end, to turn the text into dates.',
+    key: 'Get Dates from Input',
+  },
+  {
+    text: 'Add Log Workout: type Traditional Strength Training, Duration the minutes value in minutes, Start Date the start date, End Date the end date.',
+    key: 'Traditional Strength Training',
+  },
+  { text: 'Run it once from the Shortcuts app to allow it to write to Health.', key: 'Run it once from the Shortcuts app' },
+]
 
 export function readHealthReady(): boolean {
-  return false
+  try {
+    return localStorage.getItem(HEALTH_READY_KEY) !== null
+  } catch {
+    return false
+  }
 }
 
-export function markHealthReady(): void {}
+export function markHealthReady(): void {
+  try {
+    localStorage.setItem(HEALTH_READY_KEY, '1')
+  } catch {
+    // storage unavailable: the guide simply stays unconfirmed
+  }
+}
 
 /**
  * The Shortcuts URL that runs `Workout Tracker to Health` with the Workout's name, start, end
