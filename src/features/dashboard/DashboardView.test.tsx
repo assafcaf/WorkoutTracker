@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import { declarationsFor } from '../../test/cssAudit'
 import { ShellChromeContext } from '../../ui/AppShell'
@@ -148,6 +148,15 @@ describe('DashboardView S1', () => {
     expect(within(rows[1]).getByText('step up · try 15 kg')).toBeTruthy()
     expect(within(rows[2]).getByText('Face pulls')).toBeTruthy()
     expect(within(rows[2]).getByText('3 sets')).toBeTruthy()
+    // V6 (V5-07): a lift whose Sets ramp says so, Set 1's load to the top one.
+    cleanup()
+    renderView({
+      data: {
+        ...READY,
+        card: { ...READY.card!, lifts: [{ ...READY.card!.lifts[0], load: '47.5 kg', topLoad: '62.5 kg', sets: 4 }] },
+      },
+    })
+    expect(screen.getByText('4 sets · 47.5 → 62.5 kg')).toBeTruthy()
     expect(within(rows[2]).queryByText('No sets yet')).toBeNull()
   })
 

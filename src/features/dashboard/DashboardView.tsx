@@ -167,9 +167,13 @@ function WeekStripRow({ week, onOpen }: { week: WeekStrip; onOpen?: () => void }
   )
 }
 
-/** `3 × 70 kg`: the planned Sets at the Set 1 Preset; `3 sets` with no weight to go on. */
+/**
+ * `3 × 70 kg`: the planned Sets at the Set 1 Preset; `3 sets` with no weight to go on; and when
+ * the Sets ramp, `4 sets · 47.5 → 62.5 kg` (V5-07).
+ */
 function presetText(lift: TrainLiftRow): string | null {
   if (lift.sets === undefined) return null
+  if (lift.load && lift.topLoad) return `${lift.sets} sets · ${lift.load.replace(/ kg$/, '')} → ${lift.topLoad}`
   return lift.load ? `${lift.sets} × ${lift.load}` : `${lift.sets} sets`
 }
 
