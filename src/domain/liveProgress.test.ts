@@ -198,6 +198,25 @@ test('O27 projectSet is no PR for a rep drop once the weight bump is already log
   expect(projectSet({ exercise: squat, plan: plan('squat', 4), earlier: [lastA], session: today, set: { weightKg: 62.5, reps: 6 } }).isPr).toBe(false)
 })
 
+test('V6 projectSet: more reps at a weight already lifted is a rep best, not a PR, unless it lifts the e1RM', () => {
+  const today = session('today', 5000, [], false)
+  const high: ExercisePlan = { exerciseId: 'lunge', sets: 3, repRange: [12, 15], restSeconds: 90 }
+  // Lunges at 8 kg had 12 reps: 13 is a rep best (no e1RM on a 12-15 Plan).
+  const lunges = projectSet({ exercise: lunge, plan: high, earlier: [lastA], session: today, set: { weightKg: 8, reps: 13 } })
+  expect(lunges).toMatchObject({ isPr: false, repBest: true })
+  // Squat at 60 kg had 10 reps (e1RM 80): 11 reps is above 10, no e1RM, so a rep best.
+  const squat11 = projectSet({ exercise: squat, plan: plan('squat', 4), earlier: [lastA], session: today, set: { weightKg: 60, reps: 11 } })
+  expect(squat11).toMatchObject({ isPr: false, repBest: true })
+  // Heavier is a PR, never a rep best.
+  const heavier = projectSet({ exercise: squat, plan: plan('squat', 4), earlier: [lastA], session: today, set: { weightKg: 62.5, reps: 8 } })
+  expect(heavier).toMatchObject({ isPr: true, repBest: false })
+})
+
+test('V6 liveProgress counts PRs only: a rep best adds nothing to the live count', () => {
+  const today = session('today', 5000, [set('lunge', 1, 8, 13, 5001)], false)
+  expect(liveProgress({ workout, session: today, earlier: [lastA], resolve }).prs).toBe(0)
+})
+
 test('formatKg rounds to whole kg with thousands separators', () => {
   expect(formatKg(1530.4)).toBe('1,530')
   expect(formatKg(0)).toBe('0')

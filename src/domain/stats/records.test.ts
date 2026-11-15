@@ -6,7 +6,15 @@ import sessionsJson from '../../test/fixtures/stats/sessions.json'
 import { loadCatalog, loadPrograms } from '../../data/catalog'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../../types'
 import { buildLiftHistories } from './liftHistory'
-import { computeRecords, liftBests, recordCount } from './records'
+import {
+  asPr,
+  computeRecords,
+  isRealRecord,
+  liftBests,
+  recordCount,
+  sessionPrs,
+  sessionRepBests,
+} from './records'
 
 type Pr = { kind: string; text: string; gain: string }
 type Point = { date: string; pr: Pr | null; alsoBeat: Pr[] | null }
@@ -155,24 +163,41 @@ describe('E18-T3 O6 the one record count', () => {
   beforeAll(() => {
     records = allRecords()
   })
+  // V6 (V5-06): the count is of PRs only. Wed 14 Oct's 4 are all Heaviest weight; Mon 12 Oct's
+  // 5 records are Deadlift's heaviest weight, Machine row's +1 rep that also lifts its estimated
+  // 1RM, and 3 rep bests (Assisted pull-ups, Face pull, Seated biceps curls): 2 PRs.
   it('O6 answers for every Session with the fixture count: Wed 14 Oct is 4, Mon 12 Oct is 5', () => {
     expect(recordCount(records, sessionOn('2026-10-14').id)).toBe(4)
-    expect(recordCount(records, sessionOn('2026-10-12').id)).toBe(5)
+    expect(recordCount(records, sessionOn('2026-10-12').id)).toBe(2)
   })
 
+  // V6 (V5-06): the fixture's 201 records stay the readout; the count is the fixture records that
+  // are PRs (a weight kind, or a Rep record that also beat the estimated 1RM): 92.
   it('O6 equals the fixture prs of every Session, and sums to 201', () => {
+    const realOn = new Map<string, number>()
+    for (const lift of Object.values(expected.lifts)) {
+      for (const p of lift.points) {
+        if (!p.pr) continue
+        const real =
+          p.pr.kind !== 'Rep record' || (p.alsoBeat ?? []).some((a) => a.kind === 'Estimated 1RM')
+        if (real) realOn.set(p.date, (realOn.get(p.date) ?? 0) + 1)
+      }
+    }
     let total = 0
+    let all = 0
     expected.sessions.forEach((s) => {
       const n = recordCount(records, sessionOn(s.date).id)
-      expect(n, s.date).toBe(s.prs.length)
+      expect(n, s.date).toBe(realOn.get(s.date) ?? 0)
       total += n
+      all += s.prs.length
     })
-    expect(total).toBe(201)
+    expect(all).toBe(201)
+    expect(total).toBe(92)
   })
 
   it('O6 counts alsoBeat kinds for nothing: a Session with an also-beaten 1RM counts one', () => {
-    const squat = records.find((r) => r.alsoBeat.length > 0)!
-    const same = records.filter((r) => r.sessionId === squat.sessionId).length
+    const squat = records.find((r) => r.kind === 'Heaviest weight' && r.alsoBeat.length > 0)!
+    const same = records.filter((r) => r.sessionId === squat.sessionId && isRealRecord(r)).length
     expect(recordCount(records, squat.sessionId)).toBe(same)
   })
 
@@ -380,5 +405,119 @@ describe('E18-T3 O5 rank order and failure paths on hand-built Sessions', () => 
       run([sess('a', 1000, [set('ghost', 1, 50, 8)]), sess('b', 2000, [set('ghost', 1, 60, 8)])]),
     ).toEqual([])
     expect(run([])).toEqual([])
+  })
+})
+
+describe('V6 (V5-06) one PR rule: heavier, or a better estimated max; more reps is a rep best', () => {
+  const ex = (id: string, bodyweight: boolean): Exercise => ({
+    id,
+    name: id,
+    weightStep: 2.5,
+    startWeight: null,
+    bodyweight,
+    libraryId: id,
+  })
+  const exercises = new Map([
+    ['lift', ex('lift', false)],
+    ['curl', ex('curl', false)],
+    ['pull', ex('pull', true)],
+  ])
+  const res = (id: string) => exercises.get(id)
+  const plan = (id: string): ExercisePlan | undefined =>
+    id === 'lift'
+      ? { exerciseId: 'lift', sets: 3, repRange: [6, 8], restSeconds: 90 }
+      : id === 'curl'
+        ? { exerciseId: 'curl', sets: 3, repRange: [10, 15], restSeconds: 60 }
+        : undefined
+  const set = (
+    exerciseId: string,
+    n: number,
+    weightKg: number | null,
+    reps: number,
+    extra: Partial<SetEntry> = {},
+  ): SetEntry => ({ exerciseId, setIndex: n, weightKg, reps, loggedAt: n, ...extra })
+  const sess = (id: string, startedAt: number, entries: SetEntry[]): Session => ({
+    id,
+    programId: 'p',
+    workoutId: 'w',
+    startedAt,
+    finishedAt: startedAt + 1,
+    entries,
+  })
+  const run = (list: Session[]) => computeRecords(list, res, plan)
+
+  it('a heavier weight is a PR', () => {
+    const r = run([sess('a', 1000, [set('lift', 1, 50, 8)]), sess('b', 2000, [set('lift', 1, 52.5, 6)])])
+    expect(r.map(isRealRecord)).toEqual([true])
+    expect(asPr(r[0])).toMatchObject({ kind: 'Heaviest weight', lever: 52.5 })
+    expect(recordCount(r, 'b')).toBe(1)
+  })
+
+  it('more reps at the heaviest weight that lifts the estimated max is a PR named Estimated 1RM', () => {
+    const r = run([sess('a', 1000, [set('lift', 1, 50, 7)]), sess('b', 2000, [set('lift', 1, 50, 8)])])
+    expect(r[0].kind).toBe('Rep record')
+    expect(isRealRecord(r[0])).toBe(true)
+    const pr = asPr(r[0])!
+    expect(pr.kind).toBe('Estimated 1RM')
+    expect(pr.e1rm).toBeCloseTo(50 * (1 + 8 / 30), 6)
+    expect(pr.gain).toBeCloseTo(50 / 30, 6)
+    expect(pr).toMatchObject({ lever: 50, reps: 8 })
+    expect(recordCount(r, 'b')).toBe(1)
+  })
+
+  it('more reps at a lighter weight that does not lift the estimated max is a rep best, not a PR', () => {
+    const r = run([
+      sess('a', 1000, [set('lift', 1, 40, 10), set('lift', 2, 60, 8)]),
+      sess('b', 2000, [set('lift', 1, 40, 11), set('lift', 2, 60, 6)]),
+    ])
+    expect(r).toHaveLength(1)
+    expect(r[0].kind).toBe('Rep record')
+    expect(isRealRecord(r[0])).toBe(false)
+    expect(asPr(r[0])).toBeNull()
+    expect(recordCount(r, 'b')).toBe(0)
+    expect(sessionPrs(r, 'b')).toEqual([])
+    expect(sessionRepBests(r, 'b').map((x) => x.exerciseId)).toEqual(['lift'])
+  })
+
+  it('a high-rep lift (no estimated max) adding a rep at its weight is a rep best only', () => {
+    const r = run([sess('a', 1000, [set('curl', 1, 14, 12)]), sess('b', 2000, [set('curl', 1, 14, 13)])])
+    expect(r).toHaveLength(1)
+    expect(isRealRecord(r[0])).toBe(false)
+    expect(recordCount(r, 'b')).toBe(0)
+  })
+
+  it('assisted: less assistance is a PR; more reps at the same assistance is a rep best', () => {
+    const less = run([
+      sess('a', 1000, [set('pull', 1, null, 7, { loadKg: -21 })]),
+      sess('b', 2000, [set('pull', 1, null, 5, { loadKg: -19 })]),
+    ])
+    expect(asPr(less[0])).toMatchObject({ kind: 'Least assistance', gain: 2 })
+    const more = run([
+      sess('a', 1000, [set('pull', 1, null, 5, { loadKg: -19 })]),
+      sess('b', 2000, [set('pull', 1, null, 6, { loadKg: -19 })]),
+    ])
+    expect(isRealRecord(more[0])).toBe(false)
+    expect(recordCount(more, 'b')).toBe(0)
+  })
+
+  it('plain Bodyweight: more reps is a rep best; a first added load is a PR', () => {
+    const reps = run([sess('a', 1000, [set('pull', 1, null, 12)]), sess('b', 2000, [set('pull', 1, null, 14)])])
+    expect(isRealRecord(reps[0])).toBe(false)
+    const load = run([
+      sess('a', 1000, [set('pull', 1, null, 15)]),
+      sess('b', 2000, [set('pull', 1, null, 12, { loadKg: 5 })]),
+    ])
+    expect(isRealRecord(load[0])).toBe(true)
+  })
+
+  it('on the fixture: 201 session bests, 92 PRs, and Mon 12 Oct shows 2', () => {
+    const records = allRecords()
+    expect(records.filter(isRealRecord)).toHaveLength(92)
+    expect(
+      sessionPrs(records, sessionOn('2026-10-12').id)
+        .map((r) => r.kind)
+        .sort(),
+    ).toEqual(['Estimated 1RM', 'Heaviest weight'])
+    expect(sessionRepBests(records, sessionOn('2026-10-12').id)).toHaveLength(3)
   })
 })

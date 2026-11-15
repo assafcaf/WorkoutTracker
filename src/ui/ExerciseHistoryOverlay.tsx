@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { exerciseTrend, trendLabel, trendSummary, trendValueText } from '../domain/exerciseTrend'
 import type { ExerciseTrend } from '../domain/exerciseTrend'
 import { shortDay } from '../domain/lifts'
-import { recordsSetBy } from '../domain/records'
+import { isPrSet } from '../domain/prMoment'
 import { formatSet, formatSetCompact } from '../domain/setText'
 import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
 import { TrendChart } from './charts/TrendChart'
@@ -129,7 +129,7 @@ export function ExerciseHistoryOverlay({
                 .sort((a, b) => a.setIndex - b.setIndex)
               const earlier = logged.filter((o) => o.startedAt < s.startedAt)
               const isRecord = (entry: SetEntry): boolean =>
-                recordsSetBy(exercise, plan, earlier, s, entry).length > 0
+                isPrSet(exercise, plan, earlier, s, entry)
               return (
                 <li key={s.id} className="exercise-history-session">
                   <span className="exercise-history-date">{dateText(s.startedAt)}</span>

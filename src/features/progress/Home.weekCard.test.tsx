@@ -49,8 +49,9 @@ describe('E22-T8 O20 the Last week card', () => {
     expect(row(c, 'Sets')).toContain('same')
     expect(row(c, 'Volume')).toContain('15,908 kg')
     expect(row(c, 'Volume')).toContain('−11 %')
-    expect(row(c, 'PRs')).toContain('15')
-    expect(row(c, 'PRs')).toContain('−1')
+    // V6 (V5-06): PRs only (heavier, or a better estimated 1RM): 7 against 11 the week before.
+    expect(row(c, 'PRs')).toContain('7')
+    expect(row(c, 'PRs')).toContain('−4')
   })
 
   test('O20 a drop in Sessions and Sets shows its signed difference', async () => {
@@ -61,7 +62,8 @@ describe('E22-T8 O20 the Last week card', () => {
     expect(row(c, 'Sets')).toContain('−22')
     expect(row(c, 'Volume')).toContain('11,000 kg')
     expect(row(c, 'Volume')).toContain('−31 %')
-    expect(row(c, 'PRs')).toContain('−6')
+    // V6 (V5-06): 6 PRs against 7.
+    expect(row(c, 'PRs')).toContain('−1')
   })
 
   test('O20 sits above This week', async () => {

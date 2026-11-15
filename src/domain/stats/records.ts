@@ -35,7 +35,7 @@ export type SessionRecord = {
   /** Positive magnitude: kg (weight kinds, 1RM) or reps (Rep record). `−2 kg assistance` is 2. */
   gain: number
   /** Lower-ranked kinds also beaten that Session: readout only, never counted. */
-  alsoBeat: { kind: RecordKindName; gain: number }[]
+  alsoBeat: { kind: RecordKindName; gain: number; e1rm?: number }[]
 }
 
 export type BestRow = {
@@ -96,7 +96,11 @@ function recordsOfLift(history: LiftHistory): SessionRecord[] {
           reps: first.reps,
           ...(first.e1rm !== undefined ? { e1rm: first.e1rm } : {}),
           gain: first.gain,
-          alsoBeat: rest.map((c) => ({ kind: c.kind, gain: c.gain })),
+          alsoBeat: rest.map((c) => ({
+            kind: c.kind,
+            gain: c.gain,
+            ...(c.e1rm !== undefined ? { e1rm: c.e1rm } : {}),
+          })),
         })
       }
     }
@@ -124,9 +128,68 @@ export function computeRecords(
   return out.sort((a, b) => (order.get(a.sessionId) ?? 0) - (order.get(b.sessionId) ?? 0))
 }
 
-/** The one count of a Session's records (live strip, summary, Sessions row). */
+// V6 (V5-06): the one PR rule. `computeRecords` still finds every Session best (the verdicts'
+// "no record in the last 4" reads them all), but only some are PRs:
+//   a PR is a new heaviest weight (less assistance on an assisted lift, a first added load on a
+//   Bodyweight one) or a new best estimated 1RM (Epley, e1RM lifts only, +0.5 kg), against
+//   everything before the Session. More reps at a weight already lifted, and nothing heavier or
+//   better estimated, is a quieter "rep best": shown, never counted as a PR.
+// Every surface (Sessions "n PRs", the summary, the live strip, "PR if logged", the Rest beat,
+// the week's PR count) reads PRs through these functions.
+
+/** The kinds that are a PR by themselves. A `Rep record` is one only when it also beat the 1RM. */
+export const PR_KINDS: ReadonlySet<RecordKindName> = new Set<RecordKindName>([
+  'Heaviest weight',
+  'Least assistance',
+  'First added load',
+  'Estimated 1RM',
+])
+
+/** What the app calls a Session best that is not a PR. */
+export const REP_BEST = 'Rep best'
+
+/**
+ * `record` as a PR, or null for a rep best. A Rep record that also beat the estimated 1RM is that
+ * PR: kind `Estimated 1RM`, its gain and e1RM, the rep gain kept as alsoBeat.
+ */
+export function asPr(record: SessionRecord): SessionRecord | null {
+  if (PR_KINDS.has(record.kind)) return record
+  const e1rm = record.alsoBeat.find((beat) => beat.kind === 'Estimated 1RM')
+  if (e1rm === undefined) return null
+  return {
+    ...record,
+    kind: 'Estimated 1RM',
+    gain: e1rm.gain,
+    ...(e1rm.e1rm !== undefined ? { e1rm: e1rm.e1rm } : {}),
+    alsoBeat: [
+      { kind: record.kind, gain: record.gain },
+      ...record.alsoBeat.filter((beat) => beat !== e1rm),
+    ],
+  }
+}
+
+/** True when `record` is a PR under the one rule; false for a rep best. */
+export function isRealRecord(record: SessionRecord): boolean {
+  return asPr(record) !== null
+}
+
+/** The Session's PRs, as `asPr` names them, in `records` order. */
+export function sessionPrs(records: SessionRecord[], sessionId: string): SessionRecord[] {
+  return records.flatMap((r) => {
+    if (r.sessionId !== sessionId) return []
+    const pr = asPr(r)
+    return pr === null ? [] : [pr]
+  })
+}
+
+/** The Session's rep bests: its Session bests that are not PRs. */
+export function sessionRepBests(records: SessionRecord[], sessionId: string): SessionRecord[] {
+  return records.filter((r) => r.sessionId === sessionId && !isRealRecord(r))
+}
+
+/** The one count of a Session's PRs (live strip, summary, Sessions row, the week's PRs). */
 export function recordCount(records: SessionRecord[], sessionId: string): number {
-  return records.filter((r) => r.sessionId === sessionId).length
+  return sessionPrs(records, sessionId).length
 }
 
 function leverLabel(lever: number): string {
