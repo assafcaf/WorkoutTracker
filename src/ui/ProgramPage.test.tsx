@@ -55,7 +55,7 @@ function precedes(first: Element, second: Element): boolean {
   )
 }
 
-/** A workout card's exercise table, one `Exercise | Sets × reps | Rest | kg` line per row. */
+/** A workout card's exercise table, one `Exercise | Sets × reps | Rest` line per row. */
 function lines(card: HTMLElement): string[] {
   return within(card)
     .getAllByRole('row')
@@ -90,32 +90,39 @@ test('O1 the active program leads with its name, then Workout A, then Workout B'
 test('O1 Workout A names its seven exercises with rep target, set count and rest', () => {
   renderProgramPage()
 
-  // S7a's table: name, sets × reps, rest as m:ss, and the load the next session opens on --
-  // with no Session logged, each Exercise's own start weight (src/data/exercises.json).
+  // S7a's table: name, sets × reps and rest as m:ss (V1-27 dropped the kg column).
   expect(lines(workoutCard('Workout A'))).toEqual([
-    'Back squat | 4 × 8–10 | 3:00 | 50',
-    'Lunges | 3 × 10–12 | 1:30 | 7',
-    'DB bench press | 4 × 8–10 | 1:30 | 10',
-    'Push-ups | 3 × 10–15 | 1:30 | BW',
-    'Machine shoulder press | 3 × 8–10 | 1:30 | 5',
-    'Lateral raises | 3 × 10–15 | 1:30 | 3',
-    'Cable push-down | 3 × 10–12 | 1:30 | 17.5',
+    'Back squat | 4 × 8–10 | 3:00',
+    'Lunges | 3 × 10–12 | 1:30',
+    'DB bench press | 4 × 8–10 | 1:30',
+    'Push-ups | 3 × 10–15 | 1:30',
+    'Machine shoulder press | 3 × 8–10 | 1:30',
+    'Lateral raises | 3 × 10–15 | 1:30',
+    'Cable push-down | 3 × 10–12 | 1:30',
   ])
 })
 
 test('O1 Workout B names its seven exercises with rep target, set count and rest', () => {
   renderProgramPage()
 
-  // An assisted Bodyweight lift reads its signed start Load (BW−27), a plain one BW.
   expect(lines(workoutCard('Workout B'))).toEqual([
-    'Deadlift | 3 × 8–10 | 3:00 | 55',
-    'Assisted pull-ups | 4 × 5–8 | 1:30 | BW−27',
-    'Narrow-grip pull-down | 3 × 10–12 | 1:30 | 41.25',
-    'Machine row | 4 × 8–10 | 1:30 | 50',
-    'Face pull | 3 × 10–15 | 1:30 | 15',
-    'Hyper-extension | 3 × 10–15 | 1:30 | BW',
-    'Seated biceps curls | 3 × 10–12 | 1:30 | 8',
+    'Deadlift | 3 × 8–10 | 3:00',
+    'Assisted pull-ups | 4 × 5–8 | 1:30',
+    'Narrow-grip pull-down | 3 × 10–12 | 1:30',
+    'Machine row | 4 × 8–10 | 1:30',
+    'Face pull | 3 × 10–15 | 1:30',
+    'Hyper-extension | 3 × 10–15 | 1:30',
+    'Seated biceps curls | 3 × 10–12 | 1:30',
   ])
+})
+
+test('V1-27 the Program view table shows Exercise, Sets × reps and Rest only', () => {
+  renderProgramPage()
+
+  const headers = within(workoutCard('Workout A'))
+    .getAllByRole('columnheader')
+    .map((cell) => cell.textContent?.trim())
+  expect(headers).toEqual(['Exercise', 'Sets × reps', 'Rest'])
 })
 
 test('O1 the program switcher offers every loaded program as a choice, with no disclosure to open', () => {
@@ -1027,26 +1034,6 @@ test("S7a each exercise row carries its muscle family's dot", () => {
     .slice(1)
     .map((row) => row.querySelector('.muscle-dot')?.getAttribute('data-family'))
   expect(families).toEqual(['core', 'pull', 'pull', 'pull', 'push', 'core', 'pull'])
-})
-
-test('S7a the kg column reads the load the next session opens on, a step up after a filled rep range', () => {
-  const full: Session = {
-    id: 'full-squat',
-    programId: 'assaf-ab-2026',
-    workoutId: 'workout-a',
-    startedAt: NOW - 5000,
-    finishedAt: NOW - 1000,
-    entries: [1, 2, 3, 4].map((setIndex) => ({
-      exerciseId: 'back-squat',
-      setIndex,
-      weightKg: 60,
-      reps: 10,
-      loggedAt: NOW - 5000 + setIndex,
-    })),
-  }
-  renderAssaf({ sessions: [full], now: NOW })
-
-  expect(lines(workoutCard('Workout A'))[0]).toBe('Back squat | 4 × 8–10 | 3:00 | 62.5')
 })
 
 test('S7a Edit in the head opens the editor on the active program', async () => {

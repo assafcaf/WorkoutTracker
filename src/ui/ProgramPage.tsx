@@ -10,7 +10,6 @@ import {
   type Region,
 } from '../domain/muscles'
 import { weeksOf, type Weekday } from '../domain/stats/weeks'
-import { nextLoadText } from '../domain/planLoad'
 import { visiblePrograms } from '../domain/programs'
 import {
   exerciseFamily,
@@ -50,7 +49,7 @@ export type ProgramPageProps = {
   library: Map<string, LibraryExercise>
   onChooseProgram(id: string): void
   /**
-   * Every Session, for the "This week" done map (M15) and the kg column's next load. Optional --
+   * Every Session, for the "This week" done map (M15). Optional --
    * and defaults to `[]` -- only because this task does not own `App.tsx`; E5-T20 wires it.
    */
   sessions?: Session[]
@@ -262,9 +261,6 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
               <th scope="col" className="program-page-th program-page-num">
                 Rest
               </th>
-              <th scope="col" className="program-page-th program-page-num">
-                kg
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -283,9 +279,6 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
                   </td>
                   <td className="program-page-num">{setsRepsText(plan)}</td>
                   <td className="program-page-num program-page-rest">{formatRest(plan.restSeconds)}</td>
-                  <td className="program-page-num program-page-kg">
-                    {exercise ? nextLoadText(exercise, plan, sessions) : '–'}
-                  </td>
                 </tr>
               )
             })}

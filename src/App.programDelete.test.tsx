@@ -223,7 +223,7 @@ function editorWorkouts(): HTMLElement[] {
 
 /**
  * The Program tab's exercise row for `exercise` (S7a's workout table), as
- * `Exercise | Sets × reps | Rest | kg`, or null when no row names it.
+ * `Exercise | Sets × reps | Rest`, or null when no row names it.
  */
 function planRowText(exercise: string): string | null {
   const row = [...document.querySelectorAll<HTMLTableRowElement>('.workout-card tbody tr')].find(
@@ -597,10 +597,10 @@ test('O12 Reset to original then Confirm on an edited A/B Split shows the bundle
   await renderApp()
 
   await openProgramTab(user)
-  expect(planRowText('Back squat')).toMatch(/^Back squat \| 5 × 3–5 \| 4:00 \| /)
+  expect(planRowText('Back squat')).toMatch(/^Back squat \| 5 × 3–5 \| 4:00$/)
   await resetAndConfirm(user, 'A/B Split')
 
-  await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00 \| /), SETTLE)
+  await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00$/), SETTLE)
   expect(planRowText('Back squat')).not.toContain('5 × 3–5')
 }, LONG)
 
@@ -630,7 +630,7 @@ test('O12 after Reset to original a set screen on Workout A uses the bundled num
 
   await openProgramTab(user)
   await resetAndConfirm(user, 'A/B Split')
-  await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00 \| /), SETTLE)
+  await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00$/), SETTLE)
   await user.click(screen.getByRole('button', { name: 'Train' }))
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
   await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))

@@ -200,10 +200,6 @@
   color: var(--color-secondary);
 }
 
-.program-page-kg {
-  font-weight: var(--weight-semibold);
-}
-
 /* ---- Planned muscle map (M14) and "This week" (M15), below the workouts ---- */
 
 .program-page-weekly,
