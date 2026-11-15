@@ -154,3 +154,61 @@
   font-size: var(--text-sm);
   line-height: 20px;
 }
+
+/* ---- 4 weeks (V2-06): muscle sets by calendar week, moved here from the Sessions tab ---- */
+
+.muscles-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.muscles-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.week-heat-halves {
+  display: flex;
+  /* Side by side, or stacked when large text (V1-08) leaves no room for both. */
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.week-heat {
+  border-collapse: separate;
+  border-spacing: 3px;
+  margin: -3px;
+}
+
+.week-heat th,
+.week-heat td {
+  padding: 0;
+}
+
+.week-heat-week {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  text-align: center;
+}
+
+.week-heat-label {
+  width: 68px;
+  color: var(--color-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.week-heat .heat-cell {
+  width: 21px;
+  height: 18px;
+}

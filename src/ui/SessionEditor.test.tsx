@@ -409,3 +409,43 @@ test('E17 O11 SessionEditor Delete set wears btn-danger and no other role', () =
     rolesOf(within(group('Back squat')).getByRole('button', { name: 'Delete set 1' })),
   ).toEqual(['btn-danger'])
 })
+
+// --- V2-10 / V1-24: the Deload session switch lives here, and the editor opens at its top ------
+
+test('V2-10 SessionEditor carries the Deload session switch, reflecting the Session', () => {
+  renderEditor({ ...finished(), deload: true })
+
+  expect(screen.getByRole('switch', { name: 'Deload session' })).toBeChecked()
+})
+
+test('V2-10 SessionEditor saves the Deload session mark with the draft', async () => {
+  const { onSave } = renderEditor()
+  const user = userEvent.setup()
+
+  await user.click(screen.getByRole('switch', { name: 'Deload session' }))
+  await user.click(saveButton())
+
+  expect((await savedDraft(onSave)).deload).toBe(true)
+})
+
+test('V2-10 SessionEditor turning Deload session off saves a draft without the mark', async () => {
+  const { onSave } = renderEditor({ ...finished(), deload: true })
+  const user = userEvent.setup()
+
+  await user.click(screen.getByRole('switch', { name: 'Deload session' }))
+  await user.click(saveButton())
+
+  expect('deload' in (await savedDraft(onSave))).toBe(false)
+})
+
+test('V1-24 SessionEditor scrolls the window to the top when it opens', () => {
+  const scrollTo = vi.fn()
+  const before = window.scrollTo
+  window.scrollTo = scrollTo as unknown as typeof window.scrollTo
+  try {
+    renderEditor()
+    expect(scrollTo).toHaveBeenCalledWith(0, 0)
+  } finally {
+    window.scrollTo = before
+  }
+})

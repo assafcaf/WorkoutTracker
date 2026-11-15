@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { band } from '../domain/band'
 import { formatDay } from '../domain/dates'
-import { contributors, muscleSets, toRegionCounts } from '../domain/muscles'
+import { contributors, muscleSets, regionsFor, toRegionCounts } from '../domain/muscles'
+import { muscleLabel } from '../domain/muscleLabels'
 import { sessionChanges } from '../domain/sessionChanges'
-import { heatRowsFor } from '../domain/sessionsView'
 import { bodyweightOn } from '../domain/bodyLog'
 import { sessionVolume } from '../domain/volume'
 import { countsTowardStats, workingSets } from '../domain/setKind'
@@ -16,13 +16,11 @@ import type { SessionRecord } from '../domain/stats/records'
 import type { Region, Resolve } from '../domain/muscles'
 import type { SessionChange } from '../domain/sessionChanges'
 import type { BodyLog, ExercisePlan,LibraryExercise, Muscle, Program, Session, Workout } from '../types'
-import { Switch } from './controls'
 import { Icon } from './icons'
-import { HEALTH_SETUP_URL, healthShortcutUrl } from './healthShortcut'
-import { markHealthReady, readHealthReady } from './healthShortcut'
-import { HealthSetup } from './HealthSetup'
-import { HeatCell, HeatLegend, RegionHeatList } from './RegionHeat'
+import { healthShortcutUrl, readHealthReady } from './healthShortcut'
+import { HeatCell, HeatLegend } from './RegionHeat'
 import { RegionPanel } from './RegionPanel'
+import { Sheet } from './Sheet'
 import { musclesForRegion } from './regionMuscles'
 import './SessionSummary.css'
 
@@ -43,7 +41,10 @@ export type SessionSummaryProps = {
   onEdit?(): void
   /** The Program the Session ran under: the moves, `Next time` and the week line read it (E18-T15). */
   program?: Program
-  /** The `Deload session` switch was flipped (E18-T15); the caller stores it. */
+  /**
+   * Unused since V2-10: the `Deload session` switch moved to the Session editor, which saves it
+   * with the Session. Kept so an older caller still type-checks.
+   */
   onDeloadChange?(on: boolean): void
   /** The weekday the week starts on, 0 = Sunday ... 6 = Saturday; Monday by default (E19-T5). */
   weekStartsOn?: Weekday
@@ -75,6 +76,18 @@ function dayMonth(day: string): string {
 
 /** A record row's detail: `Bench press · 85 kg × 5 · +5 kg`, `Pull-up · BW × 12 · +2 reps`. */
 function recordDetail(record: SessionRecord, name: string, bodyweight: boolean): string {
+  const [set, gain] = recordParts(record, bodyweight)
+  return `${name} · ${set} · ${gain}`
+}
+
+/** The summary's hero line (V2-10): `Bench press 85 kg × 5 · +5 kg`. */
+function bestText(record: SessionRecord, name: string, bodyweight: boolean): string {
+  const [set, gain] = recordParts(record, bodyweight)
+  return `${name} ${set} · ${gain}`
+}
+
+/** A record's set and its gain over the old record: `85 kg × 5`, `+5 kg`. */
+function recordParts(record: SessionRecord, bodyweight: boolean): [string, string] {
   const set =
     record.kind === 'Estimated 1RM' && record.e1rm !== undefined
       ? `${numberText(Math.round(record.e1rm * 10) / 10)} kg`
@@ -86,11 +99,10 @@ function recordDetail(record: SessionRecord, name: string, bodyweight: boolean):
       : record.kind === 'Least assistance'
         ? `${MINUS}${amount} kg assistance`
         : `+${amount} kg`
-  return `${name} · ${set} · ${gain}`
+  return [set, gain]
 }
 
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
-const capital = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1)
 
 type Contributor = { exerciseId: string; name: string; sets: number }
 
@@ -116,10 +128,11 @@ function regionContributors(
 }
 
 /**
- * One session's summary (E18 O26): "What <day> did for your week", the figures (duration apart
- * from the week's), each lift's move in words beside its top set, the records, `Next time`, Worked
- * today in the 12 muscles (and by region, tappable into a `RegionPanel`), a `Deload session`
- * switch, and the volume as the last quiet line. Shown on Finish and when a Session is opened.
+ * One session's summary (E18 O26, V2-10): "What <day> did for your week", the figures, the day's
+ * best Record as one hero line, each lift's move in words beside its top set, the records,
+ * `Next time`, Worked today in the 12 muscles (each tappable into its region's `RegionPanel`), and
+ * the volume as the last quiet line. The dock is `Share…` (text, or Apple Health) and `Done`.
+ * Shown on Finish and when a Session is opened.
  */
 export function SessionSummary({
   session,
@@ -132,7 +145,6 @@ export function SessionSummary({
   onBrowse,
   onEdit,
   program,
-  onDeloadChange,
   weekStartsOn = 1,
   workout,
   onSaveChanges,
@@ -142,10 +154,9 @@ export function SessionSummary({
   },
 }: SessionSummaryProps): JSX.Element {
   const [openRegion, setOpenRegion] = useState<Region | null>(null)
-  const [deload, setDeload] = useState(session.deload === true)
   const [offerOpen, setOfferOpen] = useState(true)
-  const [healthGuideOpen, setHealthGuideOpen] = useState(false)
-  const [healthReady, setHealthReady] = useState(readHealthReady)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [healthReady] = useState(readHealthReady)
   const changes = workout && onSaveChanges ? sessionChanges(session, workout) : []
   const counts = toRegionCounts(muscleSets(session.entries, resolve, library))
   const muscles = muscleSets(session.entries, resolve, library)
@@ -162,6 +173,20 @@ export function SessionSummary({
   const weighed = bodyweightOn(bodyLog, session.startedAt)
   const bodyweightReps = sessionVolume(session, resolve, weighed?.kg ?? null).bodyweightReps
   const hasBodyweightSets = sessionVolume(session, resolve).bodyweightReps > 0
+  // V2-10: a Session that logged fewer working Sets than its Workout plans shows its volume
+  // alone, not a comparison of 3 Sets with a full Session's 23.
+  const plannedWorkout =
+    program?.workouts.find((w) => w.id === session.workoutId) ??
+    workout ??
+    stats.workouts.find((w) => w.id === session.workoutId)
+  const plannedSets = (plannedWorkout?.exercises ?? []).reduce(
+    (sum, plan) => sum + plan.sets,
+    0,
+  )
+  const partial = plannedSets > 0 && working < plannedSets
+  const volume = volumeLine(session.id, all, resolve, bodyLog)
+  const volumeText = partial ? volume.split(' · ')[0] : volume
+  const best = records[0]
 
   async function saveChanges(): Promise<void> {
     setOfferOpen(false)
@@ -175,17 +200,12 @@ export function SessionSummary({
     return `${name(change.exerciseId)}: ${change.from} to ${change.to} sets`
   }
 
-  function toggleDeload(on: boolean): void {
-    setDeload(on)
-    onDeloadChange?.(on)
-  }
-
   async function share(): Promise<void> {
     const text = [
       `${workoutName ?? 'Workout'} · ${formatDay(new Date(session.startedAt), new Date())}`,
       `${durationValue} ${durationUnit} · ${plural(working, 'working set', 'working sets')} · ${plural(prs, 'record', 'records')}`,
       ...moves.map((move) => `${move.name}: ${move.top} · ${move.text}`),
-      volumeLine(session.id, all, resolve, bodyLog),
+      volumeText,
     ].join('\n')
     try {
       if (navigator.share) await navigator.share({ title: workoutName ?? 'Workout', text })
@@ -240,6 +260,22 @@ export function SessionSummary({
             <p className="session-summary-warmups">{`${plural(warmups, 'warm-up', 'warm-ups')} not counted`}</p>
           ) : null}
         </div>
+
+        {best ? (
+          <p className="session-summary-best">
+            <span className="session-summary-best-label">Best today</span>
+            <span className="session-summary-best-text">
+              {bestText(
+                best,
+                resolve(best.exerciseId)?.name ?? best.exerciseId,
+                resolve(best.exerciseId)?.bodyweight === true,
+              )}
+            </span>
+            <span className="tag tag-pr" aria-label="Personal record">
+              PR
+            </span>
+          </p>
+        ) : null}
 
         {moves.length > 0 ? (
           <section className="session-summary-section" aria-label="Lift by lift">
@@ -302,15 +338,23 @@ export function SessionSummary({
           <div className="session-summary-muscles">
             {STATS_MUSCLES.map((muscle) => {
               const count = muscles.get(muscle) ?? 0
+              const name = muscleLabel(muscle)
               return (
-                <div key={muscle} className="session-summary-muscle" data-muscle={muscle} data-band={band(count, 'session')}>
-                  <span className="session-summary-muscle-name">{capital(muscle)}</span>
+                <button
+                  key={muscle}
+                  type="button"
+                  className="session-summary-muscle cell"
+                  data-muscle={muscle}
+                  data-band={band(count, 'session')}
+                  aria-label={`${name}, ${numberText(count)} sets`}
+                  onClick={() => setOpenRegion(regionsFor(muscle)[0])}
+                >
+                  <span className="session-summary-muscle-name">{name}</span>
                   <HeatCell count={count} scale="session" />
-                </div>
+                </button>
               )
             })}
           </div>
-          <RegionHeatList rows={heatRowsFor([counts])} counts={counts} scale="session" onRegionTap={setOpenRegion} />
           <HeatLegend scale="session" />
         </section>
 
@@ -333,29 +377,9 @@ export function SessionSummary({
           </section>
         ) : null}
 
-        <div className="session-summary-deload">
-          <Switch label="Deload session" checked={deload} onChange={toggleDeload} />
-        </div>
-
-        <p className="session-summary-quiet">
-          <a className="session-summary-health-help" href={HEALTH_SETUP_URL} target="_blank" rel="noreferrer">
-            How to set it up
-          </a>
-        </p>
-
-        <HealthSetup
-          open={healthGuideOpen}
-          ready={healthReady}
-          onToggle={() => setHealthGuideOpen((o) => !o)}
-          onReady={() => {
-            markHealthReady()
-            setHealthReady(true)
-          }}
-        />
-
         <p className="session-summary-volume">
           <span data-kpi="volume">
-            <span className="session-summary-kpi-value">{volumeLine(session.id, all, resolve, bodyLog)}</span>
+            <span className="session-summary-kpi-value">{volumeText}</span>
             {bodyweightReps > 0 ? (
               <span className="session-summary-kpi-note">{` · ${bodyweightReps} bodyweight reps`}</span>
             ) : null}
@@ -369,24 +393,53 @@ export function SessionSummary({
       </div>
 
       <div className="session-summary-dock">
-        <button type="button" className="session-summary-share btn-secondary" onClick={() => void share()}>
-          <Icon name="Share" size={20} />
-          Share
-        </button>
         <button
           type="button"
-          className="btn-secondary"
-          onClick={() => openUrl(healthShortcutUrl(session, workoutName ?? 'Workout'))}
-          onClickCapture={() => {
-            if (!healthReady) setHealthGuideOpen(true)
-          }}
+          className="session-summary-share btn-secondary"
+          aria-haspopup="dialog"
+          onClick={() => setShareOpen(true)}
         >
-          Send to Apple Health
+          <Icon name="Share" size={20} />
+          Share…
         </button>
         <button type="button" className="session-summary-done btn-primary" onClick={onClose}>
           Done
         </button>
       </div>
+
+      {shareOpen ? (
+        <Sheet label="Share session" onClose={() => setShareOpen(false)}>
+          <div className="session-summary-share-sheet">
+            <h3 className="session-summary-caption">Share session</h3>
+            <button
+              type="button"
+              className="session-summary-share-option btn-secondary"
+              onClick={() => {
+                setShareOpen(false)
+                void share()
+              }}
+            >
+              <Icon name="Share" size={20} />
+              Share as text
+            </button>
+            <button
+              type="button"
+              className="session-summary-share-option btn-secondary"
+              onClick={() => {
+                setShareOpen(false)
+                openUrl(healthShortcutUrl(session, workoutName ?? 'Workout'))
+              }}
+            >
+              Send to Apple Health
+            </button>
+            {healthReady ? null : (
+              <p className="session-summary-quiet">
+                If iOS says it can&apos;t find the shortcut, set it up first in Settings › Apple Health.
+              </p>
+            )}
+          </div>
+        </Sheet>
+      ) : null}
 
       {openRegion !== null ? (
         <RegionPanel

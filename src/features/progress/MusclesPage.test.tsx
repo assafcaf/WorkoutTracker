@@ -7,6 +7,8 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { MusclesView } from './MusclesPage'
 import { loadCatalog, loadPrograms } from '../../data/catalog'
 import { loadLibrary } from '../../data/library'
+import { band } from '../../domain/band'
+import { muscleWeeks } from '../../domain/stats/muscles'
 import type { LibraryExercise, Program, Session } from '../../types'
 
 process.env.TZ = 'Asia/Jerusalem' // the zone the fixture was written in
@@ -51,7 +53,52 @@ test('O22 the 2-week window is the default, dated, under the on-plan sentence', 
   expect(screen.getByText('28 Sep – 11 Oct')).toBeVisible()
   expect(screen.getByText(/^On plan for 2 weeks/)).toBeVisible()
   expect(screen.getByRole('radio', { name: '2 weeks' })).toBeChecked()
-  expect(screen.queryByRole('radio', { name: /4 weeks/ })).toBeNull()
+  // V2-06: a 4 weeks segment now exists (the Sessions matrix moved here), but 2 weeks stays the default.
+  expect(screen.getByRole('radio', { name: '4 weeks' })).not.toBeChecked()
+})
+
+// --- V2-06 step 3: the 4 weeks segment, the matrix that used to sit on the Sessions tab ---------
+
+test('V2-06 the window segment reads This week | 2 weeks | 4 weeks', () => {
+  show()
+  expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('aria-label') ?? radio.closest('label')?.textContent)).toEqual([
+    'This week',
+    '2 weeks',
+    '4 weeks',
+  ])
+})
+
+test('V2-06 4 weeks shows each muscle per calendar week, in the Progress vocabulary, banded on the week scale', async () => {
+  show()
+  await userEvent.setup().click(screen.getByRole('radio', { name: '4 weeks' }))
+
+  const card = screen.getByRole('region', { name: 'Muscle sets by week' })
+  expect(screen.getByText('weeks of 21 Sep – 12 Oct')).toBeVisible()
+  expect(within(card).getAllByRole('rowheader').map((header) => header.textContent)).toEqual([
+    'Chest', 'Shoulders', 'Triceps', 'Lats', 'Mid back', 'Biceps',
+    'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Lower back', 'Abs',
+  ])
+  const weeks = muscleWeeks(existing, NOW, (id) => catalog.get(id), library, 1).slice(-4)
+  const lats = card.querySelector('tr[data-muscle="lats"]') as HTMLElement
+  const cells = [...lats.querySelectorAll('.heat-cell')]
+  expect(cells.map((cell) => cell.textContent)).toEqual(weeks.map((w) => String(Math.round(w.sets.get('lats') ?? 0))))
+  expect(cells.map((cell) => cell.getAttribute('data-band'))).toEqual(
+    weeks.map((w) => String(band(Math.round(w.sets.get('lats') ?? 0), 'week'))),
+  )
+  expect(card.querySelector('.heat-legend[data-scale="week"]')).not.toBeNull()
+  expect(document.body.textContent).not.toMatch(/Middle back|Quadriceps|Abdominals/)
+})
+
+test('V2-06 the 4 weeks matrix follows the stored week start', async () => {
+  render(
+    <MusclesView
+      data={{ sessions: existing, program, resolve: (id) => catalog.get(id), library, weekStart: 0 }}
+      now={NOW}
+      onBack={vi.fn()}
+    />,
+  )
+  await userEvent.setup().click(screen.getByRole('radio', { name: '4 weeks' }))
+  expect(screen.getByText('weeks of 20 Sep – 11 Oct')).toBeVisible()
 })
 
 test('O22 a row prints whole numbers against its plan, half up', () => {

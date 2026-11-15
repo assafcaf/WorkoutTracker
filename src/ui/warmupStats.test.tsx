@@ -118,7 +118,8 @@ test('O7 the Session summary shows the same volume and body map with warm-up Set
 
   const dialog = screen.getByRole('dialog', { name: 'Session summary' })
   expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toBe('300 kg')
-  const chest = [...dialog.querySelectorAll('[data-region="chest"]')]
+  // V2-06: the summary's one grid is by muscle, so the chest row carries the band.
+  const chest = [...dialog.querySelectorAll('[data-muscle="chest"]')]
   expect(chest.length).toBeGreaterThan(0)
   // One working set is band 1 on the session scale; five counted sets would be band 3.
   for (const shape of chest) expect(shape).toHaveAttribute('data-band', '1')

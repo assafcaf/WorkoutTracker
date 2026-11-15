@@ -2,6 +2,7 @@ import type { ChangeEvent } from 'react'
 import type { PlateInventory, Program, VolumeBaseline } from '../types'
 import type { SyncView } from '../services/syncView'
 import { formatDay } from '../domain/dates'
+import { AppleHealthSettings } from './AppleHealthSettings'
 import { PlateInventoryEditor } from './PlateInventoryEditor'
 import { Segmented, Select, Switch } from './controls'
 import { Icon } from './icons'
@@ -312,6 +313,7 @@ export function Settings(props: SettingsProps): JSX.Element {
           </label>
         </div>
       </section>
+      <AppleHealthSettings />
       {sync ? (
         <fieldset className="settings-group">
           <legend className="settings-legend">Account</legend>
