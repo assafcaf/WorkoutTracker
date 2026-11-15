@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react'
 import { buildLiftHistories, leverOf, straightSets } from '../domain/stats/liftHistory'
 import type { LiftPoint } from '../domain/stats/liftHistory'
 import { EST_MAX_FORMULA, liftRecordRows, sessionLog, storyPoints } from '../domain/stats/liftStory'
-import { realRecords } from '../domain/stats/realRecord'
+import { liftPrs } from '../domain/stats/records'
 import { liftStatus } from '../domain/stats/status'
 import type { LiftStatusKind } from '../domain/stats/status'
 import { dayMonth, humanDate, leverText, numberText, plural, topText } from '../domain/stats/words'
@@ -120,7 +120,7 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
             : `${reps > 0 ? '+' : '−'}${plural(Math.abs(reps), 'rep')}`
   }
 
-  const records = realRecords(history)
+  const records = liftPrs(history)
   const est = new Map(storyPoints(history).map((p) => [p.sessionId, p.value]))
   const from = range === 'all' ? -Infinity : now - RANGE_DAYS[range] * DAY
   const shown = history.points.filter((p): p is Real => p.top !== null && p.startedAt >= from)

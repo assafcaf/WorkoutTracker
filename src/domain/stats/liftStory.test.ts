@@ -2,10 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import sessionsJson from '../../test/fixtures/stats/sessions.json'
 import { loadCatalog, loadPrograms } from '../../data/catalog'
-import type { ExercisePlan, Session } from '../../types'
+import type { Exercise, ExercisePlan, Session } from '../../types'
 import { buildLiftHistories } from './liftHistory'
 import { changeSince, changeText, changeTextFor, liftRecordRows, measureOf, measureText, sessionLog, storyPoints } from './liftStory'
-import { isRecordSet } from './realRecord'
+import { computeRecords, liftBests, recordCount } from './records'
 
 process.env.TZ = 'Asia/Jerusalem'
 
@@ -69,13 +69,52 @@ describe('v6 records and the log', () => {
   })
 
   it('isRecordSet: heavier, or a better est. max; a rep best at a weight already lifted is not', () => {
-    const before = [{ lever: 60, reps: 8 }]
-    expect(isRecordSet({ lever: 62.5, reps: 5 }, before, false)).toBe('Heaviest weight')
-    expect(isRecordSet({ lever: 60, reps: 10 }, before, false)).toBe('Best est. max')
-    expect(isRecordSet({ lever: 60, reps: 8 }, before, false)).toBeNull()
-    expect(isRecordSet({ lever: 50, reps: 9 }, before, false)).toBeNull()
-    expect(isRecordSet({ lever: 60, reps: 9 }, [], false)).toBeNull()
-    expect(isRecordSet({ lever: -17, reps: 5 }, [{ lever: -19, reps: 6 }], true)).toBe('Least assistance')
-    expect(isRecordSet({ lever: 0, reps: 18 }, [{ lever: 0, reps: 17 }], true, true)).toBe('Most reps')
+    // V6 wave 3: the lift page's own rule is gone; its PR tags are the one rule's (records.ts).
+    const ex: Exercise = { id: 'lift', name: 'Lift', weightStep: 2.5, startWeight: null, bodyweight: false, libraryId: 'lift' }
+    const plan: ExercisePlan = { exerciseId: 'lift', sets: 1, repRange: [6, 8], restSeconds: 90 }
+    const at = (id: string, day: number, weightKg: number, reps: number): Session => ({
+      id,
+      programId: 'p',
+      workoutId: 'w',
+      startedAt: day * 86_400_000,
+      finishedAt: day * 86_400_000 + 1,
+      entries: [{ exerciseId: 'lift', setIndex: 1, weightKg, reps, loggedAt: day }],
+    })
+    const tags = (list: Session[]) =>
+      sessionLog(buildLiftHistories(list, () => ex, () => plan).get('lift')!)
+        .filter((r) => r.record !== null)
+        .map((r) => [r.sessionId, r.record!.kind])
+    expect(tags([at('a', 1, 60, 8), at('b', 2, 62.5, 5)])).toEqual([['b', 'Heaviest weight']])
+    expect(tags([at('a', 1, 60, 8), at('b', 2, 60, 10)])).toEqual([['b', 'Estimated 1RM']])
+    expect(tags([at('a', 1, 60, 8), at('b', 2, 60, 8)])).toEqual([])
+    expect(tags([at('a', 1, 60, 8), at('b', 2, 50, 9)])).toEqual([])
+    expect(tags([at('a', 1, 60, 9)])).toEqual([])
+    // Plain bodyweight: more reps is a rep best, never a PR tag.
+    expect(sessionLog(h('push-ups')).filter((r) => r.record !== null)).toEqual([])
+  })
+
+  it('V6 wave 3: Best est. max is the records.ts best estimated 1RM, only on lifts it measures', () => {
+    for (const [id, history] of histories) {
+      const est = liftRecordRows(history).find((r) => r.label === 'Best est. max')
+      const best = liftBests(history).find((r) => r.label === 'Best estimated 1RM')
+      if (best === undefined) expect(est, id).toBeUndefined()
+      else {
+        expect(est?.value, id).toBe(`${Math.round(best.e1rm! * 10) / 10} kg`)
+        expect(est?.at, id).toBe(best.at)
+      }
+    }
+    // Seated biceps curls (10–12 reps) has no estimated max under the one rule.
+    expect(liftRecordRows(h('seated-biceps-curls')).map((r) => r.label)).not.toContain('Best est. max')
+  })
+
+  it('V6 wave 3: a Session PR count in Sessions equals the PR tags on its lifts pages', () => {
+    const records = computeRecords(sessions, (id) => catalog.get(id), (id) => plans.get(id))
+    const tagged = new Map<string, number>()
+    for (const history of histories.values()) {
+      for (const row of sessionLog(history)) {
+        if (row.record !== null) tagged.set(row.sessionId, (tagged.get(row.sessionId) ?? 0) + 1)
+      }
+    }
+    for (const session of sessions) expect(tagged.get(session.id) ?? 0).toBe(recordCount(records, session.id))
   })
 })

@@ -5,7 +5,7 @@
 // src/types.ts.
 //
 // Evaluated in this order, first match wins ("load" is the top-set lever; "straight sets" as in
-// `straightSets`; records are the lift page's real records, `realRecord.ts`):
+// `straightSets`; records are the PRs of the one rule, `liftPrs` in records.ts):
 //   1 Too new  < 4 non-deload Sessions             -> "Log 2 more sessions for a verdict."
 //   2 Break    last Session >= 21 days before now  -> "Ease back in: 12.5 kg next time."
 //   3 Ready    (a) every straight set at the load in the last Session reached the top of the
@@ -28,7 +28,7 @@ import { effortSteps } from '../effortStep'
 import type { Resolve } from '../muscles'
 import { buildLiftHistories, leverOf, straightSets } from './liftHistory'
 import type { LiftHistory, LiftPoint } from './liftHistory'
-import { realRecords } from './realRecord'
+import { liftPrs } from './records'
 import { humanDate, leverText, numberText, plural, topText } from './words'
 
 export type LiftStatusKind = 'too new' | 'break' | 'ready' | 'hold' | 'lowered' | 'slipping' | 'stalled' | 'moving'
@@ -289,7 +289,7 @@ export function liftStatusOf({ exercise, plan, history, notes, now }: LiftStatus
   }
 
   // 6 Stalled / 7 Moving
-  const records = realRecords(history)
+  const records = liftPrs(history)
   const moved = real.map((_, i) => movedAt(real, i, bw, records))
   const lastMove = moved.lastIndexOf(true)
   const hi = plan?.repRange[1] ?? latest.top.reps + 1

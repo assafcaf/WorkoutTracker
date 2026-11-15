@@ -11,6 +11,7 @@ import {
   computeRecords,
   isRealRecord,
   liftBests,
+  liftPrs,
   recordCount,
   sessionPrs,
   sessionRepBests,
@@ -519,5 +520,31 @@ describe('V6 (V5-06) one PR rule: heavier, or a better estimated max; more reps 
         .sort(),
     ).toEqual(['Estimated 1RM', 'Heaviest weight'])
     expect(sessionRepBests(records, sessionOn('2026-10-12').id)).toHaveLength(3)
+  })
+})
+
+describe('V6 wave 3: the Lift page tags PRs by the one rule', () => {
+  it('liftPrs tags exactly the Sessions whose lift set a PR, on a straight set that set it', () => {
+    const histories = buildLiftHistories(sessions, resolve, planOf)
+    const records = allRecords()
+    for (const [id, history] of histories) {
+      const prs = liftPrs(history)
+      const expectedIds = records
+        .filter((r) => r.exerciseId === id && isRealRecord(r))
+        .map((r) => r.sessionId)
+      expect([...prs.keys()].sort()).toEqual([...expectedIds].sort())
+      for (const [sessionId, pr] of prs) {
+        const point = history.points.find((p) => p.sessionId === sessionId)!
+        expect(point.deload).toBe(false)
+        const tagged = point.workingSets.find((s) => s.setIndex === pr.setIndex)!
+        expect(tagged.kind).not.toBe('drop')
+        expect(['Heaviest weight', 'Least assistance', 'First added load', 'Estimated 1RM']).toContain(pr.kind)
+      }
+    }
+  })
+
+  it('liftPrs never tags a plain Bodyweight lift for more reps', () => {
+    const histories = buildLiftHistories(sessions, resolve, planOf)
+    expect(liftPrs(histories.get('push-ups')!).size).toBe(0)
   })
 })

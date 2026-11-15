@@ -11,7 +11,7 @@
 // Bodyweight with Load (any positive lever so far); plain Bodyweight.
 // "current lever" in `Most reps at <lever>` is the top lever of the lift's latest non-deload
 // Session; its label uses `BW+5` / `BW−19` (U+2212) / `62.5 kg`.
-import type { Session } from '../../types'
+import type { Session, SetEntry } from '../../types'
 import type { Resolve } from '../muscles'
 import { buildLiftHistories, leverOf, straightSets } from './liftHistory'
 import type { LiftHistory, PlanOf } from './liftHistory'
@@ -185,6 +185,33 @@ export function sessionPrs(records: SessionRecord[], sessionId: string): Session
 /** The Session's rep bests: its Session bests that are not PRs. */
 export function sessionRepBests(records: SessionRecord[], sessionId: string): SessionRecord[] {
   return records.filter((r) => r.sessionId === sessionId && !isRealRecord(r))
+}
+
+/** A Session's PR as the Lift page tags it: its kind and the Set (`setIndex`) that set it. */
+export type LiftPr = { kind: RecordKindName; setIndex: number }
+
+/**
+ * V6 wave 3: one lift's PRs by Session id, under the one rule (`asPr`), so the PR tags on a Lift
+ * page are the PRs the Sessions list counts. The tag goes on the straight set that set the PR: for
+ * an estimated 1RM, the set whose estimate it is; else the set of that weight and reps.
+ */
+export function liftPrs(history: LiftHistory): Map<string, LiftPr> {
+  const out = new Map<string, LiftPr>()
+  for (const record of recordsOfLift(history)) {
+    const pr = asPr(record)
+    if (pr === null) continue
+    const point = history.points.find((p) => p.sessionId === record.sessionId)
+    if (point === undefined) continue
+    const straight = straightSets(point.workingSets)
+    const lever = (s: SetEntry) => leverOf(s, history.bodyweight)
+    const byEstimate =
+      pr.e1rm === undefined
+        ? undefined
+        : straight.find((s) => s.reps <= 10 && Math.abs(lever(s) * (1 + s.reps / 30) - (pr.e1rm as number)) < 1e-9)
+    const set = byEstimate ?? straight.find((s) => lever(s) === pr.lever && s.reps === pr.reps) ?? straight[0]
+    if (set !== undefined) out.set(record.sessionId, { kind: pr.kind, setIndex: set.setIndex })
+  }
+  return out
 }
 
 /** The one count of a Session's PRs (live strip, summary, Sessions row, the week's PRs). */

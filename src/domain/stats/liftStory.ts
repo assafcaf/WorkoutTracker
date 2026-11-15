@@ -11,12 +11,12 @@
 //   changeText(measure, delta)         -> '+8.3 kg' | '+2 reps' | 'no change'
 //   changeTextFor(history, delta)      -> the same, but an assisted lift reads '1.5 kg less assistance'
 //   liftRecordRows(history)            -> heaviest set, best est. max, most reps at the current load
-//   sessionLog(history)                -> newest first, with the real record each Session set
+//   sessionLog(history)                -> newest first, with the PR each Session set (records.ts)
 import type { SetEntry } from '../../types'
 import type { LiftHistory } from './liftHistory'
 import { leverOf, straightSets } from './liftHistory'
-import { estimatedMax, realRecords } from './realRecord'
-import type { SessionRealRecord } from './realRecord'
+import { liftPrs } from './records'
+import type { LiftPr } from './records'
 import { leverText, numberText, plural, topText } from './words'
 
 export type Measure = 'est' | 'load' | 'reps'
@@ -31,6 +31,11 @@ export type StoryPoint = {
   top: { lever: number; reps: number }
   /** The top set as a chart label: `62.5×8`, `BW×17`, `BW−19×6`. */
   label: string
+}
+
+/** Estimated max (Epley): weight * (1 + reps / 30). */
+export function estimatedMax(weight: number, reps: number): number {
+  return weight * (1 + reps / 30)
 }
 
 export const EST_MAX_FORMULA = 'Est. max ≈ weight × (1 + reps ÷ 30), from your best working set.'
@@ -128,7 +133,8 @@ export type RecordRow = { label: string; value: string; detail?: string; at: num
 /**
  * The lift page's Records: `Heaviest set` (the highest lever, the most reps at it; `Least
  * assistance` or `Heaviest added load` on a Bodyweight lift; none on a plain one), `Best est. max`
- * (loaded lifts) and `Most reps in a set`. Deload Sessions count; ties keep the earliest.
+ * (loaded lifts planned for 10 reps or fewer, as records.ts measures it) and `Most reps in a
+ * set`. Deload Sessions count; ties keep the earliest.
  */
 export function liftRecordRows(history: LiftHistory): RecordRow[] {
   const bw = history.bodyweight
@@ -144,8 +150,10 @@ export function liftRecordRows(history: LiftHistory): RecordRow[] {
       if (!heaviest || lever > heaviest.lever || (lever === heaviest.lever && s.reps > heaviest.reps)) {
         heaviest = { lever, reps: s.reps, at: p.startedAt }
       }
+      // The one rule's estimated max (records.ts): lifts planned for 10 reps or fewer, from sets
+      // of 10 reps or fewer.
       const value = estimatedMax(lever, s.reps)
-      if (!bw && (!est || value > est.value)) est = { lever, reps: s.reps, value, at: p.startedAt }
+      if (history.e1rmLift && s.reps <= 10 && (!est || value > est.value)) est = { lever, reps: s.reps, value, at: p.startedAt }
       if ((measure === 'reps' || lever === current) && (!most || s.reps > most.reps)) {
         most = { lever, reps: s.reps, at: p.startedAt }
       }
@@ -172,14 +180,14 @@ export type LogRow = {
   sets: SetEntry[]
   /** The warm-ups, in order: shown, never counted. */
   warmups: SetEntry[]
-  /** The Session's real record and the Set that set it, if any. */
-  record: SessionRealRecord | null
+  /** The Session's PR (the one rule, `liftPrs`) and the Set that set it, if any. */
+  record: LiftPr | null
   /** The Session note, when there is one (added by the caller). */
   note?: string
 }
 
 export function sessionLog(history: LiftHistory): LogRow[] {
-  const records = realRecords(history)
+  const records = liftPrs(history)
   return history.points
     .filter((p) => p.workingSets.length > 0)
     .map((p) => ({
