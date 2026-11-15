@@ -84,7 +84,10 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText('Muscle week')).toBeNull()
     const lifts = screen.getByRole('list', { name: 'Workout A lifts' })
     const squatRow = within(lifts).getByText('Back squat').closest('li') as HTMLElement
-    expect(within(squatRow).getByText(/^20 of 20 → try /)).toBeTruthy()
+    // V2-05: Set 1 opens on last time's 60 kg over the Plan's 4 Sets; the full range earns a step up.
+    expect(within(squatRow).getByText('4 × 60 kg')).toBeTruthy()
+    expect(within(squatRow).getByText(/^step up · try /)).toBeTruthy()
+    expect(within(screen.getByRole('region', { name: 'This week' })).getByText('1 of 3')).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Tue 13 Oct · Synced 2 min ago')).toBeTruthy(), SETTLE)
 
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
@@ -98,7 +101,10 @@ describe('DashboardScreen', () => {
     fireEvent.click(use)
     await waitFor(() => expect(screen.getByText(/ due$/)).toBeTruthy(), SETTLE)
     expect(screen.queryByText('Your lifts show here after your first workout.')).toBeNull()
-    expect(screen.getAllByText('No sets yet').length).toBeGreaterThan(0)
+    // V2-05: with no history each row still reads the Preset Set 1 opens on (the start weight).
+    expect(screen.queryByText('No sets yet')).toBeNull()
+    const rows = within(screen.getByRole('list', { name: /lifts$/ })).getAllByRole('listitem')
+    expect(rows.every((row) => /\d+ (×|sets)/.test(row.textContent ?? ''))).toBe(true)
   })
 
   test("the estimate is the median of the workout's last logged durations once there are three", async () => {
@@ -113,16 +119,18 @@ describe('DashboardScreen', () => {
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
     // Each Session ran 3,000,000 ms: 50 minutes. Workout A is due after B.
-    await waitFor(() => expect(screen.getByText('~50 min · from your logged workouts')).toBeTruthy(), SETTLE)
+    // V2-05: the dock's summary carries the estimate; the card no longer repeats it.
+    await waitFor(() => expect(screen.getByText('7 exercises · 23 sets · ~50 min')).toBeTruthy(), SETTLE)
+    expect(screen.queryByText('~50 min · from your logged workouts')).toBeNull()
   })
 
   test('V1-21 after Change the Workout card is the chosen Workout with its first lift', async () => {
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
-    await screen.findByRole('heading', { level: 2, name: 'Workout A' }, SETTLE)
+    await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
     fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
     expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeTruthy()
-    expect(screen.getByRole('heading', { level: 2, name: 'Workout B' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Workout B' })).toBeTruthy()
     const rows = within(screen.getByRole('list', { name: 'Workout B lifts' })).getAllByRole('listitem')
     expect(within(rows[0]).getByText('Deadlift')).toBeTruthy()
   })
@@ -171,7 +179,10 @@ describe('DashboardScreen week start (E19-T5 O7)', () => {
     mount(services())
 
     await waitFor(() => expect(screen.getByText('Workout B due')).toBeTruthy(), SETTLE)
-    expect(screen.getByText('next · 1 more this week')).toBeTruthy()
+    // V2-05: the week strip at the top of Train counts it; Sunday's Session is in this week.
+    const week = screen.getByRole('region', { name: 'This week' })
+    expect(within(week).getByText('1 of 3')).toBeTruthy()
+    expect(within(week).getAllByRole('listitem')[0].getAttribute('aria-label')).toBe('Sun A')
   })
 
   test('E19-T5 O7 Train counts this week from Monday when no week start is stored', async () => {
@@ -180,6 +191,45 @@ describe('DashboardScreen week start (E19-T5 O7)', () => {
     mount(services())
 
     await waitFor(() => expect(screen.getByText('Workout B due')).toBeTruthy(), SETTLE)
-    expect(screen.getByText('next · 2 more this week')).toBeTruthy()
+    const week = screen.getByRole('region', { name: 'This week' })
+    expect(within(week).getByText('0 of 3')).toBeTruthy()
+    expect(within(week).getAllByRole('listitem')[0].getAttribute('aria-label')).toBe('Mon')
+  })
+})
+
+describe('DashboardScreen V2-05 today’s Workout as the live Session opens it', () => {
+  test('V2-05 the Deadlift row reads the Set 1 Preset: last time’s first working Set, past the warm-up', async () => {
+    const mon = at(9, 12)
+    await db.sessions.bulkPut([
+      session('fri', 'workout-a', at(9, 9), [squat(60, 10, at(9, 9), 0)]),
+      session('mon', 'workout-b', mon, [
+        { exerciseId: 'deadlift', setIndex: 1, weightKg: 40, reps: 5, loggedAt: mon, kind: 'warmup' },
+        { exerciseId: 'deadlift', setIndex: 2, weightKg: 60, reps: 10, loggedAt: mon },
+        { exerciseId: 'deadlift', setIndex: 3, weightKg: 70, reps: 7, loggedAt: mon },
+        { exerciseId: 'deadlift', setIndex: 4, weightKg: 70, reps: 7, loggedAt: mon },
+      ]),
+    ])
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+    await waitFor(() => expect(screen.getByText('Workout A due')).toBeTruthy(), SETTLE)
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    const lifts = screen.getByRole('list', { name: 'Workout B lifts' })
+    const row = within(lifts).getByText('Deadlift').closest('li') as HTMLElement
+    expect(within(row).getByText('3 × 60 kg')).toBeTruthy()
+    expect(within(row).getByText('· 8–10')).toBeTruthy()
+  })
+
+  test('V2-05 on a deload week each row reads the deloaded Preset', async () => {
+    await db.sessions.put(session('fri', 'workout-a', at(9, 9), [squat(60, 10, at(9, 9), 0)]))
+    await db.settings.put({ key: 'deloadWeek', value: new Date(2026, 9, 12).getTime(), updatedAt: NOW })
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+    const lifts = await screen.findByRole('list', { name: 'Workout B lifts' }, SETTLE)
+    expect(lifts).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    const a = screen.getByRole('list', { name: 'Workout A lifts' })
+    const row = within(a).getByText('Back squat').closest('li') as HTMLElement
+    expect(within(row).getByText(/^4 × 5\d(\.\d+)? kg$/)).toBeTruthy()
+    expect(screen.getByText('Deload week · Presets 10% lighter')).toBeTruthy()
   })
 })

@@ -2,7 +2,7 @@ import { useContext, useState, type ReactNode } from 'react'
 import { SettingsButton, ShellChromeContext } from '../../ui/AppShell'
 import { Icon } from '../../ui/icons'
 import './DashboardScreen.css'
-import type { TrainCard } from './trainCard'
+import type { TrainCard, TrainLiftRow, WeekStrip } from './trainCard'
 
 /** How the header's second line reads the phone's cloud copy. */
 export type DashboardSync =
@@ -45,6 +45,8 @@ export type DashboardData =
        * for the one chosen (V1-21). The due one falls back to `card`.
        */
       cards?: Record<string, TrainCard>
+      /** This week's strip, drawn at the top of Train (V2-05); omitted, none is drawn. */
+      week?: WeekStrip
     }
 
 /** A workout the dock offers to start: its name, when it was last done and its size. */
@@ -85,82 +87,85 @@ function SyncLine({ today, sync }: { today: string; sync: DashboardSync }): JSX.
   return <p className="dashboard-status">{`${today} · ${tail}`}</p>
 }
 
-function DueCard({ card, due }: { card: TrainCard; due: boolean }): JSX.Element {
-  const ready = card.lifts.filter((lift) => lift.step?.suggest)
-  const note = card.estimate === 'logged' ? 'from your logged workouts' : 'planned'
+/** "This week" at the top of Train (V2-05): each day with the workout done on it, and done of planned. */
+function WeekStripRow({ week }: { week: WeekStrip }): JSX.Element {
   return (
-    <section className="dashboard-train" aria-labelledby="dashboard-train-title">
-      <div className="dashboard-card-head">
-        <div className="dashboard-card-heading">
-          <h2 className="dashboard-card-title" id="dashboard-train-title">
-            {card.name}
-          </h2>
-          {due ? (
-            <span className="dashboard-card-next">
-              {card.more && card.more > 0 ? `next · ${card.more} more this week` : 'next'}
+    <section className="dashboard-week" aria-label="This week">
+      <span className="dashboard-week-title">This week</span>
+      <ol className="dashboard-week-days">
+        {week.days.map((day) => (
+          <li
+            key={day.key}
+            className={day.today ? 'dashboard-week-day dashboard-week-today' : 'dashboard-week-day'}
+            aria-label={day.workout ? `${day.name} ${day.workout}` : day.name}
+            aria-current={day.today ? 'date' : undefined}
+          >
+            <span className="dashboard-week-initial" aria-hidden="true">
+              {day.initial}
             </span>
-          ) : null}
-        </div>
-      </div>
-      <p className="dashboard-step-estimate">{`~${card.minutes} min · ${note}`}</p>
+            {day.workout ? (
+              <span className="dashboard-week-done" aria-hidden="true">
+                {day.workout}
+              </span>
+            ) : (
+              <span className="dashboard-week-rest" aria-hidden="true" />
+            )}
+          </li>
+        ))}
+      </ol>
+      <span className="dashboard-week-count">{`${week.done} of ${week.planned}`}</span>
+    </section>
+  )
+}
+
+/** `3 × 70 kg`: the planned Sets at the Set 1 Preset; `3 sets` with no weight to go on. */
+function presetText(lift: TrainLiftRow): string | null {
+  if (lift.sets === undefined) return null
+  return lift.load ? `${lift.sets} × ${lift.load}` : `${lift.sets} sets`
+}
+
+/** The row's second line: the step up when the lift is ready, or the hold. */
+function stepNote(lift: TrainLiftRow): JSX.Element | null {
+  if (!lift.step) return null
+  if (lift.step.hold) return <span className="dashboard-step-hold">{`stay at ${lift.step.at}`}</span>
+  if (!lift.step.suggest) return null
+  return (
+    <span className="dashboard-step-ready">
+      <Icon name="ArrowUp" size={14} />
+      {`step up · ${lift.step.suggest}`}
+    </span>
+  )
+}
+
+/**
+ * Today's Workout as it will be lifted (V2-05): one row per Plan with its Sets at the Set 1
+ * Preset and the rep range, and a step-up marker on a lift that is ready. The workout's name,
+ * size and duration live in the dock under it.
+ */
+function DueCard({ card }: { card: TrainCard }): JSX.Element {
+  return (
+    <section className="dashboard-train" aria-label={card.name}>
       {card.deload ? <p className="dashboard-step-deload">Deload week · Presets 10% lighter</p> : null}
-      {ready.length > 0 ? (
-        <p className="dashboard-step-summary">
-          <Icon name="ArrowUp" size={16} />
-          {`${ready.length} ${ready.length === 1 ? 'lift' : 'lifts'} ready to step up: ${ready.map((lift) => lift.name.toLowerCase()).join(', ')}. ${ready
-            .map((lift) => lift.step!.suggest!.replace(/^try /, 'Try '))
-            .join(', ')} next.`}
-        </p>
-      ) : null}
-      {card.lifts.some((lift) => lift.step) ? (
-        <p className="dashboard-step-legend">
-          <span>Reps at the current weight against the next step</span>
-          <span className="dashboard-step-key">
-            <i aria-hidden="true" /> = next step
-          </span>
-        </p>
-      ) : null}
       {card.lifts.length > 0 ? (
         <ul className="dashboard-steps" aria-label={`${card.name} lifts`}>
-          {card.lifts.map((lift) => (
-            <li key={lift.exerciseId} className="dashboard-step">
-              <div className="dashboard-step-line">
-                <span className="dashboard-step-name">{lift.name}</span>
-                {lift.step ? (
-                  <span className="dashboard-step-text">
-                    {lift.step.hold ? (
-                      <>
-                        <span className="dashboard-step-count">{`${lift.step.reps} of ${lift.step.target}`}</span>
-                        <span className="dashboard-step-at">{`stay at ${lift.step.at}`}</span>
-                      </>
-                    ) : lift.step.suggest ? (
-                      <span className="dashboard-step-ready">{`${lift.step.reps} of ${lift.step.target} → ${lift.step.suggest}`}</span>
-                    ) : (
-                      <>
-                        <span className="dashboard-step-count">{`${lift.step.reps} of ${lift.step.target}`}</span>
-                        <span className="dashboard-step-at">{`at ${lift.step.at}`}</span>
-                      </>
-                    )}
-                  </span>
-                ) : (
-                  <span className="dashboard-step-at">No sets yet</span>
-                )}
-              </div>
-              {lift.step ? (
-                <div
-                  className="dashboard-step-bar"
-                  role="progressbar"
-                  aria-label={`${lift.name} ${lift.step.reps} of ${lift.step.target}`}
-                  aria-valuemin={0}
-                  aria-valuenow={lift.step.reps}
-                  aria-valuemax={lift.step.target}
-                  data-ready={lift.step.suggest ? 'true' : undefined}
-                >
-                  <i style={{ width: `${Math.min(100, (lift.step.reps / Math.max(1, lift.step.target)) * 100)}%` }} />
+          {card.lifts.map((lift) => {
+            const preset = presetText(lift)
+            const note = stepNote(lift)
+            return (
+              <li key={lift.exerciseId} className="dashboard-step">
+                <div className="dashboard-step-line">
+                  <span className="dashboard-step-name">{lift.name}</span>
+                  {preset ? (
+                    <span className="dashboard-step-text">
+                      <span className="dashboard-step-preset">{preset}</span>
+                      {lift.reps ? <span className="dashboard-step-reps">{` · ${lift.reps}`}</span> : null}
+                    </span>
+                  ) : null}
                 </div>
-              ) : null}
-            </li>
-          ))}
+                {note ? <div className="dashboard-step-note">{note}</div> : null}
+              </li>
+            )
+          })}
         </ul>
       ) : null}
     </section>
@@ -258,8 +263,8 @@ function StartDock({
 }
 
 /**
- * The Train home screen (E18 O24): the workout due with each lift's next step and a duration
- * estimate, and its start button docked at the bottom. With no Program yet it offers the Programs to pick from instead.
+ * The Train home screen (E18 O24, V2-05): this week's strip, the workout due as Set 1 opens each
+ * lift, and its start button docked at the bottom. With no Program yet it offers the Programs to pick from instead.
  */
 export function DashboardView(props: DashboardViewProps): JSX.Element {
   const { data } = props
@@ -310,9 +315,6 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
             </button>
           ))}
         </section>
-        <p className="dashboard-new-note">
-          Sessions, lifts and muscle balance fill this page after your first workout.
-        </p>
       </>
     )
     dock = (
@@ -334,7 +336,12 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
       (due && chosen.dueId === dueId && workouts.find((workout) => workout.workoutId === chosen.workoutId)) || due
     const card =
       offered && due && offered.workoutId !== due.workoutId ? (data.cards?.[offered.workoutId] ?? null) : data.card
-    body = card ? <DueCard card={card} due={!offered || !due || offered.workoutId === due.workoutId} /> : null
+    body = (
+      <>
+        {data.week ? <WeekStripRow week={data.week} /> : null}
+        {card ? <DueCard card={card} /> : null}
+      </>
+    )
     if (!dock && due && offered) {
       dock = (
         <StartDock

@@ -4,9 +4,12 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import sessionsJson from '../../test/fixtures/stats/sessions.json'
 import { createServices } from '../../services'
 import { db } from '../../storage/db'
-import { setActiveProgramId, setWeekStart } from '../../storage/settingsStore'
+import { setActiveProgramId } from '../../storage/settingsStore'
 import type { Session } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
+import programJson from '../../data/programs/assaf-ab-2026.json'
+import type { Program } from '../../types'
+import { weekStripOf } from '../dashboard/trainCard'
 import { Home } from './Home'
 import type { ProgressPage } from './pages'
 
@@ -47,7 +50,12 @@ describe('E18-T10 O20 Progress home with 45 Sessions', () => {
   test('O20 an attention card has its sentence, its suggestion and a Why? that expands in place', async () => {
     const { push } = await mount(fixture)
     const card = await waitFor(() => screen.getByRole('region', { name: 'Narrow-grip pull-down' }), SETTLE)
-    expect(within(card).getByText(/slipping, 46\.25 kg × 9 on Mon 12 Oct/)).toBeTruthy()
+    // V2-08: three lines -- name and verdict, the top set against the best it slipped below, then
+    // the suggestion and Why?. The sentence is the card's accessible description, not drawn text.
+    expect(card).toHaveAccessibleDescription(/^Slipping, 46\.25 kg × 9 on Mon 12 Oct, below 47\.5 kg × 10/)
+    expect(within(card).getByText('46.25 kg × 9')).toBeVisible()
+    expect(within(card).getByText('· was 47.5 × 10 on 28 Sep')).toBeVisible()
+    expect(card.textContent?.split('Narrow-grip pull-down')).toHaveLength(2)
     expect(within(card).getByText('Consider a lighter week or a variation')).toBeTruthy()
     expect(within(card).queryByText(/Slipping: the last 2 sessions/)).toBeNull()
     fireEvent.click(within(card).getByRole('button', { name: 'Why?' }))
@@ -58,25 +66,36 @@ describe('E18-T10 O20 Progress home with 45 Sessions', () => {
     expect(push).toHaveBeenCalledWith({ kind: 'lift', exerciseId: 'narrow-grip-pull-down' })
   })
 
+  test('V2-08 a stalled card compares its top set with the day of its last record', async () => {
+    await mount(fixture)
+    const card = await waitFor(() => screen.getByRole('region', { name: 'Push-ups' }), SETTLE)
+    expect(within(card).getByText('BW × 15')).toBeTruthy()
+    expect(within(card).getByText('· no record since 3 Aug')).toBeTruthy()
+    expect(card).toHaveAccessibleDescription(/^Stalled for 10 weeks/)
+  })
+
   test('O20 the adherence tile reads 2 of 3 this week and its done days open their Session', async () => {
-    const { navigate } = await mount(fixture)
-    await waitFor(() => expect(screen.getByText('2 of 3 this week')).toBeTruthy(), SETTLE)
-    const tile = screen.getByRole('region', { name: 'This week' })
-    expect(within(tile).getAllByRole('listitem')).toHaveLength(7)
-    const done = within(tile).getAllByRole('button')
-    expect(done).toHaveLength(2)
-    fireEvent.click(done[0])
-    expect(navigate).toHaveBeenCalledWith({ tab: 'history', sessionId: expect.any(String) })
+    // V2-05: the week moved to the top of Train. Progress Home draws no This week tile, and
+    // Train's strip over the same Sessions reads 2 of 3 with the two done days named.
+    await mount(fixture)
+    await waitFor(() => expect(screen.getByText('11 of 14 lifts moving.')).toBeTruthy(), SETTLE)
+    expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
+    expect(screen.queryByText('2 of 3 this week')).toBeNull()
+    const strip = weekStripOf(fixture, programJson as unknown as Program, NOW, 1)
+    expect(`${strip.done} of ${strip.planned}`).toBe('2 of 3')
+    expect(strip.days).toHaveLength(7)
+    expect(strip.days.filter((d) => d.workout !== null)).toHaveLength(2)
   })
 
   test('O20 the muscles finding opens Muscles, the moving list is collapsed and All 14 lifts opens the list', async () => {
     const { push } = await mount(fixture)
-    await waitFor(() => expect(screen.getByText('11 lifts moving')).toBeTruthy(), SETTLE)
+    await waitFor(() => expect(screen.getByRole('button', { name: /All 14 lifts/ })).toBeTruthy(), SETTLE)
     expect(screen.queryByText('▲ Moving')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /^Muscles/ }))
     expect(push).toHaveBeenCalledWith({ kind: 'muscles' })
-    fireEvent.click(screen.getByRole('button', { name: /11 lifts moving/ }))
-    expect(screen.getAllByText('▲ Moving')).toHaveLength(11)
+    // V2-08: one row opens the lifts; the moving row went into All lifts' status filter.
+    expect(screen.queryByRole('button', { name: /11 lifts moving/ })).toBeNull()
+    expect(screen.getAllByRole('button').filter((b) => /\blifts/.test(b.textContent ?? ''))).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: /All 14 lifts/ }))
     expect(push).toHaveBeenCalledWith({ kind: 'lifts' })
   })
@@ -109,29 +128,21 @@ describe('E18-T10 O20 the sparse states', () => {
 })
 
 describe('E19-T4 O6 the day strip follows the stored week start', () => {
+  // V2-05: the strip is Train's now; its days come from weekStripOf over the stored week start.
+  const program = programJson as unknown as Program
+
   test('O6 with Sunday stored the strip runs Sun to Sat and marks Thursday as today', async () => {
-    await setWeekStart(0, NOW)
-    await mount(fixture)
-    const tile = await waitFor(() => screen.getByRole('region', { name: 'This week' }), SETTLE)
-    const days = within(tile).getAllByRole('listitem')
-    expect(days.map((d) => d.querySelector('.progress-day-name')?.textContent)).toEqual([
-      'Sun',
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-    ])
-    expect(days[0].querySelector('.progress-day-date')?.textContent).toBe('11')
-    expect(days.map((d) => d.classList.contains('progress-day-today'))).toEqual([false, false, false, false, true, false, false])
+    const strip = weekStripOf(fixture, program, NOW, 0)
+    expect(strip.days.map((d) => d.name)).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])
+    expect(strip.days.map((d) => d.today)).toEqual([false, false, false, false, true, false, false])
   })
 
   test('O6 with nothing stored the strip still runs Mon to Sun', async () => {
     await mount(fixture)
-    const tile = await waitFor(() => screen.getByRole('region', { name: 'This week' }), SETTLE)
-    const days = within(tile).getAllByRole('listitem')
-    expect(days[0].querySelector('.progress-day-name')?.textContent).toBe('Mon')
-    expect(days[3].classList.contains('progress-day-today')).toBe(true)
+    await waitFor(() => expect(screen.getByText('11 of 14 lifts moving.')).toBeTruthy(), SETTLE)
+    expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
+    const strip = weekStripOf(fixture, program, NOW, 1)
+    expect(strip.days[0].name).toBe('Mon')
+    expect(strip.days[3].today).toBe(true)
   })
 })

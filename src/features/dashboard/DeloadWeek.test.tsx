@@ -163,9 +163,10 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     mount(servicesAt(TUE), TUE)
     const lifts = await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
     const row = within(lifts).getByText('Back squat').closest('li') as HTMLElement
-    expect(within(row).getByText('20 of 20')).toBeTruthy()
+    // V2-05: the row reads the Set 1 Preset, and the hold says to stay instead of a step up.
+    expect(within(row).getByText('4 × 60 kg')).toBeTruthy()
     expect(within(row).getByText('stay at 60 kg')).toBeTruthy()
-    expect(within(row).queryByText(/→ try/)).toBeNull()
+    expect(within(row).queryByText(/step up/)).toBeNull()
   })
 
   test('O16 a lift after an easy full bar reads the two-step try', async () => {
@@ -173,6 +174,7 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     mount(servicesAt(TUE), TUE)
     const lifts = await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
     const row = within(lifts).getByText('Back squat').closest('li') as HTMLElement
-    expect(within(row).getByText(/^20 of 20 → try (6[0-9](\.\d+)?) kg$/)).toBeTruthy()
+    expect(within(row).getByText('4 × 60 kg')).toBeTruthy()
+    expect(within(row).getByText(/^step up · try (6[0-9](\.\d+)?) kg$/)).toBeTruthy()
   })
 })

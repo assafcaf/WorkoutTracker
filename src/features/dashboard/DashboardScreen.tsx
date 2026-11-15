@@ -25,7 +25,7 @@ import {
   type DockWorkout,
   type ProgramOption,
 } from './DashboardView'
-import { trainCardOf, type TrainCard } from './trainCard'
+import { trainCardOf, weekStripOf, type TrainCard } from './trainCard'
 
 export type DashboardScreenProps = {
   /** Starts (or resumes) `workoutId` of the active Program. */
@@ -182,11 +182,12 @@ export function DashboardScreen({
           .filter((session) => session.programId === program.id && session.workoutId === workout.id)
           .map((session) => session.startedAt)
         const card = workoutCard(program, workout, done.length > 0 ? Math.max(...done) : null, sessions, resolve, histories)
-        cards[workout.id] = trainCardOf(card, histories, more, deloadOn)
+        cards[workout.id] = trainCardOf(card, histories, more, deloadOn, sessions, resolve)
       }
       data = {
         kind: 'ready',
-        card: dueCard ? trainCardOf(dueCard, histories, more, deloadOn) : null,
+        card: dueCard ? trainCardOf(dueCard, histories, more, deloadOn, sessions, resolve) : null,
+        week: weekStripOf(sessions, program, at, weekStartsOn),
         cards,
         due: due
           ? {

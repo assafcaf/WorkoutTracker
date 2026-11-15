@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { bodyweightOn } from '../../domain/bodyLog'
 import { applyBodyweight } from '../../domain/bodyweight'
@@ -16,7 +16,6 @@ import { verdicts } from '../../domain/stats/verdict'
 import type { Verdict } from '../../domain/stats/verdict'
 import { lastWeekCard } from '../../domain/stats/weekCard'
 import type { LastWeekCard } from '../../domain/stats/weekCard'
-import { weeksOf } from '../../domain/stats/weeks'
 import type { Weekday } from '../../domain/stats/weeks'
 import type { Services } from '../../services'
 import type { BodyLog, Exercise, ExercisePlan, LibraryExercise, Program, Session } from '../../types'
@@ -168,24 +167,59 @@ const KIND_LABEL: Record<AttentionCard['kind'], string> = {
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
+/** `28 Sep`: a day without its weekday, for the card's comparison line. */
+const shortDate = (ms: number): string => humanDate(ms).replace(/^\S+ /, '')
+
+/**
+ * The card's second line (V2-08): the latest top set against what it is judged by -- the best it
+ * slipped below, the day of the last record, or the day it reached the top of the range.
+ */
+function comparison(model: ProgressModel, card: AttentionCard): string | null {
+  const verdict = model.verdicts.get(card.exerciseId)
+  const bodyweight = model.histories.get(card.exerciseId)?.bodyweight ?? false
+  if (card.kind === 'slipping' && verdict?.bestBefore) {
+    // `47.5 × 10`: the unit is already on the latest top set beside it.
+    const was = topText(verdict.bestBefore, bodyweight).replace(' kg ×', ' ×')
+    return `was ${was} on ${shortDate(verdict.bestBefore.startedAt)}`
+  }
+  if (card.kind === 'stalled' && verdict?.since !== undefined) return `no record since ${shortDate(verdict.since)}`
+  const date = latestDate(model, card.exerciseId)
+  return date ? `on ${date.replace(/^\S+ /, '')}` : null
+}
+
+/** The sentence without its lead name (`Push-ups: stalled…` → `Stalled…`): the card's label names it. */
+function description(name: string, sentence: string): string {
+  const rest = sentence.startsWith(`${name}: `) ? sentence.slice(name.length + 2) : sentence
+  return cap(rest)
+}
+
+/**
+ * One attention card in three lines (V2-08): the lift and its verdict, the latest top set against
+ * its comparison beside the mini ladder, then the suggestion and Why?. The full sentence stays as
+ * the card's accessible description.
+ */
 function Card({ model, card, onOpen }: { model: ProgressModel; card: AttentionCard; onOpen(id: string): void }): JSX.Element {
   const [open, setOpen] = useState(false)
+  const sentenceId = useId()
   const top = latestTop(model, card.exerciseId)
+  const against = comparison(model, card)
   return (
-    <section className="card progress-card" aria-label={model.nameOf(card.exerciseId)}>
+    <section className="card progress-card" aria-label={model.nameOf(card.exerciseId)} aria-describedby={sentenceId}>
+      <p id={sentenceId} className="progress-visually-hidden">
+        {description(model.nameOf(card.exerciseId), card.sentence)}
+      </p>
       <button type="button" className="btn-quiet progress-card-open" onClick={() => onOpen(card.exerciseId)}>
-        <span className="progress-card-name">{model.nameOf(card.exerciseId)}</span>
-        <span className="progress-card-kind">{KIND_LABEL[card.kind]}</span>
+        <span className="progress-card-head">
+          <span className="progress-card-name">{model.nameOf(card.exerciseId)}</span>
+          <span className="progress-card-kind">{KIND_LABEL[card.kind]}</span>
+        </span>
+        <span className="progress-card-fact">
+          {top ? <span className="progress-card-value">{top}</span> : null}
+          {against ? <span className="progress-card-against">{top ? ` · ${against}` : against}</span> : null}
+        </span>
       </button>
-      <p className="progress-card-sentence">{card.sentence}</p>
-      <div className="progress-card-chart">
+      <div className="progress-card-spark" aria-hidden="true">
         <MiniLadder model={model} exerciseId={card.exerciseId} />
-        {top ? (
-          <span className="progress-card-value">
-            {top}
-            <span className="progress-card-date">{latestDate(model, card.exerciseId)}</span>
-          </span>
-        ) : null}
       </div>
       <div className="progress-card-foot">
         <p className="progress-card-suggestion">{card.suggestion}</p>
@@ -206,47 +240,6 @@ function Card({ model, card, onOpen }: { model: ProgressModel; card: AttentionCa
         </ul>
       ) : null}
     </section>
-  )
-}
-
-function DayStrip({ model, onOpenSession }: { model: ProgressModel; onOpenSession(id: string): void }): JSX.Element {
-  const week = weeksOf(model.data.sessions, model.now, model.data.weekStart).find((w) => w.inProgress)
-  const monday = week?.start ?? 0
-  const first = model.data.weekStart
-  const todayIndex = (new Date(model.now).getDay() - first + 7) % 7
-  const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const days = names.map((_, i) => names[(first + i) % 7])
-  const workoutName = (id: string) =>
-    model.data.program.workouts.find((w) => w.id === id)?.name.replace(/^Workout\s+/i, '') ?? ''
-  return (
-    <ol className="progress-days">
-      {days.map((day, i) => {
-        const start = new Date(monday)
-        const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
-        const session = week?.sessions.find((s) => {
-          const d = new Date(s.startedAt)
-          return d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth() && d.getDate() === date.getDate()
-        })
-        return (
-          <li key={day} className={i === todayIndex ? 'progress-day progress-day-today' : 'progress-day'}>
-            <span className="progress-day-name">{day}</span>
-            {session ? (
-              <button
-                type="button"
-                className="btn-quiet progress-day-done"
-                aria-label={`${day} ${workoutName(session.workoutId)}`}
-                onClick={() => onOpenSession(session.id)}
-              >
-                {workoutName(session.workoutId)}
-              </button>
-            ) : (
-              <span className="progress-day-rest" aria-hidden="true" />
-            )}
-            <span className="progress-day-date">{date.getDate()}</span>
-          </li>
-        )
-      })}
-    </ol>
   )
 }
 
@@ -332,10 +325,9 @@ type HomeProps =ProgressPageProps<'home'> & {
   now?: () => number
 }
 
-/** The Progress tab's own screen (O20): verdict, counts, attention cards, then the week and lists. */
+/** The Progress tab's own screen (O20, V2-08): verdict, counts, attention cards, last week, then the lists. */
 export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element {
   const loaded = useServiceData(loadProgress, ['programs', 'sessions', 'preferences'])
-  const [moving, setMoving] = useState(false)
   const at = now()
   const model = loaded.status === 'ready' && loaded.data ? progressModel(loaded.data, at) : null
   const open = (exerciseId: string) => push({ kind: 'lift', exerciseId })
@@ -343,7 +335,6 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
 
   if (!model) return <AppShell title="Progress">{null}</AppShell>
   const { copy, data } = model
-  const movingIds = model.order.filter((id) => model.verdicts.get(id)?.kind === 'moving')
   const lastWeek = lastWeekCard(
     data.sessions,
     at,
@@ -418,14 +409,6 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
 
             {weekCard}
 
-            <section className="card progress-tile" aria-label="This week">
-              <p className="progress-tile-title">{copy.adherence}</p>
-              <DayStrip
-                model={model}
-                onOpenSession={(sessionId) => navigate?.({ tab: 'history', sessionId })}
-              />
-            </section>
-
             {finding ? (
               <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'muscles' })}>
                 <span className="progress-link-main">
@@ -436,35 +419,10 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
               </button>
             ) : null}
 
-            <button
-              type="button"
-              className="btn-quiet progress-link"
-              aria-expanded={moving}
-              onClick={() => setMoving((v) => !v)}
-            >
-              <span className="progress-link-main">
-                <span className="progress-link-title">{`${movingIds.length} lifts moving`}</span>
-              </span>
-              <Icon name="ChevronRight" size={20} />
-            </button>
-            {moving ? (
-              <ul className="progress-rows">
-                {movingIds.map((id) => (
-                  <li key={id}>
-                    <button type="button" className="btn-quiet progress-row" onClick={() => open(id)}>
-                      <span className="progress-row-main">
-                        <span className="progress-row-name">{model.nameOf(id)}</span>
-                        <span className="progress-row-note">{verdictLabel('moving')}</span>
-                      </span>
-                      <span className="progress-row-value">{latestTop(model, id)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
             <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'lifts' })}>
               <span className="progress-link-main">
                 <span className="progress-link-title">{`All ${model.order.length} lifts`}</span>
+                <span className="progress-link-sub">Moving, stalled, slipping or ready</span>
               </span>
               <Icon name="ChevronRight" size={20} />
             </button>
