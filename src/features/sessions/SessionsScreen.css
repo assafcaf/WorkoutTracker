@@ -142,7 +142,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  height: 20px;
+  min-height: 20px;
 }
 
 .session-row-stats {
@@ -150,4 +150,39 @@
   font-size: var(--text-sm);
   line-height: 1.25rem;
   white-space: nowrap;
+}
+
+/* V5: a row's PR count is plain muted text, not the accent PR tag. In a progressing Program most
+ * Sessions set PRs, so an accent pill on every row carried no signal; the accent stays for the PR
+ * moment, the summary and the lift page. A row with none shows nothing. */
+.session-row-prs {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* V5: the calendar's Session days are buttons into their Session, so they grow to 2rem (32 px)
+ * tall; the empty days stay with them in one grid. */
+.sessions-calendar .calendar-day {
+  height: 2rem;
+}
+
+/* V5: a day with two Sessions opens this chooser, one button per Session. */
+.sessions-chooser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.sessions-chooser-heading {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.sessions-chooser-option {
+  min-height: var(--tap-min);
+  justify-content: flex-start;
 }

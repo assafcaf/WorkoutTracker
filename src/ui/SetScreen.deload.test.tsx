@@ -7,7 +7,7 @@ import { SetScreen } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
-vi.mock('./restSound', () => ({ unlockRestSound: vi.fn(), playRestOver: vi.fn() }))
+vi.mock('./restSound', () => ({ unlockRestSound: vi.fn(), playRestOver: vi.fn(), playPrSound: vi.fn() }))
 
 const BASE = 1_700_000_000_000
 const catalog = loadCatalog()

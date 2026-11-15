@@ -110,7 +110,7 @@
 }
 
 .all-cell--future {
-  border: 1.5px dashed var(--color-control);
+  border: 1.5px dashed var(--color-muted);
 }
 
 .all-cell-mark {

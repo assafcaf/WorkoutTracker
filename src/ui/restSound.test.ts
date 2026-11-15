@@ -105,3 +105,29 @@ test('O2 playRestOver is a silent no-op that throws nothing where AudioContext d
 
   expect(() => playRestOver()).not.toThrow()
 })
+
+test('V4-04 playPrSound schedules two rising tones on the AudioContext unlockRestSound made', async () => {
+  vi.stubGlobal('AudioContext', FakeAudioContext)
+  const { unlockRestSound, playPrSound } = await freshRestSound()
+  unlockRestSound()
+
+  playPrSound()
+
+  const [context] = FakeAudioContext.instances
+  expect(context.createOscillator).toHaveBeenCalledTimes(2)
+  const pitches = context.createOscillator.mock.results.map(
+    (result) => (result.value as FakeOscillatorNode).frequency.value,
+  )
+  expect(pitches[1]).toBeGreaterThan(pitches[0])
+})
+
+test('V4-04 playPrSound is silent before the sound is unlocked, and where AudioContext does not exist', async () => {
+  vi.stubGlobal('AudioContext', FakeAudioContext)
+  const first = await freshRestSound()
+  expect(() => first.playPrSound()).not.toThrow()
+  expect(FakeAudioContext.instances).toHaveLength(0)
+
+  vi.stubGlobal('AudioContext', undefined)
+  const { playPrSound } = await freshRestSound()
+  expect(() => playPrSound()).not.toThrow()
+})

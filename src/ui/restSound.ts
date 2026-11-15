@@ -31,18 +31,31 @@ export function unlockRestSound(): void {
   }
 }
 
-export function playRestOver(): void {
+/** Plays `pitches` one after another, each a TONE_SECONDS sine, TONE_GAP_SECONDS apart. */
+function playTones(pitches: number[]): void {
   if (audioContext === null) return
 
-  for (let i = 0; i < 3; i += 1) {
-    const startAt = audioContext.currentTime + i * (TONE_SECONDS + TONE_GAP_SECONDS)
-    const oscillator = audioContext.createOscillator()
-    const gain = audioContext.createGain()
+  pitches.forEach((hz, i) => {
+    const context = audioContext as AudioContext
+    const startAt = context.currentTime + i * (TONE_SECONDS + TONE_GAP_SECONDS)
+    const oscillator = context.createOscillator()
+    const gain = context.createGain()
     oscillator.type = 'sine'
-    oscillator.frequency.value = TONE_HZ
+    oscillator.frequency.value = hz
     oscillator.connect(gain)
-    gain.connect(audioContext.destination)
+    gain.connect(context.destination)
     oscillator.start(startAt)
     oscillator.stop(startAt + TONE_SECONDS)
-  }
+  })
+}
+
+export function playRestOver(): void {
+  playTones([TONE_HZ, TONE_HZ, TONE_HZ])
+}
+
+/** The PR's felt beat (V4-04): two short rising tones, on the same unlocked context as the beep. */
+const PR_TONES_HZ = [660, 990]
+
+export function playPrSound(): void {
+  playTones(PR_TONES_HZ)
 }

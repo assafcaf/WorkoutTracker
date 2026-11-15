@@ -14,7 +14,7 @@ import { SetScreen } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
 import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry } from '../types'
 
-vi.mock('./restSound', () => ({ unlockRestSound: vi.fn(), playRestOver: vi.fn() }))
+vi.mock('./restSound', () => ({ unlockRestSound: vi.fn(), playRestOver: vi.fn(), playPrSound: vi.fn() }))
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -245,6 +245,8 @@ test('V1-11 the Rest panel shows the countdown, "of 3:00" and the Use offer, and
   // V3-03: the usual rest's Use offer moved to ⋯ › Rest time; the dock carries no decision.
   expect(screen.queryByRole('button', { name: 'Use 2:40 for Back squat' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Exercise tools' }))
+  // V1-16: folded into Rest time's own sheet, one tap further.
+  fireEvent.click(screen.getByRole('button', { name: /^Rest time/ }))
   expect(screen.getByRole('button', { name: 'Use 2:40 for Back squat' })).toBeVisible()
 })
 

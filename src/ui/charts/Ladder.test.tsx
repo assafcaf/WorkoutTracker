@@ -247,3 +247,46 @@ test('[O19] an optional reference tick and stall bracket are drawn with their la
   expect(ref.textContent).toContain('4 weeks ago')
   expect(container.querySelector('.ladder-bracket')?.textContent).toContain('Stalled')
 })
+
+test('[V1-31] the reps caption is HTML between the weight and reps panels, outside any svg', () => {
+  const { container } = render(<Ladder view={view()} title="Deadlift ladder" />)
+  const caption = container.querySelector('.ladder-caption') as Element
+  expect(caption.textContent).toBe('reps at that weight · tick is the target')
+  expect(caption.closest('svg')).toBeNull()
+  const svgs = [...container.querySelectorAll('svg.ladder-svg')]
+  expect(svgs).toHaveLength(2)
+  expect(svgs[0].compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(caption.compareDocumentPosition(svgs[1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('[V1-31] weight labels keep a line apart and the left margin fits the widest', () => {
+  const ticks = [55, 57.5, 60, 62.5, 65, 67.5, 70, 72.5, 75, 77.5, 80].map((lever) => ({ lever, label: `${lever} kg` }))
+  const { container } = render(<Ladder view={view({ ticks })} title="Deadlift ladder" />)
+  const labels = [...container.querySelectorAll('[data-axis="lever"] text')]
+  expect(labels.length).toBeLessThan(ticks.length)
+  const texts = labels.map((label) => label.textContent)
+  expect(texts).toContain('55 kg')
+  expect(texts).toContain('80 kg')
+  const ys = labels.map((label) => Number(label.getAttribute('y'))).sort((a, b) => a - b)
+  ys.slice(1).forEach((y, index) => expect(y - ys[index]).toBeGreaterThanOrEqual(12 * 1.25))
+  // The widest, "57.5 kg", is about 50 units at 12 px; labels end 6 units left of the plot.
+  expect(Number(labels[0].getAttribute('x'))).toBeGreaterThanOrEqual(7 * 12 * 0.6)
+  expect(container.querySelectorAll('[data-axis="lever"] line')).toHaveLength(ticks.length)
+})
+
+test('[V1-31] date labels stay inside the chart and never touch', () => {
+  const dates = [0, 2, 4, 6, 8, 70, 80].map((day) => ({ at: T0 + day * DAY, label: `${day + 1} Aug` }))
+  const { container } = render(<Ladder view={view({ dates })} title="Deadlift ladder" />)
+  const labels = [...container.querySelectorAll('[data-axis="dates"] text')]
+  expect(labels.length).toBeLessThan(dates.length)
+  const boxes = labels.map((label) => {
+    const x = Number(label.getAttribute('x'))
+    const half = ((label.textContent ?? '').length * 12 * 0.6) / 2
+    return [x - half, x + half]
+  })
+  boxes.forEach(([from, to]) => {
+    expect(from).toBeGreaterThanOrEqual(0)
+    expect(to).toBeLessThanOrEqual(320)
+  })
+  boxes.slice(1).forEach(([from], index) => expect(from).toBeGreaterThan(boxes[index][1]))
+})

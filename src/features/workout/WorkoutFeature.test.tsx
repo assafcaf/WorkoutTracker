@@ -114,11 +114,11 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   )
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' }))
   // The swap now stays on the Set screen (E16-T12); the list row is one All away.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await screen.findByRole('button', { name: /^Log set / }, SETTLE)
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
 
@@ -283,7 +283,7 @@ test('O9 Back from the set screen shows the exercise list with the logged Set co
   await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
 
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('1/4')
@@ -361,7 +361,7 @@ test('O22 choosing an Alternative from the list at Set 2 opens the chosen Exerci
 
   await toolsRow(user, 'Swap exercise')
   await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
-  await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do Hammer Curls instead' }))
 
   await expectHammerCurlsOnSet2(user)
 })
@@ -375,7 +375,7 @@ test('O22 choosing an Alternative from the detail overlay at Set 2 opens the cho
   // The detail overlay lists only the top five Similar exercises; Alternate Hammer Curl is one.
   await user.click(
     within(await hammerCurlsRow('Alternate Hammer Curl')).getByRole('button', {
-      name: 'Do this instead',
+      name: 'Do Alternate Hammer Curl instead',
     }),
   )
 
@@ -387,10 +387,10 @@ test('O22 after choosing an Alternative the Workout’s list row names it with "
   await openSeatedCurlsAtSet2(user)
   await toolsRow(user, 'Swap exercise')
   await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
-  await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do Hammer Curls instead' }))
   await screen.findByRole('heading', { level: 1, name: 'Hammer Curls' }, SETTLE)
 
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
 
   const row = await screen.findByRole('button', { name: /^Hammer Curls/ }, SETTLE)
   expect(row.querySelector('.exercise-name')).toHaveTextContent('Hammer Curls')
@@ -405,7 +405,7 @@ test('O9 Finish workout finishes the Session and shows the Session summary', asy
   await openExercise(user, 'Back squat')
   await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   await finishWorkout(user)
@@ -663,10 +663,11 @@ test('O11 the done state of back squat shows Up next: Lunges above Finish exerci
   const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
   await openExercise(user, 'Back squat')
 
-  // V3-01: back squat reopened once done offers one primary, "Go to Lunges" (never "Next: …");
-  // Add set is a quiet text button on the verdict line above it, and no button reads Finish
-  // exercise.
-  const next = await screen.findByRole('button', { name: 'Go to Lunges' }, SETTLE)
+  // V3-01, V4-07: back squat reopened once done offers one primary, "Back to Lunges · set 1",
+  // the Exercise the Session is on (never "Next: …" or "Go to …"); Add set is a quiet text
+  // button in the done block above it, and no button reads Finish exercise.
+  const next = await screen.findByRole('button', { name: 'Back to Lunges · set 1' }, SETTLE)
+  expect(screen.queryByRole('button', { name: /^Go to / })).toBeNull()
   const addSet = screen.getByRole('button', { name: 'Add set' })
 
   expect(next).toHaveClass('btn-primary', 'log-set')
@@ -681,12 +682,12 @@ test('O11 Finish exercise opens the next Exercise on Set 1 of its plan', async (
   const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
   await openExercise(user, 'Back squat')
 
-  await user.click(await screen.findByRole('button', { name: 'Go to Lunges' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Back to Lunges · set 1' }, SETTLE))
 
   // V2-01: the primary opens Lunges' Set 1 on Now, not the All list.
   expect(await screen.findByText('Set 1 of 3', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('heading', { name: 'Lunges' })).toBeVisible()
-  expect(screen.getByRole('radio', { name: 'Now' })).toBeChecked()
+  expect(screen.getByRole('button', { name: 'All exercises' })).toBeVisible()
 })
 
 test('O11 after Finish exercise the next set screen still counts the rest from the last Set', async () => {
@@ -694,7 +695,7 @@ test('O11 after Finish exercise the next set screen still counts the rest from t
   const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
   await openExercise(user, 'Back squat')
 
-  await user.click(await screen.findByRole('button', { name: 'Go to Lunges' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Back to Lunges · set 1' }, SETTLE))
   await screen.findByRole('heading', { name: 'Lunges' }, SETTLE)
 
   // Back squat's 180 s from T0, 100 s gone.
@@ -712,7 +713,7 @@ test('O11 Finish exercise skips a next Exercise whose Sets are all logged', asyn
   const { user } = renderFeature((await workoutAWithLogged([...FOUR_SQUATS, ...lunges])).services)
   await openExercise(user, 'Back squat')
 
-  await user.click(await screen.findByRole('button', { name: 'Go to DB bench press' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Back to DB bench press · set 1' }, SETTLE))
 
   // V2-01: straight to the skipped Exercise's successor, on Now.
   expect(await screen.findByText('Set 1 of 4', undefined, SETTLE)).toBeVisible()
@@ -744,7 +745,7 @@ test('O11 with every Exercise done there is no Up next line and Finish exercise 
   // V3-01: with nothing up next the primary reads Finish workout; All returns to the list.
   expect(await screen.findByRole('button', { name: 'Finish workout' }, SETTLE)).toHaveClass('btn-primary')
   expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
 
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('4/4')
@@ -762,11 +763,37 @@ test('V3-01 logging back squat Set 4 brings up Lunges Set 1 with no tap, under a
 
   expect(await screen.findByRole('heading', { name: 'Lunges' }, SETTLE)).toBeVisible()
   expect(screen.getByRole('region', { name: 'Get ready' })).toBeVisible()
-  expect(screen.getByText(/^Back squat done · /)).toBeVisible()
+  // V4-01: the Just done block, headed by the Exercise it is about, under the Get ready card.
+  const block = screen.getByRole('region', { name: 'Exercise done' })
+  expect(block.textContent).toMatch(/^Back squat done/)
+  expect(block.textContent).not.toMatch(/\d+ vs \d+/)
   expect(screen.getByRole('button', { name: /^Log set 1 / })).toHaveClass('btn-primary')
   expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
   // The rest keeps running from back squat's Set 4.
   expect(screen.getByRole('timer', { name: 'Rest remaining' })).toBeVisible()
+})
+
+test('V4-07 the hand-over never paints the done state: no Go to or Back to button between the log and Lunges', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS.slice(0, 3))).services)
+  await openExercise(user, 'Back squat')
+  const logSet4 = await screen.findByRole('button', { name: /^Log set 4 / }, SETTLE)
+  // Lunges is read ahead while back squat is open, so the hand-over lands with the log.
+  await new Promise((resolve) => setTimeout(resolve, 50))
+
+  const seen: string[] = []
+  const observer = new MutationObserver(() => {
+    for (const button of document.querySelectorAll('button')) {
+      const text = button.textContent ?? ''
+      if (/^(Go to|Back to) /.test(text)) seen.push(text)
+    }
+  })
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+  await user.click(logSet4)
+  expect(await screen.findByRole('heading', { name: 'Lunges' }, SETTLE)).toBeVisible()
+  observer.disconnect()
+
+  expect(seen).toEqual([])
 })
 
 test('V3-01 Add set on the verdict line reopens back squat at an extra Set 5', async () => {
@@ -1045,8 +1072,10 @@ test('O4 opening lunges with 2 warm-ups and 3 working Sets logged shows the done
   )
   await openExercise(user, 'Lunges')
 
-  // The verdict stands where "All 3 sets logged" was (V2-11).
-  expect(await screen.findByText(/^Lunges done · /, undefined, SETTLE)).toBeVisible()
+  // The done block stands where "All 3 sets logged" was (V2-11, V4-07).
+  const block = await screen.findByRole('region', { name: 'Exercise done' }, SETTLE)
+  expect(block.textContent).toMatch(/^Lunges done/)
+  expect(screen.queryByText('All 3 sets logged')).toBeNull()
   expect(screen.queryByRole('button', { name: /^Log set / })).toBeNull()
 })
 
@@ -1061,7 +1090,8 @@ test('O4 with back squat done and only warm-ups on lunges, Up next is Lunges', a
   await openExercise(user, 'Back squat')
 
   // V2-01: the done state's primary names it.
-  expect(await screen.findByRole('button', { name: 'Go to Lunges' }, SETTLE)).toBeVisible()
+  // V4-07: "Back to Lunges", on its first working Set (the warm-ups use none of the Plan).
+  expect(await screen.findByRole('button', { name: 'Back to Lunges · set 1' }, SETTLE)).toBeVisible()
 })
 
 test('O5 after a warm-up today, lunges opens on last time’s first working Set, not its warm-up', async () => {
@@ -1504,9 +1534,13 @@ test('O10 after a reload with one Warm-up logged for Back squat, Add warm-ups co
 
   await waitFor(
     () =>
-      expect(document.querySelector('p.warmup-ramp')?.textContent).toBe(
-        'Warm-up 2 of 3 · 35 kg × 3',
-      ),
+      // V4-05: no ramp line; the subtitle and the Log bar say the step.
+      expect(
+        `${document.querySelector('.set-counter')?.textContent?.trim()} · ${/· (\S+) × (\d+)/
+          .exec(screen.getByRole('button', { name: /^Log warm-up / }).textContent ?? '')
+          ?.slice(1)
+          .join(' kg × ')}`,
+      ).toBe('Warm-up 2 of 3 · 35 kg × 3'),
     SETTLE,
   )
 })
@@ -1604,7 +1638,8 @@ test('O16 a pre-epic assisted pull-ups Set reads BW−27 × 8 on the Last time l
   await openExercise(user, 'Assisted pull-ups')
 
   expect(
-    await screen.findByText(new RegExp(`^Last time BW${MINUS}27 ?${TIMES} ?8 · `), undefined, SETTLE),
+    // V4-02: the one Last time line, under the reps Dial, compared live.
+    await screen.findByText(new RegExp(`^Last time BW${MINUS}27 ?${TIMES} ?8`), undefined, SETTLE),
   ).toBeVisible()
   expect(loadReadoutValue()).toBe(`BW${MINUS}27`)
 })
@@ -1633,16 +1668,19 @@ test('O16 the session summary reads a pre-epic assisted pull-ups Set as BW−27 
 })
 
 // --- E16-T13 O6: the Bodyweight switch, its override applied --------------------------------
+//
+// V1-16: the switch left the Set screen's tools sheet for Program › Exercises, which stores the
+// same override through `preferences.setBodyweight`. The Set screen follows the stored override
+// as it opens. The titles stay; the bodies store the override as Program › Exercises does.
 
-/**
- * The Set screen's Bodyweight switch, once it is up: a row of the exercise tools sheet (S3b),
- * which this opens from the ⋯ button when it is not open already.
- */
-async function findBodyweightSwitch(): Promise<HTMLElement> {
+/** Opens the Set screen's tools sheet and holds that it has no Bodyweight switch any more. */
+async function expectNoBodyweightSwitch(): Promise<void> {
   if (screen.queryByRole('dialog') === null) {
     fireEvent.click(await screen.findByRole('button', { name: 'Exercise tools' }, SETTLE))
   }
-  return screen.findByRole('switch', { name: 'Bodyweight' }, SETTLE)
+  const sheet = await screen.findByRole('dialog', { name: /tools$/ }, SETTLE)
+  expect(within(sheet).queryByRole('switch', { name: 'Bodyweight' })).toBeNull()
+  expect(within(sheet).queryByText('Bodyweight exercise')).toBeNull()
 }
 
 /**
@@ -1658,8 +1696,8 @@ test('O6 Back squat, loaded in the catalog, opens with the Bodyweight switch off
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
 
-  expect(await findBodyweightSwitch()).not.toBeChecked()
-  expect(weightReadoutText()).toBe('50')
+  await waitFor(() => expect(weightReadoutText()).toBe('50'), SETTLE)
+  await expectNoBodyweightSwitch()
 })
 
 test('O6 Back squat with a Bodyweight override stored (as a synced device leaves it) opens with the switch on at BW', async () => {
@@ -1669,8 +1707,8 @@ test('O6 Back squat with a Bodyweight override stored (as a synced device leaves
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
 
-  expect(await findBodyweightSwitch()).toBeChecked()
-  expect(weightReadoutText()).toBe('BW')
+  await waitFor(() => expect(weightReadoutText()).toBe('BW'), SETTLE)
+  await expectNoBodyweightSwitch()
 })
 
 test('O6 an override stored while the exercise list is up is followed when Back squat is opened', async () => {
@@ -1682,16 +1720,13 @@ test('O6 an override stored while the exercise list is up is followed when Back 
   await services.preferences.setBodyweight('back-squat', true, false)
   await openExercise(user, 'Back squat')
 
-  expect(await findBodyweightSwitch()).toBeChecked()
+  await waitFor(() => expect(weightReadoutText()).toBe('BW'), SETTLE)
 })
 
 test('O6 flipping Bodyweight on for Back squat stores its override', async () => {
+  // Flipped in Program › Exercises, through the same preference the Set screen reads.
   const services = await servicesOnAssafAB()
-  const { user } = renderFeature(services)
-  await startWorkout(user, 'Workout A')
-  await openExercise(user, 'Back squat')
-
-  await user.click(await findBodyweightSwitch())
+  await services.preferences.setBodyweight('back-squat', true, false)
 
   await waitFor(
     async () => expect(await services.preferences.bodyweightOverrides()).toEqual({ 'back-squat': true }),
@@ -1702,29 +1737,27 @@ test('O6 flipping Bodyweight on for Back squat stores its override', async () =>
 test('O6 flipping Bodyweight back off for Back squat removes its override, the catalog default', async () => {
   const services = await servicesOnAssafAB()
   await services.preferences.setBodyweight('back-squat', true, false)
-  const { user } = renderFeature(services)
-  await startWorkout(user, 'Workout A')
-  await openExercise(user, 'Back squat')
-
-  await user.click(await findBodyweightSwitch())
+  await services.preferences.setBodyweight('back-squat', false, false)
 
   await waitFor(
     async () => expect(await services.preferences.bodyweightOverrides()).toEqual({}),
     SETTLE,
   )
+  const { user } = renderFeature(services)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await waitFor(() => expect(weightReadoutText()).toBe('50'), SETTLE)
 })
 
 test('O6 flipping Bodyweight on turns the 50 kg Dial into BW+50 on the open Set', async () => {
+  // Nothing on the open Set flips it any more: the screen keeps the 50 kg Dial it opened with.
   const { user } = renderFeature(await servicesOnAssafAB())
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
-  await findBodyweightSwitch()
+  await waitFor(() => expect(weightReadoutText()).toBe('50'), SETTLE)
+
+  await expectNoBodyweightSwitch()
   expect(weightReadoutText()).toBe('50')
-
-  await user.click(await findBodyweightSwitch())
-
-  await waitFor(() => expect(weightReadoutText()).toBe('BW+50'), SETTLE)
-  expect(await findBodyweightSwitch()).toBeChecked()
 })
 
 test('O6 reopening Back squat after flipping Bodyweight on shows the switch on at BW', async () => {
@@ -1732,15 +1765,11 @@ test('O6 reopening Back squat after flipping Bodyweight on shows the switch on a
   const { user } = renderFeature(services)
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
-  await user.click(await findBodyweightSwitch())
-  await waitFor(
-    async () => expect(await services.preferences.bodyweightOverrides()).toEqual({ 'back-squat': true }),
-    SETTLE,
-  )
+  await waitFor(() => expect(weightReadoutText()).toBe('50'), SETTLE)
+  await services.preferences.setBodyweight('back-squat', true, false)
 
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   await openExercise(user, 'Back squat')
 
-  expect(await findBodyweightSwitch()).toBeChecked()
-  expect(weightReadoutText()).toBe('BW')
+  await waitFor(() => expect(weightReadoutText()).toBe('BW'), SETTLE)
 })

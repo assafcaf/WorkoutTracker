@@ -126,7 +126,7 @@ test('D7 DetailOverlay opened from a live set swaps to a similar exercise throug
   const onSwap = vi.fn()
 
   render(<DetailOverlay {...curlProps({ plannedId: 'seated-biceps-curls', onSwap })} />)
-  await user.click(within(similarRow('Alpha Curl')).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(similarRow('Alpha Curl')).getByRole('button', { name: 'Do Alpha Curl instead' }))
 
   expect(onSwap).toHaveBeenCalledTimes(1)
   expect(onSwap).toHaveBeenCalledWith('Alpha_Curl')
@@ -136,7 +136,7 @@ test('D7 DetailOverlay opened without a plannedId offers no swap', () => {
   render(<DetailOverlay {...curlProps({ onSwap: vi.fn() })} />)
 
   expect(similarRow('Alpha Curl')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Do this instead' })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^Do .+ instead$/ })).toBeNull()
 })
 
 test("D7 DetailOverlay opens a similar exercise's own detail through onOpenDetail", async () => {

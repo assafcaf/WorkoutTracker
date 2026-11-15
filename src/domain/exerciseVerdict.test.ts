@@ -1,6 +1,15 @@
 import { expect, test } from 'vitest'
 import { loadCatalog } from '../data/catalog'
-import { exerciseVerdict, honestMoveText, liveRecordCount, setsInNumbers } from './exerciseVerdict'
+import {
+  exerciseComparison,
+  exerciseDoneLine,
+  exerciseVerdict,
+  honestMoveText,
+  liveRecordCount,
+  setComparison,
+  setDelta,
+  setsInNumbers,
+} from './exerciseVerdict'
 import type { Exercise, ExercisePlan, Session } from '../types'
 
 const T = 1_700_000_000_000
@@ -73,4 +82,81 @@ test('V2-11 an Exercise with no Set in the Session has no verdict', () => {
 test('V2-11 liveRecordCount counts the Session records so far', () => {
   expect(liveRecordCount(earlier, session('today', 0, [[70, 8]], false), resolve, planOf)).toBe(1)
   expect(liveRecordCount(earlier, session('today', 0, [[60, 8]], false), resolve, planOf)).toBe(0)
+})
+
+// --- V4-01 / V4-02: one comparison sentence per logged Set -------------------------------------
+
+const MON = 'Mon 12 Oct'
+const at = (weightKg: number | null, reps: number, loadKg?: number) => ({
+  weightKg,
+  reps,
+  ...(loadKg === undefined ? {} : { loadKg }),
+})
+
+test('V4-01 a Set equal to last time reads Same as <day>', () => {
+  expect(setComparison(at(60, 10), at(60, 10), MON)).toEqual({ kind: 'same', text: 'Same as Mon 12 Oct', record: null })
+  expect(setDelta(at(70, 7), at(70, 7))).toEqual({ kind: 'same', text: 'same' })
+})
+
+test('V4-01 a heavier or longer Set reads +2.5 kg / +1 rep on <day>', () => {
+  expect(setComparison(at(72.5, 7), at(70, 7), MON).text).toBe('+2.5 kg on Mon 12 Oct')
+  expect(setComparison(at(70, 9), at(70, 7), MON).text).toBe('+2 reps on Mon 12 Oct')
+  expect(setDelta(at(70, 8), at(70, 7))).toEqual({ kind: 'up', text: '+1 rep' })
+  // Less assistance is up: BW−19 against BW−27.
+  expect(setDelta(at(null, 6, -19), at(null, 6, -27))).toEqual({ kind: 'up', text: '+8 kg' })
+})
+
+test('V4-01 a lighter or shorter Set reads 1 rep under <day>', () => {
+  expect(setComparison(at(70, 6), at(70, 7), MON)).toEqual({ kind: 'down', text: '1 rep under Mon 12 Oct', record: null })
+  expect(setComparison(at(67.5, 7), at(70, 7), MON).text).toBe('2.5 kg under Mon 12 Oct')
+  expect(setDelta(at(70, 5), at(70, 7)).text).toBe('2 reps under')
+})
+
+test('V4-01 a Record leads the sentence with its name: Rep record · +1 rep on <day>', () => {
+  expect(setComparison(at(70, 8), at(70, 7), MON, 'Rep record')).toEqual({
+    kind: 'up',
+    text: 'Rep record · +1 rep on Mon 12 Oct',
+    record: 'Rep record',
+  })
+})
+
+test('V4-01 with no last time the Set reads First time logged', () => {
+  expect(setComparison(at(60, 10), null, MON)).toEqual({ kind: 'first', text: 'First time logged', record: null })
+})
+
+test('V4-01 the done line lists the Sets, marks a Record and compares once, never n vs m', () => {
+  const today = session('today', 0, [[60, 10], [70, 8], [70, 7]], false).entries
+  const last = session('a', 3, [[60, 10], [70, 7], [70, 7]]).entries
+  const line = exerciseDoneLine({ today, last, lastDay: MON, plannedSets: 3, isRecord: (set) => set.setIndex === 2 })
+  expect(line).toBe('60×10 · 70×8 PR · 70×7 · 1 rep more than Mon 12 Oct')
+  expect(line).not.toMatch(/\d+ vs \d+/)
+  expect(exerciseDoneLine({ today, last: today, lastDay: MON, plannedSets: 3, isRecord: () => false })).toBe(
+    '60×10 · 70×8 · 70×7 · Same as Mon 12 Oct',
+  )
+  expect(exerciseDoneLine({ today: today.slice(0, 2), last, lastDay: MON, plannedSets: 3, isRecord: () => false })).toBe(
+    '60×10 · 70×8 · 2 of 3 sets',
+  )
+  expect(exerciseDoneLine({ today, last: [], lastDay: MON, plannedSets: 3, isRecord: () => false })).toBe(
+    '60×10 · 70×8 · 70×7 · First time logged',
+  )
+})
+
+test('V5 one comparison sentence: less or more assistance says so, and a deload reads Deload', () => {
+  const bw = (setIndex: number, loadKg: number, reps: number) => ({
+    exerciseId: 'pullups',
+    setIndex,
+    weightKg: null,
+    loadKg,
+    reps,
+    loggedAt: setIndex,
+  })
+  const last = [bw(1, -20, 6), bw(2, -20, 6)]
+  expect(exerciseComparison({ today: [bw(1, -15, 6), bw(2, -15, 6)], last, lastDay: MON })).toBe(
+    '5 kg less assistance than Mon 12 Oct',
+  )
+  expect(exerciseComparison({ today: [bw(1, -25, 6), bw(2, -25, 6)], last, lastDay: MON })).toBe(
+    '5 kg more assistance than Mon 12 Oct',
+  )
+  expect(exerciseComparison({ today: last, last, lastDay: MON, deload: true })).toBe('Deload')
+  expect(exerciseComparison({ today: last.slice(0, 1), last, lastDay: MON, plannedSets: 2 })).toBe('1 of 2 sets')
 })

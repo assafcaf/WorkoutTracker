@@ -65,7 +65,7 @@ test('D7 AlternativesOverlay "Do this instead" calls onPick with that alternativ
   const onPick = vi.fn()
 
   render(<AlternativesOverlay {...await props({ onPick })} />)
-  await user.click(within(rowNamed('Hammer Curls')).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(rowNamed('Hammer Curls')).getByRole('button', { name: 'Do Hammer Curls instead' }))
 
   expect(onPick).toHaveBeenCalledTimes(1)
   expect(onPick).toHaveBeenCalledWith('Hammer_Curls')

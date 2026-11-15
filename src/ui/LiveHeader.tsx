@@ -13,6 +13,11 @@ export type LiveHeaderProps = {
   onMinimise(): void
   onFinish(): void
   /**
+   * Throws the Session away (iteration 5): offered in the Finish sheet, and the only way out of it
+   * while nothing is logged, so a workout started by mistake is one tap from gone.
+   */
+  onDiscard?(): void
+  /**
    * Today's working Sets against the Workout's planned Sets, shown as "2/23 sets" in the title
    * row. Left out, no count is shown.
    */
@@ -29,7 +34,7 @@ export type LiveHeaderProps = {
    * `false`: there the exercise it is on is the screen's heading.
    */
   heading?: boolean
-  /** What sits under the header row, e.g. the Now | All switch. */
+  /** What sits in the header row before Finish: the Now | All button (V3-07). */
   children?: ReactNode
 }
 
@@ -39,12 +44,16 @@ export type LiveHeaderProps = {
  * ready" pill) rides along, so an update never has to wait for the workout to end to be offered.
  */
 export function LiveHeader(props: LiveHeaderProps): JSX.Element {
-  const { workoutName, startedAt, onMinimise, onFinish, sets, prs = 0, setsLeft = 0, heading = true, children } = props
+  const { workoutName, startedAt, onMinimise, onFinish, onDiscard, sets, prs = 0, setsLeft = 0, heading = true, children } = props
   const { trailing } = useContext(ShellChromeContext)
   const [confirming, setConfirming] = useState(false)
+  const nothingLogged = sets !== undefined && sets.done === 0
+  // V5-01: with Sets logged, Discard asks once more, naming what is lost; with none, it is one tap.
+  const [discarding, setDiscarding] = useState(false)
+  const logged = sets?.done ?? 0
 
   function handleFinish(): void {
-    if (setsLeft > 0) setConfirming(true)
+    if (setsLeft > 0 || (nothingLogged && onDiscard !== undefined)) setConfirming(true)
     else onFinish()
   }
 
@@ -77,17 +86,26 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
           </p>
         </div>
         {trailing ? <div className="app-header-trailing live-header-trailing">{trailing}</div> : null}
+        {/* The Now | All switch rides in the row, before Finish (V3-07): no band under it. */}
+        {children}
         <button type="button" className="finish-workout btn-secondary" onClick={handleFinish}>
           Finish
         </button>
       </div>
-      {children}
       {confirming ? (
-        <Sheet label="Finish workout?" onClose={() => setConfirming(false)}>
+        <Sheet
+          label="Finish workout?"
+          onClose={() => {
+            setConfirming(false)
+            setDiscarding(false)
+          }}
+        >
           <div className="sheet-head">
             <h2 className="sheet-title">Finish workout?</h2>
           </div>
-          <p className="finish-confirm-left">{`${setsLeft} ${setsLeft === 1 ? 'set' : 'sets'} not logged`}</p>
+          <p className="finish-confirm-left">
+            {nothingLogged ? 'Nothing logged yet' : `${setsLeft} ${setsLeft === 1 ? 'set' : 'sets'} not logged`}
+          </p>
           <div className="finish-confirm-actions">
             <button
               type="button"
@@ -102,6 +120,23 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
             <button type="button" className="btn-secondary" onClick={() => setConfirming(false)}>
               Keep going
             </button>
+            {onDiscard === undefined ? null : (
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={() => {
+                  if (logged > 0 && !discarding) {
+                    setDiscarding(true)
+                    return
+                  }
+                  setConfirming(false)
+                  setDiscarding(false)
+                  onDiscard()
+                }}
+              >
+                {discarding ? `Discard ${logged} logged ${logged === 1 ? 'set' : 'sets'}` : 'Discard workout'}
+              </button>
+            )}
           </div>
         </Sheet>
       ) : null}
