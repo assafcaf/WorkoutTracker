@@ -236,13 +236,15 @@ test('V1-28 each number field is named after its row: "Back Squat Sets", "Back S
     'Back Squat Sets',
     'Back Squat Min reps',
     'Back Squat Max reps',
-    'Back Squat Rest (s)',
+    'Back Squat Rest (m:ss)',
     'Back Squat Starting weight (kg)',
   ]) {
-    expect(within(row).getByRole('spinbutton', { name })).toBeInTheDocument()
+    // V6 (V5-10): Rest is an m:ss text field now, so it is a textbox, not a spinbutton.
+    expect(within(row).getByRole(name.endsWith('(m:ss)') ? 'textbox' : 'spinbutton', { name })).toBeInTheDocument()
   }
-  // The Bodyweight row has no kg field, so four names.
-  expect(within(planRow('Assisted Pullup')).getAllByRole('spinbutton')).toHaveLength(4)
+  // The Bodyweight row has no kg field, so four names (three numbers and the m:ss Rest).
+  expect(within(planRow('Assisted Pullup')).getAllByRole('spinbutton')).toHaveLength(3)
+  expect(within(planRow('Assisted Pullup')).getAllByRole('textbox')).toHaveLength(1)
 })
 
 test('V1-28 a row puts its numbers on a second line under the name, each with its own caption', () => {
@@ -255,7 +257,8 @@ test('V1-28 a row puts its numbers on a second line under the name, each with it
   expect([...(cells as HTMLElement).querySelectorAll('.program-editor-cell-caption')].map((c) => c.textContent)).toEqual([
     'Sets',
     'Reps',
-    'Rest, s',
+    // V6 (V5-10): Rest is m:ss, so its caption needs no unit.
+    'Rest',
     'kg',
   ])
   expect(document.querySelector('.program-editor-columns')).toBeNull()

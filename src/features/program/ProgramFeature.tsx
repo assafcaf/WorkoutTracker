@@ -8,6 +8,7 @@ import { AppShell } from '../../ui/AppShell'
 import { ProgramEditor, type ExerciseSettings } from '../../ui/ProgramEditor'
 import { weekStart, type Weekday } from '../../domain/stats/weeks'
 import { isDeloadWeek } from '../../domain/deload'
+import { lastEntriesOf, nextLoadText } from '../../domain/planLoad'
 import { ProgramPage } from '../../ui/ProgramPage'
 import { ProgramDeloadLine, ProgramDeloadStart, ProgramHeadActions } from '../../ui/program/ProgramHead'
 import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
@@ -228,6 +229,12 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         onCancel={closeEditor}
         saveError={saveError}
         exerciseSettings={exerciseSettingsData.status === 'ready' ? exerciseSettingsData.data : undefined}
+        // V5-10: a lifted Plan shows the load it is on now, as the Program tab's kg column does.
+        nowLoad={(exerciseId, plan) => {
+          const exercise = resolveListExercise(exerciseId)
+          if (exercise === undefined || lastEntriesOf(sessions, exerciseId).length === 0) return null
+          return nextLoadText(exercise, plan, sessions)
+        }}
       />
     )
   }

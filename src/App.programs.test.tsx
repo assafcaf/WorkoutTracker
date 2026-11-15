@@ -154,7 +154,8 @@ async function buildPushPullLegs(user: User): Promise<void> {
   await setField(user, push, 'Sets', '4')
   await setField(user, push, 'Min reps', '6')
   await setField(user, push, 'Max reps', '8')
-  await setField(user, push, 'Rest (s)', '120')
+  // V6 (V5-10): Rest reads m:ss; plain seconds typed in still save as seconds.
+  await setField(user, push, 'Rest (m:ss)', '120')
   await setField(user, push, 'Starting weight (kg)', '60')
 
   await pickInto(user, pull, 'barbell deadlift', 'Barbell Deadlift')
@@ -359,11 +360,12 @@ test(
     expect(valuesOf(a, 'Sets')).toEqual(['4', '3', '4', '3', '3', '3', '3'])
     expect(valuesOf(a, 'Min reps')).toEqual(['8', '10', '8', '10', '8', '10', '10'])
     expect(valuesOf(a, 'Max reps')).toEqual(['10', '12', '10', '15', '10', '15', '12'])
-    expect(valuesOf(a, 'Rest (s)')).toEqual(['180', '90', '90', '90', '90', '90', '90'])
+    // V6 (V5-10): Rest reads as m:ss, as everywhere else in the app.
+    expect(valuesOf(a, 'Rest (m:ss)')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
     expect(valuesOf(b, 'Sets')).toEqual(['3', '4', '3', '4', '3', '3', '3'])
     expect(valuesOf(b, 'Min reps')).toEqual(['8', '5', '10', '8', '10', '10', '10'])
     expect(valuesOf(b, 'Max reps')).toEqual(['10', '8', '12', '10', '15', '15', '12'])
-    expect(valuesOf(b, 'Rest (s)')).toEqual(['180', '90', '90', '90', '90', '90', '90'])
+    expect(valuesOf(b, 'Rest (m:ss)')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
   },
   LONG,
 )
