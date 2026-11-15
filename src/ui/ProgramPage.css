@@ -187,7 +187,7 @@
   padding: calc((var(--tap-min) - 1lh) / 2) 0;
   overflow: hidden;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   color: inherit;
   font: inherit;
   text-align: start;

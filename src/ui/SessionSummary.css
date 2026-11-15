@@ -196,7 +196,7 @@
   min-height: var(--tap-min);
   padding: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   color: var(--color-text);
   font: inherit;
   font-size: var(--text-md);
