@@ -1225,7 +1225,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const plateLine =
     plates === null || open.weightKg === null || exercise.bodyweight ? null : plateLineFor(open.weightKg, plates)
   // The Get ready card's plates (V2-02): the change from the bar as this Exercise's last Set left
-  // it, "Add 5 per side → per side: 20 · 5"; the Plate line when there is no such Set.
+  // it, "Add 5 per side → 20 + 5"; the Plate line when there is no such Set.
   const loadedKg =
     restFrom !== null && restFrom.entry.exerciseId === exercise.id && restFrom.entry.weightKg !== null
       ? restFrom.entry.weightKg
@@ -1506,7 +1506,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {done || !props.exerciseNote || props.onSaveExerciseNote === undefined ? null : (
               <button
                 type="button"
-                className="set-note-line"
+                className="set-note-line btn-quiet"
                 aria-label={`Exercise note: ${props.exerciseNote}`}
                 onClick={() => {
                   setKindsOpen(false)

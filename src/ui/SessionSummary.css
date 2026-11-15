@@ -32,7 +32,7 @@
   margin: 0;
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
-  line-height: 34px;
+  line-height: 2.125rem;
   letter-spacing: -0.02em;
 }
 

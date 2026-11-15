@@ -181,7 +181,7 @@
   min-width: 0;
   font-size: var(--text-md);
   font-weight: var(--weight-medium);
-  line-height: 20px;
+  line-height: 1.25rem;
 }
 
 /* The primary muscle reads as a muted note beside its family dot, not a filled pill. */

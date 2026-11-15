@@ -92,7 +92,7 @@
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
-  line-height: 16px;
+  line-height: 1rem;
 }
 
 .all-cell--done,
@@ -125,7 +125,7 @@
 
 .all-cell-mark .tag-pr {
   padding: 0 4px;
-  line-height: 14px;
+  line-height: 0.875rem;
 }
 
 .all-cell-kind {
@@ -135,7 +135,7 @@
 .all-cell-load {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  line-height: 18px;
+  line-height: 1.125rem;
   font-variant-numeric: tabular-nums;
 }
 

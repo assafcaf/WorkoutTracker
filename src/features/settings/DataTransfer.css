@@ -21,7 +21,7 @@
 .data-transfer-problem {
   margin: var(--space-2) 0 0;
   font-size: var(--text-sm);
-  line-height: 20px;
+  line-height: 1.25rem;
 }
 
 .data-transfer-result {

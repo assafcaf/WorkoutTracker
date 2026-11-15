@@ -232,7 +232,7 @@
 
 .dial--scrub .dial-readout {
   font-size: var(--text-hero);
-  line-height: 64px;
+  line-height: 4rem;
   letter-spacing: -0.03em;
   cursor: inherit;
 }

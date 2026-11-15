@@ -150,7 +150,7 @@
 .set-cell-value {
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-  line-height: 20px;
+  line-height: 1.25rem;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -202,7 +202,7 @@
   width: 52px;
   color: var(--color-muted);
   font-size: var(--text-xs);
-  line-height: 16px;
+  line-height: 1rem;
 }
 
 .effort-chips {
@@ -229,9 +229,8 @@
  * done state's verdict (V2-11) takes the same card. */
 .get-ready {
   display: flex;
-  flex: 1 0 auto;
+  flex: 0 0 auto;
   flex-direction: column;
-  justify-content: center;
   gap: var(--space-1);
   margin-top: var(--space-2);
   padding: var(--space-4);
@@ -304,6 +303,11 @@
 .set-spacer {
   flex: 1 1 0;
   min-height: 0;
+}
+
+/* The done state's primary (V2-01): the Log set bar, naming the next Exercise. */
+.next-exercise {
+  text-align: center;
 }
 
 /* The Exercise note on Now (V1-15): one line, cut with an ellipsis; a tap opens it to edit. */
@@ -481,7 +485,7 @@
   flex-direction: column;
   color: var(--color-secondary);
   font-size: var(--text-md);
-  line-height: 20px;
+  line-height: 1.25rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -505,7 +509,7 @@
   color: var(--color-muted);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
-  line-height: 16px;
+  line-height: 1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }

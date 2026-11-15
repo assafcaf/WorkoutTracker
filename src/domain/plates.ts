@@ -125,14 +125,15 @@ function without(plates: number[], minus: number[]): number[] {
 
 const plateList = (plates: number[]): string => [...plates].sort((a, b) => b - a).join(' · ')
 const sideGrams = (plates: number[]): number => plates.reduce((sum, kg) => sum + toGrams(kg), 0)
+// What each side holds afterwards, heaviest first: "20 + 5". Read at a glance from a bench.
 const afterText = (plates: number[]): string =>
-  plates.length === 0 ? 'bar only' : `per side: ${plateList(plates)}`
+  plates.length === 0 ? 'bar only' : [...plates].sort((a, b) => b - a).join(' + ')
 
 /**
  * What to change on the bar to go from `fromKg`, loaded now, to `toKg` (V2-02): "Add 5 per side
- * → per side: 20 · 5", "Remove 1.25 per side → per side: 25 · 5", or, when neither adding to nor
- * stripping the bar as loaded makes it, "Remove 25, add 20 per side → per side: 20". The same
- * weight reads "Same plates · per side: 20". Null when either weight can't be made exactly from
+ * → 20 + 5", "Remove 1.25 per side → 25 + 5", or, when neither adding to nor
+ * stripping the bar as loaded makes it, "Remove 25, add 20 per side → 20". The same
+ * weight reads "Same plates: 20". Null when either weight can't be made exactly from
  * `inventory` (the Plate line says "Nearest …" for those). The loadings are `platesFor`'s.
  */
 export function plateChange(fromKg: number, toKg: number, inventory: PlateInventory): string | null {
@@ -141,7 +142,7 @@ export function plateChange(fromKg: number, toKg: number, inventory: PlateInvent
   if (!from || !to || !from.exact || !to.exact) return null
   const fromG = sideGrams(from.perSide)
   const toG = sideGrams(to.perSide)
-  if (toG === fromG) return `Same plates · ${afterText(from.perSide)}`
+  if (toG === fromG) return `Same plates: ${afterText(from.perSide)}`
   if (toG > fromG) {
     // On top of what is on the bar, from the pairs still on the rack.
     const remaining = inventory.plates.map((plate) => ({

@@ -1,5 +1,7 @@
 import './UpdatePill.css'
-import { SIGN_IN_PATH } from '../sync/syncClient'
+
+/** The Worker's login route (the same one Settings › Sign in uses). */
+const SIGN_IN_PATH = '/api/login'
 
 /**
  * The "Update ready" control: the one thing that lets a new deployment take over.

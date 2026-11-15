@@ -4448,7 +4448,7 @@ test('V2-02 during rest the Get ready card names the plate change from the bar j
 
   const card = screen.getByRole('region', { name: 'Get ready' })
   expect(within(card).getByText('70 kg × 8')).toBeVisible()
-  expect(within(card).getByText('Add 5 per side → per side: 20 · 5')).toBeVisible()
+  expect(within(card).getByText('Add 5 per side → 20 + 5')).toBeVisible()
 })
 
 test('V2-02 the Use offer joins the countdown row, named in full for a screen reader', async () => {

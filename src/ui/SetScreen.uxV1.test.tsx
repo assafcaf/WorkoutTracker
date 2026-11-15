@@ -205,7 +205,7 @@ test('V1-07 during Rest the Next line ends with the per-side plates', () => {
   })
   // V2-02: the Get ready card names the plates, as the change from the bar just lifted.
   const card = screen.getByRole('region', { name: 'Get ready' })
-  expect(within(card).getByText('Same plates · per side: 20')).toBeVisible()
+  expect(within(card).getByText('Same plates: 20')).toBeVisible()
 })
 
 test('V1-07 the tools sheet no longer has a Plates segment', async () => {
