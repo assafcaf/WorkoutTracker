@@ -69,12 +69,13 @@
   /* The system stack for body text: it paints on the first frame. */
   --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
-  /* Type scale. */
-  --text-xs: 12px;
-  --text-sm: 14px;
-  --text-md: 16px;
-  --text-lg: 20px;
-  --text-xl: 28px;
+  /* Type scale. Text sizes are in rem so they follow the user's root font size (large text);
+   * the hero and display numerals stay in px so the set loop's readouts keep their layout. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
   --text-hero: 60px;
   --text-display: 64px;
 

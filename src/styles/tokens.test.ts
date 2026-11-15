@@ -143,11 +143,12 @@ const SCALE_TOKENS: Record<string, string> = {
   '--radius-pill': '999px',
   '--tap-min': '44px',
   '--key-min': '64px',
-  '--text-xs': '12px',
-  '--text-sm': '14px',
-  '--text-md': '16px',
-  '--text-lg': '20px',
-  '--text-xl': '28px',
+  // V1-08: text sizes are in rem so they follow the user's root font size (16px = 1rem).
+  '--text-xs': '0.75rem',
+  '--text-sm': '0.875rem',
+  '--text-md': '1rem',
+  '--text-lg': '1.25rem',
+  '--text-xl': '1.75rem',
   '--text-hero': '60px',
   '--text-display': '64px',
 }
@@ -301,6 +302,16 @@ test('O1 the body-map shade and primary/secondary tokens carry the documented va
 test('O1 the spacing, radius, tap and type scales carry the documented values', () => {
   const { actual, expected } = compare(SCALE_TOKENS)
   expect(actual).toEqual(expected)
+})
+
+test("V1-08 text sizes scale with the user's font size; hero and display numerals stay fixed", () => {
+  const declared = tokens()
+  for (const name of ['--text-xs', '--text-sm', '--text-md', '--text-lg', '--text-xl']) {
+    expect(declared.get(name), name).toMatch(/^\d+(\.\d+)?rem$/)
+  }
+  for (const name of ['--text-hero', '--text-display']) {
+    expect(declared.get(name), name).toMatch(/^\d+px$/)
+  }
 })
 
 test('O1 the data, heat and chart tokens carry the documented values', () => {
