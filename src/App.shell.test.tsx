@@ -13,6 +13,7 @@ import { getActiveSession } from './storage/sessionStore'
 import { setActiveProgramId } from './storage/settingsStore'
 import { FakeSyncServer } from './test/fakeSyncServer'
 import type { Session } from './types'
+import { finishWorkout } from './test/live'
 
 vi.mock('virtual:pwa-register', () => ({
   registerSW() {
@@ -50,8 +51,8 @@ function liveStrip(): HTMLElement | null {
 
 /** Starts Workout A, opens Back squat and logs its first set, landing on Set 2 of 4. */
 async function logFirstBackSquatSet(user: User): Promise<void> {
+  // Start opens Back squat's Set 1 on Now (V1-01).
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
-  await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
   await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 }
@@ -103,6 +104,8 @@ test('a workout in progress is a full-screen Live session: no tab bar, a minimis
   await renderApp()
 
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
+  await screen.findByText('Set 1 of 4', undefined, SETTLE)
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
@@ -199,7 +202,7 @@ test('finishing a session returned to from another tab lands on the Dashboard un
   await user.click(screen.getByRole('button', { name: 'Return to Workout A' }))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
 
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
   expect(within(mainNav()).getByRole('button', { name: 'Train' })).toHaveAttribute('aria-current', 'page')

@@ -562,7 +562,7 @@ test('O11 with a Session in progress, editing its Workout’s Plans and saving i
   await user.click(await screen.findByRole('button', { name: 'Train' }, SETTLE))
   await waitFor(() => expect(document.body.querySelector('button.resume-workout')).not.toBeNull(), SETTLE)
   await user.click(document.body.querySelector('button.resume-workout') as HTMLElement)
-  await user.click(await screen.findByRole('button', { name: /^Barbell Bench Press - Medium Grip/ }, SETTLE))
+  // The Session opens on its first Exercise's next Set, on Now (V1-01).
 
   const weight = await screen.findByRole('button', { name: /^Weight, / }, SETTLE)
   expect(text(weight)).toBe('70')
@@ -632,8 +632,8 @@ test('O12 after Reset to original a set screen on Workout A uses the bundled num
   await resetAndConfirm(user, 'A/B Split')
   await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00$/), SETTLE)
   await user.click(screen.getByRole('button', { name: 'Train' }))
+  // Start opens the first Exercise's next Set on Now (V1-01).
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
-  await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
 
   const reps = await screen.findByRole('button', { name: /^Reps, / }, SETTLE)
   expect(text(reps)).toBe('8')

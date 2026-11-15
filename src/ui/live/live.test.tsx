@@ -5,34 +5,17 @@ import { LiveSessionBar } from './LiveSessionBar'
 import { UpNextRows } from './UpNextRows'
 import type { Exercise, Session, SetEntry, Workout } from '../../types'
 
-const progress = { volumeKg: 1530, lastVolumeKg: 1470, setsDone: 2, setsPlanned: 23, prs: 0 }
+test('V1-10 given the bar under the live header, when it renders, then it holds only the Now | All switch, no volume line or bar', () => {
+  render(<LiveSessionBar view="now" onViewChange={vi.fn()} />)
 
-test('Live the projection line reads today against last time at this point, with Sets and PRs', () => {
-  render(<LiveSessionBar progress={progress} workoutName="Workout A" view="now" onViewChange={vi.fn()} />)
-
-  const volume = document.querySelector('.live-progress-volume')?.textContent
-  expect(volume).toBe('Volume 1,530 kg · last A at this point 1,470 kg')
-  expect(document.querySelector('.live-progress-counts')?.textContent).toBe('Sets 2/23 · PRs 0')
-  expect(screen.getByRole('img', { name: 'Today 1,530 kg · last time 1,470 kg' })).toBeVisible()
-})
-
-test('Live with no earlier Session of the Workout the line reads today alone', () => {
-  render(
-    <LiveSessionBar
-      progress={{ ...progress, lastVolumeKg: null }}
-      workoutName="Workout A"
-      view="now"
-      onViewChange={vi.fn()}
-    />,
-  )
-
-  expect(document.querySelector('.live-progress-volume')?.textContent).toBe('Volume 1,530 kg')
+  expect(screen.queryByText(/Volume|at this point/)).toBeNull()
+  expect(screen.queryByRole('img')).toBeNull()
 })
 
 test('Live Now | All is one segmented switch, telling the view picked', async () => {
   const user = userEvent.setup()
   const onViewChange = vi.fn()
-  render(<LiveSessionBar progress={progress} workoutName="Workout A" view="now" onViewChange={onViewChange} />)
+  render(<LiveSessionBar view="now" onViewChange={onViewChange} />)
 
   const group = screen.getByRole('radiogroup', { name: 'Session view' })
   expect(within(group).getByRole('radio', { name: 'Now' })).toBeChecked()

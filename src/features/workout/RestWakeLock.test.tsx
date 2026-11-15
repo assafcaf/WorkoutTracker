@@ -5,6 +5,7 @@ import { db } from '../../storage/db'
 import { createServices } from '../../services'
 import { ServicesProvider } from '../ServicesProvider'
 import { WorkoutFeature } from './WorkoutFeature'
+import { showAll, finishWorkout } from '../../test/live'
 
 // E19-T7 O12, O13 (and O10): the Session-wide rest wake lock, over the real services on
 // fake-indexeddb. The exercise list (the All view) has no set screen of its own, so a lock held
@@ -68,7 +69,12 @@ async function startWorkoutA(options: { sets: number; ageMs: number; keepOn?: bo
       <WorkoutFeature navigate={vi.fn()} onInSession={vi.fn()} />
     </ServicesProvider>,
   )
+  // The Session reopens on Now (V1-01); the exercise list is one tap away. The set screen's own
+  // lock (E1), released on leaving Now, is not what these tests count.
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  await waitFor(() => expect(requests.filter((s) => s.release.mock.calls.length > 0).length).toBe(1), SETTLE)
+  requests = requests.filter((sentinel) => sentinel.release.mock.calls.length === 0)
   return { user }
 }
 
@@ -120,7 +126,7 @@ test('O12 the lock is released when the Session is finished', async () => {
   const { user } = await startWorkoutA({ sets: 1, ageMs: 1000 })
   await waitFor(() => expect(held()).toBe(1), SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
   await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 
   await waitFor(() => expect(held()).toBe(0), SETTLE)

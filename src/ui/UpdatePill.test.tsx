@@ -22,6 +22,7 @@ import { useServiceWorkerUpdate } from '../pwa/registerSW'
 import { db } from '../storage/db'
 import { setActiveProgramId } from '../storage/settingsStore'
 import { UpdatePill } from './UpdatePill'
+import { showAll } from '../test/live'
 
 /** The options vite-plugin-pwa's `registerSW` accepts; the app uses the first two. */
 type PwaRegisterOptions = {
@@ -110,10 +111,14 @@ function nothingNavigated(): boolean {
 /** Starts a workout from the picker, which leaves the app on that session's exercise list. */
 async function startWorkout(user: UserEvent, workoutName: string): Promise<void> {
   await user.click(await screen.findByRole('button', { name: `Start ${workoutName}` }, SETTLE))
+  // The Session opens on Now (V1-01); the exercise list is one tap away.
+  await showAll(user)
 }
 
 /** Opens an exercise from the exercise list, which leaves the app on its set screen. */
 async function openExercise(user: UserEvent, exerciseName: string): Promise<void> {
+  // From the exercise list, one tap away when the Session is on Now (V1-01).
+  await showAll(user)
   await user.click(
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )

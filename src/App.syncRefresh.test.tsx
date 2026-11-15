@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
 import { db } from './storage/db'
@@ -78,6 +78,9 @@ async function finishedHere(weightKg: number, daysAgo: number): Promise<void> {
 }
 
 async function backSquatRow(): Promise<HTMLElement> {
+  // The Session reopens on Now (V1-01); its rows are on All, one tap away.
+  const all = (await screen.findByRole('radio', { name: 'All' }, SETTLE)) as HTMLInputElement
+  if (!all.checked) fireEvent.click(all)
   return screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 }
 

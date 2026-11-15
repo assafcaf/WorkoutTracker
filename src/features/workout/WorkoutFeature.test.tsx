@@ -10,6 +10,7 @@ import { ServicesProvider } from '../ServicesProvider'
 import { startFromDashboard, workoutsOffered } from '../../test/dashboard'
 import { findSteppers, unfoldSteppers } from '../../test/steppers'
 import { WorkoutFeature } from './WorkoutFeature'
+import { showAll, finishWorkout } from '../../test/live'
 
 // E11-T10 O9: the Workout tab as its own container, over the real services (createServices) and
 // the real session and settings stores underneath, on fake-indexeddb (src/test/setup.ts). The
@@ -74,9 +75,13 @@ function renderFeature(services: Services) {
 
 async function startWorkout(user: UserEvent, workoutName: string): Promise<void> {
   await startFromDashboard(user, workoutName)
+  // The Session opens on Now (V1-01); the exercise list is one tap away.
+  await showAll(user)
 }
 
 async function openExercise(user: UserEvent, exerciseName: string): Promise<void> {
+  // From the exercise list, one tap away when the Session is on Now (V1-01).
+  await showAll(user)
   await user.click(
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )
@@ -172,7 +177,7 @@ test('O9 WorkoutFeature reports onInSession(true) on the exercise list', async (
   await waitFor(() => expect(onInSession).toHaveBeenLastCalledWith(true), SETTLE)
 })
 
-test('O9 a Session already in progress on mount opens on its exercise list with its logged Set', async () => {
+test('O9 a Session already in progress on mount opens on Now, its logged Set counted on All', async () => {
   const services = await servicesOnAssafAB()
   const started = await services.sessions.start('assaf-ab-2026', 'workout-a')
   await services.sessions.logSet(started.id, {
@@ -182,8 +187,11 @@ test('O9 a Session already in progress on mount opens on its exercise list with 
     reps: 10,
     loggedAt: NOW + 1,
   })
-  const { onInSession } = renderFeature(services)
+  const { user, onInSession } = renderFeature(services)
 
+  // V1-01: reopened, the Session lands on Now at its next Set; All is one tap away.
+  expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
+  await showAll(user)
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('1/4')
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
@@ -211,7 +219,8 @@ test('O9 Resume Workout A returns to the same Session in progress', async () => 
 
   await user.click(await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE))
 
-  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
+  // V1-01: resumed, the Session lands on Now.
+  await screen.findByText('Set 1 of 4', undefined, SETTLE)
   const sessions = await db.sessions.toArray()
   expect(sessions.map((session) => session.id)).toEqual([before?.id])
 })
@@ -397,7 +406,7 @@ test('O9 Finish workout finishes the Session and shows the Session summary', asy
   await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
 
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
   expect(await storedActiveSession()).toBeNull()
@@ -409,7 +418,7 @@ test('O9 Done on the Session summary leaves the picker, reporting onInSession(fa
   const { user, onInSession } = renderFeature(await servicesOnAssafAB())
   await startWorkout(user, 'Workout A')
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 
   await user.click(within(summary).getByRole('button', { name: 'Done' }))
@@ -439,6 +448,7 @@ async function startWorkoutAWithSets(count: number): Promise<{ user: UserEvent }
     })
   }
   const { user } = renderFeature(services)
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   return { user }
 }
@@ -856,6 +866,7 @@ test('O6 a swapped-in Hammer Curls writes its rest to the Seated biceps curls Pl
     loggedAt: T0,
   })
   const { user } = renderFeature(services)
+  await showAll(user)
   await user.click(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE))
   await setRestOnDial(user, '2:00')
 
@@ -914,6 +925,7 @@ test('O12 saving the note empty removes it from the stored Session', async () =>
   const started = await services.sessions.start('assaf-ab-2026', 'workout-a')
   await services.sessions.setNote(started.id, 'to be removed')
   const { user } = renderFeature(services)
+  await showAll(user)
 
   await user.click(await screen.findByRole('button', { name: 'Edit note' }, SETTLE))
   await user.clear(await screen.findByLabelText('Note', undefined, SETTLE))
@@ -960,7 +972,8 @@ async function workoutAWithKinded(sets: KindedSet[]): Promise<Services> {
 }
 
 test('O4 lunges with 2 warm-ups and 1 working Set logged reads 1/3 on the exercise list', async () => {
-  renderFeature(await workoutAWithKinded(LUNGES_TWO_WARMUPS_ONE_WORKING))
+  const { user } = renderFeature(await workoutAWithKinded(LUNGES_TWO_WARMUPS_ONE_WORKING))
+  await showAll(user)
 
   const lunges = await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)
   expect(progressOf(lunges)).toBe('1/3')
@@ -1573,7 +1586,7 @@ test('O16 the session summary reads a pre-epic assisted pull-ups Set as BW−27 
   await seedPreEpicAssisted('pre-epic', 27, false, OCT_6)
   const { user } = renderFeature(await servicesOnAssafAB())
 
-  await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
+  await finishWorkout(user)
 
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   await waitFor(() => expect(summary.textContent).toMatch(new RegExp(`BW${MINUS}27 ?${TIMES} ?8`)), SETTLE)

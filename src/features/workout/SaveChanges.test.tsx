@@ -5,6 +5,7 @@ import { db } from '../../storage/db'
 import { createServices } from '../../services'
 import { ServicesProvider } from '../ServicesProvider'
 import { WorkoutFeature } from './WorkoutFeature'
+import { finishWorkout } from '../../test/live'
 
 // E19-T15 O26: a finished Session with changes offers "Save changes to program" in its summary.
 // Back squat is planned for 4 Sets in Workout A; 5 logged is an extension.
@@ -41,8 +42,8 @@ async function finishWithSquatSets(extra: number) {
       <WorkoutFeature navigate={vi.fn()} onInSession={vi.fn()} />
     </ServicesProvider>,
   )
-  await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await screen.findByRole('radiogroup', { name: 'Session view' }, SETTLE)
+  await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   return { user, services, summary }
 }
