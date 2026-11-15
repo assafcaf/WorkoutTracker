@@ -108,6 +108,15 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
   const [minimised, setMinimised] = useState(false)
   const liveRef = useRef<LiveStatus | null>(null)
   const lastExportedAt = useServiceData((s) => s.preferences.lastExportedAt(), ['preferences'])
+  // V1-30: an install with nothing logged has nothing to back up, so the gear carries no dot.
+  const hasSessions = useServiceData(
+    (s) =>
+      s.sessions
+        .list()
+        .then((list) => list.length > 0)
+        .catch(() => true),
+    ['sessions'],
+  )
 
   // Returning to the app with no workout in progress lands on the Dashboard (E8-T7); with one,
   // the Live session -- or the tab it was minimised over -- stays put.
@@ -151,9 +160,13 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
   // The backup-due marker the Settings gear carries: none while the last export is still being
   // read, and due when storage cannot say, as before.
   const settingsBadge =
-    lastExportedAt.status === 'loading'
+    lastExportedAt.status === 'loading' || hasSessions.status === 'loading'
       ? false
-      : isBackupDue(lastExportedAt.status === 'ready' ? lastExportedAt.data : null, Date.now())
+      : isBackupDue(
+          lastExportedAt.status === 'ready' ? lastExportedAt.data : null,
+          Date.now(),
+          hasSessions.status === 'ready' ? hasSessions.data : true,
+        )
 
   const liveOnScreen = live !== null && !minimised
   const onDashboard = shown.tab === 'dashboard' && !settingsOpen

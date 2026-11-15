@@ -1,4 +1,4 @@
-/* The Sessions tab (Progress Dashboard S6a, V2-07): one consistency row, then the Sessions by
+/* The Sessions tab (Progress Dashboard S6a, V2-07, V3-09): the six-week calendar, then the Sessions by
  * week. Every colour comes through a `var(--…)` from src/styles/tokens.css.
  */
 
@@ -14,50 +14,55 @@
   font-size: var(--text-sm);
 }
 
-/* ---- Consistency strip (V2-07): six week totals and the count, in one row ---- */
+/* ---- Six-week calendar (V3-09): one header line, day letters, six weeks of seven cells ----
+ * The cells themselves are src/ui/CalendarWeek.css, shared with Train's week strip. */
 
-.sessions-strip {
+.sessions-calendar {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
-  min-height: var(--tap-min);
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
 }
 
-.sessions-strip-label {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.sessions-strip-weeks {
-  display: flex;
-  flex: 1;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--text-md);
-  font-variant-numeric: tabular-nums;
-}
-
-.sessions-strip-week + .sessions-strip-week::before {
-  content: '\00B7';
-  margin-right: var(--space-2);
-  color: var(--color-muted);
-}
-
-.sessions-strip-week[data-current] {
-  font-weight: var(--weight-semibold);
-}
-
-.sessions-strip-count {
+.sessions-calendar-head {
+  margin: 0 0 var(--space-1);
   color: var(--color-secondary);
   font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.25rem;
 }
 
-.sessions-strip-count b {
+.sessions-calendar-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sessions-calendar-weekday-cells {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.sessions-calendar-weekday,
+.sessions-calendar-week-label {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 1rem;
+}
+
+.sessions-calendar-weekday {
+  text-align: center;
+}
+
+.sessions-calendar-week-label {
+  white-space: nowrap;
+}
+
+.sessions-calendar-row[data-current] .sessions-calendar-week-label {
   color: var(--color-text);
-  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
 }
 
 /* ---- Sessions by week ---- */
@@ -90,12 +95,15 @@
   border-top: 1px solid var(--color-hairline);
 }
 
+/* The stats drop under the date and Workout when large text leaves no room beside them. */
 .session-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  column-gap: var(--space-3);
   width: 100%;
   min-height: 64px;
-  padding: 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 0;
   font: inherit;
   text-align: left;
@@ -109,9 +117,10 @@
 }
 
 .session-row-main {
-  flex: 1;
+  flex: 1 0 auto;
   min-width: 0;
 }
+
 
 .session-row-side {
   align-items: flex-end;

@@ -7,7 +7,9 @@ import { applyBodyweight } from '../../domain/bodyweight'
 import { validateEntry } from '../../domain/dial'
 import { nextExerciseAfter } from '../../domain/flow'
 import { currentExerciseId, planFor } from '../../domain/liveProgress'
-import { liveRecordCount } from '../../domain/exerciseVerdict'
+import { exerciseVerdict, liveRecordCount } from '../../domain/exerciseVerdict'
+import { prMoment } from '../../domain/prMoment'
+import type { PrMoment } from '../../domain/prMoment'
 import { presetForSet } from '../../domain/prefill'
 import { sessionPlans } from '../../domain/sessionPlans'
 import { workingSets } from '../../domain/setKind'
@@ -34,7 +36,8 @@ import { LiveHeader } from '../../ui/LiveHeader'
 import type { LiveStatus } from '../../ui/LiveStrip'
 import { ExerciseList } from '../../ui/ExerciseList'
 import { SessionSummary } from '../../ui/SessionSummary'
-import { SetScreen } from '../../ui/SetScreen'
+import { SetScreen, loggedText } from '../../ui/SetScreen'
+import type { Handover } from '../../ui/SetScreen'
 import { StorageUnavailableBanner } from '../../ui/StorageUnavailableBanner'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
 import { LiveSessionBar } from '../../ui/live/LiveSessionBar'
@@ -98,6 +101,11 @@ type OpenSet = {
   liveSetIndex?: number
   /** A logged Set to open for editing: a done cell tapped in the All view. */
   editSetIndex?: number
+  /**
+   * V3-01: the Exercise this one took over from when its last Set was logged, with that Set's
+   * Record (if any) and log message, for the verdict line over the Get ready card.
+   */
+  handover?: { exerciseId: string; toast: PrMoment | null; message: string }
 }
 
 /** The detail overlay (E5-T8, E5-T15) or the ranked alternatives overlay (E5-T12). */
@@ -701,6 +709,21 @@ export function WorkoutFeature({
     )
   }
 
+  /** V3-01: "Add set" on a handed-over Exercise: back on its screen, at one more Set past its Plan. */
+  function handleAddSetTo(exerciseId: string): void {
+    if (!session) return
+    const logged = session.entries.filter((entry) => entry.exerciseId === exerciseId).length
+    loadOpenSet(services, exerciseId, logged + 1)
+      .then((opened) => {
+        setOpenSet({ ...opened, extra: true })
+        setView('set')
+        loadExerciseNote(exerciseId)
+      })
+      .catch(() => {
+        // The next Exercise stays on screen; nothing was opened.
+      })
+  }
+
   /** Finishes the session in progress, then returns to the picker under its summary (M16). */
   function handleFinish(): void {
     if (!session) return
@@ -880,6 +903,43 @@ export function WorkoutFeature({
           : { entry: latest, planRestSeconds: latestPlan.restSeconds }
       const nextId = nextExerciseAfter(located.workout, session, openSet.exerciseId)
       const nextName = nextId === null ? null : (resolveListExercise(nextId)?.name ?? null)
+      const earlierSessions = sessions.filter(
+        (earlier) => earlier.finishedAt !== null && earlier.startedAt < session.startedAt,
+      )
+      // V3-01: the Exercise just finished, as this one's screen shows it while its rest runs.
+      const handover: Handover | null = (() => {
+        const from = openSet.handover
+        if (from === undefined) return null
+        const fromExercise = resolveListExercise(from.exerciseId)
+        const fromPlan = planFor(located.workout, session, from.exerciseId)
+        if (!fromExercise || !fromPlan) return null
+        const fromSets = workingSets(session.entries.filter((entry) => entry.exerciseId === from.exerciseId)).sort(
+          (a, b) => a.setIndex - b.setIndex,
+        )
+        const last = fromSets[fromSets.length - 1]
+        return {
+          name: fromExercise.name,
+          verdict: exerciseVerdict(fromExercise, fromPlan, earlierSessions, session),
+          toast: from.toast,
+          message: from.message,
+          onAddSet: () => handleAddSetTo(from.exerciseId),
+          effort:
+            last === undefined
+              ? null
+              : {
+                  ordinal: fromSets.length,
+                  value: last.rir ?? null,
+                  onPick: (rir) => {
+                    services.sessions
+                      .setEffort(session.id, from.exerciseId, last.setIndex, rir)
+                      .then(setSession)
+                      .catch(() => {
+                        // The pick stays unstored; the chips show what is stored.
+                      })
+                  },
+                },
+        }
+      })()
       content = (
         <AppShell
           title={exercise.name}
@@ -919,9 +979,7 @@ export function WorkoutFeature({
               })
             }}
             family={family}
-            earlierSessions={sessions.filter(
-              (earlier) => earlier.finishedAt !== null && earlier.startedAt < session.startedAt,
-            )}
+            earlierSessions={earlierSessions}
             logged={session.entries.filter((entry) => entry.exerciseId === openSet.exerciseId)}
             onEditSet={async (setIndex, values) => {
               setSession(
@@ -985,8 +1043,32 @@ export function WorkoutFeature({
             onLog={(id, entry) => services.sessions.logSet(id, entry)}
             onLogged={(logged, nextSetIndex) => {
               setSession(logged)
+              // V3-01: the Exercise's last planned Set hands over to the next unfinished one,
+              // its rest still running; with none left the screen stays, on Finish workout.
+              const from = openSet.exerciseId
+              const next = currentExerciseOf(located.workout, logged, from)
+              if (next !== null && next !== from) {
+                const fromSets = logged.entries.filter((entry) => entry.exerciseId === from)
+                const entry = latestSet(fromSets)
+                const toast =
+                  entry === null ? null : prMoment(exercise, plan, earlierSessions, logged, entry)
+                const message =
+                  entry === null ? '' : loggedText(workingSets(fromSets).length, entry.weightKg, entry.reps)
+                const count = logged.entries.filter((candidate) => candidate.exerciseId === next).length
+                loadOpenSet(services, next, count + 1)
+                  .then((opened) => {
+                    setOpenSet({ ...opened, handover: { exerciseId: from, toast, message } })
+                    loadExerciseNote(next)
+                  })
+                  .catch(() => {
+                    // Without the next Exercise's history the screen stays on this one, done.
+                  })
+                return
+              }
               setOpenSet((current) =>
-                current ? { ...current, extra: false, liveSetIndex: nextSetIndex } : current,
+                current
+                  ? { ...current, extra: false, liveSetIndex: nextSetIndex, handover: undefined }
+                  : current,
               )
             }}
             onAddSet={handleAddSet}
@@ -994,8 +1076,10 @@ export function WorkoutFeature({
             onOpenAlternatives={handleOpenAlternatives}
             onOpenHistory={setHistoryFor}
             upNext={nextName}
-            // V2-01: the done state's primary opens the next Exercise on Now, where the Session's
-            // rest keeps running; with none left it shows All.
+            handover={handover}
+            onFinishWorkout={handleFinish}
+            // V3-01: an Exercise reopened from All once done offers "Go to <next>" on Now, where
+            // the Session's rest keeps running; with none left, Finish workout.
             onFinishExercise={() => {
               if (nextId === null) {
                 setView('list')
@@ -1072,6 +1156,8 @@ export function WorkoutFeature({
             if (activeProgram !== null && storageAvailable) handleChoose(activeProgram.id, workoutId)
           }}
           onOpenSettings={() => chrome.onOpenSettings?.()}
+          // The week strip opens Sessions (V3-09).
+          onOpenSessions={() => navigate({ tab: 'history' })}
           // A backup due is the gear's marker here (S1); Settings spells it out in full.
           notices={
             !storageAvailable || staleActiveProgramNotice ? (

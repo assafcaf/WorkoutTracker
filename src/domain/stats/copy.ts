@@ -49,6 +49,11 @@ export type HomeCopy = {
   counts: string
   /** `12 of 14 lifts stepped up since Fri 18 Sep.`; '' unless stage is 'full'. */
   climbed: string
+  /**
+   * The Progress home's one lead line (V3-11): `11 of 14 lifts moving · 12 stepped up since
+   * 18 Sep` -- the verdict and the climbed clause as one sentence; '' unless stage is 'full'.
+   */
+  lead: string
   /** `2 of 3 this week`; '' unless stage is 'full'. */
   adherence: string
   cards: AttentionCard[]
@@ -193,6 +198,7 @@ export function homeCopy(
     sentence: '',
     counts: '',
     climbed: '',
+    lead: '',
     adherence: '',
     cards: [],
     expectations: [],
@@ -300,6 +306,7 @@ export function homeCopy(
     sentence: `${count('moving')} of ${histories.size} lifts moving.`,
     counts: parts.join(' · '),
     climbed: `${climbed.climbed} of ${climbed.of} lifts stepped up since ${humanDate(climbed.since)}.`,
+    lead: `${count('moving')} of ${histories.size} lifts moving · ${climbed.climbed} stepped up since ${humanDate(climbed.since).replace(/^\S+ /, '')}`,
     adherence: `${week.done} of ${week.planned} this week`,
     cards,
   }

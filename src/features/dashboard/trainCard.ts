@@ -6,6 +6,7 @@ import type { DueWorkoutCard } from '../../domain/stats/train'
 import type { NextStep } from '../../domain/stats/verdict'
 import { weeksOf, type Weekday } from '../../domain/stats/weeks'
 import type { Program, Session } from '../../types'
+import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
 
 /**
  * One lift of the workout as today's Session will open it (V2-05): its planned Sets, the Set 1
@@ -36,8 +37,22 @@ export type TrainCard = {
   lifts: TrainLiftRow[]
 }
 
-/** One day of this week's strip: its initial, the workout done on it (`B`), and whether it is today. */
-export type WeekStripDay = { key: string; initial: string; name: string; workout: string | null; today: boolean }
+/**
+ * One day of this week's strip: its initial, the workout done on it (`B`) with its tone and name
+ * (drawn as the Sessions calendar's cell, V3-09), and whether it is today or still ahead.
+ */
+export type WeekStripDay = {
+  key: string
+  initial: string
+  name: string
+  workout: string | null
+  /** The workout's colour key; unset or `null` on a day with none. */
+  tone?: WorkoutTone | null
+  /** The workout's full name, for the strip's accessible summary. */
+  workoutName?: string | null
+  today: boolean
+  future?: boolean
+}
 
 /** This week at the top of Train (V2-05): one cell per day, and Sessions done of planned. */
 export type WeekStrip = { done: number; planned: number; days: WeekStripDay[] }
@@ -116,8 +131,7 @@ export function weekStripOf(sessions: Session[], program: Program, now: number, 
   const week = weeksOf(sessions, now, weekStartsOn).find((w) => w.inProgress)
   const today = new Date(now)
   const since = (today.getDay() - weekStartsOn + 7) % 7
-  const workoutName = (id: string): string =>
-    program.workouts.find((w) => w.id === id)?.name.replace(/^Workout\s+/i, '') ?? '•'
+  const workoutName = (id: string): string => program.workouts.find((w) => w.id === id)?.name ?? id
   const days: WeekStripDay[] = []
   for (let i = 0; i < 7; i += 1) {
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - since + i)
@@ -130,8 +144,11 @@ export function weekStripOf(sessions: Session[], program: Program, now: number, 
       key: name,
       initial: name.charAt(0),
       name,
-      workout: session ? workoutName(session.workoutId) : null,
+      workout: session ? workoutLetterOf(workoutName(session.workoutId)) : null,
+      tone: session ? workoutToneAt(program.workouts.findIndex((w) => w.id === session.workoutId)) : null,
+      workoutName: session ? workoutName(session.workoutId) : null,
       today: i === since,
+      future: i > since,
     })
   }
   return { done: week?.sessions.length ?? 0, planned: program.sessionsPerWeek, days }

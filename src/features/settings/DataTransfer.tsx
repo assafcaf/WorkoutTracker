@@ -24,8 +24,9 @@ function plural(n: number, one: string, many: string): string {
 }
 
 /**
- * Settings' "Your data" (E23-T9, O19-O21): the sets CSV, and the Strong or Hevy import with its
- * review. The result and any refusal show inline in a status line, never a dialog.
+ * Settings' "Your data" card (E23-T9, O19-O21), a second card under Data & sync (V2-09): the
+ * sets CSV, and the Strong or Hevy import with its review. The result and any refusal show
+ * inline in a status line, never a dialog.
  */
 export function DataTransfer(): JSX.Element {
   const services = useServices()
@@ -96,7 +97,6 @@ export function DataTransfer(): JSX.Element {
 
   return (
     <section className="settings-group data-transfer" aria-label="Your data">
-      <h2 className="settings-legend">Your data</h2>
       <div className="settings-card card">
         <button type="button" className="settings-action btn-quiet" onClick={handleExport}>
           <span className="settings-action-label">Export sets (CSV)</span>

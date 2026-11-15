@@ -4,6 +4,7 @@ import { MUSCLES } from '../../data/library'
 import { uuid } from '../../domain/programs'
 import { matchesQuery } from '../../domain/search'
 import { CustomExerciseForm, type CustomExerciseValues } from '../../ui/CustomExerciseForm'
+import { GymEquipmentSwitches } from '../../ui/GymEquipmentSwitches'
 import { LibraryList } from '../../ui/LibraryList'
 import { Select } from '../../ui/controls'
 import { Icon } from '../../ui/icons'
@@ -73,6 +74,15 @@ export function ExercisesFeature({
     .map((option) => option ?? 'none')
 
   const bundledEquipment = equipmentOptions.filter((option) => option !== 'none')
+  // "My gym's equipment" (V2-09, moved from Settings): every type but `body only`, which is
+  // always allowed.
+  const gymTypes = bundledEquipment.filter((option) => option !== 'body only')
+
+  function handleGymEquipmentChange(list: string[]): void {
+    services.preferences.setGymEquipment(list).catch(() => {
+      // Nothing to recover to here; a later read will surface the same failure.
+    })
+  }
 
   async function saveCustom(values: CustomExerciseValues): Promise<void> {
     const editing = form?.editing ?? null
@@ -158,6 +168,17 @@ export function ExercisesFeature({
           ))}
         </Select>
       </div>
+      <details className="library-gym">
+        <summary className="library-gym-summary">
+          <span>My gym&apos;s equipment</span>
+          <Icon name="ChevronRight" size={18} />
+        </summary>
+        <GymEquipmentSwitches
+          equipmentTypes={gymTypes}
+          gymEquipment={gymEquipment.data}
+          onChange={handleGymEquipmentChange}
+        />
+      </details>
       <LibraryList
         library={filteredLibrary}
         onOpen={setOpenLibraryId}

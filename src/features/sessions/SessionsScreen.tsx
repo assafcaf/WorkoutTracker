@@ -3,12 +3,21 @@ import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { formatDay } from '../../domain/dates'
 import type { Resolve } from '../../domain/muscles'
-import { dayMonth, sessionsByWeek, sessionsInWeeks, weekStarts, workingSetCount } from '../../domain/sessionsView'
+import {
+  calendarWeeks,
+  dayMonth,
+  sessionsByWeek,
+  sessionsInWeeks,
+  startOfDay,
+  workingSetCount,
+} from '../../domain/sessionsView'
 import type { Weekday } from '../../domain/stats/weeks'
 import { computeRecords, recordCount } from '../../domain/stats/records'
 import { sessionVolume } from '../../domain/volume'
 import type { BodyLog, ExercisePlan, Muscle, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
+import { CalendarWeekCells } from '../../ui/CalendarWeek'
+import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
 import { SessionEditor } from '../../ui/SessionEditor'
 import { SessionSummary } from '../../ui/SessionSummary'
 import type { AppRoute } from '../routes'
@@ -25,8 +34,11 @@ export type SessionsScreenProps = {
   initialSessionId?: string
 }
 
-/** The weeks the consistency strip totals (V2-07): one row of six numbers above the list. */
-const STRIP_WEEKS = 6
+/** The weeks the calendar draws (V3-09): six rows of seven days above the list. */
+const CALENDAR_WEEKS = 6
+
+const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 /** The Session's Workout name from `programs`, else its stored `workoutId`. */
 function workoutNameOf(session: Session, programs: Program[]): string {
@@ -34,49 +46,87 @@ function workoutNameOf(session: Session, programs: Program[]): string {
   return program?.workouts.find((workout) => workout.id === session.workoutId)?.name ?? session.workoutId
 }
 
+/** A Session's Workout tone: its index in its Program, cycling; `gone` when the Workout is. */
+function workoutToneOf(session: Session, programs: Program[]): WorkoutTone {
+  const index = programs
+    .find((program) => program.id === session.programId)
+    ?.workouts.findIndex((workout) => workout.id === session.workoutId)
+  return workoutToneAt(index ?? -1)
+}
+
 /**
- * The consistency strip (V2-07, replacing the six-week calendar): one total per week, oldest
- * first and this week last, then the Sessions those weeks hold. It answers "am I consistent?"
- * in one row, so the list (the screen's job) starts right under it.
+ * The six-week calendar (V3-09, back in place of V2-07's number row): one header line with the
+ * Session count, the day letters, then six weeks of seven cells, each Session day filled in its
+ * Workout's tone with its letter and today outlined. No legend: the letters carry it. It is
+ * static: each week row names its Sessions for a screen reader, and the list below is the way
+ * into a Session.
  */
-function WeekStrip({
+function SessionsCalendar({
   sessions,
+  programs,
   now,
   weekStartsOn,
 }: {
   sessions: Session[]
+  programs: Program[]
   now: number
   weekStartsOn: Weekday
 }): JSX.Element {
-  const starts = weekStarts(now, STRIP_WEEKS, weekStartsOn)
-  const totals = starts.map((start, index) => {
-    const end = index + 1 < starts.length ? starts[index + 1] : Infinity
-    return sessions.filter((session) => session.startedAt >= start && session.startedAt < end).length
-  })
-  const count = sessionsInWeeks(sessions, now, STRIP_WEEKS, weekStartsOn)
+  const weeks = calendarWeeks(sessions, now, CALENDAR_WEEKS, weekStartsOn)
+  const count = sessionsInWeeks(sessions, now, CALENDAR_WEEKS, weekStartsOn)
+  const byDay = new Map<number, Session[]>()
+  for (const session of [...sessions].sort((a, b) => a.startedAt - b.startedAt)) {
+    const key = startOfDay(session.startedAt)
+    byDay.set(key, [...(byDay.get(key) ?? []), session])
+  }
   return (
-    <section className="sessions-strip" aria-label={`Last ${STRIP_WEEKS} weeks`}>
-      <span className="sessions-strip-label">{`${STRIP_WEEKS} weeks`}</span>
-      <span
-        className="sessions-strip-weeks"
-        role="img"
-        aria-label={`Sessions per week from ${dayMonth(starts[0], now)}: ${totals.join(', ')}`}
-      >
-        {starts.map((start, index) => (
-          <span
-            key={start}
-            className="sessions-strip-week"
-            data-week={dayMonth(start, now)}
-            data-current={index === starts.length - 1 || undefined}
-            title={`Week of ${dayMonth(start, now)}: ${totals[index]} ${totals[index] === 1 ? 'session' : 'sessions'}`}
+    <section className="sessions-calendar card" aria-label={`Last ${CALENDAR_WEEKS} weeks`}>
+      <p className="sessions-calendar-head">
+        {`Last ${CALENDAR_WEEKS} weeks · ${count} ${count === 1 ? 'session' : 'sessions'}`}
+      </p>
+      <div className="sessions-calendar-row sessions-calendar-weekdays" aria-hidden="true">
+        <span />
+        <span className="sessions-calendar-weekday-cells">
+          {Array.from({ length: 7 }, (_, index) => (
+            <span key={index} className="sessions-calendar-weekday">
+              {WEEKDAY_INITIALS[(index + weekStartsOn) % 7]}
+            </span>
+          ))}
+        </span>
+      </div>
+      {weeks.map((week, index) => {
+        const trained = week.days.flatMap((day) =>
+          (byDay.get(day.at) ?? []).map(
+            (session) => `${workoutNameOf(session, programs)} ${WEEKDAY_NAMES[new Date(day.at).getDay()]}`,
+          ),
+        )
+        const summary = trained.length > 0 ? trained.join(', ') : 'no sessions'
+        return (
+          <div
+            key={week.start}
+            className="sessions-calendar-row"
+            role="img"
+            aria-label={`Week of ${dayMonth(week.start, now)}: ${summary}`}
+            data-current={index === weeks.length - 1 || undefined}
           >
-            {totals[index]}
-          </span>
-        ))}
-      </span>
-      <span className="sessions-strip-count">
-        <b>{count}</b> {count === 1 ? 'session' : 'sessions'}
-      </span>
+            <span className="sessions-calendar-week-label" aria-hidden="true">
+              {dayMonth(week.start, now)}
+            </span>
+            <CalendarWeekCells
+              cells={week.days.map((day) => {
+                const first = byDay.get(day.at)?.[0]
+                return {
+                  key: day.at,
+                  letter: first ? workoutLetterOf(workoutNameOf(first, programs)) : null,
+                  tone: first ? workoutToneOf(first, programs) : null,
+                  today: day.today,
+                  future: day.future,
+                }
+              })}
+            />
+          </div>
+        )
+      })}
     </section>
   )
 }
@@ -87,8 +137,8 @@ function recordsText(count: number): string {
 }
 
 /**
- * The Sessions tab (Progress Dashboard S6a, V2-07) as its own container over services: one
- * consistency row (the last six weeks' totals), then every finished Session grouped by week. The
+ * The Sessions tab (Progress Dashboard S6a, V2-07, V3-09) as its own container over services:
+ * the six-week calendar, then every finished Session grouped by week. The
  * muscle matrix lives on Progress › Muscles (its 4 weeks segment), the volume charts are cut. A row opens the Session's summary (so does a route naming
  * one), whose Edit opens the History editor (save, delete); both refresh on the `'sessions'`
  * topic without a reload.
@@ -198,7 +248,7 @@ export function SessionsScreen({
         <p className="sessions-empty">No finished workouts yet. Finish one and it appears here.</p>
       ) : (
         <div className="sessions-screen">
-          <WeekStrip sessions={sessions} now={today} weekStartsOn={weekStartsOn} />
+          <SessionsCalendar sessions={sessions} programs={programs} now={today} weekStartsOn={weekStartsOn} />
           {sessionsByWeek(sessions, today, weekStartsOn).map((week) => (
             <section key={week.start} className="sessions-week" aria-label={week.label}>
               <h2 className="sessions-caption">{week.label}</h2>

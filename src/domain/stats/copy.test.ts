@@ -126,6 +126,10 @@ describe('E18-T7 O11 the home on the fixture at Thu 15 Oct 18:05', () => {
     expect(home.adherence).toBe('2 of 3 this week')
   })
 
+  it('V3-11 the lead line joins the verdict and the climbed clause in one sentence', () => {
+    expect(home.lead).toBe('11 of 14 lifts moving · 12 stepped up since 18 Sep')
+  })
+
   it('O11 the attention list is slipping, then stalled by longest stall, then ready', () => {
     expect(home.cards.map((c) => [c.exerciseId, c.kind])).toEqual([
       ['narrow-grip-pull-down', 'slipping'],

@@ -119,12 +119,6 @@ test('O7 without an error the editor shows no alert', () => {
 function renderSettings(extra: Partial<React.ComponentProps<typeof Settings>>) {
   render(
     <Settings
-      programs={[]}
-      activeProgramId={null}
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={['barbell']}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
       {...extra}
     />,
   )
@@ -133,9 +127,12 @@ function renderSettings(extra: Partial<React.ComponentProps<typeof Settings>>) {
 test('O7 Settings shows a Bar and plates group after My gym\'s equipment when it has an inventory', () => {
   renderSettings({ plateInventory: RACK, onPlateInventoryChange: vi.fn() })
 
+  // V2-09: the gym's equipment moved to Program › Exercises; Bar and plates is the last row of
+  // the Workout group, after Week starts on.
   const barAndPlates = screen.getByRole('group', { name: 'Bar and plates' })
-  const gym = screen.getByRole('group', { name: /gym.s equipment/i })
-  expect(gym.compareDocumentPosition(barAndPlates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const week = screen.getByRole('combobox', { name: 'Week starts on' })
+  expect(within(screen.getByRole('group', { name: 'Workout' })).getByRole('group', { name: 'Bar and plates' })).toBe(barAndPlates)
+  expect(week.compareDocumentPosition(barAndPlates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(within(barAndPlates).getByRole('spinbutton', { name: 'Bar weight (kg)' })).toHaveValue(20)
 })
 

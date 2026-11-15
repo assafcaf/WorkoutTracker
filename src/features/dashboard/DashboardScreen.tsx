@@ -37,6 +37,8 @@ export type DashboardScreenProps = {
   notices?: ReactNode
   /** A Session in progress: the dock resumes it rather than starting another. */
   resume?: DashboardResume | null
+  /** Opens the Sessions tab, from the week strip (V3-09). */
+  onOpenSessions?(): void
 }
 
 type Loaded = {
@@ -107,6 +109,7 @@ export function DashboardScreen({
   now = Date.now,
   notices,
   resume,
+  onOpenSessions,
 }: DashboardScreenProps): JSX.Element {
   const services = useServices()
   const { sync, syncNow } = useSyncControls()
@@ -171,7 +174,7 @@ export function DashboardScreen({
           workoutId: workout.id,
           name: workout.name,
           last: last === null ? null : formatDay(new Date(last), new Date(at)),
-          summary: workoutSummary(workout, workout.id === due?.workout.id ? dueCard?.minutes : undefined),
+          minutes: (workout.id === due?.workout.id ? dueCard?.minutes : undefined) ?? workoutEstimate(workout).minutes,
         }
       }
       // Each other workout's card, so "Change" redraws the card for the one picked (V1-21).
@@ -194,7 +197,7 @@ export function DashboardScreen({
               workoutId: due.workout.id,
               name: due.workout.name,
               last: due.lastDoneAt === null ? null : formatDay(new Date(due.lastDoneAt), new Date(at)),
-              summary: workoutSummary(due.workout, dueCard?.minutes),
+              minutes: dueCard?.minutes ?? workoutEstimate(due.workout).minutes,
             }
           : null,
         workouts: visible.map(dockWorkout),
@@ -212,6 +215,7 @@ export function DashboardScreen({
       onStartWorkout={onStartWorkout}
       notices={notices}
       resume={resume}
+      onOpenSessions={onOpenSessions}
     />
   )
 }

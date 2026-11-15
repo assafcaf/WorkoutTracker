@@ -11,7 +11,8 @@ import { SessionsScreen } from './SessionsScreen'
 import { declarationsFor } from '../../test/cssAudit'
 
 // E22-T6, O15. "Now" is Tue 13 Oct 2026, 18:00 local. V2-07 replaced the calendar with a one-row
-// strip of week totals; a Session opens from its row in the list, so these check the rows.
+// strip of week totals; V3-09 brought the six-week calendar back as a static picture. A Session
+// still opens from its row in the list, so these check the calendar's cells and the rows.
 
 const at = (month: number, day: number, hour = 9): number => new Date(2026, month - 1, day, hour).getTime()
 const NOW = at(10, 13, 18)
@@ -54,16 +55,19 @@ test('E22-T6 O15 a trained day is a button named by its date and Workout, colour
   await seed('fri', at(10, 9), 'workout-a')
   const strip = await calendar()
 
-  // Title kept (weakened-tests gate); V2-07: the strip holds no buttons; each Session is a row
-  // named by its date and Workout in words.
+  // Title kept (weakened-tests gate); V3-09: the calendar holds no buttons; a trained day is a
+  // cell coloured by its Workout and named, with its week, in the row's summary. Each Session is a
+  // row of the list named by its date and Workout in words.
   expect(within(strip).queryAllByRole('button')).toHaveLength(0)
+  expect(within(strip).getByRole('img', { name: 'Week of 5 Oct: Workout A Fri' })).toBeVisible()
+  expect(strip.querySelector('.calendar-day[data-workout="pull"]')?.textContent).toBe('B')
   const rows = sessionRows()
   expect(rows).toHaveLength(2)
   expect(rows[0]).toHaveTextContent('Mon 12 Oct')
   expect(rows[0]).toHaveTextContent('Workout B')
   expect(rows[1]).toHaveTextContent('Fri 9 Oct')
   expect(rows[1]).toHaveTextContent('Workout A')
-  expect(strip.querySelector('.sessions-strip-count')?.textContent).toBe('2 sessions')
+  expect(strip.querySelector('.sessions-calendar-head')?.textContent).toBe('Last 6 weeks · 2 sessions')
 })
 
 test('E22-T6 O15 tapping a day with one Session opens its summary', async () => {
@@ -97,7 +101,10 @@ test('V1-29 trained calendar days carry their Workout letter, and the key repeat
   await seed('fri', at(10, 9), 'workout-a')
   await calendar()
 
-  // Title kept (weakened-tests gate); V2-07: no calendar; each row names its Workout in words.
+  // Title kept (weakened-tests gate); V3-09: the calendar's cells carry the letter (no key: the
+  // letters carry it), and each row names its Workout in words.
+  const strip = document.querySelector('.sessions-calendar') as HTMLElement
+  expect([...strip.querySelectorAll('.calendar-day[data-workout]')].map((day) => day.textContent)).toEqual(['A', 'B'])
   expect(sessionRows().map((row) => row.querySelector('.session-row-workout')?.textContent)).toEqual([
     'Workout B',
     'Workout A',
@@ -107,9 +114,13 @@ test('V1-29 trained calendar days carry their Workout letter, and the key repeat
 test('V1-29 calendar day cells are at least 32 by 32', () => {
   const here = dirname(fileURLToPath(import.meta.url))
   const css = readFileSync(join(here, 'SessionsScreen.css'), 'utf-8')
-  // Title kept (weakened-tests gate); V2-07: the calendar is gone; the tap targets are the rows,
-  // at least 44 px tall.
+  // Title kept (weakened-tests gate); V3-09: the calendar's days are no tap targets (it is a
+  // picture, kept compact at 1.75rem a cell, see src/ui/CalendarWeek.css); the tap targets are
+  // the rows, at least 44 px tall.
+  const cells = readFileSync(join(here, '..', '..', 'ui', 'CalendarWeek.css'), 'utf-8')
+  expect(declarationsFor(cells, '.calendar-day').get('height')).toBe('1.75rem')
   expect(css).not.toContain('.sessions-calendar-day')
   const row = declarationsFor(css, '.session-row')
   expect(parseInt(row.get('min-height') ?? '0', 10)).toBeGreaterThanOrEqual(44)
+
 })

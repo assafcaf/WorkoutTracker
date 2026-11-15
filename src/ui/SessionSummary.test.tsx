@@ -820,3 +820,37 @@ test('O26 without a handler the summary offers no save', () => {
   )
   expect(screen.queryByRole('region', { name: 'Save changes to program' })).toBeNull()
 })
+
+// --- V3-02: verdict wording names the numbers, and a partial lift is not compared -----------
+
+function renderBench(today: Session, earlier: Session[]): HTMLElement {
+  render(
+    <SessionSummary
+      session={today}
+      earlierSessions={earlier}
+      planFor={planFor}
+      program={WEEK_PROGRAM}
+      resolve={resolve}
+      library={LIBRARY}
+      workoutName="Workout A"
+      onClose={vi.fn()}
+    />,
+  )
+  return summaryDialog()
+}
+
+test('V3-02 Lift by lift never reads a bare Same: it names the Sets, Same as last time · 3 × 80 × 5', () => {
+  const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
+  const dialog = renderBench(benchSession('wed-14', WED, 50, 3, 80, 5), [before])
+
+  expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('Same as last time · 3 × 80 × 5')
+})
+
+test('V3-02 a lift with 1 of 3 Sets logged reads 1 of 3 sets, with no vs comparison', () => {
+  const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
+  const dialog = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
+
+  const text = dialog.querySelector('.session-summary-move-text')?.textContent ?? ''
+  expect(text).toContain('1 of 3 sets')
+  expect(text).not.toContain('vs')
+})

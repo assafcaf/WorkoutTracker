@@ -223,3 +223,32 @@ a.settings-action {
   color: var(--color-primary);
   font-weight: var(--weight-semibold);
 }
+
+/* Data & sync (V2-09) carries more than one card: the backup rows, then the sets CSV and Apple
+ * Health as their own cards under the one caption. */
+.settings-group > .settings-group {
+  margin-top: var(--space-3);
+}
+
+/* "Last backup: ..." (V1-30) under the account lines, or first when there is no account. */
+.settings-last-backup {
+  padding: var(--space-3);
+}
+
+/* Bar and plates folds into one Workout row (V2-09) that opens the editor in place. */
+.settings-disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.settings-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-disclosure[open] > summary > svg {
+  transform: rotate(90deg);
+}
+
+.settings-disclosure-body {
+  padding: 0 var(--space-3) var(--space-3);
+}

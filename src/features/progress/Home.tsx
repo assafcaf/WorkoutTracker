@@ -6,11 +6,13 @@ import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
 import { buildLadder } from '../../domain/stats/ladder'
 import type { Ladder } from '../../domain/stats/ladder'
-import { homeCopy, humanDate, numberText, topText, verdictLabel } from '../../domain/stats/copy'
+import { homeCopy, humanDate, topText, verdictLabel } from '../../domain/stats/copy'
 import type { AttentionCard, HomeCopy } from '../../domain/stats/copy'
 import { buildLiftHistories } from '../../domain/stats/liftHistory'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
-import { plannedPerWeek, windowAverage } from '../../domain/stats/muscles'
+import { STATS_MUSCLES, windowAverage } from '../../domain/stats/muscles'
+import { muscleLabel } from '../../domain/muscleLabels'
+import { WEEKLY_SET_RANGE, weeklyStanding } from '../../domain/setRange'
 import { computeRecords } from '../../domain/stats/records'
 import { verdicts } from '../../domain/stats/verdict'
 import type { Verdict } from '../../domain/stats/verdict'
@@ -243,20 +245,28 @@ function Card({ model, card, onOpen }: { model: ProgressModel; card: AttentionCa
   )
 }
 
+/**
+ * The Muscles row's verdict (V3-12): the muscles the Muscles page flags against the typical
+ * weekly range, on the same 2-week average, the same 12 muscles and the same names
+ * (`Shoulders 21 above · Abs 3 below`), above first, then below, fewest first.
+ */
 function musclesFinding(model: ProgressModel): { line: string; fewest: string } | null {
   const { data, now } = model
-  const library = data.library
-  const avg = windowAverage(data.sessions, now, data.resolve, library, undefined, data.weekStart)
+  const avg = windowAverage(data.sessions, now, data.resolve, data.library, undefined, data.weekStart)
   if (avg.size === 0) return null
-  const planned = plannedPerWeek(data.program, data.resolve, library)
-  const rows = [...planned.keys()]
-    .filter((m) => avg.has(m) || planned.has(m))
-    .map((m) => ({ muscle: m, sets: avg.get(m) ?? 0 }))
-    .sort((a, b) => a.sets - b.sets)
-    .slice(0, 2)
+  const rows = STATS_MUSCLES.map((muscle) => ({ muscle, sets: avg.get(muscle) ?? 0 }))
+  const above = rows.filter((r) => weeklyStanding(r.sets) === 'above').sort((a, b) => b.sets - a.sets)
+  const below = rows.filter((r) => weeklyStanding(r.sets) === 'below').sort((a, b) => a.sets - b.sets)
+  const named = [
+    ...above.map((r) => `${muscleLabel(r.muscle)} ${Math.round(r.sets)} above`),
+    ...below.map((r) => `${muscleLabel(r.muscle)} ${Math.round(r.sets)} below`),
+  ]
   return {
     line: 'Muscles',
-    fewest: rows.map((r) => `${cap(r.muscle)} ${numberText(r.sets)}`).join(' · '),
+    fewest:
+      named.length === 0
+        ? `All within ${WEEKLY_SET_RANGE.min}–${WEEKLY_SET_RANGE.max} sets a week`
+        : named.join(' · '),
   }
 }
 
@@ -388,19 +398,8 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
 
         {copy.stage === 'full' ? (
           <>
-            <p className="progress-sentence">{copy.sentence}</p>
-            <ul className="progress-counts" aria-label={copy.counts}>
-              {copy.counts.split(' · ').map((part) => {
-                const [glyph, n, ...label] = part.split(' ')
-                return (
-                  <li key={part} className="progress-count">
-                    <span className="progress-count-n">{`${glyph} ${n}`}</span>
-                    <span className="progress-count-label">{label.join(' ')}</span>
-                  </li>
-                )
-              })}
-            </ul>
-            <p className="progress-climbed">{copy.climbed}</p>
+            {/* V3-11: one lead line, then the cards; All lifts filters by status. */}
+            <p className="progress-sentence progress-lead">{copy.lead}</p>
             <div className="progress-cards">
               {copy.cards.map((card) => (
                 <Card key={card.exerciseId + card.kind} model={model} card={card} onOpen={open} />

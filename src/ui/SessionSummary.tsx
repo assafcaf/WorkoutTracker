@@ -6,6 +6,7 @@ import { muscleLabel } from '../domain/muscleLabels'
 import { sessionChanges } from '../domain/sessionChanges'
 import { bodyweightOn } from '../domain/bodyLog'
 import { sessionVolume } from '../domain/volume'
+import { honestMoveText } from '../domain/exerciseVerdict'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { numberText, topText } from '../domain/stats/copy'
 import { nextTime, sessionMoves, summaryWeek, volumeLine } from '../domain/stats/moves'
@@ -164,7 +165,7 @@ export function SessionSummary({
   const stats = program ?? programOf(session, workoutName, planFor)
   const records = computeRecords(all, resolve, planFor).filter((entry) => entry.sessionId === session.id)
   const prs = recordCount(records, session.id)
-  const moves = sessionMoves(session.id, all, resolve, stats)
+  const statedMoves = sessionMoves(session.id, all, resolve, stats)
   const next = nextTime(session.id, all, resolve, stats)
   const week = program ? summaryWeek(session.id, all, program, weekStartsOn) : null
   const working = workingSets(session.entries).length
@@ -184,6 +185,19 @@ export function SessionSummary({
     0,
   )
   const partial = plannedSets > 0 && working < plannedSets
+  // V3-02: Lift by lift never says a bare "Same", and a partial Exercise makes no comparison.
+  const plannedSetsOf = (exerciseId: string): number | undefined =>
+    (plannedWorkout?.exercises ?? []).find(
+      (plan) => (session.swaps?.[plan.exerciseId] ?? plan.exerciseId) === exerciseId,
+    )?.sets
+  const moves = statedMoves.map((move) => ({
+    ...move,
+    text: honestMoveText(
+      move.text,
+      session.entries.filter((entry) => entry.exerciseId === move.exerciseId),
+      plannedSetsOf(move.exerciseId),
+    ),
+  }))
   const volume = volumeLine(session.id, all, resolve, bodyLog)
   const volumeText = partial ? volume.split(' · ')[0] : volume
   const best = records[0]

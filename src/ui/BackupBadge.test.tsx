@@ -49,3 +49,9 @@ test('O11 BackupBadge shows an invitation to back up when the database was never
 
   expect(screen.getByRole('status')).toHaveTextContent(/back ?up/i)
 })
+
+test('V1-30 isBackupDue is false with nothing logged yet, even with no recorded export', () => {
+  expect(isBackupDue(null, NOW, false)).toBe(false)
+  expect(isBackupDue(NOW - 15 * DAY, NOW, false)).toBe(false)
+  expect(isBackupDue(null, NOW, true)).toBe(true)
+})
