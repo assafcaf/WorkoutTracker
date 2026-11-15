@@ -7,6 +7,7 @@ import { AppShell } from '../../ui/AppShell'
 import { LiftView } from '../../ui/LiftView'
 import type { AppRoute } from '../routes'
 import { useServiceData } from '../useServiceData'
+import { useProgramSwap } from './useProgramSwap'
 import type { ProgressPageProps } from './pages'
 
 export type LiftPageViewProps = {
@@ -69,6 +70,8 @@ export function LiftPage({ page, onBack, navigate, now = Date.now }: LiftPagePro
     ['preferences'],
   )
 
+  const { canSwap, openSwap, swapUi } = useProgramSwap()
+
   let body: JSX.Element | null = null
   let title = 'Lift'
   if (sessionsData.status === 'ready' && programsData.status === 'ready' && catalogData.status === 'ready') {
@@ -82,7 +85,6 @@ export function LiftPage({ page, onBack, navigate, now = Date.now }: LiftPagePro
     const { programs, activeProgramId } = programsData.data
     const exercise = resolve(page.exerciseId)
     title = exercise?.name ?? 'Lift'
-    const muscles = (exercise ? libraryMap.get(exercise.libraryId)?.primaryMuscles : undefined) ?? []
     body = (
       <LiftPageView
         exerciseId={page.exerciseId}
@@ -91,13 +93,15 @@ export function LiftPage({ page, onBack, navigate, now = Date.now }: LiftPagePro
         resolve={resolve}
         now={now()}
         onOpenSession={navigate ? (sessionId) => navigate({ tab: 'history', sessionId }) : undefined}
-        onSwap={navigate ? () => navigate({ tab: 'exercises', muscles }) : undefined}
+        // V6R-02: the short swap list, replacing the lift in the Program, with Undo.
+        onSwap={canSwap(page.exerciseId) ? () => openSwap(page.exerciseId) : undefined}
       />
     )
   }
   return (
     <AppShell title={title} onBack={onBack}>
       {body}
+      {swapUi}
     </AppShell>
   )
 }

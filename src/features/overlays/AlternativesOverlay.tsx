@@ -20,6 +20,8 @@ export type AlternativesOverlayProps = {
   loggedIds?: Iterable<string>
   /** V6-10: the Exercise ids already in today's Workout; their library entries are not offered. */
   taken?: Iterable<string>
+  /** V6R-02: the heading in place of "Alternatives to <name>", e.g. "Replace <name> in Workout A". */
+  heading?: string
 }
 
 /**
@@ -37,6 +39,7 @@ export function AlternativesOverlay({
   onClose,
   loggedIds = [],
   taken = [],
+  heading,
 }: AlternativesOverlayProps): JSX.Element | null {
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
   const planned = resolveExercise(plannedId, catalog, libraryMap)
@@ -63,7 +66,7 @@ export function AlternativesOverlay({
     >
       <div className="alternatives-overlay-header">
         <h2 id="alternatives-heading" className="alternatives-overlay-heading">
-          Alternatives to {planned.name}
+          {heading ?? `Alternatives to ${planned.name}`}
         </h2>
         {/* V5-11: an X the size of a thumb, still named Close. */}
         <button type="button" className="alternatives-overlay-close icon-btn" aria-label="Close" onClick={onClose}>

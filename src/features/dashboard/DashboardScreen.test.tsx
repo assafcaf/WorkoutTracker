@@ -328,8 +328,9 @@ describe('DashboardScreen V6 flow', () => {
     const { onStartWorkout } = mount(services())
 
     await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy(), SETTLE)
-    // Workout B plans 7 lifts; only the Deadlift was touched.
-    expect(screen.getByText('Finish Workout B: 6 lifts left from Mon 12 Oct')).toBeTruthy()
+    // V6R-03: Workout B again, all of it, in plain words; no "lifts left" Start would not keep.
+    expect(screen.getByText('Workout B again · last one was cut short on Mon 12 Oct')).toBeTruthy()
+    expect(screen.queryByText(/lifts? left/)).toBeNull()
     // The week (from Monday) still counts it.
     expect(within(screen.getByRole('button', { name: /^This week/ })).getByText('1 of 3')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout B' }))

@@ -82,8 +82,41 @@ describe('E18-T10 O20 Progress home with 45 Sessions', () => {
     expect(within(card).getByText('13 kg × 9 · no new best since Fri 7 Aug')).toBeTruthy()
     // V6-04: the deload of 21–25 Sep already failed, so a variation, with a Swap link.
     expect(within(card).getByText('Try a variation for 4 weeks.')).toBeTruthy()
+    // V6R-02: Swap › opens the live Session's short swap list for this lift, not the raw catalog.
     fireEvent.click(within(card).getByRole('button', { name: 'Swap ›' }))
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ tab: 'exercises' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Replace DB bench press in Workout A' }, SETTLE)
+    expect(navigate).not.toHaveBeenCalled()
+    const choices = within(dialog).getAllByRole('button', { name: /^Do .* instead$/ })
+    expect(choices.length).toBeGreaterThan(0)
+    expect(choices.length).toBeLessThanOrEqual(6)
+    // Lifts already in Workout A are not offered.
+    expect(within(dialog).queryByRole('button', { name: 'Do Push-ups instead' })).toBeNull()
+    const chosen = (choices[0].getAttribute('aria-label') ?? '').replace(/^Do (.*) instead$/, '$1')
+
+    // Choosing one swaps it into Workout A of the Program, with an Undo snackbar.
+    fireEvent.click(choices[0])
+    const workoutA = async () => {
+      const { programs } = await createServices({ now: () => NOW, storageAvailable: true }).programs.load()
+      return programs.find((p) => p.id === 'assaf-ab-2026')?.workouts.find((w) => w.id === 'workout-a')
+    }
+    await waitFor(async () => {
+      const ids = (await workoutA())?.exercises.map((plan) => plan.exerciseId) ?? []
+      expect(ids).not.toContain('db-bench-press')
+      expect(ids).toHaveLength(7)
+      expect(ids[2]).not.toBe('db-bench-press')
+    }, SETTLE)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /^Replace / })).toBeNull(), SETTLE)
+    const snackbar = await waitFor(() => {
+      const found = document.querySelector('.snackbar') as HTMLElement | null
+      expect(found).not.toBeNull()
+      return found as HTMLElement
+    }, SETTLE)
+    expect(snackbar).toHaveTextContent(`${chosen} replaces DB bench press in Workout A`)
+
+    // Undo puts DB bench press back in its place.
+    fireEvent.click(within(snackbar).getByRole('button', { name: 'Undo' }))
+    await waitFor(async () => expect((await workoutA())?.exercises[2].exerciseId).toBe('db-bench-press'), SETTLE)
+    await waitFor(() => expect(document.querySelector('.snackbar')).toBeNull(), SETTLE)
   })
 
   test('O20 the adherence tile reads 2 of 3 this week and its done days open their Session', async () => {

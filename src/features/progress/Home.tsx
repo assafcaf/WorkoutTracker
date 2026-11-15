@@ -25,6 +25,7 @@ import { Icon } from '../../ui/icons'
 import type { AppRoute } from '../routes'
 import { useServiceData } from '../useServiceData'
 import type { ProgressPageProps } from './pages'
+import { useProgramSwap } from './useProgramSwap'
 import './Home.css'
 
 /** What the Progress pages read: the active Program, the finished Sessions, the catalog. */
@@ -381,20 +382,16 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
   const model = loaded.status === 'ready' && loaded.data ? progressModel(loaded.data, at) : null
   const open = (exerciseId: string) => push({ kind: 'lift', exerciseId })
   const start = () => navigate?.({ tab: 'workout' })
+  const { canSwap, openSwap, swapUi } = useProgramSwap()
 
-  if (!model) return <AppShell title="Progress">{null}</AppShell>
+  if (!model) return <AppShell title="Progress">{swapUi}</AppShell>
   const { copy, data } = model
   const lastWeek = lastWeekCard(data.sessions, at, data.resolve, (id) => model.plans.get(id), data.weekStart, data.bodyLog)
   const weekCard = lastWeek ? <LastWeek card={lastWeek} /> : null
   const latestWeight = bodyweightOn(data.bodyLog, at)
-  // Swap: the Exercises tab on the lift's primary muscles, to pick a variation.
-  const swap = navigate
-    ? (id: string) => {
-        const libraryId = data.resolve(id)?.libraryId
-        const muscles = (libraryId ? data.library.get(libraryId)?.primaryMuscles : undefined) ?? []
-        navigate({ tab: 'exercises', muscles })
-      }
-    : undefined
+  // V6R-02: Swap opens the live Session's short swap list for the lift and replaces it in the
+  // Program, with Undo; a lift no Workout plans has no Swap.
+  const swap = openSwap
 
   return (
     <AppShell title="Progress" actions={<span className="progress-date">{humanDate(at)}</span>}>
@@ -443,7 +440,7 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
               <section className="progress-section" aria-label="Needs a decision">
                 <div className="progress-cards">
                   {copy.cards.map((card) => (
-                    <Card key={card.exerciseId} model={model} card={card} onOpen={open} onSwap={swap} />
+                    <Card key={card.exerciseId} model={model} card={card} onOpen={open} onSwap={canSwap(card.exerciseId) ? swap : undefined} />
                   ))}
                 </div>
                 {copy.moreDecisions > 0 ? <p className="progress-more">{`${copy.moreDecisions} more in Lifts`}</p> : null}
@@ -485,6 +482,7 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
           </>
         )}
       </div>
+      {swapUi}
     </AppShell>
   )
 }

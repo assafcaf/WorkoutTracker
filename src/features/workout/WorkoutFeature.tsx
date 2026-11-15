@@ -111,6 +111,18 @@ type OpenSet = {
   handover?: { exerciseId: string; history: SetEntry[]; message: string }
 }
 
+/**
+ * `open` keyed on the Set it has moved on to by logging (`liveSetIndex`), not the one it was
+ * first opened on, so a screen mounted from it again (after minimising, or Undo of a Discard)
+ * opens where the trainee was. V6R-01: remounted at its old key, the screen counted Set 1 again.
+ */
+function settledOpenSet(open: OpenSet): OpenSet {
+  return open.liveSetIndex === undefined
+    ? open
+    : { ...open, setIndex: open.liveSetIndex, liveSetIndex: undefined, extra: false }
+}
+
+
 /** The detail overlay (E5-T8, E5-T15) or the ranked alternatives overlay (E5-T12). */
 type Overlay =
   | { kind: 'detail'; libraryId: string; heading?: string; plannedId?: string }
@@ -430,11 +442,7 @@ export function WorkoutFeature({
   // logging, not the one it was first opened on.
   useEffect(() => {
     if (!minimised) return
-    setOpenSet((current) =>
-      current && current.liveSetIndex !== undefined
-        ? { ...current, setIndex: current.liveSetIndex, liveSetIndex: undefined, extra: false }
-        : current,
-    )
+    setOpenSet((current) => (current ? settledOpenSet(current) : current))
   }, [minimised])
 
   // What the live strip says, reported whenever it changes: the workout, its clock, the rest
@@ -901,7 +909,7 @@ export function WorkoutFeature({
       .undiscard(was.session.id)
       .then((restored) => {
         setSession(restored)
-        setOpenSet(was.openSet)
+        setOpenSet(was.openSet === null ? null : settledOpenSet(was.openSet))
         setView(was.view === 'set' && was.openSet === null ? 'list' : was.view)
         onRestore?.()
         void syncNow()

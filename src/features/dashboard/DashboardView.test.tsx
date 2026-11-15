@@ -520,10 +520,10 @@ describe('DashboardView V6 flow', () => {
 
   test('V6-11 after a short Session the header says what is left of the Workout, and Start starts it', () => {
     const props = renderView({
-      data: { ...READY, due: { ...due, finish: 'Finish Workout A: 6 lifts left from Mon 12 Oct' } } as DashboardData,
+      data: { ...READY, due: { ...due, finish: 'Workout A again · last one was cut short on Mon 12 Oct' } } as DashboardData,
     })
     expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
-    expect(screen.getByText('Finish Workout A: 6 lifts left from Mon 12 Oct')).toBeTruthy()
+    expect(screen.getByText('Workout A again · last one was cut short on Mon 12 Oct')).toBeTruthy()
     expect(screen.queryByText(/last done/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
     expect(props.onStartWorkout).toHaveBeenCalledWith('workout-a')

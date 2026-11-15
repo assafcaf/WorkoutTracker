@@ -192,16 +192,13 @@ export function kgCellText(preset: { load: string | null; topLoad?: string; advi
 }
 
 /**
- * V6-11: Train's second line after a short Session, "Finish Workout B: 6 lifts left from Thu
- * 15 Oct"; with every lift touched, the Sets left.
+ * V6-11, V6R-03: Train's second line after a short Session, "Workout B again · last one was cut
+ * short on Thu 15 Oct". Start starts the whole Workout afresh, so the line promises no "lifts
+ * left" that Start would not keep.
  */
 export function finishText(short: ShortSession, now: number): string {
   const day = formatDay(new Date(short.session.startedAt), new Date(now))
-  const left =
-    short.liftsLeft > 0
-      ? `${short.liftsLeft} ${short.liftsLeft === 1 ? 'lift' : 'lifts'}`
-      : `${short.planned - short.logged} sets`
-  return `Finish ${short.workout.name}: ${left} left from ${day}`
+  return `${short.workout.name} again · last one was cut short on ${day}`
 }
 
 /** V6-08: the Workout's last Session note as Train shows it, "Note from Wed 7 Oct: …". */

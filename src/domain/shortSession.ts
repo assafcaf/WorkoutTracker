@@ -1,6 +1,6 @@
 // V6-11: a short Session keeps its Workout. When the latest finished Session of a Program logged
 // fewer than half its Workout's planned working Sets, the rotation does not move on: the same
-// Workout is next, and Train says how many of its lifts are left. The week still counts the
+// Workout is next, and Train offers it again ("Workout B again", V6R-03). The week still counts the
 // Session (honest, no guilt).
 // V6-08: a Workout's latest Session note, which Train shows under the date.
 // Pure; imports only src/domain/** and src/types.ts.

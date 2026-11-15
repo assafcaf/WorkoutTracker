@@ -270,3 +270,52 @@ test('V6-16 starting Workout B, the Deadlift shows its warm-up line on Now until
   await user.click(await logButton())
   await waitFor(() => expect(document.querySelector('.set-warmup-line')).toBeNull(), SETTLE)
 })
+
+// --- V6R-01: Undo after Discard restores the exact Session ------------------------------------
+
+test('V6R-01 log a Set on Now, Discard, Undo: the same Sets once, the same Set next, the same ramp', async () => {
+  const services = await servicesOnAssafAB()
+  // Last Workout B: Deadlift ramped 60 x 10, 70 x 7, 70 x 7.
+  const earlier = await services.sessions.start('assaf-ab-2026', 'workout-b')
+  for (const [setIndex, weightKg, reps] of [[1, 60, 10], [2, 70, 7], [3, 70, 7]]) {
+    await services.sessions.logSet(earlier.id, { exerciseId: 'deadlift', setIndex, weightKg, reps, loggedAt: NOW - 3 * 86_400_000 })
+  }
+  await services.sessions.finish(earlier.id)
+  const { user } = renderFeature(services)
+  await startFromDashboard(user, 'Workout B')
+  await screen.findByRole('heading', { level: 1, name: 'Deadlift' }, SETTLE)
+  expect(await logButton()).toHaveTextContent('Log set 1 · 60 × 10')
+
+  // Set 1 logged on Now: the screen moves on to Set 2 in place, without reopening.
+  await user.click(await logButton())
+  await waitFor(async () => expect((await logButton()).textContent).toContain('Log set 2 · 70 × 7'), SETTLE)
+  // Every cell in the strip, done and to come: "1 ✓ 60×10" style text without spaces.
+  const cells = (): string[] =>
+    [...document.querySelectorAll('.set-cells .logged-sets .logged-set, .set-cells .set-cell')].map((cell) =>
+      (cell.textContent ?? '').replace(/\s+/g, ''),
+    )
+  const cellsBefore = cells()
+  const storedBefore = await storedActiveSession()
+  expect(storedBefore?.entries).toHaveLength(1)
+
+  await discardFromFinish(user, 'Discard 1 logged set')
+  const snackbar = await waitFor(() => {
+    const found = document.querySelector('.snackbar') as HTMLElement | null
+    expect(found).not.toBeNull()
+    return found as HTMLElement
+  }, SETTLE)
+  await user.click(within(snackbar).getByRole('button', { name: 'Undo' }))
+
+  expect(await screen.findByRole('heading', { level: 1, name: 'Deadlift' }, SETTLE)).toBeVisible()
+  await waitFor(async () => expect((await logButton()).textContent).toContain('Log set 2 · 70 × 7'), SETTLE)
+  expect(cells()).toEqual(cellsBefore)
+  // Set 1 shows once, done at 60 x 10; Sets 2 and 3 keep last time's 70 x 7.
+  expect(cells()).toHaveLength(3)
+  expect(cells().filter((text) => text.startsWith('1'))).toHaveLength(1)
+  expect(cells()[0]).toContain('60×10')
+  expect(cells().slice(1)).toEqual(['270×7', '370×7'])
+  const restored = await storedActiveSession()
+  expect(restored?.id).toBe(storedBefore?.id)
+  expect(restored?.entries).toEqual(storedBefore?.entries)
+  expect(restored?.swaps ?? {}).toEqual(storedBefore?.swaps ?? {})
+})
