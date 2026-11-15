@@ -100,6 +100,8 @@ describe('O5 the session service', () => {
       'lastEntriesForSession',
       'lastSwapsForSession',
       'list',
+      // V6-13: a missed Session logged after the fact.
+      'logPast',
       'logSet',
       'presetHistory',
       'restoreSet',
@@ -824,6 +826,40 @@ describe('E12-T6 the session service saves an edited finished Session', () => {
     await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
     expect(emitted()).toBe(0)
     expect(await stored('done')).toBeUndefined()
+  })
+})
+
+// --- V6-13: logPast stores a missed Session, finished, in one write ----------------------------
+
+describe('V6-13 the session service logs a missed Session after the fact', () => {
+  const missed = (): Session =>
+    storedSession({
+      id: 'missed',
+      startedAt: BASE - 2 * DAY,
+      finishedAt: BASE - 2 * DAY + HOUR,
+      entries: [entry('bench', 1, 60, 8, BASE - 2 * DAY + 100 * SECOND)],
+      updatedAt: undefined,
+    })
+
+  test('V6-13 logPast stores a new finished Session, stamps now() and announces sessions once', async () => {
+    const { service, emitted } = harness()
+
+    const saved = await service.logPast(missed())
+
+    expect(saved).toEqual({ ...missed(), updatedAt: NOW })
+    expect(await stored('missed')).toEqual({ ...missed(), updatedAt: NOW })
+    expect(emitted()).toBe(1)
+  })
+
+  test('V6-13 logPast refuses a Session with no Sets, one not finished, or an id already stored', async () => {
+    await putSessions([storedSession({ id: 'taken', entries: [entry('bench', 1, 60, 8, BASE)] })])
+    const { service, emitted } = harness()
+
+    await expect(service.logPast({ ...missed(), entries: [] })).rejects.toBeInstanceOf(ServiceError)
+    await expect(service.logPast({ ...missed(), finishedAt: null })).rejects.toBeInstanceOf(ServiceError)
+    await expect(service.logPast({ ...missed(), id: 'taken' })).rejects.toBeInstanceOf(ServiceError)
+    expect(await stored('missed')).toBeUndefined()
+    expect(emitted()).toBe(0)
   })
 })
 

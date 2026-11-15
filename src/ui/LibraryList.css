@@ -226,6 +226,31 @@
   font-size: var(--text-xs);
 }
 
+/* My lifts (V6-03): the name and, under it at narrow widths, the latest top Set, muted. */
+.my-lifts-row {
+  flex-wrap: wrap;
+  column-gap: var(--space-3);
+  row-gap: 0;
+}
+
+.my-lifts-latest {
+  flex: none;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.library-section-heading {
+  margin: var(--space-2) 0 10px;
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.library-section-heading + .library-list {
+  margin-bottom: var(--space-4);
+}
+
 .library-pager {
   display: flex;
   align-items: center;

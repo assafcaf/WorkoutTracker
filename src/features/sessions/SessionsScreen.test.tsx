@@ -214,7 +214,8 @@ test('S6a Edit session on the summary opens the History editor, and Delete worko
   await user.click(within(dialog).getByRole('button', { name: 'Edit session' }))
 
   expect(screen.queryByRole('dialog', { name: 'Session summary' })).toBeNull()
-  expect(await screen.findByRole('heading', { name: 'Workout A', level: 2 }, SETTLE)).toBeVisible()
+  // V6-14: the editor's one header names what it does, the Workout and the day.
+  expect(await screen.findByRole('heading', { name: 'Edit · Workout A · Tue 13 Oct', level: 1 }, SETTLE)).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Delete workout' }))
   await user.click(screen.getByRole('button', { name: 'Confirm' }))
 

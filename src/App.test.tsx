@@ -1395,7 +1395,8 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
   // Hand-checked against the real library fixture's alphabetically (locale-aware) first name --
   // the first-10 default view F4 now requires.
   expect(await screen.findByText('3/4 Sit-Up', {}, SETTLE)).toBeVisible()
-  expect(screen.getAllByRole('listitem')).toHaveLength(10)
+  // V6-03: My lifts sits above the catalog; the catalog still shows its first 10.
+  expect(catalogRows()).toHaveLength(10)
   const pager = screen.getByRole('navigation', { name: 'Pages' })
   expect(within(pager).getByText('Page 1 of 88')).toBeVisible()
   expect(within(pager).getByRole('button', { name: 'Previous' })).toBeDisabled()
@@ -1415,6 +1416,14 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
 // rest of a result a page at a time (a different 10 rows, not a cumulative list), and a new
 // filtered result returns the list to page 1 (O18), which is why page 2's "lat" rows are
 // re-fetched after the muscle/equipment filter is applied rather than expected to carry over.
+/**
+ * The catalog's rows on the Exercises tab, without My lifts (V6-03), which lists the active
+ * Program's lifts above the catalog and is searched too ("lat" finds Lateral raises).
+ */
+function catalogRows(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>('.library-list:not(.my-lifts-list) > li')]
+}
+
 test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with more reachable via the pager -- and a combination matching nothing shows "No exercises match"', async () => {
   const user = userEvent.setup()
   await renderApp()
@@ -1428,7 +1437,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
   expect(latMatches.length).toBeGreaterThan(10)
   await user.type(search, 'lat')
   await waitFor(() => {
-    const rows = screen.getAllByRole('listitem')
+    const rows = catalogRows()
     expect(rows).toHaveLength(10)
     rows.forEach((row) => {
       expect(textOf(row).toLowerCase()).toContain('lat')
@@ -1440,7 +1449,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
 
   await user.click(within(pager).getByRole('button', { name: 'Next' }))
   await waitFor(() => {
-    const rows = screen.getAllByRole('listitem')
+    const rows = catalogRows()
     expect(rows).toHaveLength(10)
     rows.forEach((row) => {
       expect(textOf(row).toLowerCase()).toContain('lat')
@@ -1462,7 +1471,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
   await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
   await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
   await waitFor(() => {
-    expect(screen.getAllByRole('listitem')).toHaveLength(10)
+    expect(catalogRows()).toHaveLength(10)
   }, SETTLE)
   pager = screen.getByRole('navigation', { name: 'Pages' })
   expect(within(pager).getByText('Page 1 of 3')).toBeVisible()

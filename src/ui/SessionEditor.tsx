@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
+import { formatDay } from '../domain/dates'
+import { newPlan } from '../domain/programs'
 import { formatSet } from '../domain/setText'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
-import type { Exercise, Session, SetEntry } from '../types'
+import type { Exercise, LibraryExercise, Session, SetEntry, SetKind } from '../types'
 import { Switch } from './controls'
+import { ExercisePicker } from './ExercisePicker'
 import { RepsDial } from './RepsDial'
 import { WeightDial } from './WeightDial'
 import './SessionEditor.css'
@@ -18,6 +21,20 @@ export type SessionEditorProps = {
   onCancel(): void
   /** Delete workout, called after an inline confirm; the button is absent without it. */
   onDelete?(): void
+  /**
+   * `edit` a stored Session (the default), or `log` a missed one (V6-13): the heading reads
+   * "Edit · Workout B · Mon 12 Oct" or "Log · Workout B · Tue 13 Oct".
+   */
+  mode?: 'edit' | 'log'
+  /** The clock the heading's day reads against; the device's by default. */
+  now?: number
+  /**
+   * What "Add exercise" offers (V6-13), the same picker as a live Session's; no Add exercise
+   * without it.
+   */
+  addable?: LibraryExercise[]
+  /** The Workout's planned Exercise ids: one added that is not among them is saved in `added`. */
+  plannedIds?: string[]
 }
 
 /** The Set whose values the Dials are editing. */
@@ -47,6 +64,17 @@ function fromLocalInput(value: string): number | null {
 /** What a Set row reads: `60 × 8`, or `BW × 10` for a Set carrying no weight. */
 function setText(entry: SetEntry): string {
   return formatSet(entry)
+}
+
+/** A Set kind's mark before its values (V6-14), as the History overlay marks it. */
+const KIND_MARKERS: Record<SetKind, string> = { warmup: 'W', drop: 'D', failure: 'F', amrap: 'A' }
+/** A Set kind as a screen reader hears it in the row's control names. */
+const KIND_NAMES: Record<SetKind, string> = { warmup: 'warm-up', drop: 'drop', failure: 'failure', amrap: 'AMRAP' }
+
+/** The name a Set's controls end on (V6-14): `Back squat set 1, warm-up 40 × 5`. */
+function setName(exerciseName: string, entry: SetEntry): string {
+  const kind = entry.kind ? `${KIND_NAMES[entry.kind]} ` : ''
+  return `${exerciseName} set ${entry.setIndex}, ${kind}${setText(entry)}`
 }
 
 /** The draft's Sets grouped by Exercise, in first-appearance order, each group by `setIndex`. */
@@ -88,6 +116,8 @@ function firstSetOf(session: Session, exerciseId: string | undefined): OpenSet |
 /** The History editor (E12-T6): edits a draft of a finished Session, saved in one write. */
 export function SessionEditor(props: SessionEditorProps): JSX.Element {
   const { session, workoutName, resolve, focusExerciseId, onSave, onCancel, onDelete } = props
+  const { mode = 'edit', now, addable, plannedIds = [] } = props
+  const [picking, setPicking] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [draft, setDraft] = useState<Session>(session)
   const [open, setOpen] = useState<OpenSet | null>(() => firstSetOf(session, focusExerciseId))
@@ -153,6 +183,32 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
     setDraft({ ...draft, entries: insertSet(draft.entries, added) })
   }
 
+  /**
+   * V6-13: one Set of `exerciseId` at its start weight (no weight on a Bodyweight one) and a new
+   * Plan's bottom rep count, open on the Dials; an Exercise off the Workout is saved as added.
+   */
+  function addExercise(exerciseId: string): void {
+    setPicking(false)
+    const exercise = resolve(exerciseId)
+    const plan = newPlan(exerciseId)
+    const added: SetEntry = {
+      exerciseId,
+      setIndex: 1,
+      weightKg: exercise?.bodyweight ? null : exercise?.startWeight ?? 0,
+      reps: plan.repRange[0],
+      loggedAt: draft.finishedAt ?? draft.startedAt,
+    }
+    const alreadyAdded = (draft.added ?? []).some((candidate) => candidate.exerciseId === exerciseId)
+    const addedPlans =
+      plannedIds.includes(exerciseId) || alreadyAdded ? draft.added : [...(draft.added ?? []), plan]
+    setDraft({
+      ...draft,
+      entries: insertSet(draft.entries, added),
+      ...(addedPlans === undefined ? {} : { added: addedPlans }),
+    })
+    setOpen({ exerciseId, setIndex: 1 })
+  }
+
   async function save(): Promise<void> {
     if (!canSave) return
     setSaving(true)
@@ -168,7 +224,12 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
 
   return (
     <div className="session-editor">
-      <h2 className="session-editor-heading">{workoutName}</h2>
+      <h1 className="session-editor-heading">
+        {`${mode === 'log' ? 'Log' : 'Edit'} · ${workoutName} · ${formatDay(
+          new Date(draft.startedAt),
+          new Date(now ?? Date.now()),
+        )}`}
+      </h1>
 
       <div className="session-editor-times">
         <label className="session-editor-time">
@@ -217,11 +278,18 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
                   open?.exerciseId === exerciseId && open.setIndex === entry.setIndex
                 return (
                   <li key={entry.setIndex} className="session-editor-set">
-                    <span className="session-editor-set-values">{setText(entry)}</span>
+                    <span className="session-editor-set-values">
+                      {entry.kind ? (
+                        <span className="session-editor-set-kind" aria-hidden="true">
+                          {KIND_MARKERS[entry.kind]}
+                        </span>
+                      ) : null}
+                      {setText(entry)}
+                    </span>
                     <button
                       type="button"
                       className="session-editor-set-action btn-quiet"
-                      aria-label={`Edit set ${entry.setIndex}`}
+                      aria-label={`Edit ${setName(name, entry)}`}
                       aria-pressed={isOpen}
                       onClick={() =>
                         setOpen(isOpen ? null : { exerciseId, setIndex: entry.setIndex })
@@ -232,7 +300,7 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
                     <button
                       type="button"
                       className="session-editor-set-action btn-danger"
-                      aria-label={`Delete set ${entry.setIndex}`}
+                      aria-label={`Delete ${setName(name, entry)}`}
                       onClick={() => deleteSet(exerciseId, entry.setIndex)}
                     >
                       Delete
@@ -283,6 +351,16 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
         )
       })}
 
+      {addable === undefined ? null : (
+        <button
+          type="button"
+          className="session-editor-add-exercise btn-secondary"
+          onClick={() => setPicking(true)}
+        >
+          Add exercise
+        </button>
+      )}
+
       <label className="session-editor-note">
         <span>Note</span>
         <textarea
@@ -332,6 +410,14 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
           Save
         </button>
       </div>
+      {picking && addable !== undefined ? (
+        <ExercisePicker
+          library={addable}
+          taken={[...new Set(draft.entries.map((entry) => entry.exerciseId))]}
+          onPick={addExercise}
+          onClose={() => setPicking(false)}
+        />
+      ) : null}
     </div>
   )
 }

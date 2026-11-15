@@ -10,6 +10,7 @@ import {
   getLastSwap,
   getSession,
   listSessions,
+  logPastSession,
   logSet,
   deleteSet,
   restoreSet,
@@ -64,6 +65,8 @@ export type SessionService = {
   setDeload(sessionId: string, on: boolean): Promise<Session>
   finish(sessionId: string): Promise<Session>
   save(session: Session): Promise<Session>
+  /** Stores a missed Session, finished, logged after the fact (V6-13). */
+  logPast(session: Session): Promise<Session>
   lastEntriesFor(exerciseId: string): Promise<SetEntry[]>
   lastEntriesForSession(session: Session | null, programs: Program[]): Promise<Map<string, SetEntry[]>>
   lastSwapsForSession(session: Session | null, programs: Program[]): Promise<Record<string, string>>
@@ -238,6 +241,10 @@ export function createSessionService(deps: ServiceDeps): SessionService {
 
     async save(session) {
       return write(session.id, () => saveSession(session, now()), SAVE_FAILED)
+    },
+
+    async logPast(session) {
+      return write(session.id, () => logPastSession(session, now()), SAVE_FAILED)
     },
 
     async lastEntriesFor(exerciseId) {
