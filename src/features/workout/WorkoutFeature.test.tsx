@@ -663,9 +663,10 @@ test('O11 the done state of back squat shows Up next: Lunges above Finish exerci
   const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
   await openExercise(user, 'Back squat')
 
-  // V2-01: one primary names the next Exercise; Add set is a quiet text button above it, and no
-  // button reads Finish exercise.
-  const next = await screen.findByRole('button', { name: 'Next: Lunges' }, SETTLE)
+  // V3-01: back squat reopened once done offers one primary, "Go to Lunges" (never "Next: …");
+  // Add set is a quiet text button on the verdict line above it, and no button reads Finish
+  // exercise.
+  const next = await screen.findByRole('button', { name: 'Go to Lunges' }, SETTLE)
   const addSet = screen.getByRole('button', { name: 'Add set' })
 
   expect(next).toHaveClass('btn-primary', 'log-set')
@@ -680,7 +681,7 @@ test('O11 Finish exercise opens the next Exercise on Set 1 of its plan', async (
   const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
   await openExercise(user, 'Back squat')
 
-  await user.click(await screen.findByRole('button', { name: 'Next: Lunges' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Go to Lunges' }, SETTLE))
 
   // V2-01: the primary opens Lunges' Set 1 on Now, not the All list.
   expect(await screen.findByText('Set 1 of 3', undefined, SETTLE)).toBeVisible()
@@ -693,7 +694,7 @@ test('O11 after Finish exercise the next set screen still counts the rest from t
   const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
   await openExercise(user, 'Back squat')
 
-  await user.click(await screen.findByRole('button', { name: 'Next: Lunges' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Go to Lunges' }, SETTLE))
   await screen.findByRole('heading', { name: 'Lunges' }, SETTLE)
 
   // Back squat's 180 s from T0, 100 s gone.
@@ -711,7 +712,7 @@ test('O11 Finish exercise skips a next Exercise whose Sets are all logged', asyn
   const { user } = renderFeature((await workoutAWithLogged([...FOUR_SQUATS, ...lunges])).services)
   await openExercise(user, 'Back squat')
 
-  await user.click(await screen.findByRole('button', { name: 'Next: DB bench press' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Go to DB bench press' }, SETTLE))
 
   // V2-01: straight to the skipped Exercise's successor, on Now.
   expect(await screen.findByText('Set 1 of 4', undefined, SETTLE)).toBeVisible()
@@ -740,14 +741,45 @@ test('O11 with every Exercise done there is no Up next line and Finish exercise 
   const { user } = renderFeature((await workoutAWithLogged(all)).services)
   await openExercise(user, 'Back squat')
 
-  // With nothing up next the primary reads All exercises and returns to the list.
-  const all_ = await screen.findByRole('button', { name: 'All exercises' }, SETTLE)
+  // V3-01: with nothing up next the primary reads Finish workout; All returns to the list.
+  expect(await screen.findByRole('button', { name: 'Finish workout' }, SETTLE)).toHaveClass('btn-primary')
   expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
-  await user.click(all_)
+  await user.click(screen.getByRole('radio', { name: 'All' }))
 
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('4/4')
   expect(screen.queryByRole('button', { name: 'All exercises' })).toBeNull()
+})
+
+// --- V3-01: the last Set of an Exercise hands over to the next one, its rest still running ----
+
+test('V3-01 logging back squat Set 4 brings up Lunges Set 1 with no tap, under a verdict line', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS.slice(0, 3))).services)
+  await openExercise(user, 'Back squat')
+
+  await user.click(await screen.findByRole('button', { name: /^Log set 4 / }, SETTLE))
+
+  expect(await screen.findByRole('heading', { name: 'Lunges' }, SETTLE)).toBeVisible()
+  expect(screen.getByRole('region', { name: 'Get ready' })).toBeVisible()
+  expect(screen.getByText(/^Back squat done · /)).toBeVisible()
+  expect(screen.getByRole('button', { name: /^Log set 1 / })).toHaveClass('btn-primary')
+  expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
+  // The rest keeps running from back squat's Set 4.
+  expect(screen.getByRole('timer', { name: 'Rest remaining' })).toBeVisible()
+})
+
+test('V3-01 Add set on the verdict line reopens back squat at an extra Set 5', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(T0 + 100_000)
+  const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS.slice(0, 3))).services)
+  await openExercise(user, 'Back squat')
+  await user.click(await screen.findByRole('button', { name: /^Log set 4 / }, SETTLE))
+  await screen.findByRole('heading', { name: 'Lunges' }, SETTLE)
+
+  await user.click(screen.getByRole('button', { name: 'Add set' }))
+
+  expect(await screen.findByText('Set 5 · extra', undefined, SETTLE)).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Back squat' })).toBeVisible()
 })
 
 // --- E13-T9 O5/O6: the rest Dial, and "Use for this exercise" through programs.save -----------
@@ -1029,7 +1061,7 @@ test('O4 with back squat done and only warm-ups on lunges, Up next is Lunges', a
   await openExercise(user, 'Back squat')
 
   // V2-01: the done state's primary names it.
-  expect(await screen.findByRole('button', { name: 'Next: Lunges' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('button', { name: 'Go to Lunges' }, SETTLE)).toBeVisible()
 })
 
 test('O5 after a warm-up today, lunges opens on last time’s first working Set, not its warm-up', async () => {
@@ -1194,7 +1226,7 @@ test('O9 with Track effort on, logging a Set shows the RIR chips 0 1 2 3+', asyn
 
   const chips = await screen.findByRole('group', { name: 'Reps in reserve' }, SETTLE)
   expect(within(chips).getAllByRole('button').map((chip) => chip.textContent)).toEqual([
-    'RIR 0',
+    '0',
     '1',
     '2',
     '3+',
@@ -1239,7 +1271,8 @@ test('O9 a Set with rir reads RIR n in the logged-set list', async () => {
   await user.click(within(chips).getByRole('button', { name: '1' }))
 
   const list = screen.getByRole('list', { name: 'Sets logged' })
-  await waitFor(() => expect(list.textContent).toMatch(/RIR 1$/), SETTLE)
+  // V3-03: reps left in words, no "RIR" (V1-14).
+  await waitFor(() => expect(list.textContent).toMatch(/1 left$/), SETTLE)
 })
 
 // --- E14-T14: the Load Dial and the tap budget (O17, O19) ------------------------------------

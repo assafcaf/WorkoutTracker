@@ -1,5 +1,6 @@
 import { useContext, useState, type ReactNode } from 'react'
 import { SettingsButton, ShellChromeContext } from '../../ui/AppShell'
+import { CalendarWeekCells } from '../../ui/CalendarWeek'
 import { Icon } from '../../ui/icons'
 import './DashboardScreen.css'
 import type { TrainCard, TrainLiftRow, WeekStrip } from './trainCard'
@@ -49,8 +50,8 @@ export type DashboardData =
       week?: WeekStrip
     }
 
-/** A workout the dock offers to start: its name, when it was last done and its size. */
-export type DockWorkout = { workoutId: string; name: string; last: string | null; summary: string }
+/** A workout the dock offers to start: its name, when it was last done and its minutes (estimate). */
+export type DockWorkout = { workoutId: string; name: string; last: string | null; minutes: number }
 
 /** The Session in progress the dock offers to resume in place of a start. */
 export type DashboardResume = { workoutName: string; programName: string; onResume(): void }
@@ -67,54 +68,102 @@ export type DashboardViewProps = {
   notices?: ReactNode
   /** A Session in progress: the dock resumes it rather than starting another. */
   resume?: DashboardResume | null
+  /** Opens the Sessions tab: the week strip is a button to it (V3-09). */
+  onOpenSessions?(): void
 }
 
-function SyncLine({ today, sync }: { today: string; sync: DashboardSync }): JSX.Element {
+/** The sync state in words: the cloud button's name and tooltip (V3-08), never a visible line. */
+function syncText(sync: Exclude<DashboardSync, { kind: 'offline' }>): string {
+  switch (sync.kind) {
+    case 'syncing':
+      return 'Syncing…'
+    case 'synced':
+      return `Synced ${sync.ago}`
+    case 'local':
+      return 'Saved on this phone'
+    case 'failed':
+      return 'Not synced · saved on this phone'
+  }
+}
+
+/**
+ * The header's cloud (V3-08): it presses to sync, and carries the sync state as its name and as a
+ * quiet mark (a tick once synced, a dot when the last sync failed). Offline it is no button, only
+ * the crossed-out cloud, named for what that means.
+ */
+function SyncButton({ sync, onSync }: { sync: DashboardSync; onSync(): void }): JSX.Element {
   if (sync.kind === 'offline') {
     return (
-      <p className="dashboard-status dashboard-status-offline">
-        <Icon name="CloudOff" size={16} />
-        Offline · saved on this phone
-      </p>
+      <span className="dashboard-sync-offline" role="img" aria-label="Offline · saved on this phone">
+        <Icon name="CloudOff" size={22} />
+      </span>
     )
   }
-  const tail = {
-    syncing: 'Syncing…',
-    synced: sync.kind === 'synced' ? `Synced ${sync.ago}` : '',
-    local: 'Saved on this phone',
-    failed: 'Not synced · saved on this phone',
-  }[sync.kind]
-  return <p className="dashboard-status">{`${today} · ${tail}`}</p>
+  const text = syncText(sync)
+  return (
+    <button
+      type="button"
+      className="icon-btn dashboard-icon-btn"
+      aria-label={`Sync now · ${text}`}
+      title={text}
+      data-sync={sync.kind}
+      onClick={onSync}
+    >
+      <Icon name={sync.kind === 'synced' ? 'CloudCheck' : 'Cloud'} size={22} />
+      {sync.kind === 'failed' ? <span className="dashboard-sync-dot" aria-hidden="true" /> : null}
+    </button>
+  )
 }
 
-/** "This week" at the top of Train (V2-05): each day with the workout done on it, and done of planned. */
-function WeekStripRow({ week }: { week: WeekStrip }): JSX.Element {
-  return (
-    <section className="dashboard-week" aria-label="This week">
-      <span className="dashboard-week-title">This week</span>
-      <ol className="dashboard-week-days">
-        {week.days.map((day) => (
-          <li
-            key={day.key}
-            className={day.today ? 'dashboard-week-day dashboard-week-today' : 'dashboard-week-day'}
-            aria-label={day.workout ? `${day.name} ${day.workout}` : day.name}
-            aria-current={day.today ? 'date' : undefined}
-          >
-            <span className="dashboard-week-initial" aria-hidden="true">
+/**
+ * "This week" at the top of Train (V2-05, V3-09): the Sessions calendar's current week, drawn
+ * with the same cells (the workout's letter in its colour, today outlined), then done of
+ * planned. The whole strip is one button to Sessions; its name says the week in words.
+ */
+function WeekStripRow({ week, onOpen }: { week: WeekStrip; onOpen?: () => void }): JSX.Element {
+  const done = week.days
+    .filter((day) => day.workout)
+    .map((day) => `${day.workoutName ?? day.workout} ${day.name}`)
+  const label = `This week, ${week.done} of ${week.planned}: ${done.length > 0 ? done.join(', ') : 'no sessions yet'}`
+  const content = (
+    <>
+      <span className="dashboard-week-grid" aria-hidden="true">
+        <span className="dashboard-week-initials">
+          {week.days.map((day) => (
+            <span key={day.key} className="dashboard-week-initial" data-today={day.today || undefined}>
               {day.initial}
             </span>
-            {day.workout ? (
-              <span className="dashboard-week-done" aria-hidden="true">
-                {day.workout}
-              </span>
-            ) : (
-              <span className="dashboard-week-rest" aria-hidden="true" />
-            )}
-          </li>
-        ))}
-      </ol>
-      <span className="dashboard-week-count">{`${week.done} of ${week.planned}`}</span>
-    </section>
+          ))}
+        </span>
+        <CalendarWeekCells
+          cells={week.days.map((day) => ({
+            key: day.key,
+            letter: day.workout,
+            tone: day.tone ?? null,
+            today: day.today,
+            future: day.future ?? false,
+          }))}
+        />
+      </span>
+      <span className="dashboard-week-count" aria-hidden="true">
+        {`${week.done} of ${week.planned}`}
+      </span>
+    </>
+  )
+  if (!onOpen) {
+    return (
+      <div className="dashboard-week" role="img" aria-label={label}>
+        {content}
+      </div>
+    )
+  }
+  return (
+    <button type="button" className="dashboard-week cell" aria-label={`${label}. Open Sessions`} onClick={onOpen}>
+      {content}
+      <span className="dashboard-week-chevron" aria-hidden="true">
+        <Icon name="ChevronRight" size={16} />
+      </span>
+    </button>
   )
 }
 
@@ -172,12 +221,17 @@ function DueCard({ card }: { card: TrainCard }): JSX.Element {
   )
 }
 
+/**
+ * The tab's header (V3-08): the Workout on offer as the title ("Workout B") over the day and when
+ * it was last done, then the cloud and the gear. With no Workout to offer it reads "Train".
+ */
 function Header({
-  today,
+  title,
+  subtitle,
   sync,
   onSync,
   onOpenSettings,
-}: Pick<DashboardViewProps, 'today' | 'sync' | 'onSync' | 'onOpenSettings'>): JSX.Element {
+}: { title: string; subtitle: string } & Pick<DashboardViewProps, 'sync' | 'onSync' | 'onOpenSettings'>): JSX.Element {
   // The app root's header slot ("Update ready") rides beside the Dashboard's own buttons.
   const { trailing } = useContext(ShellChromeContext)
   return (
@@ -185,16 +239,12 @@ function Header({
     // so this one carries the shell header's classes too.
     <header className="dashboard-header app-header">
       <div className="dashboard-heading">
-        <h1 className="dashboard-title">Train</h1>
-        <SyncLine today={today} sync={sync} />
+        <h1 className="dashboard-title">{title}</h1>
+        <p className="dashboard-status">{subtitle}</p>
       </div>
       {trailing ? <div className="dashboard-header-trailing app-header-trailing">{trailing}</div> : null}
       <div className="dashboard-header-actions">
-        {sync.kind === 'offline' ? null : (
-          <button type="button" className="icon-btn dashboard-icon-btn" aria-label="Sync now" onClick={onSync}>
-            <Icon name={sync.kind === 'synced' ? 'CloudCheck' : 'Cloud'} size={22} />
-          </button>
-        )}
+        <SyncButton sync={sync} onSync={onSync} />
         {/* The shell's gear, which carries the backup-due marker when a backup is due. */}
         <SettingsButton onOpen={onOpenSettings} />
       </div>
@@ -202,14 +252,10 @@ function Header({
   )
 }
 
-/** The dock while a Session is in progress: its workout, and the way back into it. */
+/** The dock while a Session is in progress: the way back into it (the header names it). */
 function ResumeDock({ resume }: { resume: DashboardResume }): JSX.Element {
   return (
     <div className="dashboard-dock">
-      <p className="dashboard-due">
-        <span className="dashboard-due-name">{`${resume.workoutName} in progress`}</span>
-      </p>
-      <p className="dashboard-due-size">{resume.programName}</p>
       <button type="button" className="btn-primary dashboard-start resume-workout" onClick={resume.onResume}>
         {`Resume ${resume.workoutName}`}
       </button>
@@ -218,24 +264,21 @@ function ResumeDock({ resume }: { resume: DashboardResume }): JSX.Element {
 }
 
 /**
- * The dock with the workout due and its start button. A Program of several workouts can offer
- * another in its place: "Change" steps through them, and the line drops "due" off any other.
+ * The dock (V3-08): the offered workout's time and "Change" on one line, over its start button.
+ * The header names the workout and when it was last done; the rows show its size. A Program of
+ * several workouts can offer another in the due one's place: "Change" steps through them.
  */
 function StartDock({
-  due,
   offered,
   workouts,
   onChange,
   onStart,
 }: {
-  due: DockWorkout
   offered: DockWorkout
   workouts: DockWorkout[]
   onChange(workoutId: string): void
   onStart(workoutId: string): void
 }): JSX.Element {
-  const isDue = offered.workoutId === due.workoutId
-
   function next(): void {
     const index = workouts.findIndex((workout) => workout.workoutId === offered.workoutId)
     onChange(workouts[(index + 1) % workouts.length].workoutId)
@@ -244,17 +287,13 @@ function StartDock({
   return (
     <div className="dashboard-dock">
       <div className="dashboard-due-row">
-        <p className="dashboard-due">
-          <span className="dashboard-due-name">{isDue ? `${offered.name} due` : offered.name}</span>
-          {offered.last ? <span className="dashboard-due-last">{` · last ${offered.last}`}</span> : null}
-        </p>
+        <p className="dashboard-due-size">{`~${offered.minutes} min`}</p>
         {workouts.length > 1 ? (
           <button type="button" className="btn-quiet dashboard-change" aria-label="Choose another workout" onClick={next}>
             Change
           </button>
         ) : null}
       </div>
-      <p className="dashboard-due-size">{offered.summary}</p>
       <button type="button" className="btn-primary dashboard-start" onClick={() => onStart(offered.workoutId)}>
         {`Start ${offered.name}`}
       </button>
@@ -277,6 +316,10 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
   // A Session in progress is resumable whatever else the Dashboard is still working out. The
   // dock keeps its place in the tree as the data arrives, so a press on it is never lost.
   let dock: JSX.Element | null = props.resume ? <ResumeDock resume={props.resume} /> : null
+  // The title is the Workout on offer (V3-08); a Session in progress names its own, and with no
+  // Workout to offer (no Program yet, still loading) the tab's name stands in.
+  let title = props.resume ? props.resume.workoutName : 'Train'
+  let subtitle = props.resume ? `${props.today} · in progress` : props.today
 
   if (data.kind === 'no-program') {
     const selected = data.options.find((option) => option.id === data.selectedId) ?? null
@@ -338,14 +381,17 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
       offered && due && offered.workoutId !== due.workoutId ? (data.cards?.[offered.workoutId] ?? null) : data.card
     body = (
       <>
-        {data.week ? <WeekStripRow week={data.week} /> : null}
+        {data.week ? <WeekStripRow week={data.week} onOpen={props.onOpenSessions} /> : null}
         {card ? <DueCard card={card} /> : null}
       </>
     )
+    if (!props.resume && offered) {
+      title = offered.name
+      subtitle = offered.last ? `${props.today} · last done ${offered.last}` : props.today
+    }
     if (!dock && due && offered) {
       dock = (
         <StartDock
-          due={due}
           offered={offered}
           workouts={workouts}
           onChange={(workoutId) => setChosen({ dueId, workoutId })}
@@ -357,7 +403,13 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
 
   return (
     <div className="dashboard">
-      <Header {...props} />
+      <Header
+        title={title}
+        subtitle={subtitle}
+        sync={props.sync}
+        onSync={props.onSync}
+        onOpenSettings={props.onOpenSettings}
+      />
       {props.notices ? <div className="dashboard-notices">{props.notices}</div> : null}
       {body}
       {dock}

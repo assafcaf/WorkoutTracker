@@ -49,8 +49,9 @@ function testLine(outcome: PushTestOutcome): string {
 }
 
 /**
- * The Notifications section (E24-T9, O25, O26): one tap to turn push on when it can work, one
- * line saying why when it can't, and, with push on, the reminder weekdays and time.
+ * The Reminders group (E24-T9, O25, O26; V2-09 folded Notifications into it): one tap to turn
+ * push on when it can work, one line saying why when it can't, and, with push on, the reminder
+ * weekdays and time.
  */
 export function NotificationSettings(props: NotificationSettingsProps): JSX.Element {
   const { status, failed, onEnable, onDisable, onTest, testResult, reminders, onRemindersChange, weekStart = 1 } = props
@@ -77,72 +78,66 @@ export function NotificationSettings(props: NotificationSettingsProps): JSX.Elem
   }
 
   return (
-    <>
-      <section className="settings-group" aria-label="Notifications">
-        <h2 className="settings-legend">Notifications</h2>
-        <div className="settings-card card">
-          {explanation ? <p className="settings-action notify-note">{explanation}</p> : null}
-          {status === 'off' ? (
-            <button type="button" className="settings-action btn-quiet" onClick={onEnable}>
-              <span className="settings-action-label">Turn on notifications</span>
-            </button>
-          ) : null}
-          {on ? (
-            <button type="button" className="settings-action btn-quiet" onClick={onDisable}>
-              <span className="settings-action-label">Turn off</span>
-            </button>
-          ) : null}
-          {on && onTest ? (
-            <button type="button" className="settings-action btn-quiet" onClick={onTest}>
-              <span className="settings-action-label">Send a test notification</span>
-            </button>
-          ) : null}
-          {on && testResult ? <p className="settings-action notify-note">{testLine(testResult)}</p> : null}
-          {failed && status === 'off' ? (
-            <p className="settings-action notify-note">Notifications could not be turned on. Try again.</p>
-          ) : null}
-        </div>
-      </section>
-      <section className="settings-group" aria-label="Reminders">
-        <h2 className="settings-legend">Reminders</h2>
-        <div className="settings-card card">
-          {!on ? <p className="settings-action notify-note">Turn on notifications first</p> : null}
-          <div className="settings-action notify-days">
-            {Array.from({ length: 7 }, (_unused, i) => (weekStart + i) % 7).map((day) => (
-              <button
-                key={day}
-                type="button"
-                className="chip notify-chip"
-                aria-label={WEEKDAYS[day]}
-                aria-pressed={on && days.includes(day)}
-                disabled={!on}
-                onClick={() => toggle(day)}
-              >
-                {WEEKDAYS[day].slice(0, 3)}
-              </button>
-            ))}
-          </div>
-          <label className="settings-action">
-            <span className="settings-action-label">Time</span>
-            <input
-              className="notify-time"
-              type="time"
-              value={time}
+    // V2-09: Notifications and Reminders are one group, as one card: turn push on, then when.
+    <section className="settings-group" aria-label="Reminders">
+      <h2 className="settings-legend">Reminders</h2>
+      <div className="settings-card card">
+        {explanation ? <p className="settings-action notify-note">{explanation}</p> : null}
+        {status === 'off' ? (
+          <button type="button" className="settings-action btn-quiet" onClick={onEnable}>
+            <span className="settings-action-label">Turn on notifications</span>
+          </button>
+        ) : null}
+        {on ? (
+          <button type="button" className="settings-action btn-quiet" onClick={onDisable}>
+            <span className="settings-action-label">Turn off</span>
+          </button>
+        ) : null}
+        {on && onTest ? (
+          <button type="button" className="settings-action btn-quiet" onClick={onTest}>
+            <span className="settings-action-label">Send a test notification</span>
+          </button>
+        ) : null}
+        {on && testResult ? <p className="settings-action notify-note">{testLine(testResult)}</p> : null}
+        {failed && status === 'off' ? (
+          <p className="settings-action notify-note">Notifications could not be turned on. Try again.</p>
+        ) : null}
+        {!on ? <p className="settings-action notify-note">Turn on notifications first</p> : null}
+        <div className="settings-action notify-days">
+          {Array.from({ length: 7 }, (_unused, i) => (weekStart + i) % 7).map((day) => (
+            <button
+              key={day}
+              type="button"
+              className="chip notify-chip"
+              aria-label={WEEKDAYS[day]}
+              aria-pressed={on && days.includes(day)}
               disabled={!on}
-              onChange={(event) => {
-                if (!event.target.value) return
-                if (days.length === 0) setDraftTime(event.target.value)
-                else change(days, event.target.value)
-              }}
-            />
-          </label>
-          {on && reminders ? (
-            <button type="button" className="settings-action btn-quiet" onClick={() => change([], time)}>
-              <span className="settings-action-label">Off</span>
+              onClick={() => toggle(day)}
+            >
+              {WEEKDAYS[day].slice(0, 3)}
             </button>
-          ) : null}
+          ))}
         </div>
-      </section>
-    </>
+        <label className="settings-action">
+          <span className="settings-action-label">Time</span>
+          <input
+            className="notify-time"
+            type="time"
+            value={time}
+            disabled={!on}
+            onChange={(event) => {
+              if (!event.target.value) return
+              if (days.length === 0) setDraftTime(event.target.value)
+              else change(days, event.target.value)
+            }}
+          />
+        </label>
+        {on && reminders ? (
+          <button type="button" className="settings-action btn-quiet" onClick={() => change([], time)}>
+            <span className="settings-action-label">Off</span>
+          </button>
+        ) : null}
+      </div>
+    </section>
   )
 }

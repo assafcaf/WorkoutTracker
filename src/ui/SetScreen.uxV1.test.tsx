@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { useState } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { contrastRatio, declarationsFor, readTokens } from '../test/cssAudit'
@@ -242,6 +242,9 @@ test('V1-11 the Rest panel shows the countdown, "of 3:00" and the Use offer, and
   expect(panel.textContent).not.toContain('usually')
   expect(panel.querySelector('.rest-bar')).toBeNull()
   expect(panel.textContent).not.toContain('0:00')
+  // V3-03: the usual rest's Use offer moved to ⋯ › Rest time; the dock carries no decision.
+  expect(screen.queryByRole('button', { name: 'Use 2:40 for Back squat' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Exercise tools' }))
   expect(screen.getByRole('button', { name: 'Use 2:40 for Back squat' })).toBeVisible()
 })
 

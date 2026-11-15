@@ -4,7 +4,7 @@ import { applyBodyweight } from '../../domain/bodyweight'
 import { regionsFor, toRegionCounts, type Region, type Resolve } from '../../domain/muscles'
 import { muscleLabel } from '../../domain/muscleLabels'
 import { startOfWeek } from '../../domain/sessionsView'
-import { WEEKLY_SET_RANGE, type Standing } from '../../domain/setRange'
+import { WEEKLY_SET_RANGE, weeklyStanding, type Standing } from '../../domain/setRange'
 import { numberText } from '../../domain/stats/copy'
 import {
   muscleContributors,
@@ -50,10 +50,7 @@ const whole = (n: number): string => String(Math.round(n))
 const BAND = { from: WEEKLY_SET_RANGE.min, to: WEEKLY_SET_RANGE.max } as const
 
 /** Where a weekly count sits against the typical range, on the whole number the row prints. */
-const standingOf = (n: number): Standing => {
-  const shown = Math.round(n)
-  return shown < BAND.from ? 'below' : shown > BAND.to ? 'above' : 'within'
-}
+const standingOf = (n: number): Standing => weeklyStanding(n)
 
 /** A row's standing in words, as the Program tab says it (V1-26): ` · below 10`, ` · above 20`. */
 const standingText = (n: number): string => {

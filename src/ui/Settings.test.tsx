@@ -1,92 +1,44 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
+import { GymEquipmentSwitches } from './GymEquipmentSwitches'
 import { Settings } from './Settings'
-import type { Program, VolumeBaseline } from '../types'
 import type { SyncView } from './Settings'
 
-function program(id: string, name: string): Program {
-  return { id, name, units: 'kg', workouts: [], sessionsPerWeek: 3 }
-}
-
-const programs: Program[] = [
-  program('assaf-ab-2026', 'A/B Split'),
-  program('full-body-starter', 'Full body starter'),
-]
-
-// The E5-T16 gym-equipment props every render below now needs (`equipmentTypes`,
-// `gymEquipment`, `onGymEquipmentChange`), so the pre-existing O18/O7 tests above keep
-// compiling and passing unchanged -- none of them assert on "My gym's equipment".
+// The equipment types the E5-T16 switches are rendered with (GymEquipmentSwitches, which
+// moved from Settings to Program › Exercises in V2-09).
 const equipmentTypes = ['barbell', 'dumbbell', 'machine']
 
 test('O18 Settings lists every program by name', () => {
-  render(
-    <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
-    />,
-  )
+  // V2-09: the Program tab picks the active Program (ProgramPage.test.tsx, M13); Settings lists
+  // no Programs any more.
+  render(<Settings />)
 
-  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeInTheDocument()
-  expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeInTheDocument()
+  expect(screen.queryByRole('radio')).toBeNull()
+  expect(screen.queryByRole('group', { name: 'Active program' })).toBeNull()
 })
 
 test('O18 Settings marks the active program as selected and the rest as not selected', () => {
-  render(
-    <Settings
-      programs={programs}
-      activeProgramId="full-body-starter"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
-    />,
-  )
+  // V2-09: nothing to mark here; the Program tab's list carries the check.
+  render(<Settings />)
 
-  expect(screen.getByRole('radio', { name: 'Full body starter' })).toBeChecked()
-  expect(screen.getByRole('radio', { name: 'A/B Split' })).not.toBeChecked()
+  expect(screen.queryByText('Active program')).toBeNull()
 })
 
-test('O18 choosing a different program calls onActiveProgramChange with its id', async () => {
-  const user = userEvent.setup()
-  const onActiveProgramChange = vi.fn()
-  render(
-    <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={onActiveProgramChange}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
-    />,
-  )
+test('O18 choosing a different program calls onActiveProgramChange with its id', () => {
+  // V2-09: Settings offers no Program choice; its groups are Workout, Reminders and Data & sync.
+  render(<Settings notifications={undefined} />)
 
-  await user.click(screen.getByRole('radio', { name: 'Full body starter' }))
-
-  expect(onActiveProgramChange).toHaveBeenCalledWith('full-body-starter')
+  expect(screen.getByRole('group', { name: 'Workout' })).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: 'Data & sync' })).toBeInTheDocument()
+  expect(screen.queryByRole('radio')).toBeNull()
 })
 
-test('O18 choosing the already active program does not call onActiveProgramChange', async () => {
-  const user = userEvent.setup()
-  const onActiveProgramChange = vi.fn()
-  render(
-    <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={onActiveProgramChange}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
-    />,
-  )
+test('O18 choosing the already active program does not call onActiveProgramChange', () => {
+  // V2-09: there is no Program list in Settings to choose from.
+  render(<Settings />)
 
-  await user.click(screen.getByRole('radio', { name: 'A/B Split' }))
-
-  expect(onActiveProgramChange).not.toHaveBeenCalled()
+  expect(screen.queryByRole('radio', { name: 'A/B Split' })).toBeNull()
 })
 
 test('O7 using the Export control calls onExport', async () => {
@@ -94,13 +46,7 @@ test('O7 using the Export control calls onExport', async () => {
   const onExport = vi.fn()
   render(
     <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
       onExport={onExport}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
     />,
   )
 
@@ -146,13 +92,7 @@ test('O15 choosing a backup file hands its text to onImportFile', async () => {
   const onImportFile = vi.fn()
   render(
     <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
       onImportFile={onImportFile}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
     />,
   )
 
@@ -171,13 +111,7 @@ test('O15 dismissing the file picker without choosing a file does not call onImp
   const onImportFile = vi.fn()
   render(
     <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
       onImportFile={onImportFile}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
     />,
   )
 
@@ -198,16 +132,8 @@ test('O15 dismissing the file picker without choosing a file does not call onImp
 // Settings only renders the list it is given and reports the next list to save.
 
 test('S14 Settings lists every given equipment type in "My gym\'s equipment", all ticked when nothing is saved', () => {
-  render(
-    <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
-    />,
-  )
+  // V2-09: the switches moved to Program › Exercises, as GymEquipmentSwitches.
+  render(<GymEquipmentSwitches equipmentTypes={equipmentTypes} gymEquipment={null} onChange={vi.fn()} />)
 
   for (const equipment of equipmentTypes) {
     expect(screen.getByRole('switch', { name: equipment })).toBeChecked()
@@ -215,16 +141,7 @@ test('S14 Settings lists every given equipment type in "My gym\'s equipment", al
 })
 
 test('S14 Settings ticks only the equipment types in a saved gym equipment list', () => {
-  render(
-    <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={['barbell']}
-      onGymEquipmentChange={vi.fn()}
-    />,
-  )
+  render(<GymEquipmentSwitches equipmentTypes={equipmentTypes} gymEquipment={['barbell']} onChange={vi.fn()} />)
 
   expect(screen.getByRole('switch', { name: 'barbell' })).toBeChecked()
   expect(screen.getByRole('switch', { name: 'dumbbell' })).not.toBeChecked()
@@ -233,21 +150,12 @@ test('S14 Settings ticks only the equipment types in a saved gym equipment list'
 
 test('S14 unticking machine calls onGymEquipmentChange with every other equipment type still in the list', async () => {
   const user = userEvent.setup()
-  const onGymEquipmentChange = vi.fn()
-  render(
-    <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={onGymEquipmentChange}
-    />,
-  )
+  const onChange = vi.fn()
+  render(<GymEquipmentSwitches equipmentTypes={equipmentTypes} gymEquipment={null} onChange={onChange} />)
 
   await user.click(screen.getByRole('switch', { name: 'machine' }))
 
-  expect(onGymEquipmentChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
+  expect(onChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
 })
 
 // --- E7-T7: the Account section (device sync state) ----------------------------------------
@@ -262,12 +170,6 @@ function renderWithSync(sync: SyncView, handlers: Partial<Pick<
 >> = {}): void {
   render(
     <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
       sync={sync}
       {...handlers}
     />,
@@ -396,131 +298,84 @@ test('O12 status offline says the phone is offline and will sync later', () => {
 
 test('S14 re-ticking a previously unticked equipment type adds it back to the saved list', async () => {
   const user = userEvent.setup()
-  const onGymEquipmentChange = vi.fn()
-  render(
-    <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={['barbell']}
-      onGymEquipmentChange={onGymEquipmentChange}
-    />,
-  )
+  const onChange = vi.fn()
+  render(<GymEquipmentSwitches equipmentTypes={equipmentTypes} gymEquipment={['barbell']} onChange={onChange} />)
 
   await user.click(screen.getByRole('switch', { name: 'dumbbell' }))
 
-  expect(onGymEquipmentChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
+  expect(onChange).toHaveBeenCalledWith(['barbell', 'dumbbell'])
 })
 
-// --- E8-T11: choosing the volume baseline in Settings --------------------------------------
+// --- E8-T11: the volume baseline, no longer chosen in Settings (V2-09) --------------------------------------
 
-function renderWithBaseline(
-  volumeBaseline: VolumeBaseline,
-  onVolumeBaselineChange: (baseline: VolumeBaseline) => void = vi.fn(),
-): void {
-  render(
-    <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
-      volumeBaseline={volumeBaseline}
-      onVolumeBaselineChange={onVolumeBaselineChange}
-    />,
-  )
+function renderPlain(): void {
+  render(<Settings />)
 }
 
 test('O1 "Compare volume with" lists Last workout, Past week, Past month, Past 3 months, Past 6 months and Since a date', () => {
-  renderWithBaseline({ period: 'last' })
+  // V2-09: "Compare volume with" only shaded the up-next bars, which are gone; Settings no
+  // longer offers it, and the stored baseline still applies (WorkoutFeature reads it).
+  renderPlain()
 
-  const select = screen.getByRole('combobox', { name: 'Compare volume with' })
-  const optionNames = within(select)
-    .getAllByRole('option')
-    .map((option) => option.textContent)
-
-  expect(optionNames).toEqual([
-    'Last workout',
-    'Past week',
-    'Past month',
-    'Past 3 months',
-    'Past 6 months',
-    'Since a date',
-  ])
+  expect(screen.queryByRole('combobox', { name: 'Compare volume with' })).toBeNull()
+  expect(screen.queryByText('Compare volume')).toBeNull()
 })
 
 test('O1 "Using" is not shown while "Compare volume with" is Last workout', () => {
-  renderWithBaseline({ period: 'last' })
+  // V2-09: "Compare volume with" only shaded the up-next bars, which are gone; Settings no
+  // longer offers it, and the stored baseline still applies (WorkoutFeature reads it).
+  renderPlain()
 
   expect(screen.queryByRole('combobox', { name: 'Using' })).toBeNull()
 })
 
 test('O1 "Using" lists Average and Best once a period other than Last workout is chosen', () => {
-  renderWithBaseline({ period: '3m', aggregate: 'avg' })
+  // V2-09: "Compare volume with" only shaded the up-next bars, which are gone; Settings no
+  // longer offers it, and the stored baseline still applies (WorkoutFeature reads it).
+  renderPlain()
 
-  const select = screen.getByRole('combobox', { name: 'Using' })
-  const optionNames = within(select)
-    .getAllByRole('option')
-    .map((option) => option.textContent)
-
-  expect(optionNames).toEqual(['Average', 'Best'])
+  expect(screen.queryByRole('option', { name: 'Average' })).toBeNull()
+  expect(screen.queryByRole('option', { name: 'Best' })).toBeNull()
 })
 
-test('O1 choosing Past 3 months calls onVolumeBaselineChange with period 3m and aggregate avg', async () => {
-  const user = userEvent.setup()
-  const onVolumeBaselineChange = vi.fn()
-  renderWithBaseline({ period: 'last' }, onVolumeBaselineChange)
+test('O1 choosing Past 3 months calls onVolumeBaselineChange with period 3m and aggregate avg', () => {
+  // V2-09: "Compare volume with" only shaded the up-next bars, which are gone; Settings no
+  // longer offers it, and the stored baseline still applies (WorkoutFeature reads it).
+  renderPlain()
 
-  await user.selectOptions(
-    screen.getByRole('combobox', { name: 'Compare volume with' }),
-    'Past 3 months',
-  )
-
-  expect(onVolumeBaselineChange).toHaveBeenCalledWith({ period: '3m', aggregate: 'avg' })
+  expect(screen.queryByRole('option', { name: 'Past 3 months' })).toBeNull()
 })
 
-test('O1 choosing Best in "Using" calls onVolumeBaselineChange with the same period and aggregate max', async () => {
-  const user = userEvent.setup()
-  const onVolumeBaselineChange = vi.fn()
-  renderWithBaseline({ period: '3m', aggregate: 'avg' }, onVolumeBaselineChange)
+test('O1 choosing Best in "Using" calls onVolumeBaselineChange with the same period and aggregate max', () => {
+  // V2-09: "Compare volume with" only shaded the up-next bars, which are gone; Settings no
+  // longer offers it, and the stored baseline still applies (WorkoutFeature reads it).
+  renderPlain()
 
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Using' }), 'Best')
-
-  expect(onVolumeBaselineChange).toHaveBeenCalledWith({ period: '3m', aggregate: 'max' })
+  expect(screen.queryByRole('combobox', { name: 'Using' })).toBeNull()
 })
 
-test('O1 choosing Last workout calls onVolumeBaselineChange with just period last', async () => {
-  const user = userEvent.setup()
-  const onVolumeBaselineChange = vi.fn()
-  renderWithBaseline({ period: '3m', aggregate: 'avg' }, onVolumeBaselineChange)
+test('O1 choosing Last workout calls onVolumeBaselineChange with just period last', () => {
+  // V2-09: "Compare volume with" only shaded the up-next bars, which are gone; Settings no
+  // longer offers it, and the stored baseline still applies (WorkoutFeature reads it).
+  renderPlain()
 
-  await user.selectOptions(
-    screen.getByRole('combobox', { name: 'Compare volume with' }),
-    'Last workout',
-  )
-
-  expect(onVolumeBaselineChange).toHaveBeenCalledWith({ period: 'last' })
+  expect(screen.queryByRole('option', { name: 'Last workout' })).toBeNull()
 })
 
 test('O1 choosing Since a date shows a date input', () => {
-  renderWithBaseline({ period: 'since', since: Date.UTC(2026, 2, 1), aggregate: 'avg' })
+  // V2-09: "Compare volume with" only shaded the up-next bars, which are gone; Settings no
+  // longer offers it, and the stored baseline still applies (WorkoutFeature reads it).
+  renderPlain()
 
-  expect(screen.getByLabelText('Since')).toHaveAttribute('type', 'date')
+  expect(screen.queryByLabelText('Since')).toBeNull()
 })
 
 test('O1 entering a date in "Since" calls onVolumeBaselineChange with period since at that date (UTC midnight) and the current aggregate', () => {
-  const onVolumeBaselineChange = vi.fn()
-  renderWithBaseline({ period: 'since', since: Date.UTC(2026, 2, 1), aggregate: 'max' }, onVolumeBaselineChange)
+  // V2-09: "Compare volume with" only shaded the up-next bars, which are gone; Settings no
+  // longer offers it, and the stored baseline still applies (WorkoutFeature reads it).
+  renderPlain()
 
-  fireEvent.change(screen.getByLabelText('Since'), { target: { value: '2026-04-15' } })
-
-  expect(onVolumeBaselineChange).toHaveBeenCalledWith({
-    period: 'since',
-    since: Date.UTC(2026, 3, 15),
-    aggregate: 'max',
-  })
+  expect(document.querySelector('input[type="date"]')).toBeNull()
 })
 
 // --- E14-T10: Track effort -------------------------------------------------------------------
@@ -528,12 +383,6 @@ test('O1 entering a date in "Since" calls onVolumeBaselineChange with period sin
 function renderWithTrackEffort(over: { trackEffort?: boolean; onTrackEffortChange?: (on: boolean) => void }) {
   render(
     <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
       {...over}
     />,
   )
@@ -542,7 +391,8 @@ function renderWithTrackEffort(over: { trackEffort?: boolean; onTrackEffortChang
 test('O9 Settings has a Track effort checkbox under the legend Effort, off by default', () => {
   renderWithTrackEffort({})
 
-  const group = screen.getByRole('group', { name: 'Effort' })
+  // V2-09: Effort, Week and Rest are one Workout group.
+  const group = screen.getByRole('group', { name: 'Workout' })
   expect(within(group).getByRole('switch', { name: 'Track effort' })).not.toBeChecked()
 })
 
@@ -583,12 +433,6 @@ function renderWithWeekAndRest(over: {
 }) {
   render(
     <Settings
-      programs={programs}
-      activeProgramId="assaf-ab-2026"
-      onActiveProgramChange={vi.fn()}
-      equipmentTypes={equipmentTypes}
-      gymEquipment={null}
-      onGymEquipmentChange={vi.fn()}
       {...over}
     />,
   )

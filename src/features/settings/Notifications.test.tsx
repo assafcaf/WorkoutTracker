@@ -88,7 +88,9 @@ test('O25 not-installed explains and shows no button; the rest of Settings stays
   build('not-installed')
   expect(await screen.findByText(/Home Screen/i)).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Turn on notifications' })).toBeNull()
-  expect(screen.getByRole('group', { name: 'Active program' })).toBeTruthy()
+  // V2-09: the rest of Settings is the Workout group and Data & sync.
+  expect(screen.getByRole('group', { name: 'Workout' })).toBeTruthy()
+  expect(screen.getByRole('region', { name: 'Data & sync' })).toBeTruthy()
 })
 
 test('O25 an enable that finds the server unconfigured explains it', async () => {

@@ -59,12 +59,18 @@ beforeEach(async () => {
 function mount(s: Services) {
   const onStartWorkout = vi.fn()
   const onOpenSettings = vi.fn()
+  const onOpenSessions = vi.fn()
   render(
     <ServicesProvider services={s}>
-      <DashboardScreen now={() => NOW} onStartWorkout={onStartWorkout} onOpenSettings={onOpenSettings} />
+      <DashboardScreen
+        now={() => NOW}
+        onStartWorkout={onStartWorkout}
+        onOpenSettings={onOpenSettings}
+        onOpenSessions={onOpenSessions}
+      />
     </ServicesProvider>,
   )
-  return { onStartWorkout, onOpenSettings }
+  return { onStartWorkout, onOpenSettings, onOpenSessions }
 }
 
 describe('DashboardScreen', () => {
@@ -78,8 +84,9 @@ describe('DashboardScreen', () => {
     await setActiveProgramId('assaf-ab-2026', NOW)
     const { onStartWorkout } = mount(services(NOW - 2 * 60_000))
 
-    await waitFor(() => expect(screen.getByText('Workout A due')).toBeTruthy(), SETTLE)
-    expect(screen.getByText('· last Fri 9 Oct')).toBeTruthy()
+    // V3-08: the header names the workout due and when it was last done.
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy(), SETTLE)
+    expect(screen.getByText('Tue 13 Oct · last done Fri 9 Oct')).toBeTruthy()
     expect(screen.queryByText('1/3')).toBeNull()
     expect(screen.queryByText('Muscle week')).toBeNull()
     const lifts = screen.getByRole('list', { name: 'Workout A lifts' })
@@ -87,8 +94,9 @@ describe('DashboardScreen', () => {
     // V2-05: Set 1 opens on last time's 60 kg over the Plan's 4 Sets; the full range earns a step up.
     expect(within(squatRow).getByText('4 × 60 kg')).toBeTruthy()
     expect(within(squatRow).getByText(/^step up · try /)).toBeTruthy()
-    expect(within(screen.getByRole('region', { name: 'This week' })).getByText('1 of 3')).toBeTruthy()
-    await waitFor(() => expect(screen.getByText('Tue 13 Oct · Synced 2 min ago')).toBeTruthy(), SETTLE)
+    expect(within(screen.getByRole('button', { name: /^This week/ })).getByText('1 of 3')).toBeTruthy()
+    // V3-08: the sync state is the cloud button's name, not a line of text.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sync now · Synced 2 min ago' })).toBeTruthy(), SETTLE)
 
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
     expect(onStartWorkout).toHaveBeenCalledWith('workout-a')
@@ -99,7 +107,7 @@ describe('DashboardScreen', () => {
     await waitFor(() => expect(screen.getByText('No program yet')).toBeTruthy(), SETTLE)
     const use = screen.getByRole('button', { name: /^Use / })
     fireEvent.click(use)
-    await waitFor(() => expect(screen.getByText(/ due$/)).toBeTruthy(), SETTLE)
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Start Workout / })).toBeTruthy(), SETTLE)
     expect(screen.queryByText('Your lifts show here after your first workout.')).toBeNull()
     // V2-05: with no history each row still reads the Preset Set 1 opens on (the start weight).
     expect(screen.queryByText('No sets yet')).toBeNull()
@@ -119,8 +127,8 @@ describe('DashboardScreen', () => {
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
     // Each Session ran 3,000,000 ms: 50 minutes. Workout A is due after B.
-    // V2-05: the dock's summary carries the estimate; the card no longer repeats it.
-    await waitFor(() => expect(screen.getByText('7 exercises · 23 sets · ~50 min')).toBeTruthy(), SETTLE)
+    // V2-05, V3-08: the dock carries the estimate alone; the card no longer repeats it.
+    await waitFor(() => expect(screen.getByText('~50 min')).toBeTruthy(), SETTLE)
     expect(screen.queryByText('~50 min · from your logged workouts')).toBeNull()
   })
 
@@ -140,6 +148,25 @@ describe('DashboardScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
   })
+
+  test('V3-09 the week strip is drawn in the Workouts colours and opens Sessions', async () => {
+    await db.sessions.bulkPut([
+      session('fri', 'workout-a', at(9, 9), [squat(60, 10, at(9, 9), 0)]),
+      session('mon', 'workout-b', at(9, 12), [
+        { exerciseId: 'deadlift', setIndex: 0, weightKg: 100, reps: 8, loggedAt: at(9, 12) },
+      ]),
+    ])
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    const { onOpenSessions } = mount(services())
+    const week = await screen.findByRole('button', { name: /^This week/ }, SETTLE)
+    const monday = week.querySelectorAll('.calendar-day')[0]
+    expect(monday.textContent).toBe('B')
+    expect(monday.getAttribute('data-workout')).toBe('pull')
+    expect(week.querySelectorAll('.calendar-day[data-today]')).toHaveLength(1)
+    fireEvent.click(week)
+    expect(onOpenSessions).toHaveBeenCalledTimes(1)
+  })
+
 })
 
 describe('DashboardScreen when the Worker refuses this version (E20-T5 O16)', () => {
@@ -159,7 +186,11 @@ describe('DashboardScreen when the Worker refuses this version (E20-T5 O16)', ()
     await setActiveProgramId('assaf-ab-2026', NOW)
     const { onStartWorkout } = mount(s)
 
-    await waitFor(() => expect(screen.getByText(/Not synced · saved on this phone/)).toBeTruthy(), SETTLE)
+    // V3-08: the failed state is the cloud button's name and its dot, not a visible line.
+    await waitFor(
+      () => expect(screen.getByRole('button', { name: /^Sync now · Not synced · saved on this phone/ })).toBeTruthy(),
+      SETTLE,
+    )
 
     fireEvent.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
     expect(onStartWorkout).toHaveBeenCalledTimes(1)
@@ -178,11 +209,12 @@ describe('DashboardScreen week start (E19-T5 O7)', () => {
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
 
-    await waitFor(() => expect(screen.getByText('Workout B due')).toBeTruthy(), SETTLE)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy(), SETTLE)
     // V2-05: the week strip at the top of Train counts it; Sunday's Session is in this week.
-    const week = screen.getByRole('region', { name: 'This week' })
+    const week = screen.getByRole('button', { name: /^This week/ })
     expect(within(week).getByText('1 of 3')).toBeTruthy()
-    expect(within(week).getAllByRole('listitem')[0].getAttribute('aria-label')).toBe('Sun A')
+    expect(week.querySelectorAll('.calendar-day')[0].textContent).toBe('A')
+    expect(week.getAttribute('aria-label')).toContain('Workout A Sun')
   })
 
   test('E19-T5 O7 Train counts this week from Monday when no week start is stored', async () => {
@@ -190,10 +222,11 @@ describe('DashboardScreen week start (E19-T5 O7)', () => {
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
 
-    await waitFor(() => expect(screen.getByText('Workout B due')).toBeTruthy(), SETTLE)
-    const week = screen.getByRole('region', { name: 'This week' })
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy(), SETTLE)
+    const week = screen.getByRole('button', { name: /^This week/ })
     expect(within(week).getByText('0 of 3')).toBeTruthy()
-    expect(within(week).getAllByRole('listitem')[0].getAttribute('aria-label')).toBe('Mon')
+    expect(week.querySelectorAll('.calendar-day')[0].textContent).toBe('')
+    expect(week.getAttribute('aria-label')).toContain('no sessions yet')
   })
 })
 
@@ -211,7 +244,7 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     ])
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
-    await waitFor(() => expect(screen.getByText('Workout A due')).toBeTruthy(), SETTLE)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy(), SETTLE)
     fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
     const lifts = screen.getByRole('list', { name: 'Workout B lifts' })
     const row = within(lifts).getByText('Deadlift').closest('li') as HTMLElement

@@ -129,7 +129,8 @@ async function pickFile(text: string): Promise<void> {
 
 test('[O19] Your data offers Export sets (CSV) and Import from Strong or Hevy', () => {
   renderData()
-  expect(screen.getByText('Your data')).toBeTruthy()
+  // V2-09: a second card under Data & sync, named for a screen reader rather than captioned.
+  expect(screen.getByRole('region', { name: 'Your data' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Export sets (CSV)' })).toBeTruthy()
   expect(screen.getByLabelText(/import from strong or hevy/i)).toBeTruthy()
 })

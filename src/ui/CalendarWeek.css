@@ -1,0 +1,43 @@
+/* One calendar week of seven day cells (V3-09): Sessions' six-week calendar draws six of them,
+ * Train's week strip one. Session days are filled in the Workout's data token and carry its
+ * letter; empty days are a dot; today is outlined. Every colour is a token. */
+
+.calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.calendar-day {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  height: 1.75rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-on-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+.calendar-day[data-workout="push"] { background: var(--data-push); }
+.calendar-day[data-workout="pull"] { background: var(--data-pull); }
+.calendar-day[data-workout="legs"] { background: var(--data-legs); }
+.calendar-day[data-workout="core"] { background: var(--data-core); }
+.calendar-day[data-workout="gone"] { background: var(--chart-b); color: var(--color-text); }
+
+.calendar-day-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-muted);
+}
+
+.calendar-day[data-future] .calendar-day-dot {
+  opacity: 0.4;
+}
+
+.calendar-day[data-today] {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}

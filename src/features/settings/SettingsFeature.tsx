@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react'
 import type { AppRoute } from '../routes'
 import { useServiceData } from '../useServiceData'
 import { useServices, useSyncControls } from '../ServicesProvider'
-import { visiblePrograms } from '../../domain/programs'
 import { Settings } from '../../ui/Settings'
-import { BackupBadge } from '../../ui/BackupBadge'
+import { BackupBadge, isBackupDue } from '../../ui/BackupBadge'
 import { ImportConfirm } from '../../ui/ImportConfirm'
 import { ServiceError, type PendingImport } from '../../services'
 import type { PushTestOutcome } from '../../services/push'
 import type { NotificationStatus } from '../../ui/NotificationSettings'
 import type { Reminders } from '../../contract'
-import type { PlateInventory, VolumeBaseline } from '../../types'
+import type { PlateInventory } from '../../types'
 import { DataTransfer } from './DataTransfer'
 
 export type SettingsFeatureProps = {
@@ -19,9 +18,11 @@ export type SettingsFeatureProps = {
 }
 
 /**
- * The Settings tab as its own container over services (E11-T14): switches the active Program,
- * saves gym equipment and the volume baseline, exports, imports with confirmation, and shows
- * the sync status and "Sync now" from `useSyncControls()` -- all as `App.tsx` did before E11.
+ * The Settings tab as its own container over services (E11-T14): saves the Workout settings and
+ * the reminders, exports, imports with confirmation, and shows the sync status and "Sync now"
+ * from `useSyncControls()`. Since V2-09 the active Program is chosen on the Program tab, the
+ * gym's equipment on Program > Exercises, and "Compare volume with" is no longer offered (its
+ * stored value still applies).
  */
 export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
   const { onInSession } = props
@@ -35,9 +36,6 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     onInSession(false)
   }, [onInSession])
 
-  const programsData = useServiceData((s) => s.programs.load(), ['programs'])
-  const gymEquipmentData = useServiceData((s) => s.preferences.gymEquipment(), ['preferences'])
-  const volumeBaselineData = useServiceData((s) => s.preferences.volumeBaseline(), ['preferences'])
   const trackEffortData = useServiceData((s) => s.preferences.trackEffort(), ['preferences'])
   const [chosenEffort, setChosenEffort] = useState<boolean | null>(null)
   // Dropped once the stored choice reads back as the one made.
@@ -60,14 +58,6 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
   }, [keepScreenOnData])
   const plateInventoryData = useServiceData((s) => s.preferences.plateInventory(), ['preferences'])
   const [plateError, setPlateError] = useState<string | null>(null)
-  const catalogData = useServiceData((s) => s.catalog.load(), [])
-  const [savedBaseline, setSavedBaseline] = useState<VolumeBaseline | null>(null)
-  // Dropped once the stored baseline reads back as the one chosen.
-  useEffect(() => {
-    if (volumeBaselineData.status !== 'ready') return
-    const stored = JSON.stringify(volumeBaselineData.data)
-    setSavedBaseline((chosen) => (JSON.stringify(chosen) === stored ? null : chosen))
-  }, [volumeBaselineData])
   const [pushStatus, setPushStatus] = useState<NotificationStatus | null>(null)
   const [pushFailed, setPushFailed] = useState(false)
   const [testResult, setTestResult] = useState<PushTestOutcome | null>(null)
@@ -90,48 +80,15 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     (s) => s.preferences.lastExportedAt().catch(() => null),
     ['preferences'],
   )
-
-  const offeredPrograms =
-    programsData.status === 'ready' ? visiblePrograms(programsData.data.programs) : []
-  const activeProgramId = programsData.status === 'ready' ? programsData.data.activeProgramId : null
-  const gymEquipment = gymEquipmentData.status === 'ready' ? gymEquipmentData.data : null
-  // The baseline just chosen shows at once, until the reread of the stored one catches up.
-  const volumeBaseline =
-    savedBaseline ?? (volumeBaselineData.status === 'ready' ? volumeBaselineData.data : undefined)
-
-  const equipmentTypes =
-    catalogData.status === 'ready'
-      ? Array.from(
-          new Set(
-            catalogData.data.library
-              .map((exercise) => exercise.equipment)
-              .filter(
-                (equipment): equipment is string =>
-                  equipment !== null && equipment !== 'body only',
-              ),
-          ),
-        ).sort((a, b) => a.localeCompare(b))
-      : []
-
-  function handleActiveProgramChange(id: string): void {
-    services.programs.setActive(id).catch(() => {
-      // Nothing to recover to here; a later read will surface the same failure.
-    })
-  }
-
-  function handleGymEquipmentChange(list: string[]): void {
-    services.preferences.setGymEquipment(list).catch(() => {
-      // Nothing to recover to here; a later read will surface the same failure.
-    })
-  }
-
-  function handleVolumeBaselineChange(baseline: VolumeBaseline): void {
-    setSavedBaseline(baseline)
-    services.preferences.setVolumeBaseline(baseline).catch(() => {
-      // Not saved: the stored baseline shows again.
-      setSavedBaseline(null)
-    })
-  }
+  // V1-30: with no Session logged there is nothing to back up yet, so no reminder.
+  const hasSessionsData = useServiceData(
+    (s) =>
+      s.sessions
+        .list()
+        .then((list) => list.length > 0)
+        .catch(() => true),
+    ['sessions'],
+  )
 
   function handleTrackEffortChange(on: boolean): void {
     setChosenEffort(on)
@@ -229,16 +186,19 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
   return (
     <>
       <Settings
-        programs={offeredPrograms}
-        activeProgramId={activeProgramId}
-        onActiveProgramChange={handleActiveProgramChange}
         onExport={handleExport}
         onImportFile={handleImportFile}
-        equipmentTypes={equipmentTypes}
-        gymEquipment={gymEquipment}
-        onGymEquipmentChange={handleGymEquipmentChange}
-        volumeBaseline={volumeBaseline}
-        onVolumeBaselineChange={handleVolumeBaselineChange}
+        lastExportedAt={lastExportedAtData.status === 'ready' ? lastExportedAtData.data : undefined}
+        dataExtras={
+          <>
+            {lastExportedAtData.status === 'ready' &&
+            hasSessionsData.status === 'ready' &&
+            isBackupDue(lastExportedAtData.data, Date.now(), hasSessionsData.data) ? (
+              <BackupBadge lastExportedAt={lastExportedAtData.data} now={Date.now()} />
+            ) : null}
+            <DataTransfer />
+          </>
+        }
         trackEffort={chosenEffort ?? (trackEffortData.status === 'ready' ? trackEffortData.data : false)}
         onTrackEffortChange={handleTrackEffortChange}
         plateInventory={plateInventoryData.status === 'ready' ? plateInventoryData.data : undefined}
@@ -273,10 +233,6 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
           void syncControls.adoptAccount()
         }}
       />
-      {lastExportedAtData.status === 'ready' ? (
-        <BackupBadge lastExportedAt={lastExportedAtData.data} now={Date.now()} />
-      ) : null}
-      <DataTransfer />
       {importError ? <div role="alert">{importError}</div> : null}
       {pendingImport ? (
         <ImportConfirm

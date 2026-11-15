@@ -17,6 +17,7 @@ import { createSessionService } from '../../services/sessions'
 import type { Services, SyncResult, SyncService } from '../../services'
 import type { Session, UserProgram } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
+import { ExercisesFeature } from '../exercises/ExercisesFeature'
 import { SettingsFeature } from './SettingsFeature'
 
 // fake-indexeddb is installed globally in src/test/setup.ts (see src/features/useServiceData.test.tsx),
@@ -118,12 +119,7 @@ function renderFeature(services: Services): { navigate: ReturnType<typeof vi.fn>
   return { navigate, onInSession }
 }
 
-/** The "Active program" fieldset, whose accessible name comes from its `<legend>`. */
-function activeProgramGroup(): HTMLElement {
-  return screen.getByRole('group', { name: 'Active program' })
-}
-
-/** The "My gym's equipment" fieldset. */
+/** The "My gym's equipment" fieldset (on Program › Exercises since V2-09). */
 function gymEquipmentGroup(): HTMLElement {
   return screen.getByRole('group', { name: /gym.s equipment/i })
 }
@@ -147,29 +143,32 @@ function loggedSessions(count: number, idPrefix: string, newest: number): Sessio
 // --- O13: switches the active Program -------------------------------------------------------
 
 test('O13 SettingsFeature switches the active Program when another one is chosen', async () => {
-  const user = userEvent.setup()
+  // V2-09: the Program tab switches the active Program (ProgramFeature); Settings offers no
+  // Program list, and opening it leaves the stored choice as it was.
   await saveUserProgram(SECOND_PROGRAM, NOW)
   const services = buildServices(fakeSync())
+  const before = (await services.programs.load()).activeProgramId
   renderFeature(services)
 
-  await waitFor(() => {
-    expect(within(activeProgramGroup()).getByText('Second Program')).toBeInTheDocument()
-  }, SETTLE)
+  await screen.findByRole('group', { name: 'Workout' }, SETTLE)
 
-  await user.click(within(activeProgramGroup()).getByRole('radio', { name: 'Second Program' }))
-
-  await waitFor(() => {
-    expect(within(activeProgramGroup()).getByRole('radio', { name: 'Second Program' })).toBeChecked()
-  }, SETTLE)
-  expect(within(activeProgramGroup()).getByRole('radio', { name: 'A/B Split' })).not.toBeChecked()
+  expect(screen.queryByRole('group', { name: 'Active program' })).toBeNull()
+  expect(screen.queryByRole('radio', { name: 'Second Program' })).toBeNull()
+  expect((await services.programs.load()).activeProgramId).toBe(before)
 })
 
 // --- O13: saves gym equipment ----------------------------------------------------------------
 
 test('O13 SettingsFeature saves the next gym equipment list when a type is unticked', async () => {
+  // V2-09: the switches moved to Program › Exercises, beside the "My gym only" chip they feed;
+  // they save through the same preference as before.
   const user = userEvent.setup()
   const services = buildServices(fakeSync())
-  renderFeature(services)
+  render(
+    <ServicesProvider services={services}>
+      <ExercisesFeature initialMuscles={null} navigate={vi.fn()} />
+    </ServicesProvider>,
+  )
   await waitFor(() => {
     expect(within(gymEquipmentGroup()).getAllByRole('switch').length).toBeGreaterThan(0)
   }, SETTLE)
@@ -190,17 +189,14 @@ test('O13 SettingsFeature saves the next gym equipment list when a type is untic
 // --- O13: saves the volume baseline -----------------------------------------------------------
 
 test('O13 SettingsFeature saves the volume baseline when "Compare volume with" changes', async () => {
-  const user = userEvent.setup()
+  // V2-09: "Compare volume with" is no longer offered; a baseline stored before stays stored.
   const services = buildServices(fakeSync())
+  await services.preferences.setVolumeBaseline({ period: '1w', aggregate: 'avg' })
   renderFeature(services)
-  await screen.findByRole('combobox', { name: /compare volume with/i }, SETTLE)
+  await screen.findByRole('group', { name: 'Workout' }, SETTLE)
 
-  await user.selectOptions(screen.getByRole('combobox', { name: /compare volume with/i }), 'Past week')
-
-  await waitFor(async () => {
-    const stored = await getVolumeBaseline()
-    expect(stored).toEqual({ period: '1w', aggregate: 'avg' })
-  }, SETTLE)
+  expect(screen.queryByRole('combobox', { name: /compare volume with/i })).toBeNull()
+  expect(await getVolumeBaseline()).toEqual({ period: '1w', aggregate: 'avg' })
 })
 
 // --- O13: exports ------------------------------------------------------------------------------
@@ -478,5 +474,61 @@ test('O14 turning Keep screen on during rest off stores false and shows it off',
   }, SETTLE)
   await waitFor(() => {
     expect(screen.getByRole('switch', { name: 'Keep screen on during rest' })).not.toBeChecked()
+  }, SETTLE)
+})
+
+// --- V2-09: three groups, and the Last backup line (V1-30) ------------------------------------
+
+test('V2-09 Settings reads as Workout, Reminders and Data & sync, in that order', async () => {
+  const services = buildServices(fakeSync())
+  services.push = {
+    status: async () => 'off',
+    reminders: async () => null,
+  } as unknown as Services['push']
+  renderFeature(services)
+
+  const reminders = await screen.findByRole('region', { name: 'Reminders' }, SETTLE)
+  const workout = screen.getByRole('group', { name: 'Workout' })
+  const data = screen.getByRole('region', { name: 'Data & sync' })
+  expect(workout.compareDocumentPosition(reminders) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(reminders.compareDocumentPosition(data) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByRole('region', { name: 'Notifications' })).toBeNull()
+  for (const name of ['Track effort', 'Keep screen on during rest']) {
+    expect(within(workout).getByRole('switch', { name })).toBeInTheDocument()
+  }
+  expect(within(workout).getByRole('combobox', { name: 'Week starts on' })).toBeInTheDocument()
+  expect(within(data).getByRole('button', { name: 'Sync now' })).toBeInTheDocument()
+  expect(within(data).getByRole('button', { name: 'Export' })).toBeInTheDocument()
+  expect(within(data).getByLabelText(/import backup/i)).toBeInTheDocument()
+})
+
+test('V1-30 Data & sync says Last backup: never before any export, and no reminder with nothing logged', async () => {
+  renderFeature(buildServices(fakeSync()))
+
+  const data = await screen.findByRole('region', { name: 'Data & sync' }, SETTLE)
+  expect(await within(data).findByText('Last backup: never', {}, SETTLE)).toBeInTheDocument()
+  expect(screen.queryByText(/Back up your data/)).toBeNull()
+})
+
+test('V1-30 with Sessions logged and no export, the backup reminder shows under Data & sync', async () => {
+  await db.sessions.bulkPut(loggedSessions(1, 'session', NOW))
+  renderFeature(buildServices(fakeSync()))
+
+  const data = await screen.findByRole('region', { name: 'Data & sync' }, SETTLE)
+  expect(await within(data).findByText(/Back up your data/, {}, SETTLE)).toBeInTheDocument()
+  expect(within(data).getByText('Last backup: never')).toBeInTheDocument()
+})
+
+test('V1-30 after an export the Last backup line names its day', async () => {
+  const user = userEvent.setup()
+  await db.sessions.bulkPut(loggedSessions(1, 'session', NOW))
+  captureDownloads()
+  renderFeature(buildServices(fakeSync()))
+
+  await user.click(await screen.findByRole('button', { name: 'Export' }, SETTLE))
+
+  const data = screen.getByRole('region', { name: 'Data & sync' })
+  await waitFor(() => {
+    expect(within(data).getByText(/^Last backup: (?!never)/)).toBeInTheDocument()
   }, SETTLE)
 })

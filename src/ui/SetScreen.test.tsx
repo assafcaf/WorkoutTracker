@@ -129,7 +129,8 @@ function repsReadout(): HTMLElement {
 }
 
 function logButton(): HTMLElement {
-  return screen.getByRole('button', { name: /^Log set / })
+  // V3-05: a Warm-up on the Dials names itself, "Log warm-up 2 · 40 × 3".
+  return screen.getByRole('button', { name: /^Log (set|warm-up) / })
 }
 
 /** What a readout shows, whitespace-collapsed: "63", "BW", "1:20". */
@@ -2319,6 +2320,8 @@ test('O4 the working Set logged after 2 warm-ups and 1 working Set takes setInde
 test('O4 deleting a warm-up leaves the counter on Set 2 of 3', async () => {
   const { user, onDeleteSet } = renderWithLogged(twoWarmupsOneWorking, { plan: threeSetSquatPlan })
 
+  // V3-05: the Warm-ups share one W cell; a logged one is edited from its Warm-up list.
+  await user.click(screen.getByRole('button', { name: /^Warm-ups/ }))
   await user.click(screen.getByRole('button', { name: /50 × 8$/ }))
   await user.click(screen.getByRole('button', { name: 'Delete set' }))
 
@@ -2540,7 +2543,11 @@ test.each([
 ] as const)('O6 a %s Set in the logged list carries the marker %s', (kind, marker) => {
   renderWithLogged([{ ...loggedEntry(1, 80, 8), kind }])
 
-  const list = screen.getByRole('list', { name: 'Sets logged' })
+  // V3-05: Warm-ups share one W cell in the row rather than a logged cell each.
+  const list =
+    kind === 'warmup'
+      ? (document.querySelector('.set-cells') as HTMLElement)
+      : screen.getByRole('list', { name: 'Sets logged' })
   expect(within(list).getByText(marker)).toBeVisible()
 })
 
@@ -2629,9 +2636,9 @@ function effortChips(): HTMLElement | null {
   return screen.queryByRole('group', { name: 'Reps in reserve' })
 }
 
-/** An effort chip by the RIR it stores: '0' is the chip reading "RIR 0" (S4). */
+/** An effort chip by the RIR it stores: '0' reads "0", with no "RIR" (V3-03, V1-14). */
 function chip(name: string): HTMLElement {
-  return within(effortChips() as HTMLElement).getByRole('button', { name: name === '0' ? 'RIR 0' : name })
+  return within(effortChips() as HTMLElement).getByRole('button', { name })
 }
 
 test('O9 before any Set is logged, no chips show even with Track effort on', () => {
@@ -2646,8 +2653,9 @@ test('O9 with Track effort on, logging a Set shows the chips 0 1 2 3+', async ()
   await user.click(logButton())
 
   const chips = await screen.findByRole('group', { name: 'Reps in reserve' })
+  // V3-03: the chips read 0 1 2 3+ with no "RIR" on the first (V1-14).
   expect(within(chips).getAllByRole('button').map((button) => button.textContent)).toEqual([
-    'RIR 0',
+    '0',
     '1',
     '2',
     '3+',
@@ -2768,10 +2776,11 @@ test('O9 a logged Set with rir reads "weight × reps · RIR n", RIR 0 included, 
     loggedEntry(4, 80, 8),
   ])
 
-  // Each Set is a cell named "weight × reps"; its RIR sits in the cell's corner, beside it.
+  // Each Set is a cell named "weight × reps"; its reps left sit in the cell's corner, beside it,
+  // in words rather than "RIR" (V3-03, V1-14).
   const rows = within(screen.getByRole('list', { name: 'Sets logged' })).getAllByRole('listitem')
   const rir = rows.map((row) => row.querySelector('.logged-set-rir')?.textContent ?? null)
-  expect(rir).toEqual(['RIR 2', 'RIR 0', 'RIR 3+', null])
+  expect(rir).toEqual(['2 left', '0 left', '3+ left', null])
   // The RIR text sits beside the tappable Set, not inside its name.
   expect(loggedSetNames()).toEqual(['80 × 8', '80 × 8', '80 × 8', '80 × 8'])
 })
@@ -3731,7 +3740,9 @@ test('O10 the edit mode does not show the offer', async () => {
   const { user } = renderBarbell([warmupEntry(1, 50, 5)])
   expect(await warmupsOffered(user)).toBe(true)
 
-  await user.click(document.querySelector<HTMLElement>('button.logged-set') as HTMLElement)
+  // V3-05: the logged Warm-up is edited from the W cell's Warm-up list.
+  await user.click(screen.getByRole('button', { name: /^Warm-ups/ }))
+  await user.click(screen.getByRole('button', { name: '50 × 5' }))
 
   expect(screen.getByRole('button', { name: 'Save set' })).toBeVisible()
   expect(addWarmupsOffer()).toBeNull()
@@ -4263,9 +4274,9 @@ const restfulSessions: Session[] = [1, 2, 3].map((n) => ({
   })),
 }))
 
-test('S4 the rest panel counts down against the rest length, and offers the usual rest', () => {
+test('S4 the rest panel counts down against the rest length, and offers the usual rest', async () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 12_000)
-  renderSetScreen({
+  const { user } = renderSetScreen({
     setIndex: 2,
     earlierSessions: restfulSessions,
     onUseRestForExercise: vi.fn(async () => undefined),
@@ -4275,10 +4286,14 @@ test('S4 the rest panel counts down against the rest length, and offers the usua
   const panel = document.querySelector('.rest-panel') as HTMLElement
   expect(readoutValue(restReadout())).toBe('2:48')
   expect(panel.textContent).toContain('of 3:00')
-  // V1-11: no "you usually rest" line; the Use offer carries the usual rest.
+  // V1-11: no "you usually rest" line. V3-03: the usual rest is offered in ⋯ › Rest time, not
+  // in the middle of the rest.
   expect(panel.textContent).not.toContain('you usually rest')
-  expect(screen.getByRole('button', { name: 'Use 2:40 for Back squat' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Use 2:40 for Back squat' })).toBeNull()
   expect(screen.getByRole('button', { name: 'Skip rest' })).toHaveClass('btn-secondary')
+  const sheet = await openTools(user)
+  expect(within(sheet).getByText(/usually 2:40/)).toBeVisible()
+  expect(within(sheet).getByRole('button', { name: 'Use 2:40 for Back squat' })).toBeVisible()
 })
 
 test('S4 Use 2:40 for Back squat saves the usual rest as the Plan rest', async () => {
@@ -4292,6 +4307,8 @@ test('S4 Use 2:40 for Back squat saves the usual rest as the Plan rest', async (
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
+  // V3-03: offered in ⋯ › Rest time.
+  await openTools(user)
   await user.click(screen.getByRole('button', { name: 'Use 2:40 for Back squat' }))
 
   expect(onUseRestForExercise).toHaveBeenCalledWith(160)
@@ -4321,7 +4338,9 @@ test('S4 while rest runs the effort chips name the Set just logged', async () =>
 
   const group = await screen.findByRole('group', { name: 'Reps in reserve' })
   const row = group.closest('.effort-row') as HTMLElement
-  expect(row.textContent).toMatch(/^Set 2\s*effort/)
+  // V3-03: "Reps left on set 2", with no "RIR" anywhere in the row (V1-14).
+  expect(row.textContent).toMatch(/^Reps left on set 2/)
+  expect(row.textContent).not.toMatch(/RIR/)
 })
 
 test('S5a a record shows a toast pinned at the top with the PR tag, and goes in 3 s', async () => {
@@ -4408,9 +4427,14 @@ test('V2-01 done, the action bar has one primary Next: <Exercise> and a quiet Ad
     { onFinishExercise, upNext: 'Lunges', onAddSet: vi.fn() },
   )
 
-  const next = screen.getByRole('button', { name: 'Next: Lunges' })
+  // V3-01: the Session moves on by itself; an Exercise reopened once done offers "Go to
+  // <Exercise>", never "Next: …", and Add set sits at the end of the one-line verdict.
+  const next = screen.getByRole('button', { name: 'Go to Lunges' })
   expect(next).toHaveClass('log-set', 'btn-primary')
-  expect(screen.getByRole('button', { name: 'Add set' })).toHaveClass('btn-quiet')
+  expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
+  const addSet = screen.getByRole('button', { name: 'Add set' })
+  expect(addSet).toHaveClass('btn-quiet')
+  expect(addSet.closest('.exercise-verdict')).not.toBeNull()
   expect(screen.queryByRole('button', { name: 'Finish exercise' })).toBeNull()
   expect(screen.queryByRole('button', { name: /^Weight, / })).toBeNull()
   fireEvent.click(next)
@@ -4460,9 +4484,12 @@ test('V2-02 the Use offer joins the countdown row, named in full for a screen re
     onUseRestForExercise: vi.fn(async () => undefined),
   })
 
-  const offer = screen.getByRole('button', { name: 'Use 2:40 for Back squat' })
+  // V3-03: the usual rest's offer left the rest dock for ⋯ › Rest time, still named in full.
+  expect(document.querySelector('.rest-panel')?.textContent).not.toMatch(/Use/)
+  const sheet = await openTools(userEvent.setup())
+  const offer = within(sheet).getByRole('button', { name: 'Use 2:40 for Back squat' })
   expect(offer).toHaveTextContent(/^Use 2:40$/)
-  expect(offer.closest('.rest-panel-main')).not.toBeNull()
+  expect(offer.closest('.rest-panel-main')).toBeNull()
 })
 
 test('V1-13 choosing AMRAP puts it on the Log bar and starts the reps at the floor', async () => {
@@ -4483,4 +4510,78 @@ test('V1-15 the Exercise note shows on Now, and a tap opens it to edit', async (
   await user.click(screen.getByRole('button', { name: 'Exercise note: Belt from set 3' }))
 
   expect((screen.getByLabelText('Note') as HTMLTextAreaElement).value).toBe('Belt from set 3')
+})
+
+// --- UX v3: the live Session (V3-01, V3-03, V3-05, V3-06) -------------------------------------
+
+test('V3-01 a handed-over Exercise shows its verdict line with Add set over the Get ready card', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 12_000)
+  const onAddSet = vi.fn()
+  const other: SetEntry = { exerciseId: 'deadlift', setIndex: 3, weightKg: 70, reps: 7, loggedAt: BASE }
+  renderSetScreen({
+    setIndex: 1,
+    restFrom: { entry: other, planRestSeconds: 180 },
+    handover: { name: 'Deadlift', verdict: 'Deadlift done · same as last time · 3 × 70 × 7', onAddSet },
+  })
+
+  const line = screen.getByRole('region', { name: 'Exercise done' })
+  const card = screen.getByRole('region', { name: 'Get ready' })
+  expect(line.textContent).toMatch(/^Deadlift done/)
+  expect(line.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  fireEvent.click(within(line).getByRole('button', { name: 'Add set' }))
+  expect(onAddSet).toHaveBeenCalledTimes(1)
+})
+
+test('V3-01 done with no Exercise left, the primary reads Finish workout', () => {
+  const onFinishWorkout = vi.fn()
+  renderWithLogged(
+    [loggedEntry(1, 80, 8), loggedEntry(2, 80, 8), loggedEntry(3, 80, 8), loggedEntry(4, 80, 8)],
+    { onFinishExercise: vi.fn(), upNext: null, onFinishWorkout, onAddSet: vi.fn() },
+  )
+
+  const finish = screen.getByRole('button', { name: 'Finish workout' })
+  expect(finish).toHaveClass('btn-primary')
+  fireEvent.click(finish)
+  expect(onFinishWorkout).toHaveBeenCalledTimes(1)
+})
+
+test('V3-03 the rest dock is one row: countdown, −15 s, +15 s and Skip, with no Use offer', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 12_000)
+  renderSetScreen({
+    setIndex: 2,
+    earlierSessions: restfulSessions,
+    onUseRestForExercise: vi.fn(async () => undefined),
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  const row = document.querySelector('.rest-panel-main') as HTMLElement
+  expect(row.querySelector('[role="timer"]')).not.toBeNull()
+  for (const name of ['Rest 15 seconds less', 'Rest 15 seconds more', 'Skip rest']) {
+    expect(row.contains(screen.getByRole('button', { name }))).toBe(true)
+  }
+  expect(screen.getByRole('button', { name: 'Skip rest' }).textContent).toBe('Skip')
+  expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+})
+
+test('V3-05 three Warm-ups share one W cell: the row reads W, 1, 2, 3 and the bar says warm-up', async () => {
+  const { user } = renderBarbell()
+  await startRamp(user)
+
+  const cells = document.querySelector('.set-cells') as HTMLElement
+  const labels = [...cells.querySelectorAll('.set-cell-index')].map((label) => label.textContent)
+  expect(labels).toEqual(['W', '1', '2', '3'])
+  expect(logButton().textContent).toMatch(/^Log warm-up 1 /)
+  await user.click(logButton())
+
+  await waitFor(() => expect(logButton().textContent).toMatch(/^Log warm-up 2 /))
+  expect(screen.queryByRole('group', { name: 'Reps in reserve' })).toBeNull()
+  expect(screen.getByRole('region', { name: 'Get ready' }).textContent).not.toMatch(/Set 1/)
+})
+
+test('V3-06 the set cells share the row width and never scroll sideways', () => {
+  const row = declarationsFor(restCss(), '.set-cells')
+  expect(row.get('overflow-x')).toBeUndefined()
+  const cell = declarationsFor(restCss(), '.set-cell')
+  expect(cell.get('flex')).toBe('1 1 0')
+  expect(cell.get('min-width')).toBe('0')
 })

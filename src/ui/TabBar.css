@@ -26,6 +26,8 @@
   min-height: var(--tap-min);
   flex: 1;
   flex-direction: column;
+  min-width: 0;
+  container-type: inline-size;
   align-items: center;
   justify-content: center;
   gap: 3px;
@@ -47,6 +49,19 @@
   display: block;
 }
 
+/* A label never spills into its neighbour (V3-10): it stays inside its own tab, and when the
+ * text is too large for the tab's width (the container query reads the tab's own font size, so
+ * it trips at large text, not on narrow phones at normal size) it steps down a size. */
 .tab-bar-label {
+  max-width: 100%;
+  overflow: hidden;
   line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@container (max-width: 4.75em) {
+  .tab-bar-label {
+    font-size: calc(var(--text-xs) * 0.75);
+  }
 }

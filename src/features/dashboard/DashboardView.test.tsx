@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
+import { declarationsFor } from '../../test/cssAudit'
 import { ShellChromeContext } from '../../ui/AppShell'
 import { DashboardView, type DashboardData, type DashboardViewProps } from './DashboardView'
 import type { WeekStrip } from './trainCard'
@@ -8,7 +12,7 @@ const WEEK: WeekStrip = {
   done: 1,
   planned: 3,
   days: [
-    { key: 'Mon', initial: 'M', name: 'Mon', workout: 'B', today: false },
+    { key: 'Mon', initial: 'M', name: 'Mon', workout: 'B', tone: 'pull', workoutName: 'Workout B', today: false },
     { key: 'Tue', initial: 'T', name: 'Tue', workout: null, today: true },
     { key: 'Wed', initial: 'W', name: 'Wed', workout: null, today: false },
     { key: 'Thu', initial: 'T', name: 'Thu', workout: null, today: false },
@@ -44,7 +48,7 @@ const READY: DashboardData = {
       { exerciseId: 'face-pull', name: 'Face pulls', sets: 3, load: null, reps: '12–15', step: null },
     ],
   },
-  due: { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', summary: '7 exercises · 23 sets · ~53 min' },
+  due: { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', minutes: 53 },
 }
 
 function renderView(overrides: Partial<DashboardViewProps> = {}) {
@@ -64,18 +68,21 @@ function renderView(overrides: Partial<DashboardViewProps> = {}) {
 describe('DashboardView S1', () => {
   test('the header reads the day and the sync, with cloud and settings buttons', () => {
     const props = renderView()
-    expect(screen.getByRole('heading', { level: 1, name: 'Train' })).toBeTruthy()
-    expect(screen.getByText('Tue 13 Oct · Synced 2 min ago')).toBeTruthy()
+    // V3-08: the title is the Workout due, the second line the day and when it was last done;
+    // the sync state rides in the cloud button's name.
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
+    expect(screen.getByText('Tue 13 Oct · last done Fri 9 Oct')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     expect(props.onOpenSettings).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Sync now' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sync now · Synced 2 min ago' }))
     expect(props.onSync).toHaveBeenCalledTimes(1)
   })
 
   test('offline, the header says the work is saved on this phone and drops the cloud button', () => {
     renderView({ sync: { kind: 'offline' } })
-    expect(screen.getByText('Offline · saved on this phone')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Sync now' })).toBeNull()
+    // V3-08: said by the crossed-out cloud's name, not by a line of text.
+    expect(screen.getByRole('img', { name: 'Offline · saved on this phone' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Sync now/ })).toBeNull()
   })
 
   test('this week reads three KPI cards against last week', () => {
@@ -151,9 +158,22 @@ describe('DashboardView S1', () => {
   })
 
   test('V1-33 Train is titled "Train", not "Dashboard"', () => {
-    renderView()
+    // V3-08: with no Workout to offer yet the title is "Train"; once one is due, its name.
+    const { unmount } = render(
+      <DashboardView
+        today="Tue 13 Oct"
+        sync={{ kind: 'local' }}
+        data={{ kind: 'loading' }}
+        onSync={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onStartWorkout={vi.fn()}
+      />,
+    )
     expect(screen.getByRole('heading', { level: 1, name: 'Train' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Dashboard' })).toBeNull()
+    unmount()
+    renderView()
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
   })
 
   test('V1-33 the legend stays hidden while no lift has sets yet', () => {
@@ -184,15 +204,16 @@ describe('DashboardView S1', () => {
     )
     expect(screen.queryByRole('heading', { level: 2, name: 'Workout A' })).toBeNull()
     expect(screen.queryByText('~48 min · from your logged workouts')).toBeNull()
-    expect(screen.getByText('7 exercises · 23 sets · ~53 min')).toBeTruthy()
+    // V3-08: the dock keeps the time only; the header and the Start button name the workout.
+    expect(screen.getByText('~53 min')).toBeTruthy()
     expect(container.textContent?.match(/Workout A/g)).toHaveLength(2)
   })
 
   test('the heading says how many more workouts the week still plans', () => {
     // V2-05: the week strip at the top says it as done of planned; the card has no heading.
-    renderView({ data: { ...READY, week: WEEK, card: { ...READY.card!, more: 2 } } })
+    renderView({ data: { ...READY, week: WEEK, card: { ...READY.card!, more: 2 } }, onOpenSessions: vi.fn() })
     expect(screen.queryByText('next · 2 more this week')).toBeNull()
-    const week = screen.getByRole('region', { name: 'This week' })
+    const week = screen.getByRole('button', { name: /^This week, 1 of 3/ })
     expect(within(week).getByText('1 of 3')).toBeTruthy()
   })
 
@@ -200,31 +221,36 @@ describe('DashboardView S1', () => {
     // V2-05: the estimate rides in the dock's summary only, whichever way it was worked out.
     renderView({ data: { ...READY, card: { ...READY.card!, estimate: 'plan' } } })
     expect(screen.queryByText('~48 min · planned')).toBeNull()
-    expect(screen.getByText('7 exercises · 23 sets · ~53 min')).toBeTruthy()
+    expect(screen.getByText('~53 min')).toBeTruthy()
   })
 
   test('V2-05 the week strip sits above the lifts with a cell per day, today marked and the done day named', () => {
-    renderView({ data: { ...READY, week: WEEK } })
-    const week = screen.getByRole('region', { name: 'This week' })
-    const days = within(week).getAllByRole('listitem')
+    renderView({ data: { ...READY, week: WEEK }, onOpenSessions: vi.fn() })
+    // V3-09: the strip is one button whose name says the week; its cells are the Sessions
+    // calendar's (the letter in the workout's tone, today outlined).
+    const week = screen.getByRole('button', { name: 'This week, 1 of 3: Workout B Mon. Open Sessions' })
+    const days = [...week.querySelectorAll('.calendar-day')]
     expect(days).toHaveLength(7)
-    expect(days[0].getAttribute('aria-label')).toBe('Mon B')
-    expect(days[1].getAttribute('aria-current')).toBe('date')
-    expect(days.filter((d) => d.getAttribute('aria-current') === 'date')).toHaveLength(1)
+    expect(days[0].textContent).toBe('B')
+    expect(days[0].getAttribute('data-workout')).toBe('pull')
+    expect(days[1].hasAttribute('data-today')).toBe(true)
+    expect(days.filter((d) => d.hasAttribute('data-today'))).toHaveLength(1)
     const lifts = screen.getByRole('list', { name: 'Workout A lifts' })
     expect(week.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   test('V2-05 with no week worked out Train draws no strip', () => {
-    renderView()
-    expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
+    renderView({ onOpenSessions: vi.fn() })
+    expect(screen.queryByRole('button', { name: /^This week/ })).toBeNull()
+    expect(document.querySelector('.dashboard-week')).toBeNull()
   })
 
   test('the dock names the workout due and starts it', () => {
     const props = renderView()
-    expect(screen.getByText('Workout A due')).toBeTruthy()
-    expect(screen.getByText('· last Fri 9 Oct')).toBeTruthy()
-    expect(screen.getByText('7 exercises · 23 sets · ~53 min')).toBeTruthy()
+    // V3-08: the header names the workout due and when it was last done; the dock its time.
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
+    expect(screen.getByText('Tue 13 Oct · last done Fri 9 Oct')).toBeTruthy()
+    expect(screen.getByText('~53 min')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
     expect(props.onStartWorkout).toHaveBeenCalledWith('workout-a')
   })
@@ -281,8 +307,8 @@ describe('DashboardView S8', () => {
 
 describe('DashboardView in the app shell', () => {
   const WORKOUTS = [
-    { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', summary: '7 exercises · 23 sets · ~53 min' },
-    { workoutId: 'workout-b', name: 'Workout B', last: null, summary: '7 exercises · 23 sets · ~48 min' },
+    { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', minutes: 53 },
+    { workoutId: 'workout-b', name: 'Workout B', last: null, minutes: 48 },
   ]
 
   test('Change steps the dock through the program’s workouts, and Start starts the one offered', () => {
@@ -291,14 +317,14 @@ describe('DashboardView in the app shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
 
-    // Any workout but the one due drops "due" from its line.
-    expect(screen.getByText('Workout B')).toBeTruthy()
-    expect(screen.getByText('7 exercises · 23 sets · ~48 min')).toBeTruthy()
+    // V3-08: the header follows the workout offered, and the dock its time.
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy()
+    expect(screen.getByText('~48 min')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout B' }))
     expect(props.onStartWorkout).toHaveBeenCalledWith('workout-b')
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
-    expect(screen.getByText('Workout A due')).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
   })
 
   test('V1-21 after Change the Workout card shows the chosen Workout, matching the Start button', () => {
@@ -353,7 +379,10 @@ describe('DashboardView in the app shell', () => {
 
     // The same button, kept in place as the data arrives, and no Start beside it.
     expect(screen.getByRole('button', { name: 'Resume Workout A' })).toBe(button)
-    expect(screen.getByText('Workout A in progress')).toBeTruthy()
+    // V3-08: the header names the Session in progress; the dock is its Resume button only.
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
+    expect(screen.getByText('Tue 13 Oct · in progress')).toBeTruthy()
+
     expect(screen.queryByRole('button', { name: /^Start / })).toBeNull()
     fireEvent.click(button)
     expect(onResume).toHaveBeenCalledTimes(1)
@@ -383,3 +412,72 @@ describe('DashboardView in the app shell', () => {
     expect(screen.getByText('Nothing can be saved on this phone.').closest('.dashboard-notices')).not.toBeNull()
   })
 })
+
+describe('DashboardView V3', () => {
+  test('V3-08 no visible line says "Not synced"; the cloud button carries it as its name', () => {
+    const { container } = render(
+      <DashboardView
+        today="Thu 15 Oct"
+        sync={{ kind: 'failed' }}
+        data={READY}
+        onSync={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onStartWorkout={vi.fn()}
+      />,
+    )
+    expect(container.textContent).not.toContain('Not synced')
+    expect(container.textContent).not.toContain('saved on this phone')
+    const cloud = screen.getByRole('button', { name: /^Sync now/ })
+    expect(cloud.getAttribute('aria-label')).toContain('saved on this phone')
+    expect(cloud.getAttribute('data-sync')).toBe('failed')
+  })
+
+  test('V3-08 the dock is the time, Change and Start: no "due" line and no exercise or set count', () => {
+    const { container } = render(
+      <DashboardView
+        today="Thu 15 Oct"
+        sync={{ kind: 'local' }}
+        data={{
+          ...READY,
+          workouts: [READY.due!, { workoutId: 'workout-b', name: 'Workout B', last: null, minutes: 48 }],
+        }}
+        onSync={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onStartWorkout={vi.fn()}
+      />,
+    )
+    const dock = container.querySelector('.dashboard-dock') as HTMLElement
+    expect(within(dock).getByText('~53 min')).toBeTruthy()
+    expect(within(dock).getByRole('button', { name: 'Choose another workout' })).toBeTruthy()
+    expect(within(dock).getByRole('button', { name: 'Start Workout A' })).toBeTruthy()
+    expect(dock.textContent).not.toMatch(/due|exercises|sets/)
+    expect(screen.getByText('Thu 15 Oct · last done Fri 9 Oct')).toBeTruthy()
+  })
+
+  test('V3-08 a workout never done reads the day alone under its name', () => {
+    renderView({ data: { ...READY, due: { ...READY.due!, last: null } } })
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
+    expect(screen.getByText('Tue 13 Oct')).toBeTruthy()
+  })
+
+  test('V3-09 the week strip is one button that opens Sessions', () => {
+    const onOpenSessions = vi.fn()
+    renderView({ data: { ...READY, week: WEEK }, onOpenSessions })
+    const strip = screen.getByRole('button', { name: /^This week/ })
+    expect(strip.querySelectorAll('.calendar-week')).toHaveLength(1)
+    expect(strip.querySelectorAll('button')).toHaveLength(0)
+    fireEvent.click(strip)
+    expect(onOpenSessions).toHaveBeenCalledTimes(1)
+  })
+
+  test('V3-10 a lift row wraps its name and Preset rather than cutting the name; header icons are sized in rem', () => {
+    const here = dirname(fileURLToPath(import.meta.url))
+    const css = readFileSync(join(here, 'DashboardScreen.css'), 'utf-8')
+    const name = declarationsFor(css, '.dashboard-step-name')
+    expect(name.get('text-overflow')).toBeUndefined()
+    expect(name.get('white-space')).toBeUndefined()
+    expect(declarationsFor(css, '.dashboard-step-line').get('flex-wrap')).toBe('wrap')
+    expect(declarationsFor(css, '.dashboard-header-actions svg').get('width')).toMatch(/rem$/)
+  })
+})
+

@@ -13,6 +13,7 @@ import {
   getWeightStep,
   setActiveProgramId,
   setGymEquipment,
+  setVolumeBaseline,
   setWeightStep,
 } from './storage/settingsStore'
 import {
@@ -126,6 +127,7 @@ test('O18 App leads the picker with the active program’s workouts', async () =
 })
 
 test('O18 choosing another program in Settings makes the picker lead with it', async () => {
+  // V2-09: the Program tab is where the active Program is chosen; Settings no longer lists them.
   const actualCatalog = await vi.importActual<typeof import('./data/catalog')>('./data/catalog')
   vi.mocked(loadPrograms).mockImplementation((catalog) => [
     ...actualCatalog.loadPrograms(catalog).filter((p) => p.id === 'assaf-ab-2026'),
@@ -136,9 +138,12 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
   await findStartButton()
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
+  await screen.findByRole('group', { name: 'Workout' }, SETTLE)
+  expect(screen.queryByRole('radio', { name: 'Second Program' })).toBeNull()
+
+  await pressTab(user, 'Program')
+  await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
   await user.click(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE))
-  // Settings is a full-screen page since the Progress Dashboard redesign: its Back chevron, then
-  // the Dashboard tab, is the way back.
   await pressTab(user, 'Train')
 
   expect(await screen.findByRole('button', { name: 'Start Second Workout' }, SETTLE)).toBeVisible()
@@ -441,6 +446,7 @@ test('O15 with all 4 planned sets logged, add set opens a fifth set preset from 
   await logFourSetsOfBackSquat(user)
 
   await user.click(await screen.findByRole('button', { name: 'Add set' }, SETTLE))
+  await screen.findByText('Set 5 · extra', undefined, SETTLE)
 
   expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['52.5', '8'])
 })
@@ -451,6 +457,8 @@ test('O15 the added set is logged against the same exercise as set 5', async () 
   await logFourSetsOfBackSquat(user)
 
   await user.click(await screen.findByRole('button', { name: 'Add set' }, SETTLE))
+  // V3-01: Add set reopens back squat (from the next Exercise's screen) at its extra Set.
+  await screen.findByText('Set 5 · extra', undefined, SETTLE)
   await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
 
   await waitFor(async () => {
@@ -927,7 +935,7 @@ test('O9 the Settings tab carries no free-standing Settings, History or Back but
   await findStartButton()
 
   await pressTab(user, 'Settings')
-  await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
+  await screen.findByRole('group', { name: 'Workout' }, SETTLE)
 
   expect(looseButtons(['Settings', 'History', 'Back'])).toEqual([])
   // A full-screen page: its one way off is the header's Back chevron, and no tab bar.
@@ -1136,11 +1144,15 @@ test('O11 Add set sits in the action bar once every planned set is logged', asyn
   await renderApp()
   await logFourSetsOfBackSquat(user)
 
+  // V3-01: the Session hands over to the next Exercise by itself; Add set sits at the end of
+  // back squat's verdict line, over the next Exercise's Get ready card, and the action bar holds
+  // that Exercise's Log set.
   const addSet = await screen.findByRole('button', { name: 'Add set' }, SETTLE)
 
   const bar = actionBar()
   expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
-  expect((bar as HTMLElement).contains(addSet)).toBe(true)
+  expect(addSet.closest('.exercise-verdict')).not.toBeNull()
+  expect((bar as HTMLElement).contains(screen.getByRole('button', { name: /^Log set 1 / }))).toBe(true)
 })
 
 // --- E3-T5: the resume card on the picker ([O12]) ------------------------------------------
@@ -1296,7 +1308,7 @@ describe('E3-T7', () => {
     expect((main as HTMLElement).contains(updateButton)).toBe(false)
 
     await pressTab(user, 'Settings')
-    await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
+    await screen.findByRole('group', { name: 'Workout' }, SETTLE)
 
     expect(screen.getAllByRole('button', { name: 'Update ready' })).toHaveLength(1)
     const trailingAfterSettings = trailingSlot()
@@ -1309,29 +1321,42 @@ describe('E3-T7', () => {
   // --- O14: the backup-due marker lives in the nav, and never replaces BackupBadge --------
 
   test('O14 the Settings tab in the nav carries a marker whose accessible name says a backup is due, without changing the tab own name', async () => {
+    // V1-30: a backup is due once something is logged and never exported; an empty install has
+    // nothing to back up and carries no marker (the next test).
+    await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
     await renderApp()
     await findStartButton()
 
-    // A fresh database has never been exported, so a backup is due from the start.
     expect(
-      within(settingsTabButton()).getByRole('status', { name: /backup is due/i }),
+      await within(settingsTabButton()).findByRole('status', { name: /backup is due/i }, SETTLE),
     ).toBeVisible()
     // The seven E2 tests and this file's own openSettings helper match the button's own name
     // exactly: a badge joining it, rather than announcing itself, would break every one of them.
     expect(accessibleNameOf(settingsTabButton())).toBe('Settings')
   })
 
+  test('V1-30 a fresh install with nothing logged shows no backup marker on the Settings gear', async () => {
+    await renderApp()
+    await findStartButton()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(within(settingsTabButton()).queryByRole('status', { name: /backup is due/i })).toBeNull()
+  })
+
   test('O14 the Settings screen still renders BackupBadge in full when a backup is due', async () => {
     const user = userEvent.setup()
+    await db.sessions.bulkPut(loggedSessions(1, 'session', BASE))
     await renderApp()
     await findStartButton()
 
     await pressTab(user, 'Settings')
-    await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
+    await screen.findByRole('group', { name: 'Workout' }, SETTLE)
 
     expect(
-      screen.getByText('Back up your data — it has been a while since the last export.'),
+      await screen.findByText('Back up your data — it has been a while since the last export.', {}, SETTLE),
     ).toBeVisible()
+    // V1-30: the Data & sync group says when the last backup was.
+    expect(screen.getByText('Last backup: never')).toBeVisible()
   })
 })
 
@@ -1932,12 +1957,16 @@ const EQUIPMENT_TYPES = Array.from(new Set(LIBRARY.map((exercise) => exercise.eq
 const MACHINE_EXERCISE_NAME = 'Ab Crunch Machine'
 
 test('S14 opening Settings with no saved gym equipment lists every library equipment type except body only, all ticked', async () => {
+  // V2-09: the switches live on Program › Exercises now, folded under "My gym's equipment".
   const user = userEvent.setup()
   await renderApp()
   await findStartButton()
 
   await openSettings(user)
+  await screen.findByRole('group', { name: 'Workout' }, SETTLE)
+  expect(screen.queryByRole('switch', { name: 'machine' })).toBeNull()
 
+  await openGymEquipment(user)
   for (const equipment of EQUIPMENT_TYPES) {
     expect(await screen.findByRole('switch', { name: equipment }, SETTLE)).toBeChecked()
   }
@@ -1945,10 +1974,11 @@ test('S14 opening Settings with no saved gym equipment lists every library equip
 })
 
 test('S14 unticking machine in Settings persists across a reload', async () => {
+  // V2-09: unticked on Program › Exercises, where the switches moved.
   const user = userEvent.setup()
   const run = await renderApp()
   await findStartButton()
-  await openSettings(user)
+  await openGymEquipment(user)
 
   await user.click(await screen.findByRole('switch', { name: 'machine' }, SETTLE))
   await waitFor(async () => {
@@ -1963,11 +1993,17 @@ test('S14 unticking machine in Settings persists across a reload', async () => {
 
   await renderApp()
   await findStartButton()
-  await openSettings(user)
+  await openGymEquipment(user)
 
   expect(await screen.findByRole('switch', { name: 'machine' }, SETTLE)).not.toBeChecked()
   expect(screen.getByRole('switch', { name: 'barbell' })).toBeChecked()
 })
+
+/** Opens Program › Exercises and unfolds "My gym's equipment" (V2-09). */
+async function openGymEquipment(user: UserEvent): Promise<void> {
+  await pressTab(user, 'Exercises')
+  await user.click(await screen.findByText("My gym's equipment", {}, SETTLE))
+}
 
 test('S15 with machine unticked, the Exercises tab opens with the My gym only chip on and no machine exercises listed', async () => {
   await setGymEquipment(EQUIPMENT_TYPES.filter((equipment) => equipment !== 'machine'))
@@ -2704,7 +2740,18 @@ async function logAllThreePlannedBackSquatSets(user: UserEvent): Promise<void> {
 }
 
 /** Presses Add set in the done state. */
+/**
+ * V3-01: logging back squat's last Set hands over to the next Exercise once its history loads.
+ * Until then back squat's own done state is on screen, so wait for the hand-over to land.
+ */
+async function awaitHandover(): Promise<void> {
+  await waitFor(() => {
+    expect(screen.queryByRole('heading', { name: 'Back squat' })).toBeNull()
+  }, SETTLE)
+}
+
 async function pressAddSet(user: UserEvent): Promise<void> {
+  await awaitHandover()
   await user.click(await screen.findByRole('button', { name: 'Add set' }, SETTLE))
 }
 
@@ -2724,13 +2771,17 @@ describe('E6-T1', { timeout: 15_000 }, () => {
   test('O1 with all 3 planned sets logged, the action bar holds Add set and no Log set', async () => {
     const user = userEvent.setup()
     await logAllThreePlannedBackSquatSets(user)
+    await awaitHandover()
 
+    // V3-01: the next Exercise comes up by itself; Add set rides back squat's verdict line, and
+    // no Log set is offered for back squat itself.
     const addSet = await screen.findByRole('button', { name: 'Add set' }, SETTLE)
 
     const bar = actionBar()
     expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
-    expect((bar as HTMLElement).contains(addSet)).toBe(true)
-    expect(screen.queryByRole('button', { name: /^Log set / })).toBeNull()
+    expect(addSet.closest('.exercise-verdict')?.textContent).toMatch(/^Back squat done · /)
+    expect(screen.queryByRole('heading', { name: 'Back squat' })).toBeNull()
+    expect((bar as HTMLElement).contains(screen.getByRole('button', { name: /^Log set 1 / }))).toBe(true)
   })
 
   test('O1 with all 3 planned sets logged, the counter reads All 3 sets logged', async () => {
@@ -2809,8 +2860,11 @@ describe('E6-T1', { timeout: 15_000 }, () => {
 
     await addAndLogSetFour(user)
 
-    await screen.findByRole('button', { name: 'Add set' }, SETTLE)
-    expect(screen.queryByRole('button', { name: /^Log set / })).toBeNull()
+    // V3-01: the extra set hands over to the next Exercise again, with Add set on the verdict
+    // line; no Log set is offered for a fifth back squat set.
+    const addSet = await screen.findByRole('button', { name: 'Add set' }, SETTLE)
+    expect(addSet.closest('.exercise-verdict')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: /^Log set 5 / })).toBeNull()
   })
 
   test('O2 pressing Add set again after the extra set is logged opens set 5 as an extra set', async () => {
@@ -3033,18 +3087,18 @@ describe('E8-T4', { timeout: 15_000 }, () => {
     const user = userEvent.setup()
     await logAllThreePlannedBackSquatSets(user)
 
-    // V2-01: the done state's one primary names the next Exercise; Add set is a quiet text button
-    // over it, and no button reads Finish exercise.
-    const finish = await screen.findByRole('button', { name: /^Next: / }, SETTLE)
-    const addSet = screen.getByRole('button', { name: 'Add set' })
+    // V3-01: no stop at all -- the next Exercise's Log set 1 is the primary, Add set is a quiet
+    // text button on the verdict line above it, and no button reads Next: or Finish exercise.
+    const addSet = await screen.findByRole('button', { name: 'Add set' }, SETTLE)
+    const log = screen.getByRole('button', { name: /^Log set 1 / })
 
     const bar = actionBar()
     expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
-    expect((bar as HTMLElement).contains(finish)).toBe(true)
-    expect((bar as HTMLElement).contains(addSet)).toBe(true)
-    expect(finish).toHaveClass('btn-primary')
+    expect((bar as HTMLElement).contains(log)).toBe(true)
+    expect(log).toHaveClass('btn-primary')
     expect(addSet).toHaveClass('btn-quiet')
-    expect(addSet.compareDocumentPosition(finish) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(addSet.compareDocumentPosition(log) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Finish exercise' })).toBeNull()
   })
 
@@ -3080,8 +3134,10 @@ describe('E8-T4', { timeout: 15_000 }, () => {
     await openExercise(user, 'Back squat')
     await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
 
-    // V2-01: with every other Exercise done the primary reads All exercises.
-    await user.click(await screen.findByRole('button', { name: 'All exercises' }, SETTLE))
+    // V3-01: with every other Exercise done the primary reads Finish workout; All returns to
+    // the Workout's list.
+    expect(await screen.findByRole('button', { name: 'Finish workout' }, SETTLE)).toHaveClass('btn-primary')
+    await user.click(screen.getByRole('radio', { name: 'All' }))
 
     expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
     const header = shellHeader()
@@ -3095,7 +3151,9 @@ describe('E8-T4', { timeout: 15_000 }, () => {
 
     await addAndLogSetFour(user)
 
-    expect(await screen.findByRole('button', { name: /^Next: / }, SETTLE)).toBeVisible()
+    // V3-01: the extra set hands over again: back squat's verdict line, no Next: button.
+    expect(await screen.findByText(/^Back squat done · /, undefined, SETTLE)).toBeVisible()
+    expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
   })
 })
 
@@ -3203,6 +3261,10 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
     loggedAt: now,
   })
 
+  // V2-09: Settings no longer offers "Compare volume with"; a baseline stored before (here,
+  // Past 3 months on Average) still reaches the row.
+  await setVolumeBaseline({ period: '3m', aggregate: 'avg' })
+
   await renderApp()
   await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
@@ -3211,12 +3273,8 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
   // reach Settings from there, and resume the Session again after.
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
   await user.click(await screen.findByRole('button', { name: 'Settings' }, SETTLE))
-
-  await user.selectOptions(
-    await screen.findByRole('combobox', { name: 'Compare volume with' }, SETTLE),
-    'Past 3 months',
-  )
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Using' }), 'Average')
+  await screen.findByRole('group', { name: 'Workout' }, SETTLE)
+  expect(screen.queryByRole('combobox', { name: 'Compare volume with' })).toBeNull()
 
   await pressTab(user, 'Train')
   await user.click(await screen.findByRole('button', { name: /^Resume Workout A/ }, SETTLE))

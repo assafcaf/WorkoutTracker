@@ -107,7 +107,7 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     await setActiveProgramId('assaf-ab-2026', SAT)
     mountBoth(servicesAt(SAT), SAT)
     const toggle = (await screen.findByRole('switch', { name: 'Deload week' }, SETTLE)) as HTMLInputElement
-    await screen.findByText(/ due$/, undefined, SETTLE)
+    await screen.findByRole('button', { name: /^Start Workout / }, SETTLE)
     await new Promise((resolve) => setTimeout(resolve, 100))
     expect(toggle.checked).toBe(false)
     expect(screen.queryByText('Deload week · Presets 10% lighter')).toBeNull()
@@ -127,7 +127,7 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
   test('V1-22 Train draws no Deload week switch; the Program tab does', async () => {
     await setActiveProgramId('assaf-ab-2026', TUE)
     mount(servicesAt(TUE), TUE)
-    await screen.findByText(/ due$/, undefined, SETTLE)
+    await screen.findByRole('button', { name: /^Start Workout / }, SETTLE)
     expect(screen.queryByRole('switch', { name: 'Deload week' })).toBeNull()
     cleanup()
     render(

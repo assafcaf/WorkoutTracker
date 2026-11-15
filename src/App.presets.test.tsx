@@ -142,7 +142,8 @@ test('O21 with an active program Settings still does not list Full body starter'
 
   await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
   await user.click(await screen.findByRole('button', { name: 'Settings' }, SETTLE))
-  await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
+  // V2-09: Settings lists no Programs at all now; the Program tab is where they are chosen.
+  await screen.findByRole('group', { name: 'Workout' }, SETTLE)
 
   expect(screen.queryByText('Full body starter')).toBeNull()
 })

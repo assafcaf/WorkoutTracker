@@ -8,9 +8,12 @@ export const BACKUP_REMINDER_DAYS = 14
 /**
  * True once more than `BACKUP_REMINDER_DAYS` days have passed since `lastExportedAt`, and true
  * when `lastExportedAt` is null — a database that has never been exported is due from the
- * start. Pure: takes `now` rather than reading the clock itself.
+ * start. With nothing logged yet (`hasSessions` false) there is nothing to back up, so it is
+ * never due (V1-30: no marker on an empty install). Pure: takes `now` rather than reading the
+ * clock itself.
  */
-export function isBackupDue(lastExportedAt: number | null, now: number): boolean {
+export function isBackupDue(lastExportedAt: number | null, now: number, hasSessions = true): boolean {
+  if (!hasSessions) return false
   if (lastExportedAt === null) return true
   return now - lastExportedAt > BACKUP_REMINDER_DAYS * 24 * 60 * 60 * 1000
 }

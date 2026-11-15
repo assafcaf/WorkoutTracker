@@ -64,9 +64,11 @@ function renderScreen(initialSessionId?: string) {
   return services
 }
 
-/** The consistency strip's six week totals, oldest first. */
-function stripTotals(strip: HTMLElement): string[] {
-  return [...strip.querySelectorAll('.sessions-strip-week')].map((week) => week.textContent ?? '')
+/** The calendar's six week rows, oldest first, each as its seven cells' letters (`.` on an empty day). */
+function calendarRows(calendar: HTMLElement): string[] {
+  return [...calendar.querySelectorAll('.sessions-calendar-row[role="img"]')].map((row) =>
+    [...row.querySelectorAll('.calendar-day')].map((day) => day.textContent || '.').join(''),
+  )
 }
 
 test('S6a SessionsScreen is headed Sessions and says so when nothing is finished yet', async () => {
@@ -94,14 +96,18 @@ test('S6a the calendar fills each day with a Session, outlines today and counts 
   await seedSession('old', at(8, 3), 'workout-a', 3)
   renderScreen()
 
-  // Title kept (weakened-tests gate); V2-07: the calendar is one consistency row, six week
-  // totals (7 Sep ... 12 Oct, this week last) and the Sessions they hold.
-  const strip = await screen.findByRole('region', { name: 'Last 6 weeks' }, SETTLE)
-  expect(stripTotals(strip)).toEqual(['0', '0', '0', '0', '1', '2'])
-  expect(strip.querySelector('.sessions-strip-count')?.textContent).toBe('3 sessions')
-  expect(within(strip).getByRole('img', { name: 'Sessions per week from 7 Sep: 0, 0, 0, 0, 1, 2' })).toBeVisible()
-  expect(strip.querySelector('[data-week="12 Oct"]')).toHaveAttribute('data-current')
-  expect(strip.querySelector('[data-week="12 Oct"]')).toHaveAttribute('title', 'Week of 12 Oct: 2 sessions')
+  // Title kept (weakened-tests gate); V3-09 brings the calendar back: one header line, then
+  // six weeks (7 Sep ... 12 Oct, this week last) of seven cells, each Session day filled with its
+  // Workout's letter, today outlined.
+  const calendar = await screen.findByRole('region', { name: 'Last 6 weeks' }, SETTLE)
+  expect(calendar.querySelector('.sessions-calendar-head')?.textContent).toBe('Last 6 weeks · 3 sessions')
+  expect(calendarRows(calendar)).toEqual(['.......', '.......', '.......', '.......', '....A..', 'BA.....'])
+  expect(within(calendar).getByRole('img', { name: 'Week of 12 Oct: Workout B Mon, Workout A Tue' })).toBeVisible()
+  expect(within(calendar).getByRole('img', { name: 'Week of 7 Sep: no sessions' })).toBeVisible()
+  const today = calendar.querySelectorAll('.calendar-day[data-today]')
+  expect(today).toHaveLength(1)
+  expect(today[0].textContent).toBe('A')
+  expect(within(calendar).getByRole('img', { name: /^Week of 12 Oct/ })).toHaveAttribute('data-current')
   expect(screen.queryByRole('region', { name: 'Calendar' })).toBeNull()
 })
 
@@ -240,12 +246,16 @@ test('E19-T5 O7 the calendar, week groups and muscle table follow a Sunday week 
   await seedSession('tue', at(10, 13), 'workout-a', 3)
   renderScreen()
 
-  // Title kept (weakened-tests gate); V2-07: the strip's weeks start on Sunday (the muscle
+  // Title kept (weakened-tests gate); V3-09: the calendar's weeks start on Sunday (the muscle
   // table's week start is checked on Progress › Muscles).
-  const strip = await screen.findByRole('region', { name: 'Last 6 weeks' }, SETTLE)
-  expect(strip.querySelector('[data-week="11 Oct"]')).toHaveAttribute('data-current')
-  expect(strip.querySelector('[data-week="11 Oct"]')?.textContent).toBe('2')
-  expect(strip.querySelector('[data-week="12 Oct"]')).toBeNull()
+  const calendar = await screen.findByRole('region', { name: 'Last 6 weeks' }, SETTLE)
+  const current = within(calendar).getByRole('img', { name: 'Week of 11 Oct: Workout B Sun, Workout A Tue' })
+  expect(current).toHaveAttribute('data-current')
+  expect(calendarRows(calendar).at(-1)).toBe('B.A....')
+  expect(within(calendar).queryByRole('img', { name: /^Week of 12 Oct/ })).toBeNull()
+  expect(
+    [...calendar.querySelectorAll('.sessions-calendar-weekday')].map((day) => day.textContent).join(''),
+  ).toBe('SMTWTFS')
 
   const thisWeek = await screen.findByRole('region', { name: 'This week' }, SETTLE)
   expect(within(thisWeek).getAllByRole('button')).toHaveLength(2)
@@ -255,8 +265,33 @@ test('V2-07 the list comes first: only the consistency strip sits above the firs
   await seedSession('tue', at(10, 13), 'workout-a', 3)
   renderScreen()
 
+  // Title kept (weakened-tests gate); V3-09: the six-week calendar is now the one card above
+  // the list.
   const thisWeek = await screen.findByRole('region', { name: 'This week' }, SETTLE)
   const screenRoot = document.querySelector('.sessions-screen') as HTMLElement
   const before = [...screenRoot.children].slice(0, [...screenRoot.children].indexOf(thisWeek))
-  expect(before.map((element) => element.className)).toEqual(['sessions-strip'])
+  expect(before.map((element) => element.className)).toEqual(['sessions-calendar card'])
 })
+
+test('V3-09 the calendar is compact: no legend, no big count, no muscle matrix or volume chart, no number row', async () => {
+  await seedSession('tue', at(10, 13), 'workout-a', 3)
+  await seedSession('mon', at(10, 12), 'workout-b', 3)
+  renderScreen()
+
+  const calendar = await screen.findByRole('region', { name: 'Last 6 weeks' }, SETTLE)
+  expect(calendar.querySelectorAll('.sessions-calendar-row[role="img"]')).toHaveLength(6)
+  for (const row of calendar.querySelectorAll('.sessions-calendar-row[role="img"]')) {
+    expect(row.querySelectorAll('.calendar-day')).toHaveLength(7)
+  }
+  // A and B differ in fill and in letter.
+  const a = calendar.querySelector('.calendar-day[data-workout="push"]')
+  const b = calendar.querySelector('.calendar-day[data-workout="pull"]')
+  expect(a?.textContent).toBe('A')
+  expect(b?.textContent).toBe('B')
+  // Nothing in the calendar is a button: the list below is the way into a Session.
+  expect(within(calendar).queryAllByRole('button')).toHaveLength(0)
+  expect(document.querySelector('.sessions-calendar-key, .sessions-calendar-count, .sessions-strip')).toBeNull()
+  expect(document.querySelector('[data-muscle], .week-heat-halves, .chart')).toBeNull()
+  expect(document.body.textContent).not.toContain('3 · 1 · 3')
+})
+

@@ -17,6 +17,10 @@ process.env.TZ = 'Asia/Jerusalem' // the zone the fixture was written in
 
 const NOW = new Date(2026, 9, 15, 18, 5).getTime()
 const SETTLE = { timeout: 5000 }
+/** The V3-11 lead line on the fixture. */
+const LEAD = '11 of 14 lifts moving · 12 stepped up since 18 Sep'
+/** The V3-12 Muscles row on the fixture: the muscles the Muscles page flags above or below 10–20. */
+const ROW = 'MusclesShoulders 21 above · Abs 3 below · Calves 8 below'
 const fixture = sessionsJson as unknown as Session[]
 
 beforeEach(async () => {
@@ -40,11 +44,17 @@ async function mount(sessions: Session[]) {
 
 describe('E18-T10 O20 Progress home with 45 Sessions', () => {
   test('O20 opens on the verdict sentence, the count row and the climbed clause', async () => {
+    // V3-11: the sentence, the count row and the climbed clause are one lead line now; there
+    // are no count tiles, and "moving" is said once above the first card.
     await mount(fixture)
-    await waitFor(() => expect(screen.getByText('11 of 14 lifts moving.')).toBeTruthy(), SETTLE)
-    expect(screen.getByLabelText('▲ 11 moving · ■ 2 stalled · ▼ 1 slipping · ↑ 1 ready')).toBeTruthy()
-    expect(screen.getByText('▲ 11')).toBeTruthy()
-    expect(screen.getByText('12 of 14 lifts stepped up since Fri 18 Sep.')).toBeTruthy()
+    const lead = await waitFor(() => screen.getByText(LEAD), SETTLE)
+    expect(screen.queryByText('▲ 11')).toBeNull()
+    expect(screen.queryByLabelText(/■ 2 stalled/)).toBeNull()
+    expect(screen.queryByText('12 of 14 lifts stepped up since Fri 18 Sep.')).toBeNull()
+    const firstCard = screen.getAllByRole('region')[0]
+    expect(lead.compareDocumentPosition(firstCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const above = (lead.parentElement?.textContent ?? '').split(firstCard.textContent ?? '')[0]
+    expect(above.match(/moving/g)).toHaveLength(1)
   })
 
   test('O20 an attention card has its sentence, its suggestion and a Why? that expands in place', async () => {
@@ -78,7 +88,7 @@ describe('E18-T10 O20 Progress home with 45 Sessions', () => {
     // V2-05: the week moved to the top of Train. Progress Home draws no This week tile, and
     // Train's strip over the same Sessions reads 2 of 3 with the two done days named.
     await mount(fixture)
-    await waitFor(() => expect(screen.getByText('11 of 14 lifts moving.')).toBeTruthy(), SETTLE)
+    await waitFor(() => expect(screen.getByText(LEAD)).toBeTruthy(), SETTLE)
     expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
     expect(screen.queryByText('2 of 3 this week')).toBeNull()
     const strip = weekStripOf(fixture, programJson as unknown as Program, NOW, 1)
@@ -98,6 +108,18 @@ describe('E18-T10 O20 Progress home with 45 Sessions', () => {
     expect(screen.getAllByRole('button').filter((b) => /\blifts/.test(b.textContent ?? ''))).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: /All 14 lifts/ }))
     expect(push).toHaveBeenCalledWith({ kind: 'lifts' })
+  })
+
+  test('V3-12 the Muscles row names the muscles out of range in the Muscles page words, never Traps or Abdominals', async () => {
+    await mount(fixture)
+    const row = await waitFor(() => screen.getByRole('button', { name: /^Muscles/ }), SETTLE)
+    const text = row.textContent ?? ''
+    expect(document.body.textContent).not.toMatch(/Abdominals|Traps/)
+    // Every name is one of the Muscles page's 12, and says which side of 10–20 it is on.
+    const named = text.replace(/^Muscles/, '').split(' · ')
+    expect(named.length).toBeGreaterThan(0)
+    for (const part of named) expect(part).toMatch(/^[A-Z][a-z]+( [a-z]+)? \d+ (above|below)$/)
+    expect(text).toBe(ROW)
   })
 })
 
@@ -139,7 +161,7 @@ describe('E19-T4 O6 the day strip follows the stored week start', () => {
 
   test('O6 with nothing stored the strip still runs Mon to Sun', async () => {
     await mount(fixture)
-    await waitFor(() => expect(screen.getByText('11 of 14 lifts moving.')).toBeTruthy(), SETTLE)
+    await waitFor(() => expect(screen.getByText(LEAD)).toBeTruthy(), SETTLE)
     expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
     const strip = weekStripOf(fixture, program, NOW, 1)
     expect(strip.days[0].name).toBe('Mon')

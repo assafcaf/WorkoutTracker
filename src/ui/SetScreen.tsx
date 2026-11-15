@@ -193,6 +193,29 @@ export type SetScreenProps = {
   upcoming?: ReactNode
   /** A logged Set to open for editing as the screen opens: a done cell tapped in "All". */
   editSetIndex?: number
+  /**
+   * V3-01: the Exercise just finished, handed over to this one with its rest still running. Its
+   * verdict line, "Deadlift done · <verdict> · Add set", shows over the Get ready card for that
+   * rest only.
+   */
+  handover?: Handover | null
+  /** V3-01: the done state's primary once no Exercise is left, "Finish workout". */
+  onFinishWorkout?(): void
+}
+
+/** The Exercise just finished, as the next one's screen shows it during its rest (V3-01). */
+export type Handover = {
+  /** "Deadlift done · same as last time · 3 × 70 × 7"; null shows "<name> done". */
+  verdict: string | null
+  name: string
+  /** "Add set": one more Set of the finished Exercise, back on its screen. */
+  onAddSet(): void
+  /** Its last working Set's "Reps left on set 3" chips, with Track effort on. */
+  effort?: { ordinal: number; value: 0 | 1 | 2 | 3 | null; onPick(rir: 0 | 1 | 2 | 3): void } | null
+  /** The Record its last Set set, shown as the PR toast. */
+  toast?: PrMoment | null
+  /** Its log-confirmation message, announced. */
+  message?: string
 }
 
 /**
@@ -586,7 +609,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     },
     [],
   )
-  const [toast, setToast] = useState<PrMoment | null>(null)
+  // A handed-over Exercise's Record still shows as this screen opens (V3-01).
+  const [toast, setToast] = useState<PrMoment | null>(props.handover?.toast ?? null)
   const [error, setError] = useState<string | null>(null)
   // The Set rest follows: the caller's `restFrom` (the Session's latest Set), until this screen
   // logs one or adjusts the rest; a changed `restFrom` -- the stored adjustment, a delete -- wins.
@@ -598,7 +622,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   }, [propRestKey])
   const lastLoggedAt = restFrom === null ? null : restFrom.entry.loggedAt
   const currentRestKey = restKey(restFrom)
-  const [loggedMessage, setLoggedMessage] = useState<string>('')
+  const [loggedMessage, setLoggedMessage] = useState<string>(props.handover?.message ?? '')
   // The RIR chips belong to the Set last logged here and its pick (E14-T10); local, not stored.
   const [effort, setEffort] = useState<{ setIndex: number; rir: 0 | 1 | 2 | 3 | null } | null>(
     null,
@@ -639,6 +663,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   const rest: RestState | null =
     restFrom === null ? null : restAfter(restFrom.entry, restFrom.planRestSeconds, now)
+  // The handed-over Exercise (V3-01) belongs to the rest after its last Set: a Set logged here
+  // starts another rest, and the line goes.
+  const handover =
+    props.handover && restFrom !== null && restFrom.entry.exerciseId !== exercise.id ? props.handover : null
   const done = position > plan.sets && !extraOpen
   const resting = rest !== null && !rest.isOver
   // An extra Set past the plan keeps its steppers: there is no planned next Set to name.
@@ -718,6 +746,20 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     }
   }
 
+  // The usual rest's Use in ⋯ › Rest time (V3-03): being saved, saved, or refused.
+  const [usualSave, setUsualSave] = useState<UseRestOffer['status'] | null>(null)
+
+  async function saveUsualRest(seconds: number): Promise<void> {
+    if (props.onUseRestForExercise === undefined) return
+    setUsualSave('saving')
+    try {
+      await props.onUseRestForExercise(seconds)
+      setUsualSave('saved')
+    } catch (cause) {
+      setUsualSave({ error: cause instanceof Error ? cause.message : String(cause) })
+    }
+  }
+
   /** −15 s, +15 s or Skip: never offered as the Plan's rest, so they withdraw the Use offer. */
   function adjust(adjustment: RestAdjustment): void {
     setUseOffer(null)
@@ -782,8 +824,14 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         setJustLogged(null)
       }, CONFIRMED_MS)
       setUseOffer(null)
-      setLoggedMessage(loggedText(open.setIndex, open.weightKg, open.reps))
-      setEffort({ setIndex: open.setIndex, rir: null })
+      const warmup = open.kind === 'warmup'
+      setLoggedMessage(
+        warmup
+          ? loggedText(open.setIndex, open.weightKg, open.reps).replace(/^Set \d+/, `Warm-up ${warmupsLogged + 1}`)
+          : loggedText(open.setIndex, open.weightKg, open.reps),
+      )
+      // A Warm-up asks no effort (V3-05): its reps left say nothing about the working Sets.
+      setEffort(warmup ? null : { setIndex: open.setIndex, rir: null })
       setNextExpanded(false)
       const next = openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter), props.deload)
       const nextStep = ramp === null ? undefined : ramp.steps[ramp.index + 1]
@@ -1003,6 +1051,17 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     }
   }
 
+  // V3-05: every Warm-up shares one `W n/N` cell, ticking to `W ✓` once the ramp is done, so the
+  // working cells keep their numbers 1..N.
+  const onWarmup = open.kind === 'warmup' && !done
+  const workingLogged = loggedSets.filter((entry) => entry.kind !== 'warmup')
+  const warmupTotal = ramp !== null ? ramp.steps.length : warmupsLogged + (onWarmup ? 1 : 0)
+  const warmupCell =
+    warmupTotal === 0 ? null : { done: warmupsLogged, total: warmupTotal, current: onWarmup, complete: !onWarmup }
+  // The Warm-up on the Dials as the bar and the Get ready card name it: "warm-up 2", "warm-up 2 of 3".
+  const warmupNumber = warmupsLogged + 1
+  const warmupName = `${warmupNumber}${ramp === null ? '' : ` of ${ramp.steps.length}`}`
+
   // The cells after the logged ones: the Set on the steppers, then every planned Set still to
   // come at its own Preset (V1-02): the one it opens with once the Sets before it are logged as
   // they stand -- the open one as on the Dials (a Warm-up ramp's at its working weight), the later
@@ -1017,7 +1076,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     const assumed: SetEntry[] = [...loggedSets, assumedEntry(exercise.id, open.setIndex, working)]
     for (let at = position; at <= last && !done; at += 1) {
       if (at === position) {
-        cells.push({ position: at, current: true, weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })
+        // A Warm-up on the Dials sits in the W cell (V3-05): working Set 1 keeps its own values.
+        cells.push(
+          onWarmup
+            ? { position: at, current: false, weightKg: working.weightKg, reps: working.reps, loadKg: working.loadKg }
+            : { position: at, current: true, weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg },
+        )
         continue
       }
       const setIndex = open.setIndex + (at - position)
@@ -1098,15 +1162,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // Behind a sheet the screen is out of reach of the keyboard and a screen reader (S3b, S2b).
   const hiddenBehindSheet = sheetOpen ? { 'aria-hidden': true as const, inert: '' } : {}
 
-  // The row over the countdown (S4): the rest Dial's "Use 2:30 for …" and its outcome, or, once
-  // the trainee's usual rest differs from the Plan's, "Use 2:40 for Back squat".
+  // The row over the rest dock (S4): the rest Dial's "Use 2:30 for …" and its outcome. The
+  // trainee's usual rest, when it differs from the Plan's, is offered in ⋯ › Rest time instead
+  // (V3-03): "3:00 · usually 3:50 · Use", a decision for later, not for the middle of a rest.
   const usualOffered =
-    useOffer === null &&
     props.onUseRestForExercise !== undefined &&
     usualRest !== null &&
-    restFrom !== null &&
-    restFrom.entry.exerciseId === exercise.id &&
-    restFrom.entry.kind !== 'warmup' &&
     Math.abs(usualRest - plan.restSeconds) >= 15
   const offer: JSX.Element | null =
     useOffer !== null ? (
@@ -1133,18 +1194,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {useOffer.status.error}
           </span>
         ) : null}
-      </p>
-    ) : usualOffered && usualRest !== null ? (
-      <p className="rest-use">
-        <button
-          type="button"
-          className="rest-use-offer btn-quiet"
-          aria-label={`Use ${formatRest(usualRest)} for ${exercise.name}`}
-          onClick={() => void saveRestForExercise(usualRest)}
-        >
-          <Icon name="Clock" size={18} />
-          Use {formatRest(usualRest)}
-        </button>
       </p>
     ) : null
 
@@ -1179,28 +1228,31 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       ) : null}
       {/* The label follows the steppers, and is its name (V1-04): "Log set 3 · 62.5 × 8". */}
       {/* The chosen kind shows on the bar (V1-13): "Log set 3 · 70 × 8+ · AMRAP". */}
+      {/* A Warm-up names itself (V3-05): "Log warm-up 2 · 40 × 3". */}
       <button type="button" className="log-set btn-primary" onClick={() => void log()}>
-        Log set {position} · {formatSet({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })}
+        Log {onWarmup ? `warm-up ${warmupNumber}` : `set ${position}`} ·{' '}
+        {formatSet({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })}
         {open.kind === 'amrap' ? '+' : ''}
         {open.kind === null || open.kind === 'warmup' ? '' : ` · ${KIND_WORDS[open.kind]}`}
       </button>
     </div>
   ) : (
-    // Done (V2-01): one primary, "Next: Assisted pull-ups", over the rest panel's place; Add set
-    // is a quiet text button. The primary opens the next Exercise on Now; the rest keeps running.
+    // Done (V3-01): the verdict line in the body carries Add set. The Session moves on to the
+    // next Exercise by itself; this state stays only once none is left ("Finish workout"), or
+    // for an Exercise reopened from All ("Go to <Exercise>"). The rest keeps running.
     <div className="log-dock">
       {restPanel}
-      {onAddSet === undefined ? null : (
-        <div className="done-actions">
-          <button type="button" className="add-set btn-quiet" onClick={() => addSet(onAddSet)}>
-            <Icon name="Plus" size={18} />
-            Add set
-          </button>
-        </div>
-      )}
-      {onFinishExercise === undefined ? null : (
+      {upNext && onFinishExercise !== undefined ? (
         <button type="button" className="log-set next-exercise btn-primary" onClick={onFinishExercise}>
-          {upNext ? `Next: ${upNext}` : 'All exercises'}
+          {`Go to ${upNext}`}
+        </button>
+      ) : props.onFinishWorkout !== undefined ? (
+        <button type="button" className="log-set next-exercise btn-primary" onClick={props.onFinishWorkout}>
+          Finish workout
+        </button>
+      ) : onFinishExercise === undefined ? null : (
+        <button type="button" className="log-set next-exercise btn-primary" onClick={onFinishExercise}>
+          All exercises
         </button>
       )}
     </div>
@@ -1213,8 +1265,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   // The tools sheet's segments: Warm-up for a barbell, Notes wherever notes are kept. The Plate
   // line shows under the weight Dial, so the sheet has no Plates segment (V1-07).
+  // The Warm-up segment also lists the Warm-ups logged, for any Exercise (V3-05).
+  const warmupSteps = ramp?.steps ?? rampOffer ?? []
   const segments: { value: ToolsSegment; label: string }[] = [
-    ...(props.plates ? [{ value: 'warmup' as const, label: 'Warm-up' }] : []),
+    ...(props.plates || warmupsLogged > 0 ? [{ value: 'warmup' as const, label: 'Warm-up' }] : []),
     ...(props.onSaveExerciseNote === undefined ? [] : [{ value: 'notes' as const, label: 'Notes' }]),
   ]
   const segment = segments.some((option) => option.value === toolsSegment)
@@ -1316,22 +1370,48 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         />
       ) : null}
       <div className="tools-body">
-        {segment === 'warmup' && plates !== null ? (
+        {segment === 'warmup' ? (
           <div className="tools-warmups">
-            {(ramp?.steps ?? rampOffer ?? []).map((step, index) => (
-              <p key={index} className="tools-warmup-row" data-done={index < warmupsLogged ? 'true' : undefined}>
-                <span className="tools-warmup-index">
-                  Warm-up {index + 1} of {(ramp?.steps ?? rampOffer ?? []).length}
-                </span>
-                <span className="tools-warmup-set">
-                  {step.weightKg} kg × {step.reps}
-                </span>
-                <span className="tools-warmup-plates">
-                  {formatPlates(platesFor(step.weightKg, plates), plates).replace('Per side: ', 'Per side ')}
-                </span>
-              </p>
-            ))}
-            {ramp !== null ? null : rampOffer !== null && rampOffer.length > warmupsLogged ? (
+            {/* The Warm-ups logged (V3-05): they share one W cell, so they are edited from here. */}
+            {loggedSets
+              .filter((entry) => entry.kind === 'warmup')
+              .map((entry, index) => (
+                <button
+                  key={entry.setIndex}
+                  type="button"
+                  className="tools-warmup-row tools-warmup-logged cell"
+                  data-done="true"
+                  aria-label={formatSet(entry)}
+                  onClick={() => openLogged(entry)}
+                >
+                  <span className="tools-warmup-index">
+                    Warm-up {index + 1}
+                    {warmupSteps.length > 0 ? ` of ${Math.max(warmupSteps.length, warmupsLogged)}` : ''}
+                  </span>
+                  <span className="tools-warmup-set">
+                    {entry.weightKg === null ? formatSet(entry) : `${entry.weightKg} kg × ${entry.reps}`}
+                  </span>
+                  <span className="tools-warmup-plates">
+                    <Icon name="Check" size={18} />
+                  </span>
+                </button>
+              ))}
+            {plates === null
+              ? null
+              : warmupSteps.slice(warmupsLogged).map((step, at) => (
+                  <p key={warmupsLogged + at} className="tools-warmup-row">
+                    <span className="tools-warmup-index">
+                      Warm-up {warmupsLogged + at + 1} of {warmupSteps.length}
+                    </span>
+                    <span className="tools-warmup-set">
+                      {step.weightKg} kg × {step.reps}
+                    </span>
+                    <span className="tools-warmup-plates">
+                      {formatPlates(platesFor(step.weightKg, plates), plates).replace('Per side: ', 'Per side ')}
+                    </span>
+                  </p>
+                ))}
+            {plates === null || ramp !== null ? null : rampOffer !== null && rampOffer.length > warmupsLogged ? (
               <button type="button" className="add-warmups btn-secondary" onClick={() => startRamp(rampOffer)}>
                 Add warm-ups
               </button>
@@ -1359,9 +1439,37 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           <span className="sheet-row-label">Rest time</span>
           <span className="sheet-row-value">
             {formatRest(restFrom === null ? plan.restSeconds : restLengthOf(restFrom.entry, restFrom.planRestSeconds))}
+            {usualOffered && usualRest !== null ? ` · usually ${formatRest(usualRest)}` : ''}
           </span>
           <span className="sheet-row-chevron"><Icon name="ChevronRight" size={18} /></span>
         </button>
+        {/* V3-03: the usual rest is offered here, not in the middle of a rest. */}
+        {usualOffered && usualRest !== null ? (
+          <p className="rest-use tools-usual-rest">
+            {usualSave === 'saved' ? (
+              <span className="rest-use-saved">
+                <Icon name="Check" size={18} />
+                {props.programName === undefined ? 'Saved' : `Saved to ${props.programName}`}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="rest-use-offer btn-quiet"
+                disabled={usualSave === 'saving'}
+                aria-label={`Use ${formatRest(usualRest)} for ${exercise.name}`}
+                onClick={() => void saveUsualRest(usualRest)}
+              >
+                <Icon name="Clock" size={18} />
+                Use {formatRest(usualRest)}
+              </button>
+            )}
+            {usualSave !== null && typeof usualSave === 'object' ? (
+              <span className="rest-use-error" role="alert">
+                {usualSave.error}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
         {/* How the steppers count: the weight step, and Bodyweight (E8-T8, E16-T13). */}
         <div className="set-dial-controls">
           {exercise.bodyweight ? null : (
@@ -1487,15 +1595,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {done && verdict !== null ? null : (
             <p className="set-counter">
               <span>
-                {setCounterText(
-                  position,
-                  plan.sets,
-                  loggedCount,
-                  done,
-                  open.kind === 'amrap' ? plan.repRange[0] : undefined,
-                )}
+                {/* A Warm-up is not a working Set (V3-05): "Warm-up 2 of 3", never "Set 1 of 3". */}
+                {onWarmup
+                  ? `Warm-up ${warmupName}`
+                  : setCounterText(
+                      position,
+                      plan.sets,
+                      loggedCount,
+                      done,
+                      open.kind === 'amrap' ? plan.repRange[0] : undefined,
+                    )}
               </span>
-              {done || open.kind === 'amrap' ? null : (
+              {done || onWarmup || open.kind === 'amrap' ? null : (
                 <span className="set-counter-target">
                   {` · target ${plan.repRange[0]}–${plan.repRange[1]}`}
                 </span>
@@ -1542,10 +1653,38 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
         {/* The set cells: today's logged Sets (tap one to edit it), the Set on the steppers
             outlined, and the planned Sets still to come, dashed. */}
-        <div className="set-cells">
-          {loggedSets.length === 0 ? null : (
+        <div
+          className="set-cells"
+          data-dense={(warmupCell === null ? 0 : 1) + workingLogged.length + cells.length >= 5 ? 'true' : undefined}
+        >
+          {warmupCell === null ? null : (
+            <button
+              type="button"
+              className="warmup-cell logged-set cell"
+              data-current={warmupCell.current ? 'true' : undefined}
+              data-kind="warmup"
+              aria-label={
+                warmupCell.complete
+                  ? 'Warm-ups done'
+                  : `Warm-ups ${warmupCell.done} of ${warmupCell.total} done`
+              }
+              onClick={() => {
+                setKindsOpen(false)
+                setToolsSegment('warmup')
+                setToolsOpen(true)
+              }}
+            >
+              <span className="set-cell-index">
+                <span>W</span>
+              </span>
+              <span className="set-cell-value">
+                {warmupCell.complete ? '✓' : `${warmupCell.done}/${warmupCell.total}`}
+              </span>
+            </button>
+          )}
+          {workingLogged.length === 0 ? null : (
             <ul className="logged-sets" aria-label="Sets logged">
-              {loggedSets.map((entry) => (
+              {workingLogged.map((entry) => (
                 <li
                   key={entry.setIndex}
                   className={justLogged === entry.setIndex ? 'just-logged' : undefined}
@@ -1573,13 +1712,13 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                         <Icon name="Check" size={12} />
                       ) : null}
                     </span>
-                    <span className="set-cell-value">{cellText(entry)}</span>
+                    <CellValue set={entry} />
                   </button>
-                  {/* A record's PR tag has the corner; its RIR shows in the edit sheet. */}
+                  {/* A record's PR tag has the corner; its reps left show in the edit sheet. Reps
+                      left, not "RIR" (V3-03, V1-14). */}
                   {entry.rir === undefined || isRecordSet(entry) ? null : (
                     <span className="logged-set-rir">
-                      {'RIR '}
-                      {entry.rir === 3 ? '3+' : entry.rir}
+                      {entry.rir === 3 ? '3+' : entry.rir} left
                     </span>
                   )}
                 </li>
@@ -1593,22 +1732,38 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               aria-hidden="true"
             >
               <span className="set-cell-index">{cell.position}</span>
-              <span className="set-cell-value">{cellText(cell)}</span>
+              <CellValue set={cell} />
             </div>
           ))}
         </div>
 
-        {/* "Set 3 effort": RIR 0 / 1 / 2 / 3+ for the Set just logged, while its rest runs. */}
-        {props.trackEffort !== true || effort === null || !resting ? null : (
+        {/* While rest runs the flexible space goes over the effort row and the Get ready card,
+            which sit low, just over the rest dock (V3-03). */}
+        {collapsed || (done && resting) ? <div className="set-spacer" aria-hidden="true" /> : null}
+
+        {/* "Reps left on set 3": 0 / 1 / 2 / 3+ for the working Set just logged, while its rest
+            runs (V3-03); a handed-over Exercise's last Set's, on the next one's screen (V3-01). */}
+        {props.trackEffort !== true || !resting ? null : effort !== null ? (
           <div className="effort-row">
-            <span className="effort-label">
-              Set {ordinals.get(effort.setIndex) ?? effort.setIndex}
-              <br />
-              effort
-            </span>
+            <span className="effort-label">Reps left on set {ordinals.get(effort.setIndex) ?? effort.setIndex}</span>
             <EffortChips value={effort.rir} onPick={pickEffort} />
           </div>
-        )}
+        ) : handover?.effort ? (
+          <div className="effort-row">
+            <span className="effort-label">Reps left on set {handover.effort.ordinal}</span>
+            <EffortChips value={handover.effort.value} onPick={handover.effort.onPick} />
+          </div>
+        ) : null}
+
+        {/* V3-01: the Exercise just finished, one line over the next one's Get ready card. */}
+        {handover && collapsed ? (
+          <section className="exercise-verdict" aria-label="Exercise done">
+            <p className="exercise-verdict-text">{handover.verdict ?? `${handover.name} done`}</p>
+            <button type="button" className="add-set btn-quiet" onClick={handover.onAddSet}>
+              Add set
+            </button>
+          </section>
+        ) : null}
 
         {ramp !== null && rampStep !== undefined ? (
           <p className="warmup-ramp">
@@ -1619,17 +1774,23 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         {/* The Exercise's verdict once its Sets are in (V2-11), in Lift by lift's words; the
             Dials go, the cells show what was logged (V2-01). */}
         {done ? (
-          verdict === null ? null : (
-            <section className="get-ready exercise-verdict" aria-label="Exercise done">
-              <p className="exercise-verdict-text">{verdict}</p>
-            </section>
-          )
+          // V3-01: the verdict is one line, "Deadlift done · <verdict>", with Add set at its end.
+          <section className="exercise-verdict" aria-label="Exercise done">
+            <p className="exercise-verdict-text">{verdict ?? `${exercise.name} done`}</p>
+            {onAddSet === undefined ? null : (
+              <button type="button" className="add-set btn-quiet" onClick={() => addSet(onAddSet)}>
+                Add set
+              </button>
+            )}
+          </section>
         ) : collapsed ? (
           // While rest runs (S4, V2-02) the steppers fold into the Get ready card: the next Set
           // big enough to read from the bench, the plates to change, last time and the PR
           // target. "Change" unfolds the Dials in place.
           <section className="get-ready" aria-label="Get ready">
-            <p className="get-ready-caption">Get ready · Set {position}</p>
+            <p className="get-ready-caption">
+              Get ready · {onWarmup ? `Warm-up ${warmupName}` : `Set ${position}`}
+            </p>
             <p className="get-ready-set">{nextSetText}</p>
             {plateText === null ? null : <p className="get-ready-plates">{plateText}</p>}
             {lastTimeEntry === null && prNote === null ? null : (
@@ -1721,7 +1882,25 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   )
 }
 
-/** The RIR chips "RIR 0 · 1 · 2 · 3+" (E14-T10), for the Set just logged or the one edited. */
+/**
+ * A cell's value, "70×7", in two parts that wrap at the "×" when the cell is narrow (V3-06):
+ * "BW−19" over "×6".
+ */
+function CellValue(props: { set: { weightKg: number | null; reps: number; loadKg?: number } }): JSX.Element {
+  const text = cellText(props.set)
+  const at = text.lastIndexOf('×')
+  return (
+    <span className="set-cell-value">
+      <span>{text.slice(0, at)}</span>
+      <span>{text.slice(at)}</span>
+    </span>
+  )
+}
+
+/**
+ * The effort chips "0 · 1 · 2 · 3+" (E14-T10), the reps left in reserve, for the Set just logged
+ * or the one edited. No "RIR" on them (V3-03, V1-14): the row's label says "Reps left".
+ */
 function EffortChips(props: { value: 0 | 1 | 2 | 3 | null; onPick(rir: 0 | 1 | 2 | 3): void }): JSX.Element {
   return (
     <div className="effort-chips" role="group" aria-label="Reps in reserve">
@@ -1733,7 +1912,7 @@ function EffortChips(props: { value: 0 | 1 | 2 | 3 | null; onPick(rir: 0 | 1 | 2
           aria-pressed={props.value === rir}
           onClick={() => props.onPick(rir)}
         >
-          {rir === 0 ? 'RIR 0' : rir === 3 ? '3+' : rir}
+          {rir === 3 ? '3+' : rir}
         </button>
       ))}
     </div>
