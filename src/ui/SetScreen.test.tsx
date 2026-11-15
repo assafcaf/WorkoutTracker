@@ -4748,6 +4748,60 @@ test('V4-01 a hand-over is headed <Exercise> done · 1 PR with Add set, its chip
   expect(onPick).toHaveBeenCalledWith(2)
 })
 
+// V6 (V5-06): more reps at a weight already lifted, with no better estimated 1RM, is a rep best:
+// quiet words under the Dial and in the Just done line, no PR tag, no PR badge on the cell.
+test('V6 a rep best reads rep best if logged, then Rep best on Rest, with no PR tag', async () => {
+  const push = (reps: number, loggedAt: number): SetEntry => ({
+    exerciseId: 'push-ups',
+    setIndex: 1,
+    weightKg: null,
+    reps,
+    loggedAt,
+  })
+  const earlier: Session = {
+    id: 'earlier-push',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt: BASE - 86_400_000,
+    finishedAt: BASE - 86_000_000,
+    entries: [push(12, BASE - 86_400_000)],
+  }
+  const { user } = renderSetScreen({
+    exercise: pushUps,
+    plan: pushUpPlan,
+    earlierSessions: [earlier],
+    lastEntries: [push(12, BASE - 86_400_000)],
+    lastTime: [push(12, BASE - 86_400_000)],
+  })
+  const line = (): string => textOf(document.querySelector('.set-projection'))
+
+  await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  expect(line()).toMatch(/· rep best if logged$/)
+  expect(screen.queryByText('PR if logged')).toBeNull()
+
+  await user.click(logButton())
+
+  const block = await screen.findByRole('region', { name: 'Just done' })
+  expect(textOf(block.querySelector('.just-done-line'))).toMatch(/^Rep best · /)
+  expect(within(block).queryByText('PR')).toBeNull()
+  expect(prBadges()).toHaveLength(0)
+})
+
+test('V6 a heavier Set still reads PR if logged, and its Just done line carries the PR tag', async () => {
+  const { user } = renderSetScreen({
+    earlierSessions: [earlierSession],
+    lastEntries: [historyEntry(1, 85, 5)],
+    lastTime: [historyEntry(1, 85, 5)],
+  })
+
+  expect(textOf(document.querySelector('.set-projection'))).toMatch(/PR if logged$/)
+  await user.click(logButton())
+
+  const block = await screen.findByRole('region', { name: 'Just done' })
+  expect(textOf(block.querySelector('.just-done-line'))).toMatch(/^PR ?Heaviest weight · /)
+  expect(within(block).getByText('PR')).toHaveClass('tag-pr')
+})
+
 test('V4-02 the line under the reps Dial compares live with last time: same, +1 rep, 1 rep under', async () => {
   const { user } = renderSetScreen({
     earlierSessions: [earlierSession],

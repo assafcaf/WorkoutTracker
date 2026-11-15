@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { loadCatalog } from '../data/catalog'
-import { prMoment } from './prMoment'
+import { prMoment, repBestMoment } from './prMoment'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
 const T = 1_700_000_000_000
@@ -104,13 +104,33 @@ test('O27 a rep drop after a weight bump does not toast', () => {
   expect(prMoment(squat, plan, history(), todayWith([bump, drop]), drop)).toBeNull()
 })
 
+// V6 (V5-06): more reps at a weight already lifted, with no better estimated 1RM, is a rep best:
+// no PR toast, a quiet "Rep best" moment instead.
 test('O27 more reps at an earlier weight toast as a Rep record', () => {
+  const entry = setOf(1, 55, 9)
+
+  expect(prMoment(squat, plan, history(), todayWith([entry]), entry)).toBeNull()
+  const best = repBestMoment(squat, plan, history(), todayWith([entry]), entry)
+  expect(best?.title).toBe('Rep best')
+  expect(best?.detail).toBe('55 kg × 9 · +1 rep')
+})
+
+test('V6 more reps at the heaviest weight that lifts the estimated 1RM is a PR named Estimated 1RM', () => {
   const entry = setOf(1, 60, 9)
 
   const moment = prMoment(squat, plan, history(), todayWith([entry]), entry)
 
-  expect(moment?.title).toBe('New PR · Rep record')
-  expect(moment?.detail).toBe('60 kg × 9 · +1 rep')
+  // 60 × (1 + 9/30) = 78 against 60 × (1 + 8/30) = 76: +2 kg.
+  expect(moment?.title).toBe('New PR · Estimated 1RM')
+  expect(moment?.detail).toBe('60 kg × 9 · +2 kg')
+  expect(repBestMoment(squat, plan, history(), todayWith([entry]), entry)).toBeNull()
+})
+
+test('V6 a heavier Set is a PR and never a rep best', () => {
+  const entry = setOf(1, 62.5, 8)
+
+  expect(prMoment(squat, plan, history(), todayWith([entry]), entry)).not.toBeNull()
+  expect(repBestMoment(squat, plan, history(), todayWith([entry]), entry)).toBeNull()
 })
 
 test('O27 a deload Session sets no record, so no toast', () => {
@@ -126,9 +146,10 @@ test('O27 a drop Set never sets a record, so no toast', () => {
 })
 
 test('V4-03 a rep record by one says +1 rep and by two says +2 reps', () => {
-  const one = setOf(1, 60, 9)
-  const two = setOf(1, 60, 10)
+  // V6: at 55 kg neither lifts the estimated 1RM (76), so both are rep bests.
+  const one = setOf(1, 55, 9)
+  const two = setOf(1, 55, 10)
 
-  expect(prMoment(squat, plan, history(), todayWith([one]), one)?.detail).toMatch(/\+1 rep$/)
-  expect(prMoment(squat, plan, history(), todayWith([two]), two)?.detail).toMatch(/\+2 reps$/)
+  expect(repBestMoment(squat, plan, history(), todayWith([one]), one)?.detail).toMatch(/\+1 rep$/)
+  expect(repBestMoment(squat, plan, history(), todayWith([two]), two)?.detail).toMatch(/\+2 reps$/)
 })

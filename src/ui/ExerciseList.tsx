@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { presetForSet } from '../domain/prefill'
-import { recordsSetBy } from '../domain/records'
+import { isPrSet } from '../domain/prMoment'
 import { workingSets } from '../domain/setKind'
 import { formatSet, loadText } from '../domain/setText'
 import './ExerciseList.css'
@@ -111,7 +111,7 @@ function SetCells(props: {
     upcoming.push({ position, ...preset })
   }
   const isRecord = (entry: SetEntry): boolean =>
-    recordsSetBy(exercise, plan, earlier, session, entry).length > 0
+    isPrSet(exercise, plan, earlier, session, entry)
 
   return (
     <div className="all-cells">

@@ -8,7 +8,7 @@ import { formatSet, formatSetCompact } from '../domain/setText'
 import { deloadText } from '../domain/deload'
 import { presetForSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
-import { prMoment } from '../domain/prMoment'
+import { prMoment, repBestMoment } from '../domain/prMoment'
 import { formatPlates, plateChange, platesFor } from '../domain/plates'
 import { prTargetReps, prTargetText } from '../domain/prTarget'
 import { exerciseDoneLine, setComparison, setDelta } from '../domain/exerciseVerdict'
@@ -1144,6 +1144,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const prNote: ReactNode =
     projection !== null && projection.isPr ? (
       <span className="tag tag-pr">PR if logged</span>
+    ) : projection !== null && projection.repBest ? (
+      'rep best if logged'
     ) : prTarget === null ? null : (
       prTargetText(prTarget)
     )
@@ -1175,13 +1177,17 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </>
     )
 
-  // V4-01: the Record a logged Set of this Exercise set, by its name ("Rep record"), or null.
-  const recordName = (entry: SetEntry): string | null => {
+  // V4-01: the Record a logged Set of this Exercise set, by its name ("Heaviest weight"), or null.
+  // V6 (V5-06): a rep best is named too ("Rep best"), but carries no PR tag (`recordIsPr`).
+  const recordOf = (entry: SetEntry): { name: string; pr: boolean } | null => {
     if (earlier.length === 0 || entry.kind === 'warmup') return null
     const session: Session = { ...thisSession, entries: mergeEntry(thisSession.entries, entry) }
     const moment = prMoment(exercise, plan, earlier, session, entry)
-    return moment === null ? null : moment.title.replace(/^New PR · /, '')
+    if (moment !== null) return { name: moment.title.replace(/^New PR · /, ''), pr: true }
+    const best = repBestMoment(exercise, plan, earlier, session, entry)
+    return best === null ? null : { name: best.title, pr: false }
   }
+  const recordName = (entry: SetEntry): string | null => recordOf(entry)?.name ?? null
 
   // V4-01: the Set the Just done block is about: this Exercise's latest Set, the one the rest
   // follows (so a reopened screen mid-rest still shows it); null after another Exercise's Set.
@@ -1854,7 +1860,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             </p>
             {justDoneComparison === null ? null : (
               <p className="just-done-line" data-kind={justDoneComparison.kind}>
-                {justDoneComparison.record === null ? null : <span className="tag tag-pr">PR</span>}
+                {justDoneComparison.record === null || recordOf(justDone)?.pr !== true ? null : (
+                  <span className="tag tag-pr">PR</span>
+                )}
                 <span>{justDoneComparison.text}</span>
               </p>
             )}
