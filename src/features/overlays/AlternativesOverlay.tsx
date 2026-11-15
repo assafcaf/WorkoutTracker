@@ -18,6 +18,8 @@ export type AlternativesOverlayProps = {
    * lead the list under the lifter's own names. Omitted, none do.
    */
   loggedIds?: Iterable<string>
+  /** V6-10: the Exercise ids already in today's Workout; their library entries are not offered. */
+  taken?: Iterable<string>
 }
 
 /**
@@ -34,16 +36,22 @@ export function AlternativesOverlay({
   onOpenDetail,
   onClose,
   loggedIds = [],
+  taken = [],
 }: AlternativesOverlayProps): JSX.Element | null {
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
   const planned = resolveExercise(plannedId, catalog, libraryMap)
   const target = planned ? libraryMap.get(planned.libraryId) ?? null : null
   if (!planned || !target) return null
   // V6-10: each logged lift's library entry, named as the lifter knows it ("Hyper-extension").
-  const logged = new Map<string, string>()
+  const logged = new Map<string, { id: string; name: string }>()
+  const exclude = new Set<string>()
+  for (const id of taken) {
+    const exercise = resolveExercise(id, catalog, libraryMap)
+    if (exercise) exclude.add(exercise.libraryId)
+  }
   for (const id of loggedIds) {
     const exercise = resolveExercise(id, catalog, libraryMap)
-    if (exercise && !logged.has(exercise.libraryId)) logged.set(exercise.libraryId, exercise.name)
+    if (exercise && !logged.has(exercise.libraryId)) logged.set(exercise.libraryId, { id, name: exercise.name })
   }
 
   return (
@@ -68,7 +76,7 @@ export function AlternativesOverlay({
         gymEquipment={gymEquipment}
         onChoose={onPick}
         onOpenDetail={onOpenDetail}
-        swap={{ logged }}
+        swap={{ logged, exclude }}
       />
     </div>
   )

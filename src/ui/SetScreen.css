@@ -876,6 +876,11 @@
   font-weight: var(--weight-semibold);
 }
 
+/* Over `.btn-quiet`'s own colour, as the swap line's Undo swap is. */
+.set-warmup-line .set-warmup-line-add {
+  color: var(--color-primary);
+}
+
 /* V5-04: a zero-height anchor over the Dials; its snackbar hangs above it, over the spacer. */
 .set-snackbar-anchor {
   position: relative;

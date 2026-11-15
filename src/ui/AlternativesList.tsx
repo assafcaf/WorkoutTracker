@@ -19,11 +19,12 @@ export type AlternativesListProps = {
   /** Caps the ranked rows shown; unset shows every ranked alternative. */
   limit?: number
   /**
-   * V6-10: the swap list (`swapAlternatives`): the lifter's logged lifts first, by library id,
-   * shown under their own names; at most `SWAP_SHOWN` rows until "Show all". Unset: the plain
+   * V6-10: the swap list (`swapAlternatives`): the lifter's logged lifts first, keyed by library
+   * id, each shown under its own name and chosen as its own Exercise id (the one with history);
+   * at most `SWAP_SHOWN` rows until "Show all". Unset: the plain
    * ranked list (`alternativesFor`).
    */
-  swap?: { logged: Map<string, string> }
+  swap?: { logged: Map<string, { id: string; name: string }>; exclude?: ReadonlySet<string> }
 }
 
 /** V6-10: rows the swap list shows before "Show all". */
@@ -52,9 +53,11 @@ export function AlternativesList({
 
   const effectiveGymEquipment = showAllEquipment ? null : gymEquipment
   const ranked = swap
-    ? swapAlternatives(target, library, effectiveGymEquipment, new Set(swap.logged.keys()))
+    ? swapAlternatives(target, library, effectiveGymEquipment, new Set(swap.logged.keys())).filter(
+        (alternative) => !swap.exclude?.has(alternative.id),
+      )
     : alternativesFor(target, library, effectiveGymEquipment)
-  const nameOf = (alternative: LibraryExercise): string => swap?.logged.get(alternative.id) ?? alternative.name
+  const nameOf = (alternative: LibraryExercise): string => swap?.logged.get(alternative.id)?.name ?? alternative.name
 
   if (ranked.length === 0 && effectiveGymEquipment !== null) {
     return (
@@ -109,7 +112,7 @@ export function AlternativesList({
                 className="alternatives-row-choose btn-secondary"
                 // V2-14: every row's button reads the same, so its name says which Exercise.
                 aria-label={`Do ${nameOf(alternative)} instead`}
-                onClick={() => onChoose(alternative.id)}
+                onClick={() => onChoose(swap?.logged.get(alternative.id)?.id ?? alternative.id)}
               >
                 Do this instead
               </button>

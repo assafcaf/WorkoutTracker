@@ -1465,6 +1465,8 @@ export function WorkoutFeature({
           gymEquipment={gymEquipment}
           // V6-10: lifts the lifter has logged lead the swap list.
           loggedIds={new Set(sessions.flatMap((past) => past.entries.map((entry) => entry.exerciseId)))}
+          // ...but never one already in today's Workout.
+          taken={[...located.workout.exercises.map((plan) => plan.exerciseId), ...Object.values(session?.swaps ?? {})]}
           onPick={(chosenId) => handleChooseAlternative(overlay.plannedId, chosenId)}
           onOpenDetail={handleOpenDetail}
           onClose={() => setOverlay(null)}

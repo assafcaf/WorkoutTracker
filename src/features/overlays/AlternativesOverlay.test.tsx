@@ -177,3 +177,25 @@ test("V6-10 My gym's equipment filters the swap list", async () => {
   expect(rowNames()).not.toContain('Hyperextensions (Back Extensions)')
   expect(rowNames()).not.toContain('Hyper-extension')
 })
+
+test('V6-10 choosing a logged lift swaps to the lifter’s own Exercise, the one with the history', async () => {
+  const user = userEvent.setup()
+  const onPick = vi.fn()
+  render(<AlternativesOverlay {...await props({ plannedId: 'deadlift', loggedIds: ['hyper-extension'], onPick })} />)
+
+  await user.click(screen.getByRole('button', { name: 'Do Hyper-extension instead' }))
+
+  expect(onPick).toHaveBeenCalledWith('hyper-extension')
+})
+
+test('V6-10 a lift already in today’s Workout is not offered as a swap', async () => {
+  render(
+    <AlternativesOverlay
+      {...await props({ plannedId: 'deadlift', loggedIds: ['hyper-extension'], taken: ['deadlift', 'hyper-extension'] })}
+    />,
+  )
+
+  expect(rowNames()).not.toContain('Hyper-extension')
+  expect(rowNames()).not.toContain('Hyperextensions (Back Extensions)')
+  expect(rowNames()).toContain('Romanian Deadlift')
+})
