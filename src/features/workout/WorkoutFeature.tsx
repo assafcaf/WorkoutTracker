@@ -46,6 +46,7 @@ import type { LiveView } from '../../ui/live/LiveSessionBar'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
 import { ExercisePicker } from '../../ui/ExercisePicker'
 import { DashboardScreen } from '../dashboard/DashboardScreen'
+import { liftPlan } from '../dashboard/trainCard'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
 import { useServices, useSyncControls } from '../ServicesProvider'
@@ -732,6 +733,24 @@ export function WorkoutFeature({
       })
   }
 
+  /**
+   * V6-01, V6-05: one lift as this Session opens it, from its status at the Session's start -- the
+   * value Train, the Program tab and Progress show: eased on a Break, and the load it offers.
+   */
+  function liftPlanFor(exerciseId: string): ReturnType<typeof liftPlan> | null {
+    if (!session || !located) return null
+    const plan = planFor(located.workout, session, exerciseId)
+    const exercise = resolveListExercise(exerciseId)
+    if (!plan || !exercise) return null
+    const earlier = sessions.filter((other) => other.finishedAt !== null && other.startedAt < session.startedAt)
+    return liftPlan(exercise, plan, earlier, session.startedAt, session.deload === true)
+  }
+
+  /** Whether `exerciseId`'s Presets open lighter this Session: a deload, or the lift's Break. */
+  function easedFor(exerciseId: string): boolean {
+    return session?.deload === true || liftPlanFor(exerciseId)?.advice?.kind === 'eased'
+  }
+
   /** The Set the All view's Log button logs: the current Exercise's next one, at its Preset. */
   function quickLogEntry(): { entry: SetEntry; position: number } | null {
     if (!session || !located) return null
@@ -749,7 +768,7 @@ export function WorkoutFeature({
       setIndex,
       lastEntries: presetSourceFor(id, lastEntries.get(id) ?? []).entries,
       today,
-      deload: session.deload === true,
+      deload: easedFor(id),
     })
     const entry: SetEntry = {
       exerciseId: id,
@@ -1101,7 +1120,8 @@ export function WorkoutFeature({
                     onUndo: () => handleUndoSwapOnNow(swapUndo.plannedId, swapUndo.setIndex),
                   }
             }
-            deload={session.deload === true}
+            deload={easedFor(openSet.exerciseId)}
+            advice={liftPlanFor(openSet.exerciseId)?.advice ?? null}
             exercise={exercise}
             plates={isBarbell(libraryMap.get(exercise.libraryId)) ? (plateInventoryData.status === 'ready' ? plateInventoryData.data : null) : null}
             // V6-16: the Session's first barbell lift, no Warm-up logged yet: the ramp in one line.
@@ -1292,6 +1312,7 @@ export function WorkoutFeature({
       >
         <ExerciseList
           deload={session.deload === true}
+          easedFor={easedFor}
           currentId={currentExerciseId(located.workout, session)}
           onOpenLogged={handleOpenLogged}
           program={located.program}

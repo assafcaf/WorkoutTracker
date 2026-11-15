@@ -80,6 +80,8 @@ export type LiftStatus = {
   decision: boolean
   /** The action is a change of exercise: the screen offers a Swap link. */
   swap: boolean
+  /** Break only: whole days since the lift was last done. */
+  daysOff?: number
 }
 
 export type LiftStatusInput = {
@@ -201,13 +203,14 @@ export function liftStatusOf({ exercise, plan, history, notes, now }: LiftStatus
   const days = calendarDays(lastAny.startedAt, now)
   if (days >= BREAK_DAYS) {
     const eased = bw ? load : deloadWeight(load, exercise.weightStep)
-    return make(
+    const status = make(
       'break',
       `Last done ${humanDate(lastAny.startedAt)} · ${days} days ago`,
       bw ? 'Ease back in: fewer reps next time.' : `Ease back in: ${L(eased)} next time.`,
       `You last did this lift ${days} days ago. After a break, start about 10 % lighter for one session, then return to ${L(load)}.`,
       { lever: eased, reps: plan ? plan.repRange[1] : null },
     )
+    return { ...status, daysOff: days }
   }
 
   // 3 Ready / 3b Hold
@@ -374,4 +377,45 @@ export function liftStatuses(program: Program, sessions: Session[], resolve: Res
     if (status) out.set(id, status)
   }
   return out
+}
+
+/**
+ * V6-01: what Train, the Program tab and the Set screen offer from a lift's status, against the
+ * lever its Preset tops out at (`presetTop`: kg, or a Bodyweight lift's signed Load), so the
+ * four surfaces never disagree:
+ *   - a Break is eased in the Preset itself (V6-05, `isEased`): `Eased after 34 days off`, with
+ *     nothing to dial in (none on a Bodyweight lift, whose Load is never eased);
+ *   - else, when `next` differs from the Preset: `Ready for 15 kg` (Ready), `Deload once: 55 kg`
+ *     (Stalled), else `Next: 50 kg`, offered as `Use 15 kg`;
+ *   - none when the action is a change of exercise (`swap`), or with no status or Preset load.
+ */
+export type LiftAdvice = {
+  kind: 'up' | 'down' | 'eased'
+  lever: number
+  text: string
+  /** The control's name on the Set screen, `Use 15 kg`; null when nothing is to be dialled in. */
+  use: string | null
+}
+
+export function liftAdvice(
+  status: LiftStatus | null | undefined,
+  presetTop: number | null,
+  bodyweight = false,
+): LiftAdvice | null {
+  if (!status || !status.next || status.swap) return null
+  if (isEased(status)) {
+    // A Bodyweight lift's Load is never eased (as a deload leaves it): nothing to say.
+    if (bodyweight) return null
+    return { kind: 'eased', lever: status.next.lever, text: `Eased after ${status.daysOff} days off`, use: null }
+  }
+  if (presetTop === null || status.next.lever === presetTop) return null
+  const lever = status.next.lever
+  const load = leverText(lever, bodyweight)
+  const text = status.kind === 'ready' ? `Ready for ${load}` : status.kind === 'stalled' ? `Deload once: ${load}` : `Next: ${load}`
+  return { kind: lever > presetTop ? 'up' : 'down', lever, text, use: `Use ${load}` }
+}
+
+/** V6-05: the lift is on a Break, so its next Session's Presets are eased, as a deload's are. */
+export function isEased(status: LiftStatus | null | undefined): boolean {
+  return status?.kind === 'break'
 }

@@ -197,11 +197,11 @@ export function DashboardScreen({
           .filter((session) => session.programId === program.id && session.workoutId === workout.id)
           .map((session) => session.startedAt)
         const card = workoutCard(program, workout, done.length > 0 ? Math.max(...done) : null, sessions, resolve, histories)
-        cards[workout.id] = trainCardOf(card, histories, more, deloadOn, sessions, resolve)
+        cards[workout.id] = trainCardOf(card, histories, more, deloadOn, sessions, resolve, at)
       }
       data = {
         kind: 'ready',
-        card: dueCard ? trainCardOf(dueCard, histories, more, deloadOn, sessions, resolve) : null,
+        card: dueCard ? trainCardOf(dueCard, histories, more, deloadOn, sessions, resolve, at) : null,
         week: weekStripOf(sessions, program, at, weekStartsOn),
         cards,
         due: due ? { ...dockWorkout(due.workout), last: due.lastDoneAt === null ? null : formatDay(new Date(due.lastDoneAt), new Date(at)) } : null,

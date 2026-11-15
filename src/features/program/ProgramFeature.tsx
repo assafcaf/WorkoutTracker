@@ -12,7 +12,7 @@ import { lastEntriesOf, nextLoadText } from '../../domain/planLoad'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { workoutEstimate } from '../../domain/dashboard'
 import { workoutMinutes } from '../../domain/stats/train'
-import { kgCellText, liftPreset } from '../dashboard/trainCard'
+import { kgCellText, liftPlan } from '../dashboard/trainCard'
 import { ProgramPage } from '../../ui/ProgramPage'
 import { ProgramDeloadLine, ProgramDeloadStart, ProgramHeadActions } from '../../ui/program/ProgramHead'
 import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
@@ -312,7 +312,7 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
             listed,
             exerciseSettingsData.status === 'ready' ? exerciseSettingsData.data.bodyweight : {},
           )
-          return kgCellText(liftPreset(exercise, plan, finished, deloadOn))
+          return kgCellText(liftPlan(exercise, plan, finished, at, deloadOn))
         }}
         minutesOf={(workout) => (active ? workoutMinutes(active, workout, finished).minutes : workoutEstimate(workout).minutes)}
       />

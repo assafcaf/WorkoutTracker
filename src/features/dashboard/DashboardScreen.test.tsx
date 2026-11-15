@@ -105,9 +105,10 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText('Muscle week')).toBeNull()
     const lifts = screen.getByRole('list', { name: 'Workout A lifts' })
     const squatRow = within(lifts).getByText('Back squat').closest('li') as HTMLElement
-    // V2-05: Set 1 opens on last time's 60 kg over the Plan's 4 Sets; the full range earns a step up.
+    // V2-05: Set 1 opens on last time's 60 kg over the Plan's 4 Sets. V6-01: one Session is Too
+    // new for a verdict, so the row offers no other load, as Progress says.
     expect(within(squatRow).getByText('4 × 60 kg')).toBeTruthy()
-    expect(within(squatRow).getByText(/^step up · try /)).toBeTruthy()
+    expect(within(squatRow).queryByText(/Ready for/)).toBeNull()
     expect(within(screen.getByRole('button', { name: /^This week/ })).getByText('1 of 3')).toBeTruthy()
     // V3-08: the sync state is the cloud button's name, not a line of text.
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sync now · Synced 2 min ago' })).toBeTruthy(), SETTLE)

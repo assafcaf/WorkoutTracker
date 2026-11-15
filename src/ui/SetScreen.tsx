@@ -13,6 +13,8 @@ import { formatPlates, plateChange, platesFor } from '../domain/plates'
 import { prTargetReps, prTargetText } from '../domain/prTarget'
 import { exerciseDoneLine, setComparison, setDelta } from '../domain/exerciseVerdict'
 import { usualRestSeconds } from '../domain/usualRest'
+import type { LiftAdvice } from '../domain/stats/status'
+import { leverText } from '../domain/stats/words'
 import { warmupRamp } from '../domain/warmup'
 import type { WarmupStep } from '../domain/warmup'
 import { adjustRest, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
@@ -226,6 +228,13 @@ export type SetScreenProps = {
    * it goes after Add or the first working Set.
    */
   warmupLine?: boolean
+  /**
+   * V6-01: the load the lift's status offers when it is not the Preset (`liftAdvice`), the value
+   * Train, the Program tab and Progress show. The screen offers it in one line under the Dials,
+   * "Ready for 15 kg · Use 15 kg", for this Set: last time's at its place, shifted as the top Set
+   * is. V6-05: an `eased` one (a Break, opened with `deload`) names the deload line instead.
+   */
+  advice?: LiftAdvice | null
 }
 
 /** The Exercise just finished, as the next one's screen shows it during its rest (V3-01). */
@@ -1216,6 +1225,25 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </>
     )
 
+  // V6-01: the load the lift's status offers, for this Set: last time's at its place, shifted by
+  // the step the advice makes on the top Set (a ramp keeps its shape). Gone once the Dials hold it,
+  // on a Warm-up, in the done state and while a logged Set is being edited.
+  const adviceOffer: { target: number; text: string; use: string } | null = (() => {
+    const advice = props.advice
+    if (!advice || advice.use === null || onWarmup || done || editing !== null) return null
+    const leverOf = (set: SetEntry): number => (exercise.bodyweight ? (set.loadKg ?? 0) : (set.weightKg ?? 0))
+    const last = workingSets(props.lastEntries.filter((entry) => entry.exerciseId === exercise.id)).sort(
+      (a, b) => a.setIndex - b.setIndex,
+    )
+    if (last.length === 0) return null
+    const top = Math.max(...last.map(leverOf))
+    const at = last[Math.min(Math.max(position, 1), last.length) - 1]
+    const target = Math.round((leverOf(at) + advice.lever - top) * 1000) / 1000
+    const current = exercise.bodyweight ? open.loadKg : open.weightKg
+    if (current === target || (!exercise.bodyweight && target <= 0)) return null
+    return { target, text: advice.text, use: `Use ${leverText(target, exercise.bodyweight)}` }
+  })()
+
   // V4-01: the Record a logged Set of this Exercise set, by its name ("Heaviest weight"), or null.
   // V6 (V5-06): a rep best is named too ("Rep best"), but carries no PR tag (`recordIsPr`).
   const recordOf = (entry: SetEntry): { name: string; pr: boolean } | null => {
@@ -1721,7 +1749,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               </button>
             )}
             {open.deloaded === undefined || open.deloaded.kg !== open.weightKg ? null : (
-              <p className="set-deload">{deloadText(open.deloaded.kg, open.deloaded.from)}</p>
+              <p className="set-deload">
+                {props.advice?.kind === 'eased'
+                  ? `${props.advice.text}: ${open.deloaded.kg} (from ${open.deloaded.from})`
+                  : deloadText(open.deloaded.kg, open.deloaded.from)}
+              </p>
             )}
             {open.carried === undefined || open.carried.kg !== open.weightKg ? null : (
               <p className="set-carried">{open.carried.text}</p>
@@ -2048,6 +2080,25 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           {/* V4-02: one live line under the reps Dial, "Last time 70 × 7 · +1 rep · PR if logged";
               on a Warm-up, "Then set 1 · 60 × 10" (V4-05). */}
           {vsLine === null ? null : <p className="set-projection">{vsLine}</p>}
+          {/* V6-01: the advice at the bar, "Ready for 15 kg · Use 15 kg"; one tap dials it in. */}
+          {adviceOffer === null ? null : (
+            <p className="set-advice">
+              <span className="set-advice-text">{adviceOffer.text}</span>
+              <button
+                type="button"
+                className="set-advice-use btn-quiet"
+                onClick={() =>
+                  setOpen(
+                    exercise.bodyweight
+                      ? { ...open, loadKg: adviceOffer.target }
+                      : { ...open, weightKg: adviceOffer.target },
+                  )
+                }
+              >
+                {adviceOffer.use}
+              </button>
+            </p>
+          )}
           </>
         )}
 

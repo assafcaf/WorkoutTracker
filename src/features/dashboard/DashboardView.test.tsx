@@ -35,7 +35,7 @@ const READY: DashboardData = {
         sets: 3,
         load: '70 kg',
         reps: '8–10',
-        step: { reps: 14, target: 20, at: '70 kg', suggest: null },
+        advice: null,
       },
       {
         exerciseId: 'seated-biceps-curl',
@@ -43,9 +43,9 @@ const READY: DashboardData = {
         sets: 3,
         load: '12.5 kg',
         reps: '10–12',
-        step: { reps: 36, target: 36, at: '12.5 kg', suggest: 'try 15 kg' },
+        advice: { kind: 'up', lever: 15, text: 'Ready for 15 kg', use: 'Use 15 kg' },
       },
-      { exerciseId: 'face-pull', name: 'Face pulls', sets: 3, load: null, reps: '12–15', step: null },
+      { exerciseId: 'face-pull', name: 'Face pulls', sets: 3, load: null, reps: '12–15', advice: null },
     ],
   },
   due: { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', minutes: 53 },
@@ -142,10 +142,11 @@ describe('DashboardView S1', () => {
     expect(within(rows[0]).getByText('Deadlift')).toBeTruthy()
     expect(within(rows[0]).getByText('3 × 70 kg')).toBeTruthy()
     expect(within(rows[0]).getByText('· 8–10')).toBeTruthy()
-    expect(within(rows[0]).queryByText(/step up/)).toBeNull()
+    expect(within(rows[0]).queryByText(/Ready for/)).toBeNull()
     expect(within(rows[0]).queryByText('14 of 20')).toBeNull()
     expect(within(rows[1]).getByText('3 × 12.5 kg')).toBeTruthy()
-    expect(within(rows[1]).getByText('step up · try 15 kg')).toBeTruthy()
+    // V6-01: the hint is the lift's status's next load, the one Progress and Now show.
+    expect(within(rows[1]).getByText('Ready for 15 kg')).toBeTruthy()
     expect(within(rows[2]).getByText('Face pulls')).toBeTruthy()
     expect(within(rows[2]).getByText('3 sets')).toBeTruthy()
     // V6 (V5-07): a lift whose Sets ramp says so, Set 1's load to the top one.
@@ -186,7 +187,7 @@ describe('DashboardView S1', () => {
   })
 
   test('V1-33 the legend stays hidden while no lift has sets yet', () => {
-    const fresh = READY.card!.lifts.map((lift) => ({ ...lift, step: null }))
+    const fresh = READY.card!.lifts.map((lift) => ({ ...lift, advice: null }))
     renderView({ data: { ...READY, card: { ...READY.card!, lifts: fresh } } })
     expect(screen.getByRole('list', { name: 'Workout A lifts' })).toBeTruthy()
     expect(screen.queryByText('Reps at the current weight against the next step')).toBeNull()
@@ -341,11 +342,11 @@ describe('DashboardView in the app shell', () => {
       name: 'Workout B',
       minutes: 50,
       estimate: 'plan' as const,
-      lifts: [{ exerciseId: 'deadlift', name: 'Deadlift', step: null }],
+      lifts: [{ exerciseId: 'deadlift', name: 'Deadlift', advice: null }],
     }
     const cardA = {
       ...READY.card!,
-      lifts: [{ exerciseId: 'back-squat', name: 'Back squat', step: null }, ...READY.card!.lifts],
+      lifts: [{ exerciseId: 'back-squat', name: 'Back squat', advice: null }, ...READY.card!.lifts],
     }
     renderView({
       data: { ...READY, card: cardA, workouts: WORKOUTS, cards: { 'workout-a': cardA, 'workout-b': cardB } },
@@ -556,5 +557,15 @@ describe('DashboardView V6 flow', () => {
     // Top and bottom reach 44 px tall; left and right reach out to 44 px wide whatever the column.
     expect(inset.startsWith('calc((1.75rem - var(--tap-min)) / 2) ')).toBe(true)
     expect(inset.endsWith(' min(-2px, calc((100% - var(--tap-min)) / 2))')).toBe(true)
+  })
+})
+
+describe('DashboardView V6 wave 3', () => {
+  test('V6-05 after a break the card says once that loads are eased, not on every row', () => {
+    const eased = { kind: 'eased' as const, lever: 13, text: 'Eased after 34 days off', use: null }
+    const lifts = READY.card!.lifts.map((lift) => ({ ...lift, advice: eased }))
+    renderView({ data: { ...READY, card: { ...READY.card!, lifts, eased: true } } })
+    expect(screen.getByText('Back after a break · loads eased for today')).toBeTruthy()
+    expect(screen.queryByText('Eased after 34 days off')).toBeNull()
   })
 })

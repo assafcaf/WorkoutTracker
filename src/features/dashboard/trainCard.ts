@@ -4,8 +4,9 @@ import { lastEntriesOf } from '../../domain/planLoad'
 import { presetForSet } from '../../domain/prefill'
 import type { ShortSession } from '../../domain/shortSession'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
+import { isEased, liftAdvice, liftStatus } from '../../domain/stats/status'
+import type { LiftAdvice } from '../../domain/stats/status'
 import type { DueWorkoutCard } from '../../domain/stats/train'
-import type { NextStep } from '../../domain/stats/verdict'
 import { weeksOf, type Weekday } from '../../domain/stats/weeks'
 import type { Exercise, ExercisePlan, Program, Session } from '../../types'
 import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
@@ -28,8 +29,12 @@ export type TrainLiftRow = {
   topLoad?: string
   /** The Plan's rep range: `8–10`. */
   reps?: string
-  /** `null` while the lift has no sets yet. */
-  step: { reps: number; target: number; at: string; suggest: string | null; hold?: true } | null
+  /**
+   * V6-01: the lift's status's next load when it is not the Preset (`Ready for 15 kg`), or the
+   * Break's eased Preset (`Eased after 34 days off`); the Set screen offers the same. Unset or
+   * null says nothing.
+   */
+  advice?: LiftAdvice | null
 }
 
 /** Train's card: the due workout, its duration estimate and each lift as Set 1 opens it. */
@@ -41,6 +46,8 @@ export type TrainCard = {
   more?: number
   /** This week is the deload week: the card says Presets run 10% lighter. */
   deload?: boolean
+  /** V6-05: some lift is back from a Break, its Preset eased for today: the card says so once. */
+  eased?: boolean
   lifts: TrainLiftRow[]
 }
 
@@ -77,16 +84,6 @@ function leverText(lever: number, bodyweight: boolean): string {
   return lever > 0 ? `BW+${kg(lever)}` : `BW−${kg(Math.abs(lever))}`
 }
 
-function stepRow(step: NextStep, bodyweight: boolean): NonNullable<TrainLiftRow['step']> {
-  const suggest = !step.suggest
-    ? null
-    : step.suggest.kind === 'set'
-      ? 'add a set'
-      : `try ${leverText(step.suggest.lever, bodyweight)}`
-  const row = { reps: step.repsAtTop, target: step.target, at: leverText(step.lever, bodyweight), suggest }
-  return step.hold ? { ...row, hold: true } : row
-}
-
 /**
  * The card's strings, from the engine's due workout and the lifts' histories. With `sessions`
  * and `resolve`, each row carries the Set 1 Preset the live Session opens with: `presetForSet`
@@ -95,37 +92,38 @@ function stepRow(step: NextStep, bodyweight: boolean): NonNullable<TrainLiftRow[
  */
 export function trainCardOf(
   card: DueWorkoutCard,
-  histories: Map<string, LiftHistory>,
+  _histories: Map<string, LiftHistory>,
   more = 0,
   deload = false,
   sessions?: Session[],
   resolve?: Resolve,
+  /** The clock the lifts' statuses are read at (V6-01, V6-05). */
+  now: number = Date.now(),
 ): TrainCard {
   const plans = new Map(card.workout.exercises.map((plan) => [plan.exerciseId, plan] as const))
+  const lifts: TrainLiftRow[] = card.lifts.map((lift) => {
+    const row: TrainLiftRow = { exerciseId: lift.exerciseId, name: lift.name }
+    const plan = plans.get(lift.exerciseId)
+    const exercise = resolve?.(lift.exerciseId)
+    if (!plan || !exercise || !sessions) return row
+    const { load, topLoad, advice } = liftPlan(exercise, plan, sessions, now, deload)
+    return {
+      ...row,
+      sets: plan.sets,
+      load,
+      ...(topLoad === undefined ? {} : { topLoad }),
+      reps: `${plan.repRange[0]}–${plan.repRange[1]}`,
+      advice,
+    }
+  })
   return {
     name: card.workout.name,
     minutes: card.minutes,
     estimate: card.estimate,
     more,
     deload,
-    lifts: card.lifts.map((lift) => {
-      const row: TrainLiftRow = {
-        exerciseId: lift.exerciseId,
-        name: lift.name,
-        step: lift.step ? stepRow(lift.step, histories.get(lift.exerciseId)?.bodyweight ?? false) : null,
-      }
-      const plan = plans.get(lift.exerciseId)
-      const exercise = resolve?.(lift.exerciseId)
-      if (!plan || !exercise || !sessions) return row
-      const { load, topLoad } = liftPreset(exercise, plan, sessions, deload)
-      return {
-        ...row,
-        sets: plan.sets,
-        load,
-        ...(topLoad === undefined ? {} : { topLoad }),
-        reps: `${plan.repRange[0]}–${plan.repRange[1]}`,
-      }
-    }),
+    eased: lifts.some((lift) => lift.advice?.kind === 'eased'),
+    lifts,
   }
 }
 
@@ -139,7 +137,7 @@ export function liftPreset(
   plan: ExercisePlan,
   sessions: Session[],
   deload = false,
-): { load: string | null; topLoad?: string } {
+): { load: string | null; topLoad?: string; top: number | null } {
   const lastEntries = lastEntriesOf(sessions, plan.exerciseId)
   const preset = presetForSet({ exercise, plan, setIndex: 1, lastEntries, today: [], deload })
   const load = exercise.bodyweight
@@ -157,14 +155,40 @@ export function liftPreset(
     }
   }
   const topLoad = top !== null && top !== preset.weightKg ? leverText(top, false) : undefined
-  return topLoad === undefined ? { load } : { load, topLoad }
+  // The lever the Sets top out at: kg, or a Bodyweight lift's signed Load (BW = 0).
+  const lever = exercise.bodyweight ? (preset.loadKg ?? 0) : top
+  return topLoad === undefined ? { load, top: lever } : { load, topLoad, top: lever }
 }
 
-/** V6-15: the Program tab's kg cell: `47.5 → 62.5`, `70`, `BW+5`; `–` with no weight. */
-export function kgCellText(preset: { load: string | null; topLoad?: string }): string {
+/**
+ * V6-01, V6-05: one lift as Train and the Program tab show it, and as the Set screen opens it: the
+ * Preset (`liftPreset`, eased for one Session when the lift is on a Break, as Progress's "Ease
+ * back in" says) and the advice its status gives against that Preset (`liftAdvice`).
+ */
+export function liftPlan(
+  exercise: Exercise,
+  plan: ExercisePlan,
+  sessions: Session[],
+  now: number,
+  deload = false,
+): { load: string | null; topLoad?: string; top: number | null; advice: LiftAdvice | null } {
+  const status = liftStatus(exercise, plan, sessions, now)
+  const preset = liftPreset(exercise, plan, sessions, deload || isEased(status))
+  // A deload week is already lighter on purpose: no other load is offered against it.
+  return { ...preset, advice: deload ? null : liftAdvice(status, preset.top, exercise.bodyweight) }
+}
+
+/**
+ * V6-15: the Program tab's kg cell: `47.5 → 62.5`, `70`, `BW+5`; `–` with no weight. V6-01: a
+ * lift whose status offers another load says so, as Train does: `14 ↑15` (`↓` for lighter).
+ */
+export function kgCellText(preset: { load: string | null; topLoad?: string; advice?: LiftAdvice | null }): string {
   const bare = (text: string): string => text.replace(/ kg$/, '')
   if (preset.load === null) return '–'
-  return preset.topLoad ? `${bare(preset.load)} → ${bare(preset.topLoad)}` : bare(preset.load)
+  const cell = preset.topLoad ? `${bare(preset.load)} → ${bare(preset.topLoad)}` : bare(preset.load)
+  const advice = preset.advice
+  if (!advice || advice.use === null) return cell
+  return `${cell} ${advice.kind === 'up' ? '↑' : '↓'}${bare(advice.use.replace(/^Use /, ''))}`
 }
 
 /**

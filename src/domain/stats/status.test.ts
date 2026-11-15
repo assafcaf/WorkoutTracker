@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import sessionsJson from '../../test/fixtures/stats/sessions.json'
 import { loadCatalog, loadPrograms } from '../../data/catalog'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../../types'
-import { liftStatus, liftStatuses } from './status'
+import { isEased, liftAdvice, liftStatus, liftStatuses } from './status'
 
 process.env.TZ = 'Asia/Jerusalem'
 
@@ -144,5 +144,57 @@ describe('v6 §6.1 on hand-built Sessions', () => {
     const s = at([one(0, [[60, 9]]), one(1, [[60, 10]]), one(2, [[60, 8]]), one(3, [[60, 8]])])
     expect(s.label).toBe('Slipping')
     expect(s.action).toBe('Next time: stay at 60 kg and aim for 10.')
+  })
+})
+
+describe('V6-01 the advice that reaches the bar: one value for Train, Program and Now', () => {
+  it('a Ready lift offers its next load when it differs from the Preset', () => {
+    expect(liftAdvice(of('seated-biceps-curls'), 14)).toEqual({ kind: 'up', lever: 15, text: 'Ready for 15 kg', use: 'Use 15 kg' })
+  })
+
+  it('no advice where the next load is the Preset: the pull-down (Lowered), Back squat (Moving)', () => {
+    expect(liftAdvice(of('narrow-grip-pull-down'), 46.25)).toBeNull()
+    expect(liftAdvice(of('back-squat'), 62.5)).toBeNull()
+  })
+
+  it('no load to offer when the action is a change of exercise: DB bench press, Push-ups at BW', () => {
+    expect(liftAdvice(of('db-bench-press'), 13)).toBeNull()
+    expect(liftAdvice(of('push-ups'), 0)).toBeNull()
+  })
+
+  it('no advice without a status or a Preset load', () => {
+    expect(liftAdvice(undefined, 14)).toBeNull()
+    expect(liftAdvice(of('seated-biceps-curls'), null)).toBeNull()
+  })
+
+  it('a stall with no deload inside offers the deload load', () => {
+    const plan: ExercisePlan = { exerciseId: 'x', sets: 1, repRange: [8, 10], restSeconds: 90 }
+    const ex: Exercise = { id: 'x', name: 'X', weightStep: 2.5, startWeight: null, bodyweight: false, libraryId: 'x' }
+    const day = 86_400_000
+    const list: Session[] = [0, 1, 2, 3, 4].map((i) => ({
+      id: `s${i}`,
+      programId: 'p',
+      workoutId: 'w',
+      startedAt: NOW - (10 - i) * day,
+      finishedAt: NOW - (10 - i) * day + 1,
+      entries: [{ exerciseId: 'x', setIndex: 1, weightKg: 60, reps: 8, loggedAt: 0 }],
+    }))
+    const s = liftStatus(ex, plan, list, NOW)!
+    expect(s.label).toBe('Stalled')
+    expect(liftAdvice(s, 60)).toEqual({ kind: 'down', lever: 55, text: 'Deload once: 55 kg', use: 'Use 55 kg' })
+  })
+
+  it('V6-05 a Break is eased in the Preset itself: Train says so, no load to dial in', () => {
+    const later = new Date(2026, 10, 15, 12).getTime()
+    const away = liftStatuses(program, sessions, resolve, later)
+    expect(liftAdvice(away.get('seated-biceps-curls'), 13)).toEqual({
+      kind: 'eased',
+      lever: 13,
+      text: 'Eased after 34 days off',
+      use: null,
+    })
+    expect(liftAdvice(away.get('hyper-extension'), 5, true)).toBeNull()
+    expect(isEased(away.get('seated-biceps-curls'))).toBe(true)
+    expect(isEased(of('seated-biceps-curls'))).toBe(false)
   })
 })

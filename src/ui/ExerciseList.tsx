@@ -20,6 +20,8 @@ import type {
 export type ExerciseListProps = {
   /** The Session is a deload (E21): planned Sets show their deloaded Preset. */
   deload?: boolean
+  /** V6-05: whether a lift opens eased this Session (its Break); its planned Sets show the eased Preset. */
+  easedFor?(exerciseId: string): boolean
   program: Program
   workout: Workout
   /**
@@ -319,7 +321,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
                 earlier={earlier}
                 lastEntries={props.lastEntries.get(effectiveId) ?? []}
                 current={props.currentId === effectiveId}
-                deload={props.deload}
+                deload={props.deload === true || props.easedFor?.(effectiveId) === true}
                 onOpenNext={open}
                 onOpenLogged={(setIndex) =>
                   props.onOpenLogged === undefined ? open() : props.onOpenLogged(effectiveId, setIndex)

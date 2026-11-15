@@ -261,15 +261,19 @@ function presetText(lift: TrainLiftRow): string | null {
   return lift.load ? `${lift.sets} × ${lift.load}` : `${lift.sets} sets`
 }
 
-/** The row's second line: the step up when the lift is ready, or the hold. */
+/**
+ * The row's second line (V6-01): the load the lift's status offers when it is not the Preset,
+ * "Ready for 15 kg", or the Break's eased Preset, "Eased after 34 days off" -- the words the Set
+ * screen and the Program tab use.
+ */
 function stepNote(lift: TrainLiftRow): JSX.Element | null {
-  if (!lift.step) return null
-  if (lift.step.hold) return <span className="dashboard-step-hold">{`stay at ${lift.step.at}`}</span>
-  if (!lift.step.suggest) return null
+  const advice = lift.advice
+  // A Break's eased Preset is said once for the card (V6-05), not on every row.
+  if (!advice || advice.kind === 'eased') return null
   return (
-    <span className="dashboard-step-ready">
-      <Icon name="ArrowUp" size={14} />
-      {`step up · ${lift.step.suggest}`}
+    <span className={advice.kind === 'up' ? 'dashboard-step-ready' : 'dashboard-step-hold'}>
+      {advice.kind === 'up' ? <Icon name="ArrowUp" size={14} /> : null}
+      <span>{advice.text}</span>
     </span>
   )
 }
@@ -282,7 +286,11 @@ function stepNote(lift: TrainLiftRow): JSX.Element | null {
 function DueCard({ card }: { card: TrainCard }): JSX.Element {
   return (
     <section className="dashboard-train" aria-label={card.name}>
-      {card.deload ? <p className="dashboard-step-deload">Deload week · Presets 10% lighter</p> : null}
+      {card.deload ? (
+        <p className="dashboard-step-deload">Deload week · Presets 10% lighter</p>
+      ) : card.eased ? (
+        <p className="dashboard-step-deload">Back after a break · loads eased for today</p>
+      ) : null}
       {card.lifts.length > 0 ? (
         <ul className="dashboard-steps" aria-label={`${card.name} lifts`}>
           {card.lifts.map((lift) => {
