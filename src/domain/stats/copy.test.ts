@@ -119,66 +119,78 @@ describe('E18-T7 O11 the home on the fixture at Thu 15 Oct 18:05', () => {
   const home = homeCopy(program, fixtureSessions, resolve, NOW)
 
   it('O11 is the full home; the verdict sentence, count row, climbed clause and adherence come from the engine', () => {
+    // v6: the counts are each lift's one status (status.ts).
     expect(home.stage).toBe('full')
-    expect(home.sentence).toBe('11 of 14 lifts moving.')
-    expect(home.counts).toBe('▲ 11 moving · ■ 2 stalled · ▼ 1 slipping · ↑ 1 ready')
+    expect(home.sentence).toBe('10 of 14 lifts moving.')
+    expect(home.counts).toBe('■ 1 stalled · ↓ 1 lowered · ↑ 2 ready · ▲ 10 moving')
     expect(home.climbed).toBe('12 of 14 lifts stepped up since Fri 18 Sep.')
     expect(home.adherence).toBe('2 of 3 this week')
   })
 
   it('V3-11 the lead line joins the verdict and the climbed clause in one sentence', () => {
-    expect(home.lead).toBe('11 of 14 lifts moving · 12 stepped up since 18 Sep')
+    // v6 §6.2: one true headline -- this week's sessions and how many lifts need a decision.
+    expect(home.lead).toBe('This week 2 of 3 sessions · 4 lifts need a decision')
   })
 
   it('O11 the attention list is slipping, then stalled by longest stall, then ready', () => {
+    // v6 §6.2: one card per lift, Break > Slipping > Stalled > Lowered > Ready > Hold, at most 4.
     expect(home.cards.map((c) => [c.exerciseId, c.kind])).toEqual([
-      ['narrow-grip-pull-down', 'slipping'],
-      ['push-ups', 'stalled'],
       ['db-bench-press', 'stalled'],
+      ['narrow-grip-pull-down', 'lowered'],
+      ['push-ups', 'ready'],
       ['seated-biceps-curls', 'ready'],
     ])
+    expect(new Set(home.cards.map((c) => c.exerciseId)).size).toBe(home.cards.length)
+    expect(home.moreDecisions).toBe(0)
   })
 
   it('O11 a slipping card quotes the first slipping Session\'s note, cut to three words', () => {
-    const card = home.cards[0]
-    expect(card.sentence).toBe(
-      "Narrow-grip pull-down: slipping, 46.25 kg × 9 on Mon 12 Oct, below 47.5 kg × 10 on Mon 28 Sep, after 'Right elbow sore…'",
-    )
-    expect(card.suggestion).toBe('Consider a lighter week or a variation')
+    // v6: a lowered load is "Lowered", never slipping; its visible evidence quotes the note's
+    // first 6 words and its Why? the whole note (V6-07).
+    const pullDown = home.cards[1]
+    expect(pullDown.label).toBe('Lowered')
+    expect(pullDown.evidence).toBe('46.25 kg × 9 · down from 47.5 kg on Wed 7 Oct · note: “Right elbow sore on pull-downs, dropped…”')
+    expect(pullDown.suggestion).toBe('Stay at 46.25 kg until all 3 sets reach 12.')
   })
 
   it('O11 a stalled card gives its weeks whole, its sessions and its date', () => {
-    expect(home.cards[1].sentence).toBe('Push-ups: stalled for 10 weeks, 11 sessions without a record since Mon 3 Aug.')
-    expect(home.cards[2].sentence).toBe('DB bench press: stalled for 10 weeks, 10 sessions without a record since Fri 7 Aug.')
-    expect(home.cards[2].suggestion).toBe('Try a deload: 12 kg for one session')
+    const bench = home.cards[0]
+    expect(bench.label).toBe('Stalled')
+    expect(bench.evidence).toBe('13 kg × 9 · no new best since Fri 7 Aug')
+    expect(bench.suggestion).toBe('Try a variation for 4 weeks.')
+    expect(bench.swap).toBe(true)
   })
 
   it('O11 a ready card is phrased as a suggestion', () => {
-    expect(home.cards[3].sentence).toBe('Seated biceps curls: ready, 36 of 36 reps at 14 kg.')
-    expect(home.cards[3].suggestion).toBe('Try 15 kg next')
+    const curls = home.cards[3]
+    expect(curls.evidence).toBe('14 kg × 12·12·12 on Mon 12 Oct')
+    expect(curls.suggestion).toBe('Next time: 15 kg.')
   })
 
   it('O11 a stalled card\'s Why? holds the rule, the 4 Sessions\' top sets and the bar to clear', () => {
-    const why = home.cards[2].why
-    for (const line of lastFour('db-bench-press')) expect(why).toContain(line)
-    expect(why.some((l) => l.includes('A record needs 13 kg × 10'))).toBe(true)
-    expect(why.length).toBeGreaterThanOrEqual(6) // rule + 4 top sets + bar
+    const why = home.cards[0].why
+    for (const line of lastFour('db-bench-press')) expect(why.some((l) => l.startsWith(line))).toBe(true)
+    expect(why[0]).toContain('A new best needs 13 kg × 10.')
+    expect(why.at(-1)).toBe('Try a variation for 4 weeks.')
+    expect(why).toHaveLength(6) // rule + 4 sessions + action
   })
 
   it('O11 a Bodyweight stall states its bar in reps of one set', () => {
-    const why = home.cards[1].why
-    for (const line of lastFour('push-ups')) expect(why).toContain(line)
-    expect(why.some((l) => l.includes('A record needs 18 reps in one set'))).toBe(true)
+    // v6: Push-ups at 15 in every first set on a 10–15 plan are Ready, not stalled.
+    const pushUps = home.cards[2]
+    expect(pushUps.label).toBe('Ready')
+    expect(pushUps.suggestion).toBe('Add load or a harder variation.')
+    expect(pushUps.swap).toBe(true)
   })
 
   it('O11 a slipping card\'s Why? shows the 4 top sets and the best to get back to', () => {
-    const why = home.cards[0].why
-    for (const line of lastFour('narrow-grip-pull-down')) expect(why).toContain(line)
-    expect(why.some((l) => l.includes('47.5 kg × 10'))).toBe(true)
+    const why = home.cards[1].why
+    expect(why[0]).toContain('the app moves you back up to 47.5 kg')
+    expect(why).toContain('Mon 12 Oct · 46.25 kg × 9·8·8')
   })
 
   it('R-C no sentence of the home has an exclamation mark', () => {
-    const all = [home.sentence, home.counts, home.climbed, home.adherence, ...home.cards.flatMap((c) => [c.sentence, c.suggestion, ...c.why])]
+    const all = [home.sentence, home.counts, home.climbed, home.adherence, home.lead, ...home.cards.flatMap((c) => [c.evidence, c.suggestion, ...c.why])]
     expect(all.filter((s) => s !== '')).not.toHaveLength(0)
     expect(all.filter((s) => s.includes('!'))).toEqual([])
   })
@@ -252,13 +264,17 @@ describe('E21-T3 O8 a stalled lift names its deload weight', () => {
   })
 
   it('O8 the stalled cards: loaded names the deload weight, Bodyweight keeps the line; Why? unchanged', () => {
+    // v6 (V6-04): one action per status, from status.ts. DB bench press already had a deload
+    // inside its stall, so it is offered a variation, not another deload; with that deload
+    // gone it is offered one deload at 12 kg. No card offers "a lighter week" any more.
     const home = homeCopy(program, fixtureSessions, resolve, NOW)
     const bench = home.cards.find((c) => c.exerciseId === 'db-bench-press')!
-    const pushUps = home.cards.find((c) => c.exerciseId === 'push-ups')!
-    expect(bench.suggestion).toBe('Try a deload: 12 kg for one session')
-    expect(pushUps.suggestion).toBe('Consider a lighter week or a variation')
-    expect(bench.why[0]).toBe('Stalled: none of the last 4 sessions of this lift set a record.')
-    expect(bench.why.some((l) => l.includes('A record needs 13 kg × 10'))).toBe(true)
+    expect(bench.suggestion).toBe('Try a variation for 4 weeks.')
+    expect(home.cards.map((c) => c.suggestion)).not.toContain('Consider a lighter week or a variation')
+    const noDeload = homeCopy(program, fixtureSessions.filter((s) => !s.deload), resolve, NOW)
+    expect(noDeload.cards.find((c) => c.exerciseId === 'db-bench-press')!.suggestion).toBe(
+      'Deload once: 12 kg x 10, then back to 13 kg.'.replace(' x ', ' \u00d7 '),
+    )
   })
 })
 
@@ -289,16 +305,17 @@ describe('E21-T3 O9 two steps and hold in words', () => {
     )
 
   it('O9 a held lift is not counted ready and gets no card', () => {
+    // v6: a full bar with every set at RIR 0 is Hold, not Ready: it gets no Ready card, but its
+    // own Hold card (Hold needs a decision too, section 6.2).
     const home = homeCopy(program, withCurlsRir(0), resolve, NOW)
-    expect(home.counts).toContain('↑ 0 ready')
-    expect(home.cards.some((c) => c.exerciseId === 'seated-biceps-curls')).toBe(false)
+    expect(home.statuses.get('seated-biceps-curls')!.label).toBe('Hold')
+    expect(home.statuses.get('seated-biceps-curls')!.action).toBe('Next time: 14 kg again, with a rep to spare.')
+    expect(home.cards.some((c) => c.exerciseId === 'seated-biceps-curls' && c.kind === 'ready')).toBe(false)
   })
 
   it('O9 an easy full bar is counted ready and its card reads two steps', () => {
     const home = homeCopy(program, withCurlsRir(2), resolve, NOW)
-    expect(home.counts).toContain('↑ 1 ready')
-    expect(home.cards.find((c) => c.exerciseId === 'seated-biceps-curls')!.suggestion).toBe(
-      'Try 16 kg next · 2 steps',
-    )
+    expect(home.statuses.get('seated-biceps-curls')!.label).toBe('Ready')
+    expect(home.cards.find((c) => c.exerciseId === 'seated-biceps-curls')!.suggestion).toBe('Next time: 16 kg.')
   })
 })
