@@ -20,7 +20,6 @@ import { useActionBarSlot } from './actionBarSlot'
 import { RecordSpark } from './charts/RecordSpark'
 import { Segmented } from './controls'
 import { Icon } from './icons'
-import { PlatesDrawing } from './live/PlatesDrawing'
 import { RestPanel } from './live/RestPanel'
 import { playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
@@ -264,11 +263,33 @@ type OpenSet = {
   loadKg: number
   /** A deload Preset's weight and the last-time weight it came from (E21). */
   deloaded?: { kg: number; from: number }
+  /**
+   * A Preset moved off last time's weight by an earlier Set today (V1-05): the weight it opened
+   * at, and the line saying why, "+20 kg: carried from set 1 (last 70)".
+   */
+  carried?: { kg: number; text: string }
 }
 
 /** The `loadKg` a Set on the dials is logged with: none at plain bodyweight (E14-T14). */
-function loadOf(open: OpenSet): { loadKg: number } | Record<string, never> {
+function loadOf(open: Pick<OpenSet, 'loadKg'>): { loadKg: number } | Record<string, never> {
   return open.loadKg === 0 ? {} : { loadKg: open.loadKg }
+}
+
+/** A Set not yet logged, as if logged with `values`: what the cells after it preset from. */
+function assumedEntry(
+  exerciseId: string,
+  setIndex: number,
+  values: Pick<OpenSet, 'weightKg' | 'reps' | 'loadKg' | 'kind'>,
+): SetEntry {
+  return {
+    exerciseId,
+    setIndex,
+    weightKg: values.weightKg,
+    reps: values.reps,
+    ...loadOf(values),
+    loggedAt: 0,
+    ...(values.kind === null ? {} : { kind: values.kind }),
+  }
 }
 
 /**
@@ -281,7 +302,7 @@ type Ramp = { steps: WarmupStep[]; index: number; workingKg: number; workingReps
 type Draft = OpenSet & { rir: 0 | 1 | 2 | 3 | null }
 
 /** The exercise tools sheet's segments (S3b). */
-type ToolsSegment = 'plates' | 'warmup' | 'notes'
+type ToolsSegment = 'warmup' | 'notes'
 
 /**
  * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
@@ -335,7 +356,50 @@ function openSetFor(
   })
   const deloaded =
     deloadFromKg === undefined || preset.weightKg === null ? {} : { deloaded: { kg: preset.weightKg, from: deloadFromKg } }
-  return { setIndex, ...preset, kind, loadKg: exercise.bodyweight ? (loadKg ?? 0) : 0, ...deloaded }
+  const carried = deload === true ? undefined : carriedReason(exercise, setIndex, preset.weightKg, lastEntries, logged)
+  return {
+    setIndex,
+    ...preset,
+    kind,
+    loadKg: exercise.bodyweight ? (loadKg ?? 0) : 0,
+    ...deloaded,
+    ...(carried === undefined ? {} : { carried }),
+  }
+}
+
+/**
+ * Why a loaded Set's Preset `weightKg` is not last time's weight at its position (V1-05): an
+ * earlier working Set today moved it. Undefined when it is last time's weight, or nothing today
+ * anchors it. Reads the Preset; the rule itself is `presetForSet`'s.
+ */
+function carriedReason(
+  exercise: Exercise,
+  setIndex: number,
+  weightKg: number | null,
+  lastEntries: SetEntry[],
+  logged: SetEntry[] | undefined,
+): { kg: number; text: string } | undefined {
+  if (logged === undefined || weightKg === null || exercise.bodyweight) return undefined
+  const before = workingSets(logged)
+    .filter((entry) => entry.setIndex < setIndex)
+    .sort((a, b) => a.setIndex - b.setIndex)
+  const anchorAt = before.map((entry) => entry.kind !== 'drop').lastIndexOf(true)
+  if (anchorAt < 0) return undefined
+  const last = workingSets(lastEntries).sort((a, b) => a.setIndex - b.setIndex)
+  const lastSet = last[before.length] ?? last[last.length - 1]
+  if (lastSet === undefined || lastSet.weightKg === null) return undefined
+  const delta = Math.round((weightKg - lastSet.weightKg) * 1000) / 1000
+  if (delta === 0) return undefined
+  const sign = delta > 0 ? '+' : '−'
+  return {
+    kg: weightKg,
+    text: `${sign}${Math.abs(delta)} kg: carried from set ${anchorAt + 1} (last ${lastSet.weightKg})`,
+  }
+}
+
+/** The Plate line for `weightKg` on `plates` (E15-T6). */
+function plateLineFor(weightKg: number, plates: PlateInventory): string {
+  return formatPlates(platesFor(weightKg, plates), plates)
 }
 
 /**
@@ -493,7 +557,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The exercise tools sheet (S3b), its segment and whether its Set type row is open.
   const [toolsOpen, setToolsOpen] = useState(false)
-  const [toolsSegment, setToolsSegment] = useState<ToolsSegment>(props.plates ? 'plates' : 'notes')
+  const [toolsSegment, setToolsSegment] = useState<ToolsSegment>(props.plates ? 'warmup' : 'notes')
   const [kindsOpen, setKindsOpen] = useState(false)
 
   function clearUndo(): void {
@@ -933,24 +997,34 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   }
 
   // The cells after the logged ones: the Set on the steppers, then every planned Set still to
-  // come at its Preset.
+  // come at its own Preset (V1-02): the one it opens with once the Sets before it are logged as
+  // they stand -- the open one as on the Dials (a Warm-up ramp's at its working weight), the later
+  // ones at their Presets.
   const cells: { position: number; current: boolean; weightKg: number | null; reps: number; loadKg: number }[] = []
   {
     const last = Math.max(plan.sets, extraOpen ? position : 0)
+    const working =
+      ramp !== null && open.kind === 'warmup'
+        ? { weightKg: ramp.workingKg, reps: ramp.workingReps, loadKg: open.loadKg, kind: null }
+        : { ...open, kind: open.kind === 'warmup' ? null : open.kind }
+    const assumed: SetEntry[] = [...loggedSets, assumedEntry(exercise.id, open.setIndex, working)]
     for (let at = position; at <= last && !done; at += 1) {
       if (at === position) {
         cells.push({ position: at, current: true, weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })
         continue
       }
+      const setIndex = open.setIndex + (at - position)
       const preset = presetForSet({
         exercise,
         plan,
-        setIndex: open.setIndex + (at - position),
+        setIndex,
         lastEntries: history,
-        today: today(loggedSets),
+        today: today(assumed),
         deload: props.deload,
       })
-      cells.push({ position: at, current: false, weightKg: preset.weightKg, reps: preset.reps, loadKg: preset.loadKg ?? 0 })
+      const loadKg = preset.loadKg ?? 0
+      assumed.push(assumedEntry(exercise.id, setIndex, { weightKg: preset.weightKg, reps: preset.reps, loadKg, kind: null }))
+      cells.push({ position: at, current: false, weightKg: preset.weightKg, reps: preset.reps, loadKg })
     }
   }
 
@@ -1027,7 +1101,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       <RestPanel
         remainingSeconds={rest.remainingSeconds}
         totalSeconds={restLengthOf(restFrom.entry, restFrom.planRestSeconds)}
-        usualSeconds={restFrom.entry.exerciseId === exercise.id ? usualRest : null}
         offer={offer}
         onOpenDial={() => setRestDialOpen(true)}
         onLess={() => adjust({ kind: 'add', seconds: -15 })}
@@ -1036,28 +1109,27 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       />
     )
 
-  // The bottom edge: the rest panel while rest runs (S4), else "Log set 3 · 62.5 × 8" (F3) with
-  // a quiet over-rest line once a rest ran out here. Past the plan the screen is done: "Log set"
-  // is withheld and only an extra set is offered -- and only to a caller that knows what to do
-  // with it.
+  // The bottom edge: "Log set 3 · 62.5 × 8" (F3), under the rest panel while rest runs (S4,
+  // V1-03) -- logging ends that rest -- and else under a quiet over-rest line once a rest ran
+  // out here. Past the plan the screen is done: "Log set" is withheld and only an extra set is
+  // offered -- and only to a caller that knows what to do with it.
   const actions = !done ? (
-    restPanel ?? (
-      <div className="log-dock">
-        {resting || useOffer === null ? null : offer}
-        {overShown && rest !== null ? (
-          <p className="rest-over" data-over="true">
-            Over rest ·{' '}
-            <span role="timer" aria-label="Rest remaining">
-              {formatOver(rest.overSeconds)}
-            </span>
-          </p>
-        ) : null}
-        {/* The label follows the steppers: "Log set 3 · 62.5 × 8". Its name stays "Log set". */}
-        <button type="button" className="log-set btn-primary" aria-label="Log set" onClick={() => void log()}>
-          Log set {position} · {formatSet({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })}
-        </button>
-      </div>
-    )
+    <div className="log-dock">
+      {restPanel}
+      {resting || useOffer === null ? null : offer}
+      {overShown && rest !== null ? (
+        <p className="rest-over" data-over="true">
+          Over rest ·{' '}
+          <span role="timer" aria-label="Rest remaining">
+            {formatOver(rest.overSeconds)}
+          </span>
+        </p>
+      ) : null}
+      {/* The label follows the steppers, and is its name (V1-04): "Log set 3 · 62.5 × 8". */}
+      <button type="button" className="log-set btn-primary" onClick={() => void log()}>
+        Log set {position} · {formatSet({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg })}
+      </button>
+    </div>
   ) : (
     <div className="log-dock">
       {restPanel}
@@ -1084,16 +1156,19 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     </div>
   )
 
-  // The tools sheet's segments: Plates and Warm-up for a barbell, Notes wherever notes are kept.
+  // The tools sheet's segments: Warm-up for a barbell, Notes wherever notes are kept. The Plate
+  // line shows under the weight Dial, so the sheet has no Plates segment (V1-07).
   const segments: { value: ToolsSegment; label: string }[] = [
-    ...(props.plates ? [{ value: 'plates' as const, label: 'Plates' }, { value: 'warmup' as const, label: 'Warm-up' }] : []),
+    ...(props.plates ? [{ value: 'warmup' as const, label: 'Warm-up' }] : []),
     ...(props.onSaveExerciseNote === undefined ? [] : [{ value: 'notes' as const, label: 'Notes' }]),
   ]
   const segment = segments.some((option) => option.value === toolsSegment)
     ? toolsSegment
     : segments[0]?.value
   const plates = props.plates ?? null
-  const loading = plates !== null && open.weightKg !== null ? platesFor(open.weightKg, plates) : null
+  // The Plate line for the Set on the Dials (V1-07): under the weight Dial and in the Next row.
+  const plateLine =
+    plates === null || open.weightKg === null || exercise.bodyweight ? null : plateLineFor(open.weightKg, plates)
 
   const noteTools =
     props.onSaveExerciseNote === undefined ? null : editingNote ? (
@@ -1176,19 +1251,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         />
       ) : null}
       <div className="tools-body">
-        {segment === 'plates' && plates !== null ? (
-          open.weightKg === null ? null : (
-            <>
-              <PlatesDrawing loading={loading} barKg={plates.barKg} />
-              <div className="tools-plates-line">
-                <p className="plate-line">{formatPlates(loading, plates)}</p>
-                <span className="tools-plates-total">
-                  {plates.barKg} kg bar · {open.weightKg} kg
-                </span>
-              </div>
-            </>
-          )
-        ) : null}
         {segment === 'warmup' && plates !== null ? (
           <div className="tools-warmups">
             {(ramp?.steps ?? rampOffer ?? []).map((step, index) => (
@@ -1316,7 +1378,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           <RepsDial variant="scrub" value={draft.reps} onChange={(reps) => setDraft({ ...draft, reps })} />
         </div>
         {plates !== null && draft.weightKg !== null ? (
-          <p className="plate-line">{formatPlates(platesFor(draft.weightKg, plates), plates)}</p>
+          <p className="plate-line">{plateLineFor(draft.weightKg, plates)}</p>
         ) : null}
         <p className="sheet-caption">Set kind</p>
         <SetKindRow value={draft.kind} onChange={(kind) => setDraft({ ...draft, kind })} />
@@ -1375,6 +1437,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {open.deloaded === undefined || open.deloaded.kg !== open.weightKg ? null : (
               <p className="set-deload">{deloadText(open.deloaded.kg, open.deloaded.from)}</p>
             )}
+            {open.carried === undefined || open.carried.kg !== open.weightKg ? null : (
+              <p className="set-carried">{open.carried.text}</p>
+            )}
           </div>
           <button
             type="button"
@@ -1390,8 +1455,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         </div>
 
         {/* The set cells: today's logged Sets (tap one to edit it), the Set on the steppers
-            outlined -- while rest runs, a tap on it logs it -- and the planned Sets still to come,
-            dashed. */}
+            outlined, and the planned Sets still to come, dashed. */}
         <div className="set-cells">
           {loggedSets.length === 0 ? null : (
             <ul className="logged-sets" aria-label="Sets logged">
@@ -1436,29 +1500,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               ))}
             </ul>
           )}
-          {cells.map((cell) =>
-            cell.current && resting ? (
-              <button
-                key={cell.position}
-                type="button"
-                className="set-cell set-cell--current cell"
-                aria-label="Log set"
-                onClick={() => void log()}
-              >
-                <span className="set-cell-index">{cell.position}</span>
-                <span className="set-cell-value">{cellText(cell)}</span>
-              </button>
-            ) : (
-              <div
-                key={cell.position}
-                className={cell.current ? 'set-cell set-cell--current' : 'set-cell set-cell--future'}
-                aria-hidden="true"
-              >
-                <span className="set-cell-index">{cell.position}</span>
-                <span className="set-cell-value">{cellText(cell)}</span>
-              </div>
-            ),
-          )}
+          {cells.map((cell) => (
+            <div
+              key={cell.position}
+              className={cell.current ? 'set-cell set-cell--current' : 'set-cell set-cell--future'}
+              aria-hidden="true"
+            >
+              <span className="set-cell-index">{cell.position}</span>
+              <span className="set-cell-value">{cellText(cell)}</span>
+            </div>
+          ))}
         </div>
 
         {/* "Set 3 effort": RIR 0 / 1 / 2 / 3+ for the Set just logged, while its rest runs. */}
@@ -1496,6 +1547,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               {lastTimeEntry === null ? null : (
                 <span className="set-next-last"> · last {formatSet(lastTimeEntry)}</span>
               )}
+              {plateLine === null ? null : <span className="set-next-plates"> · {plateLine}</span>}
             </span>
             <Icon name="ChevronDown" size={20} />
           </button>
@@ -1520,6 +1572,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 onChange={(weightKg) => setOpen({ ...open, weightKg })}
               />
             )}
+            {plateLine === null ? null : <p className="plate-line">{plateLine}</p>}
             <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
           </div>
 

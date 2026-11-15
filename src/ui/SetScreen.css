@@ -117,15 +117,9 @@
   border: 2px solid var(--color-primary);
 }
 
-/* While rest runs the outlined cell is the way to log the Set early: a button. */
-button.set-cell--current {
-  min-height: var(--tap-min);
-  background: var(--color-surface);
-}
-
 .set-cell--future {
   padding: 5.5px 7.5px 7.5px;
-  border: 1.5px dashed var(--color-control);
+  border: 1.5px dashed var(--color-muted);
 }
 
 .set-cell-index {
@@ -237,12 +231,11 @@ button.set-cell--current {
   text-align: left;
 }
 
+/* It wraps rather than cut off: the per-side plates end it (V1-07). */
 .set-next-text {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: var(--space-2) 0;
 }
 
 .set-next-label {
@@ -252,7 +245,8 @@ button.set-cell--current {
   font-variant-numeric: tabular-nums;
 }
 
-.set-next-last {
+.set-next-last,
+.set-next-plates {
   color: var(--color-secondary);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
@@ -433,60 +427,6 @@ button.set-cell--current {
   text-transform: uppercase;
 }
 
-/* The bar of the rest gone, the panel's width: "you usually rest 2:40" ends at its tick. */
-.rest-panel-gauge {
-  min-width: 0;
-}
-
-.rest-bar-usual-row {
-  position: relative;
-  height: 16px;
-}
-
-.rest-bar-usual-label {
-  position: absolute;
-  top: 0;
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  line-height: 16px;
-  white-space: nowrap;
-}
-
-.rest-bar {
-  position: relative;
-  height: 8px;
-  margin: 11px 0 var(--space-3);
-  border-radius: var(--radius-pill);
-  background: var(--color-raised);
-}
-
-.rest-bar-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: var(--radius-pill);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.rest-bar-usual {
-  position: absolute;
-  top: -7px;
-  width: 2px;
-  height: 22px;
-  margin-left: -1px;
-  border-radius: var(--radius-sm);
-  background: var(--color-text);
-}
-
-.rest-bar-axis {
-  display: flex;
-  justify-content: space-between;
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  line-height: 16px;
-  font-variant-numeric: tabular-nums;
-}
-
 /* −15 s, +15 s and Skip rest, three even buttons. */
 .rest-controls {
   display: flex;
@@ -539,25 +479,6 @@ button.set-cell--current {
 
 .tools-body {
   padding: var(--space-3) 0;
-}
-
-.tools-plates-line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-}
-
-.tools-plates-line .plate-line {
-  color: var(--color-text);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-}
-
-.tools-plates-total {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
 }
 
 .tools-warmups {
@@ -622,84 +543,6 @@ button.set-cell--current {
   margin: 0;
   color: var(--color-danger);
   font-size: var(--text-sm);
-}
-
-/* The bar and plates drawing (src/ui/live/PlatesDrawing.tsx). */
-.plates-drawing {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 120px;
-  margin-bottom: var(--space-5);
-}
-
-.plates-sleeve {
-  position: absolute;
-  left: var(--space-2);
-  right: var(--space-2);
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--color-control);
-}
-
-.plates-bar {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  width: 120px;
-  height: 8px;
-  border-radius: var(--radius-sm);
-  background: var(--chart-b);
-}
-
-.plates-bar-kg {
-  position: absolute;
-  top: 14px;
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-}
-
-.plates-side {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.plates-side[data-mirror='true'] {
-  flex-direction: row-reverse;
-}
-
-.plates-collar {
-  width: 8px;
-  height: 20px;
-  border-radius: var(--radius-sm);
-  background: var(--color-secondary);
-}
-
-.plates-plate {
-  position: relative;
-  width: 8px;
-  border-radius: var(--radius-sm);
-  background: var(--color-secondary);
-}
-
-.plates-plate[data-heavy='true'] {
-  width: 22px;
-  border-radius: var(--radius-sm);
-  background: var(--color-text);
-}
-
-.plates-plate-kg {
-  position: absolute;
-  top: calc(100% + var(--space-2));
-  left: 50%;
-  transform: translateX(-50%);
-  color: var(--color-secondary);
-  font-size: var(--text-xs);
-  white-space: nowrap;
 }
 
 /* ---- Notes (in the tools sheet) ------------------------------------------------------------ */
@@ -815,7 +658,8 @@ button.set-cell--current {
   flex-direction: column;
 }
 
-.set-deload {
+.set-deload,
+.set-carried {
   margin: var(--space-1) 0 0;
   font-size: var(--text-sm);
   color: var(--color-muted);

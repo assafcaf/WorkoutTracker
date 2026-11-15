@@ -140,7 +140,7 @@ test('O20 logging a set still works when the set screen mounts with no Wake Lock
 
   renderSetScreen()
 
-  await user.click(await screen.findByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }))
 
   await waitFor(async () => {
     expect(await storedEntries()).toHaveLength(1)
@@ -162,7 +162,7 @@ test('O20 logging a set still works when the Wake Lock API rejects the request',
     expect(request).toHaveBeenCalledWith('screen')
   })
 
-  await user.click(await screen.findByRole('button', { name: 'Log set' }))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }))
 
   await waitFor(async () => {
     expect(await storedEntries()).toHaveLength(1)

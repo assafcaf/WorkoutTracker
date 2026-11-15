@@ -96,7 +96,7 @@ test('O27 +15 s schedules the moved end', async () => {
   const first = (scheduleRest.mock.calls[0] as unknown as [number, string])[0]
 
   await user.click(screen.getByRole('radio', { name: 'Now' }))
-  await user.click(await screen.findByRole('button', { name: '+15 s' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Rest 15 seconds more' }, SETTLE))
 
   await waitFor(() => expect(scheduleRest).toHaveBeenCalledTimes(2), SETTLE)
   expect((scheduleRest.mock.calls[1] as unknown as [number, string])[0]).toBe(first + 15_000)

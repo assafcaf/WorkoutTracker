@@ -96,7 +96,7 @@ export function WeightDial(props: WeightDialProps): JSX.Element {
         ) : null}
         <button
           type="button"
-          aria-label="Weight"
+          aria-label={`Weight, ${readValue(value, bodyweight)}${unit === '' ? '' : ` ${unit}`}`}
           className="dial-readout cell"
           data-length={lengthClass(readValue(value, bodyweight))}
           disabled={!adjustable}

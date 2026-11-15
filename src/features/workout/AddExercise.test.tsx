@@ -74,7 +74,7 @@ test('O23 the added Exercise logs like any other and shows in the summary and th
   await addBenchPress(user)
 
   await user.click(await screen.findByRole('button', { name: /^Dumbbell Bench Press/ }, SETTLE))
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
 
   await waitFor(async () => {
     const [stored] = await db.sessions.toArray()
