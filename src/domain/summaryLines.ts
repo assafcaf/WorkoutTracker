@@ -11,7 +11,7 @@ import type { BodyLog, Muscle, Program, Session } from '../types'
 import type { Resolve } from './muscles'
 import { bodyweightOn } from './bodyLog'
 import { formatDay } from './dates'
-import { dueWorkout } from './dashboard'
+import { nextWorkout } from './shortSession'
 import { exerciseComparison } from './exerciseVerdict'
 import { workingSets } from './setKind'
 import { formatSetCompact } from './setText'
@@ -119,7 +119,12 @@ export function liftLine(
     lastDay: previous === undefined ? '' : formatDay(new Date(previous.startedAt), new Date(session.startedAt)),
     deload: points[index].deload,
   })
-  return { sets, tail }
+  return { sets, tail: plainFewer(tail) }
+}
+
+/** V6-18: "3 reps under Wed 7 Oct" said plainly in the summary: "3 fewer reps than Wed 7 Oct". */
+function plainFewer(tail: string): string {
+  return tail.replace(/^(\d+) (reps?) under (.+)$/, (_, n: string, word: string, day: string) => `${n} fewer ${word} than ${day}`)
 }
 
 /**
@@ -177,6 +182,6 @@ export function weekLine(
   const upTo = sessions.filter((other) => other.deletedAt === undefined && other.startedAt <= session.startedAt)
   const week = thisWeek(upTo, session.startedAt, program.sessionsPerWeek, weekStartsOn)
   const tally = week.planned > 0 ? `${week.done} of ${week.planned}` : String(week.done)
-  const next = dueWorkout(program, upTo)
+  const next = nextWorkout(program, upTo)
   return `This week ${tally}${next ? ` · next up ${next.workout.name}` : ''}`
 }

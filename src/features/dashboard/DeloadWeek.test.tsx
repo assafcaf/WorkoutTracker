@@ -80,7 +80,18 @@ async function seedSquat(rir: SetEntry['rir']): Promise<void> {
     workoutId: 'workout-b',
     startedAt: day(9, 12),
     finishedAt: day(9, 12) + 3_000_000,
-    entries: [{ exerciseId: 'deadlift', setIndex: 0, weightKg: 100, reps: 8, loggedAt: day(9, 12) }],
+    entries: [
+      { exerciseId: 'deadlift', setIndex: 0, weightKg: 100, reps: 8, loggedAt: day(9, 12) },
+      // V6-11: 12 more working Sets of an unplanned Exercise make Monday's B a full Session, so
+      // Workout A is due next as before.
+      ...Array.from({ length: 12 }, (_, index) => ({
+        exerciseId: 'not-planned',
+        setIndex: 100 + index,
+        weightKg: 10,
+        reps: 10,
+        loggedAt: day(9, 12) + index,
+      })),
+    ],
   }
   await db.sessions.bulkPut([session, other])
   await setActiveProgramId('assaf-ab-2026', TUE)

@@ -1,16 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
-import {
-  dueWorkout,
-  timeAgo,
-  workoutEstimate,
-} from '../../domain/dashboard'
+import { timeAgo, workoutEstimate } from '../../domain/dashboard'
 import { formatDay } from '../../domain/dates'
 import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
 import { buildLiftHistories } from '../../domain/stats/liftHistory'
-import { dueWorkoutCard, workoutCard } from '../../domain/stats/train'
+import { nextWorkout, workoutNote } from '../../domain/shortSession'
+import { dueWorkoutCard, workoutCard, workoutMinutes } from '../../domain/stats/train'
 import { isDeloadWeek } from '../../domain/deload'
 import { thisWeek, type Weekday } from '../../domain/stats/weeks'
 import { ServiceError, type Services, type SyncView } from '../../services'
@@ -25,7 +22,7 @@ import {
   type DockWorkout,
   type ProgramOption,
 } from './DashboardView'
-import { trainCardOf, weekStripOf, type TrainCard } from './trainCard'
+import { finishText, noteText, trainCardOf, weekStripOf, type TrainCard } from './trainCard'
 
 export type DashboardScreenProps = {
   /** Starts (or resumes) `workoutId` of the active Program. */
@@ -160,7 +157,8 @@ export function DashboardScreen({
       }
     } else {
       const program = visiblePrograms([active])[0] ?? active
-      const due = dueWorkout(program, sessions)
+      // V6-11: after a short Session the same Workout is next.
+      const due = nextWorkout(program, sessions)
       const plans = new Map<string, ExercisePlan>()
       for (const workout of program.workouts) for (const plan of workout.exercises) plans.set(plan.exerciseId, plan)
       const histories = buildLiftHistories(sessions, resolve, (id) => plans.get(id))
@@ -168,6 +166,14 @@ export function DashboardScreen({
       const dueCard = dueWorkoutCard(program, sessions, resolve, histories)
       const more = Math.max(0, week.planned - week.done - 1)
       const visible = program.workouts.filter((workout) => !workout.hidden)
+      // V6-08: each Workout's last Session note, under the date.
+      const noteOf = (workoutId: string): { note?: string } => {
+        const note = workoutNote(
+          workoutId,
+          sessions.filter((session) => session.programId === program.id),
+        )
+        return note === null ? {} : { note: noteText(note, at) }
+      }
       const dockWorkout = (workout: Workout): DockWorkout => {
         const done = sessions
           .filter((session) => session.programId === program.id && session.workoutId === workout.id)
@@ -177,7 +183,10 @@ export function DashboardScreen({
           workoutId: workout.id,
           name: workout.name,
           last: last === null ? null : formatDay(new Date(last), new Date(at)),
-          minutes: (workout.id === due?.workout.id ? dueCard?.minutes : undefined) ?? workoutEstimate(workout).minutes,
+          // V6-15: one estimate for every Workout, the one the Program tab shows too.
+          minutes: workoutMinutes(program, workout, sessions).minutes,
+          ...noteOf(workout.id),
+          ...(workout.id === due?.workout.id && due.short ? { finish: finishText(due.short, at) } : {}),
         }
       }
       // Each other workout's card, so "Change" redraws the card for the one picked (V1-21).
@@ -195,14 +204,7 @@ export function DashboardScreen({
         card: dueCard ? trainCardOf(dueCard, histories, more, deloadOn, sessions, resolve) : null,
         week: weekStripOf(sessions, program, at, weekStartsOn),
         cards,
-        due: due
-          ? {
-              workoutId: due.workout.id,
-              name: due.workout.name,
-              last: due.lastDoneAt === null ? null : formatDay(new Date(due.lastDoneAt), new Date(at)),
-              minutes: dueCard?.minutes ?? workoutEstimate(due.workout).minutes,
-            }
-          : null,
+        due: due ? { ...dockWorkout(due.workout), last: due.lastDoneAt === null ? null : formatDay(new Date(due.lastDoneAt), new Date(at)) } : null,
         workouts: visible.map(dockWorkout),
       }
     }

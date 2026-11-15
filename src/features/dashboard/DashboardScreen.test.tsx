@@ -38,6 +38,20 @@ const squat = (weightKg: number, reps: number, loggedAt: number, setIndex: numbe
   loggedAt,
 })
 
+/**
+ * V6-11: a Session with fewer than half its Workout's planned Sets keeps that Workout next. These
+ * fixtures name only the Sets a test reads, so each is topped up with 12 working Sets of an
+ * Exercise no Program plans (no lift row, no history) to stand as a full Session.
+ */
+const fullSession = (startedAt: number): SetEntry[] =>
+  Array.from({ length: 12 }, (_, index) => ({
+    exerciseId: 'not-planned',
+    setIndex: 100 + index,
+    weightKg: 10,
+    reps: 10,
+    loggedAt: startedAt + index,
+  }))
+
 function session(id: string, workoutId: string, startedAt: number, entries: SetEntry[]): Session {
   return {
     id,
@@ -45,7 +59,7 @@ function session(id: string, workoutId: string, startedAt: number, entries: SetE
     workoutId,
     startedAt,
     finishedAt: startedAt + 3_000_000,
-    entries,
+    entries: [...entries, ...fullSession(startedAt)],
     updatedAt: startedAt + 3_000_000,
   }
 }
@@ -285,5 +299,57 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
 
     expect(within(row).getByText('4 sets · 47.5 → 62.5 kg')).toBeTruthy()
     expect(within(row).queryByText('4 × 47.5 kg')).toBeNull()
+  })
+})
+
+describe('DashboardScreen V6 flow', () => {
+  const raw = (id: string, workoutId: string, startedAt: number, entries: SetEntry[], note?: string): Session => ({
+    id,
+    programId: 'assaf-ab-2026',
+    workoutId,
+    startedAt,
+    finishedAt: startedAt + 600_000,
+    entries,
+    updatedAt: startedAt + 600_000,
+    ...(note ? { note } : {}),
+  })
+
+  test('V6-11 after 2 Sets of Workout B and Finish, Train offers Workout B again with the lifts left', async () => {
+    const mon = at(9, 12)
+    await db.sessions.bulkPut([
+      session('fri', 'workout-a', at(9, 9), [squat(60, 10, at(9, 9), 0)]),
+      raw('mon', 'workout-b', mon, [
+        { exerciseId: 'deadlift', setIndex: 1, weightKg: 60, reps: 10, loggedAt: mon },
+        { exerciseId: 'deadlift', setIndex: 2, weightKg: 70, reps: 7, loggedAt: mon },
+      ]),
+    ])
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    const { onStartWorkout } = mount(services())
+
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy(), SETTLE)
+    // Workout B plans 7 lifts; only the Deadlift was touched.
+    expect(screen.getByText('Finish Workout B: 6 lifts left from Mon 12 Oct')).toBeTruthy()
+    // The week (from Monday) still counts it.
+    expect(within(screen.getByRole('button', { name: /^This week/ })).getByText('1 of 3')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Start Workout B' }))
+    expect(onStartWorkout).toHaveBeenCalledWith('workout-b')
+  })
+
+  test("V6-08 Train shows the offered Workout's last Session note under the date", async () => {
+    await db.sessions.bulkPut([
+      session('wed', 'workout-b', at(9, 7), []),
+      raw('wed-note', 'workout-b', at(9, 7) - 1, [], 'Right elbow sore on pull-downs, dropped the weight.'),
+      session('fri', 'workout-a', at(9, 9), [squat(60, 10, at(9, 9), 0)]),
+      session('mon', 'workout-b', at(9, 12), []),
+      session('tue', 'workout-a', at(9, 13) - 3_600_000, []),
+    ])
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy(), SETTLE)
+    expect(screen.getByText('Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight.')).toBeTruthy()
+    // Change to Workout A: A has no note, so the line goes.
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    expect(screen.queryByText(/^Note from/)).toBeNull()
   })
 })

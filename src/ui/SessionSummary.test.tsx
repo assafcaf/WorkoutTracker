@@ -951,8 +951,19 @@ test('V4-03 a partial Session reads "1 of 3 sets" in the figures, with no % comp
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
 
-  expect(dialog.querySelector('.session-summary-figures')?.textContent).toBe('20 min · 1 of 3 sets')
+  // Title kept (weakened-tests gate); V6-11: 1 of 3 is under half, so it also says it was short.
+  expect(dialog.querySelector('.session-summary-figures')?.textContent).toBe('20 min · Short session · 1 of 3 sets')
   expect(dialog.textContent).not.toMatch(/%/)
+})
+
+test('V6-11 under half the planned Sets reads "Short session · n of N sets"; half or more does not', () => {
+  const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
+  const short = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
+  expect(short.querySelector('[data-kpi="short"]')?.textContent).toBe('Short session')
+  cleanup()
+  const most = renderBench(benchSession('wed-14', WED, 40, 2, 80, 5), [before])
+  expect(most.querySelector('.session-summary-figures')?.textContent).toBe('40 min · 2 of 3 sets')
+  expect(most.querySelector('[data-kpi="short"]')).toBeNull()
 })
 
 test('V4-03 a full Session compares with the last same Workout: "vs <day>: volume +6.3 %"', () => {

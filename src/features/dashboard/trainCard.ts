@@ -2,6 +2,7 @@ import type { Resolve } from '../../domain/muscles'
 import { formatDay } from '../../domain/dates'
 import { lastEntriesOf } from '../../domain/planLoad'
 import { presetForSet } from '../../domain/prefill'
+import type { ShortSession } from '../../domain/shortSession'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
 import type { DueWorkoutCard } from '../../domain/stats/train'
 import type { NextStep } from '../../domain/stats/verdict'
@@ -149,6 +150,24 @@ export function trainCardOf(
       }
     }),
   }
+}
+
+/**
+ * V6-11: Train's second line after a short Session, "Finish Workout B: 6 lifts left from Thu
+ * 15 Oct"; with every lift touched, the Sets left.
+ */
+export function finishText(short: ShortSession, now: number): string {
+  const day = formatDay(new Date(short.session.startedAt), new Date(now))
+  const left =
+    short.liftsLeft > 0
+      ? `${short.liftsLeft} ${short.liftsLeft === 1 ? 'lift' : 'lifts'}`
+      : `${short.planned - short.logged} sets`
+  return `Finish ${short.workout.name}: ${left} left from ${day}`
+}
+
+/** V6-08: the Workout's last Session note as Train shows it, "Note from Wed 7 Oct: …". */
+export function noteText(note: { at: number; text: string }, now: number): string {
+  return `Note from ${formatDay(new Date(note.at), new Date(now))}: ${note.text}`
 }
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

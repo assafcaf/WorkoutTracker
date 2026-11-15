@@ -513,3 +513,48 @@ describe('DashboardView V3', () => {
   })
 })
 
+
+describe('DashboardView V6 flow', () => {
+  const due = READY.kind === 'ready' ? READY.due! : null!
+
+  test('V6-11 after a short Session the header says what is left of the Workout, and Start starts it', () => {
+    const props = renderView({
+      data: { ...READY, due: { ...due, finish: 'Finish Workout A: 6 lifts left from Mon 12 Oct' } } as DashboardData,
+    })
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
+    expect(screen.getByText('Finish Workout A: 6 lifts left from Mon 12 Oct')).toBeTruthy()
+    expect(screen.queryByText(/last done/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
+    expect(props.onStartWorkout).toHaveBeenCalledWith('workout-a')
+  })
+
+  test('V6-08 the Workout\'s last Session note shows under the date as one quiet line', () => {
+    renderView({
+      data: {
+        ...READY,
+        due: { ...due, note: 'Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight.' },
+      } as DashboardData,
+    })
+    const note = screen.getByText('Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight.')
+    expect(note).toHaveClass('dashboard-note')
+    expect(note.closest('header')).not.toBeNull()
+    const here = dirname(fileURLToPath(import.meta.url))
+    const css = readFileSync(join(here, 'DashboardScreen.css'), 'utf-8')
+    expect(declarationsFor(css, '.dashboard-note').get('white-space')).toBe('nowrap')
+    expect(declarationsFor(css, '.dashboard-note').get('text-overflow')).toBe('ellipsis')
+  })
+
+  test('V6-08 a Workout with no note shows no note line', () => {
+    renderView()
+    expect(document.querySelector('.dashboard-note')).toBeNull()
+  })
+
+  test('V6 each done day of the week strip is at least 44 px wide to the touch', () => {
+    const here = dirname(fileURLToPath(import.meta.url))
+    const css = readFileSync(join(here, 'DashboardScreen.css'), 'utf-8')
+    const inset = declarationsFor(css, '.dashboard-week button.calendar-day::before').get('inset') ?? ''
+    // Top and bottom reach 44 px tall; left and right reach out to 44 px wide whatever the column.
+    expect(inset.startsWith('calc((1.75rem - var(--tap-min)) / 2) ')).toBe(true)
+    expect(inset.endsWith(' min(-2px, calc((100% - var(--tap-min)) / 2))')).toBe(true)
+  })
+})

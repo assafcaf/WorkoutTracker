@@ -193,6 +193,7 @@ export function SessionSummary({
     0,
   )
   const partial = plannedSets > 0 && working < plannedSets
+  const short = plannedSets > 0 && working * 2 < plannedSets
   const comparison = partial ? null : comparisonText(session, all, resolve, plannedSets, bodyLog)
   // V3-02 / V4-03: a partial Exercise makes no comparison, "2 of 4 sets".
   const plannedSetsOf = (exerciseId: string): number | undefined =>
@@ -221,7 +222,7 @@ export function SessionSummary({
     return `${name(change.exerciseId)}: ${change.from} to ${change.to} sets`
   }
 
-  const setsText = partial ? `${working} of ${plannedSets} sets` : plural(working, 'set', 'sets')
+  const setsText = `${short ? 'Short session · ' : ''}${partial ? `${working} of ${plannedSets} sets` : plural(working, 'set', 'sets')}`
 
   async function share(): Promise<void> {
     const text = [
@@ -274,6 +275,13 @@ export function SessionSummary({
               <span className="session-summary-kpi-value">{`${durationValue} ${durationUnit}`}</span>
             </span>
             {' · '}
+            {/* V6-11: under half the planned Sets, it says so; Train keeps this Workout next. */}
+            {short ? (
+              <>
+                <span data-kpi="short">Short session</span>
+                {' · '}
+              </>
+            ) : null}
             <span data-kpi="sets">
               <span className="session-summary-kpi-value">{working}</span>
               {partial ? ` of ${plannedSets} sets` : working === 1 ? ' set' : ' sets'}
