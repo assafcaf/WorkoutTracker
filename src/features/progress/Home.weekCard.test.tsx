@@ -49,8 +49,8 @@ describe('E22-T8 O20 the Last week card', () => {
     expect(row(c, 'Sets')).toContain('same')
     expect(row(c, 'Volume')).toContain('15,908 kg')
     expect(row(c, 'Volume')).toContain('−11 %')
-    expect(row(c, 'PRs')).toContain('15')
-    expect(row(c, 'PRs')).toContain('−1')
+    // v6 §6.2: the PRs row is cut until the shared PR rule counts real records only.
+    expect(within(c).queryByText('PRs')).toBeNull()
   })
 
   test('O20 a drop in Sessions and Sets shows its signed difference', async () => {
@@ -61,16 +61,18 @@ describe('E22-T8 O20 the Last week card', () => {
     expect(row(c, 'Sets')).toContain('−22')
     expect(row(c, 'Volume')).toContain('11,000 kg')
     expect(row(c, 'Volume')).toContain('−31 %')
-    expect(row(c, 'PRs')).toContain('−6')
+    expect(within(c).queryByText('PRs')).toBeNull()
   })
 
   test('O20 sits above This week', async () => {
     await mount(fixture, THU_15)
     const c = await card()
-    // V2-05: This week moved to Train; the card now sits above the row that opens the lifts.
+    // V2-05: This week moved to Train. v6 §6.2: the card sits under the Lifts list and above Muscles.
     expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
-    const lifts = await waitFor(() => screen.getByRole('button', { name: /All 14 lifts/ }), SETTLE)
-    expect(c.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const lifts = await waitFor(() => screen.getByRole('region', { name: 'Lifts' }), SETTLE)
+    expect(lifts.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const muscles = screen.getByRole('button', { name: /^Muscles/ })
+    expect(c.compareDocumentPosition(muscles) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   test('O20 a first week on record says so instead of showing changes', async () => {
