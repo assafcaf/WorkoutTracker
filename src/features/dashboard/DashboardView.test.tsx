@@ -469,6 +469,29 @@ describe('DashboardView V3', () => {
     expect(screen.getByText('Tue 13 Oct')).toBeTruthy()
   })
 
+  test('V6 V5-14 with onOpenSession each done day is its own button, opening that workout', () => {
+    const onOpenSession = vi.fn()
+    const onOpenSessions = vi.fn()
+    const week: WeekStrip = {
+      ...WEEK,
+      days: WEEK.days.map((day, at) =>
+        at === 0 ? { ...day, sessionId: 'mon-session', label: 'Workout B, Mon 12 Oct' } : day,
+      ),
+    }
+    renderView({ data: { ...READY, week }, onOpenSessions, onOpenSession })
+
+    const day = screen.getByRole('button', { name: 'Workout B, Mon 12 Oct' })
+    expect(day).toHaveClass('calendar-day')
+    fireEvent.click(day)
+    expect(onOpenSession).toHaveBeenCalledWith('mon-session')
+    expect(onOpenSessions).not.toHaveBeenCalled()
+    // Days with nothing done are no buttons; Sessions is still one tap away, on the count.
+    expect(document.querySelectorAll('.dashboard-week button.calendar-day')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: /^This week, 1 of 3.*Open Sessions$/ }))
+    expect(onOpenSessions).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: /^This week/ }).querySelector('button')).toBeNull()
+  })
+
   test('V3-09 the week strip is one button that opens Sessions', () => {
     const onOpenSessions = vi.fn()
     renderView({ data: { ...READY, week: WEEK }, onOpenSessions })

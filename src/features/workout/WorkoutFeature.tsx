@@ -1334,6 +1334,8 @@ export function WorkoutFeature({
           onOpenSettings={() => chrome.onOpenSettings?.()}
           // The week strip opens Sessions (V3-09).
           onOpenSessions={() => navigate({ tab: 'history' })}
+          // V5-14: a done day opens that workout's summary, as the Sessions calendar does.
+          onOpenSession={(sessionId) => navigate({ tab: 'history', sessionId })}
           // A backup due is the gear's marker here (S1); Settings spells it out in full.
           notices={
             !storageAvailable || staleActiveProgramNotice ? (

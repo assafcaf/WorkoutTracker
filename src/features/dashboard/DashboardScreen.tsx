@@ -39,6 +39,8 @@ export type DashboardScreenProps = {
   resume?: DashboardResume | null
   /** Opens the Sessions tab, from the week strip (V3-09). */
   onOpenSessions?(): void
+  /** V5-14: opens a past Session's summary, from its day on the week strip. */
+  onOpenSession?(sessionId: string): void
 }
 
 type Loaded = {
@@ -110,6 +112,7 @@ export function DashboardScreen({
   notices,
   resume,
   onOpenSessions,
+  onOpenSession,
 }: DashboardScreenProps): JSX.Element {
   const services = useServices()
   const { sync, syncNow } = useSyncControls()
@@ -216,6 +219,7 @@ export function DashboardScreen({
       notices={notices}
       resume={resume}
       onOpenSessions={onOpenSessions}
+      onOpenSession={onOpenSession}
     />
   )
 }

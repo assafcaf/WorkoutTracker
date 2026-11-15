@@ -70,6 +70,8 @@ export type DashboardViewProps = {
   resume?: DashboardResume | null
   /** Opens the Sessions tab: the week strip is a button to it (V3-09). */
   onOpenSessions?(): void
+  /** V5-14: opens one past Session's summary: each done day of the week strip is a button to it. */
+  onOpenSession?(sessionId: string): void
 }
 
 /** The sync state in words: the cloud button's name and tooltip (V3-08), never a visible line. */
@@ -120,11 +122,20 @@ function SyncButton({ sync, onSync }: { sync: DashboardSync; onSync(): void }): 
  * with the same cells (the workout's letter in its colour, today outlined), then done of
  * planned. The whole strip is one button to Sessions; its name says the week in words.
  */
-function WeekStripRow({ week, onOpen }: { week: WeekStrip; onOpen?: () => void }): JSX.Element {
+function WeekStripRow({
+  week,
+  onOpen,
+  onOpenSession,
+}: {
+  week: WeekStrip
+  onOpen?: () => void
+  onOpenSession?: (sessionId: string) => void
+}): JSX.Element {
   const done = week.days
     .filter((day) => day.workout)
     .map((day) => `${day.workoutName ?? day.workout} ${day.name}`)
   const label = `This week, ${week.done} of ${week.planned}: ${done.length > 0 ? done.join(', ') : 'no sessions yet'}`
+  if (onOpenSession) return <WeekStripDays week={week} label={label} onOpen={onOpen} onOpenSession={onOpenSession} />
   const content = (
     <>
       <span className="dashboard-week-grid" aria-hidden="true">
@@ -164,6 +175,70 @@ function WeekStripRow({ week, onOpen }: { week: WeekStrip; onOpen?: () => void }
         <Icon name="ChevronRight" size={16} />
       </span>
     </button>
+  )
+}
+
+/**
+ * V5-14: the week strip as the Sessions calendar draws it, each done day its own button into
+ * that workout's summary (named "Workout B, Mon 12 Oct"); the count and chevron are the button
+ * to Sessions, named for the week as the whole strip was.
+ */
+function WeekStripDays({
+  week,
+  label,
+  onOpen,
+  onOpenSession,
+}: {
+  week: WeekStrip
+  label: string
+  onOpen?: () => void
+  onOpenSession: (sessionId: string) => void
+}): JSX.Element {
+  const count = (
+    <>
+      <span className="dashboard-week-count" aria-hidden="true">
+        {`${week.done} of ${week.planned}`}
+      </span>
+      {onOpen ? (
+        <span className="dashboard-week-chevron" aria-hidden="true">
+          <Icon name="ChevronRight" size={16} />
+        </span>
+      ) : null}
+    </>
+  )
+  return (
+    <div className="dashboard-week dashboard-week--days" role="group" aria-label={label}>
+      <span className="dashboard-week-grid">
+        <span className="dashboard-week-initials" aria-hidden="true">
+          {week.days.map((day) => (
+            <span key={day.key} className="dashboard-week-initial" data-today={day.today || undefined}>
+              {day.initial}
+            </span>
+          ))}
+        </span>
+        <CalendarWeekCells
+          cells={week.days.map((day) => {
+            const sessionId = day.sessionId
+            return {
+              key: day.key,
+              letter: day.workout,
+              tone: day.tone ?? null,
+              today: day.today,
+              future: day.future ?? false,
+              onOpen: sessionId === undefined ? undefined : () => onOpenSession(sessionId),
+              label: day.label,
+            }
+          })}
+        />
+      </span>
+      {onOpen ? (
+        <button type="button" className="dashboard-week-open cell" aria-label={`${label}. Open Sessions`} onClick={onOpen}>
+          {count}
+        </button>
+      ) : (
+        count
+      )}
+    </div>
   )
 }
 
@@ -385,7 +460,7 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
       offered && due && offered.workoutId !== due.workoutId ? (data.cards?.[offered.workoutId] ?? null) : data.card
     body = (
       <>
-        {data.week ? <WeekStripRow week={data.week} onOpen={props.onOpenSessions} /> : null}
+        {data.week ? <WeekStripRow week={data.week} onOpen={props.onOpenSessions} onOpenSession={props.onOpenSession} /> : null}
         {card ? <DueCard card={card} /> : null}
       </>
     )

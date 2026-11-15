@@ -1,4 +1,5 @@
 import type { Resolve } from '../../domain/muscles'
+import { formatDay } from '../../domain/dates'
 import { lastEntriesOf } from '../../domain/planLoad'
 import { presetForSet } from '../../domain/prefill'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
@@ -57,6 +58,10 @@ export type WeekStripDay = {
   workoutName?: string | null
   today: boolean
   future?: boolean
+  /** V5-14: the Session done that day, which its strip day opens. */
+  sessionId?: string
+  /** V5-14: that day's button name, "Workout B, Mon 12 Oct". */
+  label?: string
 }
 
 /** This week at the top of Train (V2-05): one cell per day, and Sessions done of planned. */
@@ -171,6 +176,7 @@ export function weekStripOf(sessions: Session[], program: Program, now: number, 
       workoutName: session ? workoutName(session.workoutId) : null,
       today: i === since,
       future: i > since,
+      ...(session ? { sessionId: session.id, label: `${workoutName(session.workoutId)}, ${formatDay(date, today)}` } : {}),
     })
   }
   return { done: week?.sessions.length ?? 0, planned: program.sessionsPerWeek, days }
