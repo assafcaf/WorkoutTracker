@@ -1,7 +1,45 @@
 import { useEffect, useRef, useState } from 'react'
+import { shortDay } from '../domain/lifts'
+import type { MyLift } from '../domain/myLifts'
+import { formatSet } from '../domain/setText'
 import type { LibraryExercise, Muscle } from '../types'
 import { MuscleChip } from './MuscleChip'
 import './LibraryList.css'
+
+export type MyLiftsListProps = {
+  /** The lifter's own lifts, in the order to show them (`myLifts`). */
+  lifts: MyLift[]
+  now: Date
+  /** Opens that lift's history: the one action of every row (V6-03). */
+  onOpenLift(exerciseId: string): void
+}
+
+/**
+ * The Exercises tab's "My lifts" (V6-03 step 3): one card, one 52 px button per lift, its name
+ * over its latest top Set and when (`62.5 × 8 · 13 Oct`), or "Not logged yet".
+ */
+export function MyLiftsList({ lifts, now, onOpenLift }: MyLiftsListProps): JSX.Element {
+  return (
+    <ul className="library-list my-lifts-list" aria-label="My lifts">
+      {lifts.map((lift) => (
+        <li key={lift.exerciseId} className="library-row">
+          <button
+            type="button"
+            className="library-row-button my-lifts-row cell"
+            onClick={() => onOpenLift(lift.exerciseId)}
+          >
+            <span className="library-row-name">{lift.name}</span>
+            <span className="my-lifts-latest">
+              {lift.top !== null && lift.lastAt !== null
+                ? `${formatSet(lift.top)} · ${shortDay(lift.lastAt, now)}`
+                : 'Not logged yet'}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 /** Rows per page of the Previous/Next pager (O16-O18). */
 const PAGE_SIZE = 10
