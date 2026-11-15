@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test } from 'vitest'
@@ -5,6 +8,7 @@ import { db } from '../../storage/db'
 import { createServices } from '../../services'
 import { ServicesProvider } from '../ServicesProvider'
 import { SessionsScreen } from './SessionsScreen'
+import { declarationsFor } from '../../test/cssAudit'
 
 // E22-T6, O15. "Now" is Tue 13 Oct 2026, 18:00 local.
 
@@ -77,4 +81,28 @@ test('E22-T6 O15 a day with two Sessions lists both inline, each opening its sum
   await userEvent.click(within(list).getByRole('button', { name: /Workout B/ }))
   const dialog = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   expect(within(dialog).getByRole('heading', { name: 'Workout B' })).toBeVisible()
+})
+
+// V1-29: calendar days are big enough to tap, and a trained day says its Workout by a letter,
+// not by hue alone.
+test('V1-29 trained calendar days carry their Workout letter, and the key repeats it', async () => {
+  await seed('mon', at(10, 12), 'workout-b')
+  await seed('fri', at(10, 9), 'workout-a')
+  const cal = await calendar()
+
+  expect(within(cal).getByRole('button', { name: 'Fri 9 Oct: Workout A' })).toHaveTextContent(/^A$/)
+  expect(within(cal).getByRole('button', { name: 'Mon 12 Oct: Workout B' })).toHaveTextContent(/^B$/)
+  const key = cal.querySelector('.sessions-calendar-side') as HTMLElement
+  expect(key).toHaveTextContent(/A\s*Workout A/)
+  expect(key).toHaveTextContent(/B\s*Workout B/)
+})
+
+test('V1-29 calendar day cells are at least 32 by 32', () => {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const css = readFileSync(join(here, 'SessionsScreen.css'), 'utf-8')
+  const day = declarationsFor(css, '.sessions-calendar-day')
+  expect(parseInt(day.get('width') ?? '0', 10)).toBeGreaterThanOrEqual(32)
+  expect(parseInt(day.get('height') ?? '0', 10)).toBeGreaterThanOrEqual(32)
+  const columns = declarationsFor(css, '.sessions-calendar-grid').get('grid-template-columns') ?? ''
+  expect(columns).toMatch(/repeat\(7, (3[2-9]|[4-9]\d)px\)/)
 })

@@ -73,6 +73,17 @@ function workoutColorOf(session: Session, programs: Program[]): string {
   return index === undefined || index < 0 ? 'gone' : WORKOUT_COLORS[index % WORKOUT_COLORS.length]
 }
 
+/**
+ * The one letter a calendar day prints for its Workout (V1-29), so A and B differ by more than
+ * hue: the name's last word when it is a single letter or digit ("Workout A" -> A), else the
+ * name's first letter.
+ */
+function workoutLetterOf(name: string): string {
+  const last = name.trim().split(/\s+/).pop() ?? ''
+  if (/^[\p{L}\p{N}]$/u.test(last)) return last.toUpperCase()
+  return (name.trim().charAt(0) || '?').toUpperCase()
+}
+
 /** The local midnight of `ms`. */
 function midnightOf(ms: number): number {
   const day = new Date(ms)
@@ -155,7 +166,9 @@ function SessionsCalendar({
                       trained.length === 1 ? onOpen(trained[0].id) : setOpenDay(openDay === day.at ? null : day.at)
                     }
                     {...flags}
-                  />
+                  >
+                    <span aria-hidden="true">{workoutLetterOf(workoutNameOf(trained[0], programs))}</span>
+                  </button>
                 )
               })}
             </div>
@@ -179,7 +192,9 @@ function SessionsCalendar({
         <span className="sessions-muted-xs sessions-calendar-count-unit">{count === 1 ? 'session' : 'sessions'}</span>
         {[...shown].map(([name, color]) => (
           <span key={name} className="sessions-calendar-key">
-            <i className="sessions-calendar-day" data-workout={color} aria-hidden="true" />
+            <i className="sessions-calendar-day" data-workout={color} aria-hidden="true">
+              {workoutLetterOf(name)}
+            </i>
             {name}
           </span>
         ))}
