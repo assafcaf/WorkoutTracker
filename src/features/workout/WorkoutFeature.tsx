@@ -7,9 +7,9 @@ import { applyBodyweight } from '../../domain/bodyweight'
 import { validateEntry } from '../../domain/dial'
 import { nextExerciseAfter } from '../../domain/flow'
 import { currentExerciseId, planFor } from '../../domain/liveProgress'
-import { exerciseVerdict, liveRecordCount } from '../../domain/exerciseVerdict'
+import { exerciseDoneLine, liveRecordCount } from '../../domain/exerciseVerdict'
+import { formatDay } from '../../domain/dates'
 import { prMoment } from '../../domain/prMoment'
-import type { PrMoment } from '../../domain/prMoment'
 import { presetForSet } from '../../domain/prefill'
 import { sessionPlans } from '../../domain/sessionPlans'
 import { workingSets } from '../../domain/setKind'
@@ -102,10 +102,10 @@ type OpenSet = {
   /** A logged Set to open for editing: a done cell tapped in the All view. */
   editSetIndex?: number
   /**
-   * V3-01: the Exercise this one took over from when its last Set was logged, with that Set's
-   * Record (if any) and log message, for the verdict line over the Get ready card.
+   * V3-01: the Exercise this one took over from when its last Set was logged, with its last
+   * time's Sets and the log message, for the Just done block over the dock (V4-01).
    */
-  handover?: { exerciseId: string; toast: PrMoment | null; message: string }
+  handover?: { exerciseId: string; history: SetEntry[]; message: string }
 }
 
 /** The detail overlay (E5-T8, E5-T15) or the ranked alternatives overlay (E5-T12). */
@@ -387,6 +387,27 @@ export function WorkoutFeature({
   useEffect(() => {
     onInSession(inSession)
   }, [inSession, onInSession])
+
+  // V4-07: the Exercise after the open one, read ahead, so its last Set hands over in the same
+  // render as the log (no frame of the done state). Only its history and weight step; the note
+  // follows after the hand-over.
+  const prefetched = useRef<OpenSet | null>(null)
+  const aheadId =
+    session && located && openSet ? nextExerciseAfter(located.workout, session, openSet.exerciseId) : null
+  useEffect(() => {
+    if (aheadId === null || prefetched.current?.exerciseId === aheadId) return
+    let cancelled = false
+    loadOpenSet(services, aheadId, 1)
+      .then((opened) => {
+        if (!cancelled) prefetched.current = opened
+      })
+      .catch(() => {
+        // Not read ahead: the hand-over reads it then.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [services, aheadId])
 
   // Minimising takes the set screen down; it comes back on the Set it had moved on to by
   // logging, not the one it was first opened on.
@@ -901,8 +922,21 @@ export function WorkoutFeature({
         latest === null || latestPlan === undefined
           ? null
           : { entry: latest, planRestSeconds: latestPlan.restSeconds }
-      const nextId = nextExerciseAfter(located.workout, session, openSet.exerciseId)
-      const nextName = nextId === null ? null : (resolveListExercise(nextId)?.name ?? null)
+      // V4-07: a finished Exercise reopened from All goes "Back to" the one the Session is on.
+      const onNow = currentExerciseId(located.workout, session)
+      const backId =
+        onNow !== null && onNow !== openSet.exerciseId
+          ? onNow
+          : nextExerciseAfter(located.workout, session, openSet.exerciseId)
+      const backName = backId === null ? null : (resolveListExercise(backId)?.name ?? null)
+      const backPlan = backId === null ? undefined : planFor(located.workout, session, backId)
+      const backSet =
+        backId === null || backPlan === undefined
+          ? undefined
+          : Math.min(
+              backPlan.sets,
+              workingSets(session.entries.filter((entry) => entry.exerciseId === backId)).length + 1,
+            )
       const earlierSessions = sessions.filter(
         (earlier) => earlier.finishedAt !== null && earlier.startedAt < session.startedAt,
       )
@@ -917,10 +951,24 @@ export function WorkoutFeature({
           (a, b) => a.setIndex - b.setIndex,
         )
         const last = fromSets[fromSets.length - 1]
+        // V4-01: its Sets and one comparison with last time, its Records counted.
+        const fromAll = session.entries.filter((entry) => entry.exerciseId === from.exerciseId)
+        const isRecord = (entry: SetEntry): boolean =>
+          earlierSessions.length > 0 &&
+          prMoment(fromExercise, fromPlan, earlierSessions, { ...session, entries: fromAll }, entry) !== null
+        const lastFirst = workingSets(from.history.filter((entry) => entry.exerciseId === from.exerciseId)).sort(
+          (a, b) => a.setIndex - b.setIndex,
+        )[0]
         return {
           name: fromExercise.name,
-          verdict: exerciseVerdict(fromExercise, fromPlan, earlierSessions, session),
-          toast: from.toast,
+          line: exerciseDoneLine({
+            today: fromAll,
+            last: from.history.filter((entry) => entry.exerciseId === from.exerciseId),
+            lastDay: lastFirst === undefined ? '' : formatDay(new Date(lastFirst.loggedAt), new Date()),
+            plannedSets: fromPlan.sets,
+            isRecord,
+          }),
+          prs: fromSets.filter(isRecord).length,
           message: from.message,
           onAddSet: () => handleAddSetTo(from.exerciseId),
           effort:
@@ -1050,14 +1098,21 @@ export function WorkoutFeature({
               if (next !== null && next !== from) {
                 const fromSets = logged.entries.filter((entry) => entry.exerciseId === from)
                 const entry = latestSet(fromSets)
-                const toast =
-                  entry === null ? null : prMoment(exercise, plan, earlierSessions, logged, entry)
                 const message =
                   entry === null ? '' : loggedText(workingSets(fromSets).length, entry.weightKg, entry.reps)
                 const count = logged.entries.filter((candidate) => candidate.exerciseId === next).length
+                const handover = { exerciseId: from, history: openSet.history, message }
+                // V4-07: with the next Exercise read ahead, the hand-over lands in the same render
+                // as the log, so the done state never paints in between.
+                const ahead = prefetched.current
+                if (ahead !== null && ahead.exerciseId === next) {
+                  setOpenSet({ ...ahead, setIndex: count + 1, handover })
+                  loadExerciseNote(next)
+                  return
+                }
                 loadOpenSet(services, next, count + 1)
                   .then((opened) => {
-                    setOpenSet({ ...opened, handover: { exerciseId: from, toast, message } })
+                    setOpenSet({ ...opened, handover })
                     loadExerciseNote(next)
                   })
                   .catch(() => {
@@ -1075,18 +1130,19 @@ export function WorkoutFeature({
             onOpenInfo={handleOpenInfoForExercise}
             onOpenAlternatives={handleOpenAlternatives}
             onOpenHistory={setHistoryFor}
-            upNext={nextName}
+            upNext={backName}
+            upNextSet={backSet}
             handover={handover}
             onFinishWorkout={handleFinish}
             // V3-01: an Exercise reopened from All once done offers "Go to <next>" on Now, where
             // the Session's rest keeps running; with none left, Finish workout.
             onFinishExercise={() => {
-              if (nextId === null) {
+              if (backId === null) {
                 setView('list')
                 return
               }
-              const logged = session.entries.filter((entry) => entry.exerciseId === nextId).length
-              handleOpenSet(nextId, logged + 1)
+              const logged = session.entries.filter((entry) => entry.exerciseId === backId).length
+              handleOpenSet(backId, logged + 1)
             }}
           />
         </AppShell>
@@ -1210,6 +1266,7 @@ export function WorkoutFeature({
       {summarySession ? (
         <SessionSummary
           weekStartsOn={weekStartData.status === 'ready' ? weekStartData.data : 1}
+          program={programs.find((program) => program.id === summarySession.programId)}
           session={summarySession}
           bodyLog={bodyLog}
           resolve={resolveListExercise}

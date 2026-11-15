@@ -105,7 +105,7 @@ test('a workout in progress is a full-screen Live session: no tab bar, a minimis
 
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
   await screen.findByText('Set 1 of 4', undefined, SETTLE)
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
@@ -114,17 +114,17 @@ test('a workout in progress is a full-screen Live session: no tab bar, a minimis
   expect(within(header).getByRole('heading', { level: 1, name: 'Workout A' })).toBeVisible()
   expect(within(header).getByRole('timer', { name: 'Workout time' })).toBeVisible()
   expect(within(header).getByRole('button', { name: 'Finish' })).toHaveClass('btn-secondary')
-  expect(within(header).getByRole('radio', { name: 'All' })).toBeChecked()
+  expect(within(header).getByRole('button', { name: 'Now' })).toBeVisible()
 })
 
 test('Now on the exercise list opens the set the session is on', async () => {
   const user = userEvent.setup()
   await renderApp()
   await logFirstBackSquatSet(user)
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)
 
-  await user.click(screen.getByRole('radio', { name: 'Now' }))
+  await user.click(screen.getByRole('button', { name: 'Now' }))
 
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('heading', { level: 1, name: 'Back squat' })).toBeVisible()

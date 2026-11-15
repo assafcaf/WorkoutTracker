@@ -408,7 +408,7 @@ test('S13 no "Similar exercises" row offers "Do this instead" when ExerciseDetai
   for (const name of TOP_FIVE_NAMES) {
     expect(openControlFor(name)).toBeVisible()
   }
-  expect(screen.queryByRole('button', { name: 'Do this instead' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^Do .+ instead$/ })).not.toBeInTheDocument()
 })
 
 test('S13 every "Similar exercises" row offers "Do this instead" when ExerciseDetail is opened from a live set, and tapping it calls onChoose with that row\'s id', async () => {
@@ -428,10 +428,10 @@ test('S13 every "Similar exercises" row offers "Do this instead" when ExerciseDe
   )
 
   for (const name of TOP_FIVE_NAMES) {
-    expect(within(rowFor(name)).getByRole('button', { name: 'Do this instead' })).toBeVisible()
+    expect(within(rowFor(name)).getByRole('button', { name: `Do ${name} instead` })).toBeVisible()
   }
 
-  await user.click(within(rowFor('Beta Curl')).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(rowFor('Beta Curl')).getByRole('button', { name: 'Do Beta Curl instead' }))
 
   expect(onChoose).toHaveBeenCalledWith('Beta_Curl')
 })

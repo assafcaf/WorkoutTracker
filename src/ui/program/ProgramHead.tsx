@@ -1,4 +1,3 @@
-import { Switch } from '../controls'
 import { Icon } from '../icons'
 import '../ProgramPage.css'
 
@@ -36,16 +35,29 @@ export function ProgramHeadActions({
   )
 }
 
-export type ProgramDeloadWeekProps = { on: boolean; onChange(on: boolean): void }
+/**
+ * "Start a deload week", in the head's overflow (the Programs panel) while no deload is on
+ * (V4-08): a choice made every 6-8 weeks, so it is not a control on the page itself.
+ */
+export function ProgramDeloadStart({ onStart }: { onStart(): void }): JSX.Element {
+  return (
+    <button type="button" className="program-deload-start btn-secondary" onClick={onStart}>
+      Start a deload week
+    </button>
+  )
+}
 
 /**
- * The Deload week switch, under the Program's head (V1-22): a choice about the Program's week,
- * kept off Train, which only says "Deload week · Presets 10% lighter" while it is on.
+ * The one line under the Program's title while a deload is on (V4-08): "Deload week · lighter
+ * Presets · End", End turning it off. Train says "Deload week · Presets 10% lighter" meanwhile.
  */
-export function ProgramDeloadWeek({ on, onChange }: ProgramDeloadWeekProps): JSX.Element {
+export function ProgramDeloadLine({ onEnd }: { onEnd(): void }): JSX.Element {
   return (
-    <div className="program-deload-week">
-      <Switch label="Deload week" checked={on} onChange={onChange} />
-    </div>
+    <p className="program-deload-line">
+      <span>Deload week · lighter Presets · </span>
+      <button type="button" className="program-deload-end btn-quiet" aria-label="End deload week" onClick={onEnd}>
+        End
+      </button>
+    </p>
   )
 }

@@ -9,7 +9,7 @@ import { ProgramEditor } from '../../ui/ProgramEditor'
 import { weekStart, type Weekday } from '../../domain/stats/weeks'
 import { isDeloadWeek } from '../../domain/deload'
 import { ProgramPage } from '../../ui/ProgramPage'
-import { ProgramDeloadWeek, ProgramHeadActions } from '../../ui/program/ProgramHead'
+import { ProgramDeloadLine, ProgramDeloadStart, ProgramHeadActions } from '../../ui/program/ProgramHead'
 import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
 import { useServiceData } from '../useServiceData'
 import { useServices } from '../ServicesProvider'
@@ -212,6 +212,12 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   const active = offeredPrograms.find((program) => program.id === activeProgramId) ?? null
   const at = now()
   const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
+  // V4-08: the Deload week is started from the head's overflow and, while on, is one line under
+  // the title with End; Train's Presets follow the same stored week.
+  const deloadOn = deloadData.status === 'ready' && isDeloadWeek(deloadData.data, at, weekStartsOn)
+  function setDeload(on: boolean): void {
+    void services.preferences.setDeloadWeek(on ? weekStart(at, weekStartsOn) : null).catch(() => undefined)
+  }
   return (
     <AppShell
       title={active ? active.name : CHOOSE_TITLE}
@@ -227,14 +233,7 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         ) : undefined
       }
     >
-      {active ? (
-        <ProgramDeloadWeek
-          on={deloadData.status === 'ready' && isDeloadWeek(deloadData.data, at, weekStartsOn)}
-          onChange={(on) => {
-            void services.preferences.setDeloadWeek(on ? weekStart(at, weekStartsOn) : null).catch(() => undefined)
-          }}
-        />
-      ) : null}
+      {active && deloadOn ? <ProgramDeloadLine onEnd={() => setDeload(false)} /> : null}
       <ProgramPage
         head="none"
         programs={offeredPrograms}
@@ -256,6 +255,16 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         bundledProgramIds={new Set(bundledPrograms.map((program) => program.id))}
         programsOpen={programsOpen}
         onProgramsOpenChange={setProgramsOpen}
+        programsActions={
+          active && deloadData.status === 'ready' && !deloadOn ? (
+            <ProgramDeloadStart
+              onStart={() => {
+                setDeload(true)
+                setProgramsOpen(false)
+              }}
+            />
+          ) : null
+        }
         onBrowse={(muscles) => props.navigate({ tab: 'exercises', muscles })}
       />
     </AppShell>

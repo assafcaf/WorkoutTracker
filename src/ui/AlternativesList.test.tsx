@@ -63,7 +63,10 @@ test('S6 AlternativesList lists every ranked alternative, each offering "Do this
   expect(screen.getAllByRole('listitem')).toHaveLength(49)
 
   const hammerCurls = rowNamed('Hammer Curls')
-  expect(within(hammerCurls).getByRole('button', { name: 'Do this instead' })).toBeVisible()
+  const choose = within(hammerCurls).getByRole('button', { name: 'Do Hammer Curls instead' })
+  expect(choose).toBeVisible()
+  // The visible label stays short; only the accessible name carries the Exercise (V2-14).
+  expect(choose).toHaveTextContent('Do this instead')
 })
 
 test('S6 typing in the search box narrows the alternatives list by name', async () => {
@@ -104,10 +107,40 @@ test('S7 tapping "Do this instead" on a row calls onChoose with that alternative
     />,
   )
 
-  await user.click(within(rowNamed('Hammer Curls')).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(rowNamed('Hammer Curls')).getByRole('button', { name: 'Do Hammer Curls instead' }))
 
   expect(onChoose).toHaveBeenCalledTimes(1)
   expect(onChoose).toHaveBeenCalledWith('Hammer_Curls')
+})
+
+// --- V2-14 (docs/ux-expert/iterations/v2/report.md) -----------------------------------------
+
+test('V2-14 no two swap buttons share an accessible name, and each names its own Exercise', async () => {
+  const { library, target } = await alternativesFixture()
+
+  render(
+    <AlternativesList
+      target={target}
+      library={library}
+      gymEquipment={null}
+      onChoose={vi.fn()}
+      onOpenDetail={vi.fn()}
+      limit={11}
+    />,
+  )
+
+  const rows = screen.getAllByRole('listitem')
+  expect(rows).toHaveLength(11)
+  const names = rows.map((row) => {
+    const choose = within(row).getAllByRole('button').find((button) => button.classList.contains('alternatives-row-choose'))
+    if (!choose) throw new Error(`no swap button in the row for "${rowName(row)}"`)
+    const name = choose.getAttribute('aria-label') ?? ''
+    expect(within(row).getByRole('button', { name })).toBe(choose)
+    expect(name).toBe(`Do ${rowName(row)} instead`)
+    return name
+  })
+  expect(new Set(names).size).toBe(names.length)
+  expect(screen.queryByRole('button', { name: 'Do this instead' })).toBeNull()
 })
 
 // --- S12: an equipment filter that leaves nothing explains itself -----------------------------
