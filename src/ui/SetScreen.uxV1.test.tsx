@@ -203,8 +203,9 @@ test('V1-07 during Rest the Next line ends with the per-side plates', () => {
     initial: [set(1, 60, 10, BASE)],
     restFrom: { entry: set(1, 60, 10, BASE), planRestSeconds: 180 },
   })
-  const next = screen.getByRole('button', { name: /^Next: set 2/ })
-  expect(next.textContent).toMatch(/· Per side: 20$/)
+  // V2-02: the Get ready card names the plates, as the change from the bar just lifted.
+  const card = screen.getByRole('region', { name: 'Get ready' })
+  expect(within(card).getByText('Same plates · per side: 20')).toBeVisible()
 })
 
 test('V1-07 the tools sheet no longer has a Plates segment', async () => {

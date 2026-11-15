@@ -86,7 +86,9 @@ async function openExercise(user: UserEvent, exerciseName: string): Promise<void
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )
   // The screen changes after the click settles; wait for it so later sync reads do not race it.
-  await findSteppers()
+  // A done Exercise shows no steppers (V2-01), so its heading is what is waited for.
+  await screen.findByRole('heading', { name: exerciseName }, SETTLE)
+  unfoldSteppers()
 }
 
 /** What the exercise list shows as an exercise's set progress: "1/4". */
@@ -661,10 +663,16 @@ test('O11 the done state of back squat shows Up next: Lunges above Finish exerci
   const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
   await openExercise(user, 'Back squat')
 
-  const upNext = await screen.findByText('Up next: Lunges', undefined, SETTLE)
-  const finish = screen.getByRole('button', { name: 'Finish exercise' })
+  // V2-01: one primary names the next Exercise; Add set is a quiet text button above it, and no
+  // button reads Finish exercise.
+  const next = await screen.findByRole('button', { name: 'Next: Lunges' }, SETTLE)
+  const addSet = screen.getByRole('button', { name: 'Add set' })
 
-  expect(upNext.compareDocumentPosition(finish) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(next).toHaveClass('btn-primary', 'log-set')
+  expect(addSet).toHaveClass('btn-quiet')
+  expect(addSet.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Finish exercise' })).toBeNull()
+  expect(screen.queryByText(/^Up next/)).toBeNull()
 })
 
 test('O11 Finish exercise opens the next Exercise on Set 1 of its plan', async () => {
@@ -672,14 +680,12 @@ test('O11 Finish exercise opens the next Exercise on Set 1 of its plan', async (
   const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
   await openExercise(user, 'Back squat')
 
-  await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Next: Lunges' }, SETTLE))
 
-  // E19 O8: Finish exercise lands on the All list, Lunges' Set 1 marked next; the user opens it.
-  await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)
-  expect(screen.queryByText('Set 1 of 3')).toBeNull()
-  await user.click(await screen.findByRole('button', { name: /^Set 1 · .* · next$/ }))
+  // V2-01: the primary opens Lunges' Set 1 on Now, not the All list.
   expect(await screen.findByText('Set 1 of 3', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('heading', { name: 'Lunges' })).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'Now' })).toBeChecked()
 })
 
 test('O11 after Finish exercise the next set screen still counts the rest from the last Set', async () => {
@@ -687,9 +693,8 @@ test('O11 after Finish exercise the next set screen still counts the rest from t
   const { user } = renderFeature((await workoutAWithLogged(FOUR_SQUATS)).services)
   await openExercise(user, 'Back squat')
 
-  await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
-  await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)
-  await user.click(await screen.findByRole('button', { name: /^Set 1 · .* · next$/ }))
+  await user.click(await screen.findByRole('button', { name: 'Next: Lunges' }, SETTLE))
+  await screen.findByRole('heading', { name: 'Lunges' }, SETTLE)
 
   // Back squat's 180 s from T0, 100 s gone.
   await waitFor(async () => expect(await restReadoutText()).toBe('1:20'), SETTLE)
@@ -706,13 +711,11 @@ test('O11 Finish exercise skips a next Exercise whose Sets are all logged', asyn
   const { user } = renderFeature((await workoutAWithLogged([...FOUR_SQUATS, ...lunges])).services)
   await openExercise(user, 'Back squat')
 
-  expect(await screen.findByText('Up next: DB bench press', undefined, SETTLE)).toBeVisible()
-  await user.click(screen.getByRole('button', { name: 'Finish exercise' }))
+  await user.click(await screen.findByRole('button', { name: 'Next: DB bench press' }, SETTLE))
 
-  // E19 O8: the All list, with the skipped Exercise's successor marked next.
-  await screen.findByRole('button', { name: /^DB bench press/ }, SETTLE)
-  await user.click(await screen.findByRole('button', { name: /^Set 1 · .* · next$/ }))
+  // V2-01: straight to the skipped Exercise's successor, on Now.
   expect(await screen.findByText('Set 1 of 4', undefined, SETTLE)).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'DB bench press' })).toBeVisible()
 })
 
 test('O11 with every Exercise done there is no Up next line and Finish exercise returns to the list', async () => {
@@ -737,13 +740,14 @@ test('O11 with every Exercise done there is no Up next line and Finish exercise 
   const { user } = renderFeature((await workoutAWithLogged(all)).services)
   await openExercise(user, 'Back squat')
 
-  const finish = await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE)
-  expect(screen.queryByText(/^Up next/)).toBeNull()
-  await user.click(finish)
+  // With nothing up next the primary reads All exercises and returns to the list.
+  const all_ = await screen.findByRole('button', { name: 'All exercises' }, SETTLE)
+  expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
+  await user.click(all_)
 
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('4/4')
-  expect(screen.queryByRole('button', { name: 'Finish exercise' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'All exercises' })).toBeNull()
 })
 
 // --- E13-T9 O5/O6: the rest Dial, and "Use for this exercise" through programs.save -----------
@@ -1009,7 +1013,8 @@ test('O4 opening lunges with 2 warm-ups and 3 working Sets logged shows the done
   )
   await openExercise(user, 'Lunges')
 
-  expect(await screen.findByText('All 3 sets logged', undefined, SETTLE)).toBeVisible()
+  // The verdict stands where "All 3 sets logged" was (V2-11).
+  expect(await screen.findByText(/^Lunges done · /, undefined, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: /^Log set / })).toBeNull()
 })
 
@@ -1023,7 +1028,8 @@ test('O4 with back squat done and only warm-ups on lunges, Up next is Lunges', a
   )
   await openExercise(user, 'Back squat')
 
-  expect(await screen.findByText('Up next: Lunges', undefined, SETTLE)).toBeVisible()
+  // V2-01: the done state's primary names it.
+  expect(await screen.findByRole('button', { name: 'Next: Lunges' }, SETTLE)).toBeVisible()
 })
 
 test('O5 after a warm-up today, lunges opens on last time’s first working Set, not its warm-up', async () => {
@@ -1123,11 +1129,12 @@ test('O11 a saved Exercise note shows on the set screen of a new Session of that
 
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
-  // The note lives in the exercise tools sheet's Notes (S3b).
+  // The note shows on Now, one line read at the bar (V1-15), and in the tools sheet's Notes.
+  expect(screen.getByRole('button', { name: 'Exercise note: belt on, chalk' })).toBeVisible()
   await toolsRow(user)
   await user.click(screen.getByRole('radio', { name: 'Notes' }))
 
-  expect(await screen.findByText('belt on, chalk', undefined, SETTLE)).toBeVisible()
+  expect(await within(screen.getByRole('dialog')).findByText('belt on, chalk', undefined, SETTLE)).toBeVisible()
 })
 
 test('O11 Add note on the set screen stores the Exercise note under its id', async () => {
@@ -1146,7 +1153,7 @@ test('O11 Add note on the set screen stores the Exercise note under its id', asy
     async () => expect(await services.preferences.exerciseNote('back-squat')).toBe('pin 4'),
     SETTLE,
   )
-  expect(await screen.findByText('pin 4', undefined, SETTLE)).toBeVisible()
+  expect(await within(screen.getByRole('dialog')).findByText('pin 4', undefined, SETTLE)).toBeVisible()
   expect(await services.preferences.exerciseNote('bench-press')).toBeNull()
 })
 
@@ -1159,7 +1166,7 @@ test('O11 saving the Exercise note empty removes it', async () => {
   await toolsRow(user)
   await user.click(screen.getByRole('radio', { name: 'Notes' }))
 
-  await user.click(await screen.findByText('belt on', undefined, SETTLE))
+  await user.click(await within(screen.getByRole('dialog')).findByText('belt on', undefined, SETTLE))
   await user.clear(await screen.findByLabelText('Note', undefined, SETTLE))
   await user.click(screen.getByRole('button', { name: 'Save note' }))
 
@@ -1281,7 +1288,7 @@ test('O19 with the kind row, the Load Dial, a note and effort on, a Set matching
   await toolsRow(user, 'Set type')
   expect(screen.getByRole('group', { name: 'Set kind' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute('aria-pressed', 'true')
-  expect(await screen.findByText('hands under shoulders', undefined, SETTLE)).toBeVisible()
+  expect(await within(screen.getByRole('dialog')).findByText('hands under shoulders', undefined, SETTLE)).toBeVisible()
   await user.keyboard('{Escape}')
 
   await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))

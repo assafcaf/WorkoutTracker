@@ -7,6 +7,7 @@ import { applyBodyweight } from '../../domain/bodyweight'
 import { validateEntry } from '../../domain/dial'
 import { nextExerciseAfter } from '../../domain/flow'
 import { currentExerciseId, planFor } from '../../domain/liveProgress'
+import { liveRecordCount } from '../../domain/exerciseVerdict'
 import { presetForSet } from '../../domain/prefill'
 import { sessionPlans } from '../../domain/sessionPlans'
 import { workingSets } from '../../domain/setKind'
@@ -38,7 +39,6 @@ import { StorageUnavailableBanner } from '../../ui/StorageUnavailableBanner'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
 import { LiveSessionBar } from '../../ui/live/LiveSessionBar'
 import type { LiveView } from '../../ui/live/LiveSessionBar'
-import { UpNextRows } from '../../ui/live/UpNextRows'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
 import { ExercisePicker } from '../../ui/ExercisePicker'
 import { DashboardScreen } from '../dashboard/DashboardScreen'
@@ -837,6 +837,12 @@ export function WorkoutFeature({
           planned: workout.exercises.reduce((sum, plan) => sum + plan.sets, 0),
         }}
         setsLeft={plannedSetsLeft(workout, liveSession)}
+        prs={liveRecordCount(
+          sessions.filter((earlier) => earlier.finishedAt !== null && earlier.startedAt < liveSession.startedAt),
+          liveSession,
+          resolveListExercise,
+          (id) => planFor(workout, liveSession, id),
+        )}
       >
         <LiveSessionBar
           view={shown}
@@ -883,19 +889,6 @@ export function WorkoutFeature({
           <SetScreen
             key={`${openSet.exerciseId}#${openSet.setIndex}#${openSet.editSetIndex ?? ''}`}
             editSetIndex={openSet.editSetIndex}
-            upcoming={
-              <UpNextRows
-                workout={located.workout}
-                session={session}
-                resolve={resolveListExercise}
-                lastEntries={lastEntries}
-                sessions={sessions}
-                volumeBaseline={volumeBaseline}
-                currentId={openSet.exerciseId}
-                deload={session.deload === true}
-                onOpen={handleOpenSet}
-              />
-            }
             deload={session.deload === true}
             exercise={exercise}
             plates={isBarbell(libraryMap.get(exercise.libraryId)) ? (plateInventoryData.status === 'ready' ? plateInventoryData.data : null) : null}
@@ -1001,7 +994,16 @@ export function WorkoutFeature({
             onOpenAlternatives={handleOpenAlternatives}
             onOpenHistory={setHistoryFor}
             upNext={nextName}
-            onFinishExercise={() => setView('list')}
+            // V2-01: the done state's primary opens the next Exercise on Now, where the Session's
+            // rest keeps running; with none left it shows All.
+            onFinishExercise={() => {
+              if (nextId === null) {
+                setView('list')
+                return
+              }
+              const logged = session.entries.filter((entry) => entry.exerciseId === nextId).length
+              handleOpenSet(nextId, logged + 1)
+            }}
           />
         </AppShell>
       )

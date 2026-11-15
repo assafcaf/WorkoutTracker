@@ -118,8 +118,8 @@ test('Live Now opens the Exercise the session is on at its next Set, with the re
 
   expect(await screen.findByText('Set 3 of 4', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('radio', { name: 'Now' })).toBeChecked()
-  const rest = screen.getByRole('list', { name: 'Rest of the workout' })
-  expect(within(rest).getAllByRole('button')).toHaveLength(6)
+  // V2-03: Now shows this Exercise alone; the rest of the Workout is All's, one tap away.
+  expect(screen.queryByRole('list', { name: 'Rest of the workout' })).toBeNull()
 
   await user.click(screen.getByRole('radio', { name: 'All' }))
   expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
