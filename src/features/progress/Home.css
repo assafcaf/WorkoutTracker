@@ -421,7 +421,7 @@
 .progress-lifts .progress-row-main,
 .progress-all .progress-row-main {
   flex: 1 1 5.5em;
-  min-width: 5.5em;
+  min-width: min-content;
 }
 
 .progress-lifts .progress-row-numbers,
