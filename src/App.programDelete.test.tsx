@@ -230,7 +230,11 @@ function planRowText(exercise: string): string | null {
     (candidate) => (candidate.cells[0]?.textContent ?? '').trim() === exercise,
   )
   if (row === undefined) return null
-  return [...row.cells].map((cell) => (cell.textContent ?? '').trim()).join(' | ')
+  // V6-15: the kg column (the load the next Session opens on) is left out of the Plan's text.
+  return [...row.cells]
+    .filter((cell) => !cell.classList.contains('program-page-kg'))
+    .map((cell) => (cell.textContent ?? '').trim())
+    .join(' | ')
 }
 
 /** The editor's visible Workout whose name input holds exactly `name`. */

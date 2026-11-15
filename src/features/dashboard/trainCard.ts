@@ -7,7 +7,7 @@ import type { LiftHistory } from '../../domain/stats/liftHistory'
 import type { DueWorkoutCard } from '../../domain/stats/train'
 import type { NextStep } from '../../domain/stats/verdict'
 import { weeksOf, type Weekday } from '../../domain/stats/weeks'
-import type { Program, Session } from '../../types'
+import type { Exercise, ExercisePlan, Program, Session } from '../../types'
 import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
 
 /**
@@ -117,30 +117,7 @@ export function trainCardOf(
       const plan = plans.get(lift.exerciseId)
       const exercise = resolve?.(lift.exerciseId)
       if (!plan || !exercise || !sessions) return row
-      const lastEntries = lastEntriesOf(sessions, lift.exerciseId)
-      const preset = presetForSet({
-        exercise,
-        plan,
-        setIndex: 1,
-        lastEntries,
-        today: [],
-        deload,
-      })
-      const load = exercise.bodyweight
-        ? leverText(preset.loadKg ?? 0, true)
-        : preset.weightKg === null
-          ? null
-          : leverText(preset.weightKg, false)
-      // V5-07: each planned Set as it opens when the ones before it go as last time did; a ramp
-      // (47.5 -> 62.5) is said as one, never as "4 x 47.5 kg".
-      let top = preset.weightKg
-      if (!exercise.bodyweight && top !== null) {
-        for (let setIndex = 2; setIndex <= plan.sets; setIndex += 1) {
-          const at = presetForSet({ exercise, plan, setIndex, lastEntries, deload }).weightKg
-          if (at !== null && at > top) top = at
-        }
-      }
-      const topLoad = top !== null && top !== preset.weightKg ? leverText(top, false) : undefined
+      const { load, topLoad } = liftPreset(exercise, plan, sessions, deload)
       return {
         ...row,
         sets: plan.sets,
@@ -150,6 +127,44 @@ export function trainCardOf(
       }
     }),
   }
+}
+
+/**
+ * The load a Plan's next Session opens on: the Set 1 Preset (`70 kg`, `BW+5`, `null` with no
+ * weight to go on) and, when the Sets ramp, the heaviest planned Set's (`62.5 kg`). Train's rows
+ * and the Program tab's kg column (V6-15) read the same.
+ */
+export function liftPreset(
+  exercise: Exercise,
+  plan: ExercisePlan,
+  sessions: Session[],
+  deload = false,
+): { load: string | null; topLoad?: string } {
+  const lastEntries = lastEntriesOf(sessions, plan.exerciseId)
+  const preset = presetForSet({ exercise, plan, setIndex: 1, lastEntries, today: [], deload })
+  const load = exercise.bodyweight
+    ? leverText(preset.loadKg ?? 0, true)
+    : preset.weightKg === null
+      ? null
+      : leverText(preset.weightKg, false)
+  // V5-07: each planned Set as it opens when the ones before it go as last time did; a ramp
+  // (47.5 -> 62.5) is said as one, never as "4 x 47.5 kg".
+  let top = preset.weightKg
+  if (!exercise.bodyweight && top !== null) {
+    for (let setIndex = 2; setIndex <= plan.sets; setIndex += 1) {
+      const at = presetForSet({ exercise, plan, setIndex, lastEntries, deload }).weightKg
+      if (at !== null && at > top) top = at
+    }
+  }
+  const topLoad = top !== null && top !== preset.weightKg ? leverText(top, false) : undefined
+  return topLoad === undefined ? { load } : { load, topLoad }
+}
+
+/** V6-15: the Program tab's kg cell: `47.5 → 62.5`, `70`, `BW+5`; `–` with no weight. */
+export function kgCellText(preset: { load: string | null; topLoad?: string }): string {
+  const bare = (text: string): string => text.replace(/ kg$/, '')
+  if (preset.load === null) return '–'
+  return preset.topLoad ? `${bare(preset.load)} → ${bare(preset.topLoad)}` : bare(preset.load)
 }
 
 /**

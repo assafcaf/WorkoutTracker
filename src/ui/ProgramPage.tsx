@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Exercise, LibraryExercise, Muscle, Program, Session, Workout } from '../types'
+import type { Exercise, ExercisePlan, LibraryExercise, Muscle, Program, Session, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { workoutEstimate } from '../domain/dashboard'
 import { toRegionCounts, type MuscleFamily, type Region } from '../domain/muscles'
@@ -86,6 +86,13 @@ export type ProgramPageProps = {
   head?: 'inline' | 'none'
   /** "Browse exercises" on a tapped region's panel: the region's muscles (E22-T10). */
   onBrowse?(muscles: Muscle[]): void
+  /**
+   * V6-15: the load a Plan's next Session opens on, as Train says it ("47.5 → 62.5", "70",
+   * "BW+5"). Given, the table gains a kg column between Sets × reps and Rest.
+   */
+  loadOf?(plan: ExercisePlan): string
+  /** V6-15: a Workout's minutes as Train estimates them; omitted, the plan estimate. */
+  minutesOf?(workout: Workout): number
 }
 
 /**
@@ -97,6 +104,17 @@ export type ProgramPageProps = {
  * disclosure inside it). Below the workouts sit the planned muscle map with its gaps (M14); what
  * was done lives on Progress › Muscles (V2-06).
  */
+/** V6-15: a ramp's kg cell, "47.5 →" kept together so a narrow card breaks it after the arrow. */
+function kgCell(text: string): JSX.Element | string {
+  const [from, to] = text.split(' → ')
+  if (to === undefined) return text
+  return (
+    <>
+      <span className="program-page-kg-from">{`${from} →`}</span> {to}
+    </>
+  )
+}
+
 export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const {
     programs,
@@ -211,14 +229,16 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   }
 
   function renderWorkout(program: Program, workout: Workout): JSX.Element {
-    const { sets, minutes } = workoutEstimate(workout)
+    const { sets, minutes: planned } = workoutEstimate(workout)
+    const minutes = props.minutesOf?.(workout) ?? planned
+    const loadOf = props.loadOf
     return (
       <section key={`${program.id}/${workout.id}`} className="workout-card card">
         <div className="program-page-card-head">
           <h3 className="program-page-workout-title">{workout.name}</h3>
           <span className="program-page-card-note">{`${sets} sets · ~${minutes} min`}</span>
         </div>
-        <table className="program-page-table">
+        <table className="program-page-table" data-kg={loadOf ? 'true' : undefined}>
           <thead>
             <tr>
               <th scope="col" className="program-page-th">
@@ -227,7 +247,12 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
               <th scope="col" className="program-page-th program-page-num">
                 Sets × reps
               </th>
-              <th scope="col" className="program-page-th program-page-num">
+              {loadOf ? (
+                <th scope="col" className="program-page-th program-page-num program-page-kg">
+                  kg
+                </th>
+              ) : null}
+              <th scope="col" className="program-page-th program-page-num program-page-restcol">
                 Rest
               </th>
             </tr>
@@ -247,7 +272,8 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
                     {exercise?.name ?? plan.exerciseId}
                   </td>
                   <td className="program-page-num">{setsRepsText(plan)}</td>
-                  <td className="program-page-num program-page-rest">{formatRest(plan.restSeconds)}</td>
+                  {loadOf ? <td className="program-page-num program-page-kg">{kgCell(loadOf(plan))}</td> : null}
+                  <td className="program-page-num program-page-rest program-page-restcol">{formatRest(plan.restSeconds)}</td>
                 </tr>
               )
             })}
