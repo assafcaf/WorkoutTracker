@@ -43,6 +43,21 @@ export async function discardSession(sessionId: string, now: number): Promise<vo
 }
 
 /**
+ * V6 (V5-01): the Undo of `discardSession`. Stores the Session live again, `deletedAt` removed
+ * and `updatedAt` at `now` (so the sync carries it as the newer copy), entries kept, and
+ * returns it. Rejects with `no session <id> is stored` for an unknown id.
+ */
+export async function undiscardSession(sessionId: string, now: number): Promise<Session> {
+  return db.transaction('rw', db.sessions, async () => {
+    const { deletedAt: _deletedAt, ...session } = await requireSession(sessionId)
+    void _deletedAt
+    const restored: Session = { ...session, updatedAt: now }
+    await db.sessions.put(restored)
+    return restored
+  })
+}
+
+/**
  * Finished sessions, newest first, across every program, at most `limit` of them. The cap
  * keeps the newest end, so only sessions older than it fall out of reach.
  */

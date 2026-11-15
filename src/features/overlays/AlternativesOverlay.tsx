@@ -1,6 +1,7 @@
 import { resolveExercise } from '../../data/resolve'
 import type { Exercise, LibraryExercise } from '../../types'
 import { AlternativesList } from '../../ui/AlternativesList'
+import { Icon } from '../../ui/icons'
 import '../../ui/AlternativesOverlay.css'
 
 export type AlternativesOverlayProps = {
@@ -44,8 +45,9 @@ export function AlternativesOverlay({
         <h2 id="alternatives-heading" className="alternatives-overlay-heading">
           Alternatives to {planned.name}
         </h2>
-        <button type="button" className="alternatives-overlay-close btn-quiet" onClick={onClose}>
-          Close
+        {/* V5-11: an X the size of a thumb, still named Close. */}
+        <button type="button" className="alternatives-overlay-close icon-btn" aria-label="Close" onClick={onClose}>
+          <Icon name="X" size={22} />
         </button>
       </div>
       <AlternativesList

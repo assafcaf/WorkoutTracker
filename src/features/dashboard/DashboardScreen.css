@@ -134,6 +134,40 @@
   cursor: pointer;
 }
 
+/* V5-14: the strip as a row of its own buttons -- each done day, then the count to Sessions. */
+.dashboard-week.dashboard-week--days {
+  cursor: default;
+}
+
+.dashboard-week-open {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-min);
+  padding: 0 0 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dashboard-week-open .dashboard-week-chevron {
+  margin-left: 0;
+}
+
+.dashboard-week button.calendar-day {
+  position: relative;
+}
+
+/* A done day's tap target reaches 44 px tall around its 1.75rem cell. */
+.dashboard-week button.calendar-day::before {
+  content: '';
+  position: absolute;
+  inset: calc((1.75rem - var(--tap-min)) / 2) -2px;
+}
+
 .dashboard-week-grid {
   display: flex;
   flex: 1;

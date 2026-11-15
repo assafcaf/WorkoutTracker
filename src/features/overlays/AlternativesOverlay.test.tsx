@@ -115,3 +115,25 @@ test('O24 the search box and rows are inset by --space-4 on both sides', () => {
     (left === 'var(--space-4)' && right === 'var(--space-4)')
   expect(both).toBe(true)
 })
+
+// UX v6 (V5-11): the search box says what it searches, with a magnifier, and Close is an X
+// icon button at least 44 px, still named Close.
+test('V6 V5-11 the search box reads Search exercises beside a magnifier', async () => {
+  render(<AlternativesOverlay {...await props()} />)
+
+  const search = screen.getByRole('searchbox')
+  expect(search).toHaveAttribute('placeholder', 'Search exercises')
+  expect(search.closest('.alternatives-search-field')?.querySelector('svg')).not.toBeNull()
+})
+
+test('V6 V5-11 Close is an X icon button named Close, at least 44 px', async () => {
+  render(<AlternativesOverlay {...await props()} />)
+
+  const close = screen.getByRole('button', { name: 'Close' })
+  expect(close).toHaveClass('icon-btn')
+  expect(close.textContent).toBe('')
+  expect(close.querySelector('svg')).not.toBeNull()
+  const declared = declarationsFor(css('AlternativesOverlay.css'), '.alternatives-overlay-close')
+  expect(declared.get('min-width')).toBe('var(--tap-min)')
+  expect(declared.get('min-height')).toBe('var(--tap-min)')
+})

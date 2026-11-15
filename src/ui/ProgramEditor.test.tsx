@@ -261,7 +261,8 @@ test('O14 a Plan added through Add exercise, search and Pick shows 3 sets, 8-12 
   expect(field(added, 'Sets').value).toBe('3')
   expect(field(added, 'Min reps').value).toBe('8')
   expect(field(added, 'Max reps').value).toBe('12')
-  expect(field(added, 'Rest (s)').value).toBe('90')
+  // V6 (V5-10): Rest reads as m:ss; 90 s is 1:30.
+  expect(field(added, 'Rest (m:ss)').value).toBe('1:30')
 })
 
 test('O14 a picked Plan is added last in its Workout and saved with the default numbers', async () => {
@@ -658,6 +659,54 @@ test('O17 a picked Bodyweight Exercise\'s Plan has no Starting weight (kg) field
   expect(
     within(planByName(lower, 'Overhead Press')).getByLabelText('Starting weight (kg)'),
   ).toBeInTheDocument()
+})
+
+// --- UX v6 (V5-10): the load the Plan is on now, and Rest as m:ss ---------------------------
+
+test('V6 V5-10 a Plan already lifted shows the load it is on now, read-only, not a grey start weight', async () => {
+  const { user } = renderEditor(split(), { nowLoad: (id) => (id === 'squat' ? '47.5' : null) })
+
+  const squat = planByName(workoutAt(0), 'Back Squat')
+  const now = within(squat).getByText('47.5')
+  expect(now.closest('.program-editor-cell-static')).not.toBeNull()
+  expect(within(squat).getByText('Now')).toBeVisible()
+  expect(within(squat).queryByLabelText('Starting weight (kg)')).toBeNull()
+  expect(squat.querySelector('input[placeholder="60"]')).toBeNull()
+
+  // The starting weight is still there for when the history is gone: in the row's options.
+  await openPlanMenu(user, squat)
+  expect(within(squat).getByLabelText('Starting weight (kg)')).toBeInTheDocument()
+})
+
+test('V6 V5-10 a Plan with its own starting weight, or never lifted, keeps the Starting weight field in its row', () => {
+  renderEditor(split(), { nowLoad: () => '50' })
+
+  // Flat Bench has a starting weight (60): the field shows it in the row.
+  expect(field(planByName(workoutAt(0), 'Flat Bench'), 'Starting weight (kg)').value).toBe('60')
+})
+
+test('V6 V5-10 Rest reads as m:ss and is stored in seconds', async () => {
+  const { user, onSave } = renderEditor(split())
+
+  const squat = planByName(workoutAt(0), 'Back Squat')
+  const rest = field(squat, 'Rest (m:ss)')
+  expect(rest.value).toBe('1:30')
+  await user.clear(rest)
+  await user.type(rest, '2:15')
+
+  const program = await save(user, onSave)
+  expect(program.workouts[0].exercises[1].restSeconds).toBe(135)
+})
+
+test('V6 V5-10 Rest typed as plain seconds still saves those seconds', async () => {
+  const { user, onSave } = renderEditor(split())
+
+  const rest = field(planByName(workoutAt(0), 'Back Squat'), 'Rest (m:ss)')
+  await user.clear(rest)
+  await user.type(rest, '120')
+
+  const program = await save(user, onSave)
+  expect(program.workouts[0].exercises[1].restSeconds).toBe(120)
 })
 
 test('O17 a Bodyweight Plan already in the Program has no Starting weight (kg) field', () => {

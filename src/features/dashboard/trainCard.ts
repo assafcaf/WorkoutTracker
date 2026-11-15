@@ -1,4 +1,5 @@
 import type { Resolve } from '../../domain/muscles'
+import { formatDay } from '../../domain/dates'
 import { lastEntriesOf } from '../../domain/planLoad'
 import { presetForSet } from '../../domain/prefill'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
@@ -19,6 +20,11 @@ export type TrainLiftRow = {
   sets?: number
   /** The Set 1 Preset's load: `70 kg`, `BW`, `BW+5`, `BW−19`; `null` with no weight to go on. */
   load?: string | null
+  /**
+   * V5-07: the heaviest planned Set's load when the Sets ramp (last time's Sets differ), as the
+   * row says it, `62.5 kg`; unset when every Set opens on `load`.
+   */
+  topLoad?: string
   /** The Plan's rep range: `8–10`. */
   reps?: string
   /** `null` while the lift has no sets yet. */
@@ -52,6 +58,10 @@ export type WeekStripDay = {
   workoutName?: string | null
   today: boolean
   future?: boolean
+  /** V5-14: the Session done that day, which its strip day opens. */
+  sessionId?: string
+  /** V5-14: that day's button name, "Workout B, Mon 12 Oct". */
+  label?: string
 }
 
 /** This week at the top of Train (V2-05): one cell per day, and Sessions done of planned. */
@@ -106,11 +116,12 @@ export function trainCardOf(
       const plan = plans.get(lift.exerciseId)
       const exercise = resolve?.(lift.exerciseId)
       if (!plan || !exercise || !sessions) return row
+      const lastEntries = lastEntriesOf(sessions, lift.exerciseId)
       const preset = presetForSet({
         exercise,
         plan,
         setIndex: 1,
-        lastEntries: lastEntriesOf(sessions, lift.exerciseId),
+        lastEntries,
         today: [],
         deload,
       })
@@ -119,7 +130,23 @@ export function trainCardOf(
         : preset.weightKg === null
           ? null
           : leverText(preset.weightKg, false)
-      return { ...row, sets: plan.sets, load, reps: `${plan.repRange[0]}–${plan.repRange[1]}` }
+      // V5-07: each planned Set as it opens when the ones before it go as last time did; a ramp
+      // (47.5 -> 62.5) is said as one, never as "4 x 47.5 kg".
+      let top = preset.weightKg
+      if (!exercise.bodyweight && top !== null) {
+        for (let setIndex = 2; setIndex <= plan.sets; setIndex += 1) {
+          const at = presetForSet({ exercise, plan, setIndex, lastEntries, deload }).weightKg
+          if (at !== null && at > top) top = at
+        }
+      }
+      const topLoad = top !== null && top !== preset.weightKg ? leverText(top, false) : undefined
+      return {
+        ...row,
+        sets: plan.sets,
+        load,
+        ...(topLoad === undefined ? {} : { topLoad }),
+        reps: `${plan.repRange[0]}–${plan.repRange[1]}`,
+      }
     }),
   }
 }
@@ -149,6 +176,7 @@ export function weekStripOf(sessions: Session[], program: Program, now: number, 
       workoutName: session ? workoutName(session.workoutId) : null,
       today: i === since,
       future: i > since,
+      ...(session ? { sessionId: session.id, label: `${workoutName(session.workoutId)}, ${formatDay(date, today)}` } : {}),
     })
   }
   return { done: week?.sessions.length ?? 0, planned: program.sessionsPerWeek, days }

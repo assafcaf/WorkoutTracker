@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react'
+import { useContext, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ShellChromeContext } from './AppShell'
 import { ElapsedTime } from './ElapsedTime'
@@ -51,6 +51,15 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
   // V5-01: with Sets logged, Discard asks once more, naming what is lost; with none, it is one tap.
   const [discarding, setDiscarding] = useState(false)
   const logged = sets?.done ?? 0
+  // V5-15: at large text the title line cannot hold the elapsed time and the Sets count; the
+  // time goes and the count stays. Measured once it renders; once dropped it stays dropped.
+  const metaRef = useRef<HTMLParagraphElement>(null)
+  const [timeDropped, setTimeDropped] = useState(false)
+  useLayoutEffect(() => {
+    const meta = metaRef.current
+    if (timeDropped || meta === null || sets === undefined) return
+    if (meta.scrollWidth > meta.clientWidth) setTimeDropped(true)
+  }, [timeDropped, sets, prs])
 
   function handleFinish(): void {
     if (setsLeft > 0 || (nothingLogged && onDiscard !== undefined)) setConfirming(true)
@@ -69,11 +78,11 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
           ) : (
             <span className="live-header-name">{workoutName}</span>
           )}
-          <p className="live-header-meta">
-            <ElapsedTime startedAt={startedAt} />
+          <p className="live-header-meta" ref={metaRef}>
+            {timeDropped ? null : <ElapsedTime startedAt={startedAt} />}
             {sets === undefined ? null : (
               <>
-                <span aria-hidden="true">{' · '}</span>
+                {timeDropped ? null : <span aria-hidden="true">{' · '}</span>}
                 <span className="live-header-sets">{`${sets.done}/${sets.planned} sets`}</span>
               </>
             )}
@@ -107,20 +116,47 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
             {nothingLogged ? 'Nothing logged yet' : `${setsLeft} ${setsLeft === 1 ? 'set' : 'sets'} not logged`}
           </p>
           <div className="finish-confirm-actions">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => {
-                setConfirming(false)
-                onFinish()
-              }}
-            >
-              Finish workout
-            </button>
+            {/* V5-01: with nothing logged there is nothing to finish: Discard leads instead. */}
+            {nothingLogged && onDiscard !== undefined ? (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  setConfirming(false)
+                  onDiscard()
+                }}
+              >
+                Discard workout
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  setConfirming(false)
+                  onFinish()
+                }}
+              >
+                Finish workout
+              </button>
+            )}
             <button type="button" className="btn-secondary" onClick={() => setConfirming(false)}>
               Keep going
             </button>
-            {onDiscard === undefined ? null : (
+            {nothingLogged && onDiscard !== undefined ? (
+              // Still there, quietly, for an empty Session someone does want kept.
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => {
+                  setConfirming(false)
+                  onFinish()
+                }}
+              >
+                Finish workout
+              </button>
+            ) : null}
+            {onDiscard === undefined || nothingLogged ? null : (
               <button
                 type="button"
                 className="btn-danger"

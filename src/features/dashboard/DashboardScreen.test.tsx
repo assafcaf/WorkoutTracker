@@ -248,7 +248,8 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
     const lifts = screen.getByRole('list', { name: 'Workout B lifts' })
     const row = within(lifts).getByText('Deadlift').closest('li') as HTMLElement
-    expect(within(row).getByText('3 × 60 kg')).toBeTruthy()
+    // V6 (V5-07): these Sets ramp, 60 then 70, so the row opens on 60 and says where it goes.
+    expect(within(row).getByText('3 sets · 60 → 70 kg')).toBeTruthy()
     expect(within(row).getByText('· 8–10')).toBeTruthy()
   })
 
@@ -264,5 +265,25 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     const row = within(a).getByText('Back squat').closest('li') as HTMLElement
     expect(within(row).getByText(/^4 × 5\d(\.\d+)? kg$/)).toBeTruthy()
     expect(screen.getByText('Deload week · Presets 10% lighter')).toBeTruthy()
+  })
+
+  test('V6 V5-07 a ramped lift reads its Sets and its range, 4 sets · 47.5 → 62.5 kg', async () => {
+    await db.sessions.put(
+      session('fri', 'workout-a', at(9, 9), [
+        squat(47.5, 10, at(9, 9), 0),
+        squat(57.5, 10, at(9, 9), 1),
+        squat(62.5, 8, at(9, 9), 2),
+        squat(62.5, 8, at(9, 9), 3),
+      ]),
+    )
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+    await screen.findByRole('list', { name: 'Workout B lifts' }, SETTLE)
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    const a = screen.getByRole('list', { name: 'Workout A lifts' })
+    const row = within(a).getByText('Back squat').closest('li') as HTMLElement
+
+    expect(within(row).getByText('4 sets · 47.5 → 62.5 kg')).toBeTruthy()
+    expect(within(row).queryByText('4 × 47.5 kg')).toBeNull()
   })
 })

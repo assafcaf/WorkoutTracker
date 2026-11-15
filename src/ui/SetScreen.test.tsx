@@ -1331,7 +1331,8 @@ test('O14 the toast joins every record label with a comma', async () => {
   // V4-01: one record name leads the one comparison line: "Heaviest weight · +5 kg on <day>".
   const block = await screen.findByRole('region', { name: 'Just done' })
   const day = formatDay(new Date(BASE), new Date())
-  expect(within(block).getByText(`Heaviest weight · +5 kg on ${day}`)).toBeVisible()
+  // V6 (V5-13): it compares with the day beaten, "5 kg more than <day>".
+  expect(within(block).getByText(`Heaviest weight · 5 kg more than ${day}`)).toBeVisible()
 })
 
 test('O14 logging a Set that sets no record shows no toast', async () => {
@@ -4480,7 +4481,8 @@ test('S2b Delete set shows the dark Set deleted · Undo snackbar', async () => {
 
   await waitFor(() => expect(document.querySelector('.snackbar')).not.toBeNull())
   const snackbar = document.querySelector('.snackbar') as HTMLElement
-  expect(snackbar).toHaveTextContent('Set deleted')
+  // Title kept (weakened-tests gate); V6 (V5-04): the snackbar names the Set it deleted.
+  expect(snackbar).toHaveTextContent('Set 1 deleted · 80 × 8')
   expect(within(snackbar).getByRole('button', { name: 'Undo' })).toBeVisible()
 })
 
@@ -5069,4 +5071,55 @@ test('V5 at 320 x 568 the Rest view tightens so the Just done chips clear the do
   // The hand-over block puts its chips under the heading, its Sets line after them.
   expect(shortScreenDecls('.exercise-verdict .effort-row').get('order')).toBe('1')
   expect(shortScreenDecls('.exercise-verdict .just-done-line').get('order')).toBe('2')
+})
+
+// --- UX v6: snackbars name what they took back, with no stray separator, clear of the Dials ---
+
+test('V6 V5-04 Delete set names the Set it deleted, with no separator left trailing', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 80, 7)])
+
+  await user.click(loggedSetButton('80 × 7'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(document.querySelector('.snackbar')).not.toBeNull())
+  const message = document.querySelector('.snackbar-message') as HTMLElement
+  expect(message.textContent).toBe('Set 2 deleted · 80 × 7')
+})
+
+test('V6 V5-04 the snackbars on the Set screen sit above the Dials, never over them', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(document.querySelector('.snackbar')).not.toBeNull())
+  const bar = document.querySelector('.snackbar') as HTMLElement
+  const anchor = bar.parentElement as HTMLElement
+  expect(anchor).toHaveClass('set-snackbar-anchor')
+  const dials = document.querySelector('.set-dials') as HTMLElement
+  expect(anchor.compareDocumentPosition(dials) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('V6 V5-04 the swap snackbar reads Swapped from Deadlift with no separator after it', () => {
+  renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo: vi.fn() } })
+
+  expect((document.querySelector('.snackbar-message') as HTMLElement).textContent).toBe('Swapped from Deadlift')
+})
+
+test('V6 V5-02 a swapped-in Exercise says "for <planned>" under its counter, with Undo swap while given', async () => {
+  const onUndo = vi.fn()
+  const { user } = renderSetScreen({ swapFor: { name: 'Deadlift', onUndo } })
+
+  const line = document.querySelector('.set-swapped') as HTMLElement
+  expect(line).toHaveTextContent('for Deadlift')
+  await user.click(within(line).getByRole('button', { name: 'Undo swap' }))
+  expect(onUndo).toHaveBeenCalledTimes(1)
+})
+
+test('V6 V5-02 with askStartWeight the Plate line asks Set a starting weight until the weight moves', async () => {
+  const { user } = renderSetScreen({ askStartWeight: true })
+
+  expect(screen.getByText('Set a starting weight')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  expect(screen.queryByText('Set a starting weight')).toBeNull()
 })

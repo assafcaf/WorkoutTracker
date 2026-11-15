@@ -61,6 +61,7 @@ describe('O5 createServices returns exactly the service API', () => {
       'setNote',
       'setRest',
       'start',
+      'undiscard',
       'undoSwap',
       'updateSet',
     ])

@@ -136,7 +136,7 @@ export function setDelta(set: ComparedSet, last: ComparedSet): SetDelta {
 /** What one logged Set's comparison says (V4-01): its kind, its sentence and its Record, if any. */
 export type SetComparison = {
   kind: 'first' | 'same' | 'up' | 'down'
-  /** "Same as Mon 12 Oct", "+2.5 kg on Mon 12 Oct", "1 rep under Mon 12 Oct", "First time logged". */
+  /** "Same as Mon 12 Oct", "2.5 kg more than Mon 12 Oct", "1 rep under Mon 12 Oct", "First time logged". */
   text: string
   /** The Record's name when the Set set one ("Rep record"); the sentence then leads with it. */
   record: string | null
@@ -144,9 +144,9 @@ export type SetComparison = {
 
 /**
  * The one sentence a logged Set gets (V4-01), against last time's Set at its place, `last`,
- * lifted on `lastDay` ("Mon 12 Oct"): "Same as Mon 12 Oct", "+2.5 kg on Mon 12 Oct", "1 rep
+ * lifted on `lastDay` ("Mon 12 Oct"): "Same as Mon 12 Oct", "2.5 kg more than Mon 12 Oct", "1 rep
  * under Mon 12 Oct", or "First time logged" with no `last`. A Set that set a Record leads with
- * its name: "Rep record · +1 rep on Mon 12 Oct".
+ * its name: "Rep record · 1 more than Mon 12 Oct".
  */
 export function setComparison(
   set: ComparedSet,
@@ -156,11 +156,15 @@ export function setComparison(
 ): SetComparison {
   if (last === null) return { kind: 'first', text: record ?? 'First time logged', record }
   const delta = setDelta(set, last)
+  // V5-13: "+1 rep on Mon 12 Oct" read as the Record's date; "1 more than Mon 12 Oct" compares.
+  // A Record whose name says reps leaves the word out: "Rep record · 1 more than Mon 12 Oct".
+  const more = delta.text.replace(/^\+/, '')
+  const upText = record !== null && /\brep\b/i.test(record) ? more.replace(/ reps?$/, '') : more
   const words =
     delta.kind === 'same'
       ? `Same as ${lastDay}`
       : delta.kind === 'up'
-        ? `${delta.text} on ${lastDay}`
+        ? `${upText} more than ${lastDay}`
         : `${delta.text} ${lastDay}`
   return { kind: delta.kind, text: `${record === null ? '' : `${record} · `}${words}`, record }
 }

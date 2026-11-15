@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { alternativesFor } from '../domain/alternatives'
 import { matchesQuery } from '../domain/search'
+import { Icon } from './icons'
 import type { LibraryExercise } from '../types'
 import './AlternativesList.css'
 
@@ -60,13 +61,18 @@ export function AlternativesList({
 
   return (
     <div className="alternatives-list">
-      <input
-        type="search"
-        aria-label="Search alternatives"
-        className="alternatives-search"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
+      {/* V5-11: it says what it searches, beside a magnifier. */}
+      <label className="alternatives-search-field">
+        <Icon name="Search" size={18} />
+        <input
+          type="search"
+          aria-label="Search alternatives"
+          placeholder="Search exercises"
+          className="alternatives-search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </label>
       <ul className="alternatives-rows">
         {shown.map((alternative) => (
           <li key={alternative.id} className="alternatives-row">
