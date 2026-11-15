@@ -1331,7 +1331,8 @@ test('O14 the toast joins every record label with a comma', async () => {
   // V4-01: one record name leads the one comparison line: "Heaviest weight · +5 kg on <day>".
   const block = await screen.findByRole('region', { name: 'Just done' })
   const day = formatDay(new Date(BASE), new Date())
-  expect(within(block).getByText(`Heaviest weight · +5 kg on ${day}`)).toBeVisible()
+  // V6 (V5-13): it compares with the day beaten, "5 kg more than <day>".
+  expect(within(block).getByText(`Heaviest weight · 5 kg more than ${day}`)).toBeVisible()
 })
 
 test('O14 logging a Set that sets no record shows no toast', async () => {
