@@ -62,7 +62,8 @@ export async function openApp({
 } = {}) {
   const st = typeof state === 'string' ? JSON.parse(readFileSync(resolve(state), 'utf8')) : state
   const [width, height] = viewport.split('x').map(Number)
-  const browser = await chromium.launch()
+  // PW_CHANNEL (e.g. msedge, chrome) uses an installed browser when Playwright's own is absent.
+  const browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {})
   const context = await browser.newContext({
     viewport: { width, height },
     deviceScaleFactor: Number(dpr) || 1,
