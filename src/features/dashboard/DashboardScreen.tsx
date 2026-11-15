@@ -38,6 +38,8 @@ export type DashboardScreenProps = {
   onOpenSessions?(): void
   /** V5-14: opens a past Session's summary, from its day on the week strip. */
   onOpenSession?(sessionId: string): void
+  /** V6-03: opens the one Lift page from a lift's name. */
+  onOpenLift?(exerciseId: string): void
 }
 
 type Loaded = {
@@ -110,6 +112,7 @@ export function DashboardScreen({
   resume,
   onOpenSessions,
   onOpenSession,
+  onOpenLift,
 }: DashboardScreenProps): JSX.Element {
   const services = useServices()
   const { sync, syncNow } = useSyncControls()
@@ -222,6 +225,7 @@ export function DashboardScreen({
       resume={resume}
       onOpenSessions={onOpenSessions}
       onOpenSession={onOpenSession}
+      onOpenLift={onOpenLift}
     />
   )
 }

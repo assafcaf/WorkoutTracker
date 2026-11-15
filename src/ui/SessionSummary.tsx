@@ -44,6 +44,8 @@ export type SessionSummaryProps = {
   onClose(): void
   /** A region panel's "Browse exercises" (M9), carried up to whoever can switch tabs. */
   onBrowse?(muscles: Muscle[]): void
+  /** V6-03: opens the one Lift page: each Lift by lift name is a button to it. */
+  onOpenLift?(exerciseId: string): void
   /** Opens the Session's editor; omitted means no Edit control (the finish summary). */
   onEdit?(): void
   /**
@@ -145,6 +147,7 @@ export function SessionSummary({
   workoutName,
   onClose,
   onBrowse,
+  onOpenLift,
   onEdit,
   onDelete,
   program,
@@ -310,7 +313,17 @@ export function SessionSummary({
             <div className="session-summary-moves card">
               {lifts.map((lift) => (
                 <div key={lift.exerciseId} className="session-summary-move">
-                  <span className="session-summary-move-name">{lift.name}</span>
+                  {onOpenLift ? (
+                    <button
+                      type="button"
+                      className="session-summary-move-name lift-door btn-quiet"
+                      onClick={() => onOpenLift(lift.exerciseId)}
+                    >
+                      {lift.name}
+                    </button>
+                  ) : (
+                    <span className="session-summary-move-name">{lift.name}</span>
+                  )}
                   <span className="session-summary-move-text">
                     {lift.line.sets.map((set, index) => (
                       <span key={index} className="session-summary-move-set">

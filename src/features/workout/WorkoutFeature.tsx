@@ -1367,6 +1367,8 @@ export function WorkoutFeature({
           onOpenSessions={() => navigate({ tab: 'history' })}
           // V5-14: a done day opens that workout's summary, as the Sessions calendar does.
           onOpenSession={(sessionId) => navigate({ tab: 'history', sessionId })}
+          // V6-03: a lift's name opens the one Lift page.
+          onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
           // A backup due is the gear's marker here (S1); Settings spells it out in full.
           notices={
             !storageAvailable || staleActiveProgramNotice ? (
@@ -1464,6 +1466,7 @@ export function WorkoutFeature({
             setSummarySession(null)
             navigate({ tab: 'exercises', muscles })
           }}
+          onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
         />
       ) : null}
       {liveOnScreen ? historyOverlay : null}

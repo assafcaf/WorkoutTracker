@@ -266,6 +266,23 @@
   overflow-wrap: anywhere;
 }
 
+/* V6-03: the lift's name is the door to its Lift page: a 44 px tall target that keeps the row's
+ * height (its margins eat into the row's padding), left-aligned, wrapping like the text it was. */
+.dashboard-step-name.lift-door {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  margin-block: -12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-align: start;
+}
+
 .dashboard-step-text {
   flex: none;
   margin-left: auto;

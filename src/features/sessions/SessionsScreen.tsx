@@ -432,6 +432,8 @@ export function SessionsScreen({
             setSummarySessionId(null)
             navigate({ tab: 'exercises', muscles })
           }}
+          // V6-03: a lift's name opens the one Lift page over the summary; Back returns here.
+          onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
         />
       ) : null}
       {chooser ? (

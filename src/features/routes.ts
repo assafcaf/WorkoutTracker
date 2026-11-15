@@ -7,3 +7,5 @@ export type AppRoute =
   | { tab: 'progress' }
   | { tab: 'program' }
   | { tab: 'workout' }
+  /** V6-03: the one Lift page, pushed over the tab it was opened from; Back returns there. */
+  | { tab: 'lift'; exerciseId: string }

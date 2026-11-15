@@ -304,6 +304,8 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
           ) : null
         }
         onBrowse={(muscles) => props.navigate({ tab: 'exercises', muscles })}
+        // V6-03: an Exercise's name opens the one Lift page.
+        onOpenLift={(exerciseId) => props.navigate({ tab: 'lift', exerciseId })}
         // V6-15: the kg each lift opens on and the minutes, as Train says them.
         loadOf={(plan) => {
           const listed = resolveListExercise(plan.exerciseId)

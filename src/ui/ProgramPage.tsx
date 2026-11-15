@@ -93,6 +93,8 @@ export type ProgramPageProps = {
   loadOf?(plan: ExercisePlan): string
   /** V6-15: a Workout's minutes as Train estimates them; omitted, the plan estimate. */
   minutesOf?(workout: Workout): number
+  /** V6-03: opens the one Lift page: each Exercise's name in a Workout's table is a button to it. */
+  onOpenLift?(exerciseId: string): void
 }
 
 /**
@@ -269,7 +271,17 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
                       data-family={family ?? undefined}
                       aria-hidden="true"
                     />
-                    {exercise?.name ?? plan.exerciseId}
+                    {props.onOpenLift ? (
+                      <button
+                        type="button"
+                        className="program-page-name lift-door btn-quiet"
+                        onClick={() => props.onOpenLift?.(plan.exerciseId)}
+                      >
+                        {exercise?.name ?? plan.exerciseId}
+                      </button>
+                    ) : (
+                      (exercise?.name ?? plan.exerciseId)
+                    )}
                   </td>
                   <td className="program-page-num">{setsRepsText(plan)}</td>
                   {loadOf ? <td className="program-page-num program-page-kg">{kgCell(loadOf(plan))}</td> : null}

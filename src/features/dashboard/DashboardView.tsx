@@ -81,6 +81,8 @@ export type DashboardViewProps = {
   onOpenSessions?(): void
   /** V5-14: opens one past Session's summary: each done day of the week strip is a button to it. */
   onOpenSession?(sessionId: string): void
+  /** V6-03: opens the one Lift page: each lift's name on the card is a button to it. */
+  onOpenLift?(exerciseId: string): void
 }
 
 /** The sync state in words: the cloud button's name and tooltip (V3-08), never a visible line. */
@@ -283,7 +285,7 @@ function stepNote(lift: TrainLiftRow): JSX.Element | null {
  * Preset and the rep range, and a step-up marker on a lift that is ready. The workout's name,
  * size and duration live in the dock under it.
  */
-function DueCard({ card }: { card: TrainCard }): JSX.Element {
+function DueCard({ card, onOpenLift }: { card: TrainCard; onOpenLift?(exerciseId: string): void }): JSX.Element {
   return (
     <section className="dashboard-train" aria-label={card.name}>
       {card.deload ? (
@@ -299,7 +301,18 @@ function DueCard({ card }: { card: TrainCard }): JSX.Element {
             return (
               <li key={lift.exerciseId} className="dashboard-step">
                 <div className="dashboard-step-line">
-                  <span className="dashboard-step-name">{lift.name}</span>
+                  {onOpenLift ? (
+                    // V6-03: the lift's name opens its Lift page.
+                    <button
+                      type="button"
+                      className="dashboard-step-name lift-door btn-quiet"
+                      onClick={() => onOpenLift(lift.exerciseId)}
+                    >
+                      {lift.name}
+                    </button>
+                  ) : (
+                    <span className="dashboard-step-name">{lift.name}</span>
+                  )}
                   {preset ? (
                     <span className="dashboard-step-text">
                       <span className="dashboard-step-preset">{preset}</span>
@@ -485,7 +498,7 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     body = (
       <>
         {data.week ? <WeekStripRow week={data.week} onOpen={props.onOpenSessions} onOpenSession={props.onOpenSession} /> : null}
-        {card ? <DueCard card={card} /> : null}
+        {card ? <DueCard card={card} onOpenLift={props.onOpenLift} /> : null}
       </>
     )
     if (!props.resume && offered) {

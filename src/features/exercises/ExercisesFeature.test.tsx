@@ -262,10 +262,11 @@ test('V6-03 with no onOpenLift, a My lifts row opens that lift History overlay',
 
   await user.click(within(mine).getByRole('button', { name: /^Deadlift/ }))
 
-  const dialog = await screen.findByRole('dialog', { name: 'History · Deadlift' }, SETTLE)
+  // The one Lift page as a sheet: headed by the lift's name, closed with Done.
+  const dialog = await screen.findByRole('dialog', { name: 'Deadlift' }, SETTLE)
   expect(dialog).toBeVisible()
-  await user.click(within(dialog).getByRole('button', { name: 'Close' }))
-  expect(screen.queryByRole('dialog', { name: 'History · Deadlift' })).toBeNull()
+  await user.click(within(dialog).getByRole('button', { name: 'Done' }))
+  expect(screen.queryByRole('dialog', { name: 'Deadlift' })).toBeNull()
 })
 
 test('V6-03 My lifts steps aside while a muscle filter browses the catalog', async () => {
