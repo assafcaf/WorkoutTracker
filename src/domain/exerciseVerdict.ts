@@ -183,7 +183,7 @@ export function exerciseDoneLine(args: {
   const last = workingSets(args.last).sort((a, b) => a.setIndex - b.setIndex)
   if (today.length === 0) return ''
   const sets = today.map((set) => `${loadText(set)}×${set.reps}${args.isRecord(set) ? ' PR' : ''}`).join(' · ')
-  return `${sets} · ${doneComparison(today, last, args.lastDay, args.plannedSets)}`
+  return `${sets} · ${exerciseComparison({ today, last, lastDay: args.lastDay, plannedSets: args.plannedSets })}`
 }
 
 function repsMove(today: SetEntry[], last: SetEntry[], lastDay: string, same: string): string {
@@ -192,8 +192,39 @@ function repsMove(today: SetEntry[], last: SetEntry[], lastDay: string, same: st
   return reps > 0 ? `${repsWord(reps)} more than ${lastDay}` : `${repsWord(-reps)} under ${lastDay}`
 }
 
-function doneComparison(today: SetEntry[], last: SetEntry[], lastDay: string, plannedSets: number): string {
-  if (today.length < plannedSets) return `${today.length} of ${plannedSets} sets`
+/** Every Set is a Bodyweight one at or below plain BW, with some assistance. */
+function assisted(sets: SetEntry[]): boolean {
+  return (
+    sets.every((set) => set.weightKg === null && (set.loadKg ?? 0) <= 0) && sets.some((set) => (set.loadKg ?? 0) < 0)
+  )
+}
+
+/**
+ * V5: the one comparison sentence an Exercise gets against last time, app-wide. The live
+ * Session's done line (`exerciseDoneLine`) and the finish summary's Lift by lift (`liftLine` in
+ * summaryLines.ts) both end with it. `today` and `last` are working Sets, `lastDay` is last
+ * time's day ("Mon 12 Oct"):
+ *   fewer Sets than planned     -> "2 of 3 sets" (no comparison with a full Exercise)
+ *   a deload                    -> "Deload"
+ *   no last time                -> "First time logged"
+ *   the same load at every Set  -> "1 rep more than Mon 12 Oct", "2 reps under Mon 12 Oct", "Same as Mon 12 Oct"
+ *   else the top load           -> "+2.5 kg top set on Mon 12 Oct", "2.5 kg under Mon 12 Oct",
+ *                                  "5 kg less assistance than Mon 12 Oct" (assisted Bodyweight),
+ *                                  or the reps with "Same top weight as Mon 12 Oct"
+ * Never two totals side by side ("15 vs 14"), never "record": the PR tag on the Set says that.
+ */
+export function exerciseComparison(args: {
+  today: SetEntry[]
+  last: SetEntry[]
+  lastDay: string
+  plannedSets?: number
+  deload?: boolean
+}): string {
+  const today = [...args.today].sort((a, b) => a.setIndex - b.setIndex)
+  const last = [...args.last].sort((a, b) => a.setIndex - b.setIndex)
+  const { lastDay, plannedSets } = args
+  if (plannedSets !== undefined && today.length < plannedSets) return `${today.length} of ${plannedSets} sets`
+  if (args.deload === true) return 'Deload'
   if (last.length === 0) return 'First time logged'
   const sameLoads =
     today.length === last.length && today.every((set, at) => loadOf(set) === loadOf(last[at] as SetEntry))
@@ -201,5 +232,8 @@ function doneComparison(today: SetEntry[], last: SetEntry[], lastDay: string, pl
   const top = (sets: SetEntry[]): number => Math.max(...sets.map(loadOf))
   const kg = Math.round((top(today) - top(last)) * 1000) / 1000
   if (kg === 0) return repsMove(today, last, lastDay, `Same top weight as ${lastDay}`)
+  if (assisted([...today, ...last])) {
+    return `${plainKg(Math.abs(kg))} kg ${kg > 0 ? 'less' : 'more'} assistance than ${lastDay}`
+  }
   return kg > 0 ? `+${plainKg(kg)} kg top set on ${lastDay}` : `${plainKg(-kg)} kg under ${lastDay}`
 }

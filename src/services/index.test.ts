@@ -96,6 +96,7 @@ describe('O5 createServices returns exactly the service API', () => {
       'volumeBaseline',
       'weekStart',
       'weightStep',
+      'weightSteps',
     ])
   })
 

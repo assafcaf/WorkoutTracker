@@ -335,6 +335,12 @@ export function WorkoutFeature({
   const [session, setSession] = useState<Session | null>(null)
   const [openSet, setOpenSet] = useState<OpenSet | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
+  // V1-17: the swap just made from Now, for its Undo snackbar on the swapped-in Exercise's screen.
+  // The screen reads it once as it opens; it is dropped as soon as that screen has it.
+  const [swapUndo, setSwapUndo] = useState<{ plannedId: string; name: string; setIndex: number } | null>(null)
+  useEffect(() => {
+    if (swapUndo !== null) setSwapUndo(null)
+  }, [swapUndo])
   const [historyFor, setHistoryFor] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [summarySession, setSummarySession] = useState<Session | null>(null)
@@ -545,6 +551,7 @@ export function WorkoutFeature({
     ])
       .then(async ([plannedLast, chosenLast, weightStep]) => {
         await applySwap(plannedId, chosenId)
+        setSwapUndo({ plannedId, name: planned.name, setIndex })
         const preset = swapPreset({ planned, chosen, plan, setIndex, plannedLast, chosenLast, today })
         const seed: SetEntry[] | undefined =
           chosenLast.length > 0
@@ -600,6 +607,30 @@ export function WorkoutFeature({
       })
       .catch(() => {
         // The swap stands; the list keeps showing it as it is stored.
+      })
+  }
+
+  /** V1-17: the swap snackbar's Undo on Now: removes the swap and reopens the planned Exercise. */
+  function handleUndoSwapOnNow(plannedId: string, setIndex: number): void {
+    if (!session) return
+    services.sessions
+      .undoSwap(session.id, plannedId)
+      .then(async () => {
+        const [opened, exerciseNote] = await Promise.all([
+          loadOpenSet(services, plannedId, setIndex),
+          services.preferences.exerciseNote(plannedId).catch(() => null),
+        ])
+        setSession((current) => {
+          if (!current) return current
+          const swaps = { ...current.swaps }
+          delete swaps[plannedId]
+          return { ...current, swaps }
+        })
+        setOpenSet({ ...opened, exerciseNote })
+        setView('set')
+      })
+      .catch(() => {
+        // The swap stands; All still offers "Undo swap" beside the row.
       })
   }
 
@@ -871,6 +902,7 @@ export function WorkoutFeature({
   ): JSX.Element {
     return (
       <LiveHeader
+        onDiscard={handleDiscard}
         workoutName={workout.name}
         heading={heading}
         startedAt={liveSession.startedAt}
@@ -997,6 +1029,14 @@ export function WorkoutFeature({
           <SetScreen
             key={`${openSet.exerciseId}#${openSet.setIndex}#${openSet.editSetIndex ?? ''}`}
             editSetIndex={openSet.editSetIndex}
+            swappedFrom={
+              swapUndo === null
+                ? null
+                : {
+                    name: swapUndo.name,
+                    onUndo: () => handleUndoSwapOnNow(swapUndo.plannedId, swapUndo.setIndex),
+                  }
+            }
             deload={session.deload === true}
             exercise={exercise}
             plates={isBarbell(libraryMap.get(exercise.libraryId)) ? (plateInventoryData.status === 'ready' ? plateInventoryData.data : null) : null}

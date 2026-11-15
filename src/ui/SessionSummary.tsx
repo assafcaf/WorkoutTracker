@@ -47,6 +47,11 @@ export type SessionSummaryProps = {
   /** Opens the Session's editor; omitted means no Edit control (the finish summary). */
   onEdit?(): void
   /**
+   * V5: deletes the Session straight from its summary, no edit mode first; the caller offers
+   * Undo. Omitted means no Delete control (the finish summary).
+   */
+  onDelete?(): void
+  /**
    * The Program the Session ran under: the moves and the "This week n of N · next up <Workout>"
    * line read it (E18-T15, V4-03). Omitted means no week line.
    */
@@ -137,6 +142,7 @@ export function SessionSummary({
   onClose,
   onBrowse,
   onEdit,
+  onDelete,
   program,
   weekStartsOn = 1,
   workout,
@@ -392,6 +398,13 @@ export function SessionSummary({
             ) : null}
           </span>
         </p>
+
+        {onDelete ? (
+          <button type="button" className="session-summary-delete btn-danger" onClick={onDelete}>
+            <Icon name="Trash" size={20} />
+            Delete workout
+          </button>
+        ) : null}
       </div>
 
       <div className="session-summary-dock">

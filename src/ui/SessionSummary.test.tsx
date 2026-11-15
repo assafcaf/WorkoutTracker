@@ -566,7 +566,8 @@ test('S5b the exercise table gives each Exercise its best set, volume and change
   expect(within(dialog).queryByRole('table')).toBeNull()
   const row = within(dialog).getByText('Bench press', { selector: '.session-summary-move-name' }).closest('.session-summary-move') as HTMLElement
   expect(row.querySelector('.session-summary-move-top')).toBeNull()
-  expect(row.querySelector('.session-summary-move-text')?.textContent).toBe('85×5 PR · 85×5 · 85×5 · +5 kg')
+  // V5: the change is the live Session's sentence (`exerciseComparison`), with last time's day.
+  expect(row.querySelector('.session-summary-move-text')?.textContent).toBe('85×5 PR · 85×5 · 85×5 · +5 kg top set on Wed 8 Nov')
   expect(row.textContent).not.toContain('record')
 })
 
@@ -684,7 +685,8 @@ test('O26 each lift reads its move in words beside its top set', () => {
   // Title kept (weakened-tests gate); V4-03: the move is one plain sentence after the name.
   const move = dialog.querySelector('.session-summary-move') as HTMLElement
   expect(move.querySelector('.session-summary-move-name')?.textContent).toBe('Bench press')
-  expect(move.querySelector('.session-summary-move-text')?.textContent).toBe('85×5 PR · 85×5 · 85×5 · +5 kg')
+  // V5: worded as the live Session words it.
+  expect(move.querySelector('.session-summary-move-text')?.textContent).toBe('85×5 PR · 85×5 · 85×5 · +5 kg top set on Wed 7 Oct')
 })
 
 test('O26 the records list counts the Session records once, with the kind and its gain', () => {
@@ -903,8 +905,9 @@ test('V3-02 Lift by lift never reads a bare Same: it names the Sets, Same as las
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 50, 3, 80, 5), [before])
 
-  // Title kept (weakened-tests gate); V4-03: the sentence names each Set, then "same as last time".
-  expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('80×5 · 80×5 · 80×5 · same as last time')
+  // Title kept (weakened-tests gate); V4-03: the sentence names each Set; V5: then the live
+  // Session's "Same as <last time's day>".
+  expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('80×5 · 80×5 · 80×5 · Same as Wed 7 Oct')
 })
 
 test('V3-02 a lift with 1 of 3 Sets logged reads 1 of 3 sets, with no vs comparison', () => {
@@ -934,7 +937,7 @@ test('V4-03 a rep record by one reads +1 rep, never +1 reps', () => {
 
   expect(dialog.querySelector('.session-summary-win-text')?.textContent).toBe('Bench press 85 kg × 6 · rep record, +1 rep')
   expect(dialog.textContent).not.toContain('+1 reps')
-  expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('85×6 PR · 85×5 · 85×5 · 1 rep more')
+  expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('85×6 PR · 85×5 · 85×5 · 1 rep more than Wed 8 Nov')
 })
 
 test('V4-03 a partial Session reads "1 of 3 sets" in the figures, with no % comparison', () => {

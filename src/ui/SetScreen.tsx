@@ -6,7 +6,7 @@ import { formatDay } from '../domain/dates'
 import { projectSet } from '../domain/liveProgress'
 import { formatSet, formatSetCompact } from '../domain/setText'
 import { deloadText } from '../domain/deload'
-import { presetForSet, presetFromSet } from '../domain/prefill'
+import { presetForSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { prMoment } from '../domain/prMoment'
 import { formatPlates, plateChange, platesFor } from '../domain/plates'
@@ -28,7 +28,7 @@ import { SetKindRow, setKindLabel } from './SetKindRow'
 import { Sheet } from './Sheet'
 import { Snackbar } from './Snackbar'
 import { useWakeLock } from './useWakeLock'
-import { WeightDial, WeightStepControl } from './WeightDial'
+import { WeightDial } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
 import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind } from '../types'
@@ -133,19 +133,18 @@ export type SetScreenProps = {
   sessionStartedAt?: number
   /**
    * The stored weight step for this Exercise (E8-T8), or `null`/omitted to open on its catalog
-   * `weightStep`. Read once, on open -- the Dial and Ladder then follow whatever is chosen from
-   * the step control until the screen is reopened.
+   * `weightStep`. Read once, on open. It is set in Program › Exercises (V1-16), not on Now.
    */
   weightStep?: number | null
   /**
-   * Told the weight step just chosen from the step control (E8-T8), so the caller can persist
-   * it for this Exercise. Optional; the screen keeps using the new step for itself either way.
+   * No longer called (V1-16): the step control left the in-workout tools sheet for Program ›
+   * Exercises, which stores the same setting. Kept so existing callers still type-check.
    */
   onWeightStepChange?(step: number): void
   /**
-   * Told the Bodyweight setting just chosen from the Bodyweight switch (E16-T13 O6), so the caller
-   * can store the override for this Exercise. A rejection's message shows under the switch, and
-   * the switch returns to the setting it had. Without it the screen shows no switch.
+   * No longer called (V1-16): the Bodyweight switch left the in-workout tools sheet for Program ›
+   * Exercises, which stores the same override; the caller hands in the Exercise already resolved
+   * through it. Kept so existing callers still type-check.
    */
   onBodyweightChange?(value: boolean): Promise<void>
   /**
@@ -203,6 +202,12 @@ export type SetScreenProps = {
   handover?: Handover | null
   /** V3-01: the done state's primary once no Exercise is left, "Finish workout". */
   onFinishWorkout?(): void
+  /**
+   * V1-17: this Exercise was just swapped in for the planned one from Now. The screen opens with
+   * the dark snackbar "Swapped from Deadlift · Undo" for UNDO_MS, as Delete set's does, until a
+   * Set is logged here; Undo calls `onUndo`, which puts the planned Exercise back.
+   */
+  swappedFrom?: { name: string; onUndo(): void } | null
 }
 
 /** The Exercise just finished, as the next one's screen shows it during its rest (V3-01). */
@@ -477,46 +482,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     family,
   } = props
 
-  // The Bodyweight setting chosen from the Bodyweight switch (E16-T13 O6), read once on open from
-  // the caller's resolved Exercise; every part of the screen follows it through `exercise`.
-  const [bodyweight, setBodyweight] = useState<boolean>(givenExercise.bodyweight)
-  const [bodyweightError, setBodyweightError] = useState<string | null>(null)
-  const exercise: Exercise =
-    bodyweight === givenExercise.bodyweight ? givenExercise : { ...givenExercise, bodyweight }
-
-  // The step chosen from the Dial's step control (E8-T8), read once on open from `weightStep`
-  // and otherwise the catalog's own; the Dial and Ladder both follow it via `effectiveExercise`.
-  const [weightStep, setWeightStep] = useState<number>(
-    props.weightStep ?? exercise.weightStep,
-  )
+  // The Bodyweight setting (E16-T13) and the weight step (E8-T8) as the caller resolved them from
+  // what Program › Exercises stores (V1-16); the in-workout sheet no longer changes either.
+  const exercise: Exercise = givenExercise
+  const [weightStep] = useState<number>(props.weightStep ?? exercise.weightStep)
   const effectiveExercise: Exercise = { ...exercise, weightStep }
-
-  function handleStepChange(step: number): void {
-    setWeightStep(step)
-    props.onWeightStepChange?.(step)
-  }
-
-  /**
-   * The Bodyweight switch flipped to `value`: the Dial changes mode at once, the open Set's value
-   * translated into it (`presetFromSet`), and the caller stores it. A rejection puts both back.
-   */
-  function handleBodyweightChange(value: boolean): void {
-    const before = { bodyweight, open }
-    const preset = presetFromSet({
-      exercise: { ...exercise, bodyweight: value },
-      plan,
-      set: { weightKg: open.weightKg, reps: open.reps, loadKg: exercise.bodyweight ? open.loadKg : undefined },
-    })
-    setRamp(null)
-    setBodyweightError(null)
-    setBodyweight(value)
-    setOpen({ ...open, weightKg: preset.weightKg, reps: preset.reps, loadKg: value ? (preset.loadKg ?? 0) : 0 })
-    props.onBodyweightChange?.(value).catch((reason: unknown) => {
-      setBodyweight(before.bodyweight)
-      setOpen(before.open)
-      setBodyweightError(reason instanceof Error ? reason.message : String(reason))
-    })
-  }
 
   // What the next Set presets from as last time. Without `logged`, the Sets this screen logs or
   // edits are laid over it by `setIndex`; with it, it stays last time's alone and today's Sets
@@ -586,6 +556,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const [toolsOpen, setToolsOpen] = useState(false)
   const [toolsSegment, setToolsSegment] = useState<ToolsSegment>(props.plates ? 'warmup' : 'notes')
   const [kindsOpen, setKindsOpen] = useState(false)
+
+  // V1-17: the swap's Undo, shown from the screen's opening until it times out or a Set is logged.
+  // Read once, on open: the caller may drop it at once, and a later screen must not show it again.
+  const [swappedFrom] = useState(props.swappedFrom ?? null)
+  const [swapUndoShown, setSwapUndoShown] = useState<boolean>(swappedFrom !== null)
+  useEffect(() => {
+    if (!swapUndoShown) return undefined
+    const timer = setTimeout(() => setSwapUndoShown(false), UNDO_MS)
+    return () => clearTimeout(timer)
+  }, [swapUndoShown])
 
   function clearUndo(): void {
     if (undoTimer.current !== null) clearTimeout(undoTimer.current)
@@ -795,6 +775,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   }
 
   async function log(): Promise<void> {
+    setSwapUndoShown(false)
     unlockRestSound()
     const validation = validateEntry(open.weightKg, open.reps, open.loadKg)
     if (!validation.ok) {
@@ -1533,35 +1514,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           </span>
           <span className="sheet-row-chevron"><Icon name="ChevronRight" size={18} /></span>
         </button>
-        {/* How the steppers count: the weight step, and Bodyweight (E8-T8, E16-T13). */}
-        <div className="set-dial-controls">
-          {exercise.bodyweight ? null : (
-            <div className="sheet-row tools-step">
-              <span className="sheet-row-icon"><Icon name="Settings" /></span>
-              <WeightStepControl step={effectiveExercise.weightStep} onStepChange={handleStepChange} />
-            </div>
-          )}
-          {props.onBodyweightChange === undefined ? null : (
-            <div className="sheet-row tools-bodyweight">
-              <span className="sheet-row-icon"><Icon name="Dumbbell" /></span>
-              <span className="sheet-row-label">Bodyweight exercise</span>
-              <button
-                type="button"
-                role="switch"
-                className="bodyweight-switch chip"
-                aria-checked={bodyweight}
-                onClick={() => handleBodyweightChange(!bodyweight)}
-              >
-                Bodyweight
-              </button>
-            </div>
-          )}
-          {bodyweightError === null ? null : (
-            <p className="bodyweight-error" role="alert">
-              {bodyweightError}
-            </p>
-          )}
-        </div>
+        {/* V1-16: Step and Bodyweight live in Program › Exercises, not here mid-workout. */}
         <button type="button" className="sheet-row cell" onClick={() => handOff(() => onOpenAlternatives?.(exercise.id))}>
           <span className="sheet-row-icon"><Icon name="Swap" /></span>
           <span className="sheet-row-label">Swap exercise</span>
@@ -1966,7 +1919,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           </section>
         ) : collapsed ? null : (
           <>
-          <div className="set-dials">
+          <div className="set-dials" onFocusCapture={revealDial} onPointerUpCapture={revealDial}>
             {exercise.bodyweight ? (
               // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
               <WeightDial
@@ -2017,9 +1970,36 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {undo === null ? null : (
         <Snackbar message="Set deleted" actionLabel="Undo" onAction={() => void restoreSet()} />
       )}
+      {undo !== null || !swapUndoShown || swappedFrom === null ? null : (
+        <Snackbar
+          message={`Swapped from ${swappedFrom.name}`}
+          actionLabel="Undo"
+          onAction={() => {
+            setSwapUndoShown(false)
+            swappedFrom.onUndo()
+          }}
+        />
+      )}
 
     </>
   )
+}
+
+/**
+ * V1-20: the Dial being worked is never left under the dock. On a short screen (195 x 422, or
+ * large text) the reps Dial starts below the Log set bar; a focus or a tap on the part still in
+ * sight scrolls the page just enough to lift that Dial clear of the dock.
+ */
+function revealDial(event: { target: EventTarget | null }): void {
+  const target = event.target instanceof Element ? event.target : null
+  const dial = target?.closest('.dial')
+  const dock = document.querySelector('.set-dock')?.closest('.action-bar') ?? document.querySelector('.set-dock')
+  if (!dial || !dock) return
+  const dialBox = dial.getBoundingClientRect()
+  const dockBox = dock.getBoundingClientRect()
+  if (dialBox.height === 0 || dockBox.height === 0) return
+  const over = dialBox.bottom + 8 - dockBox.top
+  if (over > 0) window.scrollBy({ top: over })
 }
 
 /** A logged Set as the Just done block heads it: "60 kg × 10", "BW−19 × 6" (V4-01). */

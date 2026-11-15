@@ -8,6 +8,7 @@ import {
   weekLine,
   workedToday,
 } from './summaryLines'
+import { exerciseDoneLine } from './exerciseVerdict'
 import type { SessionRecord } from './stats/records'
 import type { Exercise, ExercisePlan, Muscle, Program, Session, SetEntry } from '../types'
 
@@ -104,7 +105,8 @@ test('V4-03 a record gain reads +1 rep, +2 reps, +5 kg or −2.5 kg assistance',
 test('V4-03 a lift reads its Sets, the PR on the record Set, then "1 rep more", with no totals', () => {
   const line = liftLine('deadlift', THURSDAY, [MONDAY, THURSDAY], resolve, planOf, [REP_RECORD], 3)
 
-  expect(liftLineText(line)).toBe('60×10 · 70×8 PR · 70×7 · 1 rep more')
+  // Title kept (weakened-tests gate); V5: the comparison is the live Session's sentence.
+  expect(liftLineText(line)).toBe('60×10 · 70×8 PR · 70×7 · 1 rep more than Mon 12 Oct')
   expect(liftLineText(line)).not.toMatch(/ vs |record/)
 })
 
@@ -133,14 +135,39 @@ test('V4-03 a lift says fewer reps, a weight step, less assistance, or the same 
   const tail = (today: Session, earlier: Session): string =>
     liftLine('deadlift', today, [earlier, today], resolve, planOf, [], 3).tail
 
-  expect(tail(fewer, before)).toBe('3 reps fewer')
-  expect(tail(heavier, before)).toBe('+2.5 kg')
-  expect(tail(same, before)).toBe('same as last time')
-  expect(tail(same, { ...before, id: 'other', workoutId: 'b', startedAt: THU_15_OCT + DAY })).toBe('first time')
+  // Title kept (weakened-tests gate); V5: worded by `exerciseComparison`, as the live Session.
+  expect(tail(fewer, before)).toBe('3 reps under Mon 12 Oct')
+  expect(tail(heavier, before)).toBe('+2.5 kg top set on Mon 12 Oct')
+  expect(tail(same, before)).toBe('Same as Mon 12 Oct')
+  expect(tail(same, { ...before, id: 'other', workoutId: 'b', startedAt: THU_15_OCT + DAY })).toBe('First time logged')
 
   const assisted = session('mon', 'b', MON_12_OCT, [['pullups', -20, 6]])
   const lighter = session('thu', 'b', THU_15_OCT, [['pullups', -15, 6]])
-  expect(liftLine('pullups', lighter, [assisted, lighter], resolve, planOf, []).tail).toBe('−5 kg assistance')
+  expect(liftLine('pullups', lighter, [assisted, lighter], resolve, planOf, []).tail).toBe(
+    '5 kg less assistance than Mon 12 Oct',
+  )
+})
+
+test('V5 the summary and the live Session say a lift the same: liftLine ends with exerciseDoneLine', () => {
+  const line = liftLineText(liftLine('deadlift', THURSDAY, [MONDAY, THURSDAY], resolve, planOf, [REP_RECORD], 3))
+  const live = exerciseDoneLine({
+    today: THURSDAY.entries,
+    last: MONDAY.entries,
+    lastDay: 'Mon 12 Oct',
+    plannedSets: 3,
+    isRecord: (entry) => entry.setIndex === 2,
+  })
+  expect(line).toBe(live)
+})
+
+test('V5 a deload Session reads Deload, and more assistance says so', () => {
+  const before = session('mon', 'b', MON_12_OCT, [['pullups', -20, 6]])
+  const harder = session('thu', 'b', THU_15_OCT, [['pullups', -25, 6]])
+  expect(liftLine('pullups', harder, [before, harder], resolve, planOf, []).tail).toBe(
+    '5 kg more assistance than Mon 12 Oct',
+  )
+  const deload: Session = { ...harder, deload: true }
+  expect(liftLine('pullups', deload, [before, deload], resolve, planOf, []).tail).toBe('Deload')
 })
 
 test('V4-03 the comparison is with the last same Workout: "vs Mon 12 Oct: volume +1.2 %"', () => {

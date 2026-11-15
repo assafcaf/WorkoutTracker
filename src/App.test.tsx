@@ -3291,9 +3291,14 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
 })
 
 describe('E8-T8', () => {
-  /** The step control: a native select named for the weight step it currently reads. */
-  function stepControl(step: number): HTMLElement {
-    return screen.getByRole('combobox', { name: `Step ${step} kg` })
+  // V1-16: the step control left the in-workout tools sheet for Program › Exercises, which stores
+  // the same setting; the set screen reads the stored step as it opens.
+
+  /** Steps the weight Dial up once and answers what it then reads. */
+  async function weightAfterOneStepUp(user: UserEvent): Promise<string> {
+    await findSteppers()
+    await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+    return (screen.getByRole('button', { name: /^Weight, / }).textContent ?? '').replace(/\s+/g, ' ').trim()
   }
 
   test('O2 back squats set screen opens with Step 5 kg once setWeightStep has stored it', async () => {
@@ -3303,10 +3308,11 @@ describe('E8-T8', () => {
 
     await startWorkout(user, 'Workout A')
     await openExercise(user, 'Back squat')
-    // The step control is a row of the exercise tools sheet (S3b).
-    await toolsRow(user)
 
-    expect(await screen.findByRole('combobox', { name: 'Step 5 kg' }, SETTLE)).toBeInTheDocument()
+    // 50 kg up one stored 5 kg step; the tools sheet itself offers no Step row.
+    expect(await weightAfterOneStepUp(user)).toBe('55')
+    await toolsRow(user)
+    expect(screen.queryByRole('combobox', { name: /^Step / })).toBeNull()
   })
 
   test('O2 choosing a new weight step on back squats set screen is stored for the next time it opens', async () => {
@@ -3314,12 +3320,11 @@ describe('E8-T8', () => {
     const firstRun = await renderApp()
     await startWorkout(user, 'Workout A')
     await openExercise(user, 'Back squat')
-    await toolsRow(user)
+    expect(await weightAfterOneStepUp(user)).toBe('52.5')
 
-    await user.selectOptions(stepControl(2.5), '5')
-    await waitFor(async () => {
-      expect(await getWeightStep('back-squat')).toBe(5)
-    }, SETTLE)
+    // The step is chosen in Program › Exercises, which stores it through the same setting.
+    await setWeightStep('back-squat', 5)
+    expect(await getWeightStep('back-squat')).toBe(5)
     firstRun.unmount()
 
     // The session started above is still in progress (never finished), so a fresh render lands
@@ -3327,9 +3332,8 @@ describe('E8-T8', () => {
     // comment: "A session in progress wins on mount, so reopening the app lands back in it."
     await renderApp()
     await openExercise(user, 'Back squat')
-    await toolsRow(user)
 
-    expect(await screen.findByRole('combobox', { name: 'Step 5 kg' }, SETTLE)).toBeInTheDocument()
+    expect(await weightAfterOneStepUp(user)).toBe('55')
   })
 })
 

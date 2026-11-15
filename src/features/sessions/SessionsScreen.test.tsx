@@ -66,7 +66,7 @@ function renderScreen(initialSessionId?: string) {
 
 /** The calendar's six week rows, oldest first, each as its seven cells' letters (`.` on an empty day). */
 function calendarRows(calendar: HTMLElement): string[] {
-  return [...calendar.querySelectorAll('.sessions-calendar-row[role="img"]')].map((row) =>
+  return [...calendar.querySelectorAll('.sessions-calendar-row[role="group"]')].map((row) =>
     [...row.querySelectorAll('.calendar-day')].map((day) => day.textContent || '.').join(''),
   )
 }
@@ -102,12 +102,12 @@ test('S6a the calendar fills each day with a Session, outlines today and counts 
   const calendar = await screen.findByRole('region', { name: 'Last 6 weeks' }, SETTLE)
   expect(calendar.querySelector('.sessions-calendar-head')?.textContent).toBe('Last 6 weeks · 3 sessions')
   expect(calendarRows(calendar)).toEqual(['.......', '.......', '.......', '.......', '....A..', 'BA.....'])
-  expect(within(calendar).getByRole('img', { name: 'Week of 12 Oct: Workout B Mon, Workout A Tue' })).toBeVisible()
-  expect(within(calendar).getByRole('img', { name: 'Week of 7 Sep: no sessions' })).toBeVisible()
+  expect(within(calendar).getByRole('group', { name: 'Week of 12 Oct: Workout B Mon, Workout A Tue' })).toBeVisible()
+  expect(within(calendar).getByRole('group', { name: 'Week of 7 Sep: no sessions' })).toBeVisible()
   const today = calendar.querySelectorAll('.calendar-day[data-today]')
   expect(today).toHaveLength(1)
   expect(today[0].textContent).toBe('A')
-  expect(within(calendar).getByRole('img', { name: /^Week of 12 Oct/ })).toHaveAttribute('data-current')
+  expect(within(calendar).getByRole('group', { name: /^Week of 12 Oct/ })).toHaveAttribute('data-current')
   expect(screen.queryByRole('region', { name: 'Calendar' })).toBeNull()
 })
 
@@ -182,9 +182,10 @@ test('S6a THIS WEEK lists this week’s Sessions newest first with their figures
   expect(rows.map((row) => row.querySelector('.session-row-date')?.textContent)).toEqual(['Tue 13 Oct', 'Mon 12 Oct'])
   expect(rows[0].querySelector('.session-row-workout')?.textContent).toBe('Workout A')
   expect(rows[0].querySelector('.session-row-stats')?.textContent).toBe('52 min · 3 sets · 1,500 kg')
-  // V2-07: the PR tag reads `1 PR`, in place of `1 record`.
-  expect(rows[0].querySelector('.tag-pr')?.textContent).toBe('1 PR')
-  expect(rows[1].querySelector('.tag-pr')).toBeNull()
+  // V2-07: the PR count reads `1 PR`, in place of `1 record`. V5: plain text, not an accent tag.
+  expect(rows[0].querySelector('.session-row-prs')?.textContent).toBe('1 PR')
+  expect(rows[1].querySelector('.session-row-prs')).toBeNull()
+  expect(rows[0].querySelector('.tag-pr')).toBeNull()
 
   const lastWeek = screen.getByRole('region', { name: 'Last week' })
   expect(within(lastWeek).getAllByRole('button')).toHaveLength(1)
@@ -249,10 +250,10 @@ test('E19-T5 O7 the calendar, week groups and muscle table follow a Sunday week 
   // Title kept (weakened-tests gate); V3-09: the calendar's weeks start on Sunday (the muscle
   // table's week start is checked on Progress › Muscles).
   const calendar = await screen.findByRole('region', { name: 'Last 6 weeks' }, SETTLE)
-  const current = within(calendar).getByRole('img', { name: 'Week of 11 Oct: Workout B Sun, Workout A Tue' })
+  const current = within(calendar).getByRole('group', { name: 'Week of 11 Oct: Workout B Sun, Workout A Tue' })
   expect(current).toHaveAttribute('data-current')
   expect(calendarRows(calendar).at(-1)).toBe('B.A....')
-  expect(within(calendar).queryByRole('img', { name: /^Week of 12 Oct/ })).toBeNull()
+  expect(within(calendar).queryByRole('group', { name: /^Week of 12 Oct/ })).toBeNull()
   expect(
     [...calendar.querySelectorAll('.sessions-calendar-weekday')].map((day) => day.textContent).join(''),
   ).toBe('SMTWTFS')
@@ -279,8 +280,8 @@ test('V3-09 the calendar is compact: no legend, no big count, no muscle matrix o
   renderScreen()
 
   const calendar = await screen.findByRole('region', { name: 'Last 6 weeks' }, SETTLE)
-  expect(calendar.querySelectorAll('.sessions-calendar-row[role="img"]')).toHaveLength(6)
-  for (const row of calendar.querySelectorAll('.sessions-calendar-row[role="img"]')) {
+  expect(calendar.querySelectorAll('.sessions-calendar-row[role="group"]')).toHaveLength(6)
+  for (const row of calendar.querySelectorAll('.sessions-calendar-row[role="group"]')) {
     expect(row.querySelectorAll('.calendar-day')).toHaveLength(7)
   }
   // A and B differ in fill and in letter.
@@ -288,8 +289,11 @@ test('V3-09 the calendar is compact: no legend, no big count, no muscle matrix o
   const b = calendar.querySelector('.calendar-day[data-workout="pull"]')
   expect(a?.textContent).toBe('A')
   expect(b?.textContent).toBe('B')
-  // Nothing in the calendar is a button: the list below is the way into a Session.
-  expect(within(calendar).queryAllByRole('button')).toHaveLength(0)
+  // V5: only the two Session days are buttons (into their Session); empty days are not.
+  expect(within(calendar).getAllByRole('button').map((day) => day.getAttribute('aria-label'))).toEqual([
+    'Workout B, Mon 12 Oct',
+    'Workout A, Tue 13 Oct',
+  ])
   expect(document.querySelector('.sessions-calendar-key, .sessions-calendar-count, .sessions-strip')).toBeNull()
   expect(document.querySelector('[data-muscle], .week-heat-halves, .chart')).toBeNull()
   expect(document.body.textContent).not.toContain('3 · 1 · 3')

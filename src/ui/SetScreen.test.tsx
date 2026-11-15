@@ -771,47 +771,48 @@ test('O1 playRestOver is not called when a set screen opens with this Session re
 })
 
 // --- E8-T8 O1: the weight step control, per Exercise ----------------------------------------
+//
+// V1-16: the step control left the in-workout tools sheet for Program › Exercises, which stores
+// the same setting. The screen reads it once, as `weightStep`, and offers no control of its own.
+// The titles stay; the bodies hold the step as the screen now receives it.
 
-/** The step control: a native select named for the weight step it currently reads. */
-function stepControl(step: number): HTMLElement {
-  return screen.getByRole('combobox', { name: `Step ${step} kg` })
+/** The step control, if any: a native select named "Step <n> kg". */
+function stepControls(): HTMLElement[] {
+  return screen.queryAllByRole('combobox', { name: /^Step / })
 }
 
 test('O1 back-squats set screen shows a Step 2.5 kg control by default', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
 
-  // The step control is a row of the exercise tools sheet (S3b).
+  // The catalog's 2.5 kg step drives the Dial; the tools sheet has no Step row (V1-16).
   await openTools(user)
-  expect(stepControl(2.5)).toBeInTheDocument()
+  expect(stepControls()).toEqual([])
+  await closeSheet(user)
+  unfoldSteppers()
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  expect(readoutValue(weightReadout())).toBe('62.5')
 })
 
 test('O1 choosing 5 from the step options updates the control to read Step 5 kg', async () => {
-  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+  // Chosen in Program › Exercises, the step reaches the screen as `weightStep`.
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
 
   await openTools(user)
-  await user.selectOptions(stepControl(2.5), '5')
-
-  expect(stepControl(5)).toBeInTheDocument()
+  expect(stepControls()).toEqual([])
+  expect(screen.queryByText('Step')).toBeNull()
 })
 
 test('O1 choosing 5 from the step options moves Increase weight from 60 to 65', async () => {
-  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
 
-  await openTools(user)
-  await user.selectOptions(stepControl(2.5), '5')
-  await closeSheet(user)
   unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 
   expect(readoutValue(weightReadout())).toBe('65')
 })
 
-test('O1 choosing 5 from the step options rebuilds the Ladder with rungs 5, 10, 15', async () => {
-  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
-
-  await openTools(user)
-  await user.selectOptions(stepControl(2.5), '5')
-  await closeSheet(user)
+test('O1 choosing 5 from the step options rebuilds the Ladder with rungs 5, 10, 15', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
 
   const column = screen.getByRole('listbox', { name: 'Weight ladder' })
   const rungs = within(column).getAllByRole('option')
@@ -819,23 +820,46 @@ test('O1 choosing 5 from the step options rebuilds the Ladder with rungs 5, 10, 
 })
 
 test('O1 choosing 5 from the step options tells the caller onWeightStepChange with 5', async () => {
+  // Nothing on Now chooses a step any more, so the screen never calls it, even through a log.
   const onWeightStepChange = vi.fn()
   const { user } = renderSetScreen({
     lastEntries: [historyEntry(1, 60, 10)],
+    weightStep: 5,
     onWeightStepChange,
   })
 
   await openTools(user)
-  await user.selectOptions(stepControl(2.5), '5')
+  await closeSheet(user)
+  await user.click(logButton())
 
-  expect(onWeightStepChange).toHaveBeenCalledWith(5)
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  expect(onWeightStepChange).not.toHaveBeenCalled()
 })
 
 test('O1 a weightStep prop of 5 opens the control already reading Step 5 kg', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
-  await openTools(user)
 
-  expect(stepControl(5)).toBeInTheDocument()
+  unfoldSteppers()
+  await user.click(screen.getByRole('button', { name: 'Decrease weight' }))
+  expect(readoutValue(weightReadout())).toBe('55')
+  expect(stepControls()).toEqual([])
+})
+
+test('V1-16 the tools sheet has no Step and no Bodyweight exercise row', async () => {
+  const { user } = renderSetScreen({
+    lastEntries: [historyEntry(1, 60, 10)],
+    onBodyweightChange: vi.fn(async (_value: boolean) => {}),
+    onWeightStepChange: vi.fn(),
+  })
+
+  const sheet = await openTools(user)
+  expect(within(sheet).queryByText('Bodyweight exercise')).toBeNull()
+  expect(within(sheet).queryByRole('switch')).toBeNull()
+  expect(within(sheet).queryByRole('combobox')).toBeNull()
+  // The rows that stay: Set type, Rest time, Swap exercise, Exercise info, Lift history.
+  for (const name of [/^Set type/, /^Rest time/, /^Swap exercise/, /^Exercise info/, /^Lift history/]) {
+    expect(within(sheet).getByRole('button', { name })).toBeInTheDocument()
+  }
 })
 
 // --- O19: the logged confirmation carries the family it glows in (E10-T8) -------------------
@@ -3981,8 +4005,8 @@ test('O13 last time 80×8 ×3, Sets 1 and 2 logged at 82.5 × 8: Set 3 opens at 
 // --- E16-T11 O9: Weight and Reps side by side ----------------------------------------------
 //
 // Layout cannot be measured in jsdom, so the 390 x 844 fit is held as structure and CSS: the two
-// Dials share one `.set-dials` row (two equal columns, stretched to the same height), and the
-// step control and the Plate line share the `.set-dial-controls` row under it.
+// Dials share one `.set-dials` column. V1-16: the `.set-dial-controls` rows (Step, Bodyweight)
+// left the tools sheet for Program › Exercises; the Plate line stays under the weight Dial.
 
 function dialPair(): HTMLElement {
   return document.querySelector<HTMLElement>('.set-dials') as HTMLElement
@@ -4004,22 +4028,22 @@ test('O9 the Weight and Reps Dials are the two children of one .set-dials row, W
 test('O9 the step control and the Plate line sit in one .set-dial-controls row after the Dial pair', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
 
-  // S3b: the step control sits in the tools sheet's .set-dial-controls rows; the Plate line stays
-  // on the screen under the weight Dial (V1-07), not in the sheet.
+  // V1-16: no controls row anywhere; the Plate line stays on the screen in the Dial pair (V1-07).
   expect(controlsRow()).toBeNull()
+  expect(dialPair().contains(plateLine())).toBe(true)
   const sheet = await openTools(user)
-  const row = controlsRow()
-  expect(sheet).toContainElement(row)
-  expect(row.contains(stepControl(2.5))).toBe(true)
+  expect(controlsRow()).toBeNull()
+  expect(within(sheet).queryByRole('combobox', { name: /^Step/ })).toBeNull()
   expect(sheet.querySelector('.plate-line')).toBeNull()
-  expect(dialPair().contains(row)).toBe(false)
 })
 
 test('O9 without a Plate inventory the controls row still holds the step control', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
   await openTools(user)
 
-  expect(controlsRow().contains(stepControl(2.5))).toBe(true)
+  // V1-16: neither the row nor its step control; and with no inventory, no Plate line.
+  expect(controlsRow()).toBeNull()
+  expect(screen.queryByRole('combobox', { name: /^Step/ })).toBeNull()
   expect(plateLine()).toBeNull()
 })
 
@@ -4027,7 +4051,8 @@ test('O9 a Bodyweight Exercise still has the .set-dial-controls row, without a s
   const { user } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan })
   await openTools(user)
 
-  expect(controlsRow()).not.toBeNull()
+  // V1-16: the row is gone for every Exercise, a Bodyweight one included.
+  expect(controlsRow()).toBeNull()
   expect(screen.queryByRole('combobox', { name: /^Step/ })).toBeNull()
 })
 
@@ -4048,114 +4073,111 @@ test('O9 the stylesheet lays .set-dials out as one row: two equal columns with t
 })
 
 test('O9 the stylesheet lays .set-dial-controls out as one row', () => {
+  // V1-16: the row is gone, and so is its rule; no dead selector is left behind.
   const decls = declarationsFor(restCss(), '.set-dial-controls')
-  expect(decls.get('display')).toMatch(/^(flex|grid)$/)
+  expect(decls.get('display')).toBeUndefined()
+  expect(restCss()).not.toContain('.set-dial-controls')
 })
 
 // --- E16-T13 O6: the Bodyweight switch -------------------------------------------------------
 //
-// The caller hands in the Exercise already resolved through `applyBodyweight`; the switch shows
-// that setting, flips the Dial's mode at once, and tells the caller through `onBodyweightChange`.
+// V1-16: the switch left the in-workout tools sheet for Program › Exercises, which stores the
+// same override. The caller hands in the Exercise already resolved through it, and the screen
+// follows that setting; it never calls `onBodyweightChange`. The titles stay; the bodies hold
+// the setting as the screen now receives it.
 
-/** The Bodyweight switch beside the step control, in the open tools sheet. */
-function bodyweightSwitch(): HTMLElement {
-  return screen.getByRole('switch', { name: 'Bodyweight' })
-}
-
-/** Opens the tools sheet and flips the Bodyweight switch; the sheet stays open. */
-async function flipBodyweight(user: UserEvent): Promise<void> {
-  await openTools(user)
-  await user.click(bodyweightSwitch())
+/** The Bodyweight switch, if any is left in the open tools sheet. */
+function bodyweightSwitches(): HTMLElement[] {
+  return screen.queryAllByRole('switch', { name: 'Bodyweight' })
 }
 
 /** Back squat as the caller resolves it with a Bodyweight override stored for it. */
 const backSquatAsBodyweight: Exercise = { ...backSquat, bodyweight: true }
 
-/** A store that has not answered yet: the screen must not wait on it to change mode. */
+/** A store that has not answered yet. */
 function pendingStore() {
   return vi.fn((_value: boolean) => new Promise<void>(() => {}))
 }
 
 test('O6 a loaded Exercise shows the Bodyweight switch off, in .set-dial-controls beside the step control', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onBodyweightChange: pendingStore() })
-  await openTools(user)
 
-  const toggle = bodyweightSwitch()
-  expect(toggle).not.toBeChecked()
-  expect(controlsRow().contains(toggle)).toBe(true)
-  expect(controlsRow().contains(stepControl(2.5))).toBe(true)
+  // A loaded Exercise reads kg on the Dial; the sheet holds no switch and no controls row.
+  expect(readoutValue(weightReadout())).toBe('60')
+  await openTools(user)
+  expect(bodyweightSwitches()).toEqual([])
+  expect(controlsRow()).toBeNull()
 })
 
 test('O6 a Bodyweight Exercise shows the Bodyweight switch on, in .set-dial-controls', async () => {
   const { user } = renderSetScreen({ exercise: pushUps, plan: pushUpPlan, onBodyweightChange: pendingStore() })
-  await openTools(user)
 
-  expect(bodyweightSwitch()).toBeChecked()
-  expect(controlsRow().contains(bodyweightSwitch())).toBe(true)
+  expect(readoutValue(loadReadout())).toBe('BW')
+  await openTools(user)
+  expect(bodyweightSwitches()).toEqual([])
+  expect(controlsRow()).toBeNull()
 })
 
-test('O6 an Exercise the caller resolved as Bodyweight by override shows the switch on', async () => {
-  const { user } = renderSetScreen({ exercise: backSquatAsBodyweight, onBodyweightChange: pendingStore() })
-  await openTools(user)
+test('O6 an Exercise the caller resolved as Bodyweight by override shows the switch on', () => {
+  renderSetScreen({
+    exercise: backSquatAsBodyweight,
+    lastEntries: [{ ...historyEntry(1, null, 10), loadKg: 10 }],
+    onBodyweightChange: pendingStore(),
+  })
 
-  expect(bodyweightSwitch()).toBeChecked()
+  // The override reaches the Dial: it reads the signed Load.
+  expect(readoutValue(weightReadout())).toBe('BW+10')
 })
 
 test('O6 flipping the switch on tells onBodyweightChange true, once', async () => {
   const onBodyweightChange = vi.fn(async (_value: boolean) => {})
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onBodyweightChange })
 
-  await flipBodyweight(user)
+  await openTools(user)
+  await closeSheet(user)
+  await user.click(logButton())
 
-  expect(onBodyweightChange.mock.calls).toEqual([[true]])
+  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
+  expect(onBodyweightChange).not.toHaveBeenCalled()
 })
 
 test('O6 flipping the switch off tells onBodyweightChange false, once', async () => {
   const onBodyweightChange = vi.fn(async (_value: boolean) => {})
   const { user } = renderSetScreen({ exercise: backSquatAsBodyweight, onBodyweightChange })
 
-  await flipBodyweight(user)
+  await openTools(user)
+  expect(bodyweightSwitches()).toEqual([])
+  await closeSheet(user)
 
-  expect(onBodyweightChange.mock.calls).toEqual([[false]])
+  expect(onBodyweightChange).not.toHaveBeenCalled()
 })
 
-test('O6 flipping Bodyweight on turns the switch on and the 60 kg Dial into BW+60 at once, before the store answers', async () => {
-  const { user } = renderSetScreen({
-    lastEntries: [historyEntry(1, 60, 10)],
+test('O6 flipping Bodyweight on turns the switch on and the 60 kg Dial into BW+60 at once, before the store answers', () => {
+  // Set Bodyweight in Program › Exercises: the next screen opens with the Dial in Load mode.
+  renderSetScreen({
+    exercise: backSquatAsBodyweight,
+    lastEntries: [{ ...historyEntry(1, null, 10), loadKg: 60 }],
     onBodyweightChange: pendingStore(),
   })
-  expect(readoutValue(weightReadout())).toBe('60')
 
-  await flipBodyweight(user)
-
-  expect(bodyweightSwitch()).toBeChecked()
-  await closeSheet(user)
   expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['BW+60', '10'])
 })
 
-test('O6 flipping Bodyweight off turns a BW+10 Dial onto the start weight, 50 kg', async () => {
-  const { user } = renderSetScreen({
-    exercise: backSquatAsBodyweight,
-    lastEntries: [{ ...historyEntry(1, null, 10), loadKg: 10 }],
-    onBodyweightChange: pendingStore(),
-  })
-  expect(readoutValue(weightReadout())).toBe('BW+10')
+test('O6 flipping Bodyweight off turns a BW+10 Dial onto the start weight, 50 kg', () => {
+  // Bodyweight cleared in Program › Exercises: the screen opens on the loaded start weight.
+  renderSetScreen({ exercise: backSquat, lastEntries: [], onBodyweightChange: pendingStore() })
 
-  await flipBodyweight(user)
-
-  expect(bodyweightSwitch()).not.toBeChecked()
-  await closeSheet(user)
-  expect([readoutValue(weightReadout()), readoutValue(repsReadout())]).toEqual(['50', '10'])
+  expect(readoutValue(weightReadout())).toBe('50')
+  expect(readoutValue(weightReadout())).not.toMatch(/^BW/)
 })
 
 test('O6 a Set logged after flipping Bodyweight on is stored as a Bodyweight Set with the signed Load', async () => {
   const { user } = renderSetScreen({
-    lastEntries: [historyEntry(1, 60, 10)],
+    exercise: backSquatAsBodyweight,
+    lastEntries: [{ ...historyEntry(1, null, 10), loadKg: 60 }],
     onBodyweightChange: vi.fn(async (_value: boolean) => {}),
   })
 
-  await flipBodyweight(user)
-  await closeSheet(user)
   await user.click(logButton())
 
   await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
@@ -4164,18 +4186,16 @@ test('O6 a Set logged after flipping Bodyweight on is stored as a Bodyweight Set
 })
 
 test('O6 a failed store shows its message under the Bodyweight switch', async () => {
-  const { user } = renderSetScreen({
-    lastEntries: [historyEntry(1, 60, 10)],
-    onBodyweightChange: vi.fn(async (_value: boolean) => {
-      throw new Error('Could not save the setting')
-    }),
+  const onBodyweightChange = vi.fn(async (_value: boolean) => {
+    throw new Error('Could not save the setting')
   })
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onBodyweightChange })
 
-  await flipBodyweight(user)
-
-  const message = await screen.findByText('Could not save the setting')
-  expect(message).toBeVisible()
-  expect(bodyweightSwitch().compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // Nothing on Now stores the setting, so nothing can fail here.
+  const sheet = await openTools(user)
+  expect(within(sheet).queryByRole('alert')).toBeNull()
+  expect(screen.queryByText('Could not save the setting')).toBeNull()
+  expect(onBodyweightChange).not.toHaveBeenCalled()
 })
 
 test('O6 a failed store returns the switch off and the Dial to 60 kg', async () => {
@@ -4186,10 +4206,8 @@ test('O6 a failed store returns the switch off and the Dial to 60 kg', async () 
     }),
   })
 
-  await flipBodyweight(user)
-  await screen.findByText('Could not save the setting')
-
-  expect(bodyweightSwitch()).not.toBeChecked()
+  await openTools(user)
+  expect(bodyweightSwitches()).toEqual([])
   await closeSheet(user)
   expect(readoutValue(weightReadout())).toBe('60')
 })
@@ -4857,4 +4875,144 @@ test('V4-07 a finished Exercise reopened shows its cells, the done block with Ad
   expect(screen.queryByRole('button', { name: /^Go to / })).toBeNull()
   fireEvent.click(back)
   expect(onFinishExercise).toHaveBeenCalledTimes(1)
+})
+
+// --- UX v5: swap Undo on Now (V1-17), the Dial clear of the dock (V1-20), Rest at 320 x 568 ---
+
+/** The snackbar on screen, if any. */
+function snackbar(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.snackbar')
+}
+
+test('V1-17 a screen opened on a swap shows the Swapped from <planned> · Undo snackbar', () => {
+  renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo: vi.fn() } })
+
+  const bar = snackbar() as HTMLElement
+  expect(bar).not.toBeNull()
+  expect(bar).toHaveTextContent('Swapped from Deadlift')
+  expect(within(bar).getByRole('button', { name: 'Undo' })).toBeVisible()
+})
+
+test('V1-17 Undo on the swap snackbar calls onUndo once and the snackbar goes', async () => {
+  const onUndo = vi.fn()
+  const { user } = renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo } })
+
+  await user.click(within(snackbar() as HTMLElement).getByRole('button', { name: 'Undo' }))
+
+  expect(onUndo).toHaveBeenCalledTimes(1)
+  expect(snackbar()).toBeNull()
+})
+
+test('V1-17 the swap snackbar leaves after 5 s, as Set deleted does', async () => {
+  vi.useFakeTimers()
+  renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo: vi.fn() } })
+  expect(snackbar()).not.toBeNull()
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(4_900)
+  })
+  expect(snackbar()).not.toBeNull()
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(200)
+  })
+  expect(snackbar()).toBeNull()
+})
+
+test('V1-17 logging a Set of the swapped-in Exercise takes the swap snackbar away', async () => {
+  const { user } = renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo: vi.fn() } })
+
+  await user.click(logButton())
+
+  await waitFor(() => expect(screen.queryByText(/Swapped from/)).toBeNull())
+})
+
+test('V1-17 a screen opened without a swap shows no snackbar, and a later swappedFrom is ignored', () => {
+  const props: SetScreenProps = {
+    exercise: backSquat,
+    plan: squatPlan,
+    setIndex: 1,
+    sessionId: SESSION_ID,
+    sessionStartedAt: BASE,
+    lastEntries: [],
+    onLog: sessionLogSet(),
+    onLogged: vi.fn(),
+  }
+  const { rerender } = render(<SetScreen {...props} />)
+  expect(snackbar()).toBeNull()
+
+  // Read once, on open: the caller may hand it in late or drop it; only the opening counts.
+  rerender(<SetScreen {...props} swappedFrom={{ name: 'Deadlift', onUndo: vi.fn() }} />)
+  expect(snackbar()).toBeNull()
+})
+
+/** Lays out `element` at `top`..`bottom` for getBoundingClientRect, as a browser would. */
+function placeAt(element: Element, top: number, bottom: number): void {
+  vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+    top,
+    bottom,
+    left: 0,
+    right: 195,
+    width: 195,
+    height: bottom - top,
+    x: 0,
+    y: top,
+    toJSON: () => ({}),
+  } as DOMRect)
+}
+
+test('V1-20 focusing the reps Dial under the dock scrolls it clear of the dock', () => {
+  const scrollBy = vi.fn()
+  vi.stubGlobal('scrollBy', scrollBy)
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+  const dock = document.querySelector('.set-dock') as HTMLElement
+  const reps = screen.getByRole('group', { name: 'Reps' })
+  placeAt(dock, 349, 410)
+  placeAt(reps, 358, 410)
+
+  fireEvent.focus(within(reps).getByRole('button', { name: 'Increase reps' }))
+
+  // 410 + 8 px of air - 349 = 69 px up.
+  expect(scrollBy).toHaveBeenCalledWith({ top: 69 })
+})
+
+test('V1-20 focusing a Dial already clear of the dock does not scroll', () => {
+  const scrollBy = vi.fn()
+  vi.stubGlobal('scrollBy', scrollBy)
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+  const dock = document.querySelector('.set-dock') as HTMLElement
+  const weight = screen.getByRole('group', { name: 'Weight (kg)' })
+  placeAt(dock, 680, 832)
+  placeAt(weight, 373, 501)
+
+  fireEvent.focus(within(weight).getByRole('button', { name: 'Increase weight' }))
+
+  expect(scrollBy).not.toHaveBeenCalled()
+})
+
+/** The declarations of `selector` inside the `@media (max-height: 640px)` block. */
+function shortScreenDecls(selector: string): Map<string, string> {
+  const found = new Map<string, string>()
+  postcss.parse(restCss()).walkAtRules('media', (media) => {
+    if (!media.params.includes('max-height: 640px')) return
+    media.walkRules((rule: Rule) => {
+      if (rule.selectors.includes(selector)) {
+        rule.walkDecls((decl: Declaration) => {
+          found.set(decl.prop, decl.value)
+        })
+      }
+    })
+  })
+  return found
+}
+
+test('V5 at 320 x 568 the Rest view tightens so the Just done chips clear the dock', () => {
+  // Measured in the browser: chips 356-400 against the action bar's top at 407 (was 408-452).
+  expect(shortScreenDecls('.just-done').get('padding')).toBe('var(--space-2) var(--space-3)')
+  expect(shortScreenDecls('.get-ready').get('padding')).toBe('var(--space-2) var(--space-3)')
+  expect(shortScreenDecls('.set-cell').get('min-height')).toBe('52px')
+  expect(shortScreenDecls('.set-head').get('min-height')).toBe('var(--tap-min)')
+  expect(shortScreenDecls('.set-screen:has(.get-ready) > .set-spacer').get('display')).toBe('none')
+  // The hand-over block puts its chips under the heading, its Sets line after them.
+  expect(shortScreenDecls('.exercise-verdict .effort-row').get('order')).toBe('1')
+  expect(shortScreenDecls('.exercise-verdict .just-done-line').get('order')).toBe('2')
 })

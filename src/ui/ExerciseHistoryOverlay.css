@@ -2,22 +2,29 @@
 
 .exercise-history-header {
   position: sticky;
+  z-index: 1;
   top: 0;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-1) var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--color-bg);
 }
 
 .exercise-history-heading {
+  /* Shares the row with Close while it fits; at large text it takes the row and Close wraps. */
+  flex: 1 1 10rem;
+  min-width: 0;
   margin: 0;
+  overflow-wrap: break-word;
   font-size: var(--text-xl);
   color: var(--color-text);
 }
 
 .exercise-history-close {
+  flex: 0 0 auto;
   min-height: var(--tap-min);
   padding: 0 var(--space-3);
   border: none;
@@ -37,8 +44,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-2);
-  padding: var(--space-3) 0;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-raised);
 }
 
@@ -54,4 +62,67 @@
 .exercise-history-empty {
   padding: var(--space-4);
   color: var(--color-text);
+}
+
+/* The trend leads (v5): the latest value and the Set behind it, what the number is, where it
+ * went, then the chart. Wraps at any width and text size. */
+.exercise-history-trend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.exercise-history-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+  margin: 0;
+}
+
+.exercise-history-value {
+  color: var(--color-text);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.exercise-history-best {
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.exercise-history-caption,
+.exercise-history-legend {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.exercise-history-summary {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.exercise-history-log-heading {
+  margin: 0;
+  padding: var(--space-2) var(--space-4) 0;
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.exercise-history-more {
+  min-height: var(--tap-min);
+  margin: var(--space-2) var(--space-4) var(--space-4);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--text-sm);
 }
