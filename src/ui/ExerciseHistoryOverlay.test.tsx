@@ -5,14 +5,16 @@ import { loadCatalog } from '../data/catalog'
 import { ExerciseHistoryOverlay } from './ExerciseHistoryOverlay'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
-// E16-T7 O21: the History overlay over hand-built Sessions. Dates are noon UTC so the weekday
-// reads the same in every timezone: 2026-10-06 is a Tuesday, 2026-09-28 a Monday.
+// E16-T7 O21, v6 §6.3: Lift history from the tools sheet is the one Lift page in a sheet, over
+// hand-built Sessions. Dates are noon UTC so the weekday reads the same in every timezone:
+// 2026-10-06 is a Tuesday, 2026-09-28 a Monday.
 
 const squat = loadCatalog().get('back-squat') as Exercise
 const plan: ExercisePlan = { exerciseId: 'back-squat', sets: 4, repRange: [8, 12], restSeconds: 180 }
 
 const TUE_6_OCT = Date.UTC(2026, 9, 6, 12)
 const MON_28_SEP = Date.UTC(2026, 8, 28, 12)
+const NOW = Date.UTC(2026, 9, 7, 12)
 
 function set(
   setIndex: number,
@@ -43,27 +45,37 @@ const newer = session('newer', TUE_6_OCT, [
 ])
 
 function open(sessions: Session[], onClose = () => {}) {
-  render(<ExerciseHistoryOverlay exercise={squat} sessions={sessions} plan={plan} onClose={onClose} />)
-  return screen.getByRole('dialog', { name: 'History · Back squat' })
+  render(<ExerciseHistoryOverlay exercise={squat} sessions={sessions} plan={plan} onClose={onClose} now={NOW} />)
+  return screen.getByRole('dialog', { name: 'Back squat' })
+}
+
+/** The log row of `date`: its sets line's text. */
+function setsOf(dialog: HTMLElement, date: string): string {
+  const log = within(dialog).getByRole('list', { name: 'Sessions' })
+  const row = within(log).getByText(date).closest('li') as HTMLElement
+  return row.querySelector('.lift-log-sets')?.textContent ?? ''
 }
 
 test('O21 the overlay is headed History · <Exercise>', () => {
+  // v6: the sheet is headed by the lift's name, as the Progress Lift page is.
   open([newer])
 
-  expect(screen.getByRole('dialog', { name: 'History · Back squat' })).toBeVisible()
+  expect(screen.getByRole('dialog', { name: 'Back squat' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Back squat' })).toBeVisible()
 })
 
 test('O21 each Session shows its date as Tue 6 Oct and its Sets as the Last time line writes them', () => {
   const dialog = open([newer])
 
-  expect(within(dialog).getByText('Tue 6 Oct')).toBeVisible()
-  expect(within(dialog).getByText('80×8 · 80×8 · 80×7')).toBeVisible()
+  expect(within(within(dialog).getByRole('list', { name: 'Sessions' })).getByText('Tue 6 Oct')).toBeVisible()
+  expect(setsOf(dialog, 'Tue 6 Oct')).toBe('80×8 · 80×8 · 80×7')
 })
 
 test('O21 Sessions are listed newest first whatever order they arrive in', () => {
   const dialog = open([older, newer])
 
-  const dates = within(dialog)
+  const log = within(dialog).getByRole('list', { name: 'Sessions' })
+  const dates = within(log)
     .getAllByText(/^(Mon 28 Sep|Tue 6 Oct)$/)
     .map((el) => el.textContent)
   expect(dates).toEqual(['Tue 6 Oct', 'Mon 28 Sep'])
@@ -76,40 +88,42 @@ test('O21 an unfinished Session and a Session without this Exercise are not list
   ])
   const dialog = open([newer, unfinished, other])
 
-  expect(within(dialog).getByText('Tue 6 Oct')).toBeVisible()
+  expect(within(dialog).getAllByText('Tue 6 Oct')[0]).toBeVisible()
   expect(within(dialog).queryByText(/Wed 7 Oct|Thu 8 Oct/)).toBeNull()
-  expect(within(dialog).queryByText(/90×5/)).toBeNull()
-  expect(within(dialog).queryByText(/30×10/)).toBeNull()
+  expect(dialog.textContent).not.toMatch(/90×5|30×10/)
 })
 
 test('O21 a Set of another kind carries its kind marker', () => {
+  // v6: warm-ups sit on their own muted line, prefixed W; a failure Set carries its F.
   const kinded = session('kinded', TUE_6_OCT, [
     set(1, 40, 5, TUE_6_OCT, { kind: 'warmup' }),
     set(2, 80, 8, TUE_6_OCT),
+    set(3, 80, 9, TUE_6_OCT, { kind: 'failure' }),
   ])
   const dialog = open([kinded])
 
-  expect(within(dialog).getByText('W')).toBeVisible()
-  expect(within(dialog).queryByText('D')).toBeNull()
+  expect(within(dialog).getByText('W 40×5')).toBeVisible()
+  expect(setsOf(dialog, 'Tue 6 Oct')).toBe('80×8 · 80×9 F')
+  expect(within(dialog).queryByText(/ D$/)).toBeNull()
 })
 
 test('O21 a record Set carries the PR badge and the older Session does not', () => {
-  // 80 kg beats the 60 kg logged before it; the older Session has nothing earlier to beat.
+  // 80 kg beats the 60 kg logged before it; the older Session has nothing earlier to beat. The
+  // tag sits on the Set that set it.
   const dialog = open([older, newer])
 
-  expect(within(dialog).getAllByLabelText('Personal record')).toHaveLength(1)
-  const newerRow = within(dialog).getByText('Tue 6 Oct').closest('li') as HTMLElement
-  expect(within(newerRow).getByLabelText('Personal record')).toBeVisible()
-  const tag = within(newerRow).getByLabelText('Personal record')
+  expect(within(dialog).getAllByLabelText(/^Personal record/)).toHaveLength(1)
+  const tag = within(dialog).getByLabelText('Personal record, heaviest weight')
   expect(tag).toHaveClass('tag', 'tag-pr')
   expect(tag.textContent).toBe('PR')
-  expect(dialog.querySelector('.pr-badge')).toBeNull()
+  expect(setsOf(dialog, 'Tue 6 Oct')).toBe('80×8 PR · 80×8 · 80×7')
+  expect(setsOf(dialog, 'Mon 28 Sep')).toBe('60×8 · 60×8')
 })
 
 test('O21 with no finished Session of this Exercise the overlay reads No earlier Sessions', () => {
   const dialog = open([session('open', TUE_6_OCT, [set(1, 80, 8, TUE_6_OCT)], false)])
 
-  expect(within(dialog).getByText('No earlier Sessions')).toBeVisible()
+  expect(within(dialog).getByText(/No sessions of this lift yet/)).toBeVisible()
   expect(within(dialog).queryByText('Tue 6 Oct')).toBeNull()
 })
 
@@ -117,60 +131,58 @@ test('O21 the overlay is read-only: Close is its only button, and it calls onClo
   const onClose = vi.fn()
   const dialog = open([older, newer], onClose)
 
-  // v5: the chart's points are buttons too, but they only read a Session out; nothing edits.
+  // v6: "Done" closes it; the other controls only read (Why?, the chart's points, its tabs).
   const names = within(dialog)
     .getAllByRole('button')
     .map((b) => b.getAttribute('aria-label') ?? b.textContent)
-  expect(names[0]).toBe('Close')
-  expect(names.slice(1)).toHaveLength(2)
-  for (const name of names.slice(1)) expect(name).toMatch(/^\d+ \w{3} · .* kg · Best set /)
+  expect(names[0]).toBe('Done')
   expect(names.join(' ')).not.toMatch(/Edit|Delete|Remove/)
-  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Close' }))
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Done' }))
   expect(onClose).toHaveBeenCalledTimes(1)
 })
 
-// v5: the history leads with a graph that folds weight and reps into one number per Session.
+// v6: one chart -- the top-set weight by default, the est. max on its tab.
 
 const WEEK = 7 * 24 * 3600_000
 
 test('v5 the history leads with the latest estimated max and the set behind it', () => {
+  // v6: it leads with the lift's status and its latest top set; the log follows the chart.
   const dialog = open([older, newer])
 
-  const trend = within(dialog).getByRole('region', { name: 'Trend' })
-  // 80 x 8 -> Epley 101.3 kg; the latest Session's best set.
-  expect(within(trend).getByText('101.3 kg')).toBeVisible()
-  expect(within(trend).getByText('80 × 8 · Tue 6 Oct')).toBeVisible()
-  expect(within(trend).getByText(/Estimated max \(Epley\)/)).toBeVisible()
-  // It comes before the log.
+  const hero = within(dialog).getByRole('region', { name: 'Latest top set' })
+  expect(within(hero).getByText('80 kg × 8')).toBeVisible()
+  expect(within(hero).getByText('Tue 6 Oct · up 20 kg')).toBeVisible()
+  expect(within(dialog).queryByText(/Epley/)).toBeNull()
   const list = within(dialog).getByRole('list', { name: 'Sessions' })
-  expect(trend.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(hero.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
-test('v5 the chart is named by where the lift went, and marks new bests', () => {
+test('v5 the chart is named by where the lift went, and marks new bests', async () => {
   const dialog = open([older, newer])
 
-  // 60 x 8 -> 76.0 on 28 Sep, 80 x 8 -> 101.3 on 6 Oct.
-  const chart = within(dialog).getByRole('img', { name: 'Estimated max up 25.3 kg over 8 days' })
-  expect(within(dialog).getByText('Estimated max up 25.3 kg over 8 days')).toBeVisible()
+  expect(within(dialog).getByRole('img', { name: 'Top-set weight, 60 on 28 Sep to 80 on 6 Oct' })).toBeVisible()
+  await userEvent.setup().click(within(within(dialog).getByRole('radiogroup', { name: 'Show' })).getByRole('radio', { name: 'Est. max' }))
+  // 60 x 8 -> 76 kg on 28 Sep, 80 x 8 -> 101.3 kg on 6 Oct; the PR day is filled, not a dip.
+  const chart = within(dialog).getByRole('img', { name: 'Estimated max, 76 on 28 Sep to 101.3 on 6 Oct' })
   expect(chart.querySelectorAll('circle[data-record]')).toHaveLength(1)
 })
 
 test('v5 tapping a point reads its date, value and best set', async () => {
   const dialog = open([older, newer])
 
-  await userEvent.setup().click(within(dialog).getByRole('button', { name: /^28 Sep · 76 kg · Best set 60 × 8$/ }))
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Mon 28 Sep · 60 kg × 8, 8' }))
 
   const readout = within(dialog).getByRole('region', { name: 'Chart readout' })
-  expect(readout.textContent).toContain('28 Sep')
-  expect(readout.textContent).toContain('Best set 60 × 8')
+  expect(readout.textContent).toContain('Mon 28 Sep')
+  expect(readout.textContent).toContain('60 kg × 8, 8')
 })
 
 test('v5 one Session shows its value but no chart yet', () => {
   const dialog = open([newer])
 
-  expect(within(dialog).getByText('101.3 kg')).toBeVisible()
+  expect(within(within(dialog).getByRole('region', { name: 'Latest top set' })).getByText('80 kg × 8')).toBeVisible()
   expect(within(dialog).queryByRole('img')).toBeNull()
-  expect(within(dialog).getByText(/One session so far/)).toBeVisible()
+  expect(within(dialog).getByText(/One session in this range/)).toBeVisible()
 })
 
 test('v5 the log under the chart shows the latest 4 Sessions and Show all opens the rest', async () => {

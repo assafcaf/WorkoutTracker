@@ -1578,9 +1578,11 @@ test('O21 the History link on the set screen opens History · Back squat listing
 
   await toolsRow(user, 'Lift history')
 
-  const dialog = await screen.findByRole('dialog', { name: 'History · Back squat' }, SETTLE)
-  expect(within(dialog).getByText('Tue 6 Oct')).toBeVisible()
-  expect(within(dialog).getByText('80×8 · 80×8')).toBeVisible()
+  const dialog = await screen.findByRole('dialog', { name: 'Back squat' }, SETTLE)
+  // v6: Lift history is the one Lift page, headed by the lift; its log lists the earlier Session.
+  const log = within(dialog).getByRole('list', { name: 'Sessions' })
+  expect(within(log).getByText('Tue 6 Oct')).toBeVisible()
+  expect(log.querySelector('.lift-log-sets')?.textContent).toBe('80×8 · 80×8')
 })
 
 test('O21 closing History returns to the same open Set with its logged Set and rest intact', async () => {
@@ -1593,11 +1595,11 @@ test('O21 closing History returns to the same open Set with its logged Set and r
   const restBefore = await restReadoutText()
 
   await toolsRow(user, 'Lift history')
-  const dialog = await screen.findByRole('dialog', { name: 'History · Back squat' }, SETTLE)
-  await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Back squat' }, SETTLE)
+  await user.click(within(dialog).getByRole('button', { name: 'Done' }))
 
   await waitFor(
-    () => expect(screen.queryByRole('dialog', { name: 'History · Back squat' })).toBeNull(),
+    () => expect(screen.queryByRole('dialog', { name: 'Back squat' })).toBeNull(),
     SETTLE,
   )
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
@@ -1658,7 +1660,7 @@ test('O16 the History overlay lists a pre-epic assisted pull-ups Set as BW−27 
 
   await toolsRow(user, 'Lift history')
 
-  const dialog = await screen.findByRole('dialog', { name: 'History · Assisted pull-ups' }, SETTLE)
+  const dialog = await screen.findByRole('dialog', { name: 'Assisted pull-ups' }, SETTLE)
   expect(dialog.textContent).toMatch(new RegExp(`BW${MINUS}27 ?${TIMES} ?8`))
 })
 

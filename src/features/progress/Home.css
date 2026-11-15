@@ -74,6 +74,7 @@
 
 .progress-card-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
@@ -82,11 +83,10 @@
 
 .progress-card-name {
   min-width: 0;
-  overflow: hidden;
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  hyphens: manual;
 }
 
 .progress-card-kind {
@@ -96,9 +96,7 @@
   font-weight: var(--weight-semibold);
 }
 
-/* Leaves room on the right for the mini ladder drawn over the button's second line. */
 .progress-card-fact {
-  padding-right: 52px;
   font-size: var(--text-sm);
   line-height: 1.25rem;
 }
@@ -109,22 +107,6 @@
 
 .progress-card-against {
   color: var(--color-muted);
-}
-
-.progress-card-spark {
-  position: absolute;
-  top: calc(var(--space-2) + 22px);
-  right: var(--space-3);
-  width: 44px;
-  pointer-events: none;
-}
-
-.progress-card-spark .progress-mini {
-  max-width: none;
-}
-
-.progress-card-spark .ladder-mini .ladder-svg {
-  height: 24px;
 }
 
 .progress-card-suggestion {
@@ -328,4 +310,143 @@
   margin: var(--space-3) var(--space-4);
   color: var(--color-muted);
   font-size: var(--text-sm);
+}
+
+/* ---- v6: the dashboard's sections, status tones and lift rows ---- */
+
+.progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.progress-section-title {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: 1.375rem;
+  font-weight: var(--weight-semibold);
+}
+
+.progress-more {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+/* A status in words, coloured by what it asks of the trainee. */
+.progress-status-decide {
+  color: var(--color-warn);
+}
+
+.progress-status-up {
+  color: var(--color-primary);
+}
+
+.progress-status-calm {
+  color: var(--color-muted);
+}
+
+.progress-card-kind.progress-status-decide {
+  color: var(--color-warn);
+}
+
+.progress-lifts {
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+.progress-lifts-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: var(--space-1);
+}
+
+.progress-lifts-unit {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.progress-row-spark {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.progress-row-spark .sparkline-line {
+  stroke: var(--color-text);
+  stroke-width: 2px;
+}
+
+.progress-row-spark .sparkline-end {
+  fill: var(--color-text);
+}
+
+.progress-row-numbers {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 4.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-row-change {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+/* Narrow screens and large text: the sparkline gives way to the numbers. */
+@media (max-width: 359px) {
+  .progress-row-spark {
+    display: none;
+  }
+}
+
+.progress-row-name {
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+
+/* The name keeps room for a whole word; the sparkline gives way first, and at large text the
+ * numbers wrap under the name instead of running off the card. */
+.progress-lifts .progress-row,
+.progress-all .progress-row {
+  flex-wrap: wrap;
+  row-gap: var(--space-1);
+}
+
+.progress-lifts .progress-row-main,
+.progress-all .progress-row-main {
+  flex: 1 1 5.5em;
+  min-width: min-content;
+}
+
+.progress-lifts .progress-row-numbers,
+.progress-all .progress-row-numbers {
+  margin-left: auto;
+}
+
+.progress-row-spark {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.progress-lifts .progress-row,
+.progress-all .progress-row {
+  min-height: 56px;
+}
+
+.progress-lift-group + .progress-lift-group {
+  margin-top: var(--space-2);
+}
+
+.progress-group-title {
+  margin: var(--space-2) 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
 }
