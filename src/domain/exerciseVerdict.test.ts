@@ -99,25 +99,38 @@ test('V4-01 a Set equal to last time reads Same as <day>', () => {
 })
 
 test('V4-01 a heavier or longer Set reads +2.5 kg / +1 rep on <day>', () => {
-  expect(setComparison(at(72.5, 7), at(70, 7), MON).text).toBe('+2.5 kg on Mon 12 Oct')
-  expect(setComparison(at(70, 9), at(70, 7), MON).text).toBe('+2 reps on Mon 12 Oct')
+  // Title kept (weakened-tests gate). V6 (V5-13): "+2.5 kg on Mon 12 Oct" read as if the record
+  // were set on that day; the sentence now compares: "2.5 kg more than Mon 12 Oct".
+  expect(setComparison(at(72.5, 7), at(70, 7), MON).text).toBe('2.5 kg more than Mon 12 Oct')
+  expect(setComparison(at(70, 9), at(70, 7), MON).text).toBe('2 reps more than Mon 12 Oct')
   expect(setDelta(at(70, 8), at(70, 7))).toEqual({ kind: 'up', text: '+1 rep' })
   // Less assistance is up: BW−19 against BW−27.
   expect(setDelta(at(null, 6, -19), at(null, 6, -27))).toEqual({ kind: 'up', text: '+8 kg' })
 })
 
 test('V4-01 a lighter or shorter Set reads 1 rep under <day>', () => {
-  expect(setComparison(at(70, 6), at(70, 7), MON)).toEqual({ kind: 'down', text: '1 rep under Mon 12 Oct', record: null })
+  // V6 wave 3: fewer reps read as the summary says them, "1 fewer rep than Mon 12 Oct".
+  expect(setComparison(at(70, 6), at(70, 7), MON)).toEqual({ kind: 'down', text: '1 fewer rep than Mon 12 Oct', record: null })
   expect(setComparison(at(67.5, 7), at(70, 7), MON).text).toBe('2.5 kg under Mon 12 Oct')
-  expect(setDelta(at(70, 5), at(70, 7)).text).toBe('2 reps under')
+  expect(setDelta(at(70, 5), at(70, 7)).text).toBe('2 fewer reps')
+  const entry = (reps: number) => ({ exerciseId: 'x', setIndex: 1, weightKg: 70, reps, loggedAt: 0 })
+  expect(exerciseComparison({ today: [entry(6)], last: [entry(7)], lastDay: MON })).toBe('1 fewer rep than Mon 12 Oct')
 })
 
 test('V4-01 a Record leads the sentence with its name: Rep record · +1 rep on <day>', () => {
+  // Title kept (weakened-tests gate). V6 (V5-13): "Rep record · 1 more than Mon 12 Oct" -- the
+  // record's name already says reps, and the day is the one beaten, not the record's.
   expect(setComparison(at(70, 8), at(70, 7), MON, 'Rep record')).toEqual({
     kind: 'up',
-    text: 'Rep record · +1 rep on Mon 12 Oct',
+    text: 'Rep record · 1 more than Mon 12 Oct',
     record: 'Rep record',
   })
+})
+
+test('V6 V5-13 a heavier Record names the kilos it beat last time by: Heaviest weight · 5 kg more than <day>', () => {
+  expect(setComparison(at(75, 7), at(70, 7), MON, 'Heaviest weight').text).toBe(
+    'Heaviest weight · 5 kg more than Mon 12 Oct',
+  )
 })
 
 test('V4-01 with no last time the Set reads First time logged', () => {

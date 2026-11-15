@@ -419,6 +419,21 @@
   font-size: var(--text-sm);
 }
 
+/* V5-10: the row's starting weight, in its options while the row shows the load it is on now. */
+.program-editor-menu-step .program-editor-menu-step-label {
+  white-space: nowrap;
+}
+
+.program-editor-menu-step .program-editor-cell-input {
+  width: 112px;
+  min-height: var(--tap-min);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
 .program-editor-menu-note {
   margin: 0 0 var(--space-1);
   color: var(--color-muted);

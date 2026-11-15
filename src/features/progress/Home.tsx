@@ -1,33 +1,31 @@
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { bodyweightOn } from '../../domain/bodyLog'
 import { applyBodyweight } from '../../domain/bodyweight'
 import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
-import { buildLadder } from '../../domain/stats/ladder'
-import type { Ladder } from '../../domain/stats/ladder'
-import { homeCopy, humanDate, topText, verdictLabel } from '../../domain/stats/copy'
+import { homeCopy, humanDate } from '../../domain/stats/copy'
 import type { AttentionCard, HomeCopy } from '../../domain/stats/copy'
 import { buildLiftHistories } from '../../domain/stats/liftHistory'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
-import { STATS_MUSCLES, windowAverage } from '../../domain/stats/muscles'
+import { liftStatuses } from '../../domain/stats/status'
+import type { LiftStatus, LiftStatusKind } from '../../domain/stats/status'
+import { topText } from '../../domain/stats/words'
+import { STATS_MUSCLES, plannedPerWeek, windowAverage } from '../../domain/stats/muscles'
 import { muscleLabel } from '../../domain/muscleLabels'
-import { WEEKLY_SET_RANGE, weeklyStanding } from '../../domain/setRange'
-import { computeRecords } from '../../domain/stats/records'
-import { verdicts } from '../../domain/stats/verdict'
-import type { Verdict } from '../../domain/stats/verdict'
+import { WEEKLY_SET_RANGE } from '../../domain/setRange'
 import { lastWeekCard } from '../../domain/stats/weekCard'
 import type { LastWeekCard } from '../../domain/stats/weekCard'
 import type { Weekday } from '../../domain/stats/weeks'
 import type { Services } from '../../services'
 import type { BodyLog, Exercise, ExercisePlan, LibraryExercise, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
-import { Ladder as LadderChart } from '../../ui/charts/Ladder'
-import type { LadderView } from '../../ui/charts/ladderView'
+import { Sparkline } from '../../ui/charts/Sparkline'
 import { Icon } from '../../ui/icons'
 import type { AppRoute } from '../routes'
 import { useServiceData } from '../useServiceData'
 import type { ProgressPageProps } from './pages'
+import { useProgramSwap } from './useProgramSwap'
 import './Home.css'
 
 /** What the Progress pages read: the active Program, the finished Sessions, the catalog. */
@@ -77,12 +75,13 @@ export type ProgressModel = {
   /** Lift ids in Plan order, then the rest. */
   order: string[]
   histories: Map<string, LiftHistory>
-  verdicts: Map<string, Verdict>
+  /** v6: every lift's one status (status.ts), the same on every Progress page. */
+  statuses: Map<string, LiftStatus>
   nameOf(id: string): string
 }
 
 export function progressModel(data: ProgressData, now: number): ProgressModel {
-  const live = data.sessions.filter((s) => s.deletedAt === undefined)
+  const live = data.sessions.filter((s) => s.deletedAt === undefined && s.finishedAt !== null)
   const plans = new Map<string, ExercisePlan>()
   const planOrder: string[] = []
   for (const w of data.program.workouts) {
@@ -91,146 +90,178 @@ export function progressModel(data: ProgressData, now: number): ProgressModel {
       plans.set(e.exerciseId, e)
     }
   }
-  const planOf = (id: string) => plans.get(id)
-  const histories = buildLiftHistories(live, data.resolve, planOf)
-  const records = computeRecords(live, data.resolve, planOf)
+  const histories = buildLiftHistories(live, data.resolve, (id) => plans.get(id))
+  const copy = homeCopy(data.program, data.sessions, data.resolve, now, data.weekStart)
   return {
     data,
     now,
-    copy: homeCopy(data.program, data.sessions, data.resolve, now, data.weekStart),
+    copy,
     plans,
     order: [...planOrder, ...[...histories.keys()].filter((id) => !plans.has(id))],
     histories,
-    verdicts: verdicts(histories, records, now),
+    statuses: copy.stage === 'full' ? copy.statuses : liftStatuses(data.program, live, data.resolve, now),
     nameOf: (id) => data.resolve(id)?.name ?? id,
   }
 }
 
-/** The 48 px mini ladder's view: treads only, from the engine's ladder. */
-function miniView(ladder: Ladder): LadderView {
-  const at = (id: string) => ladder.points.find((p) => p.sessionId === id)?.startedAt ?? 0
-  const from = ladder.points[0]?.startedAt ?? 0
-  const to = ladder.points[ladder.points.length - 1]?.startedAt ?? 0
+const DAY = 24 * 3600_000
+const FOUR_WEEKS = 28 * DAY
+const THREE_MONTHS = 92 * DAY
+
+/** The colour family a status is drawn in: a decision, moving, or neither. */
+export function statusTone(kind: LiftStatusKind): 'decide' | 'up' | 'calm' {
+  if (kind === 'moving') return 'up'
+  return kind === 'too new' ? 'calm' : 'decide'
+}
+
+const kgText = (n: number): string => String(Math.round(n * 100) / 100)
+
+/** A lift name that never breaks at its hyphens (`Hyper-/extension`): non-breaking hyphens. */
+export const unbroken = (name: string): string => name.replace(/-/g, '‑')
+
+/**
+ * One Lifts row's numbers (§6.2): the latest top set, the 4-week change of the top-set weight
+ * (`+5 kg`, `same`, `−1.25 kg`; reps on a plain Bodyweight lift), and the top-set weight over 3
+ * months for the sparkline. Deload Sessions are left out.
+ */
+export function rowFacts(
+  model: ProgressModel,
+  id: string,
+): { value: string; change: string | null; values: number[] } | null {
+  const history = model.histories.get(id)
+  if (!history) return null
+  const real = history.points.filter((p) => !p.deload && p.top !== null) as (LiftHistory['points'][number] & {
+    top: { lever: number; reps: number }
+  })[]
+  const latest = real[real.length - 1]
+  if (!latest) return null
+  const plain = history.bodyweight && real.every((p) => p.top.lever === 0)
+  const measure = (p: (typeof real)[number]) => (plain ? p.top.reps : p.top.lever)
+  const first = real.find((p) => p.startedAt >= model.now - FOUR_WEEKS)
+  let change: string | null = null
+  if (first && first !== latest) {
+    const d = Math.round((measure(latest) - measure(first)) * 100) / 100
+    if (d === 0) change = 'same'
+    else if (plain) change = `${d > 0 ? '+' : '−'}${Math.abs(d)} ${Math.abs(d) === 1 ? 'rep' : 'reps'}`
+    else if (history.bodyweight && latest.top.lever < 0) change = `${d > 0 ? '−' : '+'}${kgText(Math.abs(d))} kg assist`
+    else change = `${d > 0 ? '+' : '−'}${kgText(Math.abs(d))} kg`
+  }
+  const recent = real.filter((p) => p.startedAt >= model.now - THREE_MONTHS)
   return {
-    from,
-    to,
-    axisLabel: null,
-    ticks: [],
-    treads: ladder.treads.map((t, i) => ({
-      lever: t.lever,
-      from: at(t.sessionIds[0]),
-      to: at(t.sessionIds[t.sessionIds.length - 1]),
-      current: i === ladder.treads.length - 1,
-    })),
-    points: ladder.points.map((p) => ({
-      id: p.sessionId,
-      at: p.startedAt,
-      lever: p.lever,
-      reps: p.reps,
-      target: p.target,
-      deload: p.deload,
-      record: false,
-      readout: { sessionId: p.sessionId, title: '', workingSets: [], record: null, e1rm: null, warmups: null, note: null },
-    })),
-    gaps: ladder.gaps.map((g) => ({ from: g.weekStart, to: g.weekStart, label: g.label })),
-    dates: [],
+    value: topText(latest.top, history.bodyweight),
+    change,
+    values: (recent.length > 0 ? recent : [latest]).map(measure),
   }
 }
 
-export function MiniLadder({ model, exerciseId }: { model: ProgressModel; exerciseId: string }): JSX.Element | null {
-  const history = model.histories.get(exerciseId)
-  if (!history) return null
-  const ladder = buildLadder(history, { sessions: model.data.sessions, program: model.data.program }, model.data.weekStart)
+/**
+ * One lift as a row (§6.2): name (wraps) and status on the left, a 96 × 28 sparkline of its
+ * top-set weight over 3 months, then the latest top set and its 4-week change. The whole row
+ * opens the Lift page; its accessible name reads every value.
+ */
+export function LiftRow({ model, id, onOpen }: { model: ProgressModel; id: string; onOpen(id: string): void }): JSX.Element {
+  const name = model.nameOf(id)
+  const status = model.statuses.get(id)
+  const facts = rowFacts(model, id)
+  const plan = model.plans.get(id)
+  const prescription = plan ? `${plan.sets} × ${plan.repRange[0]}–${plan.repRange[1]}` : ''
+  const label = [
+    `${name}: ${status ? status.label : 'not logged yet'}`,
+    facts ? `latest top set ${facts.value}${facts.change ? `, ${facts.change} in 4 weeks` : ''}` : prescription,
+  ].join('. ')
   return (
-    <div className="progress-mini">
-      <LadderChart view={miniView(ladder)} title={model.nameOf(exerciseId)} variant="mini" />
-    </div>
+    <button type="button" className="btn-quiet progress-row" aria-label={label} onClick={() => onOpen(id)}>
+      <span className="progress-row-main">
+        <span className="progress-row-name">{unbroken(name)}</span>
+        <span className={`progress-row-note progress-status-${status ? statusTone(status.kind) : 'calm'}`}>
+          {status ? `${status.glyph} ${status.label}` : 'Not logged yet'}
+        </span>
+      </span>
+      {facts && facts.values.length > 1 ? (
+        <span className="progress-row-spark" aria-hidden="true">
+          <Sparkline values={facts.values} label="" width={96} height={28} />
+        </span>
+      ) : null}
+      <span className="progress-row-numbers" aria-hidden="true">
+        <span className="progress-row-value">{facts ? facts.value : prescription}</span>
+        {facts?.change ? <span className="progress-row-change">{facts.change}</span> : null}
+      </span>
+    </button>
   )
 }
 
-export function latestTop(model: ProgressModel, exerciseId: string): string | null {
-  const history = model.histories.get(exerciseId)
-  const real = history?.points.filter((p) => !p.deload && p.top !== null) ?? []
-  const top = real[real.length - 1]?.top
-  return history && top ? topText(top, history.bodyweight) : null
-}
-
-function latestDate(model: ProgressModel, exerciseId: string): string {
-  const real = model.histories.get(exerciseId)?.points.filter((p) => !p.deload && p.top !== null) ?? []
-  const last = real[real.length - 1]
-  return last ? humanDate(last.startedAt) : ''
-}
-
-const KIND_LABEL: Record<AttentionCard['kind'], string> = {
-  stalled: verdictLabel('stalled'),
-  slipping: verdictLabel('slipping'),
-  ready: '↑ Ready',
-}
-
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-
-/** `28 Sep`: a day without its weekday, for the card's comparison line. */
-const shortDate = (ms: number): string => humanDate(ms).replace(/^\S+ /, '')
-
 /**
- * The card's second line (V2-08): the latest top set against what it is judged by -- the best it
- * slipped below, the day of the last record, or the day it reached the top of the range.
+ * Every Program lift as a row, grouped by Workout in Plan order (§6.2); a lift in two Workouts
+ * is listed under the first. Lifts not in the Program follow under "Other lifts".
  */
-function comparison(model: ProgressModel, card: AttentionCard): string | null {
-  const verdict = model.verdicts.get(card.exerciseId)
-  const bodyweight = model.histories.get(card.exerciseId)?.bodyweight ?? false
-  if (card.kind === 'slipping' && verdict?.bestBefore) {
-    // `47.5 × 10`: the unit is already on the latest top set beside it.
-    const was = topText(verdict.bestBefore, bodyweight).replace(' kg ×', ' ×')
-    return `was ${was} on ${shortDate(verdict.bestBefore.startedAt)}`
-  }
-  if (card.kind === 'stalled' && verdict?.since !== undefined) return `no record since ${shortDate(verdict.since)}`
-  const date = latestDate(model, card.exerciseId)
-  return date ? `on ${date.replace(/^\S+ /, '')}` : null
-}
-
-/** The sentence without its lead name (`Push-ups: stalled…` → `Stalled…`): the card's label names it. */
-function description(name: string, sentence: string): string {
-  const rest = sentence.startsWith(`${name}: `) ? sentence.slice(name.length + 2) : sentence
-  return cap(rest)
-}
-
-/**
- * One attention card in three lines (V2-08): the lift and its verdict, the latest top set against
- * its comparison beside the mini ladder, then the suggestion and Why?. The full sentence stays as
- * the card's accessible description.
- */
-function Card({ model, card, onOpen }: { model: ProgressModel; card: AttentionCard; onOpen(id: string): void }): JSX.Element {
-  const [open, setOpen] = useState(false)
-  const sentenceId = useId()
-  const top = latestTop(model, card.exerciseId)
-  const against = comparison(model, card)
+export function LiftsList({ model, onOpen }: { model: ProgressModel; onOpen(id: string): void }): JSX.Element {
+  const seen = new Set<string>()
+  const groups = model.data.program.workouts
+    .filter((w) => !w.hidden)
+    .map((w) => ({
+      name: w.name,
+      ids: w.exercises.map((e) => e.exerciseId).filter((id) => (seen.has(id) ? false : (seen.add(id), true))),
+    }))
+  const other = model.order.filter((id) => !seen.has(id))
+  if (other.length > 0) groups.push({ name: 'Other lifts', ids: other })
   return (
-    <section className="card progress-card" aria-label={model.nameOf(card.exerciseId)} aria-describedby={sentenceId}>
-      <p id={sentenceId} className="progress-visually-hidden">
-        {description(model.nameOf(card.exerciseId), card.sentence)}
-      </p>
+    <>
+      {groups
+        .filter((g) => g.ids.length > 0)
+        .map((g) => (
+          <div key={g.name} className="progress-lift-group">
+            <h3 className="progress-group-title">{g.name}</h3>
+            <ul className="progress-rows" aria-label={g.name}>
+              {g.ids.map((id) => (
+                <li key={id}>
+                  <LiftRow model={model} id={id} onOpen={onOpen} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+    </>
+  )
+}
+
+/**
+ * One "Needs a decision" card (§6.2): the lift's name (wraps), its status, the visible evidence
+ * line (with the Session note when there is one), the one action, a Swap link when the action is
+ * a change of exercise, and Why?. Every word is the lift's `liftStatus`, so the card, the list and
+ * the Lift page say the same thing; nothing is hidden from sighted readers (V6-07).
+ */
+function Card({
+  model,
+  card,
+  onOpen,
+  onSwap,
+}: {
+  model: ProgressModel
+  card: AttentionCard
+  onOpen(id: string): void
+  onSwap?: (id: string) => void
+}): JSX.Element {
+  const [open, setOpen] = useState(false)
+  const name = model.nameOf(card.exerciseId)
+  return (
+    <section className="card progress-card" aria-label={name}>
       <button type="button" className="btn-quiet progress-card-open" onClick={() => onOpen(card.exerciseId)}>
         <span className="progress-card-head">
-          <span className="progress-card-name">{model.nameOf(card.exerciseId)}</span>
-          <span className="progress-card-kind">{KIND_LABEL[card.kind]}</span>
+          <span className="progress-card-name">{unbroken(name)}</span>
+          <span className={`progress-card-kind progress-status-${statusTone(card.kind)}`}>{`${card.glyph} ${card.label}`}</span>
         </span>
-        <span className="progress-card-fact">
-          {top ? <span className="progress-card-value">{top}</span> : null}
-          {against ? <span className="progress-card-against">{top ? ` · ${against}` : against}</span> : null}
-        </span>
+        <span className="progress-card-fact">{card.evidence}</span>
       </button>
-      <div className="progress-card-spark" aria-hidden="true">
-        <MiniLadder model={model} exerciseId={card.exerciseId} />
-      </div>
+      <p className="progress-card-suggestion">{card.suggestion}</p>
       <div className="progress-card-foot">
-        <p className="progress-card-suggestion">{card.suggestion}</p>
-        <button
-          type="button"
-          className="btn-quiet progress-why"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
+        {card.swap && onSwap ? (
+          <button type="button" className="btn-quiet progress-why" onClick={() => onSwap(card.exerciseId)}>
+            Swap ›
+          </button>
+        ) : (
+          <span />
+        )}
+        <button type="button" className="btn-quiet progress-why" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           {open ? 'Hide' : 'Why?'}
         </button>
       </div>
@@ -246,28 +277,34 @@ function Card({ model, card, onOpen }: { model: ProgressModel; card: AttentionCa
 }
 
 /**
- * The Muscles row's verdict (V3-12): the muscles the Muscles page flags against the typical
- * weekly range, on the same 2-week average, the same 12 muscles and the same names
- * (`Shoulders 21 above · Abs 3 below`), above first, then below, fewest first.
+ * The Muscles row's subline (§6.2, V6-06), always drawn: the one muscle furthest from the typical
+ * weekly range on the Muscles page's 2-week average, with its unit, or that all are within it, or
+ * that there were no Sets.
  */
-function musclesFinding(model: ProgressModel): { line: string; fewest: string } | null {
+export function musclesLine(model: ProgressModel): string {
   const { data, now } = model
   const avg = windowAverage(data.sessions, now, data.resolve, data.library, undefined, data.weekStart)
-  if (avg.size === 0) return null
-  const rows = STATS_MUSCLES.map((muscle) => ({ muscle, sets: avg.get(muscle) ?? 0 }))
-  const above = rows.filter((r) => weeklyStanding(r.sets) === 'above').sort((a, b) => b.sets - a.sets)
-  const below = rows.filter((r) => weeklyStanding(r.sets) === 'below').sort((a, b) => a.sets - b.sets)
-  const named = [
-    ...above.map((r) => `${muscleLabel(r.muscle)} ${Math.round(r.sets)} above`),
-    ...below.map((r) => `${muscleLabel(r.muscle)} ${Math.round(r.sets)} below`),
-  ]
-  return {
-    line: 'Muscles',
-    fewest:
-      named.length === 0
-        ? `All within ${WEEKLY_SET_RANGE.min}–${WEEKLY_SET_RANGE.max} sets a week`
-        : named.join(' · '),
+  const planned = plannedPerWeek(data.program, data.resolve, data.library)
+  const rows = STATS_MUSCLES.map((muscle) => ({
+    muscle,
+    sets: Math.round(avg.get(muscle) ?? 0),
+    plan: Math.round(planned.get(muscle) ?? 0),
+  }))
+  if (avg.size === 0 || rows.every((r) => r.sets === 0)) return 'No sets in the last 2 weeks'
+  // V6-19: a low the plan itself sets, met, is "as planned" on the Muscles page: never the one named.
+  const off = ({ sets, plan }: { sets: number; plan: number }) =>
+    sets > WEEKLY_SET_RANGE.max
+      ? sets - WEEKLY_SET_RANGE.max
+      : sets < WEEKLY_SET_RANGE.min && sets !== plan
+        ? WEEKLY_SET_RANGE.min - sets
+        : 0
+  const worst = rows.reduce((a, b) => (off(b) > off(a) ? b : a))
+  if (off(worst) === 0) {
+    const low = rows.some((r) => r.sets > 0 && r.sets < WEEKLY_SET_RANGE.min)
+    return `All within ${WEEKLY_SET_RANGE.min}–${WEEKLY_SET_RANGE.max} sets a week${low ? ', or as planned' : ''}`
   }
+  const side = worst.sets > WEEKLY_SET_RANGE.max ? 'above' : 'below'
+  return `${muscleLabel(worst.muscle)} ${side} the typical range (${worst.sets} sets/week)`
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -301,6 +338,7 @@ function dayText(day: string): string {
   return `${d} ${MONTHS[m - 1]}`
 }
 
+/** Last week (§6.2): Sessions, Sets and Volume; the PRs row waits for the shared PR rule. */
 function LastWeek({ card }: { card: LastWeekCard }): JSX.Element {
   const { last, before } = card
   const first = before.sessions === 0
@@ -308,7 +346,6 @@ function LastWeek({ card }: { card: LastWeekCard }): JSX.Element {
     { label: 'Sessions', value: String(last.sessions), change: diffText(last.sessions, before.sessions) },
     { label: 'Sets', value: String(last.sets), change: diffText(last.sets, before.sets) },
     { label: 'Volume', value: `${thousands(last.volumeKg)} kg`, change: percentText(last.volumeKg, before.volumeKg) },
-    { label: 'PRs', value: String(last.prs), change: diffText(last.prs, before.prs) },
   ]
   return (
     <section className="card progress-tile progress-lastweek" aria-label="Last week">
@@ -329,33 +366,32 @@ function LastWeek({ card }: { card: LastWeekCard }): JSX.Element {
   )
 }
 
-type HomeProps =ProgressPageProps<'home'> & {
+type HomeProps = ProgressPageProps<'home'> & {
   navigate?: (to: AppRoute) => void
   /** The clock; `Date.now` unless a test fixes it. */
   now?: () => number
 }
 
-/** The Progress tab's own screen (O20, V2-08): verdict, counts, attention cards, last week, then the lists. */
+/**
+ * The Progress tab's own screen (§6.2): one true headline, at most 4 "Needs a decision" cards, every
+ * lift as a row grouped by Workout (this list replaces All lifts), last week, Muscles, Body.
+ */
 export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element {
   const loaded = useServiceData(loadProgress, ['programs', 'sessions', 'preferences'])
   const at = now()
   const model = loaded.status === 'ready' && loaded.data ? progressModel(loaded.data, at) : null
   const open = (exerciseId: string) => push({ kind: 'lift', exerciseId })
   const start = () => navigate?.({ tab: 'workout' })
+  const { canSwap, openSwap, swapUi } = useProgramSwap()
 
-  if (!model) return <AppShell title="Progress">{null}</AppShell>
+  if (!model) return <AppShell title="Progress">{swapUi}</AppShell>
   const { copy, data } = model
-  const lastWeek = lastWeekCard(
-    data.sessions,
-    at,
-    data.resolve,
-    (id) => model.plans.get(id),
-    data.weekStart,
-    data.bodyLog,
-  )
+  const lastWeek = lastWeekCard(data.sessions, at, data.resolve, (id) => model.plans.get(id), data.weekStart, data.bodyLog)
   const weekCard = lastWeek ? <LastWeek card={lastWeek} /> : null
   const latestWeight = bodyweightOn(data.bodyLog, at)
-  const finding = copy.stage === 'full' ? musclesFinding(model) : null
+  // V6R-02: Swap opens the live Session's short swap list for the lift and replaces it in the
+  // Program, with Undo; a lift no Workout plans has no Swap.
+  const swap = openSwap
 
   return (
     <AppShell title="Progress" actions={<span className="progress-date">{humanDate(at)}</span>}>
@@ -398,48 +434,55 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
 
         {copy.stage === 'full' ? (
           <>
-            {/* V3-11: one lead line, then the cards; All lifts filters by status. */}
             <p className="progress-sentence progress-lead">{copy.lead}</p>
-            <div className="progress-cards">
-              {copy.cards.map((card) => (
-                <Card key={card.exerciseId + card.kind} model={model} card={card} onOpen={open} />
-              ))}
-            </div>
 
-            {weekCard}
-
-            {finding ? (
-              <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'muscles' })}>
-                <span className="progress-link-main">
-                  <span className="progress-link-title">{finding.line}</span>
-                  <span className="progress-link-sub">{finding.fewest}</span>
-                </span>
-                <Icon name="ChevronRight" size={20} />
-              </button>
+            {copy.cards.length > 0 ? (
+              <section className="progress-section" aria-label="Needs a decision">
+                <div className="progress-cards">
+                  {copy.cards.map((card) => (
+                    <Card key={card.exerciseId} model={model} card={card} onOpen={open} onSwap={canSwap(card.exerciseId) ? swap : undefined} />
+                  ))}
+                </div>
+                {copy.moreDecisions > 0 ? <p className="progress-more">{`${copy.moreDecisions} more in Lifts`}</p> : null}
+              </section>
             ) : null}
 
-            <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'lifts' })}>
-              <span className="progress-link-main">
-                <span className="progress-link-title">{`All ${model.order.length} lifts`}</span>
-                <span className="progress-link-sub">Moving, stalled, slipping or ready</span>
-              </span>
-              <Icon name="ChevronRight" size={20} />
-            </button>
+            <section className="card progress-lifts" aria-labelledby="progress-lifts-title">
+              <div className="progress-lifts-head">
+                <h2 id="progress-lifts-title" className="progress-section-title">
+                  Lifts
+                </h2>
+                <span className="progress-lifts-unit">top set · 4 weeks</span>
+              </div>
+              <LiftsList model={model} onOpen={open} />
+            </section>
+
+            {weekCard}
           </>
         ) : null}
 
         {copy.stage === 'empty' ? null : (
-          <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'body' })}>
-            <span className="progress-link-main">
-              <span className="progress-link-title">Body</span>
-              <span className="progress-link-sub">
-                {latestWeight ? `${latestWeight.kg} kg · ${dayText(latestWeight.day)}` : 'Log your bodyweight'}
+          <>
+            <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'muscles' })}>
+              <span className="progress-link-main">
+                <span className="progress-link-title">Muscles</span>
+                <span className="progress-link-sub">{musclesLine(model)}</span>
               </span>
-            </span>
-            <Icon name="ChevronRight" size={20} />
-          </button>
+              <Icon name="ChevronRight" size={20} />
+            </button>
+            <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'body' })}>
+              <span className="progress-link-main">
+                <span className="progress-link-title">Body</span>
+                <span className="progress-link-sub">
+                  {latestWeight ? `${latestWeight.kg} kg · ${dayText(latestWeight.day)}` : 'Log your bodyweight'}
+                </span>
+              </span>
+              <Icon name="ChevronRight" size={20} />
+            </button>
+          </>
         )}
       </div>
+      {swapUi}
     </AppShell>
   )
 }

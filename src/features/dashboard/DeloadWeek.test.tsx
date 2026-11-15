@@ -80,9 +80,29 @@ async function seedSquat(rir: SetEntry['rir']): Promise<void> {
     workoutId: 'workout-b',
     startedAt: day(9, 12),
     finishedAt: day(9, 12) + 3_000_000,
-    entries: [{ exerciseId: 'deadlift', setIndex: 0, weightKg: 100, reps: 8, loggedAt: day(9, 12) }],
+    entries: [
+      { exerciseId: 'deadlift', setIndex: 0, weightKg: 100, reps: 8, loggedAt: day(9, 12) },
+      // V6-11: 12 more working Sets of an unplanned Exercise make Monday's B a full Session, so
+      // Workout A is due next as before.
+      ...Array.from({ length: 12 }, (_, index) => ({
+        exerciseId: 'not-planned',
+        setIndex: 100 + index,
+        weightKg: 10,
+        reps: 10,
+        loggedAt: day(9, 12) + index,
+      })),
+    ],
   }
-  await db.sessions.bulkPut([session, other])
+  // V6-01: Train's hint is the lift's status, which needs 4 Sessions: three earlier ones at 60 kg.
+  const earlier = [[8, 25], [8, 30], [9, 5]].map(([month, d], at): Session => ({
+    ...session,
+    id: `earlier-${at}`,
+    startedAt: day(month, d),
+    finishedAt: day(month, d) + 3_000_000,
+    updatedAt: day(month, d) + 3_000_000,
+    entries: squat(undefined).map((entry) => ({ ...entry, loggedAt: day(month, d) })),
+  }))
+  await db.sessions.bulkPut([...earlier, session, other])
   await setActiveProgramId('assaf-ab-2026', TUE)
 }
 
@@ -183,9 +203,10 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     mount(servicesAt(TUE), TUE)
     const lifts = await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
     const row = within(lifts).getByText('Back squat').closest('li') as HTMLElement
-    // V2-05: the row reads the Set 1 Preset, and the hold says to stay instead of a step up.
+    // V2-05: the row reads the Set 1 Preset. V6-01: a Hold's next load is the Preset, so the row
+    // offers no other load (the hint is the status's, and Hold has nothing to dial in).
     expect(within(row).getByText('4 × 60 kg')).toBeTruthy()
-    expect(within(row).getByText('stay at 60 kg')).toBeTruthy()
+    expect(within(row).queryByText(/Ready for/)).toBeNull()
     expect(within(row).queryByText(/step up/)).toBeNull()
   })
 
@@ -195,7 +216,8 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     const lifts = await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
     const row = within(lifts).getByText('Back squat').closest('li') as HTMLElement
     expect(within(row).getByText('4 × 60 kg')).toBeTruthy()
-    expect(within(row).getByText(/^step up · try (6[0-9](\.\d+)?) kg$/)).toBeTruthy()
+    // V6-01: the hint is the status's next load, two steps up with 2 reps to spare.
+    expect(within(row).getByText('Ready for 65 kg')).toBeTruthy()
   })
 })
 

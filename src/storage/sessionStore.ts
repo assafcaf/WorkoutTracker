@@ -43,6 +43,21 @@ export async function discardSession(sessionId: string, now: number): Promise<vo
 }
 
 /**
+ * V6 (V5-01): the Undo of `discardSession`. Stores the Session live again, `deletedAt` removed
+ * and `updatedAt` at `now` (so the sync carries it as the newer copy), entries kept, and
+ * returns it. Rejects with `no session <id> is stored` for an unknown id.
+ */
+export async function undiscardSession(sessionId: string, now: number): Promise<Session> {
+  return db.transaction('rw', db.sessions, async () => {
+    const { deletedAt: _deletedAt, ...session } = await requireSession(sessionId)
+    void _deletedAt
+    const restored: Session = { ...session, updatedAt: now }
+    await db.sessions.put(restored)
+    return restored
+  })
+}
+
+/**
  * Finished sessions, newest first, across every program, at most `limit` of them. The cap
  * keeps the newest end, so only sessions older than it fall out of reach.
  */
@@ -317,6 +332,22 @@ export async function saveSession(session: Session, now: number = Date.now()): P
     const updated: Session = { ...session, updatedAt: now }
     await db.sessions.put(updated)
     return updated
+  })
+}
+
+/**
+ * Stores a Session the trainee logs after the fact (V6-13): new, already finished, with at
+ * least one Set. Refuses an id already stored, so it never overwrites a Session.
+ */
+export async function logPastSession(session: Session, now: number = Date.now()): Promise<Session> {
+  if (session.finishedAt === null) throw new Error(`session ${session.id} is not finished`)
+  if (session.finishedAt < session.startedAt) throw new Error(END_BEFORE_START)
+  if (session.entries.length === 0) throw new Error(NO_SETS_LEFT)
+  return db.transaction('rw', db.sessions, async () => {
+    if (await db.sessions.get(session.id)) throw new Error(`session ${session.id} is already stored`)
+    const stored: Session = { ...session, updatedAt: now }
+    await db.sessions.put(stored)
+    return stored
   })
 }
 

@@ -11,7 +11,7 @@ import type { BodyLog, Muscle, Program, Session } from '../types'
 import type { Resolve } from './muscles'
 import { bodyweightOn } from './bodyLog'
 import { formatDay } from './dates'
-import { dueWorkout } from './dashboard'
+import { nextWorkout } from './shortSession'
 import { exerciseComparison } from './exerciseVerdict'
 import { workingSets } from './setKind'
 import { formatSetCompact } from './setText'
@@ -119,6 +119,7 @@ export function liftLine(
     lastDay: previous === undefined ? '' : formatDay(new Date(previous.startedAt), new Date(session.startedAt)),
     deload: points[index].deload,
   })
+  // V6-18: "3 fewer reps than Wed 7 Oct", from the one comparison sentence the Rest beat uses too.
   return { sets, tail }
 }
 
@@ -177,6 +178,6 @@ export function weekLine(
   const upTo = sessions.filter((other) => other.deletedAt === undefined && other.startedAt <= session.startedAt)
   const week = thisWeek(upTo, session.startedAt, program.sessionsPerWeek, weekStartsOn)
   const tally = week.planned > 0 ? `${week.done} of ${week.planned}` : String(week.done)
-  const next = dueWorkout(program, upTo)
+  const next = nextWorkout(program, upTo)
   return `This week ${tally}${next ? ` · next up ${next.workout.name}` : ''}`
 }

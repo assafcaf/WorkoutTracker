@@ -1,6 +1,6 @@
 import { buildLiftHistories } from './stats/liftHistory'
 import type { LiftPoint } from './stats/liftHistory'
-import { computeRecords } from './stats/records'
+import { asPr, computeRecords, isRealRecord, REP_BEST } from './stats/records'
 import type { RecordKindName, SessionRecord } from './stats/records'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
@@ -48,10 +48,23 @@ function recordAt(
   ).find((record) => record.sessionId === session.id && record.exerciseId === exercise.id)
 }
 
+/** The same record: kind, Set and (for an e1RM PR) the estimate. */
+function sameRecord(a: SessionRecord | null | undefined, b: SessionRecord): boolean {
+  return (
+    a !== null &&
+    a !== undefined &&
+    a.kind === b.kind &&
+    a.lever === b.lever &&
+    a.reps === b.reps &&
+    a.e1rm === b.e1rm
+  )
+}
+
 /**
  * The PR moment for `entry`, just logged into `session`: null unless the Set changes the lift's
- * record for the Session (R-R: one per lift per Session, named by its kind). A rep drop after a
- * weight bump leaves the record as it was, so it has no moment.
+ * PR for the Session (R-R: one per lift per Session; V6 `asPr`: a heavier weight or a better
+ * estimated 1RM, named by its kind). A rep drop after a weight bump leaves the PR as it was, so it
+ * has no moment; a rep best is `repBestMoment`'s.
  */
 export function prMoment(
   exercise: Exercise,
@@ -60,17 +73,51 @@ export function prMoment(
   session: Session,
   entry: SetEntry,
 ): PrMoment | null {
+  const found = recordAt(exercise, plan, earlier, session, (at) => at <= entry.loggedAt)
+  const after = found === undefined ? null : asPr(found)
+  if (after === null) return null
+  const prior = recordAt(exercise, plan, earlier, session, (at) => at < entry.loggedAt)
+  if (sameRecord(prior === undefined ? null : asPr(prior), after)) return null
+  return momentOf(exercise, plan, earlier, entry, after, `New PR · ${after.kind}`)
+}
+
+/**
+ * V6 (V5-06): the quieter moment of a rep best: `entry` sets more reps at a weight already lifted
+ * and is no PR. Title `Rep best`, detail `25 kg × 14 · +1 rep`. Null otherwise.
+ */
+export function repBestMoment(
+  exercise: Exercise,
+  plan: ExercisePlan,
+  earlier: Session[],
+  session: Session,
+  entry: SetEntry,
+): PrMoment | null {
   const after = recordAt(exercise, plan, earlier, session, (at) => at <= entry.loggedAt)
-  if (after === undefined) return null
-  const before = recordAt(exercise, plan, earlier, session, (at) => at < entry.loggedAt)
-  if (
-    before !== undefined &&
-    before.kind === after.kind &&
-    before.lever === after.lever &&
-    before.reps === after.reps
-  ) {
-    return null
-  }
+  if (after === undefined || isRealRecord(after)) return null
+  const prior = recordAt(exercise, plan, earlier, session, (at) => at < entry.loggedAt)
+  if (sameRecord(prior, after)) return null
+  return momentOf(exercise, plan, earlier, entry, after, REP_BEST)
+}
+
+/** True when `entry` sets a PR (the one rule, `asPr`): the PR tag, sound and counts read this. */
+export function isPrSet(
+  exercise: Exercise,
+  plan: ExercisePlan,
+  earlier: Session[],
+  session: Session,
+  entry: SetEntry,
+): boolean {
+  return prMoment(exercise, plan, earlier, session, entry) !== null
+}
+
+function momentOf(
+  exercise: Exercise,
+  plan: ExercisePlan,
+  earlier: Session[],
+  entry: SetEntry,
+  after: SessionRecord,
+  title: string,
+): PrMoment {
   const unit = UNITS[after.kind]
   const load =
     entry.weightKg === null
@@ -110,7 +157,7 @@ export function prMoment(
         : after.lever
 
   return {
-    title: `New PR · ${after.kind}`,
+    title,
     detail: `${load}${gain}`,
     values: [...values, current],
     label: `${after.kind} history`,

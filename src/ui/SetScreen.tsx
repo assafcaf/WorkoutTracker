@@ -8,11 +8,13 @@ import { formatSet, formatSetCompact } from '../domain/setText'
 import { deloadText } from '../domain/deload'
 import { presetForSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
-import { prMoment } from '../domain/prMoment'
+import { prMoment, repBestMoment } from '../domain/prMoment'
 import { formatPlates, plateChange, platesFor } from '../domain/plates'
 import { prTargetReps, prTargetText } from '../domain/prTarget'
 import { exerciseDoneLine, setComparison, setDelta } from '../domain/exerciseVerdict'
 import { usualRestSeconds } from '../domain/usualRest'
+import type { LiftAdvice } from '../domain/stats/status'
+import { leverText } from '../domain/stats/words'
 import { warmupRamp } from '../domain/warmup'
 import type { WarmupStep } from '../domain/warmup'
 import { adjustRest, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
@@ -204,10 +206,35 @@ export type SetScreenProps = {
   onFinishWorkout?(): void
   /**
    * V1-17: this Exercise was just swapped in for the planned one from Now. The screen opens with
-   * the dark snackbar "Swapped from Deadlift · Undo" for UNDO_MS, as Delete set's does, until a
-   * Set is logged here; Undo calls `onUndo`, which puts the planned Exercise back.
+   * the dark snackbar "Swapped from Deadlift" for UNDO_MS, as Delete set's does, until a Set is
+   * logged here. V6: it carries no Undo of its own -- the lasting `swapFor` line's "Undo swap"
+   * is the one Undo; `onUndo` is kept so callers still type-check.
    */
   swappedFrom?: { name: string; onUndo(): void } | null
+  /**
+   * V6 (V5-02): this Exercise stands in for the planned one `name` while the swap lasts. A quiet
+   * line under the set counter says "for Deadlift", with "Undo swap" while `onUndo` is given
+   * (nothing of this Exercise logged yet). It stays as long as the swap does, unlike the snackbar.
+   */
+  swapFor?: { name: string; onUndo?(): void } | null
+  /**
+   * V6 (V5-02): a swapped-in Exercise on other equipment with no history: until a Set is logged
+   * or the weight is changed, the screen asks "Set a starting weight" where the Plate line goes.
+   */
+  askStartWeight?: boolean
+  /**
+   * V6-16: this is the Session's first barbell lift and no Warm-up is logged yet. Before the first
+   * working Set, one line above the cells offers the ramp, "Warm-up: 30×5 · 40×3 · 50×2 [Add]";
+   * it goes after Add or the first working Set.
+   */
+  warmupLine?: boolean
+  /**
+   * V6-01: the load the lift's status offers when it is not the Preset (`liftAdvice`), the value
+   * Train, the Program tab and Progress show. The screen offers it in one line under the Dials,
+   * "Ready for 15 kg · Use 15 kg", for this Set: last time's at its place, shifted as the top Set
+   * is. V6-05: an `eased` one (a Break, opened with `deload`) names the deload line instead.
+   */
+  advice?: LiftAdvice | null
 }
 
 /** The Exercise just finished, as the next one's screen shows it during its rest (V3-01). */
@@ -551,6 +578,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // The Warm-up ramp under way, if any (E15-T7); it starts only on a tap of Add warm-ups.
   const [ramp, setRamp] = useState<Ramp | null>(null)
   const [undo, setUndo] = useState<SetEntry | null>(null)
+  // V5-04: what the Delete snackbar names, "Set 2 deleted · 80 × 7", fixed as it is deleted.
+  const [undoMessage, setUndoMessage] = useState('')
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The exercise tools sheet (S3b), its segment and whether its Set type row is open.
   const [toolsOpen, setToolsOpen] = useState(false)
@@ -560,6 +589,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // V1-17: the swap's Undo, shown from the screen's opening until it times out or a Set is logged.
   // Read once, on open: the caller may drop it at once, and a later screen must not show it again.
   const [swappedFrom] = useState(props.swappedFrom ?? null)
+  // V5-02: a swap onto other equipment asks for its starting weight until the Dial is moved or
+  // a Set is logged.
+  const [startWeightSet, setStartWeightSet] = useState(false)
+  const askingStartWeight =
+    props.askStartWeight === true && !startWeightSet && workingSets(loggedSets).length === 0
   const [swapUndoShown, setSwapUndoShown] = useState<boolean>(swappedFrom !== null)
   useEffect(() => {
     if (!swapUndoShown) return undefined
@@ -993,7 +1027,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   async function deleteSet(): Promise<void> {
     if (editing === null || props.onDeleteSet === undefined) return
     try {
+      const name = ordinals.has(editing) ? `Set ${ordinals.get(editing)}` : 'Warm-up'
       const removed = await props.onDeleteSet(editing)
+      setUndoMessage(`${name} deleted · ${formatSet(removed)}`)
       const deletedAt = editing
       returnToLogging(
         loggedSets.length,
@@ -1144,6 +1180,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const prNote: ReactNode =
     projection !== null && projection.isPr ? (
       <span className="tag tag-pr">PR if logged</span>
+    ) : projection !== null && projection.repBest ? (
+      'rep best if logged'
     ) : prTarget === null ? null : (
       prTargetText(prTarget)
     )
@@ -1161,27 +1199,62 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     lastTimeEntry === null || onWarmup
       ? null
       : setDelta({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg }, lastTimeEntry)
+  // V6-17: a lift never logged before says so, and to start light, until its first Set today.
+  const firstTime =
+    !onWarmup &&
+    !done &&
+    loggedCount === 0 &&
+    (props.lastTime ?? []).every((entry) => entry.exerciseId !== exercise.id) &&
+    earlier.every((session) => session.entries.every((entry) => entry.exerciseId !== exercise.id))
   const vsLine: ReactNode =
     thenText !== null ? (
       thenText
+    ) : firstTime && prNote === null ? (
+      'First time · start light'
     ) : lastTimeEntry === null && prNote === null ? null : (
       <>
         {lastTimeEntry === null ? null : `Last time ${formatSet(lastTimeEntry)}`}
-        {liveDelta === null ? null : (
-          <span className="vs-delta" data-kind={liveDelta.kind}>{` · ${liveDelta.text}`}</span>
+        {/* V6-18: the same as last time names its day ("· Mon 12 Oct"), never "same". */}
+        {liveDelta === null || lastTimeEntry === null ? null : (
+          <span className="vs-delta" data-kind={liveDelta.kind}>
+            {` · ${liveDelta.kind === 'same' ? dayOf(lastTimeEntry) : liveDelta.text}`}
+          </span>
         )}
         {lastTimeEntry === null || prNote === null ? null : ' · '}
         {prNote}
       </>
     )
 
-  // V4-01: the Record a logged Set of this Exercise set, by its name ("Rep record"), or null.
-  const recordName = (entry: SetEntry): string | null => {
+  // V6-01: the load the lift's status offers, for this Set: last time's at its place, shifted by
+  // the step the advice makes on the top Set (a ramp keeps its shape). Gone once the Dials hold it,
+  // on a Warm-up, in the done state and while a logged Set is being edited.
+  const adviceOffer: { target: number; text: string; use: string } | null = (() => {
+    const advice = props.advice
+    if (!advice || advice.use === null || onWarmup || done || editing !== null) return null
+    const leverOf = (set: SetEntry): number => (exercise.bodyweight ? (set.loadKg ?? 0) : (set.weightKg ?? 0))
+    const last = workingSets(props.lastEntries.filter((entry) => entry.exerciseId === exercise.id)).sort(
+      (a, b) => a.setIndex - b.setIndex,
+    )
+    if (last.length === 0) return null
+    const top = Math.max(...last.map(leverOf))
+    const at = last[Math.min(Math.max(position, 1), last.length) - 1]
+    const target = Math.round((leverOf(at) + advice.lever - top) * 1000) / 1000
+    const current = exercise.bodyweight ? open.loadKg : open.weightKg
+    if (current === target || (!exercise.bodyweight && target <= 0)) return null
+    return { target, text: advice.text, use: `Use ${leverText(target, exercise.bodyweight)}` }
+  })()
+
+  // V4-01: the Record a logged Set of this Exercise set, by its name ("Heaviest weight"), or null.
+  // V6 (V5-06): a rep best is named too ("Rep best"), but carries no PR tag (`recordIsPr`).
+  const recordOf = (entry: SetEntry): { name: string; pr: boolean } | null => {
     if (earlier.length === 0 || entry.kind === 'warmup') return null
     const session: Session = { ...thisSession, entries: mergeEntry(thisSession.entries, entry) }
     const moment = prMoment(exercise, plan, earlier, session, entry)
-    return moment === null ? null : moment.title.replace(/^New PR · /, '')
+    if (moment !== null) return { name: moment.title.replace(/^New PR · /, ''), pr: true }
+    const best = repBestMoment(exercise, plan, earlier, session, entry)
+    return best === null ? null : { name: best.title, pr: false }
   }
+  const recordName = (entry: SetEntry): string | null => recordOf(entry)?.name ?? null
 
   // V4-01: the Set the Just done block is about: this Exercise's latest Set, the one the rest
   // follows (so a reopened screen mid-rest still shows it); null after another Exercise's Set.
@@ -1676,11 +1749,36 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               </button>
             )}
             {open.deloaded === undefined || open.deloaded.kg !== open.weightKg ? null : (
-              <p className="set-deload">{deloadText(open.deloaded.kg, open.deloaded.from)}</p>
+              <p className="set-deload">
+                {props.advice?.kind === 'eased'
+                  ? `${props.advice.text}: ${open.deloaded.kg} (from ${open.deloaded.from})`
+                  : deloadText(open.deloaded.kg, open.deloaded.from)}
+              </p>
             )}
             {open.carried === undefined || open.carried.kg !== open.weightKg ? null : (
               <p className="set-carried">{open.carried.text}</p>
             )}
+            {/* V5-02: the swap stays said on Now for as long as it stands, as on All. */}
+            {props.swapFor ? (
+              <p className="set-swapped">
+                <span>{`for ${props.swapFor.name}`}</span>
+                {props.swapFor.onUndo === undefined ? null : (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <button
+                      type="button"
+                      className="set-swapped-undo btn-quiet"
+                      onClick={() => {
+                        setSwapUndoShown(false)
+                        props.swapFor?.onUndo?.()
+                      }}
+                    >
+                      Undo swap
+                    </button>
+                  </>
+                )}
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -1694,6 +1792,24 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             <Icon name="Ellipsis" size={24} />
           </button>
         </div>
+
+        {/* V6-16: the first barbell lift offers its warm-up ramp in one line, above the cells,
+            until Add or the first working Set. */}
+        {props.warmupLine && rampOffer !== null && rampOffer.length > 0 && warmupsLogged === 0 && editing === null ? (
+          <p className="set-warmup-line">
+            <span className="set-warmup-line-text">
+              {`Warm-up: ${rampOffer.map((step) => `${step.weightKg}×${step.reps}`).join(' · ')}`}
+            </span>
+            <button
+              type="button"
+              className="set-warmup-line-add btn-quiet"
+              aria-label="Add these warm-ups"
+              onClick={() => startRamp(rampOffer)}
+            >
+              Add
+            </button>
+          </p>
+        ) : null}
 
         {/* The set cells: today's logged Sets (tap one to edit it), the Set on the steppers
             outlined, and the planned Sets still to come, dashed. */}
@@ -1840,6 +1956,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             rest runs it sits between the Get ready card and the Just done block (V4-01). */}
         <div className="set-spacer" aria-hidden="true" />
 
+        {/* V5-04: the snackbars ride here, over the space above the Dials (or the Just done block
+            while rest runs), never over the reps Dial or the rest timer under them. */}
+        <div className="set-snackbar-anchor">
+          {undo === null ? null : (
+            <Snackbar inline message={undoMessage} actionLabel="Undo" onAction={() => void restoreSet()} />
+          )}
+          {undo !== null || !swapUndoShown || swappedFrom === null ? null : (
+            // V6: no Undo here; the swap line's "Undo swap" is the one Undo on the screen.
+            <Snackbar inline message={`Swapped from ${swappedFrom.name}`} />
+          )}
+        </div>
+
         {/* V4-01: the Just done block on the dock, for the whole rest: the Set just logged, its
             one comparison (its Record, if any) and its reps left. */}
         {collapsed && justDone !== null ? (
@@ -1854,7 +1982,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             </p>
             {justDoneComparison === null ? null : (
               <p className="just-done-line" data-kind={justDoneComparison.kind}>
-                {justDoneComparison.record === null ? null : <span className="tag tag-pr">PR</span>}
+                {justDoneComparison.record === null || recordOf(justDone)?.pr !== true ? null : (
+                  <span className="tag tag-pr">PR</span>
+                )}
                 <span>{justDoneComparison.text}</span>
               </p>
             )}
@@ -1933,16 +2063,42 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 variant="scrub"
                 exercise={effectiveExercise}
                 value={open.weightKg}
-                onChange={(weightKg) => setOpen({ ...open, weightKg })}
+                onChange={(weightKg) => {
+                  setStartWeightSet(true)
+                  setOpen({ ...open, weightKg })
+                }}
               />
             )}
-            {plateLine === null ? null : <p className="plate-line">{plateLine}</p>}
+            {askingStartWeight ? (
+              <p className="plate-line set-start-weight">Set a starting weight</p>
+            ) : plateLine === null ? null : (
+              <p className="plate-line">{plateLine}</p>
+            )}
             <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
           </div>
 
           {/* V4-02: one live line under the reps Dial, "Last time 70 × 7 · +1 rep · PR if logged";
               on a Warm-up, "Then set 1 · 60 × 10" (V4-05). */}
           {vsLine === null ? null : <p className="set-projection">{vsLine}</p>}
+          {/* V6-01: the advice at the bar, "Ready for 15 kg · Use 15 kg"; one tap dials it in. */}
+          {adviceOffer === null ? null : (
+            <p className="set-advice">
+              <span className="set-advice-text">{adviceOffer.text}</span>
+              <button
+                type="button"
+                className="set-advice-use btn-quiet"
+                onClick={() =>
+                  setOpen(
+                    exercise.bodyweight
+                      ? { ...open, loadKg: adviceOffer.target }
+                      : { ...open, weightKg: adviceOffer.target },
+                  )
+                }
+              >
+                {adviceOffer.use}
+              </button>
+            </p>
+          )}
           </>
         )}
 
@@ -1967,19 +2123,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {editSheet}
       {restDialSheet}
 
-      {undo === null ? null : (
-        <Snackbar message="Set deleted" actionLabel="Undo" onAction={() => void restoreSet()} />
-      )}
-      {undo !== null || !swapUndoShown || swappedFrom === null ? null : (
-        <Snackbar
-          message={`Swapped from ${swappedFrom.name}`}
-          actionLabel="Undo"
-          onAction={() => {
-            setSwapUndoShown(false)
-            swappedFrom.onUndo()
-          }}
-        />
-      )}
 
     </>
   )

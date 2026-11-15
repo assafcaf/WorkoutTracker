@@ -38,6 +38,20 @@ const squat = (weightKg: number, reps: number, loggedAt: number, setIndex: numbe
   loggedAt,
 })
 
+/**
+ * V6-11: a Session with fewer than half its Workout's planned Sets keeps that Workout next. These
+ * fixtures name only the Sets a test reads, so each is topped up with 12 working Sets of an
+ * Exercise no Program plans (no lift row, no history) to stand as a full Session.
+ */
+const fullSession = (startedAt: number): SetEntry[] =>
+  Array.from({ length: 12 }, (_, index) => ({
+    exerciseId: 'not-planned',
+    setIndex: 100 + index,
+    weightKg: 10,
+    reps: 10,
+    loggedAt: startedAt + index,
+  }))
+
 function session(id: string, workoutId: string, startedAt: number, entries: SetEntry[]): Session {
   return {
     id,
@@ -45,7 +59,7 @@ function session(id: string, workoutId: string, startedAt: number, entries: SetE
     workoutId,
     startedAt,
     finishedAt: startedAt + 3_000_000,
-    entries,
+    entries: [...entries, ...fullSession(startedAt)],
     updatedAt: startedAt + 3_000_000,
   }
 }
@@ -91,9 +105,10 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText('Muscle week')).toBeNull()
     const lifts = screen.getByRole('list', { name: 'Workout A lifts' })
     const squatRow = within(lifts).getByText('Back squat').closest('li') as HTMLElement
-    // V2-05: Set 1 opens on last time's 60 kg over the Plan's 4 Sets; the full range earns a step up.
+    // V2-05: Set 1 opens on last time's 60 kg over the Plan's 4 Sets. V6-01: one Session is Too
+    // new for a verdict, so the row offers no other load, as Progress says.
     expect(within(squatRow).getByText('4 × 60 kg')).toBeTruthy()
-    expect(within(squatRow).getByText(/^step up · try /)).toBeTruthy()
+    expect(within(squatRow).queryByText(/Ready for/)).toBeNull()
     expect(within(screen.getByRole('button', { name: /^This week/ })).getByText('1 of 3')).toBeTruthy()
     // V3-08: the sync state is the cloud button's name, not a line of text.
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sync now · Synced 2 min ago' })).toBeTruthy(), SETTLE)
@@ -248,7 +263,8 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
     const lifts = screen.getByRole('list', { name: 'Workout B lifts' })
     const row = within(lifts).getByText('Deadlift').closest('li') as HTMLElement
-    expect(within(row).getByText('3 × 60 kg')).toBeTruthy()
+    // V6 (V5-07): these Sets ramp, 60 then 70, so the row opens on 60 and says where it goes.
+    expect(within(row).getByText('3 sets · 60 → 70 kg')).toBeTruthy()
     expect(within(row).getByText('· 8–10')).toBeTruthy()
   })
 
@@ -264,5 +280,78 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     const row = within(a).getByText('Back squat').closest('li') as HTMLElement
     expect(within(row).getByText(/^4 × 5\d(\.\d+)? kg$/)).toBeTruthy()
     expect(screen.getByText('Deload week · Presets 10% lighter')).toBeTruthy()
+  })
+
+  test('V6 V5-07 a ramped lift reads its Sets and its range, 4 sets · 47.5 → 62.5 kg', async () => {
+    await db.sessions.put(
+      session('fri', 'workout-a', at(9, 9), [
+        squat(47.5, 10, at(9, 9), 0),
+        squat(57.5, 10, at(9, 9), 1),
+        squat(62.5, 8, at(9, 9), 2),
+        squat(62.5, 8, at(9, 9), 3),
+      ]),
+    )
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+    await screen.findByRole('list', { name: 'Workout B lifts' }, SETTLE)
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    const a = screen.getByRole('list', { name: 'Workout A lifts' })
+    const row = within(a).getByText('Back squat').closest('li') as HTMLElement
+
+    expect(within(row).getByText('4 sets · 47.5 → 62.5 kg')).toBeTruthy()
+    expect(within(row).queryByText('4 × 47.5 kg')).toBeNull()
+  })
+})
+
+describe('DashboardScreen V6 flow', () => {
+  const raw = (id: string, workoutId: string, startedAt: number, entries: SetEntry[], note?: string): Session => ({
+    id,
+    programId: 'assaf-ab-2026',
+    workoutId,
+    startedAt,
+    finishedAt: startedAt + 600_000,
+    entries,
+    updatedAt: startedAt + 600_000,
+    ...(note ? { note } : {}),
+  })
+
+  test('V6-11 after 2 Sets of Workout B and Finish, Train offers Workout B again with the lifts left', async () => {
+    const mon = at(9, 12)
+    await db.sessions.bulkPut([
+      session('fri', 'workout-a', at(9, 9), [squat(60, 10, at(9, 9), 0)]),
+      raw('mon', 'workout-b', mon, [
+        { exerciseId: 'deadlift', setIndex: 1, weightKg: 60, reps: 10, loggedAt: mon },
+        { exerciseId: 'deadlift', setIndex: 2, weightKg: 70, reps: 7, loggedAt: mon },
+      ]),
+    ])
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    const { onStartWorkout } = mount(services())
+
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy(), SETTLE)
+    // V6R-03: Workout B again, all of it, in plain words; no "lifts left" Start would not keep.
+    expect(screen.getByText('Workout B again · last one was cut short on Mon 12 Oct')).toBeTruthy()
+    expect(screen.queryByText(/lifts? left/)).toBeNull()
+    // The week (from Monday) still counts it.
+    expect(within(screen.getByRole('button', { name: /^This week/ })).getByText('1 of 3')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Start Workout B' }))
+    expect(onStartWorkout).toHaveBeenCalledWith('workout-b')
+  })
+
+  test("V6-08 Train shows the offered Workout's last Session note under the date", async () => {
+    await db.sessions.bulkPut([
+      session('wed', 'workout-b', at(9, 7), []),
+      raw('wed-note', 'workout-b', at(9, 7) - 1, [], 'Right elbow sore on pull-downs, dropped the weight.'),
+      session('fri', 'workout-a', at(9, 9), [squat(60, 10, at(9, 9), 0)]),
+      session('mon', 'workout-b', at(9, 12), []),
+      session('tue', 'workout-a', at(9, 13) - 3_600_000, []),
+    ])
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy(), SETTLE)
+    expect(screen.getByText('Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight.')).toBeTruthy()
+    // Change to Workout A: A has no note, so the line goes.
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    expect(screen.queryByText(/^Note from/)).toBeNull()
   })
 })

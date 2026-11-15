@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import { declarationsFor } from '../../test/cssAudit'
 import { ShellChromeContext } from '../../ui/AppShell'
@@ -35,7 +35,7 @@ const READY: DashboardData = {
         sets: 3,
         load: '70 kg',
         reps: '8–10',
-        step: { reps: 14, target: 20, at: '70 kg', suggest: null },
+        advice: null,
       },
       {
         exerciseId: 'seated-biceps-curl',
@@ -43,9 +43,9 @@ const READY: DashboardData = {
         sets: 3,
         load: '12.5 kg',
         reps: '10–12',
-        step: { reps: 36, target: 36, at: '12.5 kg', suggest: 'try 15 kg' },
+        advice: { kind: 'up', lever: 15, text: 'Ready for 15 kg', use: 'Use 15 kg' },
       },
-      { exerciseId: 'face-pull', name: 'Face pulls', sets: 3, load: null, reps: '12–15', step: null },
+      { exerciseId: 'face-pull', name: 'Face pulls', sets: 3, load: null, reps: '12–15', advice: null },
     ],
   },
   due: { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', minutes: 53 },
@@ -142,12 +142,22 @@ describe('DashboardView S1', () => {
     expect(within(rows[0]).getByText('Deadlift')).toBeTruthy()
     expect(within(rows[0]).getByText('3 × 70 kg')).toBeTruthy()
     expect(within(rows[0]).getByText('· 8–10')).toBeTruthy()
-    expect(within(rows[0]).queryByText(/step up/)).toBeNull()
+    expect(within(rows[0]).queryByText(/Ready for/)).toBeNull()
     expect(within(rows[0]).queryByText('14 of 20')).toBeNull()
     expect(within(rows[1]).getByText('3 × 12.5 kg')).toBeTruthy()
-    expect(within(rows[1]).getByText('step up · try 15 kg')).toBeTruthy()
+    // V6-01: the hint is the lift's status's next load, the one Progress and Now show.
+    expect(within(rows[1]).getByText('Ready for 15 kg')).toBeTruthy()
     expect(within(rows[2]).getByText('Face pulls')).toBeTruthy()
     expect(within(rows[2]).getByText('3 sets')).toBeTruthy()
+    // V6 (V5-07): a lift whose Sets ramp says so, Set 1's load to the top one.
+    cleanup()
+    renderView({
+      data: {
+        ...READY,
+        card: { ...READY.card!, lifts: [{ ...READY.card!.lifts[0], load: '47.5 kg', topLoad: '62.5 kg', sets: 4 }] },
+      },
+    })
+    expect(screen.getByText('4 sets · 47.5 → 62.5 kg')).toBeTruthy()
     expect(within(rows[2]).queryByText('No sets yet')).toBeNull()
   })
 
@@ -177,7 +187,7 @@ describe('DashboardView S1', () => {
   })
 
   test('V1-33 the legend stays hidden while no lift has sets yet', () => {
-    const fresh = READY.card!.lifts.map((lift) => ({ ...lift, step: null }))
+    const fresh = READY.card!.lifts.map((lift) => ({ ...lift, advice: null }))
     renderView({ data: { ...READY, card: { ...READY.card!, lifts: fresh } } })
     expect(screen.getByRole('list', { name: 'Workout A lifts' })).toBeTruthy()
     expect(screen.queryByText('Reps at the current weight against the next step')).toBeNull()
@@ -332,11 +342,11 @@ describe('DashboardView in the app shell', () => {
       name: 'Workout B',
       minutes: 50,
       estimate: 'plan' as const,
-      lifts: [{ exerciseId: 'deadlift', name: 'Deadlift', step: null }],
+      lifts: [{ exerciseId: 'deadlift', name: 'Deadlift', advice: null }],
     }
     const cardA = {
       ...READY.card!,
-      lifts: [{ exerciseId: 'back-squat', name: 'Back squat', step: null }, ...READY.card!.lifts],
+      lifts: [{ exerciseId: 'back-squat', name: 'Back squat', advice: null }, ...READY.card!.lifts],
     }
     renderView({
       data: { ...READY, card: cardA, workouts: WORKOUTS, cards: { 'workout-a': cardA, 'workout-b': cardB } },
@@ -460,6 +470,29 @@ describe('DashboardView V3', () => {
     expect(screen.getByText('Tue 13 Oct')).toBeTruthy()
   })
 
+  test('V6 V5-14 with onOpenSession each done day is its own button, opening that workout', () => {
+    const onOpenSession = vi.fn()
+    const onOpenSessions = vi.fn()
+    const week: WeekStrip = {
+      ...WEEK,
+      days: WEEK.days.map((day, at) =>
+        at === 0 ? { ...day, sessionId: 'mon-session', label: 'Workout B, Mon 12 Oct' } : day,
+      ),
+    }
+    renderView({ data: { ...READY, week }, onOpenSessions, onOpenSession })
+
+    const day = screen.getByRole('button', { name: 'Workout B, Mon 12 Oct' })
+    expect(day).toHaveClass('calendar-day')
+    fireEvent.click(day)
+    expect(onOpenSession).toHaveBeenCalledWith('mon-session')
+    expect(onOpenSessions).not.toHaveBeenCalled()
+    // Days with nothing done are no buttons; Sessions is still one tap away, on the count.
+    expect(document.querySelectorAll('.dashboard-week button.calendar-day')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: /^This week, 1 of 3.*Open Sessions$/ }))
+    expect(onOpenSessions).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: /^This week/ }).querySelector('button')).toBeNull()
+  })
+
   test('V3-09 the week strip is one button that opens Sessions', () => {
     const onOpenSessions = vi.fn()
     renderView({ data: { ...READY, week: WEEK }, onOpenSessions })
@@ -481,3 +514,59 @@ describe('DashboardView V3', () => {
   })
 })
 
+
+describe('DashboardView V6 flow', () => {
+  const due = READY.kind === 'ready' ? READY.due! : null!
+
+  test('V6-11 after a short Session the header says what is left of the Workout, and Start starts it', () => {
+    const props = renderView({
+      data: { ...READY, due: { ...due, finish: 'Workout A again · last one was cut short on Mon 12 Oct' } } as DashboardData,
+    })
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
+    expect(screen.getByText('Workout A again · last one was cut short on Mon 12 Oct')).toBeTruthy()
+    expect(screen.queryByText(/last done/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
+    expect(props.onStartWorkout).toHaveBeenCalledWith('workout-a')
+  })
+
+  test('V6-08 the Workout\'s last Session note shows under the date as one quiet line', () => {
+    renderView({
+      data: {
+        ...READY,
+        due: { ...due, note: 'Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight.' },
+      } as DashboardData,
+    })
+    const note = screen.getByText('Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight.')
+    expect(note).toHaveClass('dashboard-note')
+    expect(note.closest('header')).not.toBeNull()
+    const here = dirname(fileURLToPath(import.meta.url))
+    const css = readFileSync(join(here, 'DashboardScreen.css'), 'utf-8')
+    // Wave 3: up to 2 lines, never cut to one at large text.
+    expect(declarationsFor(css, '.dashboard-note').get('white-space')).toBeUndefined()
+    expect(declarationsFor(css, '.dashboard-note').get('-webkit-line-clamp')).toBe('2')
+  })
+
+  test('V6-08 a Workout with no note shows no note line', () => {
+    renderView()
+    expect(document.querySelector('.dashboard-note')).toBeNull()
+  })
+
+  test('V6 each done day of the week strip is at least 44 px wide to the touch', () => {
+    const here = dirname(fileURLToPath(import.meta.url))
+    const css = readFileSync(join(here, 'DashboardScreen.css'), 'utf-8')
+    const inset = declarationsFor(css, '.dashboard-week button.calendar-day::before').get('inset') ?? ''
+    // Top and bottom reach 44 px tall; left and right reach out to 44 px wide whatever the column.
+    expect(inset.startsWith('calc((1.75rem - var(--tap-min)) / 2) ')).toBe(true)
+    expect(inset.endsWith(' min(-2px, calc((100% - var(--tap-min)) / 2))')).toBe(true)
+  })
+})
+
+describe('DashboardView V6 wave 3', () => {
+  test('V6-05 after a break the card says once that loads are eased, not on every row', () => {
+    const eased = { kind: 'eased' as const, lever: 13, text: 'Eased after 34 days off', use: null }
+    const lifts = READY.card!.lifts.map((lift) => ({ ...lift, advice: eased }))
+    renderView({ data: { ...READY, card: { ...READY.card!, lifts, eased: true } } })
+    expect(screen.getByText('Back after a break · loads eased for today')).toBeTruthy()
+    expect(screen.queryByText('Eased after 34 days off')).toBeNull()
+  })
+})

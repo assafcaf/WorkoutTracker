@@ -114,10 +114,10 @@ test('O16 .app-header-title reads the display font with tabular numerals', () =>
 })
 
 test('O16 .stats-record-value reads the display font with tabular numerals', () => {
-  // The record value moved to the lift page's bests table (.lift-num); the family is the body's.
+  // The record value lives in the one Lift page's Records table (.lift-num, src/ui/LiftView.css); the family is the body's.
   const body = declarationsFor(read('src/styles/base.css'), 'body')
   expect(body.get('font-family')).toBe('var(--font-sans)')
-  const css = read('src/features/progress/LiftPage.css')
+  const css = read('src/ui/LiftView.css')
   expect(declarationsFor(css, '.lift-num').get('font-variant-numeric')).toBe('tabular-nums')
   expect(declarationsFor(css, '.lift-num').get('font-family') ?? 'var(--font-sans)').toBe('var(--font-sans)')
 })

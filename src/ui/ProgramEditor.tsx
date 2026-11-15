@@ -48,6 +48,13 @@ export type ProgramEditorProps = {
   /** When set, shown under the editor's bar. */
   saveError?: string | null
   /**
+   * V5-10: the load a Plan is on now (`62.5`), as the Program tab reads it, for an Exercise the
+   * trainee has lifted; `null` when it has no history. Given one, a Plan with no starting weight
+   * of its own shows it read-only ("Now 47.5") where the grey start weight was, and keeps the
+   * Starting weight field in its options.
+   */
+  nowLoad?(exerciseId: string, plan: ExercisePlan): string | null
+  /**
    * The bar's title. Defaults to `New program` for a new Program and `Edit <name>` otherwise
    * (Progress Dashboard S7b: "Edit A/B Split").
    */
@@ -128,7 +135,7 @@ function toDraftPlan(plan: ExercisePlan): DraftPlan {
     sets: String(plan.sets),
     minReps: String(plan.repRange[0]),
     maxReps: String(plan.repRange[1]),
-    rest: String(plan.restSeconds),
+    rest: restText(plan.restSeconds),
     startWeight: plan.startWeightKg === undefined ? '' : String(plan.startWeightKg),
     amrapLast: plan.amrapLast === true,
   }
@@ -139,7 +146,7 @@ function toPlan(draft: DraftPlan): ExercisePlan {
     exerciseId: draft.exerciseId,
     sets: Number(draft.sets),
     repRange: [Number(draft.minReps), Number(draft.maxReps)],
-    restSeconds: Number(draft.rest),
+    restSeconds: restSecondsOf(draft.rest),
   }
   if (draft.startWeight.trim() !== '') plan.startWeightKg = Number(draft.startWeight)
   if (draft.amrapLast) plan.amrapLast = true
@@ -180,6 +187,22 @@ function faultMessage(faults: ProgramFault[], path: string): string | undefined 
 }
 
 /** A number typed into a field, or 0 while it is not one -- for the live estimates only. */
+/** V5-10: a rest as the editor shows it, `3:00`, as everywhere else in the app. */
+function restText(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+/**
+ * V5-10: the seconds of a rest typed as `m:ss` (`2:15` is 135), or as plain seconds (`120`), so
+ * either way saves the same as before; anything else is NaN, which validation refuses.
+ */
+function restSecondsOf(text: string): number {
+  const trimmed = text.trim()
+  const clock = /^(\d+):([0-5]\d)$/.exec(trimmed)
+  if (clock) return Number(clock[1]) * 60 + Number(clock[2])
+  return /^\d+$/.test(trimmed) ? Number(trimmed) : Number.NaN
+}
+
 function typed(text: string): number {
   const value = Number(text)
   return Number.isFinite(value) ? value : 0
@@ -214,6 +237,7 @@ export function ProgramEditor({
   saveError = null,
   title,
   exerciseSettings,
+  nowLoad,
 }: ProgramEditorProps): JSX.Element {
   const [name, setName] = useState(initial.name)
   const [workouts, setWorkouts] = useState<DraftWorkout[]>(() =>
@@ -510,7 +534,7 @@ export function ProgramEditor({
             exerciseId: p.exerciseId,
             sets: typed(p.sets),
             repRange: [typed(p.minReps), typed(p.maxReps)],
-            restSeconds: typed(p.rest),
+            restSeconds: typed(String(restSecondsOf(p.rest))),
           })),
         })
         const label = workout.name === '' ? `Workout ${displayIndex + 1}` : workout.name
@@ -579,6 +603,11 @@ export function ProgramEditor({
             {workout.plans.map((plan, j) => {
               const exercise = resolve(plan.exerciseId)
               const exerciseName = exercise?.name ?? plan.exerciseId
+              // V5-10: the load this Plan is on now, shown read-only while it has no starting weight.
+              const nowText =
+                nowLoad === undefined || plan.startWeight !== '' || exercise === undefined || bodyweightFor(exercise)
+                  ? null
+                  : nowLoad(plan.exerciseId, toPlan(plan))
               const planPath = `${workoutPath}.exercises.${j}`
               const planMenu = `plan:${plan.uid}`
               const planMenuOpen = openMenus.has(planMenu)
@@ -698,14 +727,13 @@ export function ProgramEditor({
                     </div>
                     <label className="program-editor-cell program-editor-cell-rest">
                       <span className="program-editor-sr" id={`${plan.uid}-rest`}>
-                        Rest (s)
+                        Rest (m:ss)
                       </span>
                       <span className="program-editor-cell-caption" aria-hidden="true">
-                        Rest, s
+                        Rest
                       </span>
                       <input
-                        type="number"
-                        inputMode="decimal"
+                        type="text"
                         className="program-editor-cell-input"
                         value={plan.rest}
                         aria-labelledby={`${plan.uid}-name ${plan.uid}-rest`}
@@ -713,7 +741,17 @@ export function ProgramEditor({
                         onChange={(event) => updatePlan(workout.id, j, { rest: event.target.value })}
                       />
                     </label>
-                    {bodyweightFor(exercise) ? (
+                    {nowText !== null ? (
+                      <span className="program-editor-cell program-editor-cell-kg program-editor-cell-static">
+                        <span className="program-editor-sr">{`Now ${nowText} kg`}</span>
+                        <span className="program-editor-cell-caption" aria-hidden="true">
+                          Now
+                        </span>
+                        <span className="program-editor-cell-value" aria-hidden="true">
+                          {nowText}
+                        </span>
+                      </span>
+                    ) : bodyweightFor(exercise) ? (
                       <span className="program-editor-cell program-editor-cell-kg program-editor-cell-static">
                         <span className="program-editor-cell-caption" aria-hidden="true">
                           Load
@@ -807,6 +845,23 @@ export function ProgramEditor({
                           )}
                           <p className="program-editor-menu-note">{`For ${exerciseName} in every workout.`}</p>
                         </div>
+                      )}
+                      {nowText === null ? null : (
+                        // V5-10: the starting weight, for when the Plan's history is gone.
+                        <label className="program-editor-menu-step">
+                          <span className="program-editor-menu-step-label" id={`${plan.uid}-kg`}>
+                            Starting weight (kg)
+                          </span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            className="program-editor-cell-input"
+                            value={plan.startWeight}
+                            aria-labelledby={`${plan.uid}-kg`}
+                            aria-describedby={describedBy(`${planPath}.startWeightKg`)}
+                            onChange={(event) => updatePlan(workout.id, j, { startWeight: event.target.value })}
+                          />
+                        </label>
                       )}
                       <div className="program-editor-menu-actions">
                         <button

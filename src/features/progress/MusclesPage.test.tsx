@@ -106,7 +106,8 @@ test('O22 a row prints whole numbers against its plan, half up', () => {
   const lats = screen.getByRole('button', { name: /^Lats/ })
   expect(lats).toHaveTextContent('19')
   expect(lats).toHaveTextContent('plan 19')
-  expect(screen.getByRole('button', { name: /^Calves/ })).toHaveTextContent('plan 8')
+  // V6-19: Calves meets its own plan of 8, so it reads "as planned" rather than its plan number.
+  expect(screen.getByRole('button', { name: /^Calves/ })).toHaveTextContent('8 sets/week · as planned')
 })
 
 test('O22 each row draws a done bar, a plan tick and the muted 10-20 band', () => {
@@ -162,10 +163,21 @@ test('O22 the body map is an index: a region opens its muscle row', async () => 
 // V1-26: a row outside the weekly set range says so in words, not by position alone.
 test('V1-26 rows below or above the weekly range say so in words', () => {
   show()
-  expect(screen.getByRole('button', { name: /^Abs/ })).toHaveTextContent('3 · below 10')
-  expect(screen.getByRole('button', { name: /^Calves/ })).toHaveTextContent('8 · below 10')
-  expect(screen.getByRole('button', { name: /^Shoulders/ })).toHaveTextContent('21 · above 20')
+  // V6-19: a count is per week, and a low the plan itself sets (Abs 3 of 3, Calves 8 of 8) reads
+  // "as planned", not "below 10"; above the range is still said.
+  expect(screen.getByRole('button', { name: /^Abs/ })).toHaveTextContent('3 sets/week · as planned')
+  expect(screen.getByRole('button', { name: /^Calves/ })).toHaveTextContent('8 sets/week · as planned')
+  expect(screen.getByRole('button', { name: /^Shoulders/ })).toHaveTextContent('21 sets/week · above 20')
   expect(screen.getByRole('button', { name: /^Lats/ })).not.toHaveTextContent(/below|above/)
+})
+
+test('V6-19 an average reads sets/week with its plan; This week reads sets so far', async () => {
+  show()
+  expect(screen.getByRole('button', { name: /^Lats/ })).toHaveTextContent('19 sets/week · plan 19')
+  expect(screen.getByRole('button', { name: /^Abs/ })).not.toHaveTextContent('plan 3')
+  await userEvent.setup().click(screen.getByRole('radio', { name: 'This week' }))
+  expect(screen.getByRole('button', { name: /^Lats/ })).not.toHaveTextContent('sets/week')
+  expect(screen.getByRole('button', { name: /^Lats/ })).toHaveTextContent(/\d+ sets/)
 })
 
 test('V1-26 the headline says "above" for a muscle over the range, not "at the top"', () => {

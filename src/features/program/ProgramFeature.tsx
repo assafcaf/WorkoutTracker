@@ -8,6 +8,11 @@ import { AppShell } from '../../ui/AppShell'
 import { ProgramEditor, type ExerciseSettings } from '../../ui/ProgramEditor'
 import { weekStart, type Weekday } from '../../domain/stats/weeks'
 import { isDeloadWeek } from '../../domain/deload'
+import { lastEntriesOf, nextLoadText } from '../../domain/planLoad'
+import { applyBodyweight } from '../../domain/bodyweight'
+import { workoutEstimate } from '../../domain/dashboard'
+import { workoutMinutes } from '../../domain/stats/train'
+import { kgCellText, liftPlan } from '../dashboard/trainCard'
 import { ProgramPage } from '../../ui/ProgramPage'
 import { ProgramDeloadLine, ProgramDeloadStart, ProgramHeadActions } from '../../ui/program/ProgramHead'
 import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
@@ -228,6 +233,12 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         onCancel={closeEditor}
         saveError={saveError}
         exerciseSettings={exerciseSettingsData.status === 'ready' ? exerciseSettingsData.data : undefined}
+        // V5-10: a lifted Plan shows the load it is on now, as the Program tab's kg column does.
+        nowLoad={(exerciseId, plan) => {
+          const exercise = resolveListExercise(exerciseId)
+          if (exercise === undefined || lastEntriesOf(sessions, exerciseId).length === 0) return null
+          return nextLoadText(exercise, plan, sessions)
+        }}
       />
     )
   }
@@ -240,6 +251,8 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   // V4-08: the Deload week is started from the head's overflow and, while on, is one line under
   // the title with End; Train's Presets follow the same stored week.
   const deloadOn = deloadData.status === 'ready' && isDeloadWeek(deloadData.data, at, weekStartsOn)
+  // V6-15: the kg column and minutes read finished Sessions, as Train does.
+  const finished = sessions.filter((session) => session.finishedAt != null)
   function setDeload(on: boolean): void {
     void services.preferences.setDeloadWeek(on ? weekStart(at, weekStartsOn) : null).catch(() => undefined)
   }
@@ -291,6 +304,19 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
           ) : null
         }
         onBrowse={(muscles) => props.navigate({ tab: 'exercises', muscles })}
+        // V6-03: an Exercise's name opens the one Lift page.
+        onOpenLift={(exerciseId) => props.navigate({ tab: 'lift', exerciseId })}
+        // V6-15: the kg each lift opens on and the minutes, as Train says them.
+        loadOf={(plan) => {
+          const listed = resolveListExercise(plan.exerciseId)
+          if (listed === undefined) return '–'
+          const exercise = applyBodyweight(
+            listed,
+            exerciseSettingsData.status === 'ready' ? exerciseSettingsData.data.bodyweight : {},
+          )
+          return kgCellText(liftPlan(exercise, plan, finished, at, deloadOn))
+        }}
+        minutesOf={(workout) => (active ? workoutMinutes(active, workout, finished).minutes : workoutEstimate(workout).minutes)}
       />
     </AppShell>
   )

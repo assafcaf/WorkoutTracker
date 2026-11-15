@@ -517,7 +517,8 @@ test('O17 finishing the session from the exercise list clears the active session
   await finishWorkout(user)
 
   // Back on the Dashboard, whose dock now offers the workout due after Workout A.
-  await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)
+  // V6-11: a few Sets of A is a short Session, so Workout A stays next.
+  await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
   expect(await getActiveSession()).toBeNull()
 })
 
@@ -1395,7 +1396,8 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
   // Hand-checked against the real library fixture's alphabetically (locale-aware) first name --
   // the first-10 default view F4 now requires.
   expect(await screen.findByText('3/4 Sit-Up', {}, SETTLE)).toBeVisible()
-  expect(screen.getAllByRole('listitem')).toHaveLength(10)
+  // V6-03: My lifts sits above the catalog; the catalog still shows its first 10.
+  expect(catalogRows()).toHaveLength(10)
   const pager = screen.getByRole('navigation', { name: 'Pages' })
   expect(within(pager).getByText('Page 1 of 88')).toBeVisible()
   expect(within(pager).getByRole('button', { name: 'Previous' })).toBeDisabled()
@@ -1415,6 +1417,14 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
 // rest of a result a page at a time (a different 10 rows, not a cumulative list), and a new
 // filtered result returns the list to page 1 (O18), which is why page 2's "lat" rows are
 // re-fetched after the muscle/equipment filter is applied rather than expected to carry over.
+/**
+ * The catalog's rows on the Exercises tab, without My lifts (V6-03), which lists the active
+ * Program's lifts above the catalog and is searched too ("lat" finds Lateral raises).
+ */
+function catalogRows(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>('.library-list:not(.my-lifts-list) > li')]
+}
+
 test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with more reachable via the pager -- and a combination matching nothing shows "No exercises match"', async () => {
   const user = userEvent.setup()
   await renderApp()
@@ -1428,7 +1438,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
   expect(latMatches.length).toBeGreaterThan(10)
   await user.type(search, 'lat')
   await waitFor(() => {
-    const rows = screen.getAllByRole('listitem')
+    const rows = catalogRows()
     expect(rows).toHaveLength(10)
     rows.forEach((row) => {
       expect(textOf(row).toLowerCase()).toContain('lat')
@@ -1440,7 +1450,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
 
   await user.click(within(pager).getByRole('button', { name: 'Next' }))
   await waitFor(() => {
-    const rows = screen.getAllByRole('listitem')
+    const rows = catalogRows()
     expect(rows).toHaveLength(10)
     rows.forEach((row) => {
       expect(textOf(row).toLowerCase()).toContain('lat')
@@ -1462,7 +1472,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
   await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
   await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
   await waitFor(() => {
-    expect(screen.getAllByRole('listitem')).toHaveLength(10)
+    expect(catalogRows()).toHaveLength(10)
   }, SETTLE)
   pager = screen.getByRole('navigation', { name: 'Pages' })
   expect(within(pager).getByText('Page 1 of 3')).toBeVisible()
@@ -1615,6 +1625,8 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
   await toolsRow(user, 'Swap exercise')
 
   expect(await screen.findByRole('searchbox', { name: /search/i }, SETTLE)).toBeVisible()
+  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
+  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
     { selector: '.alternatives-row-name' },
@@ -1688,6 +1700,8 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   await findSteppers()
 
   await toolsRow(user, 'Swap exercise')
+  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
+  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
     { selector: '.alternatives-row-name' },
@@ -1720,6 +1734,8 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   await findSteppers()
 
   await toolsRow(user, 'Swap exercise')
+  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
+  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
     { selector: '.alternatives-row-name' },
@@ -1742,10 +1758,11 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
 
   expect(await screen.findByRole('heading', { name: 'Hammer Curls' }, SETTLE)).toBeVisible()
   await findSteppers()
-  // Hammer_Curls has no logged history of its own yet: `trainingFieldsFor`'s dumbbell
-  // startWeight (0, hand-checked against src/domain/trainingFields.ts) and the bottom of
-  // seated-biceps-curls' own repRange ([10, 12]).
-  expect(readoutValue(weightReadout())).toBe('0')
+  // Title kept (weakened-tests gate). V6 (V5-02): the 0 kg this asserted was the bug -- reopened
+  // from its row, the swapped-in Exercise lost the planned load it was swapped in on. Hammer_Curls
+  // has no history of its own and is a dumbbell lift like seated-biceps-curls, so it keeps that
+  // Exercise's start (8 kg) at the bottom of its repRange ([10, 12]), as it did right after the swap.
+  expect(readoutValue(weightReadout())).toBe('8')
   expect(readoutValue(repsReadout())).toBe('10')
 })
 
@@ -1764,6 +1781,8 @@ const HAMMER_ROW = /^Hammer Curls[ ]+for Seated biceps curls/
  */
 async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLElement> {
   await toolsRow(user, 'Swap exercise')
+  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
+  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
     { selector: '.alternatives-row-name' },
@@ -2250,7 +2269,8 @@ test('M16 Done on the finish summary closes it onto the picker with the session 
     expect(sessionSummary()).toBeNull()
   }, SETTLE)
   // On the Dashboard, whose dock now offers the workout due after Workout A.
-  expect(await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)).toBeVisible()
+  // V6-11: a few Sets of A is a short Session, so Workout A stays next.
+  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   expect(await getActiveSession()).toBeNull()
 })
 
@@ -2535,13 +2555,15 @@ describe('E7-T8', () => {
     await finishWorkout(user)
 
     // Back on the Dashboard, whose dock offers the workout due after Workout A.
-    expect(await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)).toBeVisible()
+    // V6-11: a few Sets of A is a short Session, so Workout A stays next.
+    expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
     // The held request cannot finish before release, so the picker showing alongside it is
     // the proof that finishing did not wait on the sync.
     await waitFor(() => {
       expect(server.pending).toBe(1)
     }, SETTLE)
-    expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeVisible()
+    // V6-11: a few Sets of A is a short Session, so Workout A stays next.
+    expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
     release()
     await serverSettled(4)
   })
@@ -3054,7 +3076,8 @@ describe('E8-T6', () => {
     await renderApp()
 
     // Finished at launch, the forgotten Workout A puts Workout B due on the Dashboard's dock.
-    expect(await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)).toBeVisible()
+    // V6-11: a few Sets of A is a short Session, so Workout A stays next.
+    expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
     expect(resumeControl()).toBeNull()
   })
 

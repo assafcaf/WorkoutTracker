@@ -79,6 +79,65 @@ test('V5 with sets logged, the Finish sheet keeps Finish workout and adds Discar
   expect(screen.getByRole('button', { name: 'Discard workout' })).toBeTruthy()
 })
 
+test('V6 V5-01 with nothing logged, the Finish sheet leads with Discard workout and Finish workout is only a quiet last option', async () => {
+  const { fireEvent, screen } = await import('@testing-library/react')
+  render(
+    <LiveHeader
+      workoutName="Workout B"
+      startedAt={Date.now()}
+      onMinimise={vi.fn()}
+      onFinish={vi.fn()}
+      onDiscard={vi.fn()}
+      sets={{ done: 0, planned: 23 }}
+      setsLeft={23}
+    />,
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
+  const discard = screen.getByRole('button', { name: 'Discard workout' })
+  expect(discard).toHaveClass('btn-primary')
+  expect(screen.getByRole('button', { name: 'Finish workout' })).toHaveClass('btn-quiet')
+  const actions = [...document.querySelectorAll('.finish-confirm-actions button')].map((b) => b.textContent)
+  expect(actions).toEqual(['Discard workout', 'Keep going', 'Finish workout'])
+})
+
+test('V6 V5-15 when the title line does not fit (large text), the elapsed time goes and the set count stays', () => {
+  const widths = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) {
+    return this.classList.contains('live-header-meta') ? 189 : 0
+  })
+  const clients = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+    return this.classList.contains('live-header-meta') ? 162 : 0
+  })
+  render(
+    <LiveHeader
+      workoutName="Workout B"
+      startedAt={Date.now() - 65_000}
+      onMinimise={vi.fn()}
+      onFinish={vi.fn()}
+      sets={{ done: 1, planned: 23 }}
+    />,
+  )
+
+  expect(meta()).toBe('1/23 sets')
+  expect(document.querySelector('.live-header-meta [role="timer"], .live-header-meta time')).toBeNull()
+  widths.mockRestore()
+  clients.mockRestore()
+})
+
+test('V6 V5-15 when the title line fits, it keeps the elapsed time before the set count', () => {
+  render(
+    <LiveHeader
+      workoutName="Workout B"
+      startedAt={Date.now() - 65_000}
+      onMinimise={vi.fn()}
+      onFinish={vi.fn()}
+      sets={{ done: 1, planned: 23 }}
+    />,
+  )
+
+  expect(meta()).toMatch(/^\S+ · 1\/23 sets$/)
+})
+
 test('V5-01 with sets logged, Discard asks again naming the sets before it discards', async () => {
   const { fireEvent, screen } = await import('@testing-library/react')
   const onDiscard = vi.fn()

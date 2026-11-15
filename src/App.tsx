@@ -4,6 +4,7 @@ import type { Muscle } from './types'
 import { ExercisesFeature } from './features/exercises/ExercisesFeature'
 import type { LibraryFilters } from './features/exercises/ExercisesFeature'
 import { ProgramFeature } from './features/program/ProgramFeature'
+import { LiftPage } from './features/progress/LiftPage'
 import { ProgressFeature } from './features/progress/ProgressFeature'
 import type { AppRoute } from './features/routes'
 import { ServicesProvider } from './features/ServicesProvider'
@@ -66,7 +67,7 @@ export function App({ services }: { services: Services }): JSX.Element {
 }
 
 /** Where a screen group's route lands: its tab, and on the Program tab its side. */
-function destinationOf(to: AppRoute): Shown {
+function destinationOf(to: Exclude<AppRoute, { tab: 'lift' }>): Shown {
   switch (to.tab) {
     case 'exercises':
       return { tab: 'program', side: 'exercises', muscles: to.muscles }
@@ -106,6 +107,8 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
   const [libraryFilters, setLibraryFilters] = useState<LibraryFilters>({ search: '', muscle: '', equipment: '' })
   const [live, setLive] = useState<LiveStatus | null>(null)
   const [minimised, setMinimised] = useState(false)
+  // V6-03: the one Lift page, pushed over the tab it was opened from (which stays as it was).
+  const [lift, setLift] = useState<string | null>(null)
   const liveRef = useRef<LiveStatus | null>(null)
   const lastExportedAt = useServiceData((s) => s.preferences.lastExportedAt(), ['preferences'])
   // V1-30: an install with nothing logged has nothing to back up, so the gear carries no dot.
@@ -128,6 +131,7 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
   function show(next: Shown): void {
     setLaunching(false)
     setSettingsOpen(false)
+    setLift(null)
     setVisit((count) => count + 1)
     if (liveRef.current === null) setDashboardVisit((count) => count + 1)
     setShown(next)
@@ -135,6 +139,11 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
 
   /** Moves to a tab or route a screen group asked for, e.g. Exercises filtered to muscles. */
   function navigate(to: AppRoute): void {
+    if (to.tab === 'lift') {
+      setLaunching(false)
+      setLift(to.exerciseId)
+      return
+    }
     show(destinationOf(to))
   }
 
@@ -170,6 +179,7 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
 
   const liveOnScreen = live !== null && !minimised
   const onDashboard = shown.tab === 'dashboard' && !settingsOpen
+  const liftOpen = lift !== null && !settingsOpen
 
   const programSwitch = (
     <Segmented
@@ -204,7 +214,7 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
         navigate={navigate}
         onInSession={ignoreInSession}
         landInSession={launching}
-        shown={onDashboard}
+        shown={onDashboard && !liftOpen}
         minimised={minimised}
         onMinimise={handleMinimise}
         onRestore={handleRestore}
@@ -216,6 +226,17 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
         </AppShell>
       ) : (
         <>
+          {liftOpen ? (
+            <LiftPage
+              key={lift}
+              page={{ kind: 'lift', exerciseId: lift }}
+              push={() => {}}
+              navigate={navigate}
+              onBack={() => setLift(null)}
+            />
+          ) : null}
+          {/* The tab under the Lift page keeps its place (a summary open, a scroll) for Back. */}
+          <div className="app-tab-host" style={{ display: liftOpen ? 'none' : 'contents' }}>
           {shown.tab === 'sessions' ? (
             <SessionsScreen key={visit} navigate={navigate} onInSession={ignoreInSession} initialSessionId={shown.sessionId} />
           ) : null}
@@ -230,11 +251,13 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
               <ExercisesFeature
                 initialMuscles={shown.muscles}
                 navigate={navigate}
+                onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
                 filters={libraryFilters}
                 onFiltersChange={setLibraryFilters}
               />
             </AppShell>
           ) : null}
+          </div>
         </>
       )}
     </ShellChromeContext.Provider>

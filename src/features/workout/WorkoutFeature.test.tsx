@@ -107,6 +107,8 @@ async function storedActiveSession(): Promise<Session | null> {
 async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLElement> {
   await toolsRow(user, 'Swap exercise')
   await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
+  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
+  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
     { selector: '.alternatives-row-name' },
@@ -332,6 +334,10 @@ async function openSeatedCurlsAtSet2(user: UserEvent): Promise<void> {
 
 /** The Hammer Curls row of whichever overlay is open, found as `swapSeatedCurlsForHammerCurls` does. */
 async function hammerCurlsRow(rowName = 'Hammer Curls'): Promise<HTMLElement> {
+  // V6-10: the swap list opens on its first 6 rows; the rest are under Show all (the detail
+  // overlay's Similar exercises has none).
+  const showAll = screen.queryByRole('button', { name: /^Show all/ })
+  if (showAll) fireEvent.click(showAll)
   const name = await screen.findByText(rowName, { selector: '.alternatives-row-name' }, SETTLE)
   const row = name.closest('li')
   if (!row) throw new Error('the Hammer Curls row is not inside a list item')
@@ -429,7 +435,8 @@ test('O9 Done on the Session summary leaves the picker, reporting onInSession(fa
     expect(screen.queryByRole('dialog', { name: 'Session summary' })).toBeNull()
   }, SETTLE)
   // Back on the Dashboard, whose dock offers the workout due after Workout A.
-  expect(await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)).toBeVisible()
+  // V6-11: a few Sets of A is a short Session, so Workout A stays next.
+  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Resume Workout A' })).toBeNull()
   expect(onInSession).toHaveBeenLastCalledWith(false)
 })
@@ -1481,6 +1488,12 @@ test('O8 a swapped-in barbell Exercise shows the Plate line', async () => {
   const { user } = renderFeature(services)
   await openExercise(user, 'Barbell Curl')
   await toolsRow(user)
+  // Title kept (weakened-tests gate). V6 (V5-02): a barbell lift swapped in for a dumbbell one,
+  // never logged, first asks for its starting weight where the Plate line goes; once the weight
+  // is set, the Plate line shows.
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(plateLine()?.textContent).toBe('Set a starting weight'), SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 
   await waitFor(
     () => expect(plateLine()?.textContent).toMatch(/^(Per side:|Nearest|Bar only|Lighter)/),
@@ -1572,9 +1585,11 @@ test('O21 the History link on the set screen opens History · Back squat listing
 
   await toolsRow(user, 'Lift history')
 
-  const dialog = await screen.findByRole('dialog', { name: 'History · Back squat' }, SETTLE)
-  expect(within(dialog).getByText('Tue 6 Oct')).toBeVisible()
-  expect(within(dialog).getByText('80×8 · 80×8')).toBeVisible()
+  const dialog = await screen.findByRole('dialog', { name: 'Back squat' }, SETTLE)
+  // v6: Lift history is the one Lift page, headed by the lift; its log lists the earlier Session.
+  const log = within(dialog).getByRole('list', { name: 'Sessions' })
+  expect(within(log).getByText('Tue 6 Oct')).toBeVisible()
+  expect(log.querySelector('.lift-log-sets')?.textContent).toBe('80×8 · 80×8')
 })
 
 test('O21 closing History returns to the same open Set with its logged Set and rest intact', async () => {
@@ -1587,11 +1602,11 @@ test('O21 closing History returns to the same open Set with its logged Set and r
   const restBefore = await restReadoutText()
 
   await toolsRow(user, 'Lift history')
-  const dialog = await screen.findByRole('dialog', { name: 'History · Back squat' }, SETTLE)
-  await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Back squat' }, SETTLE)
+  await user.click(within(dialog).getByRole('button', { name: 'Done' }))
 
   await waitFor(
-    () => expect(screen.queryByRole('dialog', { name: 'History · Back squat' })).toBeNull(),
+    () => expect(screen.queryByRole('dialog', { name: 'Back squat' })).toBeNull(),
     SETTLE,
   )
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
@@ -1652,7 +1667,7 @@ test('O16 the History overlay lists a pre-epic assisted pull-ups Set as BW−27 
 
   await toolsRow(user, 'Lift history')
 
-  const dialog = await screen.findByRole('dialog', { name: 'History · Assisted pull-ups' }, SETTLE)
+  const dialog = await screen.findByRole('dialog', { name: 'Assisted pull-ups' }, SETTLE)
   expect(dialog.textContent).toMatch(new RegExp(`BW${MINUS}27 ?${TIMES} ?8`))
 })
 

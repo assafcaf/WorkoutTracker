@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { presetForSet } from '../domain/prefill'
-import { recordsSetBy } from '../domain/records'
+import { isPrSet } from '../domain/prMoment'
 import { workingSets } from '../domain/setKind'
 import { formatSet, loadText } from '../domain/setText'
 import './ExerciseList.css'
@@ -20,6 +20,8 @@ import type {
 export type ExerciseListProps = {
   /** The Session is a deload (E21): planned Sets show their deloaded Preset. */
   deload?: boolean
+  /** V6-05: whether a lift opens eased this Session (its Break); its planned Sets show the eased Preset. */
+  easedFor?(exerciseId: string): boolean
   program: Program
   workout: Workout
   /**
@@ -99,19 +101,31 @@ function SetCells(props: {
   const warmups = today.filter((entry) => entry.kind === 'warmup')
   const working = workingSets(today)
   const upcoming: { position: number; weightKg: number | null; reps: number; loadKg?: number }[] = []
+  // V6 (V5-02): each Set to come at its Preset once the ones before it go as they are preset --
+  // as the Now view's cells draw them -- so a ramp shows here too and the two views agree.
+  const assumed: SetEntry[] = [...today]
   for (let position = working.length + 1; position <= plan.sets; position += 1) {
+    const setIndex = today.length + 1 + (position - working.length - 1)
     const preset = presetForSet({
       exercise,
       plan,
-      setIndex: today.length + 1 + (position - working.length - 1),
+      setIndex,
       lastEntries,
-      today,
+      today: assumed,
       deload: props.deload,
+    })
+    assumed.push({
+      exerciseId: exercise.id,
+      setIndex,
+      weightKg: preset.weightKg,
+      reps: preset.reps,
+      ...(preset.loadKg ? { loadKg: preset.loadKg } : {}),
+      loggedAt: 0,
     })
     upcoming.push({ position, ...preset })
   }
   const isRecord = (entry: SetEntry): boolean =>
-    recordsSetBy(exercise, plan, earlier, session, entry).length > 0
+    isPrSet(exercise, plan, earlier, session, entry)
 
   return (
     <div className="all-cells">
@@ -307,7 +321,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
                 earlier={earlier}
                 lastEntries={props.lastEntries.get(effectiveId) ?? []}
                 current={props.currentId === effectiveId}
-                deload={props.deload}
+                deload={props.deload === true || props.easedFor?.(effectiveId) === true}
                 onOpenNext={open}
                 onOpenLogged={(setIndex) =>
                   props.onOpenLogged === undefined ? open() : props.onOpenLogged(effectiveId, setIndex)

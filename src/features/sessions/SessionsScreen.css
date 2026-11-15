@@ -21,7 +21,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-1);
 }
 
 .sessions-calendar-head {
@@ -34,9 +34,10 @@
 
 .sessions-calendar-row {
   display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr);
+  grid-template-columns: 2.5rem minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  min-height: var(--tap-min);
 }
 
 .sessions-calendar-weekday-cells {
@@ -168,6 +169,19 @@
   height: 2rem;
 }
 
+/* V5-12: a Session day's tap target is 44 x 44 around its unchanged 2rem cell: the hit area
+ * reaches 6 px over and under it (rows are 44 px apart, so weeks never overlap) and 2 px into
+ * each 4 px gap (the columns are 40 px and up at 390 wide, the week label having narrowed). */
+.sessions-calendar button.calendar-day {
+  position: relative;
+}
+
+.sessions-calendar button.calendar-day::before {
+  content: '';
+  position: absolute;
+  inset: calc((2rem - var(--tap-min)) / 2) -2px;
+}
+
 /* V5: a day with two Sessions opens this chooser, one button per Session. */
 .sessions-chooser {
   display: flex;
@@ -185,4 +199,39 @@
 .sessions-chooser-option {
   min-height: var(--tap-min);
   justify-content: flex-start;
+}
+
+/* V6-13: "Log a past workout", the title's one icon button. */
+.sessions-log-past {
+  display: grid;
+  width: var(--tap-min);
+  min-height: var(--tap-min);
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.sessions-log-date {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.sessions-log-date-input {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-raised);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+/* The Session editor draws its own header (V6-14), so it lays out its own padding. */
+.sessions-editor-page {
+  padding: var(--space-4);
 }

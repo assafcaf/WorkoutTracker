@@ -42,6 +42,22 @@
   line-height: 1.25rem;
 }
 
+/* V6-08: the Workout's last Session note, one quiet line; the title attribute holds it whole. */
+/* V6-08, wave 3: the note reads in up to 2 lines, then ends in an ellipsis (at 200 % text one line
+ * held only "Note from Wed 7 Oc…"). */
+.dashboard-note {
+  display: -webkit-box;
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-style: italic;
+  line-height: 1.25rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 .dashboard-header-actions {
   display: flex;
   flex: none;
@@ -134,6 +150,41 @@
   cursor: pointer;
 }
 
+/* V5-14: the strip as a row of its own buttons -- each done day, then the count to Sessions. */
+.dashboard-week.dashboard-week--days {
+  cursor: default;
+}
+
+.dashboard-week-open {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-min);
+  padding: 0 0 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dashboard-week-open .dashboard-week-chevron {
+  margin-left: 0;
+}
+
+.dashboard-week button.calendar-day {
+  position: relative;
+}
+
+/* A done day's tap target reaches 44 px tall around its 1.75rem cell, and 44 px wide however
+   narrow its column is (V6: it was 42 px). */
+.dashboard-week button.calendar-day::before {
+  content: '';
+  position: absolute;
+  inset: calc((1.75rem - var(--tap-min)) / 2) min(-2px, calc((100% - var(--tap-min)) / 2));
+}
+
 .dashboard-week-grid {
   display: flex;
   flex: 1;
@@ -217,6 +268,23 @@
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   overflow-wrap: anywhere;
+}
+
+/* V6-03: the lift's name is the door to its Lift page: a 44 px tall target that keeps the row's
+ * height (its margins eat into the row's padding), left-aligned, wrapping like the text it was. */
+.dashboard-step-name.lift-door {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  margin-block: -12px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-align: start;
 }
 
 .dashboard-step-text {

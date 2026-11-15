@@ -10,7 +10,7 @@ import { countsTowardStats, workingSets } from '../domain/setKind'
 import { numberText, topText } from '../domain/stats/copy'
 import { sessionMoves, volumeLine } from '../domain/stats/moves'
 import type { Weekday } from '../domain/stats/weeks'
-import { computeRecords } from '../domain/stats/records'
+import { computeRecords, sessionPrs } from '../domain/stats/records'
 import type { SessionRecord } from '../domain/stats/records'
 import {
   comparisonText,
@@ -44,6 +44,8 @@ export type SessionSummaryProps = {
   onClose(): void
   /** A region panel's "Browse exercises" (M9), carried up to whoever can switch tabs. */
   onBrowse?(muscles: Muscle[]): void
+  /** V6-03: opens the one Lift page: each Lift by lift name is a button to it. */
+  onOpenLift?(exerciseId: string): void
   /** Opens the Session's editor; omitted means no Edit control (the finish summary). */
   onEdit?(): void
   /**
@@ -131,6 +133,10 @@ function regionContributors(
  * into its region's `RegionPanel`), "This week n of N · next up <Workout>", and the volume as the
  * last quiet line. The dock is `Share…` (text, or Apple Health) and `Done`. Shown on Finish and
  * when a Session is opened.
+ *
+ * V6 (V5-05): opened from Sessions (given `onEdit` or `onDelete`) it is a past workout: no
+ * headline, the PR count in the figures line, each PR tagged once in Lift by lift, no Records
+ * list, no week line, "Muscles worked (sets)" in whole Sets, and the labelled volume line.
  */
 export function SessionSummary({
   session,
@@ -141,6 +147,7 @@ export function SessionSummary({
   workoutName,
   onClose,
   onBrowse,
+  onOpenLift,
   onEdit,
   onDelete,
   program,
@@ -158,12 +165,20 @@ export function SessionSummary({
   const [healthReady] = useState(readHealthReady)
   const changes = workout && onSaveChanges ? sessionChanges(session, workout) : []
   const counts = toRegionCounts(muscleSets(session.entries, resolve, library))
+  // V6 (V5-05): opened from Sessions (it has Edit or Delete) it is a past workout: its header says
+  // the PR count, each PR is tagged once in Lift by lift, and the lines about today go.
+  const past = onEdit !== undefined || onDelete !== undefined
   const worked = workedToday(muscleSets(session.entries, resolve, library))
+  // A past workout's muscles in whole Sets (a secondary half rounds), none left at 0.
+  const shownWorked = past
+    ? worked.map((row) => ({ ...row, count: Math.round(row.count) })).filter((row) => row.count > 0)
+    : worked
   const all = [...earlierSessions.filter((other) => other.id !== session.id), session]
   const stats = program ?? programOf(session, workoutName, planFor)
-  const records = computeRecords(all, resolve, planFor).filter((entry) => entry.sessionId === session.id)
-  const headline = prHeadline(records, resolve)
-  const week = program ? weekLine(session, all, program, weekStartsOn) : null
+  // V6 (V5-06): the Session's PRs under the one rule; rep bests are neither listed nor counted.
+  const records = sessionPrs(computeRecords(all, resolve, planFor), session.id)
+  const headline = past ? null : prHeadline(records, resolve)
+  const week = program && !past ? weekLine(session, all, program, weekStartsOn) : null
   const working = workingSets(session.entries).length
   const warmups = session.entries.filter((entry) => !countsTowardStats(entry)).length
   const [durationValue, durationUnit] = durationParts((session.finishedAt ?? session.startedAt) - session.startedAt)
@@ -181,6 +196,7 @@ export function SessionSummary({
     0,
   )
   const partial = plannedSets > 0 && working < plannedSets
+  const short = plannedSets > 0 && working * 2 < plannedSets
   const comparison = partial ? null : comparisonText(session, all, resolve, plannedSets, bodyLog)
   // V3-02 / V4-03: a partial Exercise makes no comparison, "2 of 4 sets".
   const plannedSetsOf = (exerciseId: string): number | undefined =>
@@ -209,7 +225,7 @@ export function SessionSummary({
     return `${name(change.exerciseId)}: ${change.from} to ${change.to} sets`
   }
 
-  const setsText = partial ? `${working} of ${plannedSets} sets` : plural(working, 'set', 'sets')
+  const setsText = `${short ? 'Short session · ' : ''}${partial ? `${working} of ${plannedSets} sets` : plural(working, 'set', 'sets')}`
 
   async function share(): Promise<void> {
     const text = [
@@ -218,7 +234,7 @@ export function SessionSummary({
       [`${durationValue} ${durationUnit}`, setsText, ...(comparison ? [comparison] : [])].join(' · '),
       ...lifts.map((lift) => `${lift.name}: ${liftLineText(lift.line)}`),
       ...(week ? [week] : []),
-      volumeText,
+      `Volume ${volumeText}`,
     ].join('\n')
     try {
       if (navigator.share) await navigator.share({ title: workoutName ?? 'Workout', text })
@@ -262,10 +278,23 @@ export function SessionSummary({
               <span className="session-summary-kpi-value">{`${durationValue} ${durationUnit}`}</span>
             </span>
             {' · '}
+            {/* V6-11: under half the planned Sets, it says so; Train keeps this Workout next. */}
+            {short ? (
+              <>
+                <span data-kpi="short">Short session</span>
+                {' · '}
+              </>
+            ) : null}
             <span data-kpi="sets">
               <span className="session-summary-kpi-value">{working}</span>
               {partial ? ` of ${plannedSets} sets` : working === 1 ? ' set' : ' sets'}
             </span>
+            {past && records.length > 0 ? (
+              <>
+                {' · '}
+                <span data-kpi="prs">{plural(records.length, 'PR', 'PRs')}</span>
+              </>
+            ) : null}
             {comparison ? (
               <>
                 {' · '}
@@ -284,7 +313,17 @@ export function SessionSummary({
             <div className="session-summary-moves card">
               {lifts.map((lift) => (
                 <div key={lift.exerciseId} className="session-summary-move">
-                  <span className="session-summary-move-name">{lift.name}</span>
+                  {onOpenLift ? (
+                    <button
+                      type="button"
+                      className="session-summary-move-name lift-door btn-quiet"
+                      onClick={() => onOpenLift(lift.exerciseId)}
+                    >
+                      {lift.name}
+                    </button>
+                  ) : (
+                    <span className="session-summary-move-name">{lift.name}</span>
+                  )}
                   <span className="session-summary-move-text">
                     {lift.line.sets.map((set, index) => (
                       <span key={index} className="session-summary-move-set">
@@ -313,7 +352,7 @@ export function SessionSummary({
           </section>
         ) : null}
 
-        {records.length >= 2 ? (
+        {!past && records.length >= 2 ? (
           <section className="session-summary-section" aria-label="Records">
             <h3 className="session-summary-caption">Records</h3>
             <ul className="session-summary-prs card">
@@ -339,10 +378,12 @@ export function SessionSummary({
         ) : null}
 
         {worked.length > 0 ? (
-          <section className="session-summary-worked" aria-label="Worked today">
+          <section className="session-summary-worked" aria-label={past ? 'Muscles worked' : 'Worked today'}>
             <p className="session-summary-muscles">
-              <span className="session-summary-worked-label">Worked today: </span>
-              {worked.map(({ muscle, count }, index) => {
+              <span className="session-summary-worked-label">
+                {past ? 'Muscles worked (sets): ' : 'Worked today: '}
+              </span>
+              {shownWorked.map(({ muscle, count }, index) => {
                 const name = muscleLabel(muscle)
                 return (
                   <span key={muscle}>
@@ -385,7 +426,9 @@ export function SessionSummary({
           </section>
         ) : null}
 
+        {/* V6 (V5-05): the volume line is labelled, so "6,815 kg" says what it is. */}
         <p className="session-summary-volume">
+          <span className="session-summary-volume-label">Volume </span>
           <span data-kpi="volume">
             <span className="session-summary-kpi-value">{volumeText}</span>
             {bodyweightReps > 0 ? (

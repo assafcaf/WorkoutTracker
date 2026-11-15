@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import type { Muscle } from '../../types'
 import { MUSCLES } from '../../data/library'
-import { uuid } from '../../domain/programs'
+import { resolveExercise } from '../../data/resolve'
+import { applyBodyweight } from '../../domain/bodyweight'
+import { myLifts } from '../../domain/myLifts'
+import { newPlan, uuid } from '../../domain/programs'
 import { matchesQuery } from '../../domain/search'
 import { CustomExerciseForm, type CustomExerciseValues } from '../../ui/CustomExerciseForm'
 import { GymEquipmentSwitches } from '../../ui/GymEquipmentSwitches'
-import { LibraryList } from '../../ui/LibraryList'
+import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
+import { LibraryList, MyLiftsList } from '../../ui/LibraryList'
 import { Select } from '../../ui/controls'
 import { Icon } from '../../ui/icons'
 import type { AppRoute } from '../routes'
@@ -31,6 +35,13 @@ export type ExercisesFeatureProps = {
    */
   filters?: LibraryFilters
   onFiltersChange?(filters: LibraryFilters): void
+  /**
+   * Opens a lift's own page from a My lifts row (V6-03). Omitted, the tab opens the lift's
+   * History overlay itself.
+   */
+  onOpenLift?(exerciseId: string): void
+  /** The clock My lifts reads its dates against; the device's by default. */
+  now?: () => number
 }
 
 /**
@@ -42,6 +53,8 @@ export function ExercisesFeature({
   initialMuscles,
   filters: heldFilters,
   onFiltersChange,
+  onOpenLift,
+  now = Date.now,
 }: ExercisesFeatureProps): JSX.Element | null {
   const [ownFilters, setOwnFilters] = useState<LibraryFilters>(NO_LIBRARY_FILTERS)
   const filters = heldFilters ?? ownFilters
@@ -52,6 +65,8 @@ export function ExercisesFeature({
     onFiltersChange?.(next)
   }
   const [openLibraryId, setOpenLibraryId] = useState<string | null>(null)
+  /** The lift whose History overlay is open, when no `onOpenLift` is given. */
+  const [historyLiftId, setHistoryLiftId] = useState<string | null>(null)
 
   // The form writes through the catalog service, which emits 'preferences', so the catalog is
   // read again with the new or renamed custom Exercise in it (E19-T11).
@@ -60,10 +75,45 @@ export function ExercisesFeature({
   const [formError, setFormError] = useState<string | null>(null)
   const catalogData = useServiceData((s) => s.catalog.load(), ['preferences'])
   const gymEquipment = useServiceData((s) => s.preferences.gymEquipment(), ['preferences'])
+  const sessionsData = useServiceData((s) => s.sessions.list(), ['sessions'])
+  const programsData = useServiceData((s) => s.programs.load(), ['programs'])
+  const overridesData = useServiceData(
+    (s) => s.preferences.bodyweightOverrides().catch((): Record<string, boolean> => ({})),
+    ['preferences'],
+  )
 
   if (catalogData.status !== 'ready' || gymEquipment.status !== 'ready') return null
 
   const { catalog, library, videos } = catalogData.data
+  const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
+  const overrides = overridesData.status === 'ready' ? overridesData.data : {}
+  const resolve = (id: string) => {
+    const exercise = resolveExercise(id, catalog, libraryMap)
+    return exercise && applyBodyweight(exercise, overrides)
+  }
+
+  // My lifts (V6-03 step 3): the active Program's Exercises and anything logged, most recent
+  // first. The search finds them too; the muscle and equipment filters browse the catalog, so
+  // My lifts steps aside while one is set (or the tab was opened on a region's muscles).
+  const sessions =
+    sessionsData.status === 'ready' ? sessionsData.data.filter((session) => session.finishedAt !== null) : []
+  const activeProgram =
+    programsData.status === 'ready'
+      ? programsData.data.programs.find((program) => program.id === programsData.data.activeProgramId)
+      : undefined
+  const activePlans = activeProgram?.workouts.flatMap((workout) => workout.exercises) ?? []
+  const browsing = muscle !== '' || equipment !== '' || (initialMuscles !== null && initialMuscles.length > 0)
+  // Shown only once the Sessions and the Program are both read, so it never draws half a list.
+  const liftsReady = sessionsData.status === 'ready' && programsData.status === 'ready'
+  const shownLifts = browsing || !liftsReady
+    ? []
+    : myLifts(
+        activePlans.map((plan) => plan.exerciseId),
+        sessions,
+        resolve,
+      ).filter((lift) => matchesQuery(lift.name, search))
+  const openLift = onOpenLift ?? setHistoryLiftId
+  const historyExercise = historyLiftId === null ? undefined : resolve(historyLiftId)
 
   const equipmentOptions = Array.from(new Set(library.map((exercise) => exercise.equipment)))
     .sort((a, b) => {
@@ -140,6 +190,13 @@ export function ExercisesFeature({
           onChange={(event) => setFilter({ search: event.target.value })}
         />
       </label>
+      {shownLifts.length === 0 ? null : (
+        <>
+          <h2 className="library-section-heading">My lifts</h2>
+          <MyLiftsList lifts={shownLifts} now={new Date(now())} onOpenLift={openLift} />
+          <h2 className="library-section-heading">{`All exercises (${library.length})`}</h2>
+        </>
+      )}
       <div className="library-filters">
         <Select
           aria-label="Muscle"
@@ -206,6 +263,16 @@ export function ExercisesFeature({
                 }
               : undefined
           }
+        />
+      )}
+      {historyExercise === undefined ? null : (
+        <ExerciseHistoryOverlay
+          exercise={historyExercise}
+          sessions={sessions}
+          plan={
+            activePlans.find((plan) => plan.exerciseId === historyExercise.id) ?? newPlan(historyExercise.id)
+          }
+          onClose={() => setHistoryLiftId(null)}
         />
       )}
       {form === null ? null : (

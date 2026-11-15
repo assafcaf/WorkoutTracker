@@ -338,12 +338,15 @@ function pushUps(startedAt: number, count: number, reps: number): SetEntry[] {
   }))
 }
 
-/** Two PRs today: Bench press 80 → 85 kg × 5, and Push-ups BW × 10 → BW × 12. */
+/**
+ * Two PRs today: Bench press 80 → 85 kg × 5, and Push-ups BW × 10 → BW+5 × 12 (a first added
+ * load; V6: more reps alone would be a rep best, not a PR).
+ */
 function twoRecordSessions(): { earlier: Session[]; today: Session } {
   const before = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   before.entries.push(...pushUps(before.startedAt, 3, 10))
   const today = benchSession('pr2', BASE, 52, 3, 85, 5)
-  today.entries.push(...pushUps(BASE, 3, 12))
+  today.entries.push(...pushUps(BASE, 3, 12).map((entry) => ({ ...entry, loadKg: 5 })))
   return { earlier: [before], today }
 }
 
@@ -935,7 +938,11 @@ test('V4-03 a rep record by one reads +1 rep, never +1 reps', () => {
   today.entries[0] = { ...today.entries[0], reps: 6 }
   const dialog = renderS5b(today, [before])
 
-  expect(dialog.querySelector('.session-summary-win-text')?.textContent).toBe('Bench press 85 kg × 6 · rep record, +1 rep')
+  // V6 (V5-06): one more rep at the heaviest weight is a PR because it lifts the estimated 1RM
+  // (85 × 6/30 − 85 × 5/30 = +2.8 kg); the lift line still counts the rep, "1 rep more".
+  expect(dialog.querySelector('.session-summary-win-text')?.textContent).toBe(
+    'Bench press 85 kg × 6 · estimated 1RM, +2.8 kg',
+  )
   expect(dialog.textContent).not.toContain('+1 reps')
   expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('85×6 PR · 85×5 · 85×5 · 1 rep more than Wed 8 Nov')
 })
@@ -944,8 +951,19 @@ test('V4-03 a partial Session reads "1 of 3 sets" in the figures, with no % comp
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
 
-  expect(dialog.querySelector('.session-summary-figures')?.textContent).toBe('20 min · 1 of 3 sets')
+  // Title kept (weakened-tests gate); V6-11: 1 of 3 is under half, so it also says it was short.
+  expect(dialog.querySelector('.session-summary-figures')?.textContent).toBe('20 min · Short session · 1 of 3 sets')
   expect(dialog.textContent).not.toMatch(/%/)
+})
+
+test('V6-11 under half the planned Sets reads "Short session · n of N sets"; half or more does not', () => {
+  const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
+  const short = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
+  expect(short.querySelector('[data-kpi="short"]')?.textContent).toBe('Short session')
+  cleanup()
+  const most = renderBench(benchSession('wed-14', WED, 40, 2, 80, 5), [before])
+  expect(most.querySelector('.session-summary-figures')?.textContent).toBe('40 min · 2 of 3 sets')
+  expect(most.querySelector('[data-kpi="short"]')).toBeNull()
 })
 
 test('V4-03 a full Session compares with the last same Workout: "vs <day>: volume +6.3 %"', () => {

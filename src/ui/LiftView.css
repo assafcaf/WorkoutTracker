@@ -1,0 +1,242 @@
+/* The one Lift page (v6 §6.3): status block, hero, chart, records, session log. Reached as a
+ * Progress page and as the live tools sheet's Lift history. Every colour, size and radius is a
+ * token from src/styles/tokens.css. */
+
+.lift-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-6);
+  color: var(--color-text);
+}
+
+.lift-empty {
+  margin: var(--space-5) 0;
+  color: var(--color-muted);
+  font-size: var(--text-md);
+}
+
+/* ---- status ---- */
+
+.lift-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--color-control);
+  background: var(--color-surface);
+}
+
+.lift-status-decide {
+  border-left-color: var(--color-warn);
+}
+
+.lift-status-up {
+  border-left-color: var(--color-primary);
+}
+
+.lift-status-label {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.lift-status-decide .lift-status-label {
+  color: var(--color-warn);
+}
+
+.lift-status-up .lift-status-label {
+  color: var(--color-primary);
+}
+
+.lift-status-action {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.375rem;
+}
+
+.lift-status-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lift-why {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.lift-why-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) 0 var(--space-2);
+  border-top: 1px solid var(--color-hairline);
+  list-style: none;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+}
+
+/* ---- hero ---- */
+
+.lift-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lift-hero-value {
+  margin: 0;
+  font-size: calc(var(--text-lg) * 2.4);
+  line-height: 1.1;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  overflow-wrap: break-word;
+}
+
+.lift-hero-change {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---- chart ---- */
+
+.lift-chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.lift-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.lift-tabs .segmented-option {
+  flex: 1 1 0;
+}
+
+.lift-chart-empty {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---- records and log ---- */
+
+.lift-section-title {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lift-bests {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.lift-td {
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-hairline);
+  vertical-align: baseline;
+}
+
+.lift-num {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding-left: var(--space-2);
+}
+
+.lift-record-label {
+  font-weight: var(--weight-regular);
+  text-align: left;
+}
+
+.lift-best {
+  display: block;
+  font-weight: var(--weight-semibold);
+}
+
+.lift-date {
+  display: block;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.lift-log-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lift-log-row {
+  border-top: 1px solid var(--color-hairline);
+}
+
+.lift-log-open,
+.lift-log-static {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--space-2) 0;
+  border: 0;
+  text-align: left;
+  font-size: var(--text-sm);
+}
+
+.lift-log-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.lift-log-date {
+  font-weight: var(--weight-semibold);
+}
+
+.lift-log-sets {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: break-word;
+}
+
+.lift-log-deload {
+  color: var(--color-muted);
+}
+
+.lift-warmups,
+.lift-log-note {
+  color: var(--color-muted);
+}
+
+.lift-log-more {
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.lift-footnote {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}

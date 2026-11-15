@@ -51,6 +51,8 @@ describe('O5 createServices returns exactly the service API', () => {
       'lastEntriesForSession',
       'lastSwapsForSession',
       'list',
+      // V6-13: a missed Session logged after the fact.
+      'logPast',
       'logSet',
       'presetHistory',
       'restoreSet',
@@ -61,6 +63,7 @@ describe('O5 createServices returns exactly the service API', () => {
       'setNote',
       'setRest',
       'start',
+      'undiscard',
       'undoSwap',
       'updateSet',
     ])

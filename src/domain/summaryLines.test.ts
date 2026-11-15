@@ -136,7 +136,8 @@ test('V4-03 a lift says fewer reps, a weight step, less assistance, or the same 
     liftLine('deadlift', today, [earlier, today], resolve, planOf, [], 3).tail
 
   // Title kept (weakened-tests gate); V5: worded by `exerciseComparison`, as the live Session.
-  expect(tail(fewer, before)).toBe('3 reps under Mon 12 Oct')
+  // V6-18: the summary says fewer reps plainly, "3 fewer reps than", never "3 reps under".
+  expect(tail(fewer, before)).toBe('3 fewer reps than Mon 12 Oct')
   expect(tail(heavier, before)).toBe('+2.5 kg top set on Mon 12 Oct')
   expect(tail(same, before)).toBe('Same as Mon 12 Oct')
   expect(tail(same, { ...before, id: 'other', workoutId: 'b', startedAt: THU_15_OCT + DAY })).toBe('First time logged')
@@ -200,8 +201,29 @@ test('V4-03 Worked today lists only the trained muscles, most sets first', () =>
 
 test('V4-03 the week line counts this week against the Program and names the Workout due next', () => {
   const tuesday = session('tue', 'a', MON_12_OCT + DAY, [])
-  const sessions = [MONDAY, tuesday, THURSDAY]
+  // Thursday's Workout B in full (3 Deadlift and 4 pull-up Sets), so the rotation moves on (V6-11).
+  const thursday = session('thu', 'b', THU_15_OCT, [
+    ...THURSDAY.entries.map((entry): [string, number, number] => [entry.exerciseId, entry.weightKg ?? 0, entry.reps]),
+    ['pullups', -20, 6],
+    ['pullups', -20, 6],
+    ['pullups', -20, 6],
+    ['pullups', -20, 6],
+  ])
+  const sessions = [MONDAY, tuesday, thursday]
 
-  expect(weekLine(THURSDAY, sessions, PROGRAM)).toBe('This week 3 of 3 · next up Workout A')
+  expect(weekLine(thursday, sessions, PROGRAM)).toBe('This week 3 of 3 · next up Workout A')
   expect(weekLine(tuesday, sessions, PROGRAM)).toBe('This week 2 of 3 · next up Workout B')
+})
+
+test('V6-18 one rep fewer reads "1 fewer rep than <day>"', () => {
+  const before = session('mon', 'b', MON_12_OCT, [['deadlift', 70, 7], ['deadlift', 70, 7], ['deadlift', 70, 7]])
+  const today = session('thu', 'b', THU_15_OCT, [['deadlift', 70, 7], ['deadlift', 70, 7], ['deadlift', 70, 6]])
+  expect(liftLine('deadlift', today, [before, today], resolve, planOf, [], 3).tail).toBe('1 fewer rep than Mon 12 Oct')
+})
+
+test('V6-11 a short Session still counts in the week, and the same Workout is next up', () => {
+  // Workout B plans 3 + 4 = 7 Sets; 1 Set logged is under half.
+  const tuesday = session('tue', 'a', MON_12_OCT + DAY, [])
+  const short = session('thu', 'b', THU_15_OCT, [['deadlift', 60, 10]])
+  expect(weekLine(short, [MONDAY, tuesday, short], PROGRAM)).toBe('This week 3 of 3 · next up Workout B')
 })

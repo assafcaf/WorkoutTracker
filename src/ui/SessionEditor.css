@@ -11,9 +11,11 @@
   color: var(--color-text);
 }
 
+/* V6-14: the one header ("Edit, Workout B, Mon 12 Oct"); it wraps, never truncates. */
 .session-editor-heading {
   margin: 0;
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
+  overflow-wrap: break-word;
 }
 
 .session-editor-times {
@@ -81,7 +83,23 @@
 
 .session-editor-set-values {
   flex: 1;
+  /* A Set's values stay on one line; at large text Edit and Delete wrap under them instead. */
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/* V6-14: a Set kind's mark ("W" for a warm-up), muted, before the values. */
+.session-editor-set-kind {
+  margin-right: var(--space-2);
+  color: var(--color-muted);
+  font-weight: var(--weight-semibold);
+}
+
+/* V6-13: Add exercise, under the last Exercise. */
+.session-editor-add-exercise {
+  align-self: flex-start;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
 }
 
 .session-editor-dials {

@@ -1,35 +1,48 @@
-// E18-T7 [O11 O18 R-C]: every generated sentence of the stats screens, from engine values only.
-// Pure; imports only src/domain/** and src/types.ts.
+// E18-T7 [O11 O18 R-C], v6 [V5-03]: every generated sentence of the stats screens, from engine
+// values only. Pure; imports only src/domain/** and src/types.ts.
 //
-//   leverText(lever, bodyweight)      -> '62.5 kg' | 'BW' | 'BW+5' | 'BW−19' (U+2212)
-//   topText(top, bodyweight)          -> '13 kg × 9' | 'BW × 15'
-//   humanDate(ms)                     -> 'Wed 14 Oct' (local time, no year)
-//   verdictLabel(kind)                -> '▲ Moving' | '■ Stalled' | '▼ Slipping' | '○ Too new'
+//   leverText / topText / humanDate / numberText -> re-exported from words.ts
+//   verdictLabel(kind)                -> '▲ Moving' | '■ Stalled' | '▼ Slipping' | '○ Too new' (the
+//                                        engine's verdict; the screens show status.ts labels)
 //   nextStepText(step, bodyweight)    -> '15 of 20 reps at 62.5 kg'
 //   suggestionText(step, bodyweight)  -> 'Try 15 kg next' | 'Try one more set next' | null
 //   compareText(compare, bodyweight)  -> '13 × 9 → 13 × 9 · no change' | null
-//   homeCopy(program, sessions, resolve, now) -> HomeCopy
+//   homeCopy(program, sessions, resolve, now) -> HomeCopy (v6: every status from status.ts)
 import type { Exercise, ExercisePlan, Program, Session } from '../../types'
 import type { Resolve } from '../muscles'
 import type { Compare } from './ladder'
 import { deloadWeight } from '../deload'
-import { buildLiftHistories, leverOf, straightSets } from './liftHistory'
+import { buildLiftHistories } from './liftHistory'
 import type { LiftHistory, LiftPoint } from './liftHistory'
+import { STATUS_GLYPHS, STATUS_LABELS, calendarDays, liftStatuses } from './status'
+import type { LiftStatus, LiftStatusKind } from './status'
 import { computeRecords } from './records'
-import { nextStep, stepsClimbed, verdicts } from './verdict'
-import type { NextStep, Verdict, VerdictKind } from './verdict'
+import { stepsClimbed, verdicts } from './verdict'
+import type { NextStep, VerdictKind } from './verdict'
 import { thisWeek } from './weeks'
 import type { Weekday } from './weeks'
+import { humanDate, leverText, numberText, plural, topText } from './words'
+
+export { humanDate, leverText, numberText, topText, weekdayName } from './words'
 
 export type HomeStage = 'empty' | 'starting' | 'early' | 'full'
 
+/** A "Needs a decision" card: one lift's status, exactly as `liftStatus` words it. */
 export type AttentionCard = {
   exerciseId: string
-  kind: 'slipping' | 'stalled' | 'ready'
-  sentence: string
+  kind: LiftStatusKind
+  /** `Ready`, `Lowered`, … */
+  label: string
+  /** `↑`, `↓`, … */
+  glyph: string
+  /** The visible evidence line, with the Session note when there is one. */
+  evidence: string
+  /** The status's one action sentence. */
   suggestion: string
-  /** The `Why?` lines: the rule, the last 4 non-deload Sessions' top sets, the bar to clear. */
+  /** The `Why?` lines: the rule, the last 4 Sessions, the action. */
   why: string[]
+  /** The action is a change of exercise: offer Swap. */
+  swap: boolean
 }
 
 export type StartingPoint = {
@@ -43,56 +56,35 @@ export type StartingPoint = {
 
 export type HomeCopy = {
   stage: HomeStage
-  /** `11 of 14 lifts moving.` ('Too early to call' when stage is 'early'; '' otherwise). */
+  /** `10 of 14 lifts going up.` ('Too early to call' when stage is 'early'; '' otherwise). */
   sentence: string
-  /** `▲ 11 moving · ■ 2 stalled · ▼ 1 slipping · ↑ 1 ready`; '' unless stage is 'full'. */
+  /** `2 add load · 1 same · 1 lowered on purpose · 10 going up`; '' unless stage is 'full'. */
   counts: string
   /** `12 of 14 lifts stepped up since Fri 18 Sep.`; '' unless stage is 'full'. */
   climbed: string
   /**
-   * The Progress home's one lead line (V3-11): `11 of 14 lifts moving · 12 stepped up since
-   * 18 Sep` -- the verdict and the climbed clause as one sentence; '' unless stage is 'full'.
+   * The Progress home's one headline (v6): `This week 2 of 3 sessions · 3 lifts need a decision`;
+   * '' unless stage is 'full'.
    */
   lead: string
   /** `2 of 3 this week`; '' unless stage is 'full'. */
   adherence: string
+  /** At most 3 "Needs a decision" cards: below your best, then the longest same, then ready. */
   cards: AttentionCard[]
+  /** Decisions beyond the 3 cards (All lifts lists them). */
+  moreDecisions: number
+  /** Every lift's one status (stage 'full'; empty otherwise). */
+  statuses: Map<string, LiftStatus>
   /** Stage 'empty' only: what to expect, one line each. */
   expectations: string[]
   /** Stages 'starting' and 'early': every lift of the Program, in Plan order. */
   startingPoints: StartingPoint[]
 }
 
-const MINUS = '−'
 const TIMES = '×'
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const LIGHTER = 'Consider a lighter week or a variation'
-
-/** A number with at most 2 decimals, no trailing zeros. */
-export function numberText(n: number): string {
-  return String(Math.round(n * 100) / 100)
-}
-
-/** `Wed` for a timestamp, local time. */
-export function weekdayName(ms: number): string {
-  return DAYS[new Date(ms).getDay()]
-}
-
-export function leverText(lever: number, bodyweight: boolean): string {
-  if (!bodyweight) return `${numberText(lever)} kg`
-  if (lever === 0) return 'BW'
-  return lever > 0 ? `BW+${numberText(lever)}` : `BW${MINUS}${numberText(-lever)}`
-}
-
-export function topText(top: { lever: number; reps: number }, bodyweight: boolean): string {
-  return `${leverText(top.lever, bodyweight)} ${TIMES} ${top.reps}`
-}
-
-export function humanDate(ms: number): string {
-  const d = new Date(ms)
-  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
-}
+/** "Needs a decision" shows at most this many cards. */
+export const MAX_CARDS = 4
 
 const VERDICT_LABELS: Record<VerdictKind, string> = {
   moving: '▲ Moving',
@@ -134,15 +126,10 @@ export function compareText(compare: Compare | null, bodyweight: boolean): strin
 
 const EXPECTATIONS = [
   'Log your first workout and your lifts appear here.',
-  'After 4 sessions of a lift, it gets a verdict: moving, stalled or slipping.',
-  'A lift with no record in its last 4 sessions is called stalled.',
-  'Records are weight, reps or estimated 1RM, never volume.',
+  'After 4 sessions a lift gets a status: going up, the same for a while, or below your best.',
+  'When every set reaches the top of its rep range, the lift is ready for more load.',
+  'Records are a heavier set or a better estimated max, never volume.',
 ]
-
-function threeWords(note: string): string {
-  const words = note.trim().split(/\s+/)
-  return words.length <= 3 ? words.join(' ') : `${words.slice(0, 3).join(' ')}…`
-}
 
 type Top = { lever: number; reps: number }
 type RealPoint = LiftPoint & { top: Top }
@@ -150,24 +137,31 @@ type RealPoint = LiftPoint & { top: Top }
 const realPoints = (h: LiftHistory): RealPoint[] =>
   h.points.filter((p): p is RealPoint => !p.deload && p.top !== null)
 
-function lastFourLines(h: LiftHistory): string[] {
-  return realPoints(h)
-    .slice(-4)
-    .map((p) => `${humanDate(p.startedAt)} · ${topText(p.top, h.bodyweight)}`)
+/** The order the status counts are told in. */
+const COUNT_ORDER: LiftStatusKind[] = ['break', 'slipping', 'stalled', 'lowered', 'ready', 'hold', 'moving', 'too new']
+
+/** The order of the "Needs a decision" cards (§6.2): Break > Slipping > Stalled > Lowered > Ready > Hold. */
+const CARD_ORDER: Record<LiftStatusKind, number> = {
+  break: 0,
+  slipping: 1,
+  stalled: 2,
+  lowered: 3,
+  ready: 4,
+  hold: 5,
+  moving: 6,
+  'too new': 7,
 }
 
-function maxRepsAt(h: LiftHistory, lever: number): number {
-  let best = 0
-  for (const p of h.points) {
-    for (const s of straightSets(p.workingSets)) {
-      if (leverOf(s, h.bodyweight) === lever && s.reps > best) best = s.reps
-    }
-  }
-  return best
-}
 
-function plural(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? '' : 's'}`
+/**
+ * `This week 2 of 3 sessions · 3 lifts need a decision` (`· every lift on track` with none); after
+ * a break (any lift on Break), `Last session 34 days ago · ease back in`.
+ */
+export function headline(done: number, planned: number, decisions: number, breakDays: number | null = null): string {
+  if (breakDays !== null) return `Last session ${breakDays} days ago · ease back in`
+  const need =
+    decisions === 0 ? 'every lift on track' : `${plural(decisions, 'lift')} ${decisions === 1 ? 'needs' : 'need'} a decision`
+  return `This week ${done} of ${planned} sessions · ${need}`
 }
 
 export function homeCopy(
@@ -177,7 +171,7 @@ export function homeCopy(
   now: number,
   weekStartsOn: Weekday = 1,
 ): HomeCopy {
-  const live = sessions.filter((s) => s.deletedAt === undefined)
+  const live = sessions.filter((s) => s.deletedAt === undefined && s.finishedAt !== null)
   const plans = new Map<string, ExercisePlan>()
   const planOrder: string[] = []
   for (const w of program.workouts) {
@@ -191,7 +185,6 @@ export function homeCopy(
   const records = computeRecords(live, resolve, planOf)
   const vs = verdicts(histories, records, now)
   const nameOf = (id: string) => resolve(id)?.name ?? id
-  const noteOf = new Map(live.map((s) => [s.id, s.note]))
 
   const base: HomeCopy = {
     stage: 'empty',
@@ -201,6 +194,8 @@ export function homeCopy(
     lead: '',
     adherence: '',
     cards: [],
+    moreDecisions: 0,
+    statuses: new Map(),
     expectations: [],
     startingPoints: [],
   }
@@ -227,87 +222,43 @@ export function homeCopy(
     }
   }
 
-  const count = (k: VerdictKind) => [...vs.values()].filter((v) => v.kind === k).length
-  const steps = new Map<string, NextStep>()
-  for (const [id, h] of histories) {
-    const ex = resolve(id)
-    const step = ex ? nextStep(h, plans.get(id), ex) : null
-    if (step) steps.set(id, step)
-  }
-  const ready = [...steps.entries()].filter(([, st]) => st.ready)
-  const parts = [
-    `▲ ${count('moving')} moving`,
-    `■ ${count('stalled')} stalled`,
-    `▼ ${count('slipping')} slipping`,
-    `↑ ${ready.length} ready`,
-  ]
-  if (count('too new') > 0) parts.push(`○ ${count('too new')} too new`)
+  const statuses = liftStatuses(program, live, resolve, now)
+  const all = [...statuses.values()]
+  const count = (k: LiftStatusKind) => all.filter((s) => s.kind === k).length
+  const counts = COUNT_ORDER.filter((k) => count(k) > 0).map((k) => `${STATUS_GLYPHS[k]} ${count(k)} ${STATUS_LABELS[k].toLowerCase()}`)
   const climbed = stepsClimbed(histories, records, now)
   const week = thisWeek(live, now, program.sessionsPerWeek, weekStartsOn)
-
-  const cards: AttentionCard[] = []
-  const verdictOf = (id: string): Verdict => vs.get(id)!
-  for (const id of [...vs.keys()].filter((i) => verdictOf(i).kind === 'slipping')) {
-    const h = histories.get(id)!
-    const best = verdictOf(id).bestBefore!
-    const real = realPoints(h)
-    const latest = real[real.length - 1]
-    const note = noteOf.get(real[real.length - 2].sessionId)
-    const lead = `${nameOf(id)}: slipping, ${topText(latest.top, h.bodyweight)} on ${humanDate(latest.startedAt)}, below ${topText(best, h.bodyweight)} on ${humanDate(best.startedAt)}`
-    cards.push({
-      exerciseId: id,
-      kind: 'slipping',
-      sentence: note ? `${lead}, after '${threeWords(note)}'` : `${lead}.`,
-      suggestion: LIGHTER,
-      why: [
-        'Slipping: the last 2 sessions are both below the best of the sessions before them.',
-        ...lastFourLines(h),
-        `Back to ${topText(best, h.bodyweight)} to stop slipping.`,
-      ],
-    })
+  const rank = (id: string) => {
+    const at = planOrder.indexOf(id)
+    return at === -1 ? planOrder.length : at
   }
-  const stalled = [...vs.keys()]
-    .filter((i) => verdictOf(i).kind === 'stalled')
-    .sort((a, b) => (verdictOf(b).weeks ?? 0) - (verdictOf(a).weeks ?? 0))
-  for (const id of stalled) {
-    const h = histories.get(id)!
-    const v = verdictOf(id)
-    const ex = resolve(id)
-    const top = realPoints(h).pop()!.top
-    const need = maxRepsAt(h, top.lever) + 1
-    const bar = h.bodyweight
-      ? top.lever === 0
-        ? `A record needs ${need} reps in one set.`
-        : `A record needs ${need} reps at ${leverText(top.lever, true)}, or less assistance.`
-      : `A record needs ${leverText(top.lever, false)} ${TIMES} ${need}, or more weight.`
-    cards.push({
-      exerciseId: id,
-      kind: 'stalled',
-      sentence: `${nameOf(id)}: stalled for ${plural(Math.round(v.weeks ?? 0), 'week')}, ${plural(v.sessionsSince ?? 0, 'session')} without a record since ${humanDate(v.since ?? 0)}.`,
-      suggestion: ex ? stallSuggestion(h, ex) : LIGHTER,
-      why: ['Stalled: none of the last 4 sessions of this lift set a record.', ...lastFourLines(h), bar],
-    })
-  }
-  for (const [id, st] of ready) {
-    const h = histories.get(id)!
-    const suggestion = suggestionText(st, h.bodyweight) ?? ''
-    cards.push({
-      exerciseId: id,
-      kind: 'ready',
-      sentence: `${nameOf(id)}: ready, ${nextStepText(st, h.bodyweight)}.`,
-      suggestion,
-      why: ['Ready: every set of the last session reached the top of the rep range.', ...lastFourLines(h), suggestion],
-    })
-  }
+  const decisions = all
+    .filter((s) => s.decision)
+    .sort((a, b) => CARD_ORDER[a.kind] - CARD_ORDER[b.kind] || rank(a.exerciseId) - rank(b.exerciseId))
+  // Keyed by lift: one status, so one card, per lift.
+  const cards: AttentionCard[] = decisions.slice(0, MAX_CARDS).map((s) => ({
+    exerciseId: s.exerciseId,
+    kind: s.kind,
+    label: s.label,
+    glyph: s.glyph,
+    evidence: s.evidence,
+    suggestion: s.action,
+    why: s.why,
+    swap: s.swap,
+  }))
+  const lastAt = Math.max(...live.map((s) => s.startedAt))
+  const breakDays = count('break') > 0 ? calendarDays(lastAt, now) : null
 
   return {
     ...base,
     stage: 'full',
-    sentence: `${count('moving')} of ${histories.size} lifts moving.`,
-    counts: parts.join(' · '),
+    sentence: `${count('moving')} of ${statuses.size} lifts moving.`,
+    counts: counts.join(' · '),
     climbed: `${climbed.climbed} of ${climbed.of} lifts stepped up since ${humanDate(climbed.since)}.`,
-    lead: `${count('moving')} of ${histories.size} lifts moving · ${climbed.climbed} stepped up since ${humanDate(climbed.since).replace(/^\S+ /, '')}`,
+    lead: headline(week.done, week.planned, decisions.length, breakDays),
     adherence: `${week.done} of ${week.planned} this week`,
     cards,
+    moreDecisions: decisions.length - cards.length,
+    statuses,
   }
 }

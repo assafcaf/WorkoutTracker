@@ -1331,7 +1331,8 @@ test('O14 the toast joins every record label with a comma', async () => {
   // V4-01: one record name leads the one comparison line: "Heaviest weight · +5 kg on <day>".
   const block = await screen.findByRole('region', { name: 'Just done' })
   const day = formatDay(new Date(BASE), new Date())
-  expect(within(block).getByText(`Heaviest weight · +5 kg on ${day}`)).toBeVisible()
+  // V6 (V5-13): it compares with the day beaten, "5 kg more than <day>".
+  expect(within(block).getByText(`Heaviest weight · 5 kg more than ${day}`)).toBeVisible()
 })
 
 test('O14 logging a Set that sets no record shows no toast', async () => {
@@ -4480,7 +4481,8 @@ test('S2b Delete set shows the dark Set deleted · Undo snackbar', async () => {
 
   await waitFor(() => expect(document.querySelector('.snackbar')).not.toBeNull())
   const snackbar = document.querySelector('.snackbar') as HTMLElement
-  expect(snackbar).toHaveTextContent('Set deleted')
+  // Title kept (weakened-tests gate); V6 (V5-04): the snackbar names the Set it deleted.
+  expect(snackbar).toHaveTextContent('Set 1 deleted · 80 × 8')
   expect(within(snackbar).getByRole('button', { name: 'Undo' })).toBeVisible()
 })
 
@@ -4698,7 +4700,8 @@ test('V4-01 a Set under last time reads n rep under <day>, in the secondary colo
   await user.click(logButton())
 
   const line = (await screen.findByRole('region', { name: 'Just done' })).querySelector('.just-done-line')
-  expect(textOf(line)).toBe(`1 rep under ${formatDay(new Date(BASE), new Date())}`)
+  // V6 wave 3: one comparison sentence app-wide, the summary's "1 fewer rep than <day>".
+  expect(textOf(line)).toBe(`1 fewer rep than ${formatDay(new Date(BASE), new Date())}`)
   expect(line?.getAttribute('data-kind')).toBe('down')
   const decls = declarationsFor(restCss(), '.just-done-line')
   expect(decls.get('color')).toBe('var(--color-secondary)')
@@ -4748,6 +4751,60 @@ test('V4-01 a hand-over is headed <Exercise> done · 1 PR with Add set, its chip
   expect(onPick).toHaveBeenCalledWith(2)
 })
 
+// V6 (V5-06): more reps at a weight already lifted, with no better estimated 1RM, is a rep best:
+// quiet words under the Dial and in the Just done line, no PR tag, no PR badge on the cell.
+test('V6 a rep best reads rep best if logged, then Rep best on Rest, with no PR tag', async () => {
+  const push = (reps: number, loggedAt: number): SetEntry => ({
+    exerciseId: 'push-ups',
+    setIndex: 1,
+    weightKg: null,
+    reps,
+    loggedAt,
+  })
+  const earlier: Session = {
+    id: 'earlier-push',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt: BASE - 86_400_000,
+    finishedAt: BASE - 86_000_000,
+    entries: [push(12, BASE - 86_400_000)],
+  }
+  const { user } = renderSetScreen({
+    exercise: pushUps,
+    plan: pushUpPlan,
+    earlierSessions: [earlier],
+    lastEntries: [push(12, BASE - 86_400_000)],
+    lastTime: [push(12, BASE - 86_400_000)],
+  })
+  const line = (): string => textOf(document.querySelector('.set-projection'))
+
+  await user.click(screen.getByRole('button', { name: 'Increase reps' }))
+  expect(line()).toMatch(/· rep best if logged$/)
+  expect(screen.queryByText('PR if logged')).toBeNull()
+
+  await user.click(logButton())
+
+  const block = await screen.findByRole('region', { name: 'Just done' })
+  expect(textOf(block.querySelector('.just-done-line'))).toMatch(/^Rep best · /)
+  expect(within(block).queryByText('PR')).toBeNull()
+  expect(prBadges()).toHaveLength(0)
+})
+
+test('V6 a heavier Set still reads PR if logged, and its Just done line carries the PR tag', async () => {
+  const { user } = renderSetScreen({
+    earlierSessions: [earlierSession],
+    lastEntries: [historyEntry(1, 85, 5)],
+    lastTime: [historyEntry(1, 85, 5)],
+  })
+
+  expect(textOf(document.querySelector('.set-projection'))).toMatch(/PR if logged$/)
+  await user.click(logButton())
+
+  const block = await screen.findByRole('region', { name: 'Just done' })
+  expect(textOf(block.querySelector('.just-done-line'))).toMatch(/^PR ?Heaviest weight · /)
+  expect(within(block).getByText('PR')).toHaveClass('tag-pr')
+})
+
 test('V4-02 the line under the reps Dial compares live with last time: same, +1 rep, 1 rep under', async () => {
   const { user } = renderSetScreen({
     earlierSessions: [earlierSession],
@@ -4756,12 +4813,13 @@ test('V4-02 the line under the reps Dial compares live with last time: same, +1 
   })
   const line = (): string => textOf(document.querySelector('.set-projection'))
 
-  expect(line()).toBe('Last time 85 × 5 · same · PR if logged')
+  // Title kept (weakened-tests gate); V6-18: the same Set says last time's day, never "same".
+  expect(line()).toBe(`Last time 85 × 5 · ${formatDay(new Date(BASE), new Date())} · PR if logged`)
   await user.click(screen.getByRole('button', { name: 'Increase reps' }))
   expect(line()).toMatch(/^Last time 85 × 5 · \+1 rep · PR if logged$/)
   await user.click(screen.getByRole('button', { name: 'Decrease reps' }))
   await user.click(screen.getByRole('button', { name: 'Decrease reps' }))
-  expect(line()).toMatch(/^Last time 85 × 5 · 1 rep under/)
+  expect(line()).toMatch(/^Last time 85 × 5 · 1 fewer rep/)
   // One "Last time" on Now, under the Dials: the upper line is gone.
   expect(screen.getAllByText(/Last time/)).toHaveLength(1)
   expect(document.querySelector('.set-last-time')).toBeNull()
@@ -4885,19 +4943,27 @@ function snackbar(): HTMLElement | null {
 }
 
 test('V1-17 a screen opened on a swap shows the Swapped from <planned> · Undo snackbar', () => {
-  renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo: vi.fn() } })
+  renderSetScreen({
+    swappedFrom: { name: 'Deadlift', onUndo: vi.fn() },
+    swapFor: { name: 'Deadlift', onUndo: vi.fn() },
+  })
 
   const bar = snackbar() as HTMLElement
   expect(bar).not.toBeNull()
   expect(bar).toHaveTextContent('Swapped from Deadlift')
-  expect(within(bar).getByRole('button', { name: 'Undo' })).toBeVisible()
+  // Title kept (weakened-tests gate); V6: Undo is said once, by the lasting "Undo swap" line,
+  // so the snackbar carries no Undo of its own.
+  expect(within(bar).queryByRole('button')).toBeNull()
+  expect(screen.getAllByRole('button', { name: /Undo/ })).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Undo swap' })).toBeVisible()
 })
 
 test('V1-17 Undo on the swap snackbar calls onUndo once and the snackbar goes', async () => {
   const onUndo = vi.fn()
-  const { user } = renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo } })
+  const { user } = renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo }, swapFor: { name: 'Deadlift', onUndo } })
 
-  await user.click(within(snackbar() as HTMLElement).getByRole('button', { name: 'Undo' }))
+  // Title kept (weakened-tests gate); V6: the one Undo is the swap line's "Undo swap".
+  await user.click(screen.getByRole('button', { name: 'Undo swap' }))
 
   expect(onUndo).toHaveBeenCalledTimes(1)
   expect(snackbar()).toBeNull()
@@ -5015,4 +5081,109 @@ test('V5 at 320 x 568 the Rest view tightens so the Just done chips clear the do
   // The hand-over block puts its chips under the heading, its Sets line after them.
   expect(shortScreenDecls('.exercise-verdict .effort-row').get('order')).toBe('1')
   expect(shortScreenDecls('.exercise-verdict .just-done-line').get('order')).toBe('2')
+})
+
+// --- UX v6: snackbars name what they took back, with no stray separator, clear of the Dials ---
+
+test('V6 V5-04 Delete set names the Set it deleted, with no separator left trailing', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8), loggedEntry(2, 80, 7)])
+
+  await user.click(loggedSetButton('80 × 7'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(document.querySelector('.snackbar')).not.toBeNull())
+  const message = document.querySelector('.snackbar-message') as HTMLElement
+  expect(message.textContent).toBe('Set 2 deleted · 80 × 7')
+})
+
+test('V6 V5-04 the snackbars on the Set screen sit above the Dials, never over them', async () => {
+  const { user } = renderWithLogged([loggedEntry(1, 80, 8)])
+
+  await user.click(loggedSetButton('80 × 8'))
+  await user.click(screen.getByRole('button', { name: 'Delete set' }))
+
+  await waitFor(() => expect(document.querySelector('.snackbar')).not.toBeNull())
+  const bar = document.querySelector('.snackbar') as HTMLElement
+  const anchor = bar.parentElement as HTMLElement
+  expect(anchor).toHaveClass('set-snackbar-anchor')
+  const dials = document.querySelector('.set-dials') as HTMLElement
+  expect(anchor.compareDocumentPosition(dials) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('V6 V5-04 the swap snackbar reads Swapped from Deadlift with no separator after it', () => {
+  renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo: vi.fn() } })
+
+  expect((document.querySelector('.snackbar-message') as HTMLElement).textContent).toBe('Swapped from Deadlift')
+})
+
+test('V6 V5-02 a swapped-in Exercise says "for <planned>" under its counter, with Undo swap while given', async () => {
+  const onUndo = vi.fn()
+  const { user } = renderSetScreen({ swapFor: { name: 'Deadlift', onUndo } })
+
+  const line = document.querySelector('.set-swapped') as HTMLElement
+  expect(line).toHaveTextContent('for Deadlift')
+  await user.click(within(line).getByRole('button', { name: 'Undo swap' }))
+  expect(onUndo).toHaveBeenCalledTimes(1)
+})
+
+test('V6 V5-02 with askStartWeight the Plate line asks Set a starting weight until the weight moves', async () => {
+  const { user } = renderSetScreen({ askStartWeight: true })
+
+  expect(screen.getByText('Set a starting weight')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  expect(screen.queryByText('Set a starting weight')).toBeNull()
+})
+
+// --- UX v6 flow: the warm-up line on Now (V6-16), Last time's day (V6-18), First time (V6-17) ---
+
+function warmupLine(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.set-warmup-line')
+}
+
+test('V6-16 the first barbell lift shows its warm-up ramp above the cells, with Add', () => {
+  renderBarbell([], { warmupLine: true })
+
+  const line = warmupLine() as HTMLElement
+  expect(line).not.toBeNull()
+  expect(textOf(line.querySelector('.set-warmup-line-text'))).toBe('Warm-up: 50×5 · 70×3 · 85×2')
+  const add = within(line).getByRole('button', { name: 'Add these warm-ups' })
+  expect(add).toHaveTextContent('Add')
+  const cells = document.querySelector('.set-cells') as HTMLElement
+  expect(line.compareDocumentPosition(cells) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'SetScreen.css'), 'utf-8')
+  const decls = declarationsFor(css, '.set-warmup-line-add')
+  expect(decls.get('min-height')).toBe('var(--tap-min)')
+  expect(decls.get('min-width')).toBe('var(--tap-min)')
+})
+
+test('V6-16 Add on the warm-up line starts the ramp, and the line goes', async () => {
+  const { user } = renderBarbell([], { warmupLine: true })
+
+  await user.click(screen.getByRole('button', { name: 'Add these warm-ups' }))
+
+  await waitFor(() => expect(rampLineText()).toBe('Warm-up 1 of 3 · 50 kg × 5'))
+  expect(warmupLine()).toBeNull()
+})
+
+test('V6-16 no warm-up line unless asked for, and none once a working Set is logged', () => {
+  const first = renderBarbell()
+  expect(warmupLine()).toBeNull()
+  first.unmount()
+  renderBarbell([{ exerciseId: 'back-squat', setIndex: 1, weightKg: 100, reps: 8, loggedAt: BASE + 1 }], {
+    warmupLine: true,
+  })
+  expect(warmupLine()).toBeNull()
+})
+
+test('V6-18 the line under the Dials names last time\'s day, never "same"', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 85, 5)], lastTime: [historyEntry(1, 85, 5)] })
+  const line = textOf(document.querySelector('.set-projection'))
+  expect(line).toBe(`Last time 85 × 5 · ${formatDay(new Date(BASE), new Date())}`)
+  expect(line).not.toMatch(/same/)
+})
+
+test('V6-17 a lift with no history reads First time · start light', () => {
+  renderSetScreen()
+  expect(textOf(document.querySelector('.set-projection'))).toBe('First time · start light')
+  expect(screen.queryByText(/Last time/)).toBeNull()
 })

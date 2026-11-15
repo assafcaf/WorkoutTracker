@@ -2,6 +2,7 @@ import {
   addPlan,
   clearSwap,
   discardSession,
+  undiscardSession,
   finishSession,
   finishStaleSession,
   getActiveSession,
@@ -9,6 +10,7 @@ import {
   getLastSwap,
   getSession,
   listSessions,
+  logPastSession,
   logSet,
   deleteSet,
   restoreSet,
@@ -63,6 +65,8 @@ export type SessionService = {
   setDeload(sessionId: string, on: boolean): Promise<Session>
   finish(sessionId: string): Promise<Session>
   save(session: Session): Promise<Session>
+  /** Stores a missed Session, finished, logged after the fact (V6-13). */
+  logPast(session: Session): Promise<Session>
   lastEntriesFor(exerciseId: string): Promise<SetEntry[]>
   lastEntriesForSession(session: Session | null, programs: Program[]): Promise<Map<string, SetEntry[]>>
   lastSwapsForSession(session: Session | null, programs: Program[]): Promise<Record<string, string>>
@@ -71,6 +75,8 @@ export type SessionService = {
   applySwap(sessionId: string, plannedId: string, doneId: string): Promise<void>
   undoSwap(sessionId: string, plannedId: string): Promise<void>
   discard(sessionId: string): Promise<void>
+  /** V6 (V5-01): Undo of `discard`: the Session stored live again, as it was, and returned. */
+  undiscard(sessionId: string): Promise<Session>
 }
 
 // The UI shows no text when starting, finishing, swapping or reading history fails: each of
@@ -237,6 +243,10 @@ export function createSessionService(deps: ServiceDeps): SessionService {
       return write(session.id, () => saveSession(session, now()), SAVE_FAILED)
     },
 
+    async logPast(session) {
+      return write(session.id, () => logPastSession(session, now()), SAVE_FAILED)
+    },
+
     async lastEntriesFor(exerciseId) {
       return callStorage(deps, () => getLastEntriesFor(exerciseId), HISTORY_FAILED)
     },
@@ -314,6 +324,10 @@ export function createSessionService(deps: ServiceDeps): SessionService {
     /** Marks the Session deleted through `discardSession` (E12-T1). */
     async discard(sessionId) {
       await write(sessionId, () => discardSession(sessionId, now()), DISCARD_FAILED)
+    },
+
+    async undiscard(sessionId) {
+      return write(sessionId, () => undiscardSession(sessionId, now()), SAVE_FAILED)
     },
   }
 }

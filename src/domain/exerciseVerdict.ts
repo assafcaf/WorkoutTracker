@@ -103,7 +103,7 @@ export type ComparedSet = Pick<SetEntry, 'weightKg' | 'reps' | 'loadKg'>
 
 /**
  * How a Set compares with last time's Set at the same place, with its short words: "same",
- * "+1 rep", "+2.5 kg", "1 rep under", "2.5 kg under". The load decides first (a Bodyweight Set's
+ * "+1 rep", "+2.5 kg", "1 fewer rep", "2.5 kg under". The load decides first (a Bodyweight Set's
  * signed Load, so less assistance is up); with the same load, the reps.
  */
 export type SetDelta = { kind: 'same' | 'up' | 'down'; text: string }
@@ -130,13 +130,18 @@ export function setDelta(set: ComparedSet, last: ComparedSet): SetDelta {
   }
   const reps = set.reps - last.reps
   if (reps === 0) return { kind: 'same', text: 'same' }
-  return reps > 0 ? { kind: 'up', text: `+${repsWord(reps)}` } : { kind: 'down', text: `${repsWord(-reps)} under` }
+  return reps > 0 ? { kind: 'up', text: `+${repsWord(reps)}` } : { kind: 'down', text: fewerWords(-reps) }
+}
+
+/** V6-18, wave 3: fewer reps said plainly, app-wide: "1 fewer rep", "3 fewer reps". */
+function fewerWords(count: number): string {
+  return `${count} fewer ${count === 1 ? 'rep' : 'reps'}`
 }
 
 /** What one logged Set's comparison says (V4-01): its kind, its sentence and its Record, if any. */
 export type SetComparison = {
   kind: 'first' | 'same' | 'up' | 'down'
-  /** "Same as Mon 12 Oct", "+2.5 kg on Mon 12 Oct", "1 rep under Mon 12 Oct", "First time logged". */
+  /** "Same as Mon 12 Oct", "2.5 kg more than Mon 12 Oct", "1 fewer rep than Mon 12 Oct", "First time logged". */
   text: string
   /** The Record's name when the Set set one ("Rep record"); the sentence then leads with it. */
   record: string | null
@@ -144,9 +149,9 @@ export type SetComparison = {
 
 /**
  * The one sentence a logged Set gets (V4-01), against last time's Set at its place, `last`,
- * lifted on `lastDay` ("Mon 12 Oct"): "Same as Mon 12 Oct", "+2.5 kg on Mon 12 Oct", "1 rep
+ * lifted on `lastDay` ("Mon 12 Oct"): "Same as Mon 12 Oct", "2.5 kg more than Mon 12 Oct", "1 rep
  * under Mon 12 Oct", or "First time logged" with no `last`. A Set that set a Record leads with
- * its name: "Rep record · +1 rep on Mon 12 Oct".
+ * its name: "Rep record · 1 more than Mon 12 Oct".
  */
 export function setComparison(
   set: ComparedSet,
@@ -156,12 +161,18 @@ export function setComparison(
 ): SetComparison {
   if (last === null) return { kind: 'first', text: record ?? 'First time logged', record }
   const delta = setDelta(set, last)
+  // V5-13: "+1 rep on Mon 12 Oct" read as the Record's date; "1 more than Mon 12 Oct" compares.
+  // A Record whose name says reps leaves the word out: "Rep record · 1 more than Mon 12 Oct".
+  const more = delta.text.replace(/^\+/, '')
+  const upText = record !== null && /\brep\b/i.test(record) ? more.replace(/ reps?$/, '') : more
   const words =
     delta.kind === 'same'
       ? `Same as ${lastDay}`
       : delta.kind === 'up'
-        ? `${delta.text} on ${lastDay}`
-        : `${delta.text} ${lastDay}`
+        ? `${upText} more than ${lastDay}`
+        : delta.text.endsWith(' under')
+          ? `${delta.text} ${lastDay}`
+          : `${delta.text} than ${lastDay}`
   return { kind: delta.kind, text: `${record === null ? '' : `${record} · `}${words}`, record }
 }
 
@@ -189,7 +200,7 @@ export function exerciseDoneLine(args: {
 function repsMove(today: SetEntry[], last: SetEntry[], lastDay: string, same: string): string {
   const reps = today.reduce((sum, set) => sum + set.reps, 0) - last.reduce((sum, set) => sum + set.reps, 0)
   if (reps === 0) return same
-  return reps > 0 ? `${repsWord(reps)} more than ${lastDay}` : `${repsWord(-reps)} under ${lastDay}`
+  return reps > 0 ? `${repsWord(reps)} more than ${lastDay}` : `${fewerWords(-reps)} than ${lastDay}`
 }
 
 /** Every Set is a Bodyweight one at or below plain BW, with some assistance. */
@@ -207,7 +218,7 @@ function assisted(sets: SetEntry[]): boolean {
  *   fewer Sets than planned     -> "2 of 3 sets" (no comparison with a full Exercise)
  *   a deload                    -> "Deload"
  *   no last time                -> "First time logged"
- *   the same load at every Set  -> "1 rep more than Mon 12 Oct", "2 reps under Mon 12 Oct", "Same as Mon 12 Oct"
+ *   the same load at every Set  -> "1 rep more than Mon 12 Oct", "2 fewer reps than Mon 12 Oct", "Same as Mon 12 Oct"
  *   else the top load           -> "+2.5 kg top set on Mon 12 Oct", "2.5 kg under Mon 12 Oct",
  *                                  "5 kg less assistance than Mon 12 Oct" (assisted Bodyweight),
  *                                  or the reps with "Same top weight as Mon 12 Oct"

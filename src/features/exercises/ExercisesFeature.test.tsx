@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import { createServices } from '../../services'
+import { db } from '../../storage/db'
 import type { LibraryExercise } from '../../types'
 import libraryFixture from '../../data/library/exercises.json'
 import { ServicesProvider } from '../ServicesProvider'
@@ -167,4 +168,113 @@ test('O11 given initialMuscles, ExercisesFeature opens filtered to them', async 
   })
   // Not shown: an exercise whose only primary muscle is not forearms.
   expect(screen.queryByText('Barbell Squat', { selector: '.library-row-name' })).toBeNull()
+})
+
+// --- V6-03 step 3: My lifts first ------------------------------------------------------------
+
+const OCT_13 = new Date(2026, 9, 13, 18).getTime()
+
+/** The bundled A/B Program made active, and one finished Session of Deadlift on 13 Oct. */
+async function seedLifter(): Promise<void> {
+  await db.open()
+  await db.sessions.clear()
+  await db.settings.clear()
+  await db.settings.put({ key: 'activeProgramId', value: 'assaf-ab-2026', updatedAt: OCT_13 })
+  await db.sessions.put({
+    id: 'past',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-b',
+    startedAt: OCT_13,
+    finishedAt: OCT_13 + 3_600_000,
+    entries: [
+      { exerciseId: 'deadlift', setIndex: 1, weightKg: 40, reps: 5, loggedAt: OCT_13, kind: 'warmup' },
+      { exerciseId: 'deadlift', setIndex: 2, weightKg: 70, reps: 7, loggedAt: OCT_13 },
+    ],
+    updatedAt: OCT_13,
+  })
+}
+
+function renderLifter(onOpenLift?: (id: string) => void) {
+  const services = createServices({ now: () => OCT_13 + 86_400_000, storageAvailable: true })
+  render(
+    <ServicesProvider services={services}>
+      <ExercisesFeature
+        initialMuscles={null}
+        navigate={vi.fn()}
+        onOpenLift={onOpenLift}
+        now={() => OCT_13 + 86_400_000}
+      />
+    </ServicesProvider>,
+  )
+}
+
+test('V6-03 Exercises opens on My lifts, the Program Exercises with the latest logged first, above the catalog', async () => {
+  await seedLifter()
+  renderLifter()
+
+  const mine = await screen.findByRole('list', { name: 'My lifts' }, SETTLE)
+  const names = within(mine)
+    .getAllByRole('button')
+    .map((row) => row.querySelector('.library-row-name')?.textContent)
+  expect(names[0]).toBe('Deadlift')
+  expect(names).toContain('Back squat')
+  expect(names).toHaveLength(14)
+  expect(within(mine).getAllByRole('button')[0]).toHaveTextContent('70 × 7 · 13 Oct')
+
+  const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)
+  expect(headings).toEqual(['My lifts', `All exercises (${LIBRARY.length})`])
+})
+
+test('V6-03 searching "squat" lists the Program Back squat in My lifts, first on the page', async () => {
+  await seedLifter()
+  renderLifter()
+  const search = await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)
+  await screen.findByRole('list', { name: 'My lifts' }, SETTLE)
+
+  await userEvent.setup().type(search, 'squat')
+
+  await waitFor(() => {
+    const mine = screen.getByRole('list', { name: 'My lifts' })
+    const rows = within(mine).getAllByRole('button')
+    expect(rows[0]).toHaveTextContent(/^Back squat/)
+    rows.forEach((row) => expect(row.textContent?.toLowerCase()).toContain('squat'))
+  }, SETTLE)
+  const firstName = document.querySelector('.library-row-name')
+  expect(firstName?.textContent).toBe('Back squat')
+})
+
+test('V6-03 a My lifts row calls onOpenLift with its Exercise id', async () => {
+  await seedLifter()
+  const onOpenLift = vi.fn()
+  renderLifter(onOpenLift)
+  const mine = await screen.findByRole('list', { name: 'My lifts' }, SETTLE)
+
+  await userEvent.setup().click(within(mine).getByRole('button', { name: /^Back squat/ }))
+
+  expect(onOpenLift).toHaveBeenCalledWith('back-squat')
+})
+
+test('V6-03 with no onOpenLift, a My lifts row opens that lift History overlay', async () => {
+  await seedLifter()
+  renderLifter()
+  const mine = await screen.findByRole('list', { name: 'My lifts' }, SETTLE)
+  const user = userEvent.setup()
+
+  await user.click(within(mine).getByRole('button', { name: /^Deadlift/ }))
+
+  // The one Lift page as a sheet: headed by the lift's name, closed with Done.
+  const dialog = await screen.findByRole('dialog', { name: 'Deadlift' }, SETTLE)
+  expect(dialog).toBeVisible()
+  await user.click(within(dialog).getByRole('button', { name: 'Done' }))
+  expect(screen.queryByRole('dialog', { name: 'Deadlift' })).toBeNull()
+})
+
+test('V6-03 My lifts steps aside while a muscle filter browses the catalog', async () => {
+  await seedLifter()
+  renderLifter()
+  await screen.findByRole('list', { name: 'My lifts' }, SETTLE)
+
+  await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
+
+  await waitFor(() => expect(screen.queryByRole('list', { name: 'My lifts' })).toBeNull(), SETTLE)
 })

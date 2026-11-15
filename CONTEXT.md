@@ -61,7 +61,10 @@ The time after a Set, from its `loggedAt` and `restSeconds` (else the Plan's); t
 
 **Record**:
 The best Set of one kind for an Exercise (heaviest, best estimated 1RM, and so on), as
-`recordsFor` names it; shown as "PR" in the UI.
+`recordsFor` names it; shown as "PR" in the UI. Since V6 a **PR** is only a new heaviest weight
+(less assistance, a first added load) or a new best estimated 1RM against every earlier Session
+(`asPr` / `isRealRecord` in `src/domain/stats/records.ts`); more reps at a weight already lifted
+is a **rep best**, shown quietly and never counted as a PR.
 _Avoid_: Best, high score
 
 **Ladder**:

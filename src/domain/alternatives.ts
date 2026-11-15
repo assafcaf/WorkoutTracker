@@ -47,3 +47,67 @@ export function alternativesFor(
       return a.name.localeCompare(b.name)
     })
 }
+
+/** Movement families whose library names are reliable: a lift's family-mates can stand in for it. */
+const FAMILIES = ['deadlift', 'squat', 'row', 'curl', 'lunge']
+
+/** Band and chain variants: a gym rarely has them set up, so they come last. */
+const BANDS = /\bbands?\b/i
+const CHAINS = /\bchains?\b/i
+
+/** The name's words, lower case, a plural `s` dropped: "Romanian Deadlifts" -> romanian, deadlift. */
+function wordsOf(name: string): string[] {
+  return name
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((word) => word !== '')
+    .map((word) => (word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word))
+}
+
+/**
+ * V6-10: the swap list for `target` when its station is taken, best first:
+ *   0. lifts the lifter has logged (`logged`, library ids);
+ *   1. the same primary muscle on the same equipment;
+ *   2. the lift's own family on the same equipment (a Romanian deadlift for a deadlift), even
+ *      with another primary muscle;
+ *   3. the rest of `alternativesFor`'s list, then the family on other equipment;
+ *   4. band and chain variants (bands rank with the rest when the gym has bands).
+ * `gymEquipment` filters every candidate as `alternativesFor` does. Ties keep `alternativesFor`'s
+ * order (an expert-level lift last in its tier), family-only candidates after it by name.
+ */
+export function swapAlternatives(
+  target: LibraryExercise,
+  library: Map<string, LibraryExercise>,
+  gymEquipment: string[] | null,
+  logged: ReadonlySet<string> = new Set(),
+): LibraryExercise[] {
+  const ranked = alternativesFor(target, library, gymEquipment)
+  const family = FAMILIES.find((word) => wordsOf(target.name).includes(word)) ?? null
+  const inFamily = (candidate: LibraryExercise): boolean => family !== null && wordsOf(candidate.name).includes(family)
+  const allowed = (candidate: LibraryExercise): boolean =>
+    gymEquipment === null ||
+    candidate.equipment === null ||
+    candidate.equipment === 'body only' ||
+    gymEquipment.includes(candidate.equipment)
+  const seen = new Set(ranked.map((candidate) => candidate.id))
+  const extras = Array.from(library.values())
+    .filter((candidate) => candidate.id !== target.id && !seen.has(candidate.id))
+    .filter((candidate) => candidate.category === 'strength' || candidate.category === 'powerlifting')
+    .filter((candidate) => inFamily(candidate) && allowed(candidate))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const hasBands = gymEquipment?.includes('bands') === true
+  const expert = (candidate: LibraryExercise): number => (candidate.level === 'expert' ? 1 : 0)
+  const tier = (candidate: LibraryExercise): number => {
+    if (logged.has(candidate.id)) return 0
+    if (CHAINS.test(candidate.name) || (!hasBands && BANDS.test(candidate.name))) return 4
+    const sameEquipment = candidate.equipment === target.equipment
+    if (sameEquipment && candidate.primaryMuscles.some((muscle) => target.primaryMuscles.includes(muscle))) return 1
+    if (sameEquipment && inFamily(candidate)) return 2
+    return 3
+  }
+  return [...ranked, ...extras]
+    .map((candidate, index) => ({ candidate, index, tier: tier(candidate) }))
+    // Within a tier an expert-level lift (One-Arm Side Deadlift) is a poor stand-in: it goes last.
+    .sort((a, b) => a.tier - b.tier || expert(a.candidate) - expert(b.candidate) || a.index - b.index)
+    .map(({ candidate }) => candidate)
+}

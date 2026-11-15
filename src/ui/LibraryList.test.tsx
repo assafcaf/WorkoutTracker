@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
-import { LibraryList } from './LibraryList'
+import { LibraryList, MyLiftsList } from './LibraryList'
 import { loadLibrary } from '../data/library'
 import type { LibraryExercise } from '../types'
 
@@ -474,4 +474,34 @@ test('O7 a row primary in quadriceps shows its .muscle-chip with data-family leg
 
   const chip = screen.getByRole('listitem').querySelector('.muscle-chip')
   expect(chip).toHaveAttribute('data-family', 'legs')
+})
+
+// --- V6-03 step 3: My lifts ------------------------------------------------------------------
+
+test('V6-03 MyLiftsList shows each lift with its latest top Set, and a tap calls onOpenLift with its id', async () => {
+  const onOpenLift = vi.fn()
+  const now = new Date(2026, 9, 15)
+  render(
+    <MyLiftsList
+      lifts={[
+        {
+          exerciseId: 'back-squat',
+          name: 'Back squat',
+          lastAt: new Date(2026, 9, 13).getTime(),
+          top: { exerciseId: 'back-squat', setIndex: 2, weightKg: 62.5, reps: 8, loggedAt: 0 },
+        },
+        { exerciseId: 'pull-up', name: 'Pull-up', lastAt: null, top: null },
+      ]}
+      now={now}
+      onOpenLift={onOpenLift}
+    />,
+  )
+
+  const list = screen.getByRole('list', { name: 'My lifts' })
+  const squat = within(list).getByRole('button', { name: /^Back squat/ })
+  expect(squat).toHaveTextContent('62.5 × 8 · 13 Oct')
+  expect(within(list).getByRole('button', { name: /^Pull-up/ })).toHaveTextContent('Not logged yet')
+
+  await userEvent.setup().click(squat)
+  expect(onOpenLift).toHaveBeenCalledWith('back-squat')
 })

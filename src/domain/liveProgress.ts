@@ -2,7 +2,8 @@ import type { Resolve } from './muscles'
 import { latestSet } from './rest'
 import { epley } from './series'
 import { buildLiftHistories } from './stats/liftHistory'
-import { computeRecords, liftBests, recordCount } from './stats/records'
+import { asPr, computeRecords, liftBests, recordCount } from './stats/records'
+import type { SessionRecord } from './stats/records'
 import { workingSets } from './setKind'
 import { sessionVolume } from './volume'
 import type { Exercise, ExercisePlan, Session, SetEntry, Workout } from '../types'
@@ -110,7 +111,7 @@ export function currentExerciseId(workout: Workout, session: Session): string | 
 }
 
 /** What the Set on the steppers would mean if logged: its e1RM, the record, and whether it sets one. */
-export type SetProjection = { e1rm: number | null; record: number | null; isPr: boolean }
+export type SetProjection = { e1rm: number | null; record: number | null; isPr: boolean; repBest: boolean }
 
 /**
  * The projection under the steppers (S3: "e1RM 75.0 · record 74.2 → PR if logged"). `session` is
@@ -153,13 +154,14 @@ export function projectSet(args: {
     )
   const now = recordOf(session.entries)
   const next = recordOf([...session.entries, candidate])
-  const isPr =
-    set.kind !== 'warmup' &&
-    set.kind !== 'drop' &&
-    set.reps > 0 &&
-    next !== undefined &&
-    (now === undefined || now.kind !== next.kind || now.lever !== next.lever || now.reps !== next.reps)
-  return { e1rm, record, isPr }
+  const counts = set.kind !== 'warmup' && set.kind !== 'drop' && set.reps > 0
+  const same = (a: SessionRecord | null | undefined, b: SessionRecord): boolean =>
+    a !== null && a !== undefined && a.kind === b.kind && a.lever === b.lever && a.reps === b.reps && a.e1rm === b.e1rm
+  // V6 (V5-06): PR only under the one rule (`asPr`); a new Session best that is not one is a rep best.
+  const nextPr = next === undefined ? null : asPr(next)
+  const isPr = counts && nextPr !== null && !same(now === undefined ? null : asPr(now), nextPr)
+  const repBest = counts && !isPr && next !== undefined && nextPr === null && !same(now, next)
+  return { e1rm, record, isPr, repBest }
 }
 
 /** `1,530`: a kg figure rounded to whole kg with thousands separators. */
