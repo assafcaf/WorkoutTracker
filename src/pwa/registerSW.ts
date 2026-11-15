@@ -20,6 +20,11 @@ export type RegisterOptions = {
   onNeedRefresh?(handle: UpdateHandle): void
   /** Everything the app needs is precached, so it will start with no network. */
   onOfflineReady?(): void
+  /**
+   * The update check was turned away by the login in front of the app (true), or got through
+   * again (false). While it is turned away, no new version can ever be found.
+   */
+  onSignInNeeded?(needed: boolean): void
 }
 
 /**
@@ -36,8 +41,13 @@ export function registerServiceWorker(options?: RegisterOptions): void {
   const updateServiceWorker = registerSW({
     onNeedRefresh: () => options?.onNeedRefresh?.({ updateServiceWorker }),
     onOfflineReady: () => options?.onOfflineReady?.(),
-    onRegisteredSW: (_url, registration) => {
-      if (registration) watchForUpdates(registration)
+    onRegisteredSW: (swUrl, registration) => {
+      if (registration) {
+        watchForUpdates(registration, {
+          checkBlocked: () => updateCheckBlocked(swUrl),
+          onSignInNeeded: options?.onSignInNeeded,
+        })
+      }
     },
   })
 }
@@ -46,7 +56,24 @@ export function registerServiceWorker(options?: RegisterOptions): void {
 export const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 
 /**
- * Asks the server for a new service worker whenever the app comes back to the foreground, and
+ * Whether the worker script is behind the login: Cloudflare Access answers an expired
+ * session with a redirect to its login page (or a 401/403), which `registration.update()`
+ * reports only as a generic failure. A network error (offline) is not a login problem.
+ */
+export async function updateCheckBlocked(
+  swUrl: string,
+  fetchFn: typeof fetch = (...args) => fetch(...args),
+): Promise<boolean> {
+  try {
+    const res = await fetchFn(swUrl, { redirect: 'manual', cache: 'no-store' })
+    return res.type === 'opaqueredirect' || res.status === 401 || res.status === 403
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Asks the server for a new service worker on launch, whenever the app comes back to the foreground, and
  * once an hour while it stays open.
  *
  * The browser only checks on a navigation, and iOS resumes a home-screen app instead of
@@ -62,19 +89,35 @@ export function watchForUpdates(
     setInterval?: (fn: () => void, ms: number) => unknown
     clearInterval?: (id: unknown) => void
     intervalMs?: number
+    /** Asked after a failed check: was it the login that turned it away? */
+    checkBlocked?: () => Promise<boolean>
+    onSignInNeeded?: (needed: boolean) => void
   } = {},
 ): () => void {
   const doc = env.doc ?? document
   const every = env.setInterval ?? ((fn, ms) => setInterval(fn, ms))
   const stop = env.clearInterval ?? ((id) => clearInterval(id as ReturnType<typeof setInterval>))
+  let blocked = false
+  const report = (now: boolean) => {
+    if (now === blocked) return
+    blocked = now
+    env.onSignInNeeded?.(now)
+  }
   const check = () => {
-    // Offline or a server hiccup: the next foreground or tick tries again.
-    registration.update().catch(() => {})
+    registration.update().then(
+      () => report(false),
+      async () => {
+        // Offline or a server hiccup: the next foreground or tick tries again. A login wall
+        // is worth saying, because it never clears on its own.
+        if (env.checkBlocked) report(await env.checkBlocked())
+      },
+    )
   }
   const onVisibility = () => {
     if (doc.visibilityState === 'visible') check()
   }
   doc.addEventListener('visibilitychange', onVisibility)
+  check()
   const timer = every(check, env.intervalMs ?? UPDATE_CHECK_INTERVAL_MS)
   return () => {
     doc.removeEventListener('visibilitychange', onVisibility)
@@ -89,8 +132,14 @@ export function watchForUpdates(
  * Finding an update does nothing on its own — no reload, no `skipWaiting` — because that is
  * exactly what would throw away the workout in progress.
  */
-export function useServiceWorkerUpdate(): { needRefresh: boolean; update(): Promise<void> } {
+export function useServiceWorkerUpdate(): {
+  needRefresh: boolean
+  /** The update check is stuck behind an expired login; signing in again unblocks it. */
+  signInToUpdate: boolean
+  update(): Promise<void>
+} {
   const [waiting, setWaiting] = useState<UpdateHandle | null>(null)
+  const [signInToUpdate, setSignInToUpdate] = useState(false)
   const registered = useRef(false)
 
   useEffect(() => {
@@ -98,7 +147,10 @@ export function useServiceWorkerUpdate(): { needRefresh: boolean; update(): Prom
     // a second update to find, so the first registration of this mount is the only one.
     if (registered.current) return
     registered.current = true
-    registerServiceWorker({ onNeedRefresh: (handle) => setWaiting(handle) })
+    registerServiceWorker({
+      onNeedRefresh: (handle) => setWaiting(handle),
+      onSignInNeeded: setSignInToUpdate,
+    })
   }, [])
 
   const update = useCallback(async () => {
@@ -107,5 +159,5 @@ export function useServiceWorkerUpdate(): { needRefresh: boolean; update(): Prom
     if (waiting) await waiting.updateServiceWorker(true)
   }, [waiting])
 
-  return { needRefresh: waiting !== null, update }
+  return { needRefresh: waiting !== null, signInToUpdate, update }
 }

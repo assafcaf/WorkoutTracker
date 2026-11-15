@@ -17,7 +17,7 @@ import type { Tab } from './ui/AppShell'
 import { isBackupDue } from './ui/BackupBadge'
 import { Segmented } from './ui/controls'
 import { LiveStrip, type LiveStatus } from './ui/LiveStrip'
-import { UpdatePill } from './ui/UpdatePill'
+import { SignInToUpdatePill, UpdatePill } from './ui/UpdatePill'
 import { useLandOnWorkout } from './ui/useLandOnWorkout'
 
 /** The Program tab's two sides (S7a): the program itself, and the exercise library. */
@@ -48,11 +48,19 @@ function ignoreInSession(): void {}
  * what starts the app listening for that update.
  */
 export function App({ services }: { services: Services }): JSX.Element {
-  const { needRefresh, update } = useServiceWorkerUpdate()
+  const { needRefresh, signInToUpdate, update } = useServiceWorkerUpdate()
 
   return (
     <ServicesProvider services={services}>
-      <Tabs trailing={needRefresh ? <UpdatePill onUpdate={update} /> : null} />
+      <Tabs
+        trailing={
+          needRefresh ? (
+            <UpdatePill onUpdate={update} />
+          ) : signInToUpdate ? (
+            <SignInToUpdatePill />
+          ) : null
+        }
+      />
     </ServicesProvider>
   )
 }

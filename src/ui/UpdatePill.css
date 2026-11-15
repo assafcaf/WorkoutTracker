@@ -17,3 +17,11 @@
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
 }
+
+/* "Sign in to update": a link, quieter than a waiting update. */
+.update-pill--quiet {
+  background: transparent;
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+  text-decoration: none;
+}
