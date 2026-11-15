@@ -91,7 +91,11 @@ what shipped. Name the concept in the verdict. The operator's standing complaint
 is crowded, and the landing view (Train) does not make sense. Every visual and every button
 must earn its place: it does something the trainee needs, it sits where that need arises, and
 it fits the whole app's story (plan → train → see progress → come back). If you cannot say
-why an element is on a screen in one sentence tied to that story, cut or move it.
+why an element is on a screen in one sentence tied to that story, cut or move it. Start each
+screen from the trainee's side, not the app's: what did they open it for, what do they want to
+see first, and what will their thumb do next? A landing view full of text and graphs is a mess;
+it answers "what am I doing today?" and offers Start, and anything else must prove it helps
+that moment.
 
 *Whole app.* Then write:
 - **Navigation model:** are these the right tabs, in the right order, with the right names? Is
