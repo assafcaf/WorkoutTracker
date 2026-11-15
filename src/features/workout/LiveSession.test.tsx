@@ -57,14 +57,14 @@ async function resumeWorkoutAWithSets(
     })
   }
   const user = renderFeature(services)
-  await screen.findByRole('radiogroup', { name: 'Session view' }, SETTLE)
+  await screen.findByRole('button', { name: 'All exercises' }, SETTLE)
   return { user }
 }
 
 /** As `resumeWorkoutAWithSets`, then one tap on All: every Exercise's cells. */
 async function startWorkoutAWithSets(count: number) {
   const resumed = await resumeWorkoutAWithSets(count)
-  await resumed.user.click(await screen.findByRole('radio', { name: 'All' }, SETTLE))
+  await resumed.user.click(await screen.findByRole('button', { name: 'All exercises' }, SETTLE))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   return resumed
 }
@@ -107,21 +107,21 @@ function counts(): string | undefined {
 test('Live All shows the Sets count in the header and the Now | All switch', async () => {
   await startWorkoutAWithSets(2)
 
-  expect(screen.getByRole('radio', { name: 'All' })).toBeChecked()
+  expect(screen.getByRole('button', { name: 'Now' })).toBeVisible()
   expect(counts()).toBe('2/23 sets')
 })
 
 test('Live Now opens the Exercise the session is on at its next Set, with the rest of the Workout under it', async () => {
   const { user } = await startWorkoutAWithSets(2)
 
-  await user.click(screen.getByRole('radio', { name: 'Now' }))
+  await user.click(screen.getByRole('button', { name: 'Now' }))
 
   expect(await screen.findByText('Set 3 of 4', undefined, SETTLE)).toBeVisible()
-  expect(screen.getByRole('radio', { name: 'Now' })).toBeChecked()
+  expect(screen.getByRole('button', { name: 'All exercises' })).toBeVisible()
   // V2-03: Now shows this Exercise alone; the rest of the Workout is All's, one tap away.
   expect(screen.queryByRole('list', { name: 'Rest of the workout' })).toBeNull()
 
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
 })
 
@@ -153,7 +153,7 @@ test('V1-01 given a Workout on the Dashboard, when Start is tapped, then the Now
   await startFromDashboard(user, 'Workout A')
 
   expect(await screen.findByText('Set 1 of 4', undefined, SETTLE)).toBeVisible()
-  expect(screen.getByRole('radio', { name: 'Now' })).toBeChecked()
+  expect(screen.getByRole('button', { name: 'All exercises' })).toBeVisible()
   expect(screen.getByRole('button', { name: /^Log set / })).toBeVisible()
 })
 
@@ -161,9 +161,9 @@ test('V1-01 given a Session with Sets logged, when the app reopens, then it land
   const { user } = await resumeWorkoutAWithSets(2)
 
   expect(await screen.findByText('Set 3 of 4', undefined, SETTLE)).toBeVisible()
-  expect(screen.getByRole('radio', { name: 'Now' })).toBeChecked()
+  expect(screen.getByRole('button', { name: 'All exercises' })).toBeVisible()
 
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
 })
 
@@ -178,7 +178,7 @@ test('V1-01 given a reload 10 s into a 3:00 Rest, when the Session reopens, then
 test('V1-01 given every planned Set logged, when the app reopens, then it lands on All with nothing left to open', async () => {
   await resumeWorkoutADone()
 
-  expect(await screen.findByRole('radio', { name: 'All' }, SETTLE)).toBeChecked()
+  expect(await screen.findByRole('button', { name: 'Now' }, SETTLE)).toBeVisible()
 })
 
 // --- V1-06: Finish asks first while planned Sets remain ---------------------------------------

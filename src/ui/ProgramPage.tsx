@@ -74,6 +74,11 @@ export type ProgramPageProps = {
   programsOpen?: boolean
   onProgramsOpenChange?(open: boolean): void
   /**
+   * More of the overflow's actions, drawn at the foot of the Programs panel -- the Program tab
+   * puts "Start a deload week" here (V4-08).
+   */
+  programsActions?: JSX.Element | null
+  /**
    * Where the head (the title, its size line, Edit and the overflow) goes: `inline` draws it at
    * the top of the page; `none` leaves it to the caller -- the Program tab hands it to the
    * shell's large page title (`ProgramHeadActions`, `programSizeLine`). Defaults to `inline`.
@@ -372,6 +377,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
           <button type="button" className="program-page-new btn-secondary" onClick={() => onNewProgram?.()}>
             New program
           </button>
+          {props.programsActions ?? null}
         </div>
       )}
 

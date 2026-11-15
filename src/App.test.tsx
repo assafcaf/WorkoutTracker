@@ -1112,7 +1112,7 @@ test('O11 the set screen back control returns to the exercise list', async () =>
   await openBackSquat(user)
 
   // The Live session's All view is the exercise list (S2).
-  const back = screen.queryByRole('radio', { name: 'All' })
+  const back = screen.queryByRole('button', { name: 'All exercises' })
   expect(back, 'the set screen offers no back control').not.toBeNull()
   await user.click(back as HTMLElement)
 
@@ -1175,7 +1175,7 @@ async function startLogOneSetAndBackToPicker(user: UserEvent): Promise<void> {
   }, SETTLE)
   // Back out of the set screen to the exercise list (All), then minimise the Live session to
   // the picker -- the session stays in progress the whole way (proven by O10 and O11 above).
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
 }
@@ -1622,7 +1622,7 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
   )
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  expect(within(hammerRow).getByRole('button', { name: 'Do this instead' })).toBeVisible()
+  expect(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' })).toBeVisible()
 })
 
 // --- F2/F3: the alternatives overlay renders as a modal popup (fix-popups) -----------------
@@ -1695,11 +1695,11 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   )
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' }))
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await findSteppers()
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
 
   // The done exercise carries the planned sets, rep range and rest -- seated-biceps-curls'
   // own plan (sets: 3, repRange: [10, 12], restSeconds: 90).
@@ -1727,11 +1727,11 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   )
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' }))
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await findSteppers()
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
 
   const swappedRow = await screen.findByRole(
     'button',
@@ -1771,12 +1771,12 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   )
   const hammerRow = hammerRowName.closest('li')
   if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  await user.click(within(hammerRow).getByRole('button', { name: 'Do this instead' }))
+  await user.click(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' }))
   // The swap now stays on the Set screen (E16-T12); the list row is one Back away.
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await findSteppers()
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
 
@@ -1843,7 +1843,7 @@ test('S8 once the first Hammer_Curls set is logged under it, Undo swap is no lon
   expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
 
   await logFirstHammerCurlsSet(user)
-  await user.click(screen.getByRole('radio', { name: 'All' }))
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
 
   expect(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Undo swap' })).toBeNull()
@@ -2218,7 +2218,8 @@ test('M16 tapping Finish workout shows the session summary with its body map on 
   // On the week scale, 3 would be band 1; band 2 is what pins the session scale.
   expectSummaryBand(summary, 'quadriceps', '2')
   expectSummaryBand(summary, 'hamstring', '1')
-  expectSummaryBand(summary, 'chest', '0')
+  // V4-03 (V3-13): a muscle the Session did not train is not listed, so there is no zero cell for chest.
+  expect(summary.querySelector('.session-summary-muscles [data-muscle="chest"]')).toBeNull()
 })
 
 test('F2 the Finish workout session summary is an aria-modal dialog', async () => {
@@ -2779,7 +2780,8 @@ describe('E6-T1', { timeout: 15_000 }, () => {
 
     const bar = actionBar()
     expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
-    expect(addSet.closest('.exercise-verdict')?.textContent).toMatch(/^Back squat done · /)
+    // V4-07: the done block heads "Back squat done" and lists the Sets, never "n vs m".
+    expect(addSet.closest('.exercise-verdict')?.textContent).toMatch(/^Back squat done/)
     expect(screen.queryByRole('heading', { name: 'Back squat' })).toBeNull()
     expect((bar as HTMLElement).contains(screen.getByRole('button', { name: /^Log set 1 / }))).toBe(true)
   })
@@ -2788,7 +2790,8 @@ describe('E6-T1', { timeout: 15_000 }, () => {
     const user = userEvent.setup()
     await logAllThreePlannedBackSquatSets(user)
 
-    expect(await screen.findByText(/^Back squat done · /, undefined, SETTLE)).toBeVisible()
+    // V4-07: the done block stands where the counter was.
+    expect((await screen.findByRole('region', { name: 'Exercise done' }, SETTLE)).textContent).toMatch(/^Back squat done/)
   })
 
   test('O2 pressing Add set in the done state opens set 4 with the counter reading Set 4 · extra', async () => {
@@ -2851,7 +2854,8 @@ describe('E6-T1', { timeout: 15_000 }, () => {
 
     await addAndLogSetFour(user)
 
-    expect(await screen.findByText(/^Back squat done · /, undefined, SETTLE)).toBeVisible()
+    // V4-07: the done block stands where the counter was.
+    expect((await screen.findByRole('region', { name: 'Exercise done' }, SETTLE)).textContent).toMatch(/^Back squat done/)
   })
 
   test('O2 logging the extra set returns the action bar to Add set with no Log set', async () => {
@@ -2871,7 +2875,7 @@ describe('E6-T1', { timeout: 15_000 }, () => {
     const user = userEvent.setup()
     await logAllThreePlannedBackSquatSets(user)
     await addAndLogSetFour(user)
-    await screen.findByText(/^Back squat done · /, undefined, SETTLE)
+    await screen.findByRole('region', { name: 'Exercise done' }, SETTLE)
 
     await pressAddSet(user)
 
@@ -2887,10 +2891,11 @@ describe('E6-T10', { timeout: 15_000 }, () => {
     await logAllThreePlannedBackSquatSets(user)
     const beforeReopen = await activeSessionEntries()
 
-    await user.click(screen.getByRole('radio', { name: 'All' }))
+    await user.click(screen.getByRole('button', { name: 'All exercises' }))
     await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
 
-    expect(await screen.findByText(/^Back squat done · /, undefined, SETTLE)).toBeVisible()
+    // V4-07: the done block stands where the counter was.
+    expect((await screen.findByRole('region', { name: 'Exercise done' }, SETTLE)).textContent).toMatch(/^Back squat done/)
     expect(screen.getByRole('button', { name: 'Add set' })).toBeVisible()
     expect(screen.queryByRole('button', { name: /^Log set / })).toBeNull()
     const afterReopen = await activeSessionEntries()
@@ -3137,7 +3142,7 @@ describe('E8-T4', { timeout: 15_000 }, () => {
     // V3-01: with every other Exercise done the primary reads Finish workout; All returns to
     // the Workout's list.
     expect(await screen.findByRole('button', { name: 'Finish workout' }, SETTLE)).toHaveClass('btn-primary')
-    await user.click(screen.getByRole('radio', { name: 'All' }))
+    await user.click(screen.getByRole('button', { name: 'All exercises' }))
 
     expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
     const header = shellHeader()
@@ -3152,7 +3157,8 @@ describe('E8-T4', { timeout: 15_000 }, () => {
     await addAndLogSetFour(user)
 
     // V3-01: the extra set hands over again: back squat's verdict line, no Next: button.
-    expect(await screen.findByText(/^Back squat done · /, undefined, SETTLE)).toBeVisible()
+    // V4-07: the done block stands where the counter was.
+    expect((await screen.findByRole('region', { name: 'Exercise done' }, SETTLE)).textContent).toMatch(/^Back squat done/)
     expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
   })
 })

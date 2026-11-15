@@ -8,10 +8,13 @@ type User = ReturnType<typeof userEvent.setup>
 
 const SETTLE = { timeout: 3000 }
 
-/** Taps All on the Live session's Now | All switch, once the switch is up. */
+/**
+ * Taps "All exercises" in the Live session's header (V3-07: one button, reading "Now" once All
+ * is shown), once the header is up.
+ */
 export async function showAll(user: User): Promise<void> {
-  const all = await screen.findByRole('radio', { name: 'All' }, SETTLE)
-  if (!(all as HTMLInputElement).checked) await user.click(all)
+  const button = await screen.findByRole('button', { name: /^(All exercises|Now)$/ }, SETTLE)
+  if (button.getAttribute('aria-label') === 'All exercises') await user.click(button)
 }
 
 /** Taps Finish in the live header and, if it asks about Sets not logged, Finish workout. */

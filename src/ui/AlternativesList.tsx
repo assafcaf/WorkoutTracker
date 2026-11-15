@@ -11,7 +11,7 @@ export type AlternativesListProps = {
   /**
    * Swaps to the alternative for today's session. Left `undefined` for a browse-only list (a
    * caller with nothing to swap into, e.g. "Similar exercises" on the detail screen), in which
-   * case no row offers "Do this instead".
+   * case no row offers "Do this instead" (named "Do <Alternative> instead", V2-14).
    */
   onChoose?(id: string): void
   onOpenDetail(id: string): void
@@ -81,6 +81,8 @@ export function AlternativesList({
               <button
                 type="button"
                 className="alternatives-row-choose btn-secondary"
+                // V2-14: every row's button reads the same, so its name says which Exercise.
+                aria-label={`Do ${alternative.name} instead`}
                 onClick={() => onChoose(alternative.id)}
               >
                 Do this instead

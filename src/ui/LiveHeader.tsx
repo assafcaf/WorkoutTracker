@@ -29,7 +29,7 @@ export type LiveHeaderProps = {
    * `false`: there the exercise it is on is the screen's heading.
    */
   heading?: boolean
-  /** What sits under the header row, e.g. the Now | All switch. */
+  /** What sits in the header row before Finish: the Now | All button (V3-07). */
   children?: ReactNode
 }
 
@@ -77,11 +77,12 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
           </p>
         </div>
         {trailing ? <div className="app-header-trailing live-header-trailing">{trailing}</div> : null}
+        {/* The Now | All switch rides in the row, before Finish (V3-07): no band under it. */}
+        {children}
         <button type="button" className="finish-workout btn-secondary" onClick={handleFinish}>
           Finish
         </button>
       </div>
-      {children}
       {confirming ? (
         <Sheet label="Finish workout?" onClose={() => setConfirming(false)}>
           <div className="sheet-head">

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
@@ -5,6 +8,7 @@ import assafJson from '../data/programs/assaf-ab-2026.json'
 import exercisesJson from '../data/exercises.json'
 import libraryJson from '../data/library/exercises.json'
 import { resolveExercise } from '../data/resolve'
+import { contrastRatio, declarationsFor, readTokens } from '../test/cssAudit'
 import { ExerciseList, nextSetIndex } from './ExerciseList'
 import type {
   Exercise,
@@ -661,4 +665,18 @@ test('Live S2 a done cell that set a record carries the PR tag', () => {
 
   const cell = screen.getByRole('button', { name: 'Set 1 · 60 × 10' })
   expect(within(cell).getByText('PR')).toHaveClass('tag', 'tag-pr')
+})
+
+// --- V1-19 (docs/ux-expert/iterations/v1/report.md) -----------------------------------------
+
+test("V1-19 an upcoming All-list cell's dashed border is drawn in --color-muted, at least 3:1 on the page and on a card", () => {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const border =
+    declarationsFor(readFileSync(join(here, 'ExerciseList.css'), 'utf-8'), '.all-cell--future').get('border') ?? ''
+  expect(border).toContain('dashed')
+  expect(border).toContain('var(--color-muted)')
+  const t = readTokens(readFileSync(join(here, '../styles/tokens.css'), 'utf-8'))
+  const muted = t.get('--color-muted') as string
+  expect(contrastRatio(muted, t.get('--color-bg') as string)).toBeGreaterThanOrEqual(3)
+  expect(contrastRatio(muted, t.get('--color-surface') as string)).toBeGreaterThanOrEqual(3)
 })

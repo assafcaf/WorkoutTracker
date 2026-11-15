@@ -308,27 +308,67 @@
   font-weight: var(--weight-semibold);
 }
 
-/* The Exercise just done (V3-01): one line, "Deadlift done · <verdict>", with Add set at its
- * end -- over the next Exercise's Get ready card while the rest runs, or alone once none is left. */
-.exercise-verdict {
+/* The Just done block (V4-01), on the dock for the whole rest: the Set just logged as its
+ * heading, its one comparison (a Record's PR tag leading it), and its reps-left chips. The
+ * hand-over and the done state head it with the Exercise, "Deadlift done · 1 PR", Add set at
+ * the right (V4-07). Never red: a Set under last time reads in the secondary colour. */
+.just-done {
   display: flex;
   flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.just-done-top {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0 var(--space-2);
-  margin-top: var(--space-2);
 }
 
-.exercise-verdict-text {
-  flex: 1 1 12rem;
+.just-done-top .just-done-head {
+  flex: 1 1 10rem;
   min-width: 0;
+}
+
+.just-done-head {
   color: var(--color-text);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   line-height: 1.35;
+  font-variant-numeric: tabular-nums;
 }
 
-.exercise-verdict > .add-set {
+.just-done-name {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.just-done-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
+.just-done-line[data-kind='up'] {
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+}
+
+.just-done .effort-row {
+  margin-top: var(--space-1);
+}
+
+.just-done .add-set {
   display: inline-flex;
   align-items: center;
   margin-right: calc(var(--space-2) * -1);
@@ -338,6 +378,26 @@
   color: var(--color-primary);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
+}
+
+/* V4-04: the cell of a Set that just set a Record fills with the accent tint and fades back over
+ * 1.2 s. Under reduced motion there is no flash: the PR tag and the Just done block carry it. */
+@keyframes pr-flash {
+  0%,
+  40% {
+    background-color: var(--color-primary-tint);
+    border-color: var(--color-primary);
+  }
+}
+
+.logged-sets li.pr-flash .logged-set {
+  animation: pr-flash 1.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logged-sets li.pr-flash .logged-set {
+    animation: none;
+  }
 }
 
 /* The flexible space between the head and the Dials (V2-03): the Dials sit low, by the bar. */
@@ -379,15 +439,22 @@
   white-space: nowrap;
 }
 
-/* The PR target under the reps Dial (V2-04): "PR at 9 reps", or the PR if logged tag. */
+/* The live line under the reps Dial (V4-02): "Last time 70 × 7 · +1 rep · PR if logged"; it wraps
+ * rather than clip at 320 px and at 200 % text. */
 .set-projection {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   min-height: 24px;
   color: var(--color-secondary);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+/* "+1 rep" reads in the text colour; "1 rep under" stays secondary, never red. */
+.set-projection .vs-delta[data-kind='up'] {
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
 }
 
 /* The rest of the Workout under the steppers, as compact rows (src/ui/live/UpNextRows.tsx);
@@ -460,7 +527,7 @@
   min-height: var(--tap-min);
 }
 
-/* "Over rest · +0:12": quiet, over Log set, once a rest ran out on this screen. */
+/* "Rested 3:00 · +0:12": quiet and muted, never red (V4-06), over Log set once a rest ran out. */
 .rest-over {
   display: flex;
   align-items: center;
@@ -472,7 +539,8 @@
 }
 
 .rest-over[data-over='true'] {
-  color: var(--color-danger);
+  color: var(--color-muted);
+  font-weight: var(--weight-medium);
 }
 
 /* The rest dock (V3-03): one row, as Set Table's rest dock has it -- the countdown over "of

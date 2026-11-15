@@ -9,27 +9,24 @@ import { deloadText } from '../domain/deload'
 import { presetForSet, presetFromSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { prMoment } from '../domain/prMoment'
-import type { PrMoment } from '../domain/prMoment'
 import { formatPlates, plateChange, platesFor } from '../domain/plates'
 import { prTargetReps, prTargetText } from '../domain/prTarget'
-import { exerciseVerdict } from '../domain/exerciseVerdict'
+import { exerciseDoneLine, setComparison, setDelta } from '../domain/exerciseVerdict'
 import { usualRestSeconds } from '../domain/usualRest'
 import { warmupRamp } from '../domain/warmup'
 import type { WarmupStep } from '../domain/warmup'
 import { adjustRest, formatOver, formatRest, restAfter, restLengthOf } from '../domain/rest'
 import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
-import { RecordSpark } from './charts/RecordSpark'
 import { Segmented } from './controls'
 import { Icon } from './icons'
 import { RestPanel } from './live/RestPanel'
-import { playRestOver, unlockRestSound } from './restSound'
+import { playPrSound, playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
 import { RestDial } from './RestDial'
 import { SetKindRow, setKindLabel } from './SetKindRow'
 import { Sheet } from './Sheet'
 import { Snackbar } from './Snackbar'
-import { Toast } from './Toast'
 import { useWakeLock } from './useWakeLock'
 import { WeightDial, WeightStepControl } from './WeightDial'
 import './SetScreen.css'
@@ -105,14 +102,19 @@ export type SetScreenProps = {
   /** Told that "History" was tapped for the exercise on screen (E16-T7). */
   onOpenHistory?(exerciseId: string): void
   /**
-   * The done state's primary was tapped: "Next: <upNext>" (V2-01), or "All exercises" with
-   * nothing up next. The caller opens the next Exercise on Now, or the Workout's list (E8-T4).
+   * The done state's primary was tapped: "Back to <upNext> · set N" (V4-07), or "All exercises"
+   * with nothing up next. The caller opens that Exercise on Now, or the Workout's list (E8-T4).
    * Optional so a caller with nothing to move on to -- every test predating it -- need not pass
    * it; when absent, the done state's action bar holds only "Add set".
    */
   onFinishExercise?(): void
-  /** The name of the next unfinished Exercise, the done state's primary "Next: …" (V2-01). */
+  /**
+   * The Exercise the Session is on (V4-07), the done state's primary "Back to <upNext> · set N"
+   * for a finished Exercise reopened from All.
+   */
   upNext?: string | null
+  /** The working Set `upNext` is on, the primary's "· set 3" (V4-07). */
+  upNextSet?: number
   /**
    * Whether the set on the dials was opened by "Add set" as an extra set past the plan (E6-T1).
    * A screen opened past the plan with `extra` false is in the done state. Optional, read as
@@ -195,8 +197,8 @@ export type SetScreenProps = {
   editSetIndex?: number
   /**
    * V3-01: the Exercise just finished, handed over to this one with its rest still running. Its
-   * verdict line, "Deadlift done · <verdict> · Add set", shows over the Get ready card for that
-   * rest only.
+   * Just done block, "Deadlift done · 1 PR · Add set" over its Sets and one comparison (V4-01),
+   * shows on the dock for that rest.
    */
   handover?: Handover | null
   /** V3-01: the done state's primary once no Exercise is left, "Finish workout". */
@@ -205,15 +207,15 @@ export type SetScreenProps = {
 
 /** The Exercise just finished, as the next one's screen shows it during its rest (V3-01). */
 export type Handover = {
-  /** "Deadlift done · same as last time · 3 × 70 × 7"; null shows "<name> done". */
-  verdict: string | null
   name: string
+  /** V4-01: its Sets and one comparison, "60×10 · 70×8 PR · 70×7 · 1 rep more than Mon 12 Oct". */
+  line?: string | null
+  /** The Records it set today: the block's heading reads "Deadlift done · 1 PR". */
+  prs?: number
   /** "Add set": one more Set of the finished Exercise, back on its screen. */
   onAddSet(): void
-  /** Its last working Set's "Reps left on set 3" chips, with Track effort on. */
+  /** Its last working Set's "Set 3 reps left?" chips, with Track effort on. */
   effort?: { ordinal: number; value: 0 | 1 | 2 | 3 | null; onPick(rir: 0 | 1 | 2 | 3): void } | null
-  /** The Record its last Set set, shown as the PR toast. */
-  toast?: PrMoment | null
   /** Its log-confirmation message, announced. */
   message?: string
 }
@@ -240,15 +242,13 @@ export function setCounterText(
   return amrapFloor === undefined ? text : `${text} · ${amrapFloor}+ reps`
 }
 
-/**
- * "Last time 60 × 9 · Fri 9 Oct": last time's working Set at the open Set's working `position`
- * (its last one past it), and the day it was lifted. Empty with no working Set last time.
- */
-function lastTimeText(exerciseId: string, entries: SetEntry[], position: number): string {
-  const set = lastTimeSet(exerciseId, entries, position)
-  if (set === null) return ''
-  return `Last time ${formatSet(set)} · ${formatDay(new Date(set.loggedAt), new Date())}`
+/** The day a Set was lifted, as the Just done block names it: "Mon 12 Oct" (V4-01). */
+function dayOf(set: SetEntry): string {
+  return formatDay(new Date(set.loggedAt), new Date())
 }
+
+/** How long the logged PR cell flashes the accent tint (V4-04). */
+const PR_FLASH_MS = 1200
 
 /** Last time's working Set at working `position` (its last one past it), or null with none. */
 function lastTimeSet(exerciseId: string, entries: SetEntry[], position: number): SetEntry | null {
@@ -565,7 +565,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       ? open.setIndex
       : 1 + carried + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
 
-  const lastTime = lastTimeText(exercise.id, props.lastTime ?? [], position)
   const lastTimeEntry = lastTimeSet(exercise.id, props.lastTime ?? [], position)
   // While rest runs the steppers fold into one "Next: set 4 · 62.5 × 8" row (S4); a tap on it
   // brings them back to change the next Set. Every log folds them again.
@@ -609,8 +608,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     },
     [],
   )
-  // A handed-over Exercise's Record still shows as this screen opens (V3-01).
-  const [toast, setToast] = useState<PrMoment | null>(props.handover?.toast ?? null)
+  // V4-04: the Set whose cell flashes the accent tint for PR_FLASH_MS, having just set a Record.
+  // No toast: the Just done block carries the Record for the whole rest (V4-01).
+  const [prFlash, setPrFlash] = useState<number | null>(null)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (flashTimer.current !== null) clearTimeout(flashTimer.current)
+    },
+    [],
+  )
   const [error, setError] = useState<string | null>(null)
   // The Set rest follows: the caller's `restFrom` (the Session's latest Set), until this screen
   // logs one or adjusts the rest; a changed `restFrom` -- the stored adjustment, a delete -- wins.
@@ -851,20 +858,35 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           (logged) => logged.exerciseId === exercise.id && countsTowardStats(logged),
         ).length,
       )
-      setToast(prMoment(exercise, plan, props.earlierSessions ?? [], session, entry))
+      // V4-04: a Record is felt as it is logged: two rising tones, and the cell's 1.2 s tint
+      // (CSS drops the tint under reduced motion; the PR tag and the Just done block remain).
+      if ((props.earlierSessions ?? []).length > 0 && prMoment(exercise, plan, props.earlierSessions ?? [], session, entry) !== null) {
+        playPrSound()
+        if (flashTimer.current !== null) clearTimeout(flashTimer.current)
+        setPrFlash(open.setIndex)
+        flashTimer.current = setTimeout(() => {
+          flashTimer.current = null
+          setPrFlash(null)
+        }, PR_FLASH_MS)
+      }
       onLogged(session, nextSetIndex)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
   }
 
-  /** A chip tap: shows the pick at once and stores it without holding anything up. */
-  function pickEffort(rir: 0 | 1 | 2 | 3): void {
-    if (effort === null) return
-    setEffort({ ...effort, rir })
-    props.onSetEffort?.(effort.setIndex, rir).catch((cause: unknown) => {
+  /** A chip tap for Set `setIndex`: shows the pick at once and stores it without holding anything up. */
+  function pickEffort(setIndex: number, rir: 0 | 1 | 2 | 3): void {
+    setEffort({ setIndex, rir })
+    props.onSetEffort?.(setIndex, rir).catch((cause: unknown) => {
       setError(cause instanceof Error ? cause.message : String(cause))
     })
+  }
+
+  /** Set `entry`'s reps left as the screen shows it: a pick made here, else the stored one. */
+  function effortOf(entry: SetEntry): 0 | 1 | 2 | 3 | null {
+    if (effort !== null && effort.setIndex === entry.setIndex) return effort.rir ?? entry.rir ?? null
+    return entry.rir ?? null
   }
 
   // The ramp Add warm-ups would start (E15-T7): for the weight on the Dial, from the step after
@@ -874,7 +896,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     props.plates && ramp === null && !done && loggedCount === 0 && open.weightKg !== null
       ? warmupRamp(open.weightKg, props.plates)
       : null
-  const rampStep = ramp === null ? undefined : ramp.steps[ramp.index]
 
   function startRamp(steps: WarmupStep[]): void {
     const step = steps[warmupsLogged]
@@ -1145,11 +1166,78 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     ) : prTarget === null ? null : (
       prTargetText(prTarget)
     )
-  // The Exercise's verdict once done (V2-11), in the summary's Lift by lift words.
-  const verdict = useMemo(
-    () => (done && props.logged !== undefined ? exerciseVerdict(exercise, plan, earlier, thisSession) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on what the verdict reads
-    [done, loggedKey, earlier.length, exercise.id],
+  // Last time's working Set at working `place` and its day, for a comparison (V4-01, V4-02).
+  const lastAt = (place: number): SetEntry | null => lastTimeSet(exercise.id, props.lastTime ?? [], place)
+
+  // V4-02: the live line under the reps Dial, rebuilt on every Dial change: "Last time 70 × 7 ·
+  // +1 rep · PR if logged". On a Warm-up, where the ramp ends: "Then set 1 · 60 × 10" (V4-05).
+  const workingFirst = cells[0]
+  const thenText =
+    onWarmup && workingFirst !== undefined
+      ? `Then set ${position} · ${formatSet({ weightKg: workingFirst.weightKg, reps: workingFirst.reps, loadKg: workingFirst.loadKg })}`
+      : null
+  const liveDelta =
+    lastTimeEntry === null || onWarmup
+      ? null
+      : setDelta({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg }, lastTimeEntry)
+  const vsLine: ReactNode =
+    thenText !== null ? (
+      thenText
+    ) : lastTimeEntry === null && prNote === null ? null : (
+      <>
+        {lastTimeEntry === null ? null : `Last time ${formatSet(lastTimeEntry)}`}
+        {liveDelta === null ? null : (
+          <span className="vs-delta" data-kind={liveDelta.kind}>{` · ${liveDelta.text}`}</span>
+        )}
+        {lastTimeEntry === null || prNote === null ? null : ' · '}
+        {prNote}
+      </>
+    )
+
+  // V4-01: the Record a logged Set of this Exercise set, by its name ("Rep record"), or null.
+  const recordName = (entry: SetEntry): string | null => {
+    if (earlier.length === 0 || entry.kind === 'warmup') return null
+    const session: Session = { ...thisSession, entries: mergeEntry(thisSession.entries, entry) }
+    const moment = prMoment(exercise, plan, earlier, session, entry)
+    return moment === null ? null : moment.title.replace(/^New PR · /, '')
+  }
+
+  // V4-01: the Set the Just done block is about: this Exercise's latest Set, the one the rest
+  // follows (so a reopened screen mid-rest still shows it); null after another Exercise's Set.
+  const justDone: SetEntry | null =
+    restFrom === null || restFrom.entry.exerciseId !== exercise.id
+      ? null
+      : (loggedSets.find((entry) => entry.setIndex === restFrom.entry.setIndex) ??
+        (props.logged === undefined ? restFrom.entry : null))
+  const justDoneOrdinal =
+    justDone === null ? 0 : props.logged === undefined ? justDone.setIndex : (ordinals.get(justDone.setIndex) ?? 0)
+  const justDoneWarmup = justDone !== null && justDone.kind === 'warmup'
+  const justDoneComparison =
+    justDone === null || justDoneWarmup
+      ? null
+      : (() => {
+          const last = lastAt(justDoneOrdinal)
+          return setComparison(justDone, last, last === null ? '' : dayOf(last), recordName(justDone))
+        })()
+
+  // V4-07, V4-01: the Exercise once done, "Deadlift done · 1 PR" over its Sets and one comparison.
+  const doneRecords = done ? workingSets(loggedSets).filter((entry) => isRecordSet(entry)).length : 0
+  const doneLine = useMemo(
+    () =>
+      done
+        ? exerciseDoneLine({
+            today: loggedSets,
+            last: (props.lastTime ?? []).filter((entry) => entry.exerciseId === exercise.id),
+            lastDay: (() => {
+              const first = lastAt(1)
+              return first === null ? '' : dayOf(first)
+            })(),
+            plannedSets: plan.sets,
+            isRecord: isRecordSet,
+          })
+        : '',
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on what the line reads
+    [done, loggedKey, earlier.length, exercise.id, props.lastTime],
   )
   // The next Set as the Get ready card shows it (V2-02): "70 kg × 7", "BW+10 × 8", "60 kg × 8+".
   const nextSetText = `${
@@ -1218,9 +1306,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     <div className="log-dock">
       {restPanel}
       {resting || useOffer === null ? null : offer}
-      {overShown && rest !== null ? (
+      {/* V4-06: quiet, never red: "Rested 3:00 · +0:12". */}
+      {overShown && rest !== null && restFrom !== null ? (
         <p className="rest-over" data-over="true">
-          Over rest ·{' '}
+          Rested {formatRest(restLengthOf(restFrom.entry, restFrom.planRestSeconds))} ·{' '}
           <span role="timer" aria-label="Rest remaining">
             {formatOver(rest.overSeconds)}
           </span>
@@ -1237,14 +1326,15 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </button>
     </div>
   ) : (
-    // Done (V3-01): the verdict line in the body carries Add set. The Session moves on to the
+    // Done (V3-01): the Just done block in the body carries Add set. The Session moves on to the
     // next Exercise by itself; this state stays only once none is left ("Finish workout"), or
-    // for an Exercise reopened from All ("Go to <Exercise>"). The rest keeps running.
+    // for an Exercise reopened from All ("Back to <Exercise> · set 3", V4-07). The rest keeps
+    // running.
     <div className="log-dock">
       {restPanel}
       {upNext && onFinishExercise !== undefined ? (
         <button type="button" className="log-set next-exercise btn-primary" onClick={onFinishExercise}>
-          {`Go to ${upNext}`}
+          {`Back to ${upNext}${props.upNextSet === undefined ? '' : ` · set ${props.upNextSet}`}`}
         </button>
       ) : props.onFinishWorkout !== undefined ? (
         <button type="button" className="log-set next-exercise btn-primary" onClick={props.onFinishWorkout}>
@@ -1443,33 +1533,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           </span>
           <span className="sheet-row-chevron"><Icon name="ChevronRight" size={18} /></span>
         </button>
-        {/* V3-03: the usual rest is offered here, not in the middle of a rest. */}
-        {usualOffered && usualRest !== null ? (
-          <p className="rest-use tools-usual-rest">
-            {usualSave === 'saved' ? (
-              <span className="rest-use-saved">
-                <Icon name="Check" size={18} />
-                {props.programName === undefined ? 'Saved' : `Saved to ${props.programName}`}
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="rest-use-offer btn-quiet"
-                disabled={usualSave === 'saving'}
-                aria-label={`Use ${formatRest(usualRest)} for ${exercise.name}`}
-                onClick={() => void saveUsualRest(usualRest)}
-              >
-                <Icon name="Clock" size={18} />
-                Use {formatRest(usualRest)}
-              </button>
-            )}
-            {usualSave !== null && typeof usualSave === 'object' ? (
-              <span className="rest-use-error" role="alert">
-                {usualSave.error}
-              </span>
-            ) : null}
-          </p>
-        ) : null}
         {/* How the steppers count: the weight step, and Bodyweight (E8-T8, E16-T13). */}
         <div className="set-dial-controls">
           {exercise.bodyweight ? null : (
@@ -1579,6 +1642,34 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         onSet={setRestFromDial}
         onCancel={() => setRestDialOpen(false)}
       />
+      {/* V1-16: the usual rest's Use is folded into ⋯ › Rest time's own sheet, under the Dial,
+          rather than a row of its own in the tools sheet (V3-03 kept it out of the rest). */}
+      {usualOffered && usualRest !== null ? (
+        <p className="rest-use tools-usual-rest rest-dial-usual">
+          {usualSave === 'saved' ? (
+            <span className="rest-use-saved">
+              <Icon name="Check" size={18} />
+              {props.programName === undefined ? 'Saved' : `Saved to ${props.programName}`}
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="rest-use-offer btn-quiet"
+              disabled={usualSave === 'saving'}
+              aria-label={`Use ${formatRest(usualRest)} for ${exercise.name}`}
+              onClick={() => void saveUsualRest(usualRest)}
+            >
+              <Icon name="Clock" size={18} />
+              Use {formatRest(usualRest)}
+            </button>
+          )}
+          {usualSave !== null && typeof usualSave === 'object' ? (
+            <span className="rest-use-error" role="alert">
+              {usualSave.error}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
     </Sheet>
   )
 
@@ -1591,8 +1682,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         <div className="set-head">
           <div className="set-head-text">
             <h1 className="set-exercise-name">{exercise.name}</h1>
-            {/* Done, the verdict card replaces "All 3 sets logged" (V2-11). */}
-            {done && verdict !== null ? null : (
+            {/* Done, the Just done block replaces "All 3 sets logged" (V2-11, V4-07). */}
+            {done && props.logged !== undefined && doneLine !== '' ? null : (
             <p className="set-counter">
               <span>
                 {/* A Warm-up is not a working Set (V3-05): "Warm-up 2 of 3", never "Set 1 of 3". */}
@@ -1687,7 +1778,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               {workingLogged.map((entry) => (
                 <li
                   key={entry.setIndex}
-                  className={justLogged === entry.setIndex ? 'just-logged' : undefined}
+                  className={
+                    [justLogged === entry.setIndex ? 'just-logged' : '', prFlash === entry.setIndex ? 'pr-flash' : '']
+                      .filter((name) => name !== '')
+                      .join(' ') || undefined
+                  }
                 >
                   <button
                     type="button"
@@ -1708,7 +1803,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                         <span className="tag tag-pr" aria-label="Personal record">
                           PR
                         </span>
-                      ) : entry.rir === undefined ? (
+                      ) : effortOf(entry) === null ? (
                         <Icon name="Check" size={12} />
                       ) : null}
                     </span>
@@ -1716,9 +1811,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                   </button>
                   {/* A record's PR tag has the corner; its reps left show in the edit sheet. Reps
                       left, not "RIR" (V3-03, V1-14). */}
-                  {entry.rir === undefined || isRecordSet(entry) ? null : (
+                  {effortOf(entry) === null || isRecordSet(entry) ? null : (
                     <span className="logged-set-rir">
-                      {entry.rir === 3 ? '3+' : entry.rir} left
+                      {effortOf(entry) === 3 ? '3+' : effortOf(entry)} left
                     </span>
                   )}
                 </li>
@@ -1737,63 +1832,20 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           ))}
         </div>
 
-        {/* While rest runs the flexible space goes over the effort row and the Get ready card,
-            which sit low, just over the rest dock (V3-03). */}
-        {collapsed || (done && resting) ? <div className="set-spacer" aria-hidden="true" /> : null}
-
-        {/* "Reps left on set 3": 0 / 1 / 2 / 3+ for the working Set just logged, while its rest
-            runs (V3-03); a handed-over Exercise's last Set's, on the next one's screen (V3-01). */}
-        {props.trackEffort !== true || !resting ? null : effort !== null ? (
-          <div className="effort-row">
-            <span className="effort-label">Reps left on set {ordinals.get(effort.setIndex) ?? effort.setIndex}</span>
-            <EffortChips value={effort.rir} onPick={pickEffort} />
-          </div>
-        ) : handover?.effort ? (
-          <div className="effort-row">
-            <span className="effort-label">Reps left on set {handover.effort.ordinal}</span>
-            <EffortChips value={handover.effort.value} onPick={handover.effort.onPick} />
-          </div>
-        ) : null}
-
-        {/* V3-01: the Exercise just finished, one line over the next one's Get ready card. */}
-        {handover && collapsed ? (
-          <section className="exercise-verdict" aria-label="Exercise done">
-            <p className="exercise-verdict-text">{handover.verdict ?? `${handover.name} done`}</p>
-            <button type="button" className="add-set btn-quiet" onClick={handover.onAddSet}>
-              Add set
-            </button>
-          </section>
-        ) : null}
-
-        {ramp !== null && rampStep !== undefined ? (
-          <p className="warmup-ramp">
-            Warm-up {ramp.index + 1} of {ramp.steps.length} · {rampStep.weightKg} kg × {rampStep.reps}
-          </p>
-        ) : null}
-
-        {/* The Exercise's verdict once its Sets are in (V2-11), in Lift by lift's words; the
-            Dials go, the cells show what was logged (V2-01). */}
-        {done ? (
-          // V3-01: the verdict is one line, "Deadlift done · <verdict>", with Add set at its end.
-          <section className="exercise-verdict" aria-label="Exercise done">
-            <p className="exercise-verdict-text">{verdict ?? `${exercise.name} done`}</p>
-            {onAddSet === undefined ? null : (
-              <button type="button" className="add-set btn-quiet" onClick={() => addSet(onAddSet)}>
-                Add set
-              </button>
-            )}
-          </section>
-        ) : collapsed ? (
-          // While rest runs (S4, V2-02) the steppers fold into the Get ready card: the next Set
-          // big enough to read from the bench, the plates to change, last time and the PR
-          // target. "Change" unfolds the Dials in place.
+        {collapsed ? (
+          // While rest runs (S4, V2-02) the steppers fold into the Get ready card, read high,
+          // right under the cells (V4-01): the next Set big enough to read from the bench, the
+          // plates to change, last time and the PR target -- on a Warm-up, where the ramp ends
+          // (V4-05). "Change" unfolds the Dials in place.
           <section className="get-ready" aria-label="Get ready">
             <p className="get-ready-caption">
               Get ready · {onWarmup ? `Warm-up ${warmupName}` : `Set ${position}`}
             </p>
             <p className="get-ready-set">{nextSetText}</p>
             {plateText === null ? null : <p className="get-ready-plates">{plateText}</p>}
-            {lastTimeEntry === null && prNote === null ? null : (
+            {thenText !== null ? (
+              <p className="get-ready-last">{thenText}</p>
+            ) : lastTimeEntry === null && prNote === null ? null : (
               <p className="get-ready-last">
                 {lastTimeEntry === null ? null : `Last time ${formatSet(lastTimeEntry)}`}
                 {lastTimeEntry === null || prNote === null ? null : ' · '}
@@ -1811,13 +1863,109 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               <Icon name="ChevronRight" size={18} />
             </button>
           </section>
-        ) : (
+        ) : null}
+
+        {/* V4-06: a working Set's reps left still unanswered once its rest ran out stays on Now,
+            labelled with the Set it asks about, until it is answered or the next Set is logged. */}
+        {props.trackEffort !== true || collapsed || done ? null : justDone !== null ? (
+          justDoneWarmup || effortOf(justDone) !== null ? null : (
+            <EffortRow
+              label={`Set ${justDoneOrdinal} reps left?`}
+              value={null}
+              onPick={(rir) => pickEffort(justDone.setIndex, rir)}
+            />
+          )
+        ) : handover?.effort && handover.effort.value === null ? (
+          <EffortRow
+            label={`${handover.name} set ${handover.effort.ordinal} reps left?`}
+            value={null}
+            onPick={handover.effort.onPick}
+          />
+        ) : null}
+
+        {/* The flexible space: the Dials sit low, in the thumb's reach over the bar (V2-03); while
+            rest runs it sits between the Get ready card and the Just done block (V4-01). */}
+        <div className="set-spacer" aria-hidden="true" />
+
+        {/* V4-01: the Just done block on the dock, for the whole rest: the Set just logged, its
+            one comparison (its Record, if any) and its reps left. */}
+        {collapsed && justDone !== null ? (
+          <section className="just-done" aria-label="Just done">
+            <p className="just-done-head">
+              <span className="just-done-name">
+                {justDoneWarmup
+                  ? `Warm-up ${loggedSets.filter((entry) => entry.kind === 'warmup').findIndex((entry) => entry.setIndex === justDone.setIndex) + 1}`
+                  : `Set ${justDoneOrdinal}`}
+              </span>
+              {` · ${setText(justDone, exercise.bodyweight)}`}
+            </p>
+            {justDoneComparison === null ? null : (
+              <p className="just-done-line" data-kind={justDoneComparison.kind}>
+                {justDoneComparison.record === null ? null : <span className="tag tag-pr">PR</span>}
+                <span>{justDoneComparison.text}</span>
+              </p>
+            )}
+            {props.trackEffort !== true || justDoneWarmup ? null : (
+              <EffortRow
+                label="Reps left?"
+                value={effortOf(justDone)}
+                onPick={(rir) => pickEffort(justDone.setIndex, rir)}
+              />
+            )}
+          </section>
+        ) : null}
+
+        {/* V3-01, V4-01: the Exercise just finished, on the next one's screen while its rest runs:
+            "Deadlift done · 1 PR" with Add set, its Sets and one comparison, its last Set's reps
+            left. */}
+        {handover && collapsed ? (
+          <section className="just-done exercise-verdict" aria-label="Exercise done">
+            <div className="just-done-top">
+              <p className="just-done-head exercise-verdict-text">
+                <span className="just-done-name">{`${handover.name} done`}</span>
+                {handover.prs !== undefined && handover.prs > 0 ? ` · ${handover.prs} PR` : ''}
+              </p>
+              <button type="button" className="add-set btn-quiet" onClick={handover.onAddSet}>
+                Add set
+              </button>
+            </div>
+            {handover.line ? <p className="just-done-line">{handover.line}</p> : null}
+            {props.trackEffort !== true || !handover.effort ? null : (
+              <EffortRow
+                label={`Set ${handover.effort.ordinal} reps left?`}
+                value={handover.effort.value}
+                onPick={handover.effort.onPick}
+              />
+            )}
+          </section>
+        ) : null}
+
+        {done ? (
+          // V4-07: the Exercise once its Sets are in, as the hand-over shows it: "Deadlift done ·
+          // 1 PR" with Add set, its Sets and one comparison; the cells above stay tappable to edit.
+          <section className="just-done exercise-verdict" aria-label="Exercise done">
+            <div className="just-done-top">
+              <p className="just-done-head exercise-verdict-text">
+                <span className="just-done-name">{`${exercise.name} done`}</span>
+                {doneRecords > 0 ? ` · ${doneRecords} PR` : ''}
+              </p>
+              {onAddSet === undefined ? null : (
+                <button type="button" className="add-set btn-quiet" onClick={() => addSet(onAddSet)}>
+                  Add set
+                </button>
+              )}
+            </div>
+            {doneLine === '' ? null : <p className="just-done-line">{doneLine}</p>}
+            {props.trackEffort !== true || !resting || justDone === null || justDoneWarmup ? null : (
+              <EffortRow
+                label={`Set ${justDoneOrdinal} reps left?`}
+                value={effortOf(justDone)}
+                onPick={(rir) => pickEffort(justDone.setIndex, rir)}
+              />
+            )}
+          </section>
+        ) : collapsed ? null : (
           <>
-          {lastTime === '' ? null : <p className="set-last-time">{lastTime}</p>}
-
-          {/* The flexible space (V2-03): the Dials sit low, in the thumb's reach over the bar. */}
-          <div className="set-spacer" aria-hidden="true" />
-
           <div className="set-dials">
             {exercise.bodyweight ? (
               // E16-T4: on a Bodyweight Exercise the Weight Dial carries the signed Load.
@@ -1839,8 +1987,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
           </div>
 
-          {/* The PR target (V2-04): "PR at 9 reps", the tag once the Dials reach it. */}
-          {prNote === null ? null : <p className="set-projection">{prNote}</p>}
+          {/* V4-02: one live line under the reps Dial, "Last time 70 × 7 · +1 rep · PR if logged";
+              on a Warm-up, "Then set 1 · 60 × 10" (V4-05). */}
+          {vsLine === null ? null : <p className="set-projection">{vsLine}</p>}
           </>
         )}
 
@@ -1869,16 +2018,26 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         <Snackbar message="Set deleted" actionLabel="Undo" onAction={() => void restoreSet()} />
       )}
 
-      {toast === null ? null : (
-        <Toast
-          message={toast.title}
-          detail={toast.detail}
-          lead={<span className="tag tag-pr">PR</span>}
-          trail={<RecordSpark values={toast.values} label={toast.label} width={48} height={20} />}
-          onDismiss={() => setToast(null)}
-        />
-      )}
     </>
+  )
+}
+
+/** A logged Set as the Just done block heads it: "60 kg × 10", "BW−19 × 6" (V4-01). */
+function setText(set: SetEntry, bodyweight: boolean): string {
+  return set.weightKg !== null && !bodyweight ? `${set.weightKg} kg × ${set.reps}` : formatSet(set)
+}
+
+/** The reps-left question with its chips: "Reps left?", "Set 3 reps left?" (V4-01, V4-06). */
+function EffortRow(props: {
+  label: string
+  value: 0 | 1 | 2 | 3 | null
+  onPick(rir: 0 | 1 | 2 | 3): void
+}): JSX.Element {
+  return (
+    <div className="effort-row">
+      <span className="effort-label">{props.label}</span>
+      <EffortChips value={props.value} onPick={props.onPick} />
+    </div>
   )
 }
 

@@ -17,11 +17,23 @@ test('Live Now | All is one segmented switch, telling the view picked', async ()
   const onViewChange = vi.fn()
   render(<LiveSessionBar view="now" onViewChange={onViewChange} />)
 
-  const group = screen.getByRole('radiogroup', { name: 'Session view' })
-  expect(within(group).getByRole('radio', { name: 'Now' })).toBeChecked()
-  await user.click(within(group).getByRole('radio', { name: 'All' }))
-
+  // V3-07: one header button, not a segmented band: on Now it reads "All exercises".
+  expect(screen.queryByRole('radiogroup')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'All exercises' }))
   expect(onViewChange).toHaveBeenCalledWith('all')
+})
+
+test('V3-07 on All the header button goes back to Now, and the keyboard reaches it', async () => {
+  const user = userEvent.setup()
+  const onViewChange = vi.fn()
+  render(<LiveSessionBar view="all" onViewChange={onViewChange} />)
+
+  const now = screen.getByRole('button', { name: 'Now' })
+  await user.tab()
+  expect(now).toHaveFocus()
+  await user.keyboard('{Enter}')
+  expect(onViewChange).toHaveBeenCalledWith('now')
+  expect(screen.queryByRole('button', { name: 'All exercises' })).toBeNull()
 })
 
 const squat: Exercise = { id: 'squat', name: 'Back squat', weightStep: 2.5, startWeight: 20, bodyweight: false, libraryId: 'a' }

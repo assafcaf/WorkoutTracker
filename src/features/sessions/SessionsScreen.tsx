@@ -300,6 +300,8 @@ export function SessionsScreen({
           workout={programs
             .find((program) => program.id === summarySession.programId)
             ?.workouts.find((workout) => workout.id === summarySession.workoutId)}
+          program={programs.find((program) => program.id === summarySession.programId)}
+          weekStartsOn={weekStartsOn}
           bodyLog={bodyLog}
           onClose={() => setSummarySessionId(null)}
           onEdit={() => {

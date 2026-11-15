@@ -124,3 +124,11 @@ test('O27 a drop Set never sets a record, so no toast', () => {
 
   expect(prMoment(squat, plan, history(), todayWith([entry]), entry)).toBeNull()
 })
+
+test('V4-03 a rep record by one says +1 rep and by two says +2 reps', () => {
+  const one = setOf(1, 60, 9)
+  const two = setOf(1, 60, 10)
+
+  expect(prMoment(squat, plan, history(), todayWith([one]), one)?.detail).toMatch(/\+1 rep$/)
+  expect(prMoment(squat, plan, history(), todayWith([two]), two)?.detail).toMatch(/\+2 reps$/)
+})
