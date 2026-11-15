@@ -126,6 +126,29 @@ test('V6 V5-02 a swap onto other equipment with no history asks "Set a starting 
   expect(await logButton()).not.toHaveTextContent(/ 0 × /)
 })
 
+test('V6 V5-02 All draws a swapped-in Exercise’s Sets as Now does, its ramp included', async () => {
+  const services = await servicesOnAssafAB()
+  // Last Workout B: Deadlift ramped 60 x 10, 70 x 7, 70 x 7.
+  const earlier = await services.sessions.start('assaf-ab-2026', 'workout-b')
+  for (const [setIndex, weightKg, reps] of [[1, 60, 10], [2, 70, 7], [3, 70, 7]]) {
+    await services.sessions.logSet(earlier.id, { exerciseId: 'deadlift', setIndex, weightKg, reps, loggedAt: NOW - 3 * 86_400_000 })
+  }
+  await services.sessions.finish(earlier.id)
+  const { user } = renderFeature(services)
+  await startFromDashboard(user, 'Workout B')
+  await screen.findByRole('heading', { level: 1, name: 'Deadlift' }, SETTLE)
+
+  await swapTo(user, 'Deadlift', 'Deadlift with Bands')
+  const now = [...document.querySelectorAll('.set-cells .set-cell')].map((cell) =>
+    (cell.querySelector('.set-cell-value, span:last-child')?.textContent ?? '').replace(/\s+/g, ''),
+  )
+  expect(now).toEqual(['60×10', '70×7', '70×7'])
+
+  await showAll(user)
+  const row = (await screen.findByRole('button', { name: /^Deadlift with Bands/ }, SETTLE)).closest('li') as HTMLElement
+  expect([...row.querySelectorAll('.all-cell')].map((cell) => cell.textContent)).toEqual(['60×10', '70×7', '70×7'])
+})
+
 // --- V5-01: Discard, then Undo ----------------------------------------------------------------
 
 /** Workout A started with `count` back squat Sets logged, rendered on Now. */
