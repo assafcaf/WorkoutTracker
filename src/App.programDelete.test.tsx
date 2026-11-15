@@ -265,6 +265,9 @@ async function save(user: User): Promise<void> {
 
 async function cancel(user: User): Promise<void> {
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  // V1-09: Cancel on an edited draft asks first.
+  const ask = screen.queryByRole('dialog', { name: /^Discard \d+ changes?\?$/ })
+  if (ask !== null) await user.click(within(ask).getByRole('button', { name: 'Discard' }))
   await screen.findByRole('button', { name: 'New program' }, SETTLE)
 }
 
