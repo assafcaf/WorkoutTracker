@@ -28,12 +28,14 @@
   border: 0;
 }
 
+/* The name over one small line: the elapsed time and the Sets count (V1-10), so the title row
+ * holds both and still fits at 320 px. */
 .live-header-title {
   display: flex;
   min-width: 0;
   flex: 1;
-  align-items: baseline;
-  gap: 10px;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .live-header-name {
@@ -41,13 +43,19 @@
   color: var(--color-text);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.live-header-title .elapsed-time {
+.live-header-meta {
+  overflow: hidden;
   color: var(--color-secondary);
-  font-size: var(--text-md);
+  font-size: var(--text-xs);
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .live-header-trailing {
@@ -58,7 +66,24 @@
 
 /* Whatever rides under the header row (the Now | All switch) keeps the screen's side padding. */
 .live-header > :not(.live-header-row) {
-  margin: 0 var(--space-4) var(--space-3);
+  margin: 0 var(--space-4) var(--space-2);
+}
+
+/* Finish with planned Sets left (V1-06): the count, then Finish workout over Keep going. */
+.finish-confirm-left {
+  margin-bottom: var(--space-4);
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+}
+
+.finish-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.finish-confirm-actions > button {
+  min-height: var(--tap-min);
 }
 
 /* The exercise the Now view is on, heading the set screen under the header (S3). */

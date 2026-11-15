@@ -272,11 +272,11 @@ test(
     await user.click(screen.getByRole('radio', { name: 'Push Pull Legs' }))
     await user.click(screen.getByRole('button', { name: 'Train' }))
     await user.click(await screen.findByRole('button', { name: 'Start Push' }, SETTLE))
-    await user.click(await screen.findByRole('button', { name: /^Barbell Bench Press - Medium Grip/ }, SETTLE))
+    // The Session opens on its first Exercise's next Set, on Now (V1-01).
 
-    const weight = await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+    const weight = await screen.findByRole('button', { name: /^Weight, / }, SETTLE)
     expect((weight.textContent ?? '').replace(/\s+/g, ' ').trim()).toBe('60')
-    const reps = screen.getByRole('button', { name: 'Reps' })
+    const reps = screen.getByRole('button', { name: /^Reps, / })
     expect((reps.textContent ?? '').replace(/\s+/g, ' ').trim()).toBe('6')
   },
   LONG,

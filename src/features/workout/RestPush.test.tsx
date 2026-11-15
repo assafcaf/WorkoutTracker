@@ -6,6 +6,7 @@ import { createServices } from '../../services'
 import type { PushStatus } from '../../services'
 import { ServicesProvider } from '../ServicesProvider'
 import { WorkoutFeature } from './WorkoutFeature'
+import { showAll, finishWorkout } from '../../test/live'
 
 // E24-T10 O27, O29 (and O28 in the Session): the rest push scheduled and cancelled by the
 // Session, over the real services with a stubbed push service.
@@ -57,6 +58,8 @@ async function startWorkoutA(options: {
       <WorkoutFeature navigate={vi.fn()} onInSession={vi.fn()} />
     </ServicesProvider>,
   )
+  // The Session reopens on Now (V1-01); the exercise list is one tap away.
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   return { user, scheduleRest, cancelRest }
 }
@@ -96,7 +99,7 @@ test('O27 +15 s schedules the moved end', async () => {
   const first = (scheduleRest.mock.calls[0] as unknown as [number, string])[0]
 
   await user.click(screen.getByRole('radio', { name: 'Now' }))
-  await user.click(await screen.findByRole('button', { name: '+15 s' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Rest 15 seconds more' }, SETTLE))
 
   await waitFor(() => expect(scheduleRest).toHaveBeenCalledTimes(2), SETTLE)
   expect((scheduleRest.mock.calls[1] as unknown as [number, string])[0]).toBe(first + 15_000)
@@ -113,7 +116,7 @@ test('O27 finishing the Session cancels the push', async () => {
   const { user, scheduleRest, cancelRest } = await startWorkoutA({ sets: 1, ageMs: 1000 })
   await waitFor(() => expect(scheduleRest).toHaveBeenCalled(), SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
   await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 
   await waitFor(() => expect(cancelRest).toHaveBeenCalled(), SETTLE)
@@ -121,7 +124,7 @@ test('O27 finishing the Session cancels the push', async () => {
 
 test('O27 with push not on, neither schedule nor cancel is called', async () => {
   const { user, scheduleRest, cancelRest } = await startWorkoutA({ sets: 1, ageMs: 1000, status: 'off' })
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
   await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 
   await new Promise((resolve) => setTimeout(resolve, 300))
@@ -138,7 +141,7 @@ test('O28 a Session in progress badges the icon, and finishing clears it', async
   const { user } = await startWorkoutA({ sets: 1, ageMs: 1000 })
   await waitFor(() => expect(setAppBadge).toHaveBeenCalledWith(1), SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
   await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   await waitFor(() => expect(clearAppBadge).toHaveBeenCalled(), SETTLE)
 })

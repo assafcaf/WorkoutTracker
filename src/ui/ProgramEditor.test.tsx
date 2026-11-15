@@ -580,9 +580,69 @@ test('O15 Cancel calls onCancel and never onSave', async () => {
 
   await user.click(await workoutMenuButton(user, workoutAt(0), 'Move down'))
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  // V1-09: a dirty draft asks first.
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Discard' }))
 
   expect(onCancel).toHaveBeenCalledTimes(1)
   expect(onSave).not.toHaveBeenCalled()
+})
+
+// --- V1-09: Cancel asks before throwing an edit away --------------------------------------------
+
+test('V1-09 Cancel with no changes leaves at once', async () => {
+  const { user, onCancel } = renderEditor(split())
+
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  expect(onCancel).toHaveBeenCalledTimes(1)
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+test('V1-09 Cancel after one change asks "Discard 1 change?", and Keep editing keeps the value', async () => {
+  const { user, onCancel } = renderEditor(split())
+  const sets = within(workoutAt(0)).getAllByLabelText('Sets')[0]
+  await user.clear(sets)
+  await user.type(sets, '5')
+
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  const ask = screen.getByRole('dialog', { name: 'Discard 1 change?' })
+  expect(within(ask).getByRole('heading', { name: 'Discard 1 change?' })).toBeTruthy()
+  expect(onCancel).not.toHaveBeenCalled()
+  await user.click(within(ask).getByRole('button', { name: 'Keep editing' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(onCancel).not.toHaveBeenCalled()
+  expect(within(workoutAt(0)).getAllByLabelText('Sets')[0]).toHaveValue(5)
+})
+
+test('V1-09 the question counts each change, and Discard leaves without saving', async () => {
+  const { user, onCancel, onSave } = renderEditor(split())
+  const sets = within(workoutAt(0)).getAllByLabelText('Sets')[0]
+  await user.clear(sets)
+  await user.type(sets, '5')
+  const name = screen.getByLabelText('Program name')
+  await user.clear(name)
+  await user.type(name, 'Split 2')
+
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  const ask = screen.getByRole('dialog', { name: 'Discard 2 changes?' })
+  await user.click(within(ask).getByRole('button', { name: 'Discard' }))
+
+  expect(onCancel).toHaveBeenCalledTimes(1)
+  expect(onSave).not.toHaveBeenCalled()
+})
+
+test('V1-09 a field changed and changed back counts as no change', async () => {
+  const { user, onCancel } = renderEditor(split())
+  const sets = within(workoutAt(0)).getAllByLabelText('Sets')[0]
+  await user.clear(sets)
+  await user.type(sets, '5')
+  await user.clear(sets)
+  await user.type(sets, '4')
+
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+  expect(onCancel).toHaveBeenCalledTimes(1)
 })
 
 // --- O17: no starting weight for a Bodyweight Exercise ------------------------------------------

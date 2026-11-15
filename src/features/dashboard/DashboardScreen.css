@@ -73,11 +73,6 @@
 
 /* ---- cards ---- */
 
-.dashboard-deload-week {
-  margin-top: var(--space-3);
-  min-height: var(--tap-min);
-}
-
 .dashboard-step-deload {
   margin: 0;
   color: var(--color-secondary);

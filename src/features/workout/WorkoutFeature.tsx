@@ -6,7 +6,7 @@ import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { validateEntry } from '../../domain/dial'
 import { nextExerciseAfter } from '../../domain/flow'
-import { currentExerciseId, liveProgress, planFor } from '../../domain/liveProgress'
+import { currentExerciseId, planFor } from '../../domain/liveProgress'
 import { presetForSet } from '../../domain/prefill'
 import { sessionPlans } from '../../domain/sessionPlans'
 import { workingSets } from '../../domain/setKind'
@@ -17,7 +17,7 @@ import { latestSet, restLengthOf } from '../../domain/rest'
 import { countsTowardStats } from '../../domain/setKind'
 import { applySessionChanges } from '../../domain/sessionChanges'
 import { ServiceError } from '../../services'
-import { bodyweightOn } from '../../domain/bodyLog'
+import type { Services } from '../../services'
 import type {
   BodyLog,
   Exercise,
@@ -118,6 +118,8 @@ type Resumed = {
   session: Session | null
   lastSwaps: Record<string, string>
   lastEntries: Map<string, SetEntry[]>
+  /** The Set the Now view opens on, or null to land on All (or the picker). */
+  openSet: OpenSet | null
 }
 
 /** The program and workout a session was started from, or null when the program is gone. */
@@ -159,6 +161,58 @@ function currentExerciseOf(workout: Workout, session: Session, current: string |
     if (plan !== undefined && logged < plan.sets) return current
   }
   return nextExerciseAfter(workout, session, current ?? '')
+}
+
+/**
+ * Where the Now view opens when the Live session comes on screen (V1-01): the Exercise the
+ * Session is on, at its next Set; null once every planned Set is in, when All is shown instead.
+ */
+function nowSetOf(workout: Workout, session: Session): { exerciseId: string; setIndex: number } | null {
+  const exerciseId = currentExerciseId(workout, session)
+  if (exerciseId === null) return null
+  const logged = session.entries.filter((entry) => entry.exerciseId === exerciseId).length
+  return { exerciseId, setIndex: logged + 1 }
+}
+
+/** A Set of `exerciseId` to open, against what that Exercise was last lifted with. */
+async function loadOpenSet(services: Services, exerciseId: string, setIndex: number): Promise<OpenSet> {
+  const [history, weightStep] = await Promise.all([
+    services.sessions.lastEntriesFor(exerciseId),
+    services.preferences.weightStep(exerciseId),
+  ])
+  return { exerciseId, setIndex, history, extra: false, weightStep, exerciseNote: null }
+}
+
+/**
+ * The Set the Now view opens on for `session` (`nowSetOf`), its Exercise note read too; null
+ * when nothing is left to open or the Set cannot be read, so the caller lands on All instead.
+ */
+async function openNowSet(
+  services: Services,
+  located: { workout: Workout } | null,
+  session: Session,
+): Promise<OpenSet | null> {
+  const target = located === null ? null : nowSetOf(located.workout, session)
+  if (target === null) return null
+  try {
+    const [opened, exerciseNote] = await Promise.all([
+      loadOpenSet(services, target.exerciseId, target.setIndex),
+      services.preferences.exerciseNote(target.exerciseId).catch(() => null),
+    ])
+    return { ...opened, exerciseNote }
+  } catch {
+    return null
+  }
+}
+
+/** The planned working Sets not yet logged today, Plan by Plan (an extra Set covers no other). */
+function plannedSetsLeft(workout: Workout, session: Session): number {
+  const done = workingSets(session.entries)
+  return workout.exercises.reduce((left, plan) => {
+    const doneId = session.swaps?.[plan.exerciseId] ?? plan.exerciseId
+    const logged = done.filter((entry) => entry.exerciseId === doneId).length
+    return left + Math.max(0, plan.sets - logged)
+  }, 0)
 }
 
 /**
@@ -294,17 +348,21 @@ export function WorkoutFeature({
         session: inProgress,
         lastSwaps: await services.sessions.lastSwapsForSession(inProgress, programs),
         lastEntries: await services.sessions.lastEntriesForSession(inProgress, programs),
+        // Reopened, the Session lands on Now (V1-01), so a running Rest shows with no tap.
+        openSet:
+          inProgress && landInSession ? await openNowSet(services, locateSession(programs, inProgress), inProgress) : null,
       }
     }
 
     resume(loadedPrograms)
-      .catch((): Resumed => ({ session: null, lastSwaps: {}, lastEntries: new Map() }))
+      .catch((): Resumed => ({ session: null, lastSwaps: {}, lastEntries: new Map(), openSet: null }))
       .then((found) => {
         if (cancelled) return
         setSession(found.session)
         setLastSwaps(found.lastSwaps)
         setLastEntries(found.lastEntries)
-        setView(found.session && landInSession ? 'list' : 'picker')
+        setOpenSet(found.openSet)
+        setView(found.session && landInSession ? (found.openSet ? 'set' : 'list') : 'picker')
         setResumed(true)
       })
     return () => {
@@ -523,11 +581,13 @@ export function WorkoutFeature({
       .then(async (started) => {
         const startedLastSwaps = await services.sessions.lastSwapsForSession(started, programs)
         const startedLastEntries = await services.sessions.lastEntriesForSession(started, programs)
+        // Started or resumed, the Session opens on Now (V1-01); All is one tap away.
+        const nowSet = await openNowSet(services, locateSession(programs, started), started)
         setSession(started)
         setLastSwaps(startedLastSwaps)
         setLastEntries(startedLastEntries)
-        setOpenSet(null)
-        setView('list')
+        setOpenSet(nowSet)
+        setView(nowSet ? 'set' : 'list')
         onRestore?.()
       })
       .catch(() => {
@@ -537,12 +597,9 @@ export function WorkoutFeature({
 
   /** Opens a set of an exercise, against what that exercise was last lifted with. */
   function handleOpenSet(exerciseId: string, setIndex: number): void {
-    Promise.all([
-      services.sessions.lastEntriesFor(exerciseId),
-      services.preferences.weightStep(exerciseId),
-    ])
-      .then(([history, weightStep]) => {
-        setOpenSet({ exerciseId, setIndex, history, extra: false, weightStep, exerciseNote: null })
+    loadOpenSet(services, exerciseId, setIndex)
+      .then((opened) => {
+        setOpenSet(opened)
         setView('set')
         loadExerciseNote(exerciseId)
       })
@@ -758,46 +815,40 @@ export function WorkoutFeature({
     handleOpenSet(target, logged + 1)
   }
 
-  /** The Live session's header (S2/S3), with its Now | All switch under the row. */
+  /**
+   * The Live session's header (S2/S3): the Sets count in its title row (V1-10), Finish asking
+   * first while planned Sets are left (V1-06), and the Now | All switch under the row.
+   */
   function liveHeader(
     liveSession: Session,
-    workoutName: string,
+    workout: Workout,
     shown: LiveView,
     heading = true,
   ): JSX.Element {
     return (
       <LiveHeader
-        workoutName={workoutName}
+        workoutName={workout.name}
         heading={heading}
         startedAt={liveSession.startedAt}
         onMinimise={handleMinimise}
         onFinish={handleFinish}
+        sets={{
+          done: workingSets(liveSession.entries).length,
+          planned: workout.exercises.reduce((sum, plan) => sum + plan.sets, 0),
+        }}
+        setsLeft={plannedSetsLeft(workout, liveSession)}
       >
-        {liveBar(shown)}
+        <LiveSessionBar
+          view={shown}
+          onViewChange={(next) => {
+            if (next === shown) return
+            if (next === 'all') setView('list')
+            else handleNow()
+          }}
+        />
       </LiveHeader>
     )
   }
-  // The Live session's projection line and its Now | All switch (Progress Dashboard S2/S3),
-  // over both views of the Session in progress.
-  const liveBar = (shown: LiveView): JSX.Element | null =>
-    session && located ? (
-      <LiveSessionBar
-        progress={liveProgress({
-          workout: located.workout,
-          session,
-          earlier: sessions,
-          resolve: resolveListExercise,
-          bodyweightKg: bodyweightOn(bodyLog, Date.now())?.kg ?? null,
-        })}
-        workoutName={located.workout.name}
-        view={shown}
-        onViewChange={(next) => {
-          if (next === shown) return
-          if (next === 'all') setView('list')
-          else handleNow()
-        }}
-      />
-    ) : null
 
   let content: JSX.Element | null = null
 
@@ -826,7 +877,7 @@ export function WorkoutFeature({
       content = (
         <AppShell
           title={exercise.name}
-          header={liveHeader(session, located.workout.name, 'now', false)}
+          header={liveHeader(session, located.workout, 'now', false)}
           action={<ActionBarSlot />}
         >
           <SetScreen
@@ -962,7 +1013,7 @@ export function WorkoutFeature({
     content = (
       <AppShell
         title={located.workout.name}
-        header={liveHeader(session, located.workout.name, 'all')}
+        header={liveHeader(session, located.workout, 'all')}
         action={
           quick === null ? undefined : (
             <button type="button" className="log-set btn-primary" onClick={handleQuickLog}>

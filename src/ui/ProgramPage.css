@@ -200,10 +200,6 @@
   color: var(--color-secondary);
 }
 
-.program-page-kg {
-  font-weight: var(--weight-semibold);
-}
-
 /* ---- Planned muscle map (M14) and "This week" (M15), below the workouts ---- */
 
 .program-page-weekly,
@@ -414,4 +410,10 @@
 .program-page-range-row[data-standing='below'],
 .program-page-range-row[data-standing='above'] {
   font-weight: var(--weight-semibold);
+}
+
+/* The Deload week switch under the Program's head (V1-22). */
+.program-deload-week {
+  min-height: var(--tap-min);
+  margin-bottom: var(--space-3);
 }

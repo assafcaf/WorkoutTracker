@@ -6,9 +6,10 @@ import { ServiceError, type ProgramsLoad } from '../../services'
 import { IN_PROGRESS_MESSAGE } from '../../services/programs'
 import { AppShell } from '../../ui/AppShell'
 import { ProgramEditor } from '../../ui/ProgramEditor'
-import type { Weekday } from '../../domain/stats/weeks'
+import { weekStart, type Weekday } from '../../domain/stats/weeks'
+import { isDeloadWeek } from '../../domain/deload'
 import { ProgramPage } from '../../ui/ProgramPage'
-import { ProgramHeadActions } from '../../ui/program/ProgramHead'
+import { ProgramDeloadWeek, ProgramHeadActions } from '../../ui/program/ProgramHead'
 import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
 import { useServiceData } from '../useServiceData'
 import { useServices } from '../ServicesProvider'
@@ -17,6 +18,8 @@ import type { AppRoute } from '../routes'
 export type ProgramFeatureProps = {
   navigate(to: AppRoute): void
   onInSession(inSession: boolean): void
+  /** The clock; `Date.now` unless a test fixes it. */
+  now?: () => number
 }
 
 /** What the editor was opened on: the Program it starts from, and whether it is new (E9-T9). */
@@ -54,7 +57,7 @@ function withProgramExercises(
  * `ProgramPage` and `ProgramEditor` the way `App.tsx` used to.
  */
 export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
-  const { onInSession } = props
+  const { onInSession, now = Date.now } = props
   const services = useServices()
   const programsData = useServiceData<ProgramsLoad>((s) => s.programs.load(), ['programs'])
   const catalogData = useServiceData((s) => s.catalog.load(), [])
@@ -66,6 +69,7 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
     (s) => s.preferences.weekStart().then((day): Weekday => day as Weekday).catch((): Weekday => 1),
     ['preferences'],
   )
+  const deloadData = useServiceData((s) => s.preferences.deloadWeek().catch((): null => null), ['preferences'])
   // Every finished Session and the one in progress, so "This week" (E5-T20) counts them all.
   const sessionsData = useServiceData(
     (s) =>
@@ -206,6 +210,8 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   // S7a: the shell's large page title is the active Program itself, with its size line and the
   // head's Edit and overflow beside it; the page below draws no head of its own.
   const active = offeredPrograms.find((program) => program.id === activeProgramId) ?? null
+  const at = now()
+  const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
   return (
     <AppShell
       title={active ? active.name : CHOOSE_TITLE}
@@ -221,6 +227,14 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         ) : undefined
       }
     >
+      {active ? (
+        <ProgramDeloadWeek
+          on={deloadData.status === 'ready' && isDeloadWeek(deloadData.data, at, weekStartsOn)}
+          onChange={(on) => {
+            void services.preferences.setDeloadWeek(on ? weekStart(at, weekStartsOn) : null).catch(() => undefined)
+          }}
+        />
+      ) : null}
       <ProgramPage
         head="none"
         programs={offeredPrograms}
@@ -229,8 +243,8 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         library={libraryMap}
         onChooseProgram={handleActiveProgramChange}
         sessions={sessions}
-        now={Date.now()}
-        weekStartsOn={weekStartData.status === 'ready' ? weekStartData.data : 1}
+        now={at}
+        weekStartsOn={weekStartsOn}
         resolve={resolveListExercise}
         onNewProgram={handleNewProgram}
         onEditProgram={handleEditProgram}

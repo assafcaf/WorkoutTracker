@@ -36,6 +36,7 @@ import { findStartButton, startFromDashboard, workoutsOffered } from './test/das
 import { adoptSignedInAccount } from './sync/syncClient'
 import { weekStart } from './domain/stats/weeks'
 import type { SyncedSession } from './sync/protocol'
+import { showAll, finishWorkout } from './test/live'
 
 
 /**
@@ -226,13 +227,13 @@ beforeEach(async () => {
 /** The weight readout, which is also the button that opens the weight keypad. */
 function weightReadout(): HTMLElement {
   unfoldSteppers()
-  return screen.getByRole('button', { name: 'Weight' })
+  return screen.getByRole('button', { name: /^Weight, / })
 }
 
 /** The reps readout, which is also the button that opens the reps keypad. */
 function repsReadout(): HTMLElement {
   unfoldSteppers()
-  return screen.getByRole('button', { name: 'Reps' })
+  return screen.getByRole('button', { name: /^Reps, / })
 }
 
 /** What a readout shows, whitespace-collapsed: "60", "52.5", "BW". */
@@ -252,10 +253,14 @@ async function enterOnKeypad(user: UserEvent, readout: HTMLElement, keys: string
 /** Starts a workout from the picker, which leaves the app on that session's exercise list. */
 async function startWorkout(user: UserEvent, workoutName: string): Promise<void> {
   await startFromDashboard(user, workoutName)
+  // The Session opens on Now (V1-01); the exercise list is one tap away.
+  await showAll(user)
 }
 
 /** Opens an exercise from the exercise list, which leaves the app on its set screen. */
 async function openExercise(user: UserEvent, exerciseName: string): Promise<void> {
+  // From the exercise list, one tap away when the Session is on Now (V1-01).
+  await showAll(user)
   await user.click(
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )
@@ -269,7 +274,7 @@ async function logSetAndOpen(
   nextSetIndex: number,
   plannedSets: number,
 ): Promise<void> {
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await screen.findByText(`Set ${nextSetIndex} of ${plannedSets}`, undefined, SETTLE)
 }
 
@@ -331,7 +336,7 @@ test('O6 opening a lift last logged in an earlier, finished session shows no res
   const firstRun = await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await waitFor(async () => {
     expect(await activeSessionEntries()).toHaveLength(1)
   }, SETTLE)
@@ -380,7 +385,8 @@ test('O13 reopening the app lands in the session in progress rather than in the 
 
   await renderApp()
 
-  expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
+  // V1-01: it reopens on Now, at the Set the session is on.
+  expect(await screen.findByText('Set 4 of 4', undefined, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 })
 
@@ -389,6 +395,7 @@ test('O13 the three sets logged before the app was closed are still in the sessi
   const sessionId = await logThreeSetsAndCloseTheApp(user)
 
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   const session = await getActiveSession()
@@ -405,6 +412,7 @@ test('O13 the reopened exercise list shows the exercise at 3 of its 4 planned se
   await logThreeSetsAndCloseTheApp(user)
 
   await renderApp()
+  await showAll(user)
 
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('3/4')
@@ -421,7 +429,7 @@ async function logFourSetsOfBackSquat(user: UserEvent): Promise<void> {
   await logSetAndOpen(user, 4, 4)
   unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await waitFor(async () => {
     expect(await activeSessionEntries()).toHaveLength(4)
   }, SETTLE)
@@ -443,7 +451,7 @@ test('O15 the added set is logged against the same exercise as set 5', async () 
   await logFourSetsOfBackSquat(user)
 
   await user.click(await screen.findByRole('button', { name: 'Add set' }, SETTLE))
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
 
   await waitFor(async () => {
     expect(await activeSessionEntries()).toHaveLength(5)
@@ -480,7 +488,7 @@ async function logOneSetAndCloseTheApp(user: UserEvent): Promise<void> {
   const run = await renderApp()
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await waitFor(async () => {
     expect(await activeSessionEntries()).toHaveLength(1)
   }, SETTLE)
@@ -495,9 +503,10 @@ test('O17 finishing the session from the exercise list clears the active session
   await logOneSetAndCloseTheApp(user)
 
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
 
   // Back on the Dashboard, whose dock now offers the workout due after Workout A.
   await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)
@@ -1085,7 +1094,7 @@ test('O11 the set screen is inside the shell and no tab bar is rendered with it'
 
   const inShell = shell()
   expect(inShell, 'the set screen is not inside the shell at all').not.toBeNull()
-  expect(within(inShell as HTMLElement).getByRole('button', { name: 'Weight' })).toBeVisible()
+  expect(within(inShell as HTMLElement).getByRole('button', { name: /^Weight, / })).toBeVisible()
   expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
 })
 
@@ -1100,7 +1109,7 @@ test('O11 the set screen back control returns to the exercise list', async () =>
   await user.click(back as HTMLElement)
 
   expect(await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)).toBeVisible()
-  expect(screen.queryByRole('button', { name: 'Weight' })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^Weight, / })).toBeNull()
 })
 
 test('O11 Log set sits in the sticky action bar rather than in the set screen body', async () => {
@@ -1111,7 +1120,7 @@ test('O11 Log set sits in the sticky action bar rather than in the set screen bo
 
   const bar = actionBar()
   expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
-  const logSetButton = await screen.findByRole('button', { name: 'Log set' }, SETTLE)
+  const logSetButton = await screen.findByRole('button', { name: /^Log set / }, SETTLE)
   expect((bar as HTMLElement).contains(logSetButton)).toBe(true)
   const main = shellMain()
   expect(main, 'the set screen is not inside the shell at all').not.toBeNull()
@@ -1148,7 +1157,7 @@ function resumeControl(): HTMLElement | null {
 async function startLogOneSetAndBackToPicker(user: UserEvent): Promise<void> {
   await startWorkoutA(user)
   await openExercise(user, 'Back squat')
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await waitFor(async () => {
     expect(await activeSessionEntries()).toHaveLength(1)
   }, SETTLE)
@@ -1494,7 +1503,7 @@ test('L14 the set screen underneath the detail overlay is not unmounted, so its 
 
   expect(detailOverlay(), 'no in-app detail overlay was rendered').not.toBeNull()
   // The set screen underneath was not unmounted: its dials are still in the document.
-  expect(screen.getByRole('button', { name: 'Weight' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /^Weight, / })).toBeInTheDocument()
 
   // [F1, fix-popups] the overlay is a real modal popup, not content in normal document flow
   // below the set screen -- the operator's device-check defect ("the details appear in the
@@ -1623,7 +1632,7 @@ test('F2 tapping Alternatives on a live set opens the alternatives list as a mod
     expect(screen.queryByRole('dialog', { name: 'Alternatives to Seated biceps curls' })).toBeNull()
   }, SETTLE)
   // The set screen underneath stays mounted, and nothing was swapped.
-  expect(screen.getByRole('button', { name: 'Weight' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /^Weight, / })).toBeInTheDocument()
   expect(screen.queryByText(/for Seated biceps curls/)).toBeNull()
 })
 
@@ -1837,6 +1846,7 @@ test('S9 reopening the app resumes the session with the swap still applied and s
   await swapThenCloseTheApp(user)
 
   await renderApp()
+  await showAll(user)
 
   // The swap itself is what E5-T11/E5-T12 already persist; what reopening must also keep is
   // the swap's standing as undoable, since no Hammer_Curls set has been logged yet.
@@ -2155,9 +2165,10 @@ test('M16 tapping Finish workout shows the session summary with its body map on 
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
 
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   // On the week scale, 3 would be band 1; band 2 is what pins the session scale.
@@ -2170,9 +2181,10 @@ test('F2 the Finish workout session summary is an aria-modal dialog', async () =
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
 
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   expect(summary).toHaveAttribute('aria-modal', 'true')
@@ -2182,8 +2194,9 @@ test('M16 Done on the finish summary closes it onto the picker with the session 
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 
   await user.click(within(summary).getByRole('button', { name: 'Done' }))
@@ -2200,8 +2213,9 @@ test('M16 opening the finished session from History shows the same body map the 
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
   const atFinish = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   const finishBands = summaryBands(atFinish)
   expect(Object.keys(finishBands).length).toBeGreaterThan(0)
@@ -2468,7 +2482,7 @@ describe('E7-T8', () => {
     await serverSettled(2)
     await startWorkout(user, 'Workout A')
 
-    await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
+    await finishWorkout(user)
 
     await waitFor(() => {
       const pushed = server.sessionsOf('a@x')
@@ -2485,7 +2499,7 @@ describe('E7-T8', () => {
     await startWorkout(user, 'Workout A')
     const release = server.hold('/api/me')
 
-    await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
+    await finishWorkout(user)
 
     // Back on the Dashboard, whose dock offers the workout due after Workout A.
     expect(await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)).toBeVisible()
@@ -2506,7 +2520,7 @@ describe('E7-T8', () => {
     await startWorkout(user, 'Workout A')
     await openExercise(user, 'Back squat')
 
-    await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+    await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
 
     await waitFor(async () => {
       expect(await activeSessionEntries()).toHaveLength(1)
@@ -2687,7 +2701,7 @@ async function logAllThreePlannedBackSquatSets(user: UserEvent): Promise<void> {
   unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   await enterOnKeypad(user, repsReadout(), ['7'])
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await waitFor(async () => {
     expect(await activeSessionEntries()).toHaveLength(3)
   }, SETTLE)
@@ -2702,7 +2716,7 @@ async function pressAddSet(user: UserEvent): Promise<void> {
 async function addAndLogSetFour(user: UserEvent): Promise<void> {
   await pressAddSet(user)
   await screen.findByText('Set 4 · extra', undefined, SETTLE)
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await waitFor(async () => {
     expect(await activeSessionEntries()).toHaveLength(4)
   }, SETTLE)
@@ -2720,7 +2734,7 @@ describe('E6-T1', { timeout: 15_000 }, () => {
     const bar = actionBar()
     expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
     expect((bar as HTMLElement).contains(addSet)).toBe(true)
-    expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Log set / })).toBeNull()
   })
 
   test('O1 with all 3 planned sets logged, the counter reads All 3 sets logged', async () => {
@@ -2760,10 +2774,10 @@ describe('E6-T1', { timeout: 15_000 }, () => {
     }, SETTLE)
     const bar = actionBar()
     expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
-    // Set 3's rest still runs, so the action bar holds the rest panel (S4) and Log set is the
-    // extra set's outlined cell, one tap away; Add set is gone from the bar.
-    const log = await screen.findByRole('button', { name: 'Log set' }, SETTLE)
-    expect(log).toHaveClass('set-cell--current')
+    // Set 3's rest still runs, so the action bar holds the rest panel (S4) over Log set for the
+    // extra set, one tap away (V1-03); Add set is gone from the bar.
+    const log = await screen.findByRole('button', { name: /^Log set / }, SETTLE)
+    expect((bar as HTMLElement).contains(log)).toBe(true)
     expect((bar as HTMLElement).contains(screen.getByRole('button', { name: 'Skip rest' }))).toBe(true)
   })
 
@@ -2800,7 +2814,7 @@ describe('E6-T1', { timeout: 15_000 }, () => {
     await addAndLogSetFour(user)
 
     await screen.findByRole('button', { name: 'Add set' }, SETTLE)
-    expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Log set / })).toBeNull()
   })
 
   test('O2 pressing Add set again after the extra set is logged opens set 5 as an extra set', async () => {
@@ -2828,7 +2842,7 @@ describe('E6-T10', { timeout: 15_000 }, () => {
 
     expect(await screen.findByText('All 3 sets logged', undefined, SETTLE)).toBeVisible()
     expect(screen.getByRole('button', { name: 'Add set' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Log set' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Log set / })).toBeNull()
     const afterReopen = await activeSessionEntries()
     expect(afterReopen).toEqual(beforeReopen)
     const set3 = afterReopen.find(
@@ -3067,7 +3081,7 @@ describe('E8-T4', { timeout: 15_000 }, () => {
     await setActiveProgramId('full-body-starter')
     await renderApp()
     await openExercise(user, 'Back squat')
-    await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+    await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
 
     await user.click(await screen.findByRole('button', { name: 'Finish exercise' }, SETTLE))
 
@@ -3192,6 +3206,7 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
   })
 
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   // Minimise the Live session to the Dashboard, which has the tab bar and the Settings gear,

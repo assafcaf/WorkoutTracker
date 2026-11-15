@@ -46,6 +46,8 @@
 .settings-action {
   position: relative;
   display: flex;
+  /* At large text (V1-08) a value drops under its label rather than off the screen. */
+  flex-wrap: wrap;
   width: 100%;
   min-height: var(--tap-min);
   align-items: center;
@@ -86,7 +88,8 @@
 /* A select sits at its row's end, sized to its value. */
 .settings-action .select-field {
   flex: none;
-  min-width: 152px;
+  min-width: min(152px, 100%);
+  max-width: 100%;
 }
 
 .settings-action .select {

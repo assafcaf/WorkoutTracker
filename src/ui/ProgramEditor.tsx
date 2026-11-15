@@ -8,6 +8,7 @@ import { matchesQuery } from '../domain/search'
 import { exerciseFamily, familyImpact, type FamilyImpact } from '../domain/programVolume'
 import { loadText } from '../domain/setText'
 import { LibraryList } from './LibraryList'
+import { Sheet } from './Sheet'
 import { Switch } from './controls'
 import { Icon } from './icons'
 import { moveTo } from './program/listMoves'
@@ -50,6 +51,48 @@ type DraftPlan = {
 }
 
 type DraftWorkout = { id: string; name: string; hidden: boolean; plans: DraftPlan[] }
+
+/** The fields of a Plan row that count as a change when they differ from where they started. */
+const PLAN_FIELDS = ['exerciseId', 'sets', 'minReps', 'maxReps', 'rest', 'startWeight', 'amrapLast'] as const
+
+/**
+ * How many edits `now` holds over `start` (V1-09): each changed field, each added or removed
+ * Plan or Workout, and each list put in another order count one. A field changed and changed
+ * back counts none.
+ */
+function countChanges(
+  start: { name: string; sessions: string; workouts: DraftWorkout[] },
+  now: { name: string; sessions: string; workouts: DraftWorkout[] },
+): number {
+  let count = 0
+  if (start.name !== now.name) count += 1
+  if (start.sessions !== now.sessions) count += 1
+  const startShown = start.workouts.filter((w) => !w.hidden)
+  const nowShown = now.workouts.filter((w) => !w.hidden)
+  const before = new Map(startShown.map((w) => [w.id, w] as const))
+  const kept = nowShown.filter((w) => before.has(w.id))
+  count += nowShown.length - kept.length
+  count += startShown.length - kept.length
+  const order = (list: { id: string }[]) => list.map((w) => w.id).join(' ')
+  if (order(kept) !== order(startShown.filter((w) => kept.some((k) => k.id === w.id)))) count += 1
+  for (const workout of nowShown) {
+    const was = before.get(workout.id)
+    if (!was) continue
+    if (was.name !== workout.name) count += 1
+    const wasPlans = new Map(was.plans.map((p) => [p.uid, p] as const))
+    const keptPlans = workout.plans.filter((p) => wasPlans.has(p.uid))
+    count += workout.plans.length - keptPlans.length
+    count += was.plans.length - keptPlans.length
+    const keptUids = new Set(keptPlans.map((p) => p.uid))
+    const wasOrder = was.plans.filter((p) => keptUids.has(p.uid)).map((p) => p.uid).join(' ')
+    if (keptPlans.map((p) => p.uid).join(' ') !== wasOrder) count += 1
+    for (const plan of keptPlans) {
+      const old = wasPlans.get(plan.uid)!
+      for (const field of PLAN_FIELDS) if (old[field] !== plan[field]) count += 1
+    }
+  }
+  return count
+}
 
 /** What the exercise picker is open for: adding to a Workout, or swapping one of its Plans. */
 type Picking = { workoutId: string; swapUid: string | null }
@@ -174,6 +217,9 @@ export function ProgramEditor({
   const [lastEdited, setLastEdited] = useState<string | null>(null)
   const [drag, setDrag] = useState<{ workoutId: string; from: number; to: number } | null>(null)
   const [focusUid, setFocusUid] = useState<string | null>(null)
+  // The draft as it opened, so Cancel can say how many changes it would throw away (V1-09).
+  const [start] = useState(() => ({ name, sessions: sessionsText ?? String(initialVisible), workouts }))
+  const [askDiscard, setAskDiscard] = useState(false)
   const libraryById = useMemo(() => new Map(library.map((entry) => [entry.id, entry] as const)), [library])
 
   // The Program tab that opened this editor may be scrolled well past the top; land on the
@@ -279,6 +325,13 @@ export function ProgramEditor({
 
   const save = () => onSave(draftProgram)
 
+  const changes = countChanges(start, { name, sessions: sessionsShown, workouts })
+  const cancel = () => {
+    if (changes === 0) onCancel()
+    else setAskDiscard(true)
+  }
+  const discardTitle = `Discard ${changes} ${changes === 1 ? 'change' : 'changes'}?`
+
   /** The row under the pointer while a handle is dragged, by the rows' vertical midpoints. */
   const dropIndex = (event: ReactPointerEvent<HTMLElement>): number | null => {
     const list = event.currentTarget.closest('ol')
@@ -323,7 +376,7 @@ export function ProgramEditor({
   return (
     <div className={impact ? 'program-editor program-editor-with-impact' : 'program-editor'}>
       <div className="program-editor-bar">
-        <button type="button" className="program-editor-cancel btn-quiet" onClick={onCancel}>
+        <button type="button" className="program-editor-cancel btn-quiet" onClick={cancel}>
           Cancel
         </button>
         <h1 className="program-editor-title">{title ?? (isNew ? 'New program' : `Edit ${initial.name}`)}</h1>
@@ -331,6 +384,22 @@ export function ProgramEditor({
           Save
         </button>
       </div>
+
+      {askDiscard ? (
+        <Sheet label={discardTitle} onClose={() => setAskDiscard(false)}>
+          <div className="sheet-head">
+            <h2 className="sheet-title">{discardTitle}</h2>
+          </div>
+          <div className="program-editor-discard">
+            <button type="button" className="btn-danger" onClick={onCancel}>
+              Discard
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setAskDiscard(false)}>
+              Keep editing
+            </button>
+          </div>
+        </Sheet>
+      ) : null}
 
       {saveError === null ? null : (
         <p className="program-editor-error" role="alert">

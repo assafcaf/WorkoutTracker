@@ -1,3 +1,4 @@
+import { Switch } from '../controls'
 import { Icon } from '../icons'
 import '../ProgramPage.css'
 
@@ -32,5 +33,19 @@ export function ProgramHeadActions({
         <Icon name="Ellipsis" size={22} />
       </button>
     </>
+  )
+}
+
+export type ProgramDeloadWeekProps = { on: boolean; onChange(on: boolean): void }
+
+/**
+ * The Deload week switch, under the Program's head (V1-22): a choice about the Program's week,
+ * kept off Train, which only says "Deload week · Presets 10% lighter" while it is on.
+ */
+export function ProgramDeloadWeek({ on, onChange }: ProgramDeloadWeekProps): JSX.Element {
+  return (
+    <div className="program-deload-week">
+      <Switch label="Deload week" checked={on} onChange={onChange} />
+    </div>
   )
 }

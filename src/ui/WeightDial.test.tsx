@@ -68,7 +68,7 @@ function bodyweightAt(step: number): Exercise {
 }
 
 function weightReadout(): HTMLElement {
-  return screen.getByRole('button', { name: 'Weight' })
+  return screen.getByRole('button', { name: /^Weight, / })
 }
 
 function readoutValue(element: HTMLElement): string {

@@ -536,3 +536,14 @@
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
 }
+
+/* V1-09: Cancel's "Discard N changes?" sheet, its two answers stacked full width. */
+.program-editor-discard {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+}
+
+.program-editor-discard > button {
+  min-height: var(--tap-min);
+}

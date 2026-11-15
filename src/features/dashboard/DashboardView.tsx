@@ -1,6 +1,5 @@
 import { useContext, useState, type ReactNode } from 'react'
 import { SettingsButton, ShellChromeContext } from '../../ui/AppShell'
-import { Switch } from '../../ui/controls'
 import { Icon } from '../../ui/icons'
 import './DashboardScreen.css'
 import type { TrainCard } from './trainCard'
@@ -41,8 +40,11 @@ export type DashboardData =
        * order (the due one among them). Omitted or one long: the dock offers the due one only.
        */
       workouts?: DockWorkout[]
-      /** The Deload week switch; omitted draws none. */
-      deloadWeek?: { on: boolean; onChange(on: boolean): void }
+      /**
+       * The card of each workout the dock can offer, by workout id, so "Change" redraws the card
+       * for the one chosen (V1-21). The due one falls back to `card`.
+       */
+      cards?: Record<string, TrainCard>
     }
 
 /** A workout the dock offers to start: its name, when it was last done and its size. */
@@ -83,7 +85,7 @@ function SyncLine({ today, sync }: { today: string; sync: DashboardSync }): JSX.
   return <p className="dashboard-status">{`${today} · ${tail}`}</p>
 }
 
-function DueCard({ card }: { card: TrainCard }): JSX.Element {
+function DueCard({ card, due }: { card: TrainCard; due: boolean }): JSX.Element {
   const ready = card.lifts.filter((lift) => lift.step?.suggest)
   const note = card.estimate === 'logged' ? 'from your logged workouts' : 'planned'
   return (
@@ -93,9 +95,11 @@ function DueCard({ card }: { card: TrainCard }): JSX.Element {
           <h2 className="dashboard-card-title" id="dashboard-train-title">
             {card.name}
           </h2>
-          <span className="dashboard-card-next">
-            {card.more && card.more > 0 ? `next · ${card.more} more this week` : 'next'}
-          </span>
+          {due ? (
+            <span className="dashboard-card-next">
+              {card.more && card.more > 0 ? `next · ${card.more} more this week` : 'next'}
+            </span>
+          ) : null}
         </div>
       </div>
       <p className="dashboard-step-estimate">{`~${card.minutes} min · ${note}`}</p>
@@ -108,7 +112,7 @@ function DueCard({ card }: { card: TrainCard }): JSX.Element {
             .join(', ')} next.`}
         </p>
       ) : null}
-      {card.lifts.length > 0 ? (
+      {card.lifts.some((lift) => lift.step) ? (
         <p className="dashboard-step-legend">
           <span>Reps at the current weight against the next step</span>
           <span className="dashboard-step-key">
@@ -176,7 +180,7 @@ function Header({
     // so this one carries the shell header's classes too.
     <header className="dashboard-header app-header">
       <div className="dashboard-heading">
-        <h1 className="dashboard-title">Dashboard</h1>
+        <h1 className="dashboard-title">Train</h1>
         <SyncLine today={today} sync={sync} />
       </div>
       {trailing ? <div className="dashboard-header-trailing app-header-trailing">{trailing}</div> : null}
@@ -214,20 +218,22 @@ function ResumeDock({ resume }: { resume: DashboardResume }): JSX.Element {
  */
 function StartDock({
   due,
+  offered,
   workouts,
+  onChange,
   onStart,
 }: {
   due: DockWorkout
+  offered: DockWorkout
   workouts: DockWorkout[]
+  onChange(workoutId: string): void
   onStart(workoutId: string): void
 }): JSX.Element {
-  const [chosenId, setChosenId] = useState(due.workoutId)
-  const offered = workouts.find((workout) => workout.workoutId === chosenId) ?? due
   const isDue = offered.workoutId === due.workoutId
 
   function next(): void {
     const index = workouts.findIndex((workout) => workout.workoutId === offered.workoutId)
-    setChosenId(workouts[(index + 1) % workouts.length].workoutId)
+    onChange(workouts[(index + 1) % workouts.length].workoutId)
   }
 
   return (
@@ -257,6 +263,11 @@ function StartDock({
  */
 export function DashboardView(props: DashboardViewProps): JSX.Element {
   const { data } = props
+  // The workout "Change" picked, held here so the card and the dock show the same one (V1-21).
+  // It is forgotten when the workout due changes.
+  const dueId = data.kind === 'ready' ? (data.due?.workoutId ?? null) : null
+  const [chosen, setChosen] = useState<{ dueId: string | null; workoutId: string | null }>({ dueId, workoutId: null })
+  if (chosen.dueId !== dueId) setChosen({ dueId, workoutId: null })
   let body: JSX.Element | null = null
   // A Session in progress is resumable whatever else the Dashboard is still working out. The
   // dock keeps its place in the tree as the data arrives, so a press on it is never lost.
@@ -318,18 +329,22 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     )
   } else if (data.kind === 'ready') {
     const { due } = data
-    body = (
-      <>
-        {data.deloadWeek ? (
-          <div className="dashboard-deload-week">
-            <Switch label="Deload week" checked={data.deloadWeek.on} onChange={data.deloadWeek.onChange} />
-          </div>
-        ) : null}
-        {data.card ? <DueCard card={data.card} /> : null}
-      </>
-    )
-    if (!dock && due) {
-      dock = <StartDock key={due.workoutId} due={due} workouts={data.workouts ?? [due]} onStart={props.onStartWorkout} />
+    const workouts = data.workouts ?? (due ? [due] : [])
+    const offered =
+      (due && chosen.dueId === dueId && workouts.find((workout) => workout.workoutId === chosen.workoutId)) || due
+    const card =
+      offered && due && offered.workoutId !== due.workoutId ? (data.cards?.[offered.workoutId] ?? null) : data.card
+    body = card ? <DueCard card={card} due={!offered || !due || offered.workoutId === due.workoutId} /> : null
+    if (!dock && due && offered) {
+      dock = (
+        <StartDock
+          due={due}
+          offered={offered}
+          workouts={workouts}
+          onChange={(workoutId) => setChosen({ dueId, workoutId })}
+          onStart={props.onStartWorkout}
+        />
+      )
     }
   }
 

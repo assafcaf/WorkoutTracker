@@ -111,3 +111,20 @@ test('O22 the body map is an index: a region opens its muscle row', async () => 
   expect(row).toHaveAttribute('aria-expanded', 'true')
   expect(within(row.parentElement as HTMLElement).getByText(/^Abs 3 = /)).toBeVisible()
 })
+
+// V1-26: a row outside the weekly set range says so in words, not by position alone.
+test('V1-26 rows below or above the weekly range say so in words', () => {
+  show()
+  expect(screen.getByRole('button', { name: /^Abs/ })).toHaveTextContent('3 · below 10')
+  expect(screen.getByRole('button', { name: /^Calves/ })).toHaveTextContent('8 · below 10')
+  expect(screen.getByRole('button', { name: /^Shoulders/ })).toHaveTextContent('21 · above 20')
+  expect(screen.getByRole('button', { name: /^Lats/ })).not.toHaveTextContent(/below|above/)
+})
+
+test('V1-26 the headline says "above" for a muscle over the range, not "at the top"', () => {
+  show()
+  const sentence = screen.getByText(/^On plan for 2 weeks/)
+  expect(sentence).toHaveTextContent('Shoulders 21 is above the typical 10–20.')
+  expect(sentence).not.toHaveTextContent(/Shoulders 21[^.]*at the top/)
+  expect(sentence).toHaveTextContent('Lats 19 sits at the top of the typical 10–20.')
+})

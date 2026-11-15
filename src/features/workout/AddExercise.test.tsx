@@ -5,6 +5,7 @@ import { db } from '../../storage/db'
 import { createServices } from '../../services'
 import { ServicesProvider } from '../ServicesProvider'
 import { WorkoutFeature } from './WorkoutFeature'
+import { showAll, finishWorkout } from '../../test/live'
 
 // E19-T13 O23: Add exercise at the end of the All view, over the real services on fake-indexeddb.
 
@@ -31,12 +32,14 @@ async function openAllView() {
       <WorkoutFeature navigate={vi.fn()} onInSession={vi.fn()} />
     </ServicesProvider>,
   )
+  // The Session reopens on Now (V1-01); the exercise list is one tap away.
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   return { user, services }
 }
 
 function plannedSets(): number {
-  const counts = document.querySelector('.live-progress-counts')?.textContent ?? ''
+  const counts = document.querySelector('.live-header-sets')?.textContent ?? ''
   return Number(/\/(\d+)/.exec(counts)?.[1])
 }
 
@@ -74,7 +77,7 @@ test('O23 the added Exercise logs like any other and shows in the summary and th
   await addBenchPress(user)
 
   await user.click(await screen.findByRole('button', { name: /^Dumbbell Bench Press/ }, SETTLE))
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
 
   await waitFor(async () => {
     const [stored] = await db.sessions.toArray()
@@ -83,7 +86,7 @@ test('O23 the added Exercise logs like any other and shows in the summary and th
   }, SETTLE)
 
   await user.click(await screen.findByRole('radio', { name: 'All' }, SETTLE))
-  await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
+  await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   expect(within(summary).getAllByText(/Dumbbell Bench Press/).length).toBeGreaterThan(0)
 })
