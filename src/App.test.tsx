@@ -36,6 +36,7 @@ import { findStartButton, startFromDashboard, workoutsOffered } from './test/das
 import { adoptSignedInAccount } from './sync/syncClient'
 import { weekStart } from './domain/stats/weeks'
 import type { SyncedSession } from './sync/protocol'
+import { showAll, finishWorkout } from './test/live'
 
 
 /**
@@ -252,10 +253,14 @@ async function enterOnKeypad(user: UserEvent, readout: HTMLElement, keys: string
 /** Starts a workout from the picker, which leaves the app on that session's exercise list. */
 async function startWorkout(user: UserEvent, workoutName: string): Promise<void> {
   await startFromDashboard(user, workoutName)
+  // The Session opens on Now (V1-01); the exercise list is one tap away.
+  await showAll(user)
 }
 
 /** Opens an exercise from the exercise list, which leaves the app on its set screen. */
 async function openExercise(user: UserEvent, exerciseName: string): Promise<void> {
+  // From the exercise list, one tap away when the Session is on Now (V1-01).
+  await showAll(user)
   await user.click(
     await screen.findByRole('button', { name: new RegExp(`^${exerciseName}`) }, SETTLE),
   )
@@ -380,7 +385,8 @@ test('O13 reopening the app lands in the session in progress rather than in the 
 
   await renderApp()
 
-  expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
+  // V1-01: it reopens on Now, at the Set the session is on.
+  expect(await screen.findByText('Set 4 of 4', undefined, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 })
 
@@ -389,6 +395,7 @@ test('O13 the three sets logged before the app was closed are still in the sessi
   const sessionId = await logThreeSetsAndCloseTheApp(user)
 
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   const session = await getActiveSession()
@@ -405,6 +412,7 @@ test('O13 the reopened exercise list shows the exercise at 3 of its 4 planned se
   await logThreeSetsAndCloseTheApp(user)
 
   await renderApp()
+  await showAll(user)
 
   const backSquat = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   expect(progressOf(backSquat)).toBe('3/4')
@@ -495,9 +503,10 @@ test('O17 finishing the session from the exercise list clears the active session
   await logOneSetAndCloseTheApp(user)
 
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
 
   // Back on the Dashboard, whose dock now offers the workout due after Workout A.
   await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)
@@ -1837,6 +1846,7 @@ test('S9 reopening the app resumes the session with the swap still applied and s
   await swapThenCloseTheApp(user)
 
   await renderApp()
+  await showAll(user)
 
   // The swap itself is what E5-T11/E5-T12 already persist; what reopening must also keep is
   // the swap's standing as undoable, since no Hammer_Curls set has been logged yet.
@@ -2155,9 +2165,10 @@ test('M16 tapping Finish workout shows the session summary with its body map on 
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
 
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   // On the week scale, 3 would be band 1; band 2 is what pins the session scale.
@@ -2170,9 +2181,10 @@ test('F2 the Finish workout session summary is an aria-modal dialog', async () =
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
 
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   expect(summary).toHaveAttribute('aria-modal', 'true')
@@ -2182,8 +2194,9 @@ test('M16 Done on the finish summary closes it onto the picker with the session 
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 
   await user.click(within(summary).getByRole('button', { name: 'Done' }))
@@ -2200,8 +2213,9 @@ test('M16 opening the finished session from History shows the same body map the 
   const user = userEvent.setup()
   await threeBackSquatSetsInProgress()
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  await finishWorkout(user)
   const atFinish = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   const finishBands = summaryBands(atFinish)
   expect(Object.keys(finishBands).length).toBeGreaterThan(0)
@@ -2468,7 +2482,7 @@ describe('E7-T8', () => {
     await serverSettled(2)
     await startWorkout(user, 'Workout A')
 
-    await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
+    await finishWorkout(user)
 
     await waitFor(() => {
       const pushed = server.sessionsOf('a@x')
@@ -2485,7 +2499,7 @@ describe('E7-T8', () => {
     await startWorkout(user, 'Workout A')
     const release = server.hold('/api/me')
 
-    await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
+    await finishWorkout(user)
 
     // Back on the Dashboard, whose dock offers the workout due after Workout A.
     expect(await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)).toBeVisible()
@@ -3192,6 +3206,7 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
   })
 
   await renderApp()
+  await showAll(user)
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   // Minimise the Live session to the Dashboard, which has the tab bar and the Settings gear,

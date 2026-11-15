@@ -6,8 +6,10 @@ import { createServices } from '../../services'
 import type { Session } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
 import { WorkoutFeature } from './WorkoutFeature'
+import { finishWorkout } from '../../test/live'
 
-// E22-T11 O16 at the Workout flow: assisted pull-ups BW-20 x 10 at 80 kg = 600 kg, live and at Finish.
+// E22-T11 O16 at the Workout flow: assisted pull-ups BW-20 x 10 at 80 kg = 600 kg at Finish. The
+// live volume line left the live header in the UX review (V1-10), so Finish is where it shows.
 
 const SETTLE = { timeout: 3000 }
 const NOW = new Date(2026, 9, 18, 12).getTime()
@@ -43,24 +45,18 @@ async function renderWithActivePullups(weighed: boolean) {
   return { user }
 }
 
-test('O16 the live Session volume counts Bodyweight Sets at the latest bodyweight', async () => {
-  await renderWithActivePullups(true)
-  expect(await screen.findByText(/^Volume/, undefined, SETTLE)).toHaveTextContent('600 kg')
-})
-
 test('O16 the finish summary counts them and names the bodyweight', async () => {
   const { user } = await renderWithActivePullups(true)
-  await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
+  await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   const volume = summary.querySelector('[data-kpi="volume"]')
   expect(volume).toHaveTextContent('600 kg')
   expect(volume).toHaveTextContent('· bodyweight 80 kg (1 Oct)')
 })
 
-test('O16 without a body log the live volume and the summary note are as before', async () => {
+test('O16 without a body log the summary note is as before', async () => {
   const { user } = await renderWithActivePullups(false)
-  expect(await screen.findByText(/^Volume/, undefined, SETTLE)).toHaveTextContent('0 kg')
-  await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
+  await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   expect(summary.querySelector('[data-kpi="volume"]')).toHaveTextContent('· 10 bodyweight reps')
 })
