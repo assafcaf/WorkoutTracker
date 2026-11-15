@@ -39,7 +39,7 @@ function renderView(overrides: Partial<DashboardViewProps> = {}) {
 describe('DashboardView S1', () => {
   test('the header reads the day and the sync, with cloud and settings buttons', () => {
     const props = renderView()
-    expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: 'Train' })).toBeTruthy()
     expect(screen.getByText('Tue 13 Oct · Synced 2 min ago')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     expect(props.onOpenSettings).toHaveBeenCalledTimes(1)
@@ -121,6 +121,24 @@ describe('DashboardView S1', () => {
     renderView({ data: { ...READY, card: { ...READY.card!, lifts: [] } } })
     expect(screen.queryByText('Your lifts show here after your first workout.')).toBeNull()
     expect(screen.queryByRole('list', { name: 'Workout A lifts' })).toBeNull()
+  })
+
+  test('V1-33 Train is titled "Train", not "Dashboard"', () => {
+    renderView()
+    expect(screen.getByRole('heading', { level: 1, name: 'Train' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Dashboard' })).toBeNull()
+  })
+
+  test('V1-33 the legend stays hidden while no lift has sets yet', () => {
+    const fresh = READY.card!.lifts.map((lift) => ({ ...lift, step: null }))
+    renderView({ data: { ...READY, card: { ...READY.card!, lifts: fresh } } })
+    expect(screen.getByRole('list', { name: 'Workout A lifts' })).toBeTruthy()
+    expect(screen.queryByText('Reps at the current weight against the next step')).toBeNull()
+  })
+
+  test('V1-33 the legend shows once any lift has sets', () => {
+    renderView()
+    expect(screen.getByText('Reps at the current weight against the next step')).toBeTruthy()
   })
 
   test('the card names the workout and its duration estimate, logged or planned', () => {
@@ -210,6 +228,35 @@ describe('DashboardView in the app shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
     expect(screen.getByText('Workout A due')).toBeTruthy()
+  })
+
+  test('V1-21 after Change the Workout card shows the chosen Workout, matching the Start button', () => {
+    const cardB = {
+      name: 'Workout B',
+      minutes: 50,
+      estimate: 'plan' as const,
+      lifts: [{ exerciseId: 'deadlift', name: 'Deadlift', step: null }],
+    }
+    const cardA = {
+      ...READY.card!,
+      lifts: [{ exerciseId: 'back-squat', name: 'Back squat', step: null }, ...READY.card!.lifts],
+    }
+    renderView({
+      data: { ...READY, card: cardA, workouts: WORKOUTS, cards: { 'workout-a': cardA, 'workout-b': cardB } },
+    })
+    expect(screen.getByRole('heading', { level: 2, name: 'Workout A' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 2, name: 'Workout B' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { level: 2, name: 'Workout A' })).toBeNull()
+    const rows = within(screen.getByRole('list', { name: 'Workout B lifts' })).getAllByRole('listitem')
+    expect(within(rows[0]).getByText('Deadlift')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Workout A' })).toBeTruthy()
+    const back = within(screen.getByRole('list', { name: 'Workout A lifts' })).getAllByRole('listitem')
+    expect(within(back[0]).getByText('Back squat')).toBeTruthy()
   })
 
   test('a program of one workout offers no Change', () => {

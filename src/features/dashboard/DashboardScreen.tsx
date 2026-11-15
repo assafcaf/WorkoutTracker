@@ -10,9 +10,9 @@ import { formatDay } from '../../domain/dates'
 import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
 import { buildLiftHistories } from '../../domain/stats/liftHistory'
-import { dueWorkoutCard } from '../../domain/stats/train'
+import { dueWorkoutCard, workoutCard } from '../../domain/stats/train'
 import { isDeloadWeek } from '../../domain/deload'
-import { thisWeek, weekStart, type Weekday } from '../../domain/stats/weeks'
+import { thisWeek, type Weekday } from '../../domain/stats/weeks'
 import { ServiceError, type Services, type SyncView } from '../../services'
 import type { Exercise, ExercisePlan, Program, Session, Workout } from '../../types'
 import { useServices, useSyncControls } from '../ServicesProvider'
@@ -25,7 +25,7 @@ import {
   type DockWorkout,
   type ProgramOption,
 } from './DashboardView'
-import { trainCardOf } from './trainCard'
+import { trainCardOf, type TrainCard } from './trainCard'
 
 export type DashboardScreenProps = {
   /** Starts (or resumes) `workoutId` of the active Program. */
@@ -159,7 +159,9 @@ export function DashboardScreen({
       for (const workout of program.workouts) for (const plan of workout.exercises) plans.set(plan.exerciseId, plan)
       const histories = buildLiftHistories(sessions, resolve, (id) => plans.get(id))
       const week = thisWeek(sessions, at, program.sessionsPerWeek, weekStartsOn)
-      const dueCard =dueWorkoutCard(program, sessions, resolve, histories)
+      const dueCard = dueWorkoutCard(program, sessions, resolve, histories)
+      const more = Math.max(0, week.planned - week.done - 1)
+      const visible = program.workouts.filter((workout) => !workout.hidden)
       const dockWorkout = (workout: Workout): DockWorkout => {
         const done = sessions
           .filter((session) => session.programId === program.id && session.workoutId === workout.id)
@@ -172,15 +174,20 @@ export function DashboardScreen({
           summary: workoutSummary(workout, workout.id === due?.workout.id ? dueCard?.minutes : undefined),
         }
       }
+      // Each other workout's card, so "Change" redraws the card for the one picked (V1-21).
+      const cards: Record<string, TrainCard> = {}
+      for (const workout of visible) {
+        if (workout.id === due?.workout.id) continue
+        const done = sessions
+          .filter((session) => session.programId === program.id && session.workoutId === workout.id)
+          .map((session) => session.startedAt)
+        const card = workoutCard(program, workout, done.length > 0 ? Math.max(...done) : null, sessions, resolve, histories)
+        cards[workout.id] = trainCardOf(card, histories, more, deloadOn)
+      }
       data = {
         kind: 'ready',
-        card: dueCard ? trainCardOf(dueCard, histories, Math.max(0, week.planned - week.done - 1), deloadOn) : null,
-        deloadWeek: {
-          on: deloadOn,
-          onChange: (on) => {
-            void services.preferences.setDeloadWeek(on ? weekStart(at, weekStartsOn) : null).catch(() => undefined)
-          },
-        },
+        card: dueCard ? trainCardOf(dueCard, histories, more, deloadOn) : null,
+        cards,
         due: due
           ? {
               workoutId: due.workout.id,
@@ -189,7 +196,7 @@ export function DashboardScreen({
               summary: workoutSummary(due.workout, dueCard?.minutes),
             }
           : null,
-        workouts: program.workouts.filter((workout) => !workout.hidden).map(dockWorkout),
+        workouts: visible.map(dockWorkout),
       }
     }
   }

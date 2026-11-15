@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { weekStart } from '../../domain/stats/weeks'
 import { createServices, type Services } from '../../services'
 import { db } from '../../storage/db'
 import { setActiveProgramId } from '../../storage/settingsStore'
 import type { Session, SetEntry } from '../../types'
+import { ProgramFeature } from '../program/ProgramFeature'
 import { ServicesProvider } from '../ServicesProvider'
 import { DashboardScreen } from './DashboardScreen'
 
@@ -26,6 +27,16 @@ function mount(s: Services, now: number) {
     </ServicesProvider>,
   )
   return { onStartWorkout }
+}
+
+/** Train and the Program tab over one set of services: the switch lives on Program (V1-22). */
+function mountBoth(s: Services, now: number): void {
+  render(
+    <ServicesProvider services={s}>
+      <ProgramFeature now={() => now} navigate={() => {}} onInSession={() => {}} />
+      <DashboardScreen now={() => now} onStartWorkout={() => {}} onOpenSettings={() => {}} />
+    </ServicesProvider>,
+  )
 }
 
 const squat = (rir: SetEntry['rir']): SetEntry[] =>
@@ -66,11 +77,11 @@ beforeEach(async () => {
   await db.settings.clear()
 })
 
-describe('Train Deload week switch (E21-T7)', () => {
+describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', () => {
   test('O15 the switch shows off when deloadWeek is unset, and turning it on stores this week through the week start', async () => {
     await db.settings.put({ key: 'weekStart', value: 6, updatedAt: FRI })
     await setActiveProgramId('assaf-ab-2026', FRI)
-    mount(servicesAt(FRI), FRI)
+    mountBoth(servicesAt(FRI), FRI)
     const toggle = (await screen.findByRole('switch', { name: 'Deload week' }, SETTLE)) as HTMLInputElement
     expect(toggle.checked).toBe(false)
     expect(screen.queryByText('Deload week · Presets 10% lighter')).toBeNull()
@@ -85,7 +96,7 @@ describe('Train Deload week switch (E21-T7)', () => {
     await db.settings.put({ key: 'weekStart', value: 6, updatedAt: FRI })
     await db.settings.put({ key: 'deloadWeek', value: weekStart(FRI, 6), updatedAt: FRI })
     await setActiveProgramId('assaf-ab-2026', FRI)
-    mount(servicesAt(FRI), FRI)
+    mountBoth(servicesAt(FRI), FRI)
     const on = (await screen.findByRole('switch', { name: 'Deload week' }, SETTLE)) as HTMLInputElement
     await waitFor(() => expect(on.checked).toBe(true), SETTLE)
   })
@@ -94,7 +105,7 @@ describe('Train Deload week switch (E21-T7)', () => {
     await db.settings.put({ key: 'weekStart', value: 6, updatedAt: FRI })
     await db.settings.put({ key: 'deloadWeek', value: weekStart(FRI, 6), updatedAt: FRI })
     await setActiveProgramId('assaf-ab-2026', SAT)
-    mount(servicesAt(SAT), SAT)
+    mountBoth(servicesAt(SAT), SAT)
     const toggle = (await screen.findByRole('switch', { name: 'Deload week' }, SETTLE)) as HTMLInputElement
     await screen.findByText(/ due$/, undefined, SETTLE)
     await new Promise((resolve) => setTimeout(resolve, 100))
@@ -105,12 +116,34 @@ describe('Train Deload week switch (E21-T7)', () => {
   test('O15 turning it off stores null', async () => {
     await db.settings.put({ key: 'deloadWeek', value: weekStart(TUE, 1), updatedAt: TUE })
     await setActiveProgramId('assaf-ab-2026', TUE)
-    mount(servicesAt(TUE), TUE)
+    mountBoth(servicesAt(TUE), TUE)
     const toggle = (await screen.findByRole('switch', { name: 'Deload week' }, SETTLE)) as HTMLInputElement
     await waitFor(() => expect(toggle.checked).toBe(true), SETTLE)
     fireEvent.click(toggle)
     await waitFor(() => expect(screen.queryByText('Deload week · Presets 10% lighter')).toBeNull(), SETTLE)
     expect(await db.settings.get('deloadWeek')).toBeUndefined()
+  })
+
+  test('V1-22 Train draws no Deload week switch; the Program tab does', async () => {
+    await setActiveProgramId('assaf-ab-2026', TUE)
+    mount(servicesAt(TUE), TUE)
+    await screen.findByText(/ due$/, undefined, SETTLE)
+    expect(screen.queryByRole('switch', { name: 'Deload week' })).toBeNull()
+    cleanup()
+    render(
+      <ServicesProvider services={servicesAt(TUE)}>
+        <ProgramFeature now={() => TUE} navigate={() => {}} onInSession={() => {}} />
+      </ServicesProvider>,
+    )
+    expect(await screen.findByRole('switch', { name: 'Deload week' }, SETTLE)).toBeTruthy()
+  })
+
+  test('V1-22 with Deload on, Train keeps only the "Deload week · Presets 10% lighter" line', async () => {
+    await db.settings.put({ key: 'deloadWeek', value: weekStart(TUE, 1), updatedAt: TUE })
+    await setActiveProgramId('assaf-ab-2026', TUE)
+    mount(servicesAt(TUE), TUE)
+    expect(await screen.findByText('Deload week · Presets 10% lighter', undefined, SETTLE)).toBeTruthy()
+    expect(screen.queryByRole('switch', { name: 'Deload week' })).toBeNull()
   })
 
   test('O16 starting the due Workout with the switch on stores a deload Session', async () => {

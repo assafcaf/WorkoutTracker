@@ -43,8 +43,18 @@ export function dueWorkoutCard(
 ): DueWorkoutCard | null {
   const due = dueWorkout(program, sessions)
   if (!due) return null
-  const { workout, lastDoneAt } = due
+  return workoutCard(program, due.workout, due.lastDoneAt, sessions, resolve, histories)
+}
 
+/** The same card for any `workout` of `program`, e.g. one "Change" picked over the one due. */
+export function workoutCard(
+  program: Program,
+  workout: Workout,
+  lastDoneAt: number | null,
+  sessions: Session[],
+  resolve: Resolve,
+  histories: Map<string, LiftHistory>,
+): DueWorkoutCard {
   const lifts: TrainLift[] = []
   for (const plan of workout.exercises) {
     const exercise = resolve(plan.exerciseId)

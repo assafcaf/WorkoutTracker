@@ -415,3 +415,9 @@
 .program-page-range-row[data-standing='above'] {
   font-weight: var(--weight-semibold);
 }
+
+/* The Deload week switch under the Program's head (V1-22). */
+.program-deload-week {
+  min-height: var(--tap-min);
+  margin-bottom: var(--space-3);
+}

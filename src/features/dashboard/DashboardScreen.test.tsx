@@ -116,6 +116,17 @@ describe('DashboardScreen', () => {
     await waitFor(() => expect(screen.getByText('~50 min · from your logged workouts')).toBeTruthy(), SETTLE)
   })
 
+  test('V1-21 after Change the Workout card is the chosen Workout with its first lift', async () => {
+    await setActiveProgramId('assaf-ab-2026', NOW)
+    mount(services())
+    await screen.findByRole('heading', { level: 2, name: 'Workout A' }, SETTLE)
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 2, name: 'Workout B' })).toBeTruthy()
+    const rows = within(screen.getByRole('list', { name: 'Workout B lifts' })).getAllByRole('listitem')
+    expect(within(rows[0]).getByText('Deadlift')).toBeTruthy()
+  })
+
   test('settings opens from the header', async () => {
     const { onOpenSettings } = mount(services())
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))

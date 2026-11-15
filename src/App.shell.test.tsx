@@ -59,21 +59,21 @@ async function logFirstBackSquatSet(user: User): Promise<void> {
 test('the Dashboard header carries a Settings gear that opens Settings as a full-screen page with a back chevron', async () => {
   const user = userEvent.setup()
   await renderApp()
-  await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
+  await screen.findByRole('heading', { level: 1, name: 'Train' }, SETTLE)
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
 
   expect(await screen.findByRole('heading', { level: 1, name: 'Settings' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Back' }))
-  expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('heading', { level: 1, name: 'Train' }, SETTLE)).toBeVisible()
   expect(mainNav()).toBeVisible()
 })
 
 test('each of the four tabs is titled for itself in a large page header', async () => {
   const user = userEvent.setup()
   await renderApp()
-  await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
+  await screen.findByRole('heading', { level: 1, name: 'Train' }, SETTLE)
 
   for (const name of ['Progress', 'Sessions', 'Program']) {
     await pressTab(user, name)
@@ -86,7 +86,7 @@ test('each of the four tabs is titled for itself in a large page header', async 
 test('the Program tab switches between the program and the exercise library', async () => {
   const user = userEvent.setup()
   await renderApp()
-  await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
+  await screen.findByRole('heading', { level: 1, name: 'Train' }, SETTLE)
 
   await pressTab(user, 'Program')
   const side = await screen.findByRole('radiogroup', { name: 'Program view' }, SETTLE)
@@ -134,10 +134,10 @@ test('minimising the Live session pins a live strip naming the workout over ever
 
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
 
-  await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
+  await screen.findByRole('heading', { level: 1, name: 'Train' }, SETTLE)
   for (const name of ['Progress', 'Sessions', 'Program', 'Train']) {
     await pressTab(user, name)
-    await screen.findByRole('heading', { level: 1, name: name === 'Train' ? 'Dashboard' : name }, SETTLE)
+    await screen.findByRole('heading', { level: 1, name }, SETTLE)
     const strip = liveStrip()
     expect(strip, `no live strip on ${name}`).not.toBeNull()
     expect(strip).toHaveTextContent(/Workout A/)
@@ -166,7 +166,7 @@ test('Return on the live strip brings the Live session back on the same set', as
   await renderApp()
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
-  await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
+  await screen.findByRole('heading', { level: 1, name: 'Train' }, SETTLE)
   await pressTab(user, 'Sessions')
 
   await user.click(screen.getByRole('button', { name: 'Return to Workout A' }))
@@ -182,7 +182,7 @@ test('a tap anywhere on the live strip returns to the Live session', async () =>
   await renderApp()
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
-  await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
+  await screen.findByRole('heading', { level: 1, name: 'Train' }, SETTLE)
 
   await user.click(liveStrip()?.querySelector('.live-strip-text') as HTMLElement)
 
@@ -194,7 +194,7 @@ test('finishing a session returned to from another tab lands on the Dashboard un
   await renderApp()
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
-  await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
+  await screen.findByRole('heading', { level: 1, name: 'Train' }, SETTLE)
   await pressTab(user, 'Progress')
   await user.click(screen.getByRole('button', { name: 'Return to Workout A' }))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
@@ -243,7 +243,7 @@ test('Progress to a lift to a Session is two taps, and Back returns each step', 
   try {
     const user = userEvent.setup()
     await renderApp()
-    await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, SETTLE)
+    await screen.findByRole('heading', { level: 1, name: 'Train' }, SETTLE)
 
     await pressTab(user, 'Progress')
     const rows = await screen.findAllByRole('button', { name: /Push-ups/ }, SETTLE)
