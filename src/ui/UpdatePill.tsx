@@ -1,5 +1,8 @@
 import './UpdatePill.css'
 
+/** The Worker's login route (the same one Settings › Sign in uses). */
+const SIGN_IN_PATH = '/api/login'
+
 /**
  * The "Update ready" control: the one thing that lets a new deployment take over.
  *
@@ -23,5 +26,17 @@ export function UpdatePill({ onUpdate }: UpdatePillProps): JSX.Element {
     >
       Update ready
     </button>
+  )
+}
+
+/**
+ * Shown instead when the update check is turned away by the login in front of the app: no
+ * new version can be found until the trainee signs in again, and nothing else would say so.
+ */
+export function SignInToUpdatePill(): JSX.Element {
+  return (
+    <a className="update-pill update-pill--quiet" href={SIGN_IN_PATH}>
+      Sign in to update
+    </a>
   )
 }

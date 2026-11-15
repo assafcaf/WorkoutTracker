@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatSet } from '../domain/setText'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 import type { Exercise, Session, SetEntry } from '../types'
+import { Switch } from './controls'
 import { RepsDial } from './RepsDial'
 import { WeightDial } from './WeightDial'
 import './SessionEditor.css'
@@ -93,6 +94,12 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // V1-24: the Sessions list that opened the editor may be scrolled far down; open on the
+  // Workout's name and its first Exercise, not mid-page.
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
   const endBeforeStart = draft.finishedAt !== null && draft.finishedAt < draft.startedAt
   const noSets = draft.entries.length === 0
   const canSave = !endBeforeStart && !noSets && !saving
@@ -106,6 +113,13 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
     const { note: _previous, ...rest } = draft
     void _previous
     setDraft(text === '' ? rest : { ...rest, note: text })
+  }
+
+  /** The `Deload session` mark (E18-T2), saved with the draft; moved here from the summary (V2-10). */
+  function changeDeload(on: boolean): void {
+    const { deload: _previous, ...rest } = draft
+    void _previous
+    setDraft(on ? { ...rest, deload: true } : rest)
   }
 
   function changeSet(
@@ -176,6 +190,10 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
           />
         </label>
         {endBeforeStart ? <p className="session-editor-invalid">{END_BEFORE_START}</p> : null}
+      </div>
+
+      <div className="session-editor-deload">
+        <Switch label="Deload session" checked={draft.deload === true} onChange={changeDeload} />
       </div>
 
       {groupByExercise(draft.entries).map(({ exerciseId, entries }) => {

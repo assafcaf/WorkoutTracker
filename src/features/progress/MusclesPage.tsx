@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { regionsFor, toRegionCounts, type Region, type Resolve } from '../../domain/muscles'
+import { muscleLabel } from '../../domain/muscleLabels'
+import { startOfWeek } from '../../domain/sessionsView'
 import { WEEKLY_SET_RANGE, type Standing } from '../../domain/setRange'
 import { numberText } from '../../domain/stats/copy'
 import {
@@ -18,6 +20,7 @@ import { AppShell } from '../../ui/AppShell'
 import { BodyMap } from '../../ui/body/BodyMap'
 import { BodyMapLegend } from '../../ui/body/BodyMapLegend'
 import { Segmented } from '../../ui/controls'
+import { HeatCell, HeatLegend } from '../../ui/RegionHeat'
 import type { Services } from '../../services'
 import { useServiceData } from '../useServiceData'
 import type { ProgressPageProps } from './pages'
@@ -35,17 +38,11 @@ export type MusclesData = {
 
 export type MusclesViewProps = { data: MusclesData; now: number; onBack: (() => void) | undefined }
 
-type Span = 'two-weeks' | 'this-week'
+type Span = 'two-weeks' | 'this-week' | 'four-weeks'
 
 type Row = { muscle: Muscle; label: string; done: number; still: number; plan: number }
 
-const LABELS: Partial<Record<Muscle, string>> = {
-  quadriceps: 'Quads',
-  abdominals: 'Abs',
-  'middle back': 'Mid back',
-}
-
-const label = (muscle: Muscle): string => LABELS[muscle] ?? muscle.charAt(0).toUpperCase() + muscle.slice(1)
+const label = muscleLabel
 
 /** Whole numbers, half up. */
 const whole = (n: number): string => String(Math.round(n))
@@ -162,6 +159,75 @@ function build(data: MusclesData, now: number, span: Span): Model {
   }
 }
 
+const HEAT_WEEKS = 4
+
+/** One calendar week's column of the matrix: its start and each muscle's sets. */
+type MuscleColumn = { start: number; inProgress: boolean; sets: Map<Muscle, number> }
+
+/** The last `HEAT_WEEKS` calendar weeks ending with `now`'s, empty weeks included, oldest first. */
+function lastWeeks(data: MusclesData, now: number): MuscleColumn[] {
+  const weekStart = data.weekStart ?? 1
+  const byStart = new Map(
+    muscleWeeks(data.sessions, now, data.resolve, data.library, weekStart).map((week) => [week.start, week] as const),
+  )
+  const current = startOfWeek(now, weekStart)
+  return Array.from({ length: HEAT_WEEKS }, (_, index) => {
+    const start = addDays(current, -7 * (HEAT_WEEKS - 1 - index))
+    return byStart.get(start) ?? { start, inProgress: false, sets: new Map<Muscle, number>() }
+  })
+}
+
+/** One half of the week heat table: a row label and one heat square per week. */
+function WeekHeatHalf({ muscles, weeks }: { muscles: readonly Muscle[]; weeks: MuscleColumn[] }): JSX.Element {
+  return (
+    <table className="week-heat">
+      <thead>
+        <tr>
+          <th scope="col">
+            <span className="muscles-visually-hidden">Muscle</span>
+          </th>
+          {weeks.map((week) => (
+            <th key={week.start} scope="col" className="week-heat-week" data-in-progress={week.inProgress || undefined}>
+              {new Date(week.start).getDate()}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {muscles.map((muscle) => (
+          <tr key={muscle} data-muscle={muscle}>
+            <th scope="row" className="week-heat-label">
+              {label(muscle)}
+            </th>
+            {weeks.map((week) => {
+              const count = Math.round(week.sets.get(muscle) ?? 0)
+              return (
+                <td key={week.start}>
+                  <HeatCell count={count} scale="week" title={`${label(muscle)} ${count} sets`} />
+                </td>
+              )
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+/** Muscle sets by calendar week (V2-06): the 12 muscles down, the last four weeks across. */
+function MuscleWeeks({ weeks }: { weeks: MuscleColumn[] }): JSX.Element {
+  const half = Math.ceil(STATS_MUSCLES.length / 2)
+  return (
+    <section className="muscles-weeks" aria-label="Muscle sets by week">
+      <div className="week-heat-halves">
+        <WeekHeatHalf muscles={STATS_MUSCLES.slice(0, half)} weeks={weeks} />
+        <WeekHeatHalf muscles={STATS_MUSCLES.slice(half)} weeks={weeks} />
+      </div>
+      <HeatLegend scale="week" />
+    </section>
+  )
+}
+
 function Bullet({ row, max }: { row: Row; max: number }): JSX.Element {
   const pct = (n: number): string => `${Math.min(100, (n / max) * 100)}%`
   const under = row.still === 0 && row.plan > 0 && row.done < row.plan - 0.5
@@ -192,7 +258,27 @@ export function MusclesView({ data, now, onBack }: MusclesViewProps): JSX.Elemen
   const [span, setSpan] = useState<Span>('two-weeks')
   const [open, setOpen] = useState<Muscle | null>(null)
   const rowRefs = useRef(new Map<Muscle, HTMLElement>())
-  const model = useMemo(() => build(data, now, span), [data, now, span])
+  const fourWeeks = span === 'four-weeks'
+  const weekColumns = useMemo(() => (fourWeeks ? lastWeeks(data, now) : []), [data, now, fourWeeks])
+  const model = useMemo(() => {
+    if (!fourWeeks) return build(data, now, span)
+    // The 4 weeks segment: its own range line and sentence; the map shades each muscle's
+    // weekly average over the four columns.
+    const base = build(data, now, 'two-weeks')
+    const first = weekColumns[0].start
+    const last = weekColumns[weekColumns.length - 1].start
+    const rows = base.rows.map((row) => ({
+      ...row,
+      done: weekColumns.reduce((sum, week) => sum + (week.sets.get(row.muscle) ?? 0), 0) / weekColumns.length,
+    }))
+    return {
+      ...base,
+      rows,
+      range: `weeks of ${dayMonth(first)} – ${dayMonth(last)}`,
+      rangeNote: undefined,
+      sentence: 'Sets per muscle in each of the last 4 weeks, this week so far last.',
+    }
+  }, [data, now, span, fourWeeks, weekColumns])
 
   const rows = [...model.rows].sort(
     (a, b) => a.done - b.done || STATS_MUSCLES.indexOf(a.muscle) - STATS_MUSCLES.indexOf(b.muscle),
@@ -205,6 +291,8 @@ export function MusclesView({ data, now, onBack }: MusclesViewProps): JSX.Elemen
   const jump = (region: Region): void => {
     const muscle = STATS_MUSCLES.find((m) => regionsFor(m).includes(region))
     if (!muscle) return
+    // The rows (and their contributors) are the 2-week and This week views; 4 weeks is a matrix.
+    if (fourWeeks) setSpan('two-weeks')
     setOpen(muscle)
     rowRefs.current.get(muscle)?.scrollIntoView?.({ block: 'center' })
   }
@@ -240,51 +328,57 @@ export function MusclesView({ data, now, onBack }: MusclesViewProps): JSX.Elemen
           label="Window"
           value={span}
           options={[
-            { value: 'two-weeks', label: '2 weeks' },
             { value: 'this-week', label: 'This week' },
+            { value: 'two-weeks', label: '2 weeks' },
+            { value: 'four-weeks', label: '4 weeks' },
           ]}
           onChange={(next) => {
             setSpan(next)
             setOpen(null)
           }}
         />
-        <p className="muscles-legend">
-          done · {span === 'this-week' ? 'still planned · ' : ''}tick is the plan · shaded band is the typical 10–20 · tap a muscle for its lifts
-        </p>
-        <ul className="muscles-rows">
-          {rows.map((row) => (
-            <li
-              key={row.muscle}
-              className="muscles-item"
-              ref={(el) => {
-                if (el) rowRefs.current.set(row.muscle, el)
-              }}
-            >
-              <button
-                type="button"
-                className="btn-quiet muscles-row"
-                data-muscle={row.muscle}
-                aria-expanded={open === row.muscle}
-                onClick={() => setOpen(open === row.muscle ? null : row.muscle)}
-              >
-                <span className="muscles-row-head">
-                  <span className="muscles-row-name">{row.label}</span>
-                  <span className="muscles-row-value">
-                    {whole(row.done)}
-                    {/* This week counts what is still planned too: 2 done of 12 is not "below". */}
-                    {standingText(row.done + row.still)}
-                    <span className="muscles-row-plan">
-                      {` · plan ${whole(row.plan)}`}
-                      {row.still > 0 ? ` · ${whole(row.still)} still planned` : ''}
+        {fourWeeks ? <MuscleWeeks weeks={weekColumns} /> : null}
+        {fourWeeks ? null : (
+          <>
+            <p className="muscles-legend">
+              done · {span === 'this-week' ? 'still planned · ' : ''}tick is the plan · shaded band is the typical 10–20 · tap a muscle for its lifts
+            </p>
+            <ul className="muscles-rows">
+              {rows.map((row) => (
+                <li
+                  key={row.muscle}
+                  className="muscles-item"
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(row.muscle, el)
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn-quiet muscles-row"
+                    data-muscle={row.muscle}
+                    aria-expanded={open === row.muscle}
+                    onClick={() => setOpen(open === row.muscle ? null : row.muscle)}
+                  >
+                    <span className="muscles-row-head">
+                      <span className="muscles-row-name">{row.label}</span>
+                      <span className="muscles-row-value">
+                        {whole(row.done)}
+                        {/* This week counts what is still planned too: 2 done of 12 is not "below". */}
+                        {standingText(row.done + row.still)}
+                        <span className="muscles-row-plan">
+                          {` · plan ${whole(row.plan)}`}
+                          {row.still > 0 ? ` · ${whole(row.still)} still planned` : ''}
+                        </span>
+                      </span>
                     </span>
-                  </span>
-                </span>
-                <Bullet row={row} max={max} />
-              </button>
-              {open === row.muscle ? <p className="muscles-contrib">{arithmetic(row)}</p> : null}
-            </li>
-          ))}
-        </ul>
+                    <Bullet row={row} max={max} />
+                  </button>
+                  {open === row.muscle ? <p className="muscles-contrib">{arithmetic(row)}</p> : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
         <p className="muscles-note">
           Sets: 1 per primary muscle, ½ per secondary, working sets only. Forearms and traps are counted in each
           lift&apos;s detail.

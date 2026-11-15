@@ -12,6 +12,7 @@ import { declarationsFor } from '../test/cssAudit'
 import { unfoldSteppers } from '../test/steppers'
 import { loadCatalog } from '../data/catalog'
 import { formatDay } from '../domain/dates'
+import { DEFAULT_PLATE_INVENTORY } from '../domain/plates'
 import { SetScreen, loggedText, setCounterText } from './SetScreen'
 import type { SetScreenProps } from './SetScreen'
 import { playRestOver, unlockRestSound } from './restSound'
@@ -1158,7 +1159,8 @@ test('O9 Delete set on a finished Exercise brings Log set back', async () => {
     loggedEntry(3, 80, 8),
     loggedEntry(4, 80, 7),
   ])
-  expect(screen.getByText('All 4 sets logged')).toBeVisible()
+  // Done, the Exercise's verdict stands where "All 4 sets logged" was (V2-11).
+  expect(screen.getByText(/^Back squat done · /)).toBeVisible()
   expect(screen.queryByRole('button', { name: /^Log set / })).toBeNull()
 
   await user.click(loggedSetButton('80 × 7'))
@@ -1733,8 +1735,17 @@ test('O4 after the latest Set is deleted, rest follows the new latest Set', asyn
   await waitFor(() => expect(readoutValue(restReadout())).toBe('1:20'))
 })
 
-// E13-T11: the Next Set line while rest is showing.
-const NEXT_LINE = /^Next: set /
+// E13-T11, V2-02: the next Set while rest is showing, in the Get ready card.
+const NEXT_LINE = 'Change next set'
+
+/** The Get ready card's lines, one space between them, whitespace-collapsed. */
+function getReadyText(): string {
+  const card = screen.getByRole('region', { name: 'Get ready' })
+  return Array.from(card.children, (line) => line.textContent ?? '')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 test('O9 while resting before a planned Set the screen shows Next: set 2 · 60 kg × 8–10', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
@@ -1744,11 +1755,11 @@ test('O9 while resting before a planned Set the screen shows Next: set 2 · 60 k
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  // While rest runs the steppers fold into one row naming the next Set and last time's (S4); the
-  // Log set bar under the rest panel logs it with one tap (V1-03).
+  // While rest runs the steppers fold into the Get ready card naming the next Set (S4, V2-02);
+  // the Log set bar under the rest panel logs it with one tap (V1-03).
   const next = screen.getByRole('button', { name: NEXT_LINE })
   expect(next).toHaveAttribute('aria-expanded', 'false')
-  expect(next.textContent).toMatch(/^Next: set 2 · 60 × \d+$/)
+  expect(getReadyText()).toMatch(/^Get ready · Set 2 60 kg × \d+ /)
   expect(screen.queryByRole('button', { name: /^Weight, / })).toBeNull()
   expect(logButton()).toHaveClass('log-set')
   expect(cellReading(currentCell())).toBe(`2 60×${readoutValue(repsReadout())}`)
@@ -1765,7 +1776,7 @@ test('O9 a Bodyweight Exercise reads Next: set 2 · BW × 10–15', () => {
     restFrom: { entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 },
   })
 
-  expect(screen.getByRole('button', { name: NEXT_LINE }).textContent).toMatch(/^Next: set 2 · BW × \d+$/)
+  expect(getReadyText()).toMatch(/^Get ready · Set 2 BW × \d+ /)
   expect(logButton()).toHaveClass('log-set')
   expect(cellReading(currentCell())).toMatch(/^2 BW×\d+$/)
 })
@@ -1786,7 +1797,7 @@ test('O9 on an extra Set past the plan there is no Next line', () => {
     restFrom: { entry: historyEntry(4, 60, 10), planRestSeconds: 180 },
   })
 
-  // An extra Set keeps its steppers through rest: nothing folds into a Next row.
+  // An extra Set keeps its steppers through rest: nothing folds into a Get ready card.
   expect(screen.queryByRole('button', { name: NEXT_LINE })).toBeNull()
   expect(screen.getByRole('button', { name: /^Weight, / })).toBeVisible()
 })
@@ -1799,7 +1810,8 @@ test('O9 in the done state there is no Next line', () => {
     restFrom: { entry: historyEntry(4, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(screen.queryByText(NEXT_LINE)).toBeNull()
+  expect(screen.queryByRole('button', { name: NEXT_LINE })).toBeNull()
+  expect(screen.queryByRole('region', { name: 'Get ready' })).toBeNull()
 })
 
 test('S4 the folded Next row adds last time’s Set at that position: · last 60 × 8', () => {
@@ -1811,11 +1823,9 @@ test('S4 the folded Next row adds last time’s Set at that position: · last 60
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(screen.getByRole('button', { name: NEXT_LINE }).textContent).toMatch(
-    /^Next: set 2 · 60 × \d+ · last 60 × 8$/,
-  )
-  // Folded, the Last time line and the projection go with the steppers.
-  expect(screen.queryByText(/^Last time /)).toBeNull()
+  expect(getReadyText()).toMatch(/^Get ready · Set 2 60 kg × \d+ Last time 60 × 8/)
+  // Folded, the dated Last time line and the PR target line go with the steppers.
+  expect(screen.queryByText(/^Last time .* · /)).toBeNull()
 })
 
 test('S4 a tap on the Next row brings the steppers back, and the next log folds them again', async () => {
@@ -2281,7 +2291,8 @@ test('O4 with 2 warm-ups and 3 working Sets logged on a 3-Set Plan the done stat
     { plan: threeSetSquatPlan, onAddSet: vi.fn() },
   )
 
-  expect(screen.getByText('All 3 sets logged')).toBeVisible()
+  // The verdict stands where "All 3 sets logged" was (V2-11).
+  expect(screen.getByText(/^Back squat done · /)).toBeVisible()
   expect(logSetButton()).toBeNull()
 })
 
@@ -2292,7 +2303,7 @@ test('O4 after 2 warm-ups and 1 working Set, logging 2 more working Sets reaches
   await waitFor(() => expect(screen.getByText('Set 3 of 3')).toBeVisible())
   await user.click(await screen.findByRole('button', { name: /^Log set / }))
 
-  await waitFor(() => expect(screen.getByText('All 3 sets logged')).toBeVisible())
+  await waitFor(() => expect(screen.getByText(/^Back squat done · /)).toBeVisible())
   expect(logSetButton()).toBeNull()
 })
 
@@ -2336,10 +2347,10 @@ test('O11 an Exercise note shows below the Dials', async () => {
     onSaveExerciseNote: vi.fn(async () => undefined),
   })
 
-  // The note lives in the exercise tools sheet's Notes (S3b), not on the screen.
-  expect(screen.queryByText('belt on, chalk')).toBeNull()
+  // The note shows on Now as one line, read at the bar (V1-15), and in the tools sheet's Notes.
+  expect(screen.getByRole('button', { name: 'Exercise note: belt on, chalk' })).toBeVisible()
   const sheet = await openTools(user)
-  const note = screen.getByText('belt on, chalk')
+  const note = within(sheet).getByText('belt on, chalk')
   expect(note).toBeVisible()
   expect(sheet).toContainElement(note)
   expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull()
@@ -2359,8 +2370,8 @@ test('O11 tapping the note opens an editor holding it, limited to 500 characters
     onSaveExerciseNote: vi.fn(async () => undefined),
   })
 
-  await openTools(user)
-  await user.click(screen.getByText('belt on'))
+  const sheet = await openTools(user)
+  await user.click(within(sheet).getByText('belt on'))
 
   const editor = screen.getByLabelText('Note') as HTMLTextAreaElement
   expect(editor.value).toBe('belt on')
@@ -2373,8 +2384,8 @@ test('O11 Save note hands the edited text to onSaveExerciseNote and closes the e
   const onSave = vi.fn(async () => undefined)
   const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: onSave })
 
-  await openTools(user)
-  await user.click(screen.getByText('belt on'))
+  const sheet = await openTools(user)
+  await user.click(within(sheet).getByText('belt on'))
   await user.clear(screen.getByLabelText('Note'))
   await user.type(screen.getByLabelText('Note'), 'belt off')
   await user.click(screen.getByRole('button', { name: 'Save note' }))
@@ -2399,13 +2410,13 @@ test('O11 Cancel leaves the note as it was and saves nothing', async () => {
   const onSave = vi.fn(async () => undefined)
   const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: onSave })
 
-  await openTools(user)
-  await user.click(screen.getByText('belt on'))
+  const sheet = await openTools(user)
+  await user.click(within(sheet).getByText('belt on'))
   await user.type(screen.getByLabelText('Note'), ' extra')
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
   expect(screen.queryByLabelText('Note')).toBeNull()
-  expect(screen.getByText('belt on')).toBeVisible()
+  expect(within(sheet).getByText('belt on')).toBeVisible()
   expect(onSave).not.toHaveBeenCalled()
 })
 
@@ -2413,8 +2424,8 @@ test('O11 saving the note empty hands an empty string to onSaveExerciseNote', as
   const onSave = vi.fn(async () => undefined)
   const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: onSave })
 
-  await openTools(user)
-  await user.click(screen.getByText('belt on'))
+  const sheet = await openTools(user)
+  await user.click(within(sheet).getByText('belt on'))
   await user.clear(screen.getByLabelText('Note'))
   await user.click(screen.getByRole('button', { name: 'Save note' }))
 
@@ -4197,16 +4208,18 @@ test('Live S3 a Set heavier than every record reads e1RM, the record and PR if l
     lastEntries: [historyEntry(1, 80, 8)],
   })
 
-  // 80 x 8 ties the record: no PR at this load.
+  // V2-04: 80 x 8 ties the record, so the line names the PR target, 80 x 9, not the arithmetic.
   const line = (): string => (document.querySelector('.set-projection')?.textContent ?? '').replace(/\s+/g, ' ')
-  expect(line()).toMatch(/^e1RM 101\.3 . record 101\.3 . no PR at this load$/)
+  expect(line()).toBe('PR at 9 reps')
   expect(screen.queryByText('PR if logged')).toBeNull()
+  expect(document.body.textContent).not.toMatch(/e1RM|no PR/)
 
   unfoldSteppers()
 
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 
-  expect(line()).toMatch(/^e1RM 104\.5 . record 101\.3/)
+  // 82.5 is heavier than every record: the Dials reach the target, so the tag shows.
+  expect(line()).toBe('PR if logged')
   const tag = screen.getByText('PR if logged')
   expect(tag).toHaveClass('tag', 'tag-pr')
 })
@@ -4384,4 +4397,90 @@ test('S2b Delete set shows the dark Set deleted · Undo snackbar', async () => {
   const snackbar = document.querySelector('.snackbar') as HTMLElement
   expect(snackbar).toHaveTextContent('Set deleted')
   expect(within(snackbar).getByRole('button', { name: 'Undo' })).toBeVisible()
+})
+
+// --- UX v2: the live workout (V2-01, V2-02, V2-04, V2-11, V1-13, V1-15) -----------------------
+
+test('V2-01 done, the action bar has one primary Next: <Exercise> and a quiet Add set, and no Dials', () => {
+  const onFinishExercise = vi.fn()
+  renderWithLogged(
+    [loggedEntry(1, 80, 8), loggedEntry(2, 80, 8), loggedEntry(3, 80, 8), loggedEntry(4, 80, 8)],
+    { onFinishExercise, upNext: 'Lunges', onAddSet: vi.fn() },
+  )
+
+  const next = screen.getByRole('button', { name: 'Next: Lunges' })
+  expect(next).toHaveClass('log-set', 'btn-primary')
+  expect(screen.getByRole('button', { name: 'Add set' })).toHaveClass('btn-quiet')
+  expect(screen.queryByRole('button', { name: 'Finish exercise' })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^Weight, / })).toBeNull()
+  fireEvent.click(next)
+  expect(onFinishExercise).toHaveBeenCalledTimes(1)
+})
+
+test('V2-01 done with nothing up next, the primary reads All exercises', () => {
+  renderWithLogged(
+    [loggedEntry(1, 80, 8), loggedEntry(2, 80, 8), loggedEntry(3, 80, 8), loggedEntry(4, 80, 8)],
+    { onFinishExercise: vi.fn(), upNext: null },
+  )
+
+  expect(screen.getByRole('button', { name: 'All exercises' })).toHaveClass('btn-primary')
+})
+
+test('V2-11 done, the verdict reads <Exercise> done · stepped up to 85 kg · +5 kg · 1 PR', () => {
+  renderWithLogged(
+    [loggedEntry(1, 85, 8), loggedEntry(2, 85, 8), loggedEntry(3, 85, 8), loggedEntry(4, 85, 8)],
+    { earlierSessions: [earlierSession] },
+  )
+
+  // The words of the summary's Lift by lift ("Stepped up to 85 kg · +5 kg · record").
+  expect(screen.getByText('Back squat done · stepped up to 85 kg · +5 kg · 1 PR')).toBeVisible()
+  expect(screen.queryByText(/sets logged/)).toBeNull()
+})
+
+test('V2-02 during rest the Get ready card names the plate change from the bar just lifted', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({
+    setIndex: 2,
+    plates: DEFAULT_PLATE_INVENTORY,
+    lastEntries: [historyEntry(1, 60, 10), historyEntry(2, 70, 8)],
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+  })
+
+  const card = screen.getByRole('region', { name: 'Get ready' })
+  expect(within(card).getByText('70 kg × 8')).toBeVisible()
+  expect(within(card).getByText('Add 5 per side → 20 + 5')).toBeVisible()
+})
+
+test('V2-02 the Use offer joins the countdown row, named in full for a screen reader', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
+  renderSetScreen({
+    setIndex: 2,
+    restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
+    earlierSessions: restfulSessions,
+    onUseRestForExercise: vi.fn(async () => undefined),
+  })
+
+  const offer = screen.getByRole('button', { name: 'Use 2:40 for Back squat' })
+  expect(offer).toHaveTextContent(/^Use 2:40$/)
+  expect(offer.closest('.rest-panel-main')).not.toBeNull()
+})
+
+test('V1-13 choosing AMRAP puts it on the Log bar and starts the reps at the floor', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 6)] })
+
+  await chooseKindInTools(user, 'AMRAP')
+
+  expect(logButton()).toHaveTextContent(/^Log set 1 · 60 × 8\+ · AMRAP$/)
+  expect(readoutValue(repsReadout())).toBe('8')
+})
+
+test('V1-15 the Exercise note shows on Now, and a tap opens it to edit', async () => {
+  const { user } = renderSetScreen({
+    exerciseNote: 'Belt from set 3',
+    onSaveExerciseNote: vi.fn(async () => undefined),
+  })
+
+  await user.click(screen.getByRole('button', { name: 'Exercise note: Belt from set 3' }))
+
+  expect((screen.getByLabelText('Note') as HTMLTextAreaElement).value).toBe('Belt from set 3')
 })

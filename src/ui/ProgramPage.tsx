@@ -2,14 +2,9 @@ import { useState } from 'react'
 import type { Exercise, LibraryExercise, Muscle, Program, Session, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { workoutEstimate } from '../domain/dashboard'
-import {
-  contributors as doneContributors,
-  muscleSets,
-  toRegionCounts,
-  type MuscleFamily,
-  type Region,
-} from '../domain/muscles'
-import { weeksOf, type Weekday } from '../domain/stats/weeks'
+import { toRegionCounts, type MuscleFamily, type Region } from '../domain/muscles'
+import { muscleLabel } from '../domain/muscleLabels'
+import type { Weekday } from '../domain/stats/weeks'
 import { visiblePrograms } from '../domain/programs'
 import {
   exerciseFamily,
@@ -49,15 +44,15 @@ export type ProgramPageProps = {
   library: Map<string, LibraryExercise>
   onChooseProgram(id: string): void
   /**
-   * Every Session, for the "This week" done map (M15). Optional --
-   * and defaults to `[]` -- only because this task does not own `App.tsx`; E5-T20 wires it.
+   * Unused since V2-06: the "This week" planned-vs-done card moved to Progress › Muscles (its
+   * This week segment), so the Program tab shows the plan only. Kept so callers still type-check.
    */
   sessions?: Session[]
-  /** "Now", for the calendar week "This week" covers (R-K). Defaults to `Date.now()`. */
+  /** Unused since V2-06 (see `sessions`). */
   now?: number
-  /** The weekday "This week" starts on, 0 = Sunday ... 6 = Saturday; Monday by default (E19-T5). */
+  /** Unused since V2-06 (see `sessions`). */
   weekStartsOn?: Weekday
-  /** Resolves a set entry's exerciseId for the done map (M15). Defaults to a catalog lookup. */
+  /** Unused since V2-06 (see `sessions`). */
   resolve?: (id: string) => Exercise | undefined
   /** Program tab actions (E9-T3). Optional here -- E9-T9 wires all of these from `App.tsx`. */
   onNewProgram?(): void
@@ -94,8 +89,8 @@ export type ProgramPageProps = {
  * dot, sets × reps, rest and the load the next session opens on. `Edit` opens the editor on the
  * active program; the overflow opens the Programs panel, the always-visible radio list of every
  * loaded program with each one's own actions (operator ruling, E5-T18: no "Other programs"
- * disclosure inside it). Below the workouts sit the planned muscle map with its gaps (M14) and
- * "This week"'s planned-vs-done maps (M15).
+ * disclosure inside it). Below the workouts sit the planned muscle map with its gaps (M14); what
+ * was done lives on Progress › Muscles (V2-06).
  */
 export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const {
@@ -104,10 +99,6 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     catalog,
     library,
     onChooseProgram,
-    sessions = [],
-    now = Date.now(),
-    weekStartsOn = 1,
-    resolve = (id: string) => catalog.get(id),
     onNewProgram,
     onEditProgram,
     onCopyProgram,
@@ -119,8 +110,8 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     head = 'inline',
     onBrowse,
   } = props
-  // The tapped region and which side of the plan it was tapped on (E22-T10, O24).
-  const [tapped, setTapped] = useState<{ region: Region; side: 'planned' | 'done' } | null>(null)
+  // The tapped region on the planned map (E22-T10, O24).
+  const [tapped, setTapped] = useState<Region | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [ownProgramsOpen, setOwnProgramsOpen] = useState(false)
   const programsOpen = props.programsOpen ?? ownProgramsOpen
@@ -151,45 +142,18 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   const gaps = programGaps(prescribedMuscleCounts)
   const planRange = active ? plannedAgainstRange(active, lookup, library) : []
 
-  // "This week"'s done side (M15, R-K): sets of the Sessions that started in the calendar week
-  // `now` falls in (the week start's 00:00 local), the one in progress included.
-  const thisCalendarWeek = weeksOf(sessions, now, weekStartsOn).find((week) => week.inProgress)
-  const doneMuscleCounts = muscleSets(
-    (thisCalendarWeek?.sessions ?? []).flatMap((session) => session.entries),
-    resolve,
-    library,
-  )
-  const doneRegionCounts = toRegionCounts(doneMuscleCounts)
-  const noSetsThisWeek = doneMuscleCounts.size === 0
-
-  /** The panel for the tapped region: planned Sets and Exercises, or this week's done ones. */
+  /** The panel for the tapped region: its planned Sets and Exercises. */
   function renderRegionPanel(): JSX.Element | null {
-    if (!tapped || !active) return null
-    const { region, side } = tapped
+    if (tapped === null || !active) return null
+    const region = tapped
     const muscles = musclesForRegion(region)
     const tenth = (value: number) => Math.round(value * 10) / 10
-    let rows: { exerciseId: string; name: string; sets: number }[]
-    let count: number
-    if (side === 'planned') {
-      count = prescribedRegionCounts.get(region) ?? 0
-      rows = plannedContributors(active, muscles, catalog, library).map(({ exerciseId, sets }) => ({
-        exerciseId,
-        name: catalog.get(exerciseId)?.name ?? exerciseId,
-        sets,
-      }))
-    } else {
-      count = doneRegionCounts.get(region) ?? 0
-      const entries = (thisCalendarWeek?.sessions ?? []).flatMap((session) => session.entries)
-      const merged = new Map<string, { exerciseId: string; name: string; sets: number }>()
-      for (const muscle of muscles) {
-        for (const row of doneContributors(entries, muscle, resolve, library)) {
-          const seen = merged.get(row.exerciseId)
-          if (seen) seen.sets += row.sets
-          else merged.set(row.exerciseId, { ...row })
-        }
-      }
-      rows = [...merged.values()].sort((a, b) => b.sets - a.sets)
-    }
+    const count = prescribedRegionCounts.get(region) ?? 0
+    const rows = plannedContributors(active, muscles, catalog, library).map(({ exerciseId, sets }) => ({
+      exerciseId,
+      name: catalog.get(exerciseId)?.name ?? exerciseId,
+      sets,
+    }))
     return (
       <RegionPanel
         region={region}
@@ -424,7 +388,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
               <BodyMap
                 counts={prescribedRegionCounts}
                 scale="week"
-                onRegionTap={(region) => setTapped({ region, side: 'planned' })}
+                onRegionTap={setTapped}
               />
             </div>
             <BodyMapLegend scale="week" />
@@ -434,7 +398,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
             <ul className="program-page-range">
               {planRange.map(({ muscle, planned, standing }) => (
                 <li key={muscle} className="program-page-range-row" data-standing={standing}>
-                  <span>{muscle.charAt(0).toUpperCase() + muscle.slice(1)}</span>
+                  <span>{muscleLabel(muscle)}</span>
                   <span>
                     {planned}
                     {standing === 'below' && ` · below ${WEEKLY_SET_RANGE.min}`}
@@ -446,34 +410,10 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
             {gaps.length > 0 && (
               <ul className="program-page-gaps">
                 {gaps.map((muscle) => (
-                  <li key={muscle} className="program-page-gap">{`No direct ${muscle} work`}</li>
+                  <li key={muscle} className="program-page-gap">{`No direct ${muscleLabel(muscle).toLowerCase()} work`}</li>
                 ))}
               </ul>
             )}
-          </section>
-
-          <section className="program-page-thisweek card">
-            <h3 className="program-page-section-heading">This week</h3>
-            <div className="program-page-thisweek-maps">
-              <figure className="program-page-map">
-                <BodyMap
-                  counts={prescribedRegionCounts}
-                  scale="week"
-                  onRegionTap={(region) => setTapped({ region, side: 'planned' })}
-                />
-                <figcaption className="program-page-caption">Planned</figcaption>
-              </figure>
-              <figure className="program-page-map">
-                <BodyMap
-                  counts={doneRegionCounts}
-                  scale="week"
-                  onRegionTap={(region) => setTapped({ region, side: 'done' })}
-                />
-                <figcaption className="program-page-caption">Done</figcaption>
-              </figure>
-            </div>
-            <BodyMapLegend scale="week" />
-            {noSetsThisWeek && <p className="program-page-empty">No sets logged this week</p>}
           </section>
         </>
       )}

@@ -52,7 +52,7 @@
   overflow: hidden;
   color: var(--color-secondary);
   font-size: var(--text-xs);
-  line-height: 16px;
+  line-height: 1rem;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;

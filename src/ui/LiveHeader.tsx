@@ -17,6 +17,8 @@ export type LiveHeaderProps = {
    * row. Left out, no count is shown.
    */
   sets?: { done: number; planned: number }
+  /** The Session's Records so far (V2-11): "· 1 PR" after the Sets count once there is one. */
+  prs?: number
   /**
    * Planned Sets not yet logged (default 0). While any are left, Finish asks first in a Sheet;
    * with none left, Finish ends the Session in one tap.
@@ -37,7 +39,7 @@ export type LiveHeaderProps = {
  * ready" pill) rides along, so an update never has to wait for the workout to end to be offered.
  */
 export function LiveHeader(props: LiveHeaderProps): JSX.Element {
-  const { workoutName, startedAt, onMinimise, onFinish, sets, setsLeft = 0, heading = true, children } = props
+  const { workoutName, startedAt, onMinimise, onFinish, sets, prs = 0, setsLeft = 0, heading = true, children } = props
   const { trailing } = useContext(ShellChromeContext)
   const [confirming, setConfirming] = useState(false)
 
@@ -66,6 +68,12 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
                 <span className="live-header-sets">{`${sets.done}/${sets.planned} sets`}</span>
               </>
             )}
+            {prs > 0 ? (
+              <>
+                <span aria-hidden="true">{' · '}</span>
+                <span className="live-header-prs">{`${prs} PR`}</span>
+              </>
+            ) : null}
           </p>
         </div>
         {trailing ? <div className="app-header-trailing live-header-trailing">{trailing}</div> : null}

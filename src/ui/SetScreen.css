@@ -8,8 +8,17 @@
 
 .set-screen {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* The shell's main region holding the set screen is a column, so the screen fills it down to
+ * the action bar and its flexible space (`.set-spacer`) or Get ready card can take the rest
+ * (V2-02, V2-03). */
+.app-main:has(> .set-screen) {
+  display: flex;
+  flex-direction: column;
 }
 
 /* The Exercise's name over "Set 3 of 4 · target 8–10", the ⋯ tools button at the row's end. */
@@ -141,7 +150,7 @@
 .set-cell-value {
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-  line-height: 20px;
+  line-height: 1.25rem;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -193,7 +202,7 @@
   width: 52px;
   color: var(--color-muted);
   font-size: var(--text-xs);
-  line-height: 16px;
+  line-height: 1rem;
 }
 
 .effort-chips {
@@ -214,45 +223,122 @@
   font-weight: var(--weight-semibold);
 }
 
-/* "Next: set 4 · 62.5 × 8 · last 60 × 8 ⌄": the steppers folded while rest runs (S4). */
-.set-next-row {
+/* The Get ready card (V2-02): while rest runs, the next Set as the hero of the empty middle, the
+ * plate change, last time and the PR target, with "Change" to unfold the Dials. It grows to fill
+ * the space down to the rest panel, so no gap opens between the cells and the countdown. The
+ * done state's verdict (V2-11) takes the same card. */
+.get-ready {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+}
+
+.get-ready-caption {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.get-ready-set {
+  color: var(--color-text);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.get-ready-plates {
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.get-ready-last {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-1);
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.get-ready .get-ready-change {
+  display: inline-flex;
+  align-self: flex-end;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-min);
+  margin: 0 calc(var(--space-2) * -1) calc(var(--space-2) * -1) 0;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.exercise-verdict {
+  flex: 0 0 auto;
+}
+
+.exercise-verdict-text {
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+}
+
+/* The flexible space between the head and the Dials (V2-03): the Dials sit low, by the bar. */
+.set-spacer {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* The done state's primary (V2-01): the Log set bar, naming the next Exercise. */
+.next-exercise {
+  text-align: center;
+}
+
+/* The Exercise note on Now (V1-15): one line, cut with an ellipsis; a tap opens it to edit. */
+.set-note-line {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  min-height: 56px;
-  margin-top: var(--space-2);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-control);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  gap: var(--space-1);
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--color-secondary);
   font: inherit;
+  font-size: var(--text-sm);
   text-align: left;
 }
 
-/* It wraps rather than cut off: the per-side plates end it (V1-07). */
-.set-next-text {
-  flex: 1;
+.set-note-line svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
+.set-note-line-text {
   min-width: 0;
-  padding: var(--space-2) 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.set-next-label {
-  color: var(--color-text);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
-}
-
-.set-next-last,
-.set-next-plates {
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-/* "e1RM 75.0 · record 74.2 → PR if logged", recomputed as the steppers move. */
+/* The PR target under the reps Dial (V2-04): "PR at 9 reps", or the PR if logged tag. */
 .set-projection {
   display: flex;
   flex-wrap: wrap;
@@ -260,12 +346,7 @@
   min-height: 24px;
   color: var(--color-secondary);
   font-size: var(--text-sm);
-  white-space: pre-wrap;
-}
-
-.set-projection-value {
-  color: var(--color-text);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-medium);
 }
 
 /* The rest of the Workout under the steppers, as compact rows (src/ui/live/UpNextRows.tsx);
@@ -334,26 +415,26 @@
 
 .add-set,
 .save-set,
-.delete-set,
-.finish-exercise {
+.delete-set {
   min-height: var(--tap-min);
 }
 
+/* Done (V2-01): "+ Add set", a quiet text button at the end of the row over the primary. */
 .done-actions {
   display: flex;
-  gap: var(--space-3);
+  justify-content: flex-end;
 }
 
-.done-actions > button {
-  flex: 1;
-  padding: var(--space-2) var(--space-3);
+.done-actions > .add-set {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-}
-
-.up-next {
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
 }
 
 /* "Over rest · +0:12": quiet, over Log set, once a rest ran out on this screen. */
@@ -379,16 +460,22 @@
   gap: var(--space-2);
 }
 
+/* "Use 3:50" at the end of the countdown's row (V2-02); it wraps under it when the row is full. */
 .rest-panel-offer {
-  margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1) 0;
-  padding: 0 var(--space-4);
-  border-bottom: 1px solid var(--color-hairline);
+  margin-left: auto;
+  min-width: 0;
+}
+
+.rest-panel-offer .rest-use-offer,
+.rest-panel-offer .rest-use-saved {
+  min-height: var(--tap-min);
 }
 
 .rest-panel-main {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: 0 var(--space-3);
   min-height: 64px;
 }
 
@@ -398,7 +485,7 @@
   flex-direction: column;
   color: var(--color-secondary);
   font-size: var(--text-md);
-  line-height: 20px;
+  line-height: 1.25rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -422,7 +509,7 @@
   color: var(--color-muted);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
-  line-height: 16px;
+  line-height: 1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -663,4 +750,57 @@
   margin: var(--space-1) 0 0;
   font-size: var(--text-sm);
   color: var(--color-muted);
+}
+
+/* ---- A short screen (320 x 568 and the like) ------------------------------------------------
+ * The rest panel and the Get ready card both have to fit over the fold (V2-02, V1-10): the
+ * countdown, its controls and Log set step down to the tap floor, the offer stays on the
+ * countdown's row, the card tightens with "Change" in its corner, and the effort chips follow the
+ * card, a scroll away, rather than push it under the bar. */
+@media (max-height: 640px) {
+  .rest-panel {
+    gap: var(--space-2);
+  }
+
+  .rest-panel-main {
+    flex-wrap: nowrap;
+    min-height: 48px;
+  }
+
+  .rest-panel-main .rest-readout {
+    font-size: calc(var(--text-display) * 0.75);
+  }
+
+  .rest-adjust,
+  .rest-skip {
+    min-height: var(--tap-min);
+  }
+
+  .log-set {
+    min-height: 56px;
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .get-ready {
+    position: relative;
+    flex: 0 0 auto;
+    gap: 2px;
+    margin-top: 0;
+    padding: var(--space-3);
+  }
+
+  .get-ready .get-ready-change {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    margin: 0;
+  }
+
+  .set-screen > .effort-row {
+    order: 1;
+  }
+
+  .effort-chip {
+    min-height: var(--tap-min);
+  }
 }

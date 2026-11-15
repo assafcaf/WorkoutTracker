@@ -113,6 +113,65 @@ export function formatPlates(loading: PlateLoading | null, inventory: PlateInven
     : `Nearest ${loading.madeKg} kg · bar only`
 }
 
+/** Plates `minus` takes out of `plates`, one for one; what is left, in the order given. */
+function without(plates: number[], minus: number[]): number[] {
+  const left = [...plates]
+  for (const kg of minus) {
+    const at = left.indexOf(kg)
+    if (at >= 0) left.splice(at, 1)
+  }
+  return left
+}
+
+const plateList = (plates: number[]): string => [...plates].sort((a, b) => b - a).join(' · ')
+const sideGrams = (plates: number[]): number => plates.reduce((sum, kg) => sum + toGrams(kg), 0)
+// What each side holds afterwards, heaviest first: "20 + 5". Read at a glance from a bench.
+const afterText = (plates: number[]): string =>
+  plates.length === 0 ? 'bar only' : [...plates].sort((a, b) => b - a).join(' + ')
+
+/**
+ * What to change on the bar to go from `fromKg`, loaded now, to `toKg` (V2-02): "Add 5 per side
+ * → 20 + 5", "Remove 1.25 per side → 25 + 5", or, when neither adding to nor
+ * stripping the bar as loaded makes it, "Remove 25, add 20 per side → 20". The same
+ * weight reads "Same plates: 20". Null when either weight can't be made exactly from
+ * `inventory` (the Plate line says "Nearest …" for those). The loadings are `platesFor`'s.
+ */
+export function plateChange(fromKg: number, toKg: number, inventory: PlateInventory): string | null {
+  const from = platesFor(fromKg, inventory)
+  const to = platesFor(toKg, inventory)
+  if (!from || !to || !from.exact || !to.exact) return null
+  const fromG = sideGrams(from.perSide)
+  const toG = sideGrams(to.perSide)
+  if (toG === fromG) return `Same plates: ${afterText(from.perSide)}`
+  if (toG > fromG) {
+    // On top of what is on the bar, from the pairs still on the rack.
+    const remaining = inventory.plates.map((plate) => ({
+      kg: plate.kg,
+      pairs: Math.max(0, plate.pairs - from.perSide.filter((kg) => kg === plate.kg).length),
+    }))
+    const extra = platesFor((toGrams(inventory.barKg) + 2 * (toG - fromG)) / 1000, {
+      barKg: inventory.barKg,
+      plates: remaining,
+    })
+    if (extra && extra.exact && extra.perSide.length > 0) {
+      return `Add ${plateList(extra.perSide)} per side → ${afterText([...from.perSide, ...extra.perSide])}`
+    }
+  } else {
+    // The outermost plates off: the lightest ones, loaded last.
+    for (let start = from.perSide.length - 1; start >= 0; start -= 1) {
+      const outer = from.perSide.slice(start)
+      if (sideGrams(outer) === fromG - toG) {
+        return `Remove ${plateList(outer)} per side → ${afterText(from.perSide.slice(0, start))}`
+      }
+    }
+  }
+  const removed = without(from.perSide, to.perSide)
+  const added = without(to.perSide, from.perSide)
+  if (added.length === 0) return `Remove ${plateList(removed)} per side → ${afterText(to.perSide)}`
+  if (removed.length === 0) return `Add ${plateList(added)} per side → ${afterText(to.perSide)}`
+  return `Remove ${plateList(removed)}, add ${plateList(added)} per side → ${afterText(to.perSide)}`
+}
+
 export function isBarbell(entry: LibraryExercise | undefined): boolean {
   return entry?.equipment === 'barbell'
 }

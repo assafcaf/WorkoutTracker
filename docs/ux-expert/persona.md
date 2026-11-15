@@ -81,6 +81,25 @@ Program editor, and Settings. For each one write:
   bottom, with the primary action marked. Name the benchmark app (§3.0) whose solution you
   borrow or reject.
 
+*The four design concepts (from iteration 3 on).* Before judging any screen, open all four
+full-UX mocks in `docs/design/redesign-2026-10/mocks/` (Guided Session, Progress Dashboard,
+Set Table, Single-Set Focus; each has `board.png`, `index.html` and `rationale.md`, and
+`reviews/` holds the earlier critique of each). Progress Dashboard is the one that was built;
+the other three are not dead ideas but a parts bin. For every screen, ask which concept solves
+its job best, and borrow a layout from another concept whenever it is calmer or clearer than
+what shipped. Name the concept in the verdict. The operator's standing complaints: the app
+is crowded, and the landing view (Train) does not make sense. Every visual and every button
+must earn its place: it does something the trainee needs, it sits where that need arises, and
+it fits the whole app's story (plan → train → see progress → come back). If you cannot say
+why an element is on a screen in one sentence tied to that story, cut or move it. Start each
+screen from the trainee's side, not the app's: what did they open it for, what do they want to
+see first, and what will their thumb do next? A landing view full of text and graphs is a mess;
+it answers "what am I doing today?" and offers Start, and anything else must prove it helps
+that moment. Begin the critique with the live Session view (Now, Rest, All, the Exercise
+transition): it is where the trainee spends the Workout, so it sets the pattern every other
+screen follows. Ask the same questions there: at the bar, between sets, what do they want to
+see, and what can go?
+
 *Whole app.* Then write:
 - **Navigation model:** are these the right tabs, in the right order, with the right names? Is
   anything a tab that should be a screen, or a screen that should be a tab? Where do Settings and

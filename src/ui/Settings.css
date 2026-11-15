@@ -30,7 +30,7 @@
   color: var(--color-muted);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  line-height: 16px;
+  line-height: 1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -58,7 +58,7 @@
   background: transparent;
   color: var(--color-text);
   font-size: var(--text-md);
-  line-height: 22px;
+  line-height: 1.375rem;
   text-align: left;
   text-decoration: none;
 }
@@ -105,7 +105,7 @@
   margin: 0;
   padding: var(--space-3);
   font-size: var(--text-md);
-  line-height: 22px;
+  line-height: 1.375rem;
 }
 
 .settings-account-synced,
@@ -113,7 +113,7 @@
 .settings-account-offline {
   color: var(--color-secondary);
   font-size: var(--text-sm);
-  line-height: 20px;
+  line-height: 1.25rem;
 }
 
 .settings-account-email + .settings-account-synced {
@@ -200,4 +200,26 @@ a.settings-action {
   color: var(--color-text);
   font: inherit;
   font-size: var(--text-sm);
+}
+
+/* Apple Health (V2-10): the Shortcut setup guide and its doc link, moved from the summary. */
+.settings-health > * {
+  padding: var(--space-3);
+}
+
+.settings-health-help {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.settings-health .health-setup .btn-secondary {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+}
+
+.settings-health-help a {
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
 }

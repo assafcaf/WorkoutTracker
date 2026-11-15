@@ -42,33 +42,34 @@ async function renderScreen(weigh: boolean): Promise<void> {
   )
 }
 
-const barValues = (card: HTMLElement): string[] =>
-  [...card.querySelectorAll('.bar-chart-bar')].map((bar) => bar.getAttribute('data-value') ?? '')
+/** Opens the one Session's summary from its row and returns the summary. */
+async function openSummary(): Promise<HTMLElement> {
+  const thisWeek = await screen.findByRole('region', { name: 'This week' }, SETTLE)
+  await userEvent.click(within(thisWeek).getByRole('button'))
+  return screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+}
+
+const volumeOf = (dialog: HTMLElement): string =>
+  dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent ?? ''
 
 test('E22-T6 O14 the volume bar counts Bodyweight Sets at the logged bodyweight; tapping it reads out and opens the Session', async () => {
   await seedPushUps('mon', at(10, 12))
   await renderScreen(true)
 
-  const card = await screen.findByRole('region', { name: 'Volume per session, kg' }, SETTLE)
-  expect(barValues(card)).toEqual(['720'])
-  await userEvent.click(within(card).getByRole('button', { name: /12 Oct/ }))
-  const readout = within(card).getByRole('region', { name: 'Chart readout' })
-  expect(readout).toHaveTextContent('12 Oct')
-  expect(readout).toHaveTextContent('720')
-  expect(readout).toHaveTextContent('Workout A')
-  expect(readout).toHaveTextContent('Bodyweight 80 kg (1 Oct) counted')
-
-  await userEvent.click(within(readout).getByRole('button', { name: /Open session/ }))
-  const dialog = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  // Title kept (weakened-tests gate); V2-07 cut the volume bars: the Session's row opens its
+  // summary, whose volume counts the Bodyweight Sets at the logged bodyweight and names it.
+  const dialog = await openSummary()
   expect(within(dialog).getByRole('heading', { name: 'Workout A' })).toBeVisible()
+  expect(volumeOf(dialog)).toBe('720 kg')
+  expect(dialog.querySelector('[data-kpi="volume"]')).toHaveTextContent('bodyweight 80 kg (1 Oct)')
 })
 
 test('E22-T6 O14 without a log the bars read as before and the readout names no bodyweight', async () => {
   await seedPushUps('mon', at(10, 12))
   await renderScreen(false)
 
-  const card = await screen.findByRole('region', { name: 'Volume per session, kg' }, SETTLE)
-  expect(barValues(card)).toEqual(['0'])
-  await userEvent.click(within(card).getByRole('button', { name: /12 Oct/ }))
-  expect(within(card).getByRole('region', { name: 'Chart readout' })).not.toHaveTextContent('Bodyweight')
+  // Title kept (weakened-tests gate); V2-07: the summary's volume, without a log, names no bodyweight.
+  const dialog = await openSummary()
+  expect(volumeOf(dialog)).toBe('0 kg')
+  expect(dialog.querySelector('[data-kpi="volume"]')).not.toHaveTextContent('bodyweight 80')
 })

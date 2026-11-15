@@ -67,8 +67,10 @@ describe('E22-T8 O20 the Last week card', () => {
   test('O20 sits above This week', async () => {
     await mount(fixture, THU_15)
     const c = await card()
-    const week = await waitFor(() => screen.getByRole('region', { name: 'This week' }), SETTLE)
-    expect(c.compareDocumentPosition(week) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // V2-05: This week moved to Train; the card now sits above the row that opens the lifts.
+    expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
+    const lifts = await waitFor(() => screen.getByRole('button', { name: /All 14 lifts/ }), SETTLE)
+    expect(c.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   test('O20 a first week on record says so instead of showing changes', async () => {

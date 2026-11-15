@@ -8,7 +8,7 @@ import { workingSets } from './setKind'
  * The working Sets of `exerciseId` in the newest non-deload Session holding one, else in the
  * newest deload one, or none.
  */
-function lastEntriesOf(sessions: Session[], exerciseId: string): SetEntry[] {
+export function lastEntriesOf(sessions: Session[], exerciseId: string): SetEntry[] {
   const newestFirst = [...sessions].sort((a, b) => b.startedAt - a.startedAt)
   let deloaded: SetEntry[] = []
   for (const session of newestFirst) {

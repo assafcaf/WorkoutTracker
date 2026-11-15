@@ -32,7 +32,7 @@
   margin: 0;
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
-  line-height: 34px;
+  line-height: 2.125rem;
   letter-spacing: -0.02em;
 }
 
@@ -236,12 +236,51 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 28px;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+/* V2-10: the day's one true win, under the figures: "Best today  Deadlift · 72.5 kg × 10 · +2.5 kg  PR". */
+.session-summary-best {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--space-2);
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.session-summary-best-label {
+  color: var(--color-muted);
   font-size: var(--text-sm);
 }
 
-.session-summary-deload {
+.session-summary-best-text {
+  font-weight: var(--weight-semibold);
+}
+
+/* The Share… sheet: share as text, or send to Apple Health. */
+.session-summary-share-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--safe-bottom));
+}
+
+.session-summary-share-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   min-height: var(--tap-min);
+  font-size: var(--text-md);
 }
 
 /* The dock: Share and Done, pinned under the scrolling body. */

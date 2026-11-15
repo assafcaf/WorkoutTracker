@@ -4,6 +4,7 @@ import {
   DEFAULT_PLATE_INVENTORY,
   formatPlates,
   isBarbell,
+  plateChange,
   platesFor,
   validatePlateInventory,
 } from './plates'
@@ -234,4 +235,28 @@ test.each([
   const result = validatePlateInventory(value)
   expect(result.ok).toBe(false)
   if (!result.ok) expect(result.error.length).toBeGreaterThan(0)
+})
+
+// V2-02: the plate change the Get ready card names, from the bar as loaded to the next Set.
+test('V2-02 plateChange adds plates on top of the bar as loaded, 60 kg to 70 kg', () => {
+  expect(plateChange(60, 70, inv)).toBe('Add 5 per side → 20 + 5')
+})
+
+test('V2-02 plateChange strips the outermost plates, 82.5 kg to 80 kg', () => {
+  expect(plateChange(82.5, 80, inv)).toBe('Remove 1.25 per side → 25 + 5')
+})
+
+test('V2-02 plateChange swaps plates when the bar as loaded cannot be stripped to the weight', () => {
+  expect(plateChange(70, 60, inv)).toBe('Remove 25, add 20 per side → 20')
+})
+
+test('V2-02 plateChange reads Same plates for the same weight, and from the empty bar adds all', () => {
+  expect(plateChange(60, 60, inv)).toBe('Same plates: 20')
+  expect(plateChange(20, 60, inv)).toBe('Add 20 per side → 20')
+  expect(plateChange(60, 20, inv)).toBe('Remove 20 per side → bar only')
+})
+
+test('V2-02 plateChange is null when either weight cannot be made exactly', () => {
+  expect(plateChange(60, 83, inv)).toBeNull()
+  expect(plateChange(15, 60, inv)).toBeNull()
 })

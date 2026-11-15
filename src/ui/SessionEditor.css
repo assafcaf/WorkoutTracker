@@ -142,3 +142,8 @@
   color: var(--color-text);
   font-size: var(--text-md);
 }
+
+/* Deload session (V2-10): moved here from the summary, saved with the draft. */
+.session-editor-deload {
+  min-height: var(--tap-min);
+}
