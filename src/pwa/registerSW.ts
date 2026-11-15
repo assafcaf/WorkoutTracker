@@ -36,7 +36,50 @@ export function registerServiceWorker(options?: RegisterOptions): void {
   const updateServiceWorker = registerSW({
     onNeedRefresh: () => options?.onNeedRefresh?.({ updateServiceWorker }),
     onOfflineReady: () => options?.onOfflineReady?.(),
+    onRegisteredSW: (_url, registration) => {
+      if (registration) watchForUpdates(registration)
+    },
   })
+}
+
+/** How often an open app asks for a new version. */
+export const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
+
+/**
+ * Asks the server for a new service worker whenever the app comes back to the foreground, and
+ * once an hour while it stays open.
+ *
+ * The browser only checks on a navigation, and iOS resumes a home-screen app instead of
+ * relaunching it, so without this an installed app can run an old version for days after a
+ * deploy. A found update still only waits ("Update ready"); nothing reloads here.
+ *
+ * Returns a function that stops watching.
+ */
+export function watchForUpdates(
+  registration: Pick<ServiceWorkerRegistration, 'update'>,
+  env: {
+    doc?: Pick<Document, 'visibilityState' | 'addEventListener' | 'removeEventListener'>
+    setInterval?: (fn: () => void, ms: number) => unknown
+    clearInterval?: (id: unknown) => void
+    intervalMs?: number
+  } = {},
+): () => void {
+  const doc = env.doc ?? document
+  const every = env.setInterval ?? ((fn, ms) => setInterval(fn, ms))
+  const stop = env.clearInterval ?? ((id) => clearInterval(id as ReturnType<typeof setInterval>))
+  const check = () => {
+    // Offline or a server hiccup: the next foreground or tick tries again.
+    registration.update().catch(() => {})
+  }
+  const onVisibility = () => {
+    if (doc.visibilityState === 'visible') check()
+  }
+  doc.addEventListener('visibilitychange', onVisibility)
+  const timer = every(check, env.intervalMs ?? UPDATE_CHECK_INTERVAL_MS)
+  return () => {
+    doc.removeEventListener('visibilitychange', onVisibility)
+    stop(timer)
+  }
 }
 
 /**
