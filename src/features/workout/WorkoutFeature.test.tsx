@@ -1668,16 +1668,19 @@ test('O16 the session summary reads a pre-epic assisted pull-ups Set as BW−27 
 })
 
 // --- E16-T13 O6: the Bodyweight switch, its override applied --------------------------------
+//
+// V1-16: the switch left the Set screen's tools sheet for Program › Exercises, which stores the
+// same override through `preferences.setBodyweight`. The Set screen follows the stored override
+// as it opens. The titles stay; the bodies store the override as Program › Exercises does.
 
-/**
- * The Set screen's Bodyweight switch, once it is up: a row of the exercise tools sheet (S3b),
- * which this opens from the ⋯ button when it is not open already.
- */
-async function findBodyweightSwitch(): Promise<HTMLElement> {
+/** Opens the Set screen's tools sheet and holds that it has no Bodyweight switch any more. */
+async function expectNoBodyweightSwitch(): Promise<void> {
   if (screen.queryByRole('dialog') === null) {
     fireEvent.click(await screen.findByRole('button', { name: 'Exercise tools' }, SETTLE))
   }
-  return screen.findByRole('switch', { name: 'Bodyweight' }, SETTLE)
+  const sheet = await screen.findByRole('dialog', { name: /tools$/ }, SETTLE)
+  expect(within(sheet).queryByRole('switch', { name: 'Bodyweight' })).toBeNull()
+  expect(within(sheet).queryByText('Bodyweight exercise')).toBeNull()
 }
 
 /**
@@ -1693,8 +1696,8 @@ test('O6 Back squat, loaded in the catalog, opens with the Bodyweight switch off
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
 
-  expect(await findBodyweightSwitch()).not.toBeChecked()
-  expect(weightReadoutText()).toBe('50')
+  await waitFor(() => expect(weightReadoutText()).toBe('50'), SETTLE)
+  await expectNoBodyweightSwitch()
 })
 
 test('O6 Back squat with a Bodyweight override stored (as a synced device leaves it) opens with the switch on at BW', async () => {
@@ -1704,8 +1707,8 @@ test('O6 Back squat with a Bodyweight override stored (as a synced device leaves
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
 
-  expect(await findBodyweightSwitch()).toBeChecked()
-  expect(weightReadoutText()).toBe('BW')
+  await waitFor(() => expect(weightReadoutText()).toBe('BW'), SETTLE)
+  await expectNoBodyweightSwitch()
 })
 
 test('O6 an override stored while the exercise list is up is followed when Back squat is opened', async () => {
@@ -1717,16 +1720,13 @@ test('O6 an override stored while the exercise list is up is followed when Back 
   await services.preferences.setBodyweight('back-squat', true, false)
   await openExercise(user, 'Back squat')
 
-  expect(await findBodyweightSwitch()).toBeChecked()
+  await waitFor(() => expect(weightReadoutText()).toBe('BW'), SETTLE)
 })
 
 test('O6 flipping Bodyweight on for Back squat stores its override', async () => {
+  // Flipped in Program › Exercises, through the same preference the Set screen reads.
   const services = await servicesOnAssafAB()
-  const { user } = renderFeature(services)
-  await startWorkout(user, 'Workout A')
-  await openExercise(user, 'Back squat')
-
-  await user.click(await findBodyweightSwitch())
+  await services.preferences.setBodyweight('back-squat', true, false)
 
   await waitFor(
     async () => expect(await services.preferences.bodyweightOverrides()).toEqual({ 'back-squat': true }),
@@ -1737,29 +1737,27 @@ test('O6 flipping Bodyweight on for Back squat stores its override', async () =>
 test('O6 flipping Bodyweight back off for Back squat removes its override, the catalog default', async () => {
   const services = await servicesOnAssafAB()
   await services.preferences.setBodyweight('back-squat', true, false)
-  const { user } = renderFeature(services)
-  await startWorkout(user, 'Workout A')
-  await openExercise(user, 'Back squat')
-
-  await user.click(await findBodyweightSwitch())
+  await services.preferences.setBodyweight('back-squat', false, false)
 
   await waitFor(
     async () => expect(await services.preferences.bodyweightOverrides()).toEqual({}),
     SETTLE,
   )
+  const { user } = renderFeature(services)
+  await startWorkout(user, 'Workout A')
+  await openExercise(user, 'Back squat')
+  await waitFor(() => expect(weightReadoutText()).toBe('50'), SETTLE)
 })
 
 test('O6 flipping Bodyweight on turns the 50 kg Dial into BW+50 on the open Set', async () => {
+  // Nothing on the open Set flips it any more: the screen keeps the 50 kg Dial it opened with.
   const { user } = renderFeature(await servicesOnAssafAB())
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
-  await findBodyweightSwitch()
+  await waitFor(() => expect(weightReadoutText()).toBe('50'), SETTLE)
+
+  await expectNoBodyweightSwitch()
   expect(weightReadoutText()).toBe('50')
-
-  await user.click(await findBodyweightSwitch())
-
-  await waitFor(() => expect(weightReadoutText()).toBe('BW+50'), SETTLE)
-  expect(await findBodyweightSwitch()).toBeChecked()
 })
 
 test('O6 reopening Back squat after flipping Bodyweight on shows the switch on at BW', async () => {
@@ -1767,15 +1765,11 @@ test('O6 reopening Back squat after flipping Bodyweight on shows the switch on a
   const { user } = renderFeature(services)
   await startWorkout(user, 'Workout A')
   await openExercise(user, 'Back squat')
-  await user.click(await findBodyweightSwitch())
-  await waitFor(
-    async () => expect(await services.preferences.bodyweightOverrides()).toEqual({ 'back-squat': true }),
-    SETTLE,
-  )
+  await waitFor(() => expect(weightReadoutText()).toBe('50'), SETTLE)
+  await services.preferences.setBodyweight('back-squat', true, false)
 
   await user.click(screen.getByRole('button', { name: 'All exercises' }))
   await openExercise(user, 'Back squat')
 
-  expect(await findBodyweightSwitch()).toBeChecked()
-  expect(weightReadoutText()).toBe('BW')
+  await waitFor(() => expect(weightReadoutText()).toBe('BW'), SETTLE)
 })

@@ -1,19 +1,23 @@
 // V4-03: the Session summary's lines, worded once. "One win, one comparison, and what comes next":
 //   prHeadline(records, resolve)                 -> the first PR as the headline, "+n more PR"
-//   liftLine(exerciseId, session, all, ...)      -> "60×10 · 70×8 PR · 70×7 · 1 rep more"
+//   liftLine(exerciseId, session, all, ...)      -> "60×10 · 70×8 PR · 70×7 · 1 rep more than Mon 12 Oct"
+//     (V5: its comparison is exerciseVerdict's `exerciseComparison`, the sentence the live
+//     Session's done line ends with, so a lift reads the same on Rest and in the summary)
 //   comparisonText(session, all, ...)            -> "vs Mon 12 Oct: volume +1.2 %", "5 of 23 sets"
 //   workedToday(muscles)                         -> the non-zero muscles, most sets first
 //   weekLine(session, all, program, weekStartsOn) -> "This week 3 of 3 · next up Workout A"
 // Pure; imports only src/domain/** and src/types.ts.
-import type { BodyLog, Muscle, Program, Session, SetEntry } from '../types'
+import type { BodyLog, Muscle, Program, Session } from '../types'
 import type { Resolve } from './muscles'
 import { bodyweightOn } from './bodyLog'
+import { formatDay } from './dates'
 import { dueWorkout } from './dashboard'
+import { exerciseComparison } from './exerciseVerdict'
 import { workingSets } from './setKind'
 import { formatSetCompact } from './setText'
 import { humanDate, numberText, topText } from './stats/copy'
-import { buildLiftHistories, leverOf, straightSets } from './stats/liftHistory'
-import type { LiftPoint, PlanOf } from './stats/liftHistory'
+import { buildLiftHistories, leverOf } from './stats/liftHistory'
+import type { PlanOf } from './stats/liftHistory'
 import { STATS_MUSCLES } from './stats/muscles'
 import type { SessionRecord } from './stats/records'
 import { thisWeek } from './stats/weeks'
@@ -58,46 +62,22 @@ export function prHeadline(
 export type LiftLine = {
   /** The working Sets in order, compact: `70×8`; `pr` on the Set that set the lift's record. */
   sets: { text: string; pr: boolean }[]
-  /** How the lift compares with last time, in words: `1 rep more`, `+10 kg`, `2 of 4 sets`. */
+  /** How the lift compares with last time (`exerciseComparison`): `1 rep more than Mon 12 Oct`, `2 of 4 sets`. */
   tail: string
 }
 
-/** A LiftLine as one plain sentence: `60×10 · 70×8 PR · 70×7 · 1 rep more`. */
+/** A LiftLine as one plain sentence: `60×10 · 70×8 PR · 70×7 · 1 rep more than Mon 12 Oct`. */
 export function liftLineText(line: LiftLine): string {
   return [...line.sets.map((set) => (set.pr ? `${set.text} PR` : set.text)), line.tail]
     .filter((part) => part !== '')
     .join(' · ')
 }
 
-function repsAtLever(sets: SetEntry[], lever: number, bodyweight: boolean): number {
-  return straightSets(sets)
-    .filter((set) => leverOf(set, bodyweight) === lever)
-    .reduce((total, set) => total + set.reps, 0)
-}
-
-/** The comparison words for `point` against the lift's last non-deload Session. */
-function tailOf(point: LiftPoint, previous: LiftPoint | undefined, bodyweight: boolean): string {
-  if (point.deload) return 'deload'
-  if (previous === undefined || previous.top === null || point.top === null) return 'first time'
-  const cur = point.top.lever
-  const before = previous.top.lever
-  if (cur !== before) {
-    const diff = numberText(Math.abs(cur - before))
-    if (bodyweight && Math.min(cur, before) < 0 && Math.max(cur, before) <= 0) {
-      return cur > before ? `${MINUS}${diff} kg assistance` : `+${diff} kg assistance`
-    }
-    return cur > before ? `+${diff} kg` : `${MINUS}${diff} kg`
-  }
-  const delta = repsAtLever(point.workingSets, cur, bodyweight) - repsAtLever(previous.workingSets, cur, bodyweight)
-  if (delta > 0) return `${plural(delta, 'rep', 'reps')} more`
-  if (delta < 0) return `${plural(-delta, 'rep', 'reps')} fewer`
-  return 'same as last time'
-}
-
 /**
  * One lift's Lift by lift sentence: its working Sets, the PR tag on the Set that set its record,
- * then one comparison with last time, "1 rep more", never totals and never "record". A lift with
- * fewer working Sets than `plannedSets` makes no comparison: "2 of 4 sets".
+ * then one comparison with the lift's last non-deload Session, worded by `exerciseComparison` as
+ * the live Session words it: "1 rep more than Mon 12 Oct", never totals and never "record". A
+ * lift with fewer working Sets than `plannedSets` makes no comparison: "2 of 4 sets".
  */
 export function liftLine(
   exerciseId: string,
@@ -121,8 +101,9 @@ export function liftLine(
           (set) => set.kind !== 'drop' && leverOf(set, bodyweight) === record.lever && set.reps === record.reps,
         )
   const sets = working.map((set, index) => ({ text: formatSetCompact(set), pr: index === prIndex }))
-  if (plannedSets !== undefined && working.length > 0 && working.length < plannedSets) {
-    return { sets, tail: `${working.length} of ${plannedSets} sets` }
+  if (working.length === 0) return { sets, tail: '' }
+  if (plannedSets !== undefined && working.length < plannedSets) {
+    return { sets, tail: exerciseComparison({ today: working, last: [], lastDay: '', plannedSets }) } // "2 of 4 sets"
   }
   const live = sessions.filter((other) => other.deletedAt === undefined && other.startedAt <= session.startedAt)
   const points = buildLiftHistories(live, resolve, planOf).get(exerciseId)?.points ?? []
@@ -132,7 +113,13 @@ export function liftLine(
     .slice(0, index)
     .reverse()
     .find((point) => !point.deload && point.top !== null)
-  return { sets, tail: tailOf(points[index], previous, bodyweight) }
+  const tail = exerciseComparison({
+    today: working,
+    last: previous === undefined ? [] : workingSets(previous.workingSets),
+    lastDay: previous === undefined ? '' : formatDay(new Date(previous.startedAt), new Date(session.startedAt)),
+    deload: points[index].deload,
+  })
+  return { sets, tail }
 }
 
 /**

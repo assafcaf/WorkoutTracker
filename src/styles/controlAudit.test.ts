@@ -365,13 +365,17 @@ test.each(['key', 'cell', 'icon-btn'])(
 )
 
 test('E17 O10 the Bodyweight switch on the Set screen wears the chip role', () => {
-  const source = readFileSync(join(srcDir, 'ui', 'SetScreen.tsx'), 'utf-8')
-  const bodyweightSwitch = extractControls(source).find(
-    (control) => control.tag === 'button' && (classesOf(control.attrs) ?? []).includes('bodyweight-switch'),
-  )
-
-  expect(bodyweightSwitch, 'the .bodyweight-switch button must exist').toBeDefined()
-  expect(classesOf((bodyweightSwitch as FoundControl).attrs)).toContain('chip')
+  // V1-16: the switch left the Set screen's tools sheet for Program › Exercises. The Set screen
+  // has none; wherever a .bodyweight-switch button is, it still wears the chip role.
+  const isSwitch = (control: FoundControl): boolean =>
+    control.tag === 'button' && (classesOf(control.attrs) ?? []).includes('bodyweight-switch')
+  const setScreen = readFileSync(join(srcDir, 'ui', 'SetScreen.tsx'), 'utf-8')
+  expect(extractControls(setScreen).filter(isSwitch)).toEqual([])
+  for (const path of modules()) {
+    for (const control of extractControls(readFileSync(path, 'utf-8')).filter(isSwitch)) {
+      expect(classesOf(control.attrs), path).toContain('chip')
+    }
+  }
 })
 
 /**

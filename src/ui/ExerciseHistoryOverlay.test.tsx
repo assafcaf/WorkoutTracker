@@ -117,10 +117,71 @@ test('O21 the overlay is read-only: Close is its only button, and it calls onClo
   const onClose = vi.fn()
   const dialog = open([older, newer], onClose)
 
+  // v5: the chart's points are buttons too, but they only read a Session out; nothing edits.
   const names = within(dialog)
     .getAllByRole('button')
-    .map((b) => b.textContent)
-  expect(names).toEqual(['Close'])
+    .map((b) => b.getAttribute('aria-label') ?? b.textContent)
+  expect(names[0]).toBe('Close')
+  expect(names.slice(1)).toHaveLength(2)
+  for (const name of names.slice(1)) expect(name).toMatch(/^\d+ \w{3} · .* kg · Best set /)
+  expect(names.join(' ')).not.toMatch(/Edit|Delete|Remove/)
   await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Close' }))
   expect(onClose).toHaveBeenCalledTimes(1)
+})
+
+// v5: the history leads with a graph that folds weight and reps into one number per Session.
+
+const WEEK = 7 * 24 * 3600_000
+
+test('v5 the history leads with the latest estimated max and the set behind it', () => {
+  const dialog = open([older, newer])
+
+  const trend = within(dialog).getByRole('region', { name: 'Trend' })
+  // 80 x 8 -> Epley 101.3 kg; the latest Session's best set.
+  expect(within(trend).getByText('101.3 kg')).toBeVisible()
+  expect(within(trend).getByText('80 × 8 · Tue 6 Oct')).toBeVisible()
+  expect(within(trend).getByText(/Estimated max \(Epley\)/)).toBeVisible()
+  // It comes before the log.
+  const list = within(dialog).getByRole('list', { name: 'Sessions' })
+  expect(trend.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('v5 the chart is named by where the lift went, and marks new bests', () => {
+  const dialog = open([older, newer])
+
+  // 60 x 8 -> 76.0 on 28 Sep, 80 x 8 -> 101.3 on 6 Oct.
+  const chart = within(dialog).getByRole('img', { name: 'Estimated max up 25.3 kg over 8 days' })
+  expect(within(dialog).getByText('Estimated max up 25.3 kg over 8 days')).toBeVisible()
+  expect(chart.querySelectorAll('circle[data-record]')).toHaveLength(1)
+})
+
+test('v5 tapping a point reads its date, value and best set', async () => {
+  const dialog = open([older, newer])
+
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: /^28 Sep · 76 kg · Best set 60 × 8$/ }))
+
+  const readout = within(dialog).getByRole('region', { name: 'Chart readout' })
+  expect(readout.textContent).toContain('28 Sep')
+  expect(readout.textContent).toContain('Best set 60 × 8')
+})
+
+test('v5 one Session shows its value but no chart yet', () => {
+  const dialog = open([newer])
+
+  expect(within(dialog).getByText('101.3 kg')).toBeVisible()
+  expect(within(dialog).queryByRole('img')).toBeNull()
+  expect(within(dialog).getByText(/One session so far/)).toBeVisible()
+})
+
+test('v5 the log under the chart shows the latest 4 Sessions and Show all opens the rest', async () => {
+  const many = Array.from({ length: 6 }, (_, i) =>
+    session('s' + i, MON_28_SEP - (5 - i) * WEEK, [set(1, 60 + i * 2.5, 8, MON_28_SEP - (5 - i) * WEEK)]),
+  )
+  const dialog = open(many)
+
+  const list = within(dialog).getByRole('list', { name: 'Sessions' })
+  expect(list.querySelectorAll('li')).toHaveLength(4)
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Show all 6 sessions' }))
+  expect(list.querySelectorAll('li')).toHaveLength(6)
+  expect(within(dialog).queryByRole('button', { name: /Show all/ })).toBeNull()
 })

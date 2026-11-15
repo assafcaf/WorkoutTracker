@@ -55,6 +55,7 @@ test('O5 createPreferenceService exposes exactly the preference operations', () 
       'volumeBaseline',
       'weekStart',
       'weightStep',
+      'weightSteps',
     ].sort(),
   )
 })
@@ -86,6 +87,16 @@ test('O5 setWeightStep then weightStep returns the newly saved step, leaving oth
 
   expect(await service.weightStep('deadlift')).toBe(2.5)
   expect(await service.weightStep('back-squat')).toBeNull()
+})
+
+test('V1-16 weightSteps lists every stored step by Exercise id, {} when none is stored', async () => {
+  const service = createPreferenceService(deps())
+
+  expect(await service.weightSteps()).toEqual({})
+  await service.setWeightStep('deadlift', 2.5)
+  await service.setWeightStep('back-squat', 5)
+
+  expect(await service.weightSteps()).toEqual({ deadlift: 2.5, 'back-squat': 5 })
 })
 
 test('O10 exerciseNote resolves null for an Exercise with no saved note', async () => {

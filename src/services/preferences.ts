@@ -17,6 +17,7 @@ import {
   getWeekStart,
   getVolumeBaseline,
   getWeightStep,
+  getWeightSteps,
   setBodyweightOverrides,
   setExerciseNote as storeExerciseNote,
   setGymEquipment as storeGymEquipment,
@@ -38,6 +39,8 @@ export type PreferenceService = {
   gymEquipment(): Promise<string[] | null>
   setGymEquipment(list: string[]): Promise<void>
   weightStep(exerciseId: string): Promise<number | null>
+  /** Every stored weight step by Exercise id; `{}` when none is stored (V1-16, the Program editor). */
+  weightSteps(): Promise<Record<string, number>>
   setWeightStep(exerciseId: string, step: number): Promise<void>
   volumeBaseline(): Promise<VolumeBaseline>
   setVolumeBaseline(b: VolumeBaseline): Promise<void>
@@ -93,6 +96,7 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
     setGymEquipment: (list) => write(() => storeGymEquipment(list, deps.now())),
     weightStep: (exerciseId) =>
       callStorage(deps, () => getWeightStep(exerciseId), 'weightStep read failed'),
+    weightSteps: () => callStorage(deps, getWeightSteps, 'weightSteps read failed'),
     setWeightStep: (exerciseId, step) =>
       write(() => storeWeightStep(exerciseId, step, deps.now())),
     volumeBaseline: () => callStorage(deps, getVolumeBaseline, 'volumeBaseline read failed'),

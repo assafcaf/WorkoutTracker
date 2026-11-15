@@ -726,20 +726,6 @@
   border-bottom: 1px solid var(--color-hairline);
 }
 
-.tools-step .dial-step-control {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.bodyweight-error {
-  margin: 0;
-  color: var(--color-danger);
-  font-size: var(--text-sm);
-}
-
 /* ---- Notes (in the tools sheet) ------------------------------------------------------------ */
 
 .set-note {
@@ -840,19 +826,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* E16-T13: the Bodyweight switch, a chip that reads pressed while on. */
-.bodyweight-switch {
-  min-height: var(--tap-min);
-  padding: 0 var(--space-4);
-  font-size: var(--text-md);
-}
-
-/* The tools sheet's rows for how the steppers count: the weight step and Bodyweight. */
-.set-dial-controls {
-  display: flex;
-  flex-direction: column;
-}
-
 .set-deload,
 .set-carried {
   margin: var(--space-1) 0 0;
@@ -893,5 +866,47 @@
 
   .effort-chip {
     min-height: var(--tap-min);
+  }
+
+  /* V5: during Rest the Just done block's reps-left chips sit over the dock without a scroll at
+   * 320 x 568. The head row loses its 56 px floor, the empty spacer and its gap go, and the two
+   * cards tighten their padding; nothing is dropped. */
+  .set-head {
+    min-height: var(--tap-min);
+  }
+
+  .set-cells {
+    margin-top: 0;
+  }
+
+  .set-cell {
+    min-height: 52px;
+  }
+
+  .set-screen:has(.get-ready) > .set-spacer {
+    display: none;
+  }
+
+  .get-ready {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .just-done {
+    gap: 2px;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .just-done .effort-row {
+    margin-top: 2px;
+  }
+
+  /* The hand-over's block ("Deadlift done · Add set") is a row taller, and its Sets line wraps:
+   * there the chips, the one thing to tap, come up under the heading and the line follows. */
+  .exercise-verdict .effort-row {
+    order: 1;
+  }
+
+  .exercise-verdict .just-done-line {
+    order: 2;
   }
 }

@@ -292,3 +292,21 @@
   display: flex;
   gap: var(--space-3);
 }
+
+/* V5: Delete workout, straight from a Session opened on Sessions; the screen offers Undo. A quiet
+ * danger text button at the foot of the body, away from Done. */
+.session-summary-delete {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  margin-top: var(--space-2);
+  padding: 0 var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}

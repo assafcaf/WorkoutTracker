@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest'
 import { loadCatalog } from '../data/catalog'
 import {
+  exerciseComparison,
   exerciseDoneLine,
   exerciseVerdict,
   honestMoveText,
@@ -138,4 +139,24 @@ test('V4-01 the done line lists the Sets, marks a Record and compares once, neve
   expect(exerciseDoneLine({ today, last: [], lastDay: MON, plannedSets: 3, isRecord: () => false })).toBe(
     '60×10 · 70×8 · 70×7 · First time logged',
   )
+})
+
+test('V5 one comparison sentence: less or more assistance says so, and a deload reads Deload', () => {
+  const bw = (setIndex: number, loadKg: number, reps: number) => ({
+    exerciseId: 'pullups',
+    setIndex,
+    weightKg: null,
+    loadKg,
+    reps,
+    loggedAt: setIndex,
+  })
+  const last = [bw(1, -20, 6), bw(2, -20, 6)]
+  expect(exerciseComparison({ today: [bw(1, -15, 6), bw(2, -15, 6)], last, lastDay: MON })).toBe(
+    '5 kg less assistance than Mon 12 Oct',
+  )
+  expect(exerciseComparison({ today: [bw(1, -25, 6), bw(2, -25, 6)], last, lastDay: MON })).toBe(
+    '5 kg more assistance than Mon 12 Oct',
+  )
+  expect(exerciseComparison({ today: last, last, lastDay: MON, deload: true })).toBe('Deload')
+  expect(exerciseComparison({ today: last.slice(0, 1), last, lastDay: MON, plannedSets: 2 })).toBe('1 of 2 sets')
 })

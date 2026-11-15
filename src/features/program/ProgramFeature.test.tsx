@@ -300,3 +300,45 @@ test('S7a ProgramFeature makes the active Program the one large title, its size 
   expect(screen.getByRole('button', { name: 'Edit A/B Split' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Programs' })).toBeVisible()
 })
+
+test('V1-16 ProgramFeature stores a weight step and Bodyweight chosen in the editor, the settings the live Session reads', async () => {
+  const user = userEvent.setup()
+  const { services } = renderFeature()
+  await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
+  await screen.findByLabelText('Program name', undefined, SETTLE)
+
+  const squat = screen.getByText('Back squat').closest('li') as HTMLElement
+  await user.click(within(squat).getByRole('button', { name: 'Options for Back squat' }))
+  const step = await within(squat).findByRole('combobox', { name: 'Back squat weight step' }, SETTLE)
+  expect(step).toHaveValue('2.5')
+  await user.selectOptions(step, '5')
+
+  const pushUps = screen.getByText('Push-ups').closest('li') as HTMLElement
+  await user.click(within(pushUps).getByRole('button', { name: 'Options for Push-ups' }))
+  const bodyweight = within(pushUps).getByRole('switch', { name: 'Bodyweight exercise' })
+  expect(bodyweight).toBeChecked()
+  await user.click(bodyweight)
+
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)
+
+  expect(await services.preferences.weightStep('back-squat')).toBe(5)
+  expect(await services.preferences.bodyweightOverrides()).toEqual({ 'push-ups': false })
+})
+
+test('V1-16 ProgramFeature Cancel leaves the stored Exercise settings untouched', async () => {
+  const user = userEvent.setup()
+  const { services } = renderFeature()
+  await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
+  await screen.findByLabelText('Program name', undefined, SETTLE)
+
+  const squat = screen.getByText('Back squat').closest('li') as HTMLElement
+  await user.click(within(squat).getByRole('button', { name: 'Options for Back squat' }))
+  await user.selectOptions(await within(squat).findByRole('combobox', { name: 'Back squat weight step' }, SETTLE), '5')
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  await user.click(screen.getByRole('button', { name: 'Discard' }))
+
+  expect(await services.preferences.weightStep('back-squat')).toBeNull()
+})

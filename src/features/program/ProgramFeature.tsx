@@ -5,7 +5,7 @@ import { resolveExercise } from '../../data/resolve'
 import { ServiceError, type ProgramsLoad } from '../../services'
 import { IN_PROGRESS_MESSAGE } from '../../services/programs'
 import { AppShell } from '../../ui/AppShell'
-import { ProgramEditor } from '../../ui/ProgramEditor'
+import { ProgramEditor, type ExerciseSettings } from '../../ui/ProgramEditor'
 import { weekStart, type Weekday } from '../../domain/stats/weeks'
 import { isDeloadWeek } from '../../domain/deload'
 import { ProgramPage } from '../../ui/ProgramPage'
@@ -67,6 +67,15 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   )
   const weekStartData = useServiceData(
     (s) => s.preferences.weekStart().then((day): Weekday => day as Weekday).catch((): Weekday => 1),
+    ['preferences'],
+  )
+  // V1-16: each Exercise's stored weight step and Bodyweight override, offered in the editor's
+  // row options; the live Session reads the same two settings.
+  const exerciseSettingsData = useServiceData(
+    (s) =>
+      Promise.all([s.preferences.weightSteps(), s.preferences.bodyweightOverrides()])
+        .then(([weightSteps, bodyweight]): ExerciseSettings => ({ weightSteps, bodyweight }))
+        .catch((): ExerciseSettings => ({ weightSteps: {}, bodyweight: {} })),
     ['preferences'],
   )
   const deloadData = useServiceData((s) => s.preferences.deloadWeek().catch((): null => null), ['preferences'])
@@ -134,11 +143,26 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
     onInSession(false)
   }
 
-  function handleSaveProgram(program: Program): void {
+  /**
+   * Stores the Exercise settings changed in the editor (V1-16): each weight step as is, and each
+   * Bodyweight value against the Exercise's own, so a value back at its default drops the override.
+   */
+  function saveExerciseSettings(settings: ExerciseSettings | undefined): Promise<unknown> {
+    if (settings === undefined) return Promise.resolve()
+    return Promise.all([
+      ...Object.entries(settings.weightSteps).map(([id, step]) => services.preferences.setWeightStep(id, step)),
+      ...Object.entries(settings.bodyweight).map(([id, value]) =>
+        services.preferences.setBodyweight(id, value, resolveListExercise(id)?.bodyweight ?? false),
+      ),
+    ])
+  }
+
+  function handleSaveProgram(program: Program, settings?: ExerciseSettings): void {
     const stored = userPrograms.find((candidate) => candidate.id === program.id)
     const toSave: UserProgram = { ...program, createdAt: stored?.createdAt ?? Date.now() }
     services.programs
       .save(toSave)
+      .then(() => saveExerciseSettings(settings))
       .then(() => {
         closeEditor()
       })
@@ -203,6 +227,7 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         onSave={handleSaveProgram}
         onCancel={closeEditor}
         saveError={saveError}
+        exerciseSettings={exerciseSettingsData.status === 'ready' ? exerciseSettingsData.data : undefined}
       />
     )
   }
