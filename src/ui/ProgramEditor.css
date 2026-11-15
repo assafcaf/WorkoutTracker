@@ -206,28 +206,23 @@
 
 /* ---- Column header and rows ---- */
 
-.program-editor-columns,
+/* V1-28: a Plan takes two lines -- the handle, family dot, name and (...) on the first, its
+ * Sets / Reps / Rest / kg tiles on the second -- so every target is at least 44 x 44 and the
+ * name keeps its room at 320 wide. The handle's and (...)'s 44px boxes reach into the page's
+ * side padding, so their icons still line up with the content's edges. */
 .program-editor-plan-row {
   display: grid;
-  grid-template-columns: 16px 8px minmax(0, 1fr) 40px 64px 44px 52px 24px;
+  grid-template-columns: 30px 8px minmax(0, 1fr) 30px;
   align-items: center;
-  column-gap: var(--space-1);
+  column-gap: var(--space-2);
+  min-height: var(--tap-min);
 }
 
-.program-editor-columns {
-  min-height: 24px;
-  border-bottom: 1px solid var(--color-hairline);
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-}
-
-.program-editor-col-name {
-  grid-column: 2 / 4;
-  padding-left: var(--space-2);
-}
-
-.program-editor-col {
-  text-align: center;
+.program-editor-plan-cells {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr 1fr;
+  gap: 6px;
+  padding: 0 0 var(--space-3);
 }
 
 .program-editor-plans {
@@ -254,7 +249,8 @@
 
 .program-editor-handle {
   display: grid;
-  width: 16px;
+  width: var(--tap-min);
+  margin-left: -14px;
   min-height: var(--tap-min);
   place-items: center;
   padding: 0;
@@ -267,7 +263,8 @@
 .program-editor-plan-name {
   margin: 0;
   overflow: hidden;
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
   letter-spacing: -0.015em;
   line-height: 1.0625rem;
   display: -webkit-box;
@@ -275,12 +272,15 @@
   -webkit-line-clamp: 2;
 }
 
-/* A cell: a raised 44px tile holding a bare input; the focused one is outlined in primary. */
+/* A cell: a raised 52px tile holding a bare input under its own small caption; the focused one is
+ * outlined in primary. The input fills the tile, so the whole tile is its target. */
 .program-editor-cell {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  min-height: var(--tap-min);
+  min-width: 0;
+  min-height: 52px;
   border: 2px solid transparent;
   border-radius: var(--radius-sm);
   background: var(--color-raised);
@@ -289,6 +289,23 @@
 .program-editor-cell:focus-within {
   border-color: var(--color-primary);
   background: var(--color-surface);
+}
+
+.program-editor-cell-caption {
+  position: absolute;
+  top: 5px;
+  right: 0;
+  left: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+.program-editor-cell-value {
+  align-self: center;
+  padding-top: 12px;
 }
 
 .program-editor-cell-static {
@@ -300,12 +317,12 @@
 .program-editor-cell-input {
   width: 100%;
   min-width: 0;
-  min-height: 40px;
-  padding: 0;
+  min-height: 48px;
+  padding: 14px 0 0;
   border: 0;
   background: transparent;
   color: var(--color-text);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   font-weight: var(--weight-medium);
   text-align: center;
   appearance: textfield;
@@ -325,7 +342,7 @@
 
 .program-editor-cell-reps {
   gap: 0;
-  padding: 0 var(--space-1);
+  padding: 0;
 }
 
 .program-editor-rep {
@@ -335,22 +352,26 @@
 }
 
 /* A rep range reads as one value: the low end hugs the dash from the left, the high from the right. */
-.program-editor-rep:first-child .program-editor-cell-input {
+.program-editor-rep:first-of-type .program-editor-cell-input {
   text-align: right;
 }
 
-.program-editor-rep:last-child .program-editor-cell-input {
+.program-editor-rep:last-of-type .program-editor-cell-input {
   text-align: left;
 }
 
 .program-editor-rep-dash {
+  align-self: center;
+  padding: 14px 4px 0;
   color: var(--color-text);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
 }
 
 .program-editor-more {
   display: grid;
-  width: 24px;
+  flex: none;
+  width: var(--tap-min);
+  margin-right: -14px;
   min-height: var(--tap-min);
   place-items: center;
   padding: 0;
@@ -372,6 +393,36 @@
 
 .program-editor-menu-switch {
   font-size: var(--text-sm);
+}
+
+/* V1-16: how the row's Exercise counts its weight -- Bodyweight, and the step the Dial moves by. */
+.program-editor-menu-weight {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+.program-editor-menu-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+}
+
+.program-editor-menu-step .select {
+  min-width: 112px;
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+}
+
+.program-editor-menu-note {
+  margin: 0 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
 }
 
 .program-editor-menu-actions {

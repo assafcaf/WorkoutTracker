@@ -1,4 +1,4 @@
-import { Segmented } from '../controls'
+import { Icon } from '../icons'
 import './live.css'
 
 /** Which of the Live session's two views is shown: the open Set, or every Exercise's cells. */
@@ -10,24 +10,24 @@ export type LiveSessionBarProps = {
 }
 
 /**
- * The top of the Live session under its header (Progress Dashboard S2/S3): the `Now | All`
- * switch. The Sets count rides in the header's title row (V1-10).
+ * The Live session's view switch (V3-07): one button in the header row, not a band under it.
+ * On Now it opens every Exercise ("All exercises", a list icon over "All"); on All it goes back to
+ * the Set the Session is on ("Now"). A plain button, so the keyboard and a screen reader reach it
+ * by its name.
  */
 export function LiveSessionBar({ view, onViewChange }: LiveSessionBarProps): JSX.Element {
+  const toAll = view === 'now'
   return (
-    <div className="live-bar">
-      <div className="live-view-switch">
-        <Segmented
-          name="live-view"
-          label="Session view"
-          value={view}
-          options={[
-            { value: 'now', label: 'Now' },
-            { value: 'all', label: 'All' },
-          ]}
-          onChange={onViewChange}
-        />
-      </div>
-    </div>
+    <button
+      type="button"
+      className="live-view-button btn-quiet"
+      aria-label={toAll ? 'All exercises' : 'Now'}
+      onClick={() => onViewChange(toAll ? 'all' : 'now')}
+    >
+      <Icon name={toAll ? 'ListChecks' : 'Dumbbell'} size={20} />
+      <span className="live-view-button-text" aria-hidden="true">
+        {toAll ? 'All' : 'Now'}
+      </span>
+    </button>
   )
 }

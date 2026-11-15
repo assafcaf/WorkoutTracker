@@ -297,3 +297,36 @@
   color: var(--color-on-primary);
   font-weight: var(--weight-semibold);
 }
+
+/* V1-20: a very narrow screen (195 px): the number had 51 px between two 56 px steps and ran
+ * over the minus. The steps drop to the tap floor and the number to 0.7 of the hero size, so
+ * "62.5 kg" and "10 reps" sit clear of both buttons. */
+@media (max-width: 280px) {
+  .dial--scrub {
+    grid-template-columns: var(--tap-min) minmax(0, 1fr) var(--tap-min);
+  }
+
+  .dial--scrub .dial-step {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+
+  .dial--scrub .dial-body {
+    gap: 2px;
+    min-height: 52px;
+  }
+
+  .dial--scrub .dial-readout,
+  .dial--scrub .dial-readout[data-length='long'] {
+    font-size: calc(var(--text-hero) * 0.6);
+    line-height: 1.2;
+  }
+
+  .dial--scrub .dial-readout[data-length='long'] {
+    font-size: calc(var(--text-hero) * 0.45);
+  }
+
+  .dial--scrub .dial-unit {
+    font-size: var(--text-xs);
+  }
+}

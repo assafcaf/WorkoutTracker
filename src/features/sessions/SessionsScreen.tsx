@@ -19,6 +19,8 @@ import { AppShell } from '../../ui/AppShell'
 import { CalendarWeekCells } from '../../ui/CalendarWeek'
 import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
 import { SessionEditor } from '../../ui/SessionEditor'
+import { Sheet } from '../../ui/Sheet'
+import { Snackbar } from '../../ui/Snackbar'
 import { SessionSummary } from '../../ui/SessionSummary'
 import type { AppRoute } from '../routes'
 import { useServices } from '../ServicesProvider'
@@ -36,6 +38,9 @@ export type SessionsScreenProps = {
 
 /** The weeks the calendar draws (V3-09): six rows of seven days above the list. */
 const CALENDAR_WEEKS = 6
+
+/** How long "Workout deleted · Undo" stays (V5), as long as Body's "Entry deleted · Undo". */
+const UNDO_MS = 6000
 
 const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -57,20 +62,22 @@ function workoutToneOf(session: Session, programs: Program[]): WorkoutTone {
 /**
  * The six-week calendar (V3-09, back in place of V2-07's number row): one header line with the
  * Session count, the day letters, then six weeks of seven cells, each Session day filled in its
- * Workout's tone with its letter and today outlined. No legend: the letters carry it. It is
- * static: each week row names its Sessions for a screen reader, and the list below is the way
- * into a Session.
+ * Workout's tone with its letter and today outlined. No legend: the letters carry it. Each week
+ * row names its Sessions for a screen reader; V5: each Session day is a button into it, named
+ * "Workout B, Mon 12 Oct" (a day with two Sessions opens a chooser, through `onOpenDay`).
  */
 function SessionsCalendar({
   sessions,
   programs,
   now,
   weekStartsOn,
+  onOpenDay,
 }: {
   sessions: Session[]
   programs: Program[]
   now: number
   weekStartsOn: Weekday
+  onOpenDay(day: number, sessions: Session[]): void
 }): JSX.Element {
   const weeks = calendarWeeks(sessions, now, CALENDAR_WEEKS, weekStartsOn)
   const count = sessionsInWeeks(sessions, now, CALENDAR_WEEKS, weekStartsOn)
@@ -105,7 +112,7 @@ function SessionsCalendar({
           <div
             key={week.start}
             className="sessions-calendar-row"
-            role="img"
+            role="group"
             aria-label={`Week of ${dayMonth(week.start, now)}: ${summary}`}
             data-current={index === weeks.length - 1 || undefined}
           >
@@ -114,13 +121,17 @@ function SessionsCalendar({
             </span>
             <CalendarWeekCells
               cells={week.days.map((day) => {
-                const first = byDay.get(day.at)?.[0]
+                const onDay = byDay.get(day.at) ?? []
+                const first = onDay[0]
+                const names = onDay.map((session) => workoutNameOf(session, programs)).join(' and ')
                 return {
                   key: day.at,
                   letter: first ? workoutLetterOf(workoutNameOf(first, programs)) : null,
                   tone: first ? workoutToneOf(first, programs) : null,
                   today: day.today,
                   future: day.future,
+                  onOpen: first ? () => onOpenDay(day.at, onDay) : undefined,
+                  label: first ? `${names}, ${formatDay(new Date(day.at), new Date(now))}` : undefined,
                 }
               })}
             />
@@ -153,7 +164,32 @@ export function SessionsScreen({
 }: SessionsScreenProps): JSX.Element {
   const [summarySessionId, setSummarySessionId] = useState<string | null>(initialSessionId ?? null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  /** V5: a calendar day with two or more Sessions, open as a chooser of them. */
+  const [chooser, setChooser] = useState<{ day: number; sessions: Session[] } | null>(null)
+  /** V5: the Session just deleted, as it was, while "Workout deleted · Undo" shows. */
+  const [deleted, setDeleted] = useState<Session | null>(null)
   const services = useServices()
+
+  useEffect(() => {
+    if (!deleted) return
+    const timer = setTimeout(() => setDeleted(null), UNDO_MS)
+    return () => clearTimeout(timer)
+  }, [deleted])
+
+  /** V5: deletes at once (marked deleted, so it syncs) and offers Undo, no confirm first. */
+  const deleteSession = (session: Session): void => {
+    setSummarySessionId(null)
+    setEditingId(null)
+    setDeleted(session)
+    void services.sessions.discard(session.id)
+  }
+  const undoDelete = (): void => {
+    if (!deleted) return
+    const session = deleted
+    setDeleted(null)
+    // The copy as listed before the delete has no `deletedAt`: storing it back makes it live.
+    void services.sessions.save(session)
+  }
 
   useEffect(() => {
     onInSession(false)
@@ -230,9 +266,7 @@ export function SessionsScreen({
             setEditingId(null)
           }}
           onCancel={() => setEditingId(null)}
-          onDelete={() => {
-            void services.sessions.discard(editSession.id).then(() => setEditingId(null))
-          }}
+          onDelete={() => deleteSession(editSession)}
         />
       </AppShell>
     )
@@ -248,7 +282,16 @@ export function SessionsScreen({
         <p className="sessions-empty">No finished workouts yet. Finish one and it appears here.</p>
       ) : (
         <div className="sessions-screen">
-          <SessionsCalendar sessions={sessions} programs={programs} now={today} weekStartsOn={weekStartsOn} />
+          <SessionsCalendar
+            sessions={sessions}
+            programs={programs}
+            now={today}
+            weekStartsOn={weekStartsOn}
+            onOpenDay={(day, onDay) => {
+              if (onDay.length === 1) setSummarySessionId(onDay[0].id)
+              else setChooser({ day, sessions: onDay })
+            }}
+          />
           {sessionsByWeek(sessions, today, weekStartsOn).map((week) => (
             <section key={week.start} className="sessions-week" aria-label={week.label}>
               <h2 className="sessions-caption">{week.label}</h2>
@@ -274,7 +317,7 @@ export function SessionsScreen({
                         <span className="session-row-side">
                           <span className="session-row-tags">
                             {session.deload ? <span className="tag session-row-deload">Deload</span> : null}
-                            {count > 0 ? <span className="tag tag-pr">{recordsText(count)}</span> : null}
+                            {count > 0 ? <span className="session-row-prs">{recordsText(count)}</span> : null}
                           </span>
                           <span className="session-row-stats">
                             {`${minutes} min · ${workingSetCount(session)} sets · ${volumeKg.toLocaleString('en-US')} kg`}
@@ -300,18 +343,48 @@ export function SessionsScreen({
           workout={programs
             .find((program) => program.id === summarySession.programId)
             ?.workouts.find((workout) => workout.id === summarySession.workoutId)}
+          program={programs.find((program) => program.id === summarySession.programId)}
+          weekStartsOn={weekStartsOn}
           bodyLog={bodyLog}
           onClose={() => setSummarySessionId(null)}
           onEdit={() => {
             setSummarySessionId(null)
             setEditingId(summarySession.id)
           }}
+          onDelete={() => deleteSession(summarySession)}
           onBrowse={(muscles: Muscle[]) => {
             setSummarySessionId(null)
             navigate({ tab: 'exercises', muscles })
           }}
         />
       ) : null}
+      {chooser ? (
+        <Sheet label={formatDay(new Date(chooser.day), new Date(today))} onClose={() => setChooser(null)}>
+          <div className="sessions-chooser">
+            <h3 className="sessions-chooser-heading">{formatDay(new Date(chooser.day), new Date(today))}</h3>
+            {chooser.sessions.map((session) => (
+              <button
+                key={session.id}
+                type="button"
+                className="sessions-chooser-option btn-secondary"
+                onClick={() => {
+                  setChooser(null)
+                  setSummarySessionId(session.id)
+                }}
+              >
+                {`${workoutNameOf(session, programs)} · ${clockTime(session.startedAt)}`}
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      ) : null}
+      {deleted ? <Snackbar message="Workout deleted" actionLabel="Undo" onAction={undoDelete} /> : null}
     </AppShell>
   )
+}
+
+/** "08:05", 24-hour: when a Session started, to tell two on one day apart. */
+function clockTime(at: number): string {
+  const date = new Date(at)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }

@@ -79,8 +79,9 @@ async function finishedHere(weightKg: number, daysAgo: number): Promise<void> {
 
 async function backSquatRow(): Promise<HTMLElement> {
   // The Session reopens on Now (V1-01); its rows are on All, one tap away.
-  const all = (await screen.findByRole('radio', { name: 'All' }, SETTLE)) as HTMLInputElement
-  if (!all.checked) fireEvent.click(all)
+  // V3-07: the header button reads "All exercises" on Now, "Now" once All is shown.
+  const all = await screen.findByRole('button', { name: /^(All exercises|Now)$/ }, SETTLE)
+  if (all.getAttribute('aria-label') === 'All exercises') fireEvent.click(all)
   return screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 }
 

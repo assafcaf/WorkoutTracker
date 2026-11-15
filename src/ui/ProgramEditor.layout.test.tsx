@@ -6,7 +6,7 @@ import { expect, test, vi } from 'vitest'
 import type { Mock } from 'vitest'
 import { ProgramEditor } from './ProgramEditor'
 import { moveTo } from './program/listMoves'
-import type { ProgramEditorProps } from './ProgramEditor'
+import type { ExerciseSettings, ProgramEditorProps } from './ProgramEditor'
 import type { Exercise, LibraryExercise, Program } from '../types'
 
 function libraryEntry(id: string, name: string, primary: LibraryExercise['primaryMuscles']): LibraryExercise {
@@ -69,7 +69,7 @@ function program(): Program {
 }
 
 function renderEditor(overrides: Partial<ProgramEditorProps> = {}) {
-  const onSave: Mock<(p: Program) => void> = vi.fn()
+  const onSave: Mock<(p: Program, settings?: ExerciseSettings) => void> = vi.fn()
   const user = userEvent.setup()
   render(
     <ProgramEditor
@@ -226,4 +226,106 @@ test('moveTo takes an item out and puts it back at the given place', () => {
   expect(moveTo(['a', 'b', 'c', 'd'], 0, 2)).toEqual(['b', 'c', 'a', 'd'])
   expect(moveTo(['a', 'b', 'c', 'd'], 3, 0)).toEqual(['d', 'a', 'b', 'c'])
   expect(moveTo(['a', 'b'], 1, 1)).toEqual(['a', 'b'])
+})
+
+test('V1-28 each number field is named after its row: "Back Squat Sets", "Back Squat Min reps" and on', () => {
+  renderEditor()
+
+  const row = planRow('Back Squat')
+  for (const name of [
+    'Back Squat Sets',
+    'Back Squat Min reps',
+    'Back Squat Max reps',
+    'Back Squat Rest (s)',
+    'Back Squat Starting weight (kg)',
+  ]) {
+    expect(within(row).getByRole('spinbutton', { name })).toBeInTheDocument()
+  }
+  // The Bodyweight row has no kg field, so four names.
+  expect(within(planRow('Assisted Pullup')).getAllByRole('spinbutton')).toHaveLength(4)
+})
+
+test('V1-28 a row puts its numbers on a second line under the name, each with its own caption', () => {
+  renderEditor()
+
+  const row = planRow('Back Squat')
+  const cells = row.querySelector('.program-editor-plan-cells')
+  expect(cells).not.toBeNull()
+  expect(row.querySelector('.program-editor-plan-row')?.contains(cells)).toBe(false)
+  expect([...(cells as HTMLElement).querySelectorAll('.program-editor-cell-caption')].map((c) => c.textContent)).toEqual([
+    'Sets',
+    'Reps',
+    'Rest, s',
+    'kg',
+  ])
+  expect(document.querySelector('.program-editor-columns')).toBeNull()
+})
+
+test("V1-16 without stored Exercise settings, a row's options offer no Bodyweight or Weight step", async () => {
+  const { user } = renderEditor()
+
+  await user.click(within(planRow('Back Squat')).getByRole('button', { name: 'Options for Back Squat' }))
+
+  expect(within(planRow('Back Squat')).queryByRole('switch', { name: 'Bodyweight exercise' })).toBeNull()
+  expect(within(planRow('Back Squat')).queryByRole('combobox', { name: 'Back Squat weight step' })).toBeNull()
+})
+
+test("V1-16 a row's options show its Exercise's stored step and Bodyweight, and Save hands back only what changed", async () => {
+  const { user, onSave } = renderEditor({
+    exerciseSettings: { weightSteps: { squat: 5 }, bodyweight: {} },
+  })
+
+  await user.click(within(planRow('Back Squat')).getByRole('button', { name: 'Options for Back Squat' }))
+  const row = planRow('Back Squat')
+  const bodyweight = within(row).getByRole('switch', { name: 'Bodyweight exercise' })
+  const step = within(row).getByRole('combobox', { name: 'Back Squat weight step' })
+  expect(bodyweight).not.toBeChecked()
+  expect(step).toHaveValue('5')
+  expect(within(row).getByText('For Back Squat in every workout.')).toBeVisible()
+
+  await user.selectOptions(step, '2.5')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  expect(onSave).toHaveBeenCalledTimes(1)
+  expect(onSave.mock.calls[0][1]).toEqual({ weightSteps: { squat: 2.5 }, bodyweight: {} })
+})
+
+test('V1-16 turning Bodyweight on hides the step, swaps the kg field for the Load, and counts as a change', async () => {
+  const onCancel = vi.fn()
+  const { user, onSave } = renderEditor({
+    exerciseSettings: { weightSteps: {}, bodyweight: {} },
+    onCancel,
+  })
+
+  await user.click(within(planRow('Flat Bench')).getByRole('button', { name: 'Options for Flat Bench' }))
+  await user.click(within(planRow('Flat Bench')).getByRole('switch', { name: 'Bodyweight exercise' }))
+
+  const row = planRow('Flat Bench')
+  expect(within(row).queryByRole('combobox', { name: 'Flat Bench weight step' })).toBeNull()
+  expect(within(row).queryByLabelText('Starting weight (kg)')).toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(onCancel).not.toHaveBeenCalled()
+  expect(screen.getByRole('heading', { name: 'Discard 1 change?' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Keep editing' }))
+
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  expect(onSave.mock.calls[0][1]).toEqual({ weightSteps: {}, bodyweight: { bench: true } })
+})
+
+test('V1-16 a stored Bodyweight override shows on the row, and turning it back off and on again is no change', async () => {
+  const { user, onSave } = renderEditor({
+    exerciseSettings: { weightSteps: {}, bodyweight: { squat: true } },
+  })
+
+  expect(within(planRow('Back Squat')).queryByLabelText('Starting weight (kg)')).toBeNull()
+  await user.click(within(planRow('Back Squat')).getByRole('button', { name: 'Options for Back Squat' }))
+  const bodyweight = within(planRow('Back Squat')).getByRole('switch', { name: 'Bodyweight exercise' })
+  expect(bodyweight).toBeChecked()
+
+  await user.click(bodyweight)
+  await user.click(bodyweight)
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  expect(onSave.mock.calls[0]).toHaveLength(1)
 })

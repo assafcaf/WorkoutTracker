@@ -93,3 +93,30 @@
   font-weight: var(--weight-semibold);
   line-height: 1.3;
 }
+
+/* V1-20: a very narrow screen (195 px, or display zoom with large text) cannot hold the name
+ * beside Minimise, All and Finish, so it read "Worko…". There the row wraps: the controls keep
+ * the first line and the name with its meta line takes a full line under them. The header then
+ * scrolls away with the body rather than holding two lines of a short screen. */
+@media (max-width: 280px) {
+  .live-header {
+    position: static;
+  }
+
+  .live-header-row {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 56px;
+  }
+
+  .live-header-minimise {
+    min-height: 56px;
+    margin-right: auto;
+  }
+
+  .live-header-title {
+    order: 1;
+    flex-basis: 100%;
+    padding: 0 var(--space-2) var(--space-2) var(--space-4);
+  }
+}

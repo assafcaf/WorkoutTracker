@@ -1,5 +1,6 @@
-/* The session summary (E18 O26): heading and day, the week line, the figures, each lift's move,
- * the records, Next time, the muscles worked and the volume, over a Share / Done dock.
+/* The session summary (E18 O26, V4-03): heading and day, the one win, the figures with the
+ * comparison, each lift's sentence, the records (2 or more), the muscles worked, the week line and
+ * the volume, over a Share / Done dock.
  *
  * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
  * one definition site.
@@ -52,24 +53,29 @@
   border-radius: var(--radius-md);
 }
 
-/* "What Wed did for your week": the heading and its one line of week figures. */
-.session-summary-week {
+/* V4-03: the one win, the Session's first PR: "[PR] Deadlift 70 kg × 8 · rep record, +1 rep". */
+.session-summary-win {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--space-2);
+  margin: 0;
+  font-size: var(--text-md);
 }
 
-.session-summary-week-heading {
-  margin: 0;
-  font-size: var(--text-lg);
+.session-summary-win-text {
   font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
 }
 
-.session-summary-week-line {
-  margin: 0;
-  color: var(--color-secondary);
+.session-summary-win-more {
+  color: var(--color-muted);
   font-size: var(--text-sm);
+}
+
+/* "This week 3 of 3 · next up Workout A": weekly, never a streak. */
+.session-summary-week {
+  margin: 0;
+  font-size: var(--text-md);
   font-variant-numeric: tabular-nums;
 }
 
@@ -157,39 +163,20 @@
   color: var(--color-secondary);
 }
 
+/* Worked today (V4-03, closes V3-13): one line of the muscles trained, most sets first. */
 .session-summary-worked {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  margin-top: var(--space-1);
 }
 
-.session-summary-card-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.session-summary-card-title {
-  margin: 0;
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-}
-
-.session-summary-card-note {
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-}
-
-/* Lift by lift: name and top set on one line, the move in words beneath. */
+/* Lift by lift: the name, then one plain sentence: "60×10 · 70×8 PR · 70×7 · 1 rep more". */
 .session-summary-moves {
   padding: 0 var(--space-3);
 }
 
 .session-summary-move {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  column-gap: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   padding: 10px 0;
 }
 
@@ -202,68 +189,46 @@
   font-weight: var(--weight-semibold);
 }
 
-.session-summary-move-top {
-  font-size: var(--text-md);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
 .session-summary-move-text {
-  grid-column: 1 / -1;
   color: var(--color-secondary);
   font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
-.session-summary-next {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.session-summary-move-set {
+  white-space: nowrap;
 }
 
-.session-summary-next-line {
-  margin: 0;
-  font-size: var(--text-md);
+.session-summary-move-tail {
+  color: var(--color-text);
 }
 
-/* The 12 muscles: two columns of `name  [sets]`. */
+/* The muscles as one wrapping line; each name is a button into its region's panel. */
 .session-summary-muscles {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.session-summary-worked-label {
+  font-weight: var(--weight-semibold);
+}
+
+.session-summary-muscles .session-summary-muscle {
+  white-space: nowrap;
 }
 
 .session-summary-muscle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: var(--tap-min);
-  padding: 0;
+  display: inline;
+  padding: var(--space-1) 0;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: var(--text-sm);
   text-align: left;
-}
-
-/* V2-10: the day's one true win, under the figures: "Best today  Deadlift · 72.5 kg × 10 · +2.5 kg  PR". */
-.session-summary-best {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px var(--space-2);
-  margin: 0;
-  font-size: var(--text-md);
-}
-
-.session-summary-best-label {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.session-summary-best-text {
-  font-weight: var(--weight-semibold);
+  text-decoration: underline dotted var(--color-hairline);
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
 /* The Share… sheet: share as text, or send to Apple Health. */
@@ -326,4 +291,22 @@
 .session-summary-save-actions {
   display: flex;
   gap: var(--space-3);
+}
+
+/* V5: Delete workout, straight from a Session opened on Sessions; the screen offers Undo. A quiet
+ * danger text button at the foot of the body, away from Done. */
+.session-summary-delete {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  margin-top: var(--space-2);
+  padding: 0 var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
 }

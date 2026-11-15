@@ -6,15 +6,26 @@ import { newPlan, validateProgram } from '../domain/programs'
 import type { ProgramFault } from '../domain/programs'
 import { matchesQuery } from '../domain/search'
 import { exerciseFamily, familyImpact, type FamilyImpact } from '../domain/programVolume'
+import { bodyweightOf } from '../domain/bodyweight'
+import { WEIGHT_STEPS } from '../domain/dial'
 import { loadText } from '../domain/setText'
 import { LibraryList } from './LibraryList'
 import { Sheet } from './Sheet'
-import { Switch } from './controls'
+import { Select, Switch } from './controls'
 import { Icon } from './icons'
 import { moveTo } from './program/listMoves'
 import { FAMILY_LABELS, wholeCount } from './program/planText'
 import './program/ProgramFamily.css'
 import './ProgramEditor.css'
+
+/**
+ * How each Exercise's weight counts (V1-16), stored apart from any Program and read by the live
+ * Session: its weight step and its Bodyweight override, both by Exercise id.
+ */
+export type ExerciseSettings = {
+  weightSteps: Record<string, number>
+  bodyweight: Record<string, boolean>
+}
 
 export type ProgramEditorProps = {
   initial: Program
@@ -22,7 +33,17 @@ export type ProgramEditorProps = {
   resolve: (id: string) => Exercise | undefined
   library: LibraryExercise[]
   gymEquipment: string[] | null
-  onSave(p: Program): void
+  /**
+   * Called with the edited Program, and -- only when a row's options changed one -- the
+   * Exercise settings chosen here (V1-16): each changed weight step, and each changed Bodyweight
+   * value, by Exercise id.
+   */
+  onSave(p: Program, settings?: ExerciseSettings): void
+  /**
+   * The stored Exercise settings (V1-16): every weight step, and every Bodyweight override. Given,
+   * a row's options offer "Bodyweight exercise" and "Weight step" for its Exercise.
+   */
+  exerciseSettings?: ExerciseSettings
   onCancel(): void
   /** When set, shown under the editor's bar. */
   saveError?: string | null
@@ -192,6 +213,7 @@ export function ProgramEditor({
   onCancel,
   saveError = null,
   title,
+  exerciseSettings,
 }: ProgramEditorProps): JSX.Element {
   const [name, setName] = useState(initial.name)
   const [workouts, setWorkouts] = useState<DraftWorkout[]>(() =>
@@ -220,6 +242,8 @@ export function ProgramEditor({
   // The draft as it opened, so Cancel can say how many changes it would throw away (V1-09).
   const [start] = useState(() => ({ name, sessions: sessionsText ?? String(initialVisible), workouts }))
   const [askDiscard, setAskDiscard] = useState(false)
+  // V1-16: the Exercise settings changed in this edit, kept apart until Save like every field.
+  const [settingEdits, setSettingEdits] = useState<ExerciseSettings>({ weightSteps: {}, bodyweight: {} })
   const libraryById = useMemo(() => new Map(library.map((entry) => [entry.id, entry] as const)), [library])
 
   // The Program tab that opened this editor may be scrolled well past the top; land on the
@@ -323,9 +347,38 @@ export function ProgramEditor({
     closePicker()
   }
 
-  const save = () => onSave(draftProgram)
+  /** Whether `exercise` is Bodyweight, as stored or as changed in this edit (V1-16). */
+  const storedBodyweight = (exercise: Exercise): boolean =>
+    bodyweightOf(exercise, exerciseSettings?.bodyweight ?? {})
+  const bodyweightFor = (exercise: Exercise | undefined): boolean =>
+    exercise === undefined ? false : settingEdits.bodyweight[exercise.id] ?? storedBodyweight(exercise)
+  const storedStep = (exercise: Exercise): number =>
+    exerciseSettings?.weightSteps[exercise.id] ?? exercise.weightStep
+  const stepFor = (exercise: Exercise): number => settingEdits.weightSteps[exercise.id] ?? storedStep(exercise)
 
-  const changes = countChanges(start, { name, sessions: sessionsShown, workouts })
+  /** Records a changed Bodyweight value for `exercise`, or drops the edit when it is back as stored. */
+  const editBodyweight = (exercise: Exercise, value: boolean) =>
+    setSettingEdits((edits) => {
+      const bodyweight = { ...edits.bodyweight }
+      if (value === storedBodyweight(exercise)) delete bodyweight[exercise.id]
+      else bodyweight[exercise.id] = value
+      return { ...edits, bodyweight }
+    })
+
+  /** Records a changed weight step for `exercise`, or drops the edit when it is back as stored. */
+  const editStep = (exercise: Exercise, value: number) =>
+    setSettingEdits((edits) => {
+      const weightSteps = { ...edits.weightSteps }
+      if (value === storedStep(exercise)) delete weightSteps[exercise.id]
+      else weightSteps[exercise.id] = value
+      return { ...edits, weightSteps }
+    })
+
+  const settingChanges =
+    Object.keys(settingEdits.weightSteps).length + Object.keys(settingEdits.bodyweight).length
+  const save = () => (settingChanges > 0 ? onSave(draftProgram, settingEdits) : onSave(draftProgram))
+
+  const changes = countChanges(start, { name, sessions: sessionsShown, workouts }) + settingChanges
   const cancel = () => {
     if (changes === 0) onCancel()
     else setAskDiscard(true)
@@ -522,18 +575,6 @@ export function ProgramEditor({
             </div>
           )}
 
-          {workout.plans.length > 0 && (
-            <div className="program-editor-columns" aria-hidden="true">
-              <span className="program-editor-col-handle" />
-              <span className="program-editor-col-name">Exercise</span>
-              <span className="program-editor-col program-editor-col-sets">Sets</span>
-              <span className="program-editor-col program-editor-col-reps">Reps</span>
-              <span className="program-editor-col program-editor-col-rest">Rest, s</span>
-              <span className="program-editor-col program-editor-col-kg">kg</span>
-              <span className="program-editor-col-more" />
-            </div>
-          )}
-
           <ol className="program-editor-plans">
             {workout.plans.map((plan, j) => {
               const exercise = resolve(plan.exerciseId)
@@ -582,81 +623,9 @@ export function ProgramEditor({
                       data-family={exerciseFamily(exercise, libraryById) ?? undefined}
                       aria-hidden="true"
                     />
-                    <p className="program-editor-plan-name">{exerciseName}</p>
-                    <label className="program-editor-cell program-editor-cell-sets">
-                      <span className="program-editor-sr">Sets</span>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        className="program-editor-cell-input"
-                        value={plan.sets}
-                        aria-describedby={describedBy(`${planPath}.sets`)}
-                        onChange={(event) => {
-                          updatePlan(workout.id, j, { sets: event.target.value })
-                          setLastEdited(plan.uid)
-                        }}
-                      />
-                    </label>
-                    <div className="program-editor-cell program-editor-cell-reps">
-                      <label className="program-editor-rep">
-                        <span className="program-editor-sr">Min reps</span>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          className="program-editor-cell-input"
-                          value={plan.minReps}
-                          aria-describedby={describedBy(`${planPath}.repRange`)}
-                          onChange={(event) => updatePlan(workout.id, j, { minReps: event.target.value })}
-                        />
-                      </label>
-                      <span className="program-editor-rep-dash" aria-hidden="true">
-                        –
-                      </span>
-                      <label className="program-editor-rep">
-                        <span className="program-editor-sr">Max reps</span>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          className="program-editor-cell-input"
-                          value={plan.maxReps}
-                          aria-describedby={describedBy(`${planPath}.repRange`)}
-                          onChange={(event) => updatePlan(workout.id, j, { maxReps: event.target.value })}
-                        />
-                      </label>
-                    </div>
-                    <label className="program-editor-cell program-editor-cell-rest">
-                      <span className="program-editor-sr">Rest (s)</span>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        className="program-editor-cell-input"
-                        value={plan.rest}
-                        aria-describedby={describedBy(`${planPath}.restSeconds`)}
-                        onChange={(event) => updatePlan(workout.id, j, { rest: event.target.value })}
-                      />
-                    </label>
-                    {exercise?.bodyweight ? (
-                      <span className="program-editor-cell program-editor-cell-kg program-editor-cell-static">
-                        {loadText({ weightKg: null, loadKg: exercise.startLoadKg })}
-                      </span>
-                    ) : (
-                      <label className="program-editor-cell program-editor-cell-kg">
-                        <span className="program-editor-sr">Starting weight (kg)</span>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          className="program-editor-cell-input"
-                          value={plan.startWeight}
-                          placeholder={
-                            exercise?.startWeight == null ? undefined : String(exercise.startWeight)
-                          }
-                          aria-describedby={describedBy(`${planPath}.startWeightKg`)}
-                          onChange={(event) =>
-                            updatePlan(workout.id, j, { startWeight: event.target.value })
-                          }
-                        />
-                      </label>
-                    )}
+                    <p className="program-editor-plan-name" id={`${plan.uid}-name`}>
+                      {exerciseName}
+                    </p>
                     <button
                       type="button"
                       className="program-editor-more icon-btn"
@@ -666,6 +635,117 @@ export function ProgramEditor({
                     >
                       <Icon name="Ellipsis" size={18} />
                     </button>
+                  </div>
+                  {/* V1-28: the numbers on a line of their own under the name, each tile at
+                      least 44 x 44 with its caption inside, each input named after its row
+                      ("Back squat Sets"). */}
+                  <div className="program-editor-plan-cells">
+                    <label className="program-editor-cell program-editor-cell-sets">
+                      <span className="program-editor-sr" id={`${plan.uid}-sets`}>
+                        Sets
+                      </span>
+                      <span className="program-editor-cell-caption" aria-hidden="true">
+                        Sets
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        className="program-editor-cell-input"
+                        value={plan.sets}
+                        aria-labelledby={`${plan.uid}-name ${plan.uid}-sets`}
+                        aria-describedby={describedBy(`${planPath}.sets`)}
+                        onChange={(event) => {
+                          updatePlan(workout.id, j, { sets: event.target.value })
+                          setLastEdited(plan.uid)
+                        }}
+                      />
+                    </label>
+                    <div className="program-editor-cell program-editor-cell-reps">
+                      <span className="program-editor-cell-caption" aria-hidden="true">
+                        Reps
+                      </span>
+                      <label className="program-editor-rep">
+                        <span className="program-editor-sr" id={`${plan.uid}-min`}>
+                          Min reps
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          className="program-editor-cell-input"
+                          value={plan.minReps}
+                          aria-labelledby={`${plan.uid}-name ${plan.uid}-min`}
+                          aria-describedby={describedBy(`${planPath}.repRange`)}
+                          onChange={(event) => updatePlan(workout.id, j, { minReps: event.target.value })}
+                        />
+                      </label>
+                      <span className="program-editor-rep-dash" aria-hidden="true">
+                        –
+                      </span>
+                      <label className="program-editor-rep">
+                        <span className="program-editor-sr" id={`${plan.uid}-max`}>
+                          Max reps
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          className="program-editor-cell-input"
+                          value={plan.maxReps}
+                          aria-labelledby={`${plan.uid}-name ${plan.uid}-max`}
+                          aria-describedby={describedBy(`${planPath}.repRange`)}
+                          onChange={(event) => updatePlan(workout.id, j, { maxReps: event.target.value })}
+                        />
+                      </label>
+                    </div>
+                    <label className="program-editor-cell program-editor-cell-rest">
+                      <span className="program-editor-sr" id={`${plan.uid}-rest`}>
+                        Rest (s)
+                      </span>
+                      <span className="program-editor-cell-caption" aria-hidden="true">
+                        Rest, s
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        className="program-editor-cell-input"
+                        value={plan.rest}
+                        aria-labelledby={`${plan.uid}-name ${plan.uid}-rest`}
+                        aria-describedby={describedBy(`${planPath}.restSeconds`)}
+                        onChange={(event) => updatePlan(workout.id, j, { rest: event.target.value })}
+                      />
+                    </label>
+                    {bodyweightFor(exercise) ? (
+                      <span className="program-editor-cell program-editor-cell-kg program-editor-cell-static">
+                        <span className="program-editor-cell-caption" aria-hidden="true">
+                          Load
+                        </span>
+                        <span className="program-editor-cell-value">
+                          {loadText({ weightKg: null, loadKg: exercise?.startLoadKg })}
+                        </span>
+                      </span>
+                    ) : (
+                      <label className="program-editor-cell program-editor-cell-kg">
+                        <span className="program-editor-sr" id={`${plan.uid}-kg`}>
+                          Starting weight (kg)
+                        </span>
+                        <span className="program-editor-cell-caption" aria-hidden="true">
+                          kg
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          className="program-editor-cell-input"
+                          value={plan.startWeight}
+                          placeholder={
+                            exercise?.startWeight == null ? undefined : String(exercise.startWeight)
+                          }
+                          aria-labelledby={`${plan.uid}-name ${plan.uid}-kg`}
+                          aria-describedby={describedBy(`${planPath}.startWeightKg`)}
+                          onChange={(event) =>
+                            updatePlan(workout.id, j, { startWeight: event.target.value })
+                          }
+                        />
+                      </label>
+                    )}
                   </div>
                   {repRangeMessage && (
                     <p id={faultId(`${planPath}.repRange`)} className="program-editor-fault">
@@ -699,6 +779,35 @@ export function ProgramEditor({
                           label="Last set AMRAP"
                         />
                       </div>
+                      {exerciseSettings === undefined || exercise === undefined ? null : (
+                        // V1-16: how this Exercise's weight counts, wherever it is planned or logged.
+                        <div className="program-editor-menu-weight">
+                          <div className="program-editor-menu-switch">
+                            <Switch
+                              checked={bodyweightFor(exercise)}
+                              onChange={(next) => editBodyweight(exercise, next)}
+                              label="Bodyweight exercise"
+                            />
+                          </div>
+                          {bodyweightFor(exercise) ? null : (
+                            <label className="program-editor-menu-step">
+                              <span className="program-editor-menu-step-label">Weight step</span>
+                              <Select
+                                aria-label={`${exerciseName} weight step`}
+                                value={stepFor(exercise)}
+                                onChange={(event) => editStep(exercise, Number(event.target.value))}
+                              >
+                                {WEIGHT_STEPS.map((step) => (
+                                  <option key={step} value={step}>
+                                    {`${step} kg`}
+                                  </option>
+                                ))}
+                              </Select>
+                            </label>
+                          )}
+                          <p className="program-editor-menu-note">{`For ${exerciseName} in every workout.`}</p>
+                        </div>
+                      )}
                       <div className="program-editor-menu-actions">
                         <button
                           type="button"

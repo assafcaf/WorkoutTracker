@@ -42,7 +42,7 @@ async function finishWithSquatSets(extra: number) {
       <WorkoutFeature navigate={vi.fn()} onInSession={vi.fn()} />
     </ServicesProvider>,
   )
-  await screen.findByRole('radiogroup', { name: 'Session view' }, SETTLE)
+  await screen.findByRole('button', { name: 'All exercises' }, SETTLE)
   await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   return { user, services, summary }
