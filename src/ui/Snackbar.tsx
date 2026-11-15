@@ -4,9 +4,9 @@ import './Snackbar.css'
 export type SnackbarProps = {
   /** What just happened, naming the thing: "Set 1 deleted · 60 × 10". */
   message: string
-  /** The one action, e.g. Undo. */
-  actionLabel: string
-  onAction(): void
+  /** The one action, e.g. Undo; omitted, the bar only says what happened (V6). */
+  actionLabel?: string
+  onAction?(): void
   /**
    * V6 (V5-04): drawn where it is written, not over the bottom of the screen. The Set screen
    * places it in an anchor above its Dials, so it never covers the reps Dial or the rest timer.
@@ -24,9 +24,11 @@ export function Snackbar({ message, actionLabel, onAction, inline = false }: Sna
   const bar = (
     <div role="status" className={inline ? 'snackbar snackbar--inline' : 'snackbar'}>
       <span className="snackbar-message">{message}</span>
-      <button type="button" className="snackbar-action btn-quiet" onClick={onAction}>
-        {actionLabel}
-      </button>
+      {actionLabel === undefined ? null : (
+        <button type="button" className="snackbar-action btn-quiet" onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
     </div>
   )
   return inline ? bar : createPortal(bar, document.body)

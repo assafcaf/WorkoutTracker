@@ -204,8 +204,9 @@ export type SetScreenProps = {
   onFinishWorkout?(): void
   /**
    * V1-17: this Exercise was just swapped in for the planned one from Now. The screen opens with
-   * the dark snackbar "Swapped from Deadlift · Undo" for UNDO_MS, as Delete set's does, until a
-   * Set is logged here; Undo calls `onUndo`, which puts the planned Exercise back.
+   * the dark snackbar "Swapped from Deadlift" for UNDO_MS, as Delete set's does, until a Set is
+   * logged here. V6: it carries no Undo of its own -- the lasting `swapFor` line's "Undo swap"
+   * is the one Undo; `onUndo` is kept so callers still type-check.
    */
   swappedFrom?: { name: string; onUndo(): void } | null
   /**
@@ -219,6 +220,12 @@ export type SetScreenProps = {
    * or the weight is changed, the screen asks "Set a starting weight" where the Plate line goes.
    */
   askStartWeight?: boolean
+  /**
+   * V6-16: this is the Session's first barbell lift and no Warm-up is logged yet. Before the first
+   * working Set, one line above the cells offers the ramp, "Warm-up: 30×5 · 40×3 · 50×2 [Add]";
+   * it goes after Add or the first working Set.
+   */
+  warmupLine?: boolean
 }
 
 /** The Exercise just finished, as the next one's screen shows it during its rest (V3-01). */
@@ -1183,14 +1190,26 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     lastTimeEntry === null || onWarmup
       ? null
       : setDelta({ weightKg: open.weightKg, reps: open.reps, loadKg: open.loadKg }, lastTimeEntry)
+  // V6-17: a lift never logged before says so, and to start light, until its first Set today.
+  const firstTime =
+    !onWarmup &&
+    !done &&
+    loggedCount === 0 &&
+    (props.lastTime ?? []).every((entry) => entry.exerciseId !== exercise.id) &&
+    earlier.every((session) => session.entries.every((entry) => entry.exerciseId !== exercise.id))
   const vsLine: ReactNode =
     thenText !== null ? (
       thenText
+    ) : firstTime && prNote === null ? (
+      'First time · start light'
     ) : lastTimeEntry === null && prNote === null ? null : (
       <>
         {lastTimeEntry === null ? null : `Last time ${formatSet(lastTimeEntry)}`}
-        {liveDelta === null ? null : (
-          <span className="vs-delta" data-kind={liveDelta.kind}>{` · ${liveDelta.text}`}</span>
+        {/* V6-18: the same as last time names its day ("· Mon 12 Oct"), never "same". */}
+        {liveDelta === null || lastTimeEntry === null ? null : (
+          <span className="vs-delta" data-kind={liveDelta.kind}>
+            {` · ${liveDelta.kind === 'same' ? dayOf(lastTimeEntry) : liveDelta.text}`}
+          </span>
         )}
         {lastTimeEntry === null || prNote === null ? null : ' · '}
         {prNote}
@@ -1714,7 +1733,14 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 {props.swapFor.onUndo === undefined ? null : (
                   <>
                     <span aria-hidden="true">·</span>
-                    <button type="button" className="set-swapped-undo btn-quiet" onClick={props.swapFor.onUndo}>
+                    <button
+                      type="button"
+                      className="set-swapped-undo btn-quiet"
+                      onClick={() => {
+                        setSwapUndoShown(false)
+                        props.swapFor?.onUndo?.()
+                      }}
+                    >
                       Undo swap
                     </button>
                   </>
@@ -1734,6 +1760,24 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             <Icon name="Ellipsis" size={24} />
           </button>
         </div>
+
+        {/* V6-16: the first barbell lift offers its warm-up ramp in one line, above the cells,
+            until Add or the first working Set. */}
+        {props.warmupLine && rampOffer !== null && rampOffer.length > 0 && warmupsLogged === 0 && editing === null ? (
+          <p className="set-warmup-line">
+            <span className="set-warmup-line-text">
+              {`Warm-up: ${rampOffer.map((step) => `${step.weightKg}×${step.reps}`).join(' · ')}`}
+            </span>
+            <button
+              type="button"
+              className="set-warmup-line-add btn-quiet"
+              aria-label="Add these warm-ups"
+              onClick={() => startRamp(rampOffer)}
+            >
+              Add
+            </button>
+          </p>
+        ) : null}
 
         {/* The set cells: today's logged Sets (tap one to edit it), the Set on the steppers
             outlined, and the planned Sets still to come, dashed. */}
@@ -1887,15 +1931,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             <Snackbar inline message={undoMessage} actionLabel="Undo" onAction={() => void restoreSet()} />
           )}
           {undo !== null || !swapUndoShown || swappedFrom === null ? null : (
-            <Snackbar
-              inline
-              message={`Swapped from ${swappedFrom.name}`}
-              actionLabel="Undo"
-              onAction={() => {
-                setSwapUndoShown(false)
-                swappedFrom.onUndo()
-              }}
-            />
+            // V6: no Undo here; the swap line's "Undo swap" is the one Undo on the screen.
+            <Snackbar inline message={`Swapped from ${swappedFrom.name}`} />
           )}
         </div>
 

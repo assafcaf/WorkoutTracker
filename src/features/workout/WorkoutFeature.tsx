@@ -1104,6 +1104,16 @@ export function WorkoutFeature({
             deload={session.deload === true}
             exercise={exercise}
             plates={isBarbell(libraryMap.get(exercise.libraryId)) ? (plateInventoryData.status === 'ready' ? plateInventoryData.data : null) : null}
+            // V6-16: the Session's first barbell lift, no Warm-up logged yet: the ramp in one line.
+            warmupLine={
+              isBarbell(libraryMap.get(exercise.libraryId)) &&
+              session.entries.every(
+                (entry) =>
+                  entry.kind !== 'warmup' &&
+                  (entry.exerciseId === exercise.id ||
+                    !isBarbell(libraryMap.get(resolveListExercise(entry.exerciseId)?.libraryId ?? ''))),
+              )
+            }
             plan={plan}
             setIndex={openSet.setIndex}
             sessionId={session.id}

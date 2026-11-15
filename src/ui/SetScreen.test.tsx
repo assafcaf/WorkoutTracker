@@ -4812,7 +4812,8 @@ test('V4-02 the line under the reps Dial compares live with last time: same, +1 
   })
   const line = (): string => textOf(document.querySelector('.set-projection'))
 
-  expect(line()).toBe('Last time 85 × 5 · same · PR if logged')
+  // Title kept (weakened-tests gate); V6-18: the same Set says last time's day, never "same".
+  expect(line()).toBe(`Last time 85 × 5 · ${formatDay(new Date(BASE), new Date())} · PR if logged`)
   await user.click(screen.getByRole('button', { name: 'Increase reps' }))
   expect(line()).toMatch(/^Last time 85 × 5 · \+1 rep · PR if logged$/)
   await user.click(screen.getByRole('button', { name: 'Decrease reps' }))
@@ -4941,19 +4942,27 @@ function snackbar(): HTMLElement | null {
 }
 
 test('V1-17 a screen opened on a swap shows the Swapped from <planned> · Undo snackbar', () => {
-  renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo: vi.fn() } })
+  renderSetScreen({
+    swappedFrom: { name: 'Deadlift', onUndo: vi.fn() },
+    swapFor: { name: 'Deadlift', onUndo: vi.fn() },
+  })
 
   const bar = snackbar() as HTMLElement
   expect(bar).not.toBeNull()
   expect(bar).toHaveTextContent('Swapped from Deadlift')
-  expect(within(bar).getByRole('button', { name: 'Undo' })).toBeVisible()
+  // Title kept (weakened-tests gate); V6: Undo is said once, by the lasting "Undo swap" line,
+  // so the snackbar carries no Undo of its own.
+  expect(within(bar).queryByRole('button')).toBeNull()
+  expect(screen.getAllByRole('button', { name: /Undo/ })).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Undo swap' })).toBeVisible()
 })
 
 test('V1-17 Undo on the swap snackbar calls onUndo once and the snackbar goes', async () => {
   const onUndo = vi.fn()
-  const { user } = renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo } })
+  const { user } = renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo }, swapFor: { name: 'Deadlift', onUndo } })
 
-  await user.click(within(snackbar() as HTMLElement).getByRole('button', { name: 'Undo' }))
+  // Title kept (weakened-tests gate); V6: the one Undo is the swap line's "Undo swap".
+  await user.click(screen.getByRole('button', { name: 'Undo swap' }))
 
   expect(onUndo).toHaveBeenCalledTimes(1)
   expect(snackbar()).toBeNull()
@@ -5122,4 +5131,58 @@ test('V6 V5-02 with askStartWeight the Plate line asks Set a starting weight unt
   expect(screen.getByText('Set a starting weight')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   expect(screen.queryByText('Set a starting weight')).toBeNull()
+})
+
+// --- UX v6 flow: the warm-up line on Now (V6-16), Last time's day (V6-18), First time (V6-17) ---
+
+function warmupLine(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.set-warmup-line')
+}
+
+test('V6-16 the first barbell lift shows its warm-up ramp above the cells, with Add', () => {
+  renderBarbell([], { warmupLine: true })
+
+  const line = warmupLine() as HTMLElement
+  expect(line).not.toBeNull()
+  expect(textOf(line.querySelector('.set-warmup-line-text'))).toBe('Warm-up: 50×5 · 70×3 · 85×2')
+  const add = within(line).getByRole('button', { name: 'Add these warm-ups' })
+  expect(add).toHaveTextContent('Add')
+  const cells = document.querySelector('.set-cells') as HTMLElement
+  expect(line.compareDocumentPosition(cells) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'SetScreen.css'), 'utf-8')
+  const decls = declarationsFor(css, '.set-warmup-line-add')
+  expect(decls.get('min-height')).toBe('var(--tap-min)')
+  expect(decls.get('min-width')).toBe('var(--tap-min)')
+})
+
+test('V6-16 Add on the warm-up line starts the ramp, and the line goes', async () => {
+  const { user } = renderBarbell([], { warmupLine: true })
+
+  await user.click(screen.getByRole('button', { name: 'Add these warm-ups' }))
+
+  await waitFor(() => expect(rampLineText()).toBe('Warm-up 1 of 3 · 50 kg × 5'))
+  expect(warmupLine()).toBeNull()
+})
+
+test('V6-16 no warm-up line unless asked for, and none once a working Set is logged', () => {
+  const first = renderBarbell()
+  expect(warmupLine()).toBeNull()
+  first.unmount()
+  renderBarbell([{ exerciseId: 'back-squat', setIndex: 1, weightKg: 100, reps: 8, loggedAt: BASE + 1 }], {
+    warmupLine: true,
+  })
+  expect(warmupLine()).toBeNull()
+})
+
+test('V6-18 the line under the Dials names last time\'s day, never "same"', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 85, 5)], lastTime: [historyEntry(1, 85, 5)] })
+  const line = textOf(document.querySelector('.set-projection'))
+  expect(line).toBe(`Last time 85 × 5 · ${formatDay(new Date(BASE), new Date())}`)
+  expect(line).not.toMatch(/same/)
+})
+
+test('V6-17 a lift with no history reads First time · start light', () => {
+  renderSetScreen()
+  expect(textOf(document.querySelector('.set-projection'))).toBe('First time · start light')
+  expect(screen.queryByText(/Last time/)).toBeNull()
 })
