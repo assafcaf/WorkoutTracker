@@ -64,7 +64,7 @@ export function RepsDial(props: RepsDialProps): JSX.Element {
         ) : null}
         <button
           type="button"
-          aria-label="Reps"
+          aria-label={`Reps, ${value}`}
           className="dial-readout cell"
           onClick={() => {
             if (drag.consumeDrag()) return

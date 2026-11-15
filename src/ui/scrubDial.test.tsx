@@ -56,11 +56,11 @@ function drag(readout: HTMLElement, travel: number): void {
 }
 
 function weight(): HTMLElement {
-  return screen.getByRole('button', { name: 'Weight' })
+  return screen.getByRole('button', { name: /^Weight, / })
 }
 
 function reps(): HTMLElement {
-  return screen.getByRole('button', { name: 'Reps' })
+  return screen.getByRole('button', { name: /^Reps, / })
 }
 
 test('dragging the weight up three notches adds three steps: 60 reads 67.5', () => {

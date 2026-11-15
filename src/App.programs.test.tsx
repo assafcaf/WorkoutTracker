@@ -274,9 +274,9 @@ test(
     await user.click(await screen.findByRole('button', { name: 'Start Push' }, SETTLE))
     await user.click(await screen.findByRole('button', { name: /^Barbell Bench Press - Medium Grip/ }, SETTLE))
 
-    const weight = await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+    const weight = await screen.findByRole('button', { name: /^Weight, / }, SETTLE)
     expect((weight.textContent ?? '').replace(/\s+/g, ' ').trim()).toBe('60')
-    const reps = screen.getByRole('button', { name: 'Reps' })
+    const reps = screen.getByRole('button', { name: /^Reps, / })
     expect((reps.textContent ?? '').replace(/\s+/g, ' ').trim()).toBe('6')
   },
   LONG,

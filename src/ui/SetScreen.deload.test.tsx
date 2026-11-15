@@ -54,7 +54,7 @@ function renderScreen(over: Partial<SetScreenProps>) {
 
 const weight = (): string => {
   unfoldSteppers()
-  return (screen.getByRole('button', { name: 'Weight' }).textContent ?? '').replace(/\s+/g, ' ').trim()
+  return (screen.getByRole('button', { name: /^Weight, / }).textContent ?? '').replace(/\s+/g, ' ').trim()
 }
 
 test('O17 a deload Session opens the first Set at 72.5 and says where it came from', () => {
@@ -76,7 +76,7 @@ test('O17 a Bodyweight Exercise shows no deload line in a deload Session', () =>
 
 test('O18 one tap on Log set stores 72.5 x 8 on the deload Preset', async () => {
   const { user, onLog } = renderScreen({ deload: true })
-  await user.click(screen.getByRole('button', { name: 'Log set' }))
+  await user.click(screen.getByRole('button', { name: /^Log set / }))
   expect(onLog).toHaveBeenCalledTimes(1)
   expect(onLog.mock.calls[0][1]).toMatchObject({ exerciseId: 'back-squat', weightKg: 72.5, reps: 8 })
 })

@@ -52,7 +52,7 @@ function liveStrip(): HTMLElement | null {
 async function logFirstBackSquatSet(user: User): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
   await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
-  await user.click(await screen.findByRole('button', { name: 'Log set' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Log set / }, SETTLE))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 }
 

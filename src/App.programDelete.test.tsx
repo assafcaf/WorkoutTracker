@@ -561,9 +561,9 @@ test('O11 with a Session in progress, editing its Workout’s Plans and saving i
   await user.click(document.body.querySelector('button.resume-workout') as HTMLElement)
   await user.click(await screen.findByRole('button', { name: /^Barbell Bench Press - Medium Grip/ }, SETTLE))
 
-  const weight = await screen.findByRole('button', { name: 'Weight' }, SETTLE)
+  const weight = await screen.findByRole('button', { name: /^Weight, / }, SETTLE)
   expect(text(weight)).toBe('70')
-  expect(text(screen.getByRole('button', { name: 'Reps' }))).toBe('10')
+  expect(text(screen.getByRole('button', { name: /^Reps, / }))).toBe('10')
 }, LONG)
 
 // --- O12: Reset to original on an edited A/B Split ----------------------------------------------
@@ -632,6 +632,6 @@ test('O12 after Reset to original a set screen on Workout A uses the bundled num
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
   await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
 
-  const reps = await screen.findByRole('button', { name: 'Reps' }, SETTLE)
+  const reps = await screen.findByRole('button', { name: /^Reps, / }, SETTLE)
   expect(text(reps)).toBe('8')
 }, LONG)

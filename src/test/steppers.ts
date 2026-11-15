@@ -17,7 +17,7 @@ export function unfoldSteppers(): void {
 
 /** Waits for the set screen -- its steppers, or the row they are folded into -- and unfolds them. */
 export async function findSteppers(): Promise<HTMLElement> {
-  await screen.findAllByRole('button', { name: /^(Weight$|Next: set )/ }, SETTLE)
+  await screen.findAllByRole('button', { name: /^(Weight, |Next: set )/ }, SETTLE)
   unfoldSteppers()
-  return screen.getByRole('button', { name: 'Weight' })
+  return screen.getByRole('button', { name: /^Weight, / })
 }
