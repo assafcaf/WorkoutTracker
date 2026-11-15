@@ -3,6 +3,8 @@ import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { formatDay } from '../../domain/dates'
 import type { Resolve } from '../../domain/muscles'
+import { addableExercises, pastSessionDraft } from '../../domain/pastSession'
+import { uuid } from '../../domain/programs'
 import {
   calendarWeeks,
   dayMonth,
@@ -17,6 +19,7 @@ import { sessionVolume } from '../../domain/volume'
 import type { BodyLog, ExercisePlan, Muscle, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { CalendarWeekCells } from '../../ui/CalendarWeek'
+import { Icon } from '../../ui/icons'
 import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
 import { SessionEditor } from '../../ui/SessionEditor'
 import { Sheet } from '../../ui/Sheet'
@@ -168,6 +171,10 @@ export function SessionsScreen({
   const [chooser, setChooser] = useState<{ day: number; sessions: Session[] } | null>(null)
   /** V5: the Session just deleted, as it was, while "Workout deleted · Undo" shows. */
   const [deleted, setDeleted] = useState<Session | null>(null)
+  /** V6-13: the "Log a past workout" sheet, open on the day it will log (`YYYY-MM-DD`). */
+  const [loggingDay, setLoggingDay] = useState<string | null>(null)
+  /** V6-13: a missed Session's draft, open in the editor until it is saved or cancelled. */
+  const [pastDraft, setPastDraft] = useState<Session | null>(null)
   const services = useServices()
 
   useEffect(() => {
@@ -252,32 +259,101 @@ export function SessionsScreen({
   }
   const records = computeRecords(sessions, resolve, (id) => activePlans.get(id))
 
+  // V6-13: the editor's Add exercise offers the catalog's Exercises (the Program's lifts by their
+  // own names), then the rest of the library.
+  const addable = addableExercises(catalog, library)
+  const plannedIdsOf = (session: Session): string[] => {
+    const workout = programs
+      .find((program) => program.id === session.programId)
+      ?.workouts.find((candidate) => candidate.id === session.workoutId)
+    return [...(workout?.exercises.map((plan) => plan.exerciseId) ?? []), ...Object.values(session.swaps ?? {})]
+  }
+
+  // V6-14: the editor draws the one header ("Edit · Workout B · Mon 12 Oct"), so the shell draws none.
   const editSession = editingId ? sessions.find((session) => session.id === editingId) ?? null : null
   if (editSession) {
     return (
-      <AppShell title="Sessions">
-        <SessionEditor
-          key={editSession.id}
-          session={editSession}
-          workoutName={workoutNameOf(editSession, programs)}
-          resolve={resolve}
-          onSave={async (draft) => {
-            await services.sessions.save(draft)
-            setEditingId(null)
-          }}
-          onCancel={() => setEditingId(null)}
-          onDelete={() => deleteSession(editSession)}
-        />
+      <AppShell title="Sessions" ownHeader>
+        <div className="sessions-editor-page">
+          <SessionEditor
+            key={editSession.id}
+            session={editSession}
+            workoutName={workoutNameOf(editSession, programs)}
+            resolve={resolve}
+            now={today}
+            addable={addable}
+            plannedIds={plannedIdsOf(editSession)}
+            onSave={async (draft) => {
+              await services.sessions.save(draft)
+              setEditingId(null)
+            }}
+            onCancel={() => setEditingId(null)}
+            onDelete={() => deleteSession(editSession)}
+          />
+        </div>
       </AppShell>
     )
   }
+  if (pastDraft) {
+    return (
+      <AppShell title="Sessions" ownHeader>
+        <div className="sessions-editor-page">
+          <SessionEditor
+            key={pastDraft.id}
+            session={pastDraft}
+            mode="log"
+            workoutName={workoutNameOf(pastDraft, programs)}
+            resolve={resolve}
+            now={today}
+            addable={addable}
+            plannedIds={plannedIdsOf(pastDraft)}
+            onSave={async (draft) => {
+              await services.sessions.logPast(draft)
+              setPastDraft(null)
+            }}
+            onCancel={() => setPastDraft(null)}
+          />
+        </div>
+      </AppShell>
+    )
+  }
+
+  /** V6-13: the missed Session's draft of `workoutId` on the sheet's day, into the editor. */
+  const logPast = (workoutId: string): void => {
+    const workout = activeProgram?.workouts.find((candidate) => candidate.id === workoutId)
+    if (!activeProgram || !workout || loggingDay === null) return
+    const [year, month, day] = loggingDay.split('-').map(Number)
+    setLoggingDay(null)
+    setPastDraft(
+      pastSessionDraft({
+        id: uuid(),
+        programId: activeProgram.id,
+        workout,
+        day: new Date(year, month - 1, day).getTime(),
+        sessions,
+        resolve,
+      }),
+    )
+  }
+  // V6-13: the one entry point, beside the title, so the list still comes first (V2-07).
+  const logPastButton = activeProgram ? (
+    <button
+      type="button"
+      className="sessions-log-past icon-btn"
+      aria-label="Log a past workout"
+      aria-haspopup="dialog"
+      onClick={() => setLoggingDay(isoDay(today - DAY_MS))}
+    >
+      <Icon name="Plus" size={24} />
+    </button>
+  ) : null
 
   const summarySession = summarySessionId
     ? sessions.find((session) => session.id === summarySessionId) ?? null
     : null
 
   return (
-    <AppShell title="Sessions">
+    <AppShell title="Sessions" actions={logPastButton ?? undefined}>
       {sessions.length === 0 ? (
         <p className="sessions-empty">No finished workouts yet. Finish one and it appears here.</p>
       ) : (
@@ -378,9 +454,46 @@ export function SessionsScreen({
           </div>
         </Sheet>
       ) : null}
+      {loggingDay !== null && activeProgram ? (
+        <Sheet label="Log a past workout" onClose={() => setLoggingDay(null)}>
+          <div className="sessions-chooser">
+            <h3 className="sessions-chooser-heading">Log a past workout</h3>
+            <label className="sessions-log-date">
+              <span>Date</span>
+              <input
+                type="date"
+                className="sessions-log-date-input"
+                max={isoDay(today)}
+                value={loggingDay}
+                onChange={(event) => {
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(event.target.value)) setLoggingDay(event.target.value)
+                }}
+              />
+            </label>
+            {activeProgram.workouts.map((workout) => (
+              <button
+                key={workout.id}
+                type="button"
+                className="sessions-chooser-option btn-secondary"
+                onClick={() => logPast(workout.id)}
+              >
+                {workout.name}
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      ) : null}
       {deleted ? <Snackbar message="Workout deleted" actionLabel="Undo" onAction={undoDelete} /> : null}
     </AppShell>
   )
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** A local calendar day as a date field's `YYYY-MM-DD`. */
+function isoDay(at: number): string {
+  const date = new Date(at)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 /** "08:05", 24-hour: when a Session started, to tell two on one day apart. */

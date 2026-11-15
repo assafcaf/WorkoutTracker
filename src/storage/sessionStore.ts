@@ -321,6 +321,22 @@ export async function saveSession(session: Session, now: number = Date.now()): P
 }
 
 /**
+ * Stores a Session the trainee logs after the fact (V6-13): new, already finished, with at
+ * least one Set. Refuses an id already stored, so it never overwrites a Session.
+ */
+export async function logPastSession(session: Session, now: number = Date.now()): Promise<Session> {
+  if (session.finishedAt === null) throw new Error(`session ${session.id} is not finished`)
+  if (session.finishedAt < session.startedAt) throw new Error(END_BEFORE_START)
+  if (session.entries.length === 0) throw new Error(NO_SETS_LEFT)
+  return db.transaction('rw', db.sessions, async () => {
+    if (await db.sessions.get(session.id)) throw new Error(`session ${session.id} is already stored`)
+    const stored: Session = { ...session, updatedAt: now }
+    await db.sessions.put(stored)
+    return stored
+  })
+}
+
+/**
  * Stamps a session finished and returns it as stored.
  */
 export async function finishSession(sessionId: string, now: number): Promise<Session> {
