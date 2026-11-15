@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Muscle } from '../../types'
 import { MUSCLES } from '../../data/library'
 import { resolveExercise } from '../../data/resolve'
+import { applyBodyweight } from '../../domain/bodyweight'
 import { myLifts } from '../../domain/myLifts'
 import { newPlan, uuid } from '../../domain/programs'
 import { matchesQuery } from '../../domain/search'
@@ -76,12 +77,20 @@ export function ExercisesFeature({
   const gymEquipment = useServiceData((s) => s.preferences.gymEquipment(), ['preferences'])
   const sessionsData = useServiceData((s) => s.sessions.list(), ['sessions'])
   const programsData = useServiceData((s) => s.programs.load(), ['programs'])
+  const overridesData = useServiceData(
+    (s) => s.preferences.bodyweightOverrides().catch((): Record<string, boolean> => ({})),
+    ['preferences'],
+  )
 
   if (catalogData.status !== 'ready' || gymEquipment.status !== 'ready') return null
 
   const { catalog, library, videos } = catalogData.data
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
-  const resolve = (id: string) => resolveExercise(id, catalog, libraryMap)
+  const overrides = overridesData.status === 'ready' ? overridesData.data : {}
+  const resolve = (id: string) => {
+    const exercise = resolveExercise(id, catalog, libraryMap)
+    return exercise && applyBodyweight(exercise, overrides)
+  }
 
   // My lifts (V6-03 step 3): the active Program's Exercises and anything logged, most recent
   // first. The search finds them too; the muscle and equipment filters browse the catalog, so
@@ -94,7 +103,9 @@ export function ExercisesFeature({
       : undefined
   const activePlans = activeProgram?.workouts.flatMap((workout) => workout.exercises) ?? []
   const browsing = muscle !== '' || equipment !== '' || (initialMuscles !== null && initialMuscles.length > 0)
-  const shownLifts = browsing
+  // Shown only once the Sessions and the Program are both read, so it never draws half a list.
+  const liftsReady = sessionsData.status === 'ready' && programsData.status === 'ready'
+  const shownLifts = browsing || !liftsReady
     ? []
     : myLifts(
         activePlans.map((plan) => plan.exerciseId),
