@@ -95,7 +95,10 @@ why an element is on a screen in one sentence tied to that story, cut or move it
 screen from the trainee's side, not the app's: what did they open it for, what do they want to
 see first, and what will their thumb do next? A landing view full of text and graphs is a mess;
 it answers "what am I doing today?" and offers Start, and anything else must prove it helps
-that moment.
+that moment. Begin the critique with the live Session view (Now, Rest, All, the Exercise
+transition): it is where the trainee spends the Workout, so it sets the pattern every other
+screen follows. Ask the same questions there: at the bar, between sets, what do they want to
+see, and what can go?
 
 *Whole app.* Then write:
 - **Navigation model:** are these the right tabs, in the right order, with the right names? Is
