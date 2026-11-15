@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { regionsFor, toRegionCounts, type Region, type Resolve } from '../../domain/muscles'
-import { WEEKLY_SET_RANGE } from '../../domain/setRange'
+import { WEEKLY_SET_RANGE, type Standing } from '../../domain/setRange'
 import { numberText } from '../../domain/stats/copy'
 import {
   muscleContributors,
@@ -51,6 +51,18 @@ const label = (muscle: Muscle): string => LABELS[muscle] ?? muscle.charAt(0).toU
 const whole = (n: number): string => String(Math.round(n))
 
 const BAND = { from: WEEKLY_SET_RANGE.min, to: WEEKLY_SET_RANGE.max } as const
+
+/** Where a weekly count sits against the typical range, on the whole number the row prints. */
+const standingOf = (n: number): Standing => {
+  const shown = Math.round(n)
+  return shown < BAND.from ? 'below' : shown > BAND.to ? 'above' : 'within'
+}
+
+/** A row's standing in words, as the Program tab says it (V1-26): ` · below 10`, ` · above 20`. */
+const standingText = (n: number): string => {
+  const standing = standingOf(n)
+  return standing === 'below' ? ` · below ${BAND.from}` : standing === 'above' ? ` · above ${BAND.to}` : ''
+}
 const WEEK_MS_DAYS = 7
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const dayMonth = (ms: number): string => `${new Date(ms).getDate()} ${MONTHS[new Date(ms).getMonth()]}`
@@ -122,11 +134,17 @@ function build(data: MusclesData, now: number, span: Span): Model {
   const last = complete[complete.length - 1].start
   const to = addDays(last, WEEK_MS_DAYS)
   const under = rows.filter((r) => r.plan > 0 && r.done < r.plan - 0.5)
-  const top = rows.filter((r) => r.done >= 18)
+  // Near the top of the range, and over it, said apart (V1-26): 21 is above 10–20, not at its top.
+  const named = (list: Row[]): string => list.map((r) => `${r.label} ${whole(r.done)}`).join(' and ')
+  const top = rows.filter((r) => r.done >= 18 && standingOf(r.done) === 'within')
+  const above = rows.filter((r) => standingOf(r.done) === 'above')
   const topText =
-    top.length === 0
+    (above.length === 0
       ? ''
-      : ` ${top.map((r) => `${r.label} ${whole(r.done)}`).join(' and ')} sit at the top of the typical ${BAND.from}–${BAND.to}.`
+      : ` ${named(above)} ${above.length === 1 ? 'is' : 'are'} above the typical ${BAND.from}–${BAND.to}.`) +
+    (top.length === 0
+      ? ''
+      : ` ${named(top)} ${top.length === 1 ? 'sits' : 'sit'} at the top of the typical ${BAND.from}–${BAND.to}.`)
   const sentence =
     (under.length === 0
       ? `On plan for ${complete.length === 1 ? '1 week' : `${complete.length} weeks`}.`
@@ -253,6 +271,8 @@ export function MusclesView({ data, now, onBack }: MusclesViewProps): JSX.Elemen
                   <span className="muscles-row-name">{row.label}</span>
                   <span className="muscles-row-value">
                     {whole(row.done)}
+                    {/* This week counts what is still planned too: 2 done of 12 is not "below". */}
+                    {standingText(row.done + row.still)}
                     <span className="muscles-row-plan">
                       {` · plan ${whole(row.plan)}`}
                       {row.still > 0 ? ` · ${whole(row.still)} still planned` : ''}
