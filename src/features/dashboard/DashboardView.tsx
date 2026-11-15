@@ -51,7 +51,16 @@ export type DashboardData =
     }
 
 /** A workout the dock offers to start: its name, when it was last done and its minutes (estimate). */
-export type DockWorkout = { workoutId: string; name: string; last: string | null; minutes: number }
+export type DockWorkout = {
+  workoutId: string
+  name: string
+  last: string | null
+  minutes: number
+  /** V6-11: after a short Session of this Workout, the header's second line instead of the day. */
+  finish?: string | null
+  /** V6-08: this Workout's latest Session note, one quiet line under the date. */
+  note?: string | null
+}
 
 /** The Session in progress the dock offers to resume in place of a start. */
 export type DashboardResume = { workoutName: string; programName: string; onResume(): void }
@@ -307,10 +316,11 @@ function DueCard({ card }: { card: TrainCard }): JSX.Element {
 function Header({
   title,
   subtitle,
+  note,
   sync,
   onSync,
   onOpenSettings,
-}: { title: string; subtitle: string } & Pick<DashboardViewProps, 'sync' | 'onSync' | 'onOpenSettings'>): JSX.Element {
+}: { title: string; subtitle: string; note?: string | null } & Pick<DashboardViewProps, 'sync' | 'onSync' | 'onOpenSettings'>): JSX.Element {
   // The app root's header slot ("Update ready") rides beside the Dashboard's own buttons.
   const { trailing } = useContext(ShellChromeContext)
   return (
@@ -320,6 +330,11 @@ function Header({
       <div className="dashboard-heading">
         <h1 className="dashboard-title">{title}</h1>
         <p className="dashboard-status">{subtitle}</p>
+        {note ? (
+          <p className="dashboard-note" title={note}>
+            {note}
+          </p>
+        ) : null}
       </div>
       {trailing ? <div className="dashboard-header-trailing app-header-trailing">{trailing}</div> : null}
       <div className="dashboard-header-actions">
@@ -399,6 +414,7 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
   // Workout to offer (no Program yet, still loading) the tab's name stands in.
   let title = props.resume ? props.resume.workoutName : 'Train'
   let subtitle = props.resume ? `${props.today} · in progress` : props.today
+  let note: string | null = null
 
   if (data.kind === 'no-program') {
     const selected = data.options.find((option) => option.id === data.selectedId) ?? null
@@ -466,7 +482,8 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     )
     if (!props.resume && offered) {
       title = offered.name
-      subtitle = offered.last ? `${props.today} · last done ${offered.last}` : props.today
+      subtitle = offered.finish ?? (offered.last ? `${props.today} · last done ${offered.last}` : props.today)
+      note = offered.note ?? null
     }
     if (!dock && due && offered) {
       dock = (
@@ -485,6 +502,7 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
       <Header
         title={title}
         subtitle={subtitle}
+        note={note}
         sync={props.sync}
         onSync={props.onSync}
         onOpenSettings={props.onOpenSettings}

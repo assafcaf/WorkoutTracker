@@ -4,7 +4,7 @@
 // (src/data/programs/assaf-ab-2026.json -- "A/B Split", Workout A/Workout B -- and
 // full-body-starter, hidden by default) and fake-indexeddb (installed globally,
 // src/test/setup.ts).
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test, vi } from 'vitest'
 import { createServices } from '../../services'
@@ -341,4 +341,44 @@ test('V1-16 ProgramFeature Cancel leaves the stored Exercise settings untouched'
   await user.click(screen.getByRole('button', { name: 'Discard' }))
 
   expect(await services.preferences.weightStep('back-squat')).toBeNull()
+})
+
+// --- UX v6 (V6-15): the kg each lift opens on, and the one duration Train shows too -----------
+
+function finishedA(id: string, startedAt: number, minutes: number): Session {
+  const squat = (setIndex: number, weightKg: number, reps: number) => ({
+    exerciseId: 'back-squat',
+    setIndex,
+    weightKg,
+    reps,
+    loggedAt: startedAt + setIndex,
+  })
+  return {
+    id,
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt,
+    finishedAt: startedAt + minutes * 60_000,
+    entries: [squat(1, 47.5, 10), squat(2, 57.5, 10), squat(3, 62.5, 8), squat(4, 62.5, 8)],
+  }
+}
+
+test('V6-15 Program read mode shows the Back squat row opening 47.5 → 62.5, and Train’s minutes', async () => {
+  const day = 86_400_000
+  await putSessions([
+    finishedA('a1', NOW - 9 * day, 60),
+    finishedA('a2', NOW - 6 * day, 70),
+    finishedA('a3', NOW - 3 * day, 80),
+  ])
+  renderFeature()
+
+  const heading = await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
+  const card = heading.closest('.workout-card') as HTMLElement
+  const headers = within(card).getAllByRole('columnheader').map((cell) => cell.textContent?.trim())
+  expect(headers).toEqual(['Exercise', 'Sets × reps', 'kg', 'Rest'])
+  const row = within(card).getByText('Back squat').closest('tr') as HTMLElement
+  // The Sessions arrive after the Programs: the cell fills in once they do.
+  await waitFor(() => expect(row.querySelector('.program-page-kg')?.textContent).toBe('47.5 → 62.5'), SETTLE)
+  // The median of the last three logged durations, as Train's dock says it.
+  expect(within(card).getByText('23 sets · ~70 min')).toBeVisible()
 })

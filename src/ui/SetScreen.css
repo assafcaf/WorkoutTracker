@@ -854,6 +854,33 @@
   font-weight: var(--weight-semibold);
 }
 
+/* V6-16: the first barbell lift's warm-up ramp, one quiet line above the cells, with Add. */
+.set-warmup-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.set-warmup-line-add {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+}
+
+/* Over `.btn-quiet`'s own colour, as the swap line's Undo swap is. */
+.set-warmup-line .set-warmup-line-add {
+  color: var(--color-primary);
+}
+
 /* V5-04: a zero-height anchor over the Dials; its snackbar hangs above it, over the spacer. */
 .set-snackbar-anchor {
   position: relative;

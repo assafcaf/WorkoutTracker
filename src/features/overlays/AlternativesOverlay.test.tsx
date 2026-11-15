@@ -65,6 +65,8 @@ test('D7 AlternativesOverlay "Do this instead" calls onPick with that alternativ
   const onPick = vi.fn()
 
   render(<AlternativesOverlay {...await props({ onPick })} />)
+  // V6-10: the list opens on its first 6 rows; Hammer Curls is found by a search.
+  await user.type(screen.getByRole('searchbox'), 'Hammer Curls')
   await user.click(within(rowNamed('Hammer Curls')).getByRole('button', { name: 'Do Hammer Curls instead' }))
 
   expect(onPick).toHaveBeenCalledTimes(1)
@@ -136,4 +138,64 @@ test('V6 V5-11 Close is an X icon button named Close, at least 44 px', async () 
   const declared = declarationsFor(css('AlternativesOverlay.css'), '.alternatives-overlay-close')
   expect(declared.get('min-width')).toBe('var(--tap-min)')
   expect(declared.get('min-height')).toBe('var(--tap-min)')
+})
+
+// UX v6 (V6-10): the swap list is short and sensible: My gym's equipment, lifts with history
+// first under the lifter's own names, at most 6 rows, then "Show all".
+const rowNames = (): string[] =>
+  screen.getAllByRole('listitem').map((row) => (row.querySelector('.alternatives-row-name')?.textContent ?? '').trim())
+
+test('V6-10 Deadlift lists at most 6, the logged Hyper-extension first, with no band or chain variant', async () => {
+  render(<AlternativesOverlay {...await props({ plannedId: 'deadlift', loggedIds: ['deadlift', 'hyper-extension'] })} />)
+
+  const names = rowNames()
+  expect(names.length).toBeLessThanOrEqual(6)
+  expect(names[0]).toBe('Hyper-extension')
+  expect(names.join(' ')).not.toMatch(/band|chain/i)
+  expect(names).toContain('Romanian Deadlift')
+  expect(screen.getByRole('button', { name: 'Do Hyper-extension instead' })).toBeVisible()
+})
+
+test('V6-10 Show all lists the rest; a search looks through all of them', async () => {
+  const user = userEvent.setup()
+  render(<AlternativesOverlay {...await props({ plannedId: 'deadlift' })} />)
+
+  await user.type(screen.getByRole('searchbox'), 'chains')
+  expect(rowNames()).toContain('Deadlift with Chains')
+  await user.clear(screen.getByRole('searchbox'))
+
+  const showAll = screen.getByRole('button', { name: /^Show all/ })
+  expect(showAll).toHaveClass('alternatives-show-all')
+  await user.click(showAll)
+  expect(rowNames().length).toBeGreaterThan(6)
+  expect(rowNames()).toContain('Deadlift with Bands')
+  expect(screen.queryByRole('button', { name: /^Show all/ })).toBeNull()
+})
+
+test("V6-10 My gym's equipment filters the swap list", async () => {
+  render(<AlternativesOverlay {...await props({ plannedId: 'deadlift', gymEquipment: ['barbell'] })} />)
+  expect(rowNames()).not.toContain('Hyperextensions (Back Extensions)')
+  expect(rowNames()).not.toContain('Hyper-extension')
+})
+
+test('V6-10 choosing a logged lift swaps to the lifter’s own Exercise, the one with the history', async () => {
+  const user = userEvent.setup()
+  const onPick = vi.fn()
+  render(<AlternativesOverlay {...await props({ plannedId: 'deadlift', loggedIds: ['hyper-extension'], onPick })} />)
+
+  await user.click(screen.getByRole('button', { name: 'Do Hyper-extension instead' }))
+
+  expect(onPick).toHaveBeenCalledWith('hyper-extension')
+})
+
+test('V6-10 a lift already in today’s Workout is not offered as a swap', async () => {
+  render(
+    <AlternativesOverlay
+      {...await props({ plannedId: 'deadlift', loggedIds: ['hyper-extension'], taken: ['deadlift', 'hyper-extension'] })}
+    />,
+  )
+
+  expect(rowNames()).not.toContain('Hyper-extension')
+  expect(rowNames()).not.toContain('Hyperextensions (Back Extensions)')
+  expect(rowNames()).toContain('Romanian Deadlift')
 })

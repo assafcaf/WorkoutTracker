@@ -2,11 +2,12 @@ import type { Resolve } from '../../domain/muscles'
 import { formatDay } from '../../domain/dates'
 import { lastEntriesOf } from '../../domain/planLoad'
 import { presetForSet } from '../../domain/prefill'
+import type { ShortSession } from '../../domain/shortSession'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
 import type { DueWorkoutCard } from '../../domain/stats/train'
 import type { NextStep } from '../../domain/stats/verdict'
 import { weeksOf, type Weekday } from '../../domain/stats/weeks'
-import type { Program, Session } from '../../types'
+import type { Exercise, ExercisePlan, Program, Session } from '../../types'
 import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
 
 /**
@@ -116,30 +117,7 @@ export function trainCardOf(
       const plan = plans.get(lift.exerciseId)
       const exercise = resolve?.(lift.exerciseId)
       if (!plan || !exercise || !sessions) return row
-      const lastEntries = lastEntriesOf(sessions, lift.exerciseId)
-      const preset = presetForSet({
-        exercise,
-        plan,
-        setIndex: 1,
-        lastEntries,
-        today: [],
-        deload,
-      })
-      const load = exercise.bodyweight
-        ? leverText(preset.loadKg ?? 0, true)
-        : preset.weightKg === null
-          ? null
-          : leverText(preset.weightKg, false)
-      // V5-07: each planned Set as it opens when the ones before it go as last time did; a ramp
-      // (47.5 -> 62.5) is said as one, never as "4 x 47.5 kg".
-      let top = preset.weightKg
-      if (!exercise.bodyweight && top !== null) {
-        for (let setIndex = 2; setIndex <= plan.sets; setIndex += 1) {
-          const at = presetForSet({ exercise, plan, setIndex, lastEntries, deload }).weightKg
-          if (at !== null && at > top) top = at
-        }
-      }
-      const topLoad = top !== null && top !== preset.weightKg ? leverText(top, false) : undefined
+      const { load, topLoad } = liftPreset(exercise, plan, sessions, deload)
       return {
         ...row,
         sets: plan.sets,
@@ -149,6 +127,62 @@ export function trainCardOf(
       }
     }),
   }
+}
+
+/**
+ * The load a Plan's next Session opens on: the Set 1 Preset (`70 kg`, `BW+5`, `null` with no
+ * weight to go on) and, when the Sets ramp, the heaviest planned Set's (`62.5 kg`). Train's rows
+ * and the Program tab's kg column (V6-15) read the same.
+ */
+export function liftPreset(
+  exercise: Exercise,
+  plan: ExercisePlan,
+  sessions: Session[],
+  deload = false,
+): { load: string | null; topLoad?: string } {
+  const lastEntries = lastEntriesOf(sessions, plan.exerciseId)
+  const preset = presetForSet({ exercise, plan, setIndex: 1, lastEntries, today: [], deload })
+  const load = exercise.bodyweight
+    ? leverText(preset.loadKg ?? 0, true)
+    : preset.weightKg === null
+      ? null
+      : leverText(preset.weightKg, false)
+  // V5-07: each planned Set as it opens when the ones before it go as last time did; a ramp
+  // (47.5 -> 62.5) is said as one, never as "4 x 47.5 kg".
+  let top = preset.weightKg
+  if (!exercise.bodyweight && top !== null) {
+    for (let setIndex = 2; setIndex <= plan.sets; setIndex += 1) {
+      const at = presetForSet({ exercise, plan, setIndex, lastEntries, deload }).weightKg
+      if (at !== null && at > top) top = at
+    }
+  }
+  const topLoad = top !== null && top !== preset.weightKg ? leverText(top, false) : undefined
+  return topLoad === undefined ? { load } : { load, topLoad }
+}
+
+/** V6-15: the Program tab's kg cell: `47.5 → 62.5`, `70`, `BW+5`; `–` with no weight. */
+export function kgCellText(preset: { load: string | null; topLoad?: string }): string {
+  const bare = (text: string): string => text.replace(/ kg$/, '')
+  if (preset.load === null) return '–'
+  return preset.topLoad ? `${bare(preset.load)} → ${bare(preset.topLoad)}` : bare(preset.load)
+}
+
+/**
+ * V6-11: Train's second line after a short Session, "Finish Workout B: 6 lifts left from Thu
+ * 15 Oct"; with every lift touched, the Sets left.
+ */
+export function finishText(short: ShortSession, now: number): string {
+  const day = formatDay(new Date(short.session.startedAt), new Date(now))
+  const left =
+    short.liftsLeft > 0
+      ? `${short.liftsLeft} ${short.liftsLeft === 1 ? 'lift' : 'lifts'}`
+      : `${short.planned - short.logged} sets`
+  return `Finish ${short.workout.name}: ${left} left from ${day}`
+}
+
+/** V6-08: the Workout's last Session note as Train shows it, "Note from Wed 7 Oct: …". */
+export function noteText(note: { at: number; text: string }, now: number): string {
+  return `Note from ${formatDay(new Date(note.at), new Date(now))}: ${note.text}`
 }
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

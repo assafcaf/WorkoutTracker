@@ -150,6 +150,8 @@
 
 .program-page .workout-card {
   padding-bottom: var(--space-1);
+  /* V6-15: the table reads its own width to fit the kg column on a narrow card. */
+  container-type: inline-size;
 }
 
 .program-page-table {
@@ -198,6 +200,34 @@
 
 .program-page-rest {
   color: var(--color-secondary);
+}
+
+/* V6-15: the load the next Session opens on, as Train says it. */
+.program-page-kg {
+  font-variant-numeric: tabular-nums;
+}
+
+.program-page-kg-from {
+  white-space: nowrap;
+}
+
+/* V6-15: on a narrow card (320 px, or large text) the kg column keeps its place: a ramp breaks
+   after its arrow, and Rest (on the Set screen and in Edit) steps aside so names stay readable. */
+@container (max-width: 19em) {
+  .program-page-table[data-kg] .program-page-restcol {
+    display: none;
+  }
+
+  .program-page-table[data-kg] .program-page-row td.program-page-kg,
+  .program-page-table[data-kg] .program-page-row td.program-page-exercise {
+    white-space: normal;
+  }
+
+  /* A wrapped name keeps its family dot on its first line. */
+  .program-page-table[data-kg] .program-page-exercise .muscle-dot {
+    float: left;
+    margin-top: 0.45em;
+  }
 }
 
 /* ---- Planned muscle map (M14), below the workouts; "This week" moved to Progress (V2-06) ---- */

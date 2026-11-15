@@ -3,13 +3,15 @@
 //
 // Exported contract (chosen by the test-designer, documented here and in the tests):
 //   dueWorkoutCard(program, sessions, resolve, histories) -> DueWorkoutCard | null
-// The due workout is the one `dueWorkout` (dashboard.ts) picks. `lifts` follow the Plan order;
+// The due workout is the one `nextWorkout` (shortSession.ts) picks: `dueWorkout` (dashboard.ts),
+// or the same Workout again after a short Session (V6-11). `lifts` follow the Plan order;
 // an Exercise `resolve` cannot resolve is skipped. `minutes` is the median of the workout's last
 // logged durations (finished Sessions of this Program and workout, at most the last 5) rounded to
 // whole minutes when there are 3 or more, else the plan estimate `workoutEstimate(...).minutes`.
 import type { Program, Session, Workout } from '../../types'
-import { dueWorkout, workoutEstimate } from '../dashboard'
+import { workoutEstimate } from '../dashboard'
 import type { Resolve } from '../muscles'
+import { nextWorkout } from '../shortSession'
 import type { LiftHistory } from './liftHistory'
 import { nextStep } from './verdict'
 import type { NextStep } from './verdict'
@@ -41,7 +43,7 @@ export function dueWorkoutCard(
   resolve: Resolve,
   histories: Map<string, LiftHistory>,
 ): DueWorkoutCard | null {
-  const due = dueWorkout(program, sessions)
+  const due = nextWorkout(program, sessions)
   if (!due) return null
   return workoutCard(program, due.workout, due.lastDoneAt, sessions, resolve, histories)
 }
@@ -67,13 +69,26 @@ export function workoutCard(
     })
   }
 
+  return { workout, lastDoneAt, lifts, ...workoutMinutes(program, workout, sessions) }
+}
+
+/**
+ * V6-15: a Workout's minutes, the one estimate Train and the Program tab both show: the median
+ * of its last logged durations once there are 3, else the plan estimate.
+ */
+export function workoutMinutes(
+  program: Program,
+  workout: Workout,
+  sessions: Session[],
+): { minutes: number; estimate: 'logged' | 'plan' } {
   const durations = sessions
-    .filter((s) => s.programId === program.id && s.workoutId === workout.id && s.finishedAt != null)
+    .filter(
+      (s) =>
+        s.programId === program.id && s.workoutId === workout.id && s.finishedAt != null && s.deletedAt === undefined,
+    )
     .sort((a, b) => b.startedAt - a.startedAt)
     .slice(0, LOGGED_MAX)
     .map((s) => (s.finishedAt! - s.startedAt) / MIN_MS)
-  if (durations.length >= LOGGED_MIN) {
-    return { workout, lastDoneAt, lifts, minutes: Math.round(median(durations)), estimate: 'logged' }
-  }
-  return { workout, lastDoneAt, lifts, minutes: workoutEstimate(workout).minutes, estimate: 'plan' }
+  if (durations.length >= LOGGED_MIN) return { minutes: Math.round(median(durations)), estimate: 'logged' }
+  return { minutes: workoutEstimate(workout).minutes, estimate: 'plan' }
 }

@@ -1136,3 +1136,23 @@ test('E19-T5 O7 "This week" done map counts from the week start it is given', ()
   expect(screen.queryByText('No sets logged this week')).toBeNull()
   expect(container.querySelectorAll('.program-page-weekly .body-map')).toHaveLength(1)
 })
+
+// --- UX v6 (V6-15): read mode shows the load each lift opens on, and Train's minutes ----------
+
+test('V6-15 with loadOf the table gains a kg column between Sets × reps and Rest', () => {
+  renderAssaf({ loadOf: (plan) => (plan.exerciseId === 'back-squat' ? '47.5 → 62.5' : '–') })
+
+  const headers = within(workoutCard('Workout A'))
+    .getAllByRole('columnheader')
+    .map((cell) => cell.textContent?.trim())
+  expect(headers).toEqual(['Exercise', 'Sets × reps', 'kg', 'Rest'])
+  expect(lines(workoutCard('Workout A'))[0]).toBe('Back squat | 4 × 8–10 | 47.5 → 62.5 | 3:00')
+  expect(lines(workoutCard('Workout A'))[1]).toBe('Lunges | 3 × 10–12 | – | 1:30')
+})
+
+test("V6-15 with minutesOf each card head reads Train's minutes", () => {
+  renderAssaf({ minutesOf: (workout) => (workout.id === 'workout-b' ? 66 : 70) })
+
+  expect(within(workoutCard('Workout A')).getByText('23 sets · ~70 min')).toBeVisible()
+  expect(within(workoutCard('Workout B')).getByText('23 sets · ~66 min')).toBeVisible()
+})

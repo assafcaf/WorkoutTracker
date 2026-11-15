@@ -100,7 +100,14 @@ function done(i: number, workoutId: string, minutes: number | null, programId = 
     workoutId,
     startedAt,
     finishedAt: minutes === null ? null : startedAt + minutes * MIN,
-    entries: [],
+    // Both planned Sets logged: a full Session, so the rotation moves on (V6-11).
+    entries: [1, 2].map((setIndex) => ({
+      exerciseId: workoutId === 'wa' ? 'back-squat' : 'deadlift',
+      setIndex,
+      weightKg: 60,
+      reps: 8,
+      loggedAt: startedAt + setIndex,
+    })),
   }
 }
 const card = (sessions: Session[], p = prog()) =>
