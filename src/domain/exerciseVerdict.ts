@@ -144,7 +144,7 @@ export type SetComparison = {
 
 /**
  * The one sentence a logged Set gets (V4-01), against last time's Set at its place, `last`,
- * lifted on `lastDay` ("Mon 12 Oct"): "Same as Mon 12 Oct", "+2.5 kg on Mon 12 Oct", "1 rep
+ * lifted on `lastDay` ("Mon 12 Oct"): "Same as Mon 12 Oct", "2.5 kg more than Mon 12 Oct", "1 rep
  * under Mon 12 Oct", or "First time logged" with no `last`. A Set that set a Record leads with
  * its name: "Rep record · +1 rep on Mon 12 Oct".
  */
@@ -156,11 +156,13 @@ export function setComparison(
 ): SetComparison {
   if (last === null) return { kind: 'first', text: record ?? 'First time logged', record }
   const delta = setDelta(set, last)
+  // V5-13: "1 more than Mon 12 Oct", never "+1 rep on Mon 12 Oct" (which reads as the record's day).
+  const more = delta.text.replace(/^\+/, '').replace(/ reps?$/, '')
   const words =
     delta.kind === 'same'
       ? `Same as ${lastDay}`
       : delta.kind === 'up'
-        ? `${delta.text} on ${lastDay}`
+        ? `${more} more than ${lastDay}`
         : `${delta.text} ${lastDay}`
   return { kind: delta.kind, text: `${record === null ? '' : `${record} · `}${words}`, record }
 }
