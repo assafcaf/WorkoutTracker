@@ -142,7 +142,7 @@ export function rowFacts(
     const d = Math.round((measure(latest) - measure(first)) * 100) / 100
     if (d === 0) change = 'same'
     else if (plain) change = `${d > 0 ? '+' : '−'}${Math.abs(d)} ${Math.abs(d) === 1 ? 'rep' : 'reps'}`
-    else if (history.bodyweight && latest.top.lever < 0) change = `${kgText(Math.abs(d))} kg ${d > 0 ? 'less' : 'more'} assistance`
+    else if (history.bodyweight && latest.top.lever < 0) change = `${d > 0 ? '−' : '+'}${kgText(Math.abs(d))} kg assist`
     else change = `${d > 0 ? '+' : '−'}${kgText(Math.abs(d))} kg`
   }
   const recent = real.filter((p) => p.startedAt >= model.now - THREE_MONTHS)

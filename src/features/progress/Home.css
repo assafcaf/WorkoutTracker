@@ -410,6 +410,31 @@
   hyphens: manual;
 }
 
+/* The name keeps room for a whole word; the sparkline gives way first, and at large text the
+ * numbers wrap under the name instead of running off the card. */
+.progress-lifts .progress-row,
+.progress-all .progress-row {
+  flex-wrap: wrap;
+  row-gap: var(--space-1);
+}
+
+.progress-lifts .progress-row-main,
+.progress-all .progress-row-main {
+  flex: 1 1 5.5em;
+  min-width: 5.5em;
+}
+
+.progress-lifts .progress-row-numbers,
+.progress-all .progress-row-numbers {
+  margin-left: auto;
+}
+
+.progress-row-spark {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .progress-lifts .progress-row,
 .progress-all .progress-row {
   min-height: 56px;
