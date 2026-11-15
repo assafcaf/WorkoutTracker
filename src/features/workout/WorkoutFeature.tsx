@@ -1,5 +1,5 @@
 import type { Weekday } from '../../domain/stats/weeks'
-import { swapPreset } from '../../domain/swapPreset'
+import { swapSeed } from '../../domain/swapPreset'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
@@ -37,6 +37,7 @@ import type { LiveStatus } from '../../ui/LiveStrip'
 import { ExerciseList } from '../../ui/ExerciseList'
 import { SessionSummary } from '../../ui/SessionSummary'
 import { SetScreen, loggedText } from '../../ui/SetScreen'
+import { Snackbar } from '../../ui/Snackbar'
 import type { Handover } from '../../ui/SetScreen'
 import { StorageUnavailableBanner } from '../../ui/StorageUnavailableBanner'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
@@ -84,6 +85,9 @@ export type WorkoutFeatureProps = {
 
 type View = 'picker' | 'list' | 'set'
 
+/** V6 (V5-01): how long "Workout discarded · Undo" stays on Train. */
+const DISCARD_UNDO_MS = 8000
+
 /**
  * The set the set screen is on, with the history it was opened against, and whether "Add set"
  * opened it as an extra set past the plan (E6-T1).
@@ -95,8 +99,6 @@ type OpenSet = {
   extra: boolean
   weightStep: number | null
   exerciseNote: string | null
-  /** What the Set presets from instead of `history`, for a swapped-in Exercise never logged. */
-  seed?: SetEntry[]
   /** The Set the screen is on after logging, which its key (`setIndex`) does not follow. */
   liveSetIndex?: number
   /** A logged Set to open for editing: a done cell tapped in the All view. */
@@ -346,6 +348,14 @@ export function WorkoutFeature({
   const [summarySession, setSummarySession] = useState<Session | null>(null)
   const [lastSwaps, setLastSwaps] = useState<Record<string, string>>({})
   const [lastEntries, setLastEntries] = useState<Map<string, SetEntry[]>>(new Map())
+  // V6 (V5-01): the Session just discarded, as it was on screen, while "Workout discarded · Undo"
+  // shows on Train for DISCARD_UNDO_MS.
+  const [discarded, setDiscarded] = useState<{ session: Session; openSet: OpenSet | null; view: View } | null>(null)
+  useEffect(() => {
+    if (discarded === null) return
+    const timer = setTimeout(() => setDiscarded(null), DISCARD_UNDO_MS)
+    return () => clearTimeout(timer)
+  }, [discarded])
 
   const loadedPrograms = programsData.status === 'ready' ? programsData.data.programs : null
 
@@ -513,6 +523,36 @@ export function WorkoutFeature({
     return exercise && applyBodyweight(exercise, bodyweightOverrides)
   }
 
+  /**
+   * V5-02: what a Set of `doneId` presets from as "last time", given its own history `own` -- the
+   * one derivation the Now view, the All view's cells and its Log button share. Its own history
+   * when it has one; for an Exercise swapped in with none, the planned Exercise's last time laid
+   * over its Rungs (`swapSeed`), with `askStartWeight` when the equipment differs. The planned
+   * Exercise's history is read from `lastEntries`, which holds every Plan of the Session.
+   */
+  function presetSourceFor(doneId: string, own: SetEntry[]): { entries: SetEntry[]; askStartWeight: boolean } {
+    const plain = { entries: own, askStartWeight: false }
+    if (!session || !located || own.length > 0) return plain
+    const plannedId = plannedExerciseIdFor(session, doneId)
+    if (plannedId === doneId) return plain
+    const plan = located.workout.exercises.find((candidate) => candidate.exerciseId === plannedId)
+    const planned = resolveListExercise(plannedId)
+    const chosen = resolveListExercise(doneId)
+    if (!plan || !planned || !chosen) return plain
+    const equipmentOf = (exercise: Exercise): string | null =>
+      libraryMap.get(exercise.libraryId)?.equipment ?? null
+    const seed = swapSeed({
+      planned,
+      chosen,
+      plan,
+      plannedLast: lastEntries.get(plannedId) ?? [],
+      chosenLast: own,
+      today: session.entries.filter((entry) => entry.exerciseId === plannedId),
+      sameEquipment: equipmentOf(planned) === equipmentOf(chosen),
+    })
+    return seed ?? plain
+  }
+
   /** Adds the last entries of `doneId`, just swapped in, to the list's progression bars. */
   function loadLastEntriesOf(doneId: string): void {
     services.sessions
@@ -543,7 +583,6 @@ export function WorkoutFeature({
     const chosen = resolveListExercise(chosenId)
     const plan = located?.workout.exercises.find((candidate) => candidate.exerciseId === plannedId)
     if (!session || !planned || !chosen || !plan) return
-    const today = session.entries.filter((entry) => entry.exerciseId === plannedId)
     Promise.all([
       services.sessions.lastEntriesFor(plannedId),
       services.sessions.lastEntriesFor(chosenId),
@@ -552,11 +591,9 @@ export function WorkoutFeature({
       .then(async ([plannedLast, chosenLast, weightStep]) => {
         await applySwap(plannedId, chosenId)
         setSwapUndo({ plannedId, name: planned.name, setIndex })
-        const preset = swapPreset({ planned, chosen, plan, setIndex, plannedLast, chosenLast, today })
-        const seed: SetEntry[] | undefined =
-          chosenLast.length > 0
-            ? undefined
-            : [{ exerciseId: chosenId, setIndex: 1, ...preset, loggedAt: 0 }]
+        // V5-02: both histories go in the map before the screen opens, so its first render
+        // presets from the same derivation (`presetSourceFor`) as All and its Log button.
+        setLastEntries((current) => new Map(current).set(plannedId, plannedLast).set(chosenId, chosenLast))
         setOverlay(null)
         setOpenSet({
           exerciseId: chosenId,
@@ -565,7 +602,6 @@ export function WorkoutFeature({
           extra: false,
           weightStep,
           exerciseNote: null,
-          seed,
         })
         setView('set')
         loadExerciseNote(chosenId)
@@ -636,6 +672,8 @@ export function WorkoutFeature({
 
   /** Starts the chosen workout, or resumes the session already in progress, and lists it. */
   function handleChoose(programId: string, workoutId: string): void {
+    // A new start ends the discarded Session's Undo (V5-01).
+    setDiscarded(null)
     services.sessions
       .start(programId, workoutId)
       .then(async (started) => {
@@ -709,7 +747,7 @@ export function WorkoutFeature({
       exercise,
       plan,
       setIndex,
-      lastEntries: lastEntries.get(id) ?? [],
+      lastEntries: presetSourceFor(id, lastEntries.get(id) ?? []).entries,
       today,
       deload: session.deload === true,
     })
@@ -816,16 +854,41 @@ export function WorkoutFeature({
   /** `ExerciseList.onDiscard`: discards the Session in progress and returns to the picker. */
   function handleDiscard(): void {
     if (!session) return
+    const was = { session, openSet, view }
     services.sessions
       .discard(session.id)
       .then(() => {
         setSession(null)
         setOpenSet(null)
         setView('picker')
+        // V5-01: Train offers it back for DISCARD_UNDO_MS.
+        setDiscarded(was)
         void syncNow()
       })
       .catch(() => {
         // The list stays up; nothing was discarded.
+      })
+  }
+
+  /**
+   * V5-01: Undo on "Workout discarded": the Session stored live again and back on screen where it
+   * was, on the same Exercise and Set. Its rest follows from its Sets' times, so it runs on.
+   */
+  function handleUndoDiscard(): void {
+    if (discarded === null) return
+    const was = discarded
+    setDiscarded(null)
+    services.sessions
+      .undiscard(was.session.id)
+      .then((restored) => {
+        setSession(restored)
+        setOpenSet(was.openSet)
+        setView(was.view === 'set' && was.openSet === null ? 'list' : was.view)
+        onRestore?.()
+        void syncNow()
+      })
+      .catch(() => {
+        // The Session stays discarded; Train stays as it is.
       })
   }
 
@@ -938,6 +1001,7 @@ export function WorkoutFeature({
     const plannedId = plannedExerciseIdFor(session, openSet.exerciseId)
     const plan = located.workout.exercises.find((candidate) => candidate.exerciseId === plannedId)
     const exercise = resolveListExercise(openSet.exerciseId)
+    const presetSource = presetSourceFor(openSet.exerciseId, openSet.history)
     if (plan && exercise) {
       const primaryMuscle = libraryMap.get(exercise.libraryId)?.primaryMuscles[0]
       const family = primaryMuscle === undefined ? undefined : familyOf(primaryMuscle)
@@ -1044,7 +1108,19 @@ export function WorkoutFeature({
             setIndex={openSet.setIndex}
             sessionId={session.id}
             // Last time's Sets alone: today's reach the Preset apart, through `logged` (E16-T6).
-            lastEntries={openSet.seed ?? openSet.history}
+            // A swap with no history of its own presets as All does (V5-02).
+            lastEntries={presetSource.entries}
+            askStartWeight={presetSource.askStartWeight}
+            swapFor={
+              plannedId === openSet.exerciseId
+                ? null
+                : {
+                    name: resolveListExercise(plannedId)?.name ?? plannedId,
+                    onUndo: session.entries.some((entry) => entry.exerciseId === openSet.exerciseId)
+                      ? undefined
+                      : () => handleUndoSwapOnNow(plannedId, openSet.liveSetIndex ?? openSet.setIndex),
+                  }
+            }
             lastTime={openSet.history}
             sessionStartedAt={session.startedAt}
             extra={openSet.extra}
@@ -1215,7 +1291,11 @@ export function WorkoutFeature({
           onOpenSet={handleOpenSet}
           onFinish={handleFinish}
           lastSwaps={lastSwaps}
-          lastEntries={lastEntries}
+          // V5-02: a swapped-in Exercise's cells preset as its Now view does.
+          lastEntries={Object.values(session.swaps ?? {}).reduce(
+            (map, doneId) => map.set(doneId, presetSourceFor(doneId, lastEntries.get(doneId) ?? []).entries),
+            new Map(lastEntries),
+          )}
           onUndoSwap={handleUndoSwap}
           onApplySwap={handleApplySwap}
           sessions={sessions}
@@ -1278,6 +1358,9 @@ export function WorkoutFeature({
               : null
           }
         />
+        {discarded === null ? null : (
+          <Snackbar message="Workout discarded" actionLabel="Undo" onAction={handleUndoDiscard} />
+        )}
       </AppShell>
     )
   }

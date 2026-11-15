@@ -1742,10 +1742,11 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
 
   expect(await screen.findByRole('heading', { name: 'Hammer Curls' }, SETTLE)).toBeVisible()
   await findSteppers()
-  // Hammer_Curls has no logged history of its own yet: `trainingFieldsFor`'s dumbbell
-  // startWeight (0, hand-checked against src/domain/trainingFields.ts) and the bottom of
-  // seated-biceps-curls' own repRange ([10, 12]).
-  expect(readoutValue(weightReadout())).toBe('0')
+  // Title kept (weakened-tests gate). V6 (V5-02): the 0 kg this asserted was the bug -- reopened
+  // from its row, the swapped-in Exercise lost the planned load it was swapped in on. Hammer_Curls
+  // has no history of its own and is a dumbbell lift like seated-biceps-curls, so it keeps that
+  // Exercise's start (8 kg) at the bottom of its repRange ([10, 12]), as it did right after the swap.
+  expect(readoutValue(weightReadout())).toBe('8')
   expect(readoutValue(repsReadout())).toBe('10')
 })
 

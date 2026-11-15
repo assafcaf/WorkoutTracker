@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { loadCatalog } from '../data/catalog'
-import { swapPreset } from './swapPreset'
+import { swapPreset, swapSeed } from './swapPreset'
 import type { Exercise, ExercisePlan, SetEntry } from '../types'
 
 // E16-T12 O23: where a swapped-in Exercise's Set opens. The planned Exercise is the catalog's
@@ -178,4 +178,74 @@ test('O7 a deload swap to a never-logged Exercise opens lighter than the planned
 
   expect(result.weightKg).toBeLessThan(40)
   expect(result.reps).toBe(10)
+})
+
+// --- UX v6 (V5-02): the swap's Preset is one derivation, shared by Now and All ---------------
+
+/** A chosen Exercise on the planned one's equipment, never logged. */
+const bandDeadlift: Exercise = { ...machineCurl, id: 'Deadlift_with_Bands', name: 'Deadlift with Bands', weightStep: 2.5 }
+
+test('V6 a never-logged chosen Exercise on other equipment opens on its first Rung and asks for a starting weight', () => {
+  const result = swapPreset({
+    planned,
+    chosen: machineCurl,
+    plan,
+    setIndex: 1,
+    plannedLast: [entry('seated-biceps-curls', 1, 12, 10)],
+    chosenLast: [],
+    today: [],
+    sameEquipment: false,
+  })
+
+  expect(result).toEqual({ weightKg: 5, reps: 10, askStartWeight: true })
+})
+
+test('V6 swapSeed lays the planned Exercise last time over every planned Set, ramp included', () => {
+  const seed = swapSeed({
+    planned,
+    chosen: bandDeadlift,
+    plan,
+    plannedLast: [
+      entry('seated-biceps-curls', 1, 60, 10),
+      entry('seated-biceps-curls', 2, 70, 8),
+      entry('seated-biceps-curls', 3, 70, 7),
+    ],
+    chosenLast: [],
+    today: [],
+  })
+
+  expect(seed?.askStartWeight).toBe(false)
+  expect(seed?.entries.map((e) => [e.exerciseId, e.setIndex, e.weightKg, e.reps])).toEqual([
+    ['Deadlift_with_Bands', 1, 60, 10],
+    ['Deadlift_with_Bands', 2, 70, 8],
+    ['Deadlift_with_Bands', 3, 70, 7],
+  ])
+})
+
+test('V6 swapSeed is null once the chosen Exercise has its own history', () => {
+  const seed = swapSeed({
+    planned,
+    chosen: machineCurl,
+    plan,
+    plannedLast: [entry('seated-biceps-curls', 1, 12, 10)],
+    chosenLast: [entry('Machine_Curl', 1, 35, 6)],
+    today: [],
+  })
+
+  expect(seed).toBeNull()
+})
+
+test('V6 swapSeed on other equipment asks for a starting weight', () => {
+  const seed = swapSeed({
+    planned,
+    chosen: machineCurl,
+    plan,
+    plannedLast: [entry('seated-biceps-curls', 1, 12, 10)],
+    chosenLast: [],
+    today: [],
+    sameEquipment: false,
+  })
+
+  expect(seed?.askStartWeight).toBe(true)
+  expect(seed?.entries.every((e) => e.weightKg === 5)).toBe(true)
 })

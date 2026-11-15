@@ -378,7 +378,14 @@ export function SessionsScreen({
           </div>
         </Sheet>
       ) : null}
-      {deleted ? <Snackbar message="Workout deleted" actionLabel="Undo" onAction={undoDelete} /> : null}
+      {/* V5-04: it names the workout it took away, "Workout B deleted · Mon 12 Oct". */}
+      {deleted ? (
+        <Snackbar
+          message={`${workoutNameOf(deleted, programs)} deleted · ${formatDay(new Date(deleted.startedAt), new Date(today))}`}
+          actionLabel="Undo"
+          onAction={undoDelete}
+        />
+      ) : null}
     </AppShell>
   )
 }

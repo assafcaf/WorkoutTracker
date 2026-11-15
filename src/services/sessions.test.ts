@@ -110,6 +110,7 @@ describe('O5 the session service', () => {
       'setNote',
       'setRest',
       'start',
+      'undiscard',
       'undoSwap',
       'updateSet',
     ])
@@ -884,6 +885,42 @@ describe('E12-T1 SessionService.discard', () => {
     await expect(rejection).rejects.toBeInstanceOf(ServiceError)
     await expect(rejection).rejects.toMatchObject({ code: 'not-found' })
     expect(emitted()).toBe(0)
+  })
+})
+
+// --- UX v6 (V5-01): Undo on "Workout discarded" ---------------------------------------------
+
+describe('V6 SessionService.undiscard', () => {
+  test('V5-01 undiscard brings a discarded Session in progress back, entries kept, updatedAt at the clock', async () => {
+    const active = storedSession({
+      id: 'active',
+      startedAt: NOW - HOUR,
+      finishedAt: null,
+      entries: [entry('bench', 0, 60, 8, NOW - 30 * 60 * SECOND)],
+      updatedAt: NOW - 30 * 60 * SECOND,
+    })
+    await putSessions([active])
+    const { service, emitted } = harness()
+    await service.discard('active')
+
+    const restored = await service.undiscard('active')
+
+    expect(restored).toEqual({ ...active, updatedAt: NOW })
+    expect(await stored('active')).toEqual({ ...active, updatedAt: NOW })
+    expect((await service.resumeActive())?.id).toBe('active')
+    expect(emitted()).toBe(2)
+  })
+
+  test('V5-01 undiscard brings back a Session with no Sets too', async () => {
+    await putSessions([
+      storedSession({ id: 'empty', startedAt: NOW - HOUR, finishedAt: null, entries: [], updatedAt: NOW - HOUR }),
+    ])
+    const { service } = harness()
+    await service.discard('empty')
+
+    await service.undiscard('empty')
+
+    expect((await service.resumeActive())?.id).toBe('empty')
   })
 })
 

@@ -53,7 +53,8 @@ test('V5 Delete workout on an opened Session deletes it at once: its row, its ca
   await userEvent.click(within(summary).getByRole('button', { name: 'Delete workout' }))
 
   expect(screen.queryByRole('dialog', { name: 'Session summary' })).toBeNull()
-  expect(await screen.findByRole('status')).toHaveTextContent('Workout deleted ·Undo')
+  // V6 (V5-04): the snackbar names the workout, with no separator trailing before Undo.
+  expect(await screen.findByRole('status')).toHaveTextContent('Workout B deleted · Mon 12 OctUndo')
   await waitFor(() => expect(rows()).toHaveLength(1), SETTLE)
   expect(rows()[0]).toHaveTextContent('Workout A')
   expect(screen.queryByRole('button', { name: 'Workout B, Mon 12 Oct' })).toBeNull()
@@ -92,6 +93,6 @@ test('V5 the editor’s Delete workout also deletes at once with Undo', async ()
   // The editor's own inline confirm stays.
   await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
-  expect(await screen.findByRole('status', {}, SETTLE)).toHaveTextContent('Workout deleted')
+  expect(await screen.findByRole('status', {}, SETTLE)).toHaveTextContent('Workout B deleted · Mon 12 Oct')
   await screen.findByText(/No finished workouts yet/, {}, SETTLE)
 })

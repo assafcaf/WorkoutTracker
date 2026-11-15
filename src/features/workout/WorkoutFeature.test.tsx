@@ -1481,6 +1481,12 @@ test('O8 a swapped-in barbell Exercise shows the Plate line', async () => {
   const { user } = renderFeature(services)
   await openExercise(user, 'Barbell Curl')
   await toolsRow(user)
+  // Title kept (weakened-tests gate). V6 (V5-02): a barbell lift swapped in for a dumbbell one,
+  // never logged, first asks for its starting weight where the Plate line goes; once the weight
+  // is set, the Plate line shows.
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(plateLine()?.textContent).toBe('Set a starting weight'), SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
 
   await waitFor(
     () => expect(plateLine()?.textContent).toMatch(/^(Per side:|Nearest|Bar only|Lighter)/),

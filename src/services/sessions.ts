@@ -2,6 +2,7 @@ import {
   addPlan,
   clearSwap,
   discardSession,
+  undiscardSession,
   finishSession,
   finishStaleSession,
   getActiveSession,
@@ -71,6 +72,8 @@ export type SessionService = {
   applySwap(sessionId: string, plannedId: string, doneId: string): Promise<void>
   undoSwap(sessionId: string, plannedId: string): Promise<void>
   discard(sessionId: string): Promise<void>
+  /** V6 (V5-01): Undo of `discard`: the Session stored live again, as it was, and returned. */
+  undiscard(sessionId: string): Promise<Session>
 }
 
 // The UI shows no text when starting, finishing, swapping or reading history fails: each of
@@ -314,6 +317,10 @@ export function createSessionService(deps: ServiceDeps): SessionService {
     /** Marks the Session deleted through `discardSession` (E12-T1). */
     async discard(sessionId) {
       await write(sessionId, () => discardSession(sessionId, now()), DISCARD_FAILED)
+    },
+
+    async undiscard(sessionId) {
+      return write(sessionId, () => undiscardSession(sessionId, now()), SAVE_FAILED)
     },
   }
 }

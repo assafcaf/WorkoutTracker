@@ -208,6 +208,17 @@ export type SetScreenProps = {
    * Set is logged here; Undo calls `onUndo`, which puts the planned Exercise back.
    */
   swappedFrom?: { name: string; onUndo(): void } | null
+  /**
+   * V6 (V5-02): this Exercise stands in for the planned one `name` while the swap lasts. A quiet
+   * line under the set counter says "for Deadlift", with "Undo swap" while `onUndo` is given
+   * (nothing of this Exercise logged yet). It stays as long as the swap does, unlike the snackbar.
+   */
+  swapFor?: { name: string; onUndo?(): void } | null
+  /**
+   * V6 (V5-02): a swapped-in Exercise on other equipment with no history: until a Set is logged
+   * or the weight is changed, the screen asks "Set a starting weight" where the Plate line goes.
+   */
+  askStartWeight?: boolean
 }
 
 /** The Exercise just finished, as the next one's screen shows it during its rest (V3-01). */
@@ -551,6 +562,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // The Warm-up ramp under way, if any (E15-T7); it starts only on a tap of Add warm-ups.
   const [ramp, setRamp] = useState<Ramp | null>(null)
   const [undo, setUndo] = useState<SetEntry | null>(null)
+  // V5-04: what the Delete snackbar names, "Set 2 deleted · 80 × 7", fixed as it is deleted.
+  const [undoMessage, setUndoMessage] = useState('')
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The exercise tools sheet (S3b), its segment and whether its Set type row is open.
   const [toolsOpen, setToolsOpen] = useState(false)
@@ -560,6 +573,11 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // V1-17: the swap's Undo, shown from the screen's opening until it times out or a Set is logged.
   // Read once, on open: the caller may drop it at once, and a later screen must not show it again.
   const [swappedFrom] = useState(props.swappedFrom ?? null)
+  // V5-02: a swap onto other equipment asks for its starting weight until the Dial is moved or
+  // a Set is logged.
+  const [startWeightSet, setStartWeightSet] = useState(false)
+  const askingStartWeight =
+    props.askStartWeight === true && !startWeightSet && workingSets(loggedSets).length === 0
   const [swapUndoShown, setSwapUndoShown] = useState<boolean>(swappedFrom !== null)
   useEffect(() => {
     if (!swapUndoShown) return undefined
@@ -993,7 +1011,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   async function deleteSet(): Promise<void> {
     if (editing === null || props.onDeleteSet === undefined) return
     try {
+      const name = ordinals.has(editing) ? `Set ${ordinals.get(editing)}` : 'Warm-up'
       const removed = await props.onDeleteSet(editing)
+      setUndoMessage(`${name} deleted · ${formatSet(removed)}`)
       const deletedAt = editing
       returnToLogging(
         loggedSets.length,
@@ -1681,6 +1701,20 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {open.carried === undefined || open.carried.kg !== open.weightKg ? null : (
               <p className="set-carried">{open.carried.text}</p>
             )}
+            {/* V5-02: the swap stays said on Now for as long as it stands, as on All. */}
+            {props.swapFor ? (
+              <p className="set-swapped">
+                <span>{`for ${props.swapFor.name}`}</span>
+                {props.swapFor.onUndo === undefined ? null : (
+                  <>
+                    <span aria-hidden="true">{' · '}</span>
+                    <button type="button" className="set-swapped-undo btn-quiet" onClick={props.swapFor.onUndo}>
+                      Undo swap
+                    </button>
+                  </>
+                )}
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -1840,6 +1874,25 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             rest runs it sits between the Get ready card and the Just done block (V4-01). */}
         <div className="set-spacer" aria-hidden="true" />
 
+        {/* V5-04: the snackbars ride here, over the space above the Dials (or the Just done block
+            while rest runs), never over the reps Dial or the rest timer under them. */}
+        <div className="set-snackbar-anchor">
+          {undo === null ? null : (
+            <Snackbar inline message={undoMessage} actionLabel="Undo" onAction={() => void restoreSet()} />
+          )}
+          {undo !== null || !swapUndoShown || swappedFrom === null ? null : (
+            <Snackbar
+              inline
+              message={`Swapped from ${swappedFrom.name}`}
+              actionLabel="Undo"
+              onAction={() => {
+                setSwapUndoShown(false)
+                swappedFrom.onUndo()
+              }}
+            />
+          )}
+        </div>
+
         {/* V4-01: the Just done block on the dock, for the whole rest: the Set just logged, its
             one comparison (its Record, if any) and its reps left. */}
         {collapsed && justDone !== null ? (
@@ -1933,10 +1986,17 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 variant="scrub"
                 exercise={effectiveExercise}
                 value={open.weightKg}
-                onChange={(weightKg) => setOpen({ ...open, weightKg })}
+                onChange={(weightKg) => {
+                  setStartWeightSet(true)
+                  setOpen({ ...open, weightKg })
+                }}
               />
             )}
-            {plateLine === null ? null : <p className="plate-line">{plateLine}</p>}
+            {askingStartWeight ? (
+              <p className="plate-line set-start-weight">Set a starting weight</p>
+            ) : plateLine === null ? null : (
+              <p className="plate-line">{plateLine}</p>
+            )}
             <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
           </div>
 
@@ -1967,19 +2027,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {editSheet}
       {restDialSheet}
 
-      {undo === null ? null : (
-        <Snackbar message="Set deleted" actionLabel="Undo" onAction={() => void restoreSet()} />
-      )}
-      {undo !== null || !swapUndoShown || swappedFrom === null ? null : (
-        <Snackbar
-          message={`Swapped from ${swappedFrom.name}`}
-          actionLabel="Undo"
-          onAction={() => {
-            setSwapUndoShown(false)
-            swappedFrom.onUndo()
-          }}
-        />
-      )}
 
     </>
   )

@@ -833,6 +833,28 @@
   color: var(--color-muted);
 }
 
+/* V5-02: "for Deadlift · Undo swap", quiet, for as long as the swap stands. */
+.set-swapped {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.set-swapped .set-swapped-undo {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+/* V5-04: a zero-height anchor over the Dials; its snackbar hangs above it, over the spacer. */
+.set-snackbar-anchor {
+  position: relative;
+  height: 0;
+}
+
 /* ---- A short screen (320 x 568 and the like) ------------------------------------------------
  * The rest dock and the Get ready card both have to fit over the fold (V2-02, V1-10, V3-04): the
  * rest buttons and Log set step down to the tap floor, and the card tightens with "Change" in its
