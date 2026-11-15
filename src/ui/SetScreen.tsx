@@ -1707,7 +1707,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 <span>{`for ${props.swapFor.name}`}</span>
                 {props.swapFor.onUndo === undefined ? null : (
                   <>
-                    <span aria-hidden="true">{' · '}</span>
+                    <span aria-hidden="true">·</span>
                     <button type="button" className="set-swapped-undo btn-quiet" onClick={props.swapFor.onUndo}>
                       Undo swap
                     </button>
