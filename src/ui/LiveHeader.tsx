@@ -48,6 +48,9 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
   const { trailing } = useContext(ShellChromeContext)
   const [confirming, setConfirming] = useState(false)
   const nothingLogged = sets !== undefined && sets.done === 0
+  // V5-01: with Sets logged, Discard asks once more, naming what is lost; with none, it is one tap.
+  const [discarding, setDiscarding] = useState(false)
+  const logged = sets?.done ?? 0
 
   function handleFinish(): void {
     if (setsLeft > 0 || (nothingLogged && onDiscard !== undefined)) setConfirming(true)
@@ -90,7 +93,13 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
         </button>
       </div>
       {confirming ? (
-        <Sheet label="Finish workout?" onClose={() => setConfirming(false)}>
+        <Sheet
+          label="Finish workout?"
+          onClose={() => {
+            setConfirming(false)
+            setDiscarding(false)
+          }}
+        >
           <div className="sheet-head">
             <h2 className="sheet-title">Finish workout?</h2>
           </div>
@@ -116,11 +125,16 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
                 type="button"
                 className="btn-danger"
                 onClick={() => {
+                  if (logged > 0 && !discarding) {
+                    setDiscarding(true)
+                    return
+                  }
                   setConfirming(false)
+                  setDiscarding(false)
                   onDiscard()
                 }}
               >
-                Discard workout
+                {discarding ? `Discard ${logged} logged ${logged === 1 ? 'set' : 'sets'}` : 'Discard workout'}
               </button>
             )}
           </div>

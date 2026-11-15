@@ -78,3 +78,25 @@ test('V5 with sets logged, the Finish sheet keeps Finish workout and adds Discar
   expect(screen.getByRole('button', { name: 'Finish workout' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Discard workout' })).toBeTruthy()
 })
+
+test('V5-01 with sets logged, Discard asks again naming the sets before it discards', async () => {
+  const { fireEvent, screen } = await import('@testing-library/react')
+  const onDiscard = vi.fn()
+  render(
+    <LiveHeader
+      workoutName="Workout B"
+      startedAt={Date.now()}
+      onMinimise={vi.fn()}
+      onFinish={vi.fn()}
+      onDiscard={onDiscard}
+      sets={{ done: 2, planned: 23 }}
+      setsLeft={21}
+    />,
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Discard workout' }))
+  expect(onDiscard).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Discard 2 logged sets' }))
+  expect(onDiscard).toHaveBeenCalledTimes(1)
+})
