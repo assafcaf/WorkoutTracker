@@ -64,8 +64,9 @@ test('O7 Stats shows the same volume, records and progression with warm-up Sets 
   const withWarmups = liftFacts(warmed)
 
   expect(without.hero).toContain('60')
+  // v6: warm-ups show on their own muted line in the log, never in the hero or the records.
   expect(withWarmups).toEqual(without)
-  expect(warmed.querySelector('.lift-warmups')?.textContent).toMatch(/Warm-ups .* not counted/)
+  expect(warmed.querySelector('.lift-warmups')?.textContent).toBe('W 100×10 · 100×10 · 100×10 · 100×10')
 })
 
 test('O7 the exercise list shows the same volume against the baseline with warm-up Sets logged as without them', () => {

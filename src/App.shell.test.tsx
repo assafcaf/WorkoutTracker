@@ -253,7 +253,9 @@ test('Progress to a lift to a Session is two taps, and Back returns each step', 
     await pressTab(user, 'Progress')
     const rows = await screen.findAllByRole('button', { name: /Push-ups/ }, SETTLE)
     await user.click(rows[0])
-    const lastMoved = await screen.findByRole('button', { name: /^Last moved/ }, SETTLE)
+    // v6: the Lift page's session log opens a Session (the "Last moved" link is cut).
+    const log = await screen.findByRole('list', { name: 'Sessions' }, SETTLE)
+    const lastMoved = within(log).getAllByRole('button')[0]
 
     await user.click(lastMoved)
     const done = await screen.findByRole('button', { name: 'Done' }, SETTLE)
