@@ -107,6 +107,8 @@ async function storedActiveSession(): Promise<Session | null> {
 async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLElement> {
   await toolsRow(user, 'Swap exercise')
   await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
+  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
+  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
   const hammerRowName = await screen.findByText(
     'Hammer Curls',
     { selector: '.alternatives-row-name' },
@@ -332,6 +334,10 @@ async function openSeatedCurlsAtSet2(user: UserEvent): Promise<void> {
 
 /** The Hammer Curls row of whichever overlay is open, found as `swapSeatedCurlsForHammerCurls` does. */
 async function hammerCurlsRow(rowName = 'Hammer Curls'): Promise<HTMLElement> {
+  // V6-10: the swap list opens on its first 6 rows; the rest are under Show all (the detail
+  // overlay's Similar exercises has none).
+  const showAll = screen.queryByRole('button', { name: /^Show all/ })
+  if (showAll) fireEvent.click(showAll)
   const name = await screen.findByText(rowName, { selector: '.alternatives-row-name' }, SETTLE)
   const row = name.closest('li')
   if (!row) throw new Error('the Hammer Curls row is not inside a list item')
@@ -429,7 +435,8 @@ test('O9 Done on the Session summary leaves the picker, reporting onInSession(fa
     expect(screen.queryByRole('dialog', { name: 'Session summary' })).toBeNull()
   }, SETTLE)
   // Back on the Dashboard, whose dock offers the workout due after Workout A.
-  expect(await screen.findByRole('button', { name: 'Start Workout B' }, SETTLE)).toBeVisible()
+  // V6-11: a few Sets of A is a short Session, so Workout A stays next.
+  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Resume Workout A' })).toBeNull()
   expect(onInSession).toHaveBeenLastCalledWith(false)
 })
