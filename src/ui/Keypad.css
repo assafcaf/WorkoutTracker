@@ -42,3 +42,8 @@
   min-height: var(--tap-min);
   flex: 1;
 }
+
+/* Delete digit sits in the grid's last slot, a key like the digits (V1-18). */
+.keypad-delete {
+  font-size: var(--text-lg);
+}

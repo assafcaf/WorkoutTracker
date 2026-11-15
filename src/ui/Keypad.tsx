@@ -17,7 +17,7 @@ export type KeypadProps = {
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0']
 
 /**
- * The number pad a dial's readout opens: digits, a decimal point, OK and Cancel.
+ * The number pad a dial's readout opens: digits, a decimal point, Delete digit, OK and Cancel.
  *
  * It starts on an empty entry showing the dial's current value as a hint, so the first digit
  * tapped replaces the weight rather than being appended to it. OK commits what was typed;
@@ -60,6 +60,15 @@ export function Keypad(props: KeypadProps): JSX.Element {
             &minus;
           </button>
         ) : null}
+        {/* The grid's last slot: takes back the last digit typed (V1-18). */}
+        <button
+          type="button"
+          className="keypad-key keypad-delete key"
+          aria-label="Delete digit"
+          onClick={() => setEntry(entry.slice(0, -1))}
+        >
+          &#9003;
+        </button>
       </div>
       <div className="keypad-actions">
         <button type="button" className="keypad-cancel btn-quiet" onClick={onCancel}>
