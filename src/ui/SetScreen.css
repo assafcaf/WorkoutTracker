@@ -475,7 +475,7 @@
   font-weight: var(--weight-semibold);
 }
 
-/* "+1 rep" reads in the text colour; "1 rep under" stays secondary, never red. */
+/* "+1 rep" reads in the text colour; "1 fewer rep" stays secondary, never red. */
 .set-projection .vs-delta[data-kind='up'] {
   color: var(--color-text);
   font-weight: var(--weight-semibold);

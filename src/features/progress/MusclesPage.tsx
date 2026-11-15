@@ -57,6 +57,12 @@ const standingText = (n: number): string => {
   const standing = standingOf(n)
   return standing === 'below' ? ` · below ${BAND.from}` : standing === 'above' ? ` · above ${BAND.to}` : ''
 }
+/**
+ * V6-19: a low the plan itself sets, met: the row reads "3 sets/week · as planned" instead of
+ * warning "below 10" about a number the trainee chose.
+ */
+const asPlanned = (row: Row): boolean =>
+  row.plan > 0 && whole(row.done + row.still) === whole(row.plan) && standingOf(row.plan) === 'below'
 const WEEK_MS_DAYS = 7
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const dayMonth = (ms: number): string => `${new Date(ms).getDate()} ${MONTHS[new Date(ms).getMonth()]}`
@@ -359,13 +365,20 @@ export function MusclesView({ data, now, onBack }: MusclesViewProps): JSX.Elemen
                     <span className="muscles-row-head">
                       <span className="muscles-row-name">{row.label}</span>
                       <span className="muscles-row-value">
-                        {whole(row.done)}
-                        {/* This week counts what is still planned too: 2 done of 12 is not "below". */}
-                        {standingText(row.done + row.still)}
-                        <span className="muscles-row-plan">
-                          {` · plan ${whole(row.plan)}`}
-                          {row.still > 0 ? ` · ${whole(row.still)} still planned` : ''}
-                        </span>
+                        {/* V6-19: the count has its unit: this week's sets, else a weekly average. */}
+                        {`${whole(row.done)} ${span === 'this-week' ? 'sets' : 'sets/week'}`}
+                        {asPlanned(row) ? (
+                          ' · as planned'
+                        ) : (
+                          <>
+                            {/* This week counts what is still planned too: 2 done of 12 is not "below". */}
+                            {standingText(row.done + row.still)}
+                            <span className="muscles-row-plan">
+                              {` · plan ${whole(row.plan)}`}
+                              {row.still > 0 ? ` · ${whole(row.still)} still planned` : ''}
+                            </span>
+                          </>
+                        )}
                       </span>
                     </span>
                     <Bullet row={row} max={max} />

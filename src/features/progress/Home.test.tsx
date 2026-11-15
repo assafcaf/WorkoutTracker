@@ -19,8 +19,11 @@ const NOW = new Date(2026, 9, 15, 18, 5).getTime()
 const SETTLE = { timeout: 5000 }
 /** The v6 headline on the fixture (report §6.4). */
 const LEAD = 'This week 2 of 3 sessions · 4 lifts need a decision'
-/** The v6 Muscles row on the fixture: the one muscle furthest from 10–20 sets a week, with its unit. */
-const ROW = 'MusclesAbs below the typical range (3 sets/week)'
+/**
+ * The v6 Muscles row on the fixture: the one muscle furthest from 10–20 sets a week, with its unit.
+ * V6-19: Abs (3 of a planned 3) and Calves (8 of 8) are as planned, so Shoulders is named (§6.2).
+ */
+const ROW = 'MusclesShoulders above the typical range (21 sets/week)'
 const fixture = sessionsJson as unknown as Session[]
 
 beforeEach(async () => {

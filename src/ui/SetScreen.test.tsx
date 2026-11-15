@@ -4700,7 +4700,8 @@ test('V4-01 a Set under last time reads n rep under <day>, in the secondary colo
   await user.click(logButton())
 
   const line = (await screen.findByRole('region', { name: 'Just done' })).querySelector('.just-done-line')
-  expect(textOf(line)).toBe(`1 rep under ${formatDay(new Date(BASE), new Date())}`)
+  // V6 wave 3: one comparison sentence app-wide, the summary's "1 fewer rep than <day>".
+  expect(textOf(line)).toBe(`1 fewer rep than ${formatDay(new Date(BASE), new Date())}`)
   expect(line?.getAttribute('data-kind')).toBe('down')
   const decls = declarationsFor(restCss(), '.just-done-line')
   expect(decls.get('color')).toBe('var(--color-secondary)')
@@ -4818,7 +4819,7 @@ test('V4-02 the line under the reps Dial compares live with last time: same, +1 
   expect(line()).toMatch(/^Last time 85 × 5 · \+1 rep · PR if logged$/)
   await user.click(screen.getByRole('button', { name: 'Decrease reps' }))
   await user.click(screen.getByRole('button', { name: 'Decrease reps' }))
-  expect(line()).toMatch(/^Last time 85 × 5 · 1 rep under/)
+  expect(line()).toMatch(/^Last time 85 × 5 · 1 fewer rep/)
   // One "Last time" on Now, under the Dials: the upper line is gone.
   expect(screen.getAllByText(/Last time/)).toHaveLength(1)
   expect(document.querySelector('.set-last-time')).toBeNull()

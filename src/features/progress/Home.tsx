@@ -11,7 +11,7 @@ import type { LiftHistory } from '../../domain/stats/liftHistory'
 import { liftStatuses } from '../../domain/stats/status'
 import type { LiftStatus, LiftStatusKind } from '../../domain/stats/status'
 import { topText } from '../../domain/stats/words'
-import { STATS_MUSCLES, windowAverage } from '../../domain/stats/muscles'
+import { STATS_MUSCLES, plannedPerWeek, windowAverage } from '../../domain/stats/muscles'
 import { muscleLabel } from '../../domain/muscleLabels'
 import { WEEKLY_SET_RANGE } from '../../domain/setRange'
 import { lastWeekCard } from '../../domain/stats/weekCard'
@@ -283,12 +283,25 @@ function Card({
 export function musclesLine(model: ProgressModel): string {
   const { data, now } = model
   const avg = windowAverage(data.sessions, now, data.resolve, data.library, undefined, data.weekStart)
-  const rows = STATS_MUSCLES.map((muscle) => ({ muscle, sets: Math.round(avg.get(muscle) ?? 0) }))
+  const planned = plannedPerWeek(data.program, data.resolve, data.library)
+  const rows = STATS_MUSCLES.map((muscle) => ({
+    muscle,
+    sets: Math.round(avg.get(muscle) ?? 0),
+    plan: Math.round(planned.get(muscle) ?? 0),
+  }))
   if (avg.size === 0 || rows.every((r) => r.sets === 0)) return 'No sets in the last 2 weeks'
-  const off = (sets: number) =>
-    sets > WEEKLY_SET_RANGE.max ? sets - WEEKLY_SET_RANGE.max : sets < WEEKLY_SET_RANGE.min ? WEEKLY_SET_RANGE.min - sets : 0
-  const worst = rows.reduce((a, b) => (off(b.sets) > off(a.sets) ? b : a))
-  if (off(worst.sets) === 0) return `All within ${WEEKLY_SET_RANGE.min}–${WEEKLY_SET_RANGE.max} sets a week`
+  // V6-19: a low the plan itself sets, met, is "as planned" on the Muscles page: never the one named.
+  const off = ({ sets, plan }: { sets: number; plan: number }) =>
+    sets > WEEKLY_SET_RANGE.max
+      ? sets - WEEKLY_SET_RANGE.max
+      : sets < WEEKLY_SET_RANGE.min && sets !== plan
+        ? WEEKLY_SET_RANGE.min - sets
+        : 0
+  const worst = rows.reduce((a, b) => (off(b) > off(a) ? b : a))
+  if (off(worst) === 0) {
+    const low = rows.some((r) => r.sets > 0 && r.sets < WEEKLY_SET_RANGE.min)
+    return `All within ${WEEKLY_SET_RANGE.min}–${WEEKLY_SET_RANGE.max} sets a week${low ? ', or as planned' : ''}`
+  }
   const side = worst.sets > WEEKLY_SET_RANGE.max ? 'above' : 'below'
   return `${muscleLabel(worst.muscle)} ${side} the typical range (${worst.sets} sets/week)`
 }

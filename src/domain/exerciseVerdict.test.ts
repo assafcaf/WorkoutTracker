@@ -109,9 +109,12 @@ test('V4-01 a heavier or longer Set reads +2.5 kg / +1 rep on <day>', () => {
 })
 
 test('V4-01 a lighter or shorter Set reads 1 rep under <day>', () => {
-  expect(setComparison(at(70, 6), at(70, 7), MON)).toEqual({ kind: 'down', text: '1 rep under Mon 12 Oct', record: null })
+  // V6 wave 3: fewer reps read as the summary says them, "1 fewer rep than Mon 12 Oct".
+  expect(setComparison(at(70, 6), at(70, 7), MON)).toEqual({ kind: 'down', text: '1 fewer rep than Mon 12 Oct', record: null })
   expect(setComparison(at(67.5, 7), at(70, 7), MON).text).toBe('2.5 kg under Mon 12 Oct')
-  expect(setDelta(at(70, 5), at(70, 7)).text).toBe('2 reps under')
+  expect(setDelta(at(70, 5), at(70, 7)).text).toBe('2 fewer reps')
+  const entry = (reps: number) => ({ exerciseId: 'x', setIndex: 1, weightKg: 70, reps, loggedAt: 0 })
+  expect(exerciseComparison({ today: [entry(6)], last: [entry(7)], lastDay: MON })).toBe('1 fewer rep than Mon 12 Oct')
 })
 
 test('V4-01 a Record leads the sentence with its name: Rep record · +1 rep on <day>', () => {

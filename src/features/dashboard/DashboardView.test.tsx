@@ -541,8 +541,9 @@ describe('DashboardView V6 flow', () => {
     expect(note.closest('header')).not.toBeNull()
     const here = dirname(fileURLToPath(import.meta.url))
     const css = readFileSync(join(here, 'DashboardScreen.css'), 'utf-8')
-    expect(declarationsFor(css, '.dashboard-note').get('white-space')).toBe('nowrap')
-    expect(declarationsFor(css, '.dashboard-note').get('text-overflow')).toBe('ellipsis')
+    // Wave 3: up to 2 lines, never cut to one at large text.
+    expect(declarationsFor(css, '.dashboard-note').get('white-space')).toBeUndefined()
+    expect(declarationsFor(css, '.dashboard-note').get('-webkit-line-clamp')).toBe('2')
   })
 
   test('V6-08 a Workout with no note shows no note line', () => {

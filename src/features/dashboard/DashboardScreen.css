@@ -43,15 +43,19 @@
 }
 
 /* V6-08: the Workout's last Session note, one quiet line; the title attribute holds it whole. */
+/* V6-08, wave 3: the note reads in up to 2 lines, then ends in an ellipsis (at 200 % text one line
+ * held only "Note from Wed 7 Oc…"). */
 .dashboard-note {
+  display: -webkit-box;
   margin: 2px 0 0;
   overflow: hidden;
   color: var(--color-muted);
   font-size: var(--text-sm);
   font-style: italic;
   line-height: 1.25rem;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .dashboard-header-actions {

@@ -3,6 +3,7 @@
 
 .page-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-2);
@@ -15,15 +16,15 @@
   flex-direction: column;
 }
 
+/* V6-12: the title wraps rather than truncating ("Progre…" at 200 % text); when it and the
+ * actions no longer fit on one line, the actions drop under it. */
 .page-header-title {
-  overflow: hidden;
   color: var(--color-text);
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   line-height: 2.125rem;
   letter-spacing: -0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 
 .page-header-subtitle {

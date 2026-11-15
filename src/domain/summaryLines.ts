@@ -119,12 +119,8 @@ export function liftLine(
     lastDay: previous === undefined ? '' : formatDay(new Date(previous.startedAt), new Date(session.startedAt)),
     deload: points[index].deload,
   })
-  return { sets, tail: plainFewer(tail) }
-}
-
-/** V6-18: "3 reps under Wed 7 Oct" said plainly in the summary: "3 fewer reps than Wed 7 Oct". */
-function plainFewer(tail: string): string {
-  return tail.replace(/^(\d+) (reps?) under (.+)$/, (_, n: string, word: string, day: string) => `${n} fewer ${word} than ${day}`)
+  // V6-18: "3 fewer reps than Wed 7 Oct", from the one comparison sentence the Rest beat uses too.
+  return { sets, tail }
 }
 
 /**
