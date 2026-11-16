@@ -16,6 +16,8 @@ import { kgCellText, liftPlan } from '../dashboard/trainCard'
 import { ProgramPage } from '../../ui/ProgramPage'
 import { ProgramDeloadLine, ProgramDeloadStart, ProgramHeadActions } from '../../ui/program/ProgramHead'
 import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
+import { programDecisions } from '../../domain/programDecisions'
+import { useProgramSwap } from '../progress/useProgramSwap'
 import { useServiceData } from '../useServiceData'
 import { useServices } from '../ServicesProvider'
 import type { AppRoute } from '../routes'
@@ -99,6 +101,8 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   // Held here, not in the page, so the Programs panel an Edit, Copy or New was opened from is
   // still open on coming back from the editor.
   const [programsOpen, setProgramsOpen] = useState(false)
+  // v7 (study §1.8): Swap on a "Needs a decision" row replaces the lift in the Program, with Undo.
+  const { canSwap, openSwap, swapUi } = useProgramSwap()
 
   // The tab's shell shows at once, so the tab bar and heading do not wait on the Programs.
   if (programsData.status !== 'ready' || catalogData.status !== 'ready') {
@@ -317,7 +321,12 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
           return kgCellText(liftPlan(exercise, plan, finished, at, deloadOn))
         }}
         minutesOf={(workout) => (active ? workoutMinutes(active, workout, finished).minutes : workoutEstimate(workout).minutes)}
+        // v7 (study §1.8, build-plan step 11): the decisions live where the plan is changed.
+        decisions={active ? programDecisions(active, finished, resolveListExercise, at) : []}
+        onSwap={openSwap}
+        canSwap={canSwap}
       />
+      {swapUi}
     </AppShell>
   )
 }

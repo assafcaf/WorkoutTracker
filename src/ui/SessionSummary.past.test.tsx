@@ -1,8 +1,8 @@
-// V6 (V5-05, V5-06): a past workout's summary, opened from Sessions (it has Edit and Delete), on
-// the stats fixture's Mon 12 Oct Workout B. It says what that Session did, once: the header is
-// the date, duration, Sets and the PR count; Lift by lift carries the PR tags; no Records list,
-// no "This week" line, the volume line labelled "Volume"; "Muscles worked" in whole Sets. The finish
-// summary (no Edit, no Delete) is covered by SessionSummary.test.tsx.
+// V6 (V5-05, V5-06), v7 (study §1.6): a past workout's summary, opened from Sessions (it has Edit
+// and Delete), on the stats fixture's Mon 12 Oct Workout B. It reads as the finish summary does:
+// the day and duration, the verdict sentence, the PR rows in gold, Lift by lift with one verdict
+// per lift, one totals line; no muscles, no week line and no "Next". The finish summary (no Edit,
+// no Delete) is covered by SessionSummary.test.tsx.
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeAll, expect, test, vi } from 'vitest'
@@ -45,38 +45,58 @@ function renderPast(onDelete = vi.fn()): HTMLElement {
 
 test('V6 past summary header: duration, Sets and the PR count; no PR headline repeating a lift', () => {
   const dialog = renderPast()
-  const figures = dialog.querySelector('.session-summary-figures') as HTMLElement
-  expect(figures.textContent).toMatch(/^1 h 06 min · 23 sets · /)
-  expect(figures.querySelector('[data-kpi="prs"]')?.textContent).toBe('2 PRs')
+  // Title kept (weakened-tests gate); v7: the duration sits with the day, the Sets in the totals
+  // line, and the PR count is a word in the verdict sentence ("Two records.").
+  expect(dialog.querySelector('.session-summary-label')?.textContent).toMatch(/ · 1 h 06 min$/)
+  expect(dialog.querySelector('.session-summary-totals')?.textContent).toMatch(/^23 sets · [\d,]+ kg/)
+  expect(dialog.querySelector('.session-summary-sentence')?.textContent).toMatch(
+    /^5 of 7 lifts beat \w+( \d{1,2} \w{3})?\. Two records\. Narrow-grip pull-down dipped\.$/,
+  )
+  expect(dialog.querySelector('[data-kpi="prs"]')).toBeNull()
   expect(dialog.querySelector('.session-summary-win')).toBeNull()
 })
 
 test('V6 past summary shows each PR once, inline in Lift by lift; rep bests carry no PR tag', () => {
   const dialog = renderPast()
-  expect(within(dialog).queryByRole('region', { name: 'Records' })).toBeNull()
+  // Title kept (weakened-tests gate); v7: each PR is said once, as a gold row above Lift by lift;
+  // the lift rows carry no tag, and a rep best is never a row.
+  const records = within(dialog).getByRole('region', { name: 'Records' })
+  const rows = within(records).getAllByRole('listitem')
+  expect(rows.map((row) => row.querySelector('.session-summary-record-detail')?.textContent)).toEqual([
+    'Deadlift',
+    'Machine row',
+  ])
   const lifts = within(dialog).getByRole('region', { name: 'Lift by lift' })
-  expect(lifts.querySelectorAll('.tag-pr')).toHaveLength(2)
+  expect(lifts.querySelectorAll('.tag-pr')).toHaveLength(0)
   expect(dialog.querySelectorAll('.tag-pr')).toHaveLength(2)
-  const tagged = [...lifts.querySelectorAll('.session-summary-move')]
-    .filter((move) => move.querySelector('.tag-pr') !== null)
-    .map((move) => move.querySelector('.session-summary-move-name')?.textContent)
-  expect(tagged).toEqual(['Deadlift', 'Machine row'])
+  // The repeated-reps form and one verdict per lift: Narrow-grip pull-down dipped by 3 reps.
+  const pulldown = [...lifts.querySelectorAll('.session-summary-move')].find(
+    (move) => move.querySelector('.session-summary-move-name')?.textContent === 'Narrow-grip pull-down',
+  ) as HTMLElement
+  expect(pulldown.querySelector('.session-summary-move-text')?.textContent).toBe('46.25×9 · 8 · 8')
+  expect(pulldown.querySelector('.session-summary-verdict')?.textContent).toBe('↓ −3 reps')
 })
 
 test('V6 past summary drops the week line and labels the volume line', () => {
   const dialog = renderPast()
+  // Title kept (weakened-tests gate); v7: no week line and no "Next" on a past workout; the volume
+  // is the kilos in the totals line, after the Sets.
   expect(dialog.querySelector('.session-summary-week')).toBeNull()
+  expect(dialog.querySelector('.session-summary-next')).toBeNull()
   expect(dialog.textContent).not.toContain('This week')
   expect(dialog.textContent).not.toContain('next up')
-  expect(dialog.querySelector('.session-summary-volume')?.textContent).toMatch(/^Volume [\d,]+ kg/)
+  expect(dialog.textContent).not.toContain('Next:')
+  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toMatch(/^[\d,]+ kg$/)
 })
 
 test('V6 past summary names the muscles "Muscles worked", in whole Sets', () => {
   const dialog = renderPast()
+  // Title kept (weakened-tests gate); v7 (study §1.6, §4): the muscles left the summary for
+  // Progress › Muscles.
   expect(dialog.textContent).not.toContain('Worked today')
-  const muscles = within(dialog).getByRole('region', { name: 'Muscles worked' })
-  expect(muscles.textContent).toMatch(/^Muscles worked \(sets\): Lats \d+ · /)
-  expect(muscles.textContent).not.toMatch(/\d\.\d/)
+  expect(within(dialog).queryByRole('region', { name: 'Muscles worked' })).toBeNull()
+  expect(dialog.textContent).not.toContain('Muscles worked')
+  expect(dialog.querySelectorAll('[data-muscle]')).toHaveLength(0)
 })
 
 test('V6 past summary keeps Delete workout, which calls onDelete', async () => {

@@ -5,6 +5,7 @@ import { workoutEstimate } from '../domain/dashboard'
 import { toRegionCounts, type MuscleFamily, type Region } from '../domain/muscles'
 import { muscleLabel } from '../domain/muscleLabels'
 import type { Weekday } from '../domain/stats/weeks'
+import type { LiftStatus } from '../domain/stats/status'
 import { visiblePrograms } from '../domain/programs'
 import {
   exerciseFamily,
@@ -22,6 +23,7 @@ import { Segmented } from './controls'
 import { RegionPanel } from './RegionPanel'
 import { musclesForRegion } from './regionMuscles'
 import { ProgramHeadActions } from './program/ProgramHead'
+import { StatusMark, statusTone } from './figures'
 import {
   CHOOSE_LINE,
   CHOOSE_TITLE,
@@ -33,7 +35,6 @@ import {
   wholeCounts,
 } from './program/planText'
 import './Settings.css'
-import './program/ProgramFamily.css'
 import './ProgramPage.css'
 
 export type ProgramPageProps = {
@@ -95,12 +96,24 @@ export type ProgramPageProps = {
   minutesOf?(workout: Workout): number
   /** V6-03: opens the one Lift page: each Exercise's name in a Workout's table is a button to it. */
   onOpenLift?(exerciseId: string): void
+  /**
+   * v7 (study §1.8, build-plan step 11): the lifts whose status needs a decision, most pressing
+   * first (`programDecisions`). Given and not empty, a "Needs a decision" section heads the page:
+   * one row per lift, its status and its one action sentence, and Swap when the action is a
+   * change of exercise.
+   */
+  decisions?: LiftStatus[]
+  /** Swap on a decision row: replaces the lift in the Program (`useProgramSwap`). */
+  onSwap?(exerciseId: string): void
+  /** Whether a lift can be swapped; omitted, every swap decision offers Swap when `onSwap` is given. */
+  canSwap?(exerciseId: string): boolean
 }
 
 /**
- * The Program tab (Progress Dashboard S7a): the active program's name and size, its planned
- * weekly sets by muscle family, and a card per workout with a table of its exercises -- family
- * dot, sets × reps, rest and the load the next session opens on. `Edit` opens the editor on the
+ * The Program tab (Progress Dashboard S7a; v7 study §1.8): "Needs a decision" on top (the lifts
+ * whose status asks for a change, with Swap), the active program's planned weekly sets by muscle
+ * family (labels, no family colour), and a card per workout with a table of its exercises --
+ * sets × reps, rest and the load the next session opens on. `Edit` opens the editor on the
  * active program; the overflow opens the Programs panel, the always-visible radio list of every
  * loaded program with each one's own actions (operator ruling, E5-T18: no "Other programs"
  * disclosure inside it). Below the workouts sit the planned muscle map with its gaps (M14); what
@@ -211,7 +224,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
           {FAMILIES.filter((family) => families[family] > 0).map((family) => (
             <span
               key={family}
-              className="program-page-volume-segment program-family"
+              className="program-page-volume-segment"
               data-family={family}
               style={{ flexGrow: families[family] }}
             />
@@ -220,11 +233,60 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         <ul className="program-page-legend">
           {FAMILIES.map((family) => (
             <li key={family} className="program-page-legend-item" data-family={family}>
-              <span className="muscle-dot program-family" data-family={family} aria-hidden="true" />
               {FAMILY_LABELS[family]}
               <b className="program-page-legend-count">{countOf(family)}</b>
             </li>
           ))}
+        </ul>
+      </section>
+    )
+  }
+
+  /** v7: "Needs a decision": one row per lift, its name (a door to its Lift page), its status and action. */
+  function renderDecisions(decisions: LiftStatus[]): JSX.Element {
+    return (
+      <section className="program-page-decisions" aria-labelledby="program-page-decisions-title">
+        <h3 className="program-page-caption" id="program-page-decisions-title">
+          Needs a decision
+        </h3>
+        <ul className="program-page-decision-list">
+          {decisions.map((status) => {
+            const name = catalog.get(status.exerciseId)?.name ?? status.exerciseId
+            const swappable = status.swap && props.onSwap !== undefined && (props.canSwap?.(status.exerciseId) ?? true)
+            return (
+              <li key={status.exerciseId} className="program-page-decision" data-kind={status.kind}>
+                <div className="program-page-decision-main">
+                  {props.onOpenLift ? (
+                    <button
+                      type="button"
+                      className="program-page-decision-name lift-door btn-quiet"
+                      onClick={() => props.onOpenLift?.(status.exerciseId)}
+                    >
+                      {name}
+                    </button>
+                  ) : (
+                    <span className="program-page-decision-name">{name}</span>
+                  )}
+                  <p className="program-page-decision-line">
+                    <StatusMark tone={statusTone(status.kind)} glyph={status.glyph}>
+                      {status.label}
+                    </StatusMark>
+                    <span className="program-page-decision-action">{` · ${status.action}`}</span>
+                  </p>
+                </div>
+                {swappable ? (
+                  <button
+                    type="button"
+                    className="program-page-decision-swap btn-secondary"
+                    aria-label={`Swap ${name}`}
+                    onClick={() => props.onSwap?.(status.exerciseId)}
+                  >
+                    Swap
+                  </button>
+                ) : null}
+              </li>
+            )
+          })}
         </ul>
       </section>
     )
@@ -264,13 +326,13 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
               const exercise = catalog.get(plan.exerciseId)
               const family = exerciseFamily(exercise, library)
               return (
-                <tr key={`${plan.exerciseId}-${index}`} className="program-page-row" data-exercise-id={plan.exerciseId}>
+                <tr
+                  key={`${plan.exerciseId}-${index}`}
+                  className="program-page-row"
+                  data-exercise-id={plan.exerciseId}
+                  data-family={family ?? undefined}
+                >
                   <td className="program-page-exercise">
-                    <span
-                      className="muscle-dot program-family"
-                      data-family={family ?? undefined}
-                      aria-hidden="true"
-                    />
                     {props.onOpenLift ? (
                       <button
                         type="button"
@@ -423,6 +485,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 
       {active && (
         <>
+          {props.decisions !== undefined && props.decisions.length > 0 ? renderDecisions(props.decisions) : null}
           {renderWeeklySets(active)}
           {workouts.map((workout) => renderWorkout(active, workout))}
 

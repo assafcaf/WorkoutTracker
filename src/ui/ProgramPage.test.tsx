@@ -277,7 +277,10 @@ test('M13 a workout card draws a body map banding its own exercises, wired to re
   const workoutCard = container.querySelector('.workout-card')
   if (!workoutCard) throw new Error('expected a .workout-card element')
   const row = within(workoutCard as HTMLElement).getByRole('row', { name: /Solo exercise/ })
-  expect(row.querySelector('.muscle-dot')).toHaveAttribute('data-family', 'legs')
+  // v7 (study §1.8): families are labels, not colours: the row carries its family as data and
+  // draws no coloured dot.
+  expect(row).toHaveAttribute('data-family', 'legs')
+  expect(row.querySelector('.muscle-dot, .program-family')).toBeNull()
   expect(workoutCard.querySelector('.body-map')).toBeNull()
   const weekQuadriceps = [...container.querySelectorAll('.program-page-weekly [data-region="quadriceps"]')]
   expect(weekQuadriceps.length, 'quadriceps must be drawn on the weekly map').toBeGreaterThan(0)
@@ -693,8 +696,10 @@ test('O23 each workout card shows exactly one session-scale body-map legend', ()
   expect(cards.length, 'the active program must render at least one workout card').toBeGreaterThan(0)
   for (const card of cards) {
     expect(card.querySelectorAll('.body-map-legend')).toHaveLength(0)
+    // v7 (study §1.8): no family dot either: families are labels, not colours.
     const rows = card.querySelectorAll('tbody tr')
-    expect(card.querySelectorAll('tbody tr .muscle-dot')).toHaveLength(rows.length)
+    expect(rows.length).toBeGreaterThan(0)
+    expect(card.querySelectorAll('tbody tr .muscle-dot, tbody tr .program-family')).toHaveLength(0)
   }
   expect(container.querySelectorAll('.program-page-legend')).toHaveLength(1)
 })
@@ -1027,8 +1032,11 @@ test("S7a each exercise row carries its muscle family's dot", () => {
   const families = within(workoutCard('Workout B'))
     .getAllByRole('row')
     .slice(1)
-    .map((row) => row.querySelector('.muscle-dot')?.getAttribute('data-family'))
+    .map((row) => row.getAttribute('data-family'))
+  // Title kept (weakened-tests gate); v7 (study §1.8): the family is the row's data, not a
+  // coloured dot: families are labels, colour belongs to the workouts and to meaning.
   expect(families).toEqual(['core', 'pull', 'pull', 'pull', 'push', 'core', 'pull'])
+  expect(workoutCard('Workout B').querySelector('.muscle-dot, .program-family')).toBeNull()
 })
 
 test('S7a Edit in the head opens the editor on the active program', async () => {
