@@ -258,17 +258,19 @@ test('V6-16 starting Workout B, the Deadlift shows its warm-up line on Now until
   await startFromDashboard(user, 'Workout B')
   await screen.findByRole('heading', { level: 1, name: 'Deadlift' }, SETTLE)
 
-  const line = await waitFor(() => {
-    const found = document.querySelector<HTMLElement>('.set-warmup-line')
+  // v7 (study §1.2): the ramp is offered as the track's first cell, a dashed W that adds it.
+  const cell = await waitFor(() => {
+    const found = document.querySelector<HTMLElement>('.set-cells .warmup-offer')
     expect(found).not.toBeNull()
     return found as HTMLElement
   }, SETTLE)
-  expect(line.textContent).toMatch(/^Warm-up: /)
-  expect(within(line).getByRole('button', { name: 'Add these warm-ups' })).toBeVisible()
+  expect(cell.textContent).toMatch(/^W/)
+  expect(cell).toHaveAccessibleName(/^Add warm-ups: /)
+  expect(cell).toBeVisible()
 
-  // One working Deadlift Set logged: the line goes.
+  // One working Deadlift Set logged: the offer goes.
   await user.click(await logButton())
-  await waitFor(() => expect(document.querySelector('.set-warmup-line')).toBeNull(), SETTLE)
+  await waitFor(() => expect(document.querySelector('.warmup-offer')).toBeNull(), SETTLE)
 })
 
 // --- V6R-01: Undo after Discard restores the exact Session ------------------------------------
