@@ -603,6 +603,21 @@ test('O5 logging Set 2 of a Bodyweight Exercise at 12 reps announces it in the c
   })
 })
 
+test('V7R-05 after 3 warm-ups the first working Set is announced as Set 1, not Set 4', async () => {
+  const warmups: SetEntry[] = [30, 40, 50].map((weightKg, at) => ({
+    ...historyEntry(at + 1, weightKg, 5),
+    kind: 'warmup' as const,
+  }))
+  const { user } = renderWithLogged(warmups)
+
+  expect(logButton()).toHaveAccessibleName(/^Log set 1 /)
+  await user.click(logButton())
+
+  await waitFor(() => {
+    expect(screen.getByRole('status').textContent).toMatch(/^Set 1 logged · /)
+  })
+})
+
 // --- O6: no rest timer before any Set is logged in this Session -----------------------------
 
 test('O6 no rest timer renders when this Exercise has no Set logged in this Session', () => {

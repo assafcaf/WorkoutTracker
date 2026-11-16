@@ -10,15 +10,14 @@ import { visiblePrograms } from '../../domain/programs'
 import type { Resolve } from '../../domain/muscles'
 import { formatDay } from '../../domain/dates'
 import { nextWorkout } from '../../domain/shortSession'
-import { calendarWeeks, startOfDay } from '../../domain/sessionsView'
-import { workingSets } from '../../domain/setKind'
+import { calendarWeeks, startOfDay, workingSetCount } from '../../domain/sessionsView'
 import { buildLiftHistories } from '../../domain/stats/liftHistory'
 import { storyPoints } from '../../domain/stats/liftStory'
-import { sessionMoves } from '../../domain/stats/moves'
 import { computeRecords, sessionPrs } from '../../domain/stats/records'
-import { BREAK_DAYS, calendarDays, liftStatuses, type LiftStatus } from '../../domain/stats/status'
+import { BREAK_DAYS, daysOff as daysOffOf, liftStatuses, type LiftStatus } from '../../domain/stats/status'
 import { workoutMinutes } from '../../domain/stats/train'
 import { leverText } from '../../domain/stats/words'
+import { liftsBeat, sessionLifts } from '../../domain/summaryLines'
 import { weekStart, type Weekday } from '../../domain/stats/weeks'
 import type { ExercisePlan, Program, Session, Workout } from '../../types'
 import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
@@ -201,20 +200,19 @@ function sessionVerdict(
   program: Program,
   resolve: Resolve,
 ): { up: number; of: number; prs: number; prLifts: Set<string> } {
-  const moves = sessionMoves(session.id, sessions, resolve, program)
-  const compared = moves.filter((m) => m.text !== 'First session' && m.text !== 'Deload')
-  // "Held 13 kg · 33 of 40" is more reps at the same load on a stalled lift: it still beat last time.
-  const up = compared.filter((m) => /^(Stepped up|More reps|Held)/.test(m.text)).length
   const plans = new Map<string, ExercisePlan>()
   for (const w of program.workouts) for (const e of w.exercises) plans.set(e.exerciseId, e)
+  const planOf = (id: string): ExercisePlan | undefined => plans.get(id)
   const upTo = sessions.filter((s) => s.startedAt <= session.startedAt)
-  const prs = sessionPrs(computeRecords(upTo, resolve, (id) => plans.get(id)), session.id)
-  return { up, of: compared.length, prs: prs.length, prLifts: new Set(prs.map((r) => r.exerciseId)) }
+  const prs = sessionPrs(computeRecords(upTo, resolve, planOf), session.id)
+  // V7R-02: the summary's own lift-by-lift reading, so "5 of 7" here is the summary's "5 of 7".
+  const { up, of } = liftsBeat(sessionLifts(session, upTo, resolve, program, planOf, prs).map((lift) => lift.line))
+  return { up, of, prs: prs.length, prLifts: new Set(prs.map((r) => r.exerciseId)) }
 }
 
-/** The Session's working Sets, a drop Set counted with the Set it follows. */
+/** V7R-04: the Session's Sets as Sessions and the summary count them (`workingSetCount`). */
 function setCount(session: Session): number {
-  return workingSets(session.entries).filter((e) => e.kind !== 'drop').length
+  return workingSetCount(session)
 }
 
 /** A trailing 3-session moving average, so one off day does not zig-zag the line. */
@@ -305,7 +303,8 @@ export function homeModelOf(input: HomeInput): HomeModel {
   const due = nextWorkout(shown, sessions)
   const latest = [...sessions].sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))[0] ?? null
   const latestStart = sessions.length > 0 ? Math.max(...sessions.map((s) => s.startedAt)) : null
-  const daysOff = latestStart === null ? 0 : calendarDays(latestStart, now)
+  // V7R-03: the one days-off number (`daysOff`), as the workout page and the Set screen say it.
+  const daysOff = daysOffOf(sessions, now) ?? 0
   const weekSessions = sessions
     .filter((s) => s.startedAt >= weekStart(now, weekStartsOn) && s.startedAt <= now)
     .sort((a, b) => a.startedAt - b.startedAt)

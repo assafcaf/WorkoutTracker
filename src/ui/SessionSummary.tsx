@@ -5,11 +5,11 @@ import { bodyweightOn } from '../domain/bodyLog'
 import { sessionVolume } from '../domain/volume'
 import { countsTowardStats, workingSets } from '../domain/setKind'
 import { humanDate, numberText } from '../domain/stats/copy'
-import { sessionMoves, volumeLine } from '../domain/stats/moves'
+import { volumeLine } from '../domain/stats/moves'
 import type { Weekday } from '../domain/stats/weeks'
 import { computeRecords, sessionPrs } from '../domain/stats/records'
 import type { SessionRecord } from '../domain/stats/records'
-import { liftLine, liftLineText, nextLine, summaryVerdict } from '../domain/summaryLines'
+import { liftLineText, nextLine, sessionLifts, summaryVerdict } from '../domain/summaryLines'
 import type { LiftVerdict } from '../domain/summaryLines'
 import type { Resolve } from '../domain/muscles'
 import type { SessionChange } from '../domain/sessionChanges'
@@ -172,18 +172,11 @@ export function SessionSummary({
   const plannedSets = (plannedWorkout?.exercises ?? []).reduce((sum, plan) => sum + plan.sets, 0)
   const partial = plannedSets > 0 && working < plannedSets
   const short = plannedSets > 0 && working * 2 < plannedSets
-  // V3-02 / V4-03: a partial Exercise makes no comparison, "2 of 4 sets".
-  const plannedSetsOf = (exerciseId: string): number | undefined =>
-    (plannedWorkout?.exercises ?? []).find(
-      (plan) => (session.swaps?.[plan.exerciseId] ?? plan.exerciseId) === exerciseId,
-    )?.sets
+  // V3-02 / V4-03: a partial Exercise makes no comparison, "2 of 4 sets" (`sessionLifts`).
   const planOf = (id: string): ExercisePlan | undefined =>
     planFor(id) ?? stats.workouts.flatMap((w) => w.exercises).find((plan) => plan.exerciseId === id)
-  const lifts = sessionMoves(session.id, all, resolve, stats).map((move) => ({
-    exerciseId: move.exerciseId,
-    name: move.name,
-    line: liftLine(move.exerciseId, session, all, resolve, planOf, records, plannedSetsOf(move.exerciseId)),
-  }))
+  // V7R-02: the one lift-by-lift reading Home's Last time row counts from too.
+  const lifts = sessionLifts(session, all, resolve, stats, planOf, records, plannedWorkout)
   const verdict = summaryVerdict(
     lifts.map((lift) => ({ name: lift.name, verdict: lift.line.verdict })),
     records.length,

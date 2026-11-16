@@ -9,7 +9,7 @@ import { nextExerciseAfter } from '../../domain/flow'
 import { currentExerciseId, planFor } from '../../domain/liveProgress'
 import { exerciseDoneLine, liveRecordCount } from '../../domain/exerciseVerdict'
 import { formatDay } from '../../domain/dates'
-import { prMoment } from '../../domain/prMoment'
+import { isSessionPrSet } from '../../domain/prMoment'
 import { presetForSet } from '../../domain/prefill'
 import { sessionPlans } from '../../domain/sessionPlans'
 import { workingSets } from '../../domain/setKind'
@@ -48,6 +48,7 @@ import { ExercisePicker } from '../../ui/ExercisePicker'
 import { DashboardScreen } from '../dashboard/DashboardScreen'
 import { HomeScreen } from '../home/HomeScreen'
 import { liftPlan } from '../dashboard/trainCard'
+import { appliedStep } from '../../domain/stats/status'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
 import { useServices, useSyncControls } from '../ServicesProvider'
@@ -773,6 +774,11 @@ export function WorkoutFeature({
     return session?.deload === true || liftPlanFor(exerciseId)?.advice?.kind === 'eased'
   }
 
+  /** V7R-01: the step up `exerciseId`'s Presets hold this Session (Ready, as Home and Train say). */
+  function stepUpFor(exerciseId: string): number {
+    return appliedStep(liftPlanFor(exerciseId)?.advice)
+  }
+
   /** The Set the All view's Log button logs: the current Exercise's next one, at its Preset. */
   function quickLogEntry(): { entry: SetEntry; position: number } | null {
     if (!session || !located) return null
@@ -791,6 +797,7 @@ export function WorkoutFeature({
       lastEntries: presetSourceFor(id, lastEntries.get(id) ?? []).entries,
       today,
       deload: easedFor(id),
+      stepUp: stepUpFor(id),
     })
     const entry: SetEntry = {
       exerciseId: id,
@@ -1092,7 +1099,7 @@ export function WorkoutFeature({
         const fromAll = session.entries.filter((entry) => entry.exerciseId === from.exerciseId)
         const isRecord = (entry: SetEntry): boolean =>
           earlierSessions.length > 0 &&
-          prMoment(fromExercise, fromPlan, earlierSessions, { ...session, entries: fromAll }, entry) !== null
+          isSessionPrSet(fromExercise, fromPlan, earlierSessions, { ...session, entries: fromAll }, entry)
         const lastFirst = workingSets(from.history.filter((entry) => entry.exerciseId === from.exerciseId)).sort(
           (a, b) => a.setIndex - b.setIndex,
         )[0]
@@ -1335,6 +1342,7 @@ export function WorkoutFeature({
         <ExerciseList
           deload={session.deload === true}
           easedFor={easedFor}
+          stepUpFor={stepUpFor}
           currentId={currentExerciseId(located.workout, session)}
           onOpenLogged={handleOpenLogged}
           program={located.program}

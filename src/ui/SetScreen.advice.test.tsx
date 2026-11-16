@@ -108,3 +108,25 @@ test('V6-05 a Break eases the Preset and says why, with nothing to tap', () => {
   expect(screen.queryByText(/^Deload:/)).toBeNull()
   expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
 })
+
+// V7R-01: the step up Home and the workout page promise is the Preset itself (`liftPlan`), so the
+// Set screen opens on it and offers the way back instead.
+const APPLIED = { kind: 'up' as const, lever: 15, text: 'Up from 14 kg', use: 'Back to 14 kg', from: 14 }
+
+test('V7R-01 an applied step up opens at 15 at the bottom of the range, with Back to 14 kg', () => {
+  renderScreen({ advice: APPLIED })
+  expect(weight()).toBe('15')
+  expect(screen.getByRole('button', { name: /^Log set 1 · 15 × 10/ })).toBeTruthy()
+  expect(screen.getByText('Up from 14 kg')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Back to 14 kg' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+  const cells = document.querySelectorAll('.set-cells .set-cell')
+  expect([...cells].map((cell) => cell.textContent?.replace(/\s+/g, ''))).toEqual(['115×10', '215×10', '315×10'])
+})
+
+test('V7R-01 Back to 14 kg puts last time 14 x 12 back on the Dials', async () => {
+  const { user } = renderScreen({ advice: APPLIED })
+  await user.click(screen.getByRole('button', { name: 'Back to 14 kg' }))
+  expect(weight()).toBe('14')
+  expect(screen.getByRole('button', { name: /^Log set 1 · 14 × 12/ })).toBeTruthy()
+})

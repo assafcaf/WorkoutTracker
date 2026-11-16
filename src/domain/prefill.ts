@@ -70,12 +70,23 @@ export function presetForSet(args: {
   today?: SetEntry[]
   /** Open a deload Session's loaded Sets 10 % lighter (E21). */
   deload?: boolean
+  /**
+   * V7R-01: the step the lift's Ready advice makes today (`appliedStep`), in kg or Load: last
+   * time's Sets open that much heavier, at the bottom of the rep range, so the Preset is what
+   * Home and the workout page promise. Ignored on a deload.
+   */
+  stepUp?: number
 }): Preset {
   const { exercise, plan, setIndex, lastEntries, today, deload } = args
+  const stepUp = deload === true ? 0 : (args.stepUp ?? 0)
   const asPreset = (set: SetEntry): Preset => presetFromSet({ exercise, plan, set })
   // A last-time Set as a Preset; on a deload Session a loaded weight is deloaded and remembered.
   const asLastPreset = (set: SetEntry): Preset => {
     const preset = asPreset(set)
+    if (stepUp !== 0) {
+      const value = valueOf(exercise, preset)
+      if (value !== null) return presetOf(exercise, clamp(exercise, Math.round((value + stepUp) * 1000) / 1000), plan.repRange[0])
+    }
     if (!deload || exercise.bodyweight || set.weightKg === null) return preset
     return { ...preset, weightKg: deloadWeight(set.weightKg, exercise.weightStep), deloadFromKg: set.weightKg }
   }

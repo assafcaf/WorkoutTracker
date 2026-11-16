@@ -10,7 +10,8 @@ import { ServicesProvider } from '../ServicesProvider'
 import programJson from '../../data/programs/assaf-ab-2026.json'
 import type { Program } from '../../types'
 import { weekStripOf } from '../dashboard/trainCard'
-import { Home } from './Home'
+import { Home, headlineOf, progressModel } from './Home'
+import { loadCatalog } from '../../data/catalog'
 import type { ProgressPage } from './pages'
 
 process.env.TZ = 'Asia/Jerusalem' // the zone the fixture was written in
@@ -164,6 +165,25 @@ describe('E18-T10 O20 the sparse states', () => {
     await waitFor(() => expect(screen.getByText('Too early to call')).toBeTruthy(), SETTLE)
     expect(screen.queryByText(/lifts moving/)).toBeNull()
     expect(screen.queryByText(/Why\?/)).toBeNull()
+  })
+})
+
+describe('V7R-14 Progress on a Break', () => {
+  test('V7R-14 one sentence, as Home says it: no "0 of 14 moving", no days off repeated per lift', () => {
+    const catalog = loadCatalog()
+    const BREAK = new Date(2026, 10, 9, 7, 40).getTime() // Mon 9 Nov, 26 days after Wed 14 Oct
+    const model = progressModel(
+      {
+        program: programJson as unknown as Program,
+        sessions: fixture,
+        resolve: (id: string) => catalog.get(id),
+        library: new Map(),
+        weekStart: 1,
+        bodyLog: [],
+      },
+      BREAK,
+    )
+    expect(headlineOf(model)).toEqual({ title: 'As you left them', exceptions: 'Back after 26 days off.' })
   })
 })
 

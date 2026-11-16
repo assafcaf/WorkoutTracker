@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest'
 import sessionsJson from '../../test/fixtures/stats/sessions.json'
 import { loadCatalog, loadPrograms } from '../../data/catalog'
 import type { Program, Session } from '../../types'
+import { workingSetCount } from '../../domain/sessionsView'
+import { computeRecords, sessionPrs } from '../../domain/stats/records'
+import { liftsBeat, sessionLifts, summaryVerdict } from '../../domain/summaryLines'
+import { liftPlan } from '../dashboard/trainCard'
 import { homeModelOf, shortLiftName, usualDays, type HomeInput } from './homeModel'
 
 process.env.TZ = 'Asia/Jerusalem'
@@ -99,7 +103,7 @@ describe('homeModelOf: the five moments', () => {
   it('(d) just finished: Done today, 5 of 7 lifts up, 4 PRs, no Start bar', () => {
     const m = model(DONE)
     expect(m.state).toBe('done')
-    expect(m.today).toMatchObject({ label: 'Done today', title: 'Workout A', lines: ['71 min · 23 sets'], up: '5 of 7 lifts', prs: 4 })
+    expect(m.today).toMatchObject({ label: 'Done today', title: 'Workout A', lines: ['71 min · 24 sets'], up: '5 of 7 lifts', prs: 4 })
     expect(m.today.target).toMatchObject({ kind: 'session' })
     expect(m.today.ring?.arcs.map((a) => a.kind)).toEqual(['done', 'done', 'open'])
     const prLifts = m.lifts.rows.flatMap((r) => r.lines).filter((l) => l.pr).map((l) => l.exerciseId)
@@ -179,6 +183,50 @@ describe('homeModelOf: PRs', () => {
     const bench = m.lifts.rows.flatMap((r) => r.lines).find((l) => l.exerciseId === 'db-bench-press')!
     expect(bench.pr).toBe(false)
     expect(m.today.prs).toBe(4)
+  })
+})
+
+describe('V7R: Home states each number as the other screens compute it', () => {
+  const wed14 = sessions.find((s) => s.id === 'seed-44')!
+  const upToWed = sessions.filter((s) => s.startedAt <= wed14.startedAt)
+  const planOf = (id: string) => program.workouts.flatMap((w) => w.exercises).find((e) => e.exerciseId === id)
+  const prs = sessionPrs(computeRecords(upToWed, resolve, planOf), wed14.id)
+  const lifts = sessionLifts(wed14, upToWed, resolve, program, planOf, prs)
+
+  it('V7R-02 a drop Set never beats last time: Lateral raises 7x10 · 10 · 9 + a 5x12 drop reads "= same"', () => {
+    const lateral = lifts.find((l) => l.exerciseId === 'lateral-raises')!
+    expect(lateral.line.verdict).toMatchObject({ kind: 'same', glyph: '=' })
+  })
+
+  it('V7R-02 Home\'s "n of 7" for Wed 14 Oct is the summary\'s "n of 7 lifts beat Friday"', () => {
+    const beat = liftsBeat(lifts.map((l) => l.line))
+    const lead = summaryVerdict(
+      lifts.map((l) => ({ name: l.name, verdict: l.line.verdict })),
+      prs.length,
+      wed14.startedAt,
+    ).lead
+    expect(lead).toBe(`${beat.up} of ${beat.of} lifts beat Friday.`)
+    expect(model(TRAINING).last).toMatchObject({ up: { count: beat.up, of: beat.of } })
+    expect(model(DONE).today.up).toBe(`${beat.up} of ${beat.of} lifts`)
+  })
+
+  it('V7R-03 after a break, Home and the workout page say the same days off', () => {
+    const m = model(BREAK)
+    const homeDays = /^(\d+) days off/.exec(m.today.lines[0])?.[1]
+    const before = sessions.filter((s) => s.startedAt <= BREAK)
+    const b = program.workouts.find((w) => w.id === 'workout-b')!
+    const eased = b.exercises
+      .map((plan) => liftPlan(catalog.get(plan.exerciseId)!, plan, before, BREAK).advice)
+      .filter((advice) => advice?.kind === 'eased')
+      .map((advice) => /after (\d+) days off/.exec(advice!.text)?.[1])
+    expect(eased.length).toBeGreaterThan(0)
+    expect(new Set(eased)).toEqual(new Set([homeDays]))
+    expect(m.last).toMatchObject({ detail: `${homeDays} days ago` })
+  })
+
+  it('V7R-04 Home counts a Session\'s Sets as Sessions and the summary do, drop Set included', () => {
+    expect(model(DONE).today.lines[0]).toMatch(new RegExp(`· ${workingSetCount(wed14)} sets$`))
+    expect(workingSetCount(wed14)).toBe(24)
   })
 })
 

@@ -295,10 +295,12 @@ function stepNote(lift: TrainLiftRow): JSX.Element | null {
   // A Break's eased Preset is said once, in the headline (V6-05), not on every row.
   if (!advice || advice.kind === 'eased') return null
   if (advice.kind === 'up') {
+    // V7R-01: the Preset already holds the step, so "was" names the load it came up from.
+    const was = lift.was !== undefined ? lift.was : lift.load
     return (
       <span className="dashboard-step-ready">
         <Icon name="ArrowUp" size={14} />
-        <span>{lift.load ? `was ${lift.load}` : advice.text}</span>
+        <span>{was ? `was ${was}` : advice.text}</span>
       </span>
     )
   }

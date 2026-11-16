@@ -158,7 +158,9 @@
   font-size: var(--text-sm);
 }
 
-/* The week ring: 112 px, one arc per planned Session. */
+/* The week ring: 112 px, one arc per planned Session. V7R-08: its centre is sized in px, as the
+ * hero numerals are (`--text-hero` is px), so "2/3 this week" stays inside the ring at 200 % text;
+ * the ring's accessible name says it at any size. */
 .home-ring {
   position: relative;
   display: block;
@@ -201,7 +203,7 @@
 }
 
 .home-ring-count {
-  font-size: var(--text-xl);
+  font-size: calc(var(--text-hero) * 0.4667);
   font-weight: var(--weight-semibold);
   letter-spacing: -0.02em;
   line-height: 1;
@@ -209,14 +211,15 @@
 
 .home-ring-of {
   color: var(--color-muted);
-  font-size: var(--text-lg);
+  font-size: calc(var(--text-hero) / 3);
   font-weight: var(--weight-medium);
 }
 
 .home-ring-label {
   margin-top: 3px;
   color: var(--color-muted);
-  font-size: var(--text-xs);
+  font-size: calc(var(--text-hero) / 5);
+  white-space: nowrap;
   font-weight: var(--weight-medium);
 }
 
@@ -305,6 +308,16 @@
 .home-block-head .home-label,
 .home-block-head-row .home-label {
   flex: 1 0 auto;
+  white-space: nowrap;
+}
+
+/* V7R-07: the verdict and its chevron are one unit: they wrap together, to the right. */
+.home-block-end {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
   white-space: nowrap;
 }
 
@@ -578,5 +591,21 @@
 
   .home-today-title {
     font-size: var(--text-lg);
+  }
+
+  /* V7R-07: seven sparklines and the workout chip fit one row at 320 px: 36 px cells (the cell
+   * keeps its 44 px height, and 36 px clears WCAG 2.5.8's 24 px). */
+  .home-spark-cells {
+    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  }
+
+  .home-spark-cell {
+    min-width: 0;
+  }
+
+  .home-spark {
+    width: 100%;
+    max-width: 44px;
+    height: auto;
   }
 }

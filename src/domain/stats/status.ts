@@ -135,6 +135,15 @@ function spanText(from: number, to: number): string {
   return `${a.getDate()} ${MONTHS[a.getMonth()]}–${end}`
 }
 
+/**
+ * V7R-03: the trainee's days off -- calendar days since the last Session of any Workout (finished,
+ * not deleted) -- the one number Home, the workout page and the Set screen say; null with none.
+ */
+export function daysOff(sessions: Session[], now: number): number | null {
+  const starts = sessions.filter((s) => s.deletedAt === undefined && s.finishedAt != null).map((s) => s.startedAt)
+  return starts.length === 0 ? null : calendarDays(Math.max(...starts), now)
+}
+
 /** Whole local calendar days from `from`'s day to `to`'s day. */
 export function calendarDays(from: number, to: number): number {
   const a = new Date(from)
@@ -404,18 +413,32 @@ export type LiftAdvice = {
   text: string
   /** The control's name on the Set screen, `Use 15 kg`; null when nothing is to be dialled in. */
   use: string | null
+  /**
+   * V7R-01: set when the step is already in the Preset (`liftPlan` applies a step up): the lever
+   * the Preset came up from, `14`. The text then reads `Up from 14 kg`, and `use` is the way
+   * back, `Back to 14 kg`.
+   */
+  from?: number
+}
+
+/** V7R-01: how far a Preset is raised for `advice` (`15 - 14` = 1); 0 when nothing is applied. */
+export function appliedStep(advice: LiftAdvice | null | undefined): number {
+  if (!advice || advice.from === undefined) return 0
+  return Math.round((advice.lever - advice.from) * 1000) / 1000
 }
 
 export function liftAdvice(
   status: LiftStatus | null | undefined,
   presetTop: number | null,
   bodyweight = false,
+  /** V7R-03: the trainee's days off (`daysOff`), said in place of the lift's own when given. */
+  off?: number | null,
 ): LiftAdvice | null {
   if (!status || !status.next || status.swap) return null
   if (isEased(status)) {
     // A Bodyweight lift's Load is never eased (as a deload leaves it): nothing to say.
     if (bodyweight) return null
-    return { kind: 'eased', lever: status.next.lever, text: `Eased after ${status.daysOff} days off`, use: null }
+    return { kind: 'eased', lever: status.next.lever, text: `Eased after ${off ?? status.daysOff} days off`, use: null }
   }
   if (presetTop === null || status.next.lever === presetTop) return null
   const lever = status.next.lever

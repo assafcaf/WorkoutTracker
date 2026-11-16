@@ -8,12 +8,12 @@ import { formatSet } from '../domain/setText'
 import { deloadText } from '../domain/deload'
 import { presetForSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
-import { prMoment, repBestMoment } from '../domain/prMoment'
+import { isSessionPrSet, prMoment, repBestMoment } from '../domain/prMoment'
 import { formatPlates, plateChange, platesFor } from '../domain/plates'
 import { prTargetReps, prTargetText } from '../domain/prTarget'
 import { exerciseDoneLine, setComparison, setDelta } from '../domain/exerciseVerdict'
 import { usualRestSeconds } from '../domain/usualRest'
-import type { LiftAdvice } from '../domain/stats/status'
+import { appliedStep, type LiftAdvice } from '../domain/stats/status'
 import { leverText } from '../domain/stats/words'
 import { warmupRamp } from '../domain/warmup'
 import type { WarmupStep } from '../domain/warmup'
@@ -399,6 +399,7 @@ function openSetFor(
   lastEntries: SetEntry[],
   logged?: SetEntry[],
   deload?: boolean,
+  stepUp?: number,
 ): OpenSet {
   // The Plan's last Set opens on AMRAP when the Plan marks it (E14-T13).
   const position =
@@ -413,10 +414,11 @@ function openSetFor(
     lastEntries,
     today: logged,
     deload,
+    stepUp,
   })
   const deloaded =
     deloadFromKg === undefined || preset.weightKg === null ? {} : { deloaded: { kg: preset.weightKg, from: deloadFromKg } }
-  const carried = deload === true ? undefined : carriedReason(exercise, setIndex, preset.weightKg, lastEntries, logged)
+  const carried = deload === true || (stepUp ?? 0) !== 0 ? undefined : carriedReason(exercise, setIndex, preset.weightKg, lastEntries, logged)
   return {
     setIndex,
     ...preset,
@@ -527,6 +529,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       props.lastEntries,
       props.logged?.filter((entry) => entry.exerciseId === exercise.id),
       props.deload,
+      appliedStep(props.advice),
     ),
   )
   // An extra set opened by "Add set" stays open until it is logged; past the plan, anything
@@ -562,6 +565,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       ? open.setIndex
       : 1 + carried + workingSets(loggedSets).filter((entry) => entry.setIndex < open.setIndex).length
 
+  // V7R-05: the open Set's number as the announcement says it ("Set 1"): its `setIndex` less the
+  // warm-ups logged before it, so warm-ups never push the working Sets' numbers up.
+  const workingNumber =
+    open.setIndex - loggedSets.filter((entry) => entry.kind === 'warmup' && entry.setIndex < open.setIndex).length
   const lastTimeEntry = lastTimeSet(exercise.id, props.lastTime ?? [], position)
   // While rest runs the steppers fold into one "Next: set 4 · 62.5 × 8" row (S4); a tap on it
   // brings them back to change the next Set. Every log folds them again.
@@ -683,8 +690,9 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     finishedAt: null,
     entries: props.logged ?? [],
   }
+  // V7R-13: one PR per lift per Session -- its best Set -- however many Sets set one when logged.
   const isRecordSet = (entry: SetEntry): boolean =>
-    earlier.length > 0 && prMoment(exercise, plan, earlier, thisSession, entry) !== null
+    earlier.length > 0 && isSessionPrSet(exercise, plan, earlier, thisSession, entry)
 
   const rest: RestState | null =
     restFrom === null ? null : restAfter(restFrom.entry, restFrom.planRestSeconds, now)
@@ -854,12 +862,14 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setLoggedMessage(
         warmup
           ? loggedText(open.setIndex, open.weightKg, open.reps).replace(/^Set \d+/, `Warm-up ${warmupsLogged + 1}`)
-          : loggedText(open.setIndex, open.weightKg, open.reps),
+          : // V7R-05: a working Set is announced by its place among the working Sets, so the first
+            // after 3 warm-ups is "Set 1 logged", as its cell and the Log bar name it.
+            loggedText(workingNumber, open.weightKg, open.reps),
       )
       // A Warm-up asks no effort (V3-05): its reps left say nothing about the working Sets.
       setEffort(warmup ? null : { setIndex: open.setIndex, rir: null })
       setNextExpanded(false)
-      const next = openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter), props.deload)
+      const next = openSetFor(exercise, plan, nextSetIndex, merged, today(todayAfter), props.deload, appliedStep(props.advice))
       const nextStep = ramp === null ? undefined : ramp.steps[ramp.index + 1]
       if (ramp === null) {
         setOpen(next)
@@ -987,7 +997,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     setDraft(null)
     setExtraOpen(false)
     setRamp(null)
-    setOpen(openSetFor(exercise, plan, next, from, today(sets), props.deload))
+    setOpen(openSetFor(exercise, plan, next, from, today(sets), props.deload, appliedStep(props.advice)))
   }
 
   async function saveSet(): Promise<void> {
@@ -1147,6 +1157,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
         lastEntries: history,
         today: today(assumed),
         deload: props.deload,
+        stepUp: appliedStep(props.advice),
       })
       const loadKg = preset.loadKg ?? 0
       assumed.push(assumedEntry(exercise.id, setIndex, { weightKg: preset.weightKg, reps: preset.reps, loadKg, kind: null }))
@@ -1245,7 +1256,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // V6-01: the load the lift's status offers, for this Set: last time's at its place, shifted by
   // the step the advice makes on the top Set (a ramp keeps its shape). Gone once the Dials hold it,
   // on a Warm-up, in the done state and while a logged Set is being edited.
-  const adviceOffer: { target: number; text: string; use: string } | null = (() => {
+  const adviceOffer: { target: number; reps?: number; text: string; use: string } | null = (() => {
     const advice = props.advice
     if (!advice || advice.use === null || onWarmup || done || editing !== null) return null
     const leverOf = (set: SetEntry): number => (exercise.bodyweight ? (set.loadKg ?? 0) : (set.weightKg ?? 0))
@@ -1255,10 +1266,15 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     if (last.length === 0) return null
     const top = Math.max(...last.map(leverOf))
     const at = last[Math.min(Math.max(position, 1), last.length) - 1]
-    const target = Math.round((leverOf(at) + advice.lever - top) * 1000) / 1000
+    // V7R-01: a step the Preset already holds offers the way back, to last time's load here.
+    const applied = advice.from !== undefined
+    const target = Math.round((leverOf(at) + (applied ? (advice.from ?? top) : advice.lever) - top) * 1000) / 1000
     const current = exercise.bodyweight ? open.loadKg : open.weightKg
     if (current === target || (!exercise.bodyweight && target <= 0)) return null
-    return { target, text: advice.text, use: `Use ${leverText(target, exercise.bodyweight)}` }
+    const load = leverText(target, exercise.bodyweight)
+    return applied
+      ? { target, reps: at.reps, text: advice.text, use: `Back to ${load}` }
+      : { target, text: advice.text, use: `Use ${load}` }
   })()
 
   // V4-01: the Record a logged Set of this Exercise set, by its name ("Heaviest weight"), or null.
@@ -1853,8 +1869,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                   onClick={() =>
                     setOpen(
                       exercise.bodyweight
-                        ? { ...open, loadKg: adviceOffer.target }
-                        : { ...open, weightKg: adviceOffer.target },
+                        ? { ...open, loadKg: adviceOffer.target, reps: adviceOffer.reps ?? open.reps }
+                        : { ...open, weightKg: adviceOffer.target, reps: adviceOffer.reps ?? open.reps },
                     )
                   }
                 >

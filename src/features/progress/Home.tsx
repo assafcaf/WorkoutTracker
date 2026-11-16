@@ -9,7 +9,7 @@ import { buildLiftHistories } from '../../domain/stats/liftHistory'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
 import { changeSince, changeTextFor, measureOf, storyPoints } from '../../domain/stats/liftStory'
 import type { Measure } from '../../domain/stats/liftStory'
-import { liftStatuses } from '../../domain/stats/status'
+import { daysOff, liftStatuses } from '../../domain/stats/status'
 import type { LiftStatus } from '../../domain/stats/status'
 import { dayMonth, leverText, plural } from '../../domain/stats/words'
 import { STATS_MUSCLES, plannedPerWeek, windowAverage } from '../../domain/stats/muscles'
@@ -186,6 +186,14 @@ export function statusWords(status: LiftStatus, bodyweight: boolean): string {
 export function headlineOf(model: ProgressModel): { title: string; exceptions: string } {
   const ids = model.order.filter((id) => model.statuses.has(id))
   const all = ids.map((id) => model.statuses.get(id) as LiftStatus)
+  // V7R-14: back after a Break every judged lift is on it. One sentence, as Home's "As you left
+  // them" says it -- no "0 of 14 moving", and no "<lift> has had 33 days off" per lift.
+  const judged = all.filter((s) => s.kind !== 'too new')
+  if (judged.length > 0 && judged.every((s) => s.kind === 'break')) {
+    // The trainee's days off, as Home and the workout page say them (V7R-03).
+    const days = daysOff(model.data.sessions, model.now) ?? Math.min(...judged.map((s) => s.daysOff ?? 21))
+    return { title: 'As you left them', exceptions: `Back after ${days} days off.` }
+  }
   const up = all.filter((s) => statusTone(s.kind) === 'up').length
   const title =
     up === all.length && all.length > 1

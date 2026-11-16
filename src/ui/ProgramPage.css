@@ -295,6 +295,14 @@
   text-overflow: ellipsis;
 }
 
+/* V7R-10: a long name wraps to a second line at any width ("Narrow-grip pull-down", "Machine
+ * shoulder press"), never "Machine should…"; the numbers keep their columns. */
+.program-page-row td.program-page-exercise {
+  padding-block: 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .program-page-num {
   padding-left: 10px;
   text-align: right;

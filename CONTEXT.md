@@ -82,7 +82,10 @@ _Avoid_: Picker, spinner, wheel, slider
 
 **Preset**:
 What a Set opens with: last time's Set at this position, shifted by today's change; else the
-Exercise's defaults (a Swap's: the planned Exercise's).
+Exercise's defaults (a Swap's: the planned Exercise's). A lift's step up (Ready for 15 kg) is in
+the Preset itself, at the bottom of the rep range, as a deload or a Break's easing is (`liftPlan`,
+V7R-01): Home, the workout page and Program show what Start opens on, and the Set screen offers
+"Back to 14 kg".
 _Avoid_: Default, prefill, seed, suggestion
 
 **Swap**:

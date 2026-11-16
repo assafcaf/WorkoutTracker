@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { loadCatalog } from '../data/catalog'
-import { prMoment, repBestMoment } from './prMoment'
+import { isSessionPrSet, prMoment, repBestMoment } from './prMoment'
 import type { Exercise, ExercisePlan, Session, SetEntry } from '../types'
 
 const T = 1_700_000_000_000
@@ -152,4 +152,24 @@ test('V4-03 a rep record by one says +1 rep and by two says +2 reps', () => {
 
   expect(repBestMoment(squat, plan, history(), todayWith([one]), one)?.detail).toMatch(/\+1 rep$/)
   expect(repBestMoment(squat, plan, history(), todayWith([two]), two)?.detail).toMatch(/\+2 reps$/)
+})
+
+// V7R-13: a lift earns one PR per Session, its best Set, however many Sets toasted on the way.
+test('V7R-13 two PR Sets on one lift in one Session count as one PR, on the later, better Set', () => {
+  const first = setOf(1, 62.5, 8)
+  const second = setOf(2, 65, 8)
+  const session = todayWith([first, second])
+
+  expect(isSessionPrSet(squat, plan, history(), session, first)).toBe(false)
+  expect(isSessionPrSet(squat, plan, history(), session, second)).toBe(true)
+  expect(session.entries.filter((entry) => isSessionPrSet(squat, plan, history(), session, entry))).toHaveLength(1)
+})
+
+test('V7R-13 a PR Set stays the PR when a later Set sets none', () => {
+  const first = setOf(1, 62.5, 8)
+  const second = setOf(2, 60, 8)
+  const session = todayWith([first, second])
+
+  expect(isSessionPrSet(squat, plan, history(), session, first)).toBe(true)
+  expect(isSessionPrSet(squat, plan, history(), session, second)).toBe(false)
 })

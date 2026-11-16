@@ -110,6 +110,29 @@ export function isPrSet(
   return prMoment(exercise, plan, earlier, session, entry) !== null
 }
 
+/**
+ * V7R-13: whether `entry` is the lift's one PR of the Session (decision 0017: one record per lift
+ * per Session) -- the last of its Sets that set a PR when logged, which beats every earlier one.
+ * 72.5 × 7 then 72.5 × 8 is one PR, on the 72.5 × 8; the live tags and counts read this, as the
+ * summary's `sessionPrs` does.
+ */
+export function isSessionPrSet(
+  exercise: Exercise,
+  plan: ExercisePlan,
+  earlier: Session[],
+  session: Session,
+  entry: SetEntry,
+): boolean {
+  if (!isPrSet(exercise, plan, earlier, session, entry)) return false
+  return !session.entries.some(
+    (other) =>
+      other.exerciseId === entry.exerciseId &&
+      other.setIndex !== entry.setIndex &&
+      (other.loggedAt > entry.loggedAt || (other.loggedAt === entry.loggedAt && other.setIndex > entry.setIndex)) &&
+      isPrSet(exercise, plan, earlier, session, other),
+  )
+}
+
 function momentOf(
   exercise: Exercise,
   plan: ExercisePlan,

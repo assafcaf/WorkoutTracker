@@ -112,7 +112,7 @@ describe('Home: the other moments', () => {
 
   test('(d) just finished: the panel opens the summary, the Next row the workout page, and no Start', () => {
     const actions = draw(modelAt(DONE))
-    const today = screen.getByRole('button', { name: /^Done today: Workout A\. 71 min · 23 sets\. Up: 5 of 7 lifts\. 4 PRs/ })
+    const today = screen.getByRole('button', { name: /^Done today: Workout A\. 71 min · 24 sets\. Up: 5 of 7 lifts\. 4 PRs/ })
     expect(today).toHaveAccessibleName(/Open its summary\.$/)
     fireEvent.click(today)
     expect(actions.onOpenSession).toHaveBeenCalledWith('seed-44')

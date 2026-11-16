@@ -320,13 +320,16 @@ export function HomeView(props: HomeViewProps): JSX.Element {
               <span className="home-label" aria-hidden="true">
                 Lifts · 12 weeks
               </span>
-              {lifts?.verdict ? (
-                <span className="home-verdict" data-tone={lifts.verdict.tone} aria-hidden="true">
-                  {lifts.verdict.tone === 'up' ? `↑ ${lifts.verdict.text}` : lifts.verdict.text}
+              {/* V7R-07: the verdict and its chevron wrap as one, so "›" never sits on a line alone. */}
+              <span className="home-block-end">
+                {lifts?.verdict ? (
+                  <span className="home-verdict" data-tone={lifts.verdict.tone} aria-hidden="true">
+                    {lifts.verdict.tone === 'up' ? `↑ ${lifts.verdict.text}` : lifts.verdict.text}
+                  </span>
+                ) : null}
+                <span className="home-chevron" aria-hidden="true">
+                  <Icon name="ChevronRight" size={18} />
                 </span>
-              ) : null}
-              <span className="home-chevron" aria-hidden="true">
-                <Icon name="ChevronRight" size={18} />
               </span>
             </button>
             {lifts ? <LiftLines lifts={lifts} onOpenLift={props.onOpenLift} /> : null}
