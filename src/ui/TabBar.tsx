@@ -9,7 +9,7 @@ export type TabBarProps = {
 
 /** The four destinations, in the order they sit in the bar (Progress Dashboard navigation). */
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
-  { id: 'dashboard', label: 'Train', icon: 'LayoutDashboard' },
+  { id: 'dashboard', label: 'Home', icon: 'Home' },
   { id: 'lifts', label: 'Progress', icon: 'TrendingUp' },
   { id: 'sessions', label: 'Sessions', icon: 'Calendar' },
   { id: 'program', label: 'Program', icon: 'ClipboardList' },

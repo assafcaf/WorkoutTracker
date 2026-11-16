@@ -35,6 +35,8 @@ export type TrainLiftRow = {
    * null says nothing.
    */
   advice?: LiftAdvice | null
+  /** v7: a Bodyweight lift, so the row writes a lever as `BW+5`, not `5 kg`. */
+  bodyweight?: boolean
 }
 
 /** Train's card: the due workout, its duration estimate and each lift as Set 1 opens it. */
@@ -114,6 +116,7 @@ export function trainCardOf(
       ...(topLoad === undefined ? {} : { topLoad }),
       reps: `${plan.repRange[0]}–${plan.repRange[1]}`,
       advice,
+      ...(exercise.bodyweight ? { bodyweight: true } : {}),
     }
   })
   return {

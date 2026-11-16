@@ -144,7 +144,7 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
   await pressTab(user, 'Program')
   await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
   await user.click(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE))
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
 
   expect(await screen.findByRole('button', { name: 'Start Second Workout' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
@@ -160,7 +160,7 @@ test('O18 App navigates to Settings, hiding the picker, and back again', async (
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 
   // And back again: the Settings page's Back chevron, then the Dashboard tab.
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
 })
 
@@ -197,10 +197,12 @@ test('O19 App shows the storage-unavailable banner and disables the logging cont
 
   const alert = await screen.findByRole('alert', {}, SETTLE)
   expect(alert.textContent).toMatch(/cannot be saved/i)
-  // Nothing can be stored, so the Dashboard's dock offers the bundled Programs and takes up none.
-  const dockButton = await screen.findByRole('button', { name: /^Use A\/B Split/i }, SETTLE)
-  expect(dockButton).toBeDisabled()
-  expect(screen.queryByRole('button', { name: /^Start / })).toBeNull()
+  // Nothing can be stored, so Home offers the bundled Programs to pick from and takes up none:
+  // its dock's one Start is the plan pick's, disabled.
+  await screen.findByRole('radio', { name: /^A\/B Split/ }, SETTLE)
+  const dockButtons = screen.getAllByRole('button', { name: /^Start / })
+  expect(dockButtons).toHaveLength(1)
+  expect(dockButtons[0]).toBeDisabled()
 })
 
 test('O19 App leaves the logging controls enabled and shows no banner when storage is available', async () => {
@@ -516,9 +518,9 @@ test('O17 finishing the session from the exercise list clears the active session
 
   await finishWorkout(user)
 
-  // Back on the Dashboard, whose dock now offers the workout due after Workout A.
+  // Back on Home, which -- a Session done today -- names the workout due after Workout A.
   // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-  await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
+  await screen.findByRole('button', { name: /^Next: Workout A\b/ }, SETTLE)
   expect(await getActiveSession()).toBeNull()
 })
 
@@ -830,7 +832,7 @@ async function pressTab(user: UserEvent, name: string): Promise<void> {
     return
   }
   if (name === 'Settings') {
-    await user.click(within(mainNav()).getByRole('button', { name: 'Train' }))
+    await user.click(within(mainNav()).getByRole('button', { name: 'Home' }))
     await user.click(await screen.findByRole('button', { name: 'Settings' }, SETTLE))
     return
   }
@@ -868,14 +870,14 @@ test('O7 the app on load offers a Main nav holding exactly the Workout, Program,
 
   // Title kept (weakened-tests gate): the Progress Dashboard redesign has exactly four tabs;
   // Exercises is the Program tab's second side and Settings the Dashboard header's gear.
-  expect(tabNames()).toEqual(['Train', 'Progress', 'Sessions', 'Program'])
+  expect(tabNames()).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
 })
 
 test('O7 the app on load, with no session in progress, is on the Workout tab', async () => {
   await renderApp()
   await findStartButton()
 
-  expect(currentTabNames()).toEqual(['Train'])
+  expect(currentTabNames()).toEqual(['Home'])
 })
 
 test('O8 pressing the History tab lists the finished sessions with the tab bar still on screen', async () => {
@@ -2120,7 +2122,7 @@ test('M13 choosing another program in the Program tab’s switcher makes it the 
   expect(screen.getByRole('radio', { name: 'Second Program' })).toBeChecked()
   // ...and so does the Workout tab: hand-checked against SECOND_VISIBLE_PROGRAM above, whose one
   // workout is "Second Workout".
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
   expect(await screen.findByRole('button', { name: 'Start Second Workout' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 })
@@ -2268,9 +2270,9 @@ test('M16 Done on the finish summary closes it onto the picker with the session 
   await waitFor(() => {
     expect(sessionSummary()).toBeNull()
   }, SETTLE)
-  // On the Dashboard, whose dock now offers the workout due after Workout A.
+  // On Home, which -- a Session done today -- names the workout due after Workout A.
   // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('button', { name: /^Next: Workout A\b/ }, SETTLE)).toBeVisible()
   expect(await getActiveSession()).toBeNull()
 })
 
@@ -2414,7 +2416,8 @@ test('the Program tab’s This week reflects sets actually logged in the last 7 
     startOfWeek + HOUR_MS <= Date.now() ? startOfWeek + HOUR_MS : Date.now() - HOUR_MS,
   )
   await renderApp()
-  await findStartButton()
+  // v7: Home has loaded (a Session today leaves it with no Start to wait for).
+  await screen.findByRole('button', { name: /^Lifts, 12 weeks/ }, SETTLE)
 
   await pressTab(user, 'Program')
   await screen.findByRole('heading', { name: 'Muscles, planned per week' }, SETTLE)
@@ -2554,16 +2557,16 @@ describe('E7-T8', () => {
 
     await finishWorkout(user)
 
-    // Back on the Dashboard, whose dock offers the workout due after Workout A.
+    // Back on Home, which -- a Session done today -- names the workout due after Workout A.
     // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-    expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+    expect(await screen.findByRole('button', { name: /^Next: Workout A\b/ }, SETTLE)).toBeVisible()
     // The held request cannot finish before release, so the picker showing alongside it is
     // the proof that finishing did not wait on the sync.
     await waitFor(() => {
       expect(server.pending).toBe(1)
     }, SETTLE)
     // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-    expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
+    expect(screen.getByRole('button', { name: /^Next: Workout A\b/ })).toBeVisible()
     release()
     await serverSettled(4)
   })
@@ -2663,7 +2666,7 @@ describe('E7-T8', () => {
     )
     await serverSettled(3)
 
-    await pressTab(user, 'Train')
+    await pressTab(user, 'Home')
 
     // The Dashboard's dock offers the adopted program's workout: Full body starter's "Full body".
     expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
@@ -3075,9 +3078,11 @@ describe('E8-T6', () => {
 
     await renderApp()
 
-    // Finished at launch, the forgotten Workout A puts Workout B due on the Dashboard's dock.
-    // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-    expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+    // Finished at launch, the forgotten Workout A leaves Workout A due on Home (V6-11: a few Sets
+    // of A is a short Session): its dock's Start, or -- finished earlier today -- its Next row.
+    expect(
+      await screen.findByRole('button', { name: /^(Start Workout A$|Next: Workout A\b)/ }, SETTLE),
+    ).toBeVisible()
     expect(resumeControl()).toBeNull()
   })
 
@@ -3085,7 +3090,8 @@ describe('E8-T6', () => {
     const lastSetAt = await staleBackSquatSession()
 
     await renderApp()
-    await findStartButton()
+    // v7: Home has loaded (finished earlier today, the Session leaves it with no Start).
+    await screen.findByRole('button', { name: /^Lifts, 12 weeks/ }, SETTLE)
 
     expect(await getActiveSession()).toBeNull()
     const finished = await listSessions()
@@ -3212,7 +3218,7 @@ test('O1 returning from another tab with no Session in progress lands back on Wo
   setDocumentVisibility('visible')
 
   await waitFor(() => {
-    expect(currentTabNames()).toEqual(['Train'])
+    expect(currentTabNames()).toEqual(['Home'])
   }, SETTLE)
 })
 
@@ -3305,7 +3311,7 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
   await screen.findByRole('group', { name: 'Workout' }, SETTLE)
   expect(screen.queryByRole('combobox', { name: 'Compare volume with' })).toBeNull()
 
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
   await user.click(await screen.findByRole('button', { name: /^Resume Workout A/ }, SETTLE))
 
   const row = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
@@ -3375,7 +3381,7 @@ test('O14 the Exercises search and filters survive leaving and returning to the 
   await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
   await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
 
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
   await findStartButton()
   await pressTab(user, 'Exercises')
 

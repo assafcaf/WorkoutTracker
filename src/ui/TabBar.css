@@ -39,9 +39,9 @@
   font-weight: var(--weight-medium);
 }
 
-/* The current tab is the one thing in the bar that carries the indigo primary. */
-.tab-bar-tab[aria-current='page'] {
-  color: var(--color-primary);
+/* The current tab is the one thing in the bar in colour: live, "where you are now" (v7 Home). */
+.tab-bar .tab-bar-tab[aria-current='page'] {
+  color: var(--color-live);
   font-weight: var(--weight-semibold);
 }
 
