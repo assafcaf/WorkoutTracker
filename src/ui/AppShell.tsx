@@ -140,7 +140,9 @@ export function AppShell(props: AppShellProps): JSX.Element {
   )
 
   let shellHeader: ReactNode
-  if (ownHeader && !onBack && !header) {
+  if (ownHeader && !header) {
+    // The screen draws its own header -- a tab's, or a pushed page's with its own Back (v7: the
+    // workout page over Home).
     shellHeader = null
   } else if (header) {
     shellHeader = header

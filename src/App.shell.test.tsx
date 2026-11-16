@@ -45,6 +45,11 @@ async function pressTab(user: User, name: string): Promise<void> {
   await user.click(within(mainNav()).getByRole('button', { name }))
 }
 
+/** v7: Home has loaded -- its Today panel, the door to the workout page, is on screen. */
+async function homeReady(): Promise<HTMLElement> {
+  return screen.findByRole('button', { name: /Open the workout\.$/ }, SETTLE)
+}
+
 function liveStrip(): HTMLElement | null {
   return document.body.querySelector('.live-strip')
 }
@@ -60,21 +65,23 @@ async function logFirstBackSquatSet(user: User): Promise<void> {
 test('the Dashboard header carries a Settings gear that opens Settings as a full-screen page with a back chevron', async () => {
   const user = userEvent.setup()
   await renderApp()
-  await screen.findByRole('heading', { level: 1, name: 'Workout A' }, SETTLE)
+  // v7: the app opens on Home.
+  await homeReady()
 
   await user.click(screen.getByRole('button', { name: 'Settings' }))
 
   expect(await screen.findByRole('heading', { level: 1, name: 'Settings' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Back' }))
-  expect(await screen.findByRole('heading', { level: 1, name: 'Workout A' }, SETTLE)).toBeVisible()
+  expect(await homeReady()).toBeVisible()
   expect(mainNav()).toBeVisible()
 })
 
 test('each of the four tabs is titled for itself in a large page header', async () => {
   const user = userEvent.setup()
   await renderApp()
-  await screen.findByRole('heading', { level: 1, name: 'Workout A' }, SETTLE)
+  // v7: the app opens on Home.
+  await homeReady()
 
   for (const name of ['Progress', 'Sessions', 'Program']) {
     await pressTab(user, name)
@@ -87,7 +94,8 @@ test('each of the four tabs is titled for itself in a large page header', async 
 test('the Program tab switches between the program and the exercise library', async () => {
   const user = userEvent.setup()
   await renderApp()
-  await screen.findByRole('heading', { level: 1, name: 'Workout A' }, SETTLE)
+  // v7: the app opens on Home.
+  await homeReady()
 
   await pressTab(user, 'Program')
   const side = await screen.findByRole('radiogroup', { name: 'Program view' }, SETTLE)
@@ -137,11 +145,12 @@ test('minimising the Live session pins a live strip naming the workout over ever
 
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
 
-  await screen.findByRole('heading', { level: 1, name: 'Workout A' }, SETTLE)
-  for (const name of ['Progress', 'Sessions', 'Program', 'Train']) {
+  await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
+  for (const name of ['Progress', 'Sessions', 'Program', 'Home']) {
     await pressTab(user, name)
-    // V3-08: Train is titled by its Workout, here the one in progress.
-    await screen.findByRole('heading', { level: 1, name: name === 'Train' ? 'Workout A' : name }, SETTLE)
+    // v7: Home offers the Workout in progress back; every other tab is titled for itself.
+    if (name === 'Home') await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
+    else await screen.findByRole('heading', { level: 1, name }, SETTLE)
     const strip = liveStrip()
     expect(strip, `no live strip on ${name}`).not.toBeNull()
     expect(strip).toHaveTextContent(/Workout A/)
@@ -170,7 +179,8 @@ test('Return on the live strip brings the Live session back on the same set', as
   await renderApp()
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
-  await screen.findByRole('heading', { level: 1, name: 'Workout A' }, SETTLE)
+  // v7: Home under the live strip offers the session in progress back.
+  await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
   await pressTab(user, 'Sessions')
 
   await user.click(screen.getByRole('button', { name: 'Return to Workout A' }))
@@ -186,7 +196,8 @@ test('a tap anywhere on the live strip returns to the Live session', async () =>
   await renderApp()
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
-  await screen.findByRole('heading', { level: 1, name: 'Workout A' }, SETTLE)
+  // v7: Home under the live strip offers the session in progress back.
+  await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
 
   await user.click(liveStrip()?.querySelector('.live-strip-text') as HTMLElement)
 
@@ -198,7 +209,8 @@ test('finishing a session returned to from another tab lands on the Dashboard un
   await renderApp()
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
-  await screen.findByRole('heading', { level: 1, name: 'Workout A' }, SETTLE)
+  // v7: Home under the live strip offers the session in progress back.
+  await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
   await pressTab(user, 'Progress')
   await user.click(screen.getByRole('button', { name: 'Return to Workout A' }))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
@@ -206,7 +218,7 @@ test('finishing a session returned to from another tab lands on the Dashboard un
   await finishWorkout(user)
 
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
-  expect(within(mainNav()).getByRole('button', { name: 'Train' })).toHaveAttribute('aria-current', 'page')
+  expect(within(mainNav()).getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
   expect(liveStrip()).toBeNull()
   expect(await getActiveSession()).toBeNull()
 })
@@ -230,7 +242,7 @@ test('the tab bar reads Train, Progress, Sessions, Program, and Progress opens i
   const names = within(mainNav())
     .getAllByRole('button')
     .map((button) => button.getAttribute('aria-label'))
-  expect(names).toEqual(['Train', 'Progress', 'Sessions', 'Program'])
+  expect(names).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
 
   await pressTab(user, 'Progress')
   expect(await screen.findByRole('heading', { level: 1, name: 'Progress' }, SETTLE)).toBeVisible()
@@ -247,8 +259,8 @@ test('Progress to a lift to a Session is two taps, and Back returns each step', 
   try {
     const user = userEvent.setup()
     await renderApp()
-    // V3-08: Train is titled by the Workout due.
-    await screen.findByRole('heading', { level: 1, name: /^Workout [AB]$/ }, SETTLE)
+    // v7: the app opens on Home, whose Today panel names the Workout due.
+    await screen.findByRole('button', { name: /Workout [AB].*Open the workout\.$/ }, SETTLE)
 
     await pressTab(user, 'Progress')
     const rows = await screen.findAllByRole('button', { name: /Push-ups/ }, SETTLE)

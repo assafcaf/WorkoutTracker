@@ -46,6 +46,7 @@ import type { LiveView } from '../../ui/live/LiveSessionBar'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
 import { ExercisePicker } from '../../ui/ExercisePicker'
 import { DashboardScreen } from '../dashboard/DashboardScreen'
+import { HomeScreen } from '../home/HomeScreen'
 import { liftPlan } from '../dashboard/trainCard'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
@@ -82,6 +83,16 @@ export type WorkoutFeatureProps = {
   onRestore?(): void
   /** Told what the live strip shows while a session is in progress, and `null` once none is. */
   onLive?(status: LiveStatus | null): void
+  /**
+   * v7: which screen the Home tab shows while no Live session is on screen -- `home`, the landing
+   * dashboard, or `today`, the workout page pushed over it. Default `today`: on its own (no app
+   * root around it) the feature opens on the workout page, as the Train tab did.
+   */
+  page?: 'home' | 'today'
+  /** v7: Home's Today panel opens the workout page. */
+  onOpenToday?(): void
+  /** v7: the workout page's Back, to Home. */
+  onCloseToday?(): void
 }
 
 type View = 'picker' | 'list' | 'set'
@@ -279,6 +290,9 @@ export function WorkoutFeature({
   onMinimise,
   onRestore,
   onLive,
+  page = 'today',
+  onOpenToday,
+  onCloseToday,
 }: WorkoutFeatureProps): JSX.Element | null {
   const services = useServices()
   const { syncNow } = useSyncControls()
@@ -1363,10 +1377,61 @@ export function WorkoutFeature({
       throw new Error(`no program ${activeProgramId} among the loaded programs`)
     }
 
-    // The Dashboard (S1) draws its own large title with the sync line, so the shell draws none.
-    content = (
-      <AppShell title="Dashboard" ownHeader>
+    const notices =
+      !storageAvailable || staleActiveProgramNotice ? (
+        <>
+          {!storageAvailable ? <StorageUnavailableBanner /> : null}
+          {staleActiveProgramNotice ? (
+            <p>The saved active program no longer exists; showing the first program instead.</p>
+          ) : null}
+        </>
+      ) : null
+    const resume =
+      session && located
+        ? {
+            programName: located.program.name,
+            workoutName: located.workout.name,
+            onResume: () =>
+              minimised && onRestore ? onRestore() : handleChoose(session.programId, session.workoutId),
+          }
+        : null
+    const discardedSnackbar =
+      discarded === null ? null : <Snackbar message="Workout discarded" actionLabel="Undo" onAction={handleUndoDiscard} />
+
+    // v7: the Home tab opens on the landing dashboard; its Today panel pushes the workout page.
+    content =
+      page === 'home' ? (
+        <AppShell title="Home" ownHeader>
+          <HomeScreen
+            resume={resume}
+            notices={notices}
+            canStart={storageAvailable}
+            onStartWorkout={(workoutId) => {
+              if (activeProgram !== null && storageAvailable) handleChoose(activeProgram.id, workoutId)
+            }}
+            onPickPlan={(programId, workoutId) => {
+              if (!storageAvailable) return
+              services.programs
+                .setActive(programId)
+                .then(() => handleChoose(programId, workoutId))
+                .catch(() => undefined)
+            }}
+            onOpenToday={() => onOpenToday?.()}
+            onOpenSession={(sessionId) => navigate({ tab: 'history', sessionId })}
+            onOpenSessions={() => navigate({ tab: 'history' })}
+            onOpenProgress={() => navigate({ tab: 'progress' })}
+            onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
+            onOpenSettings={() => chrome.onOpenSettings?.()}
+          />
+          {discardedSnackbar}
+        </AppShell>
+      ) : null
+
+    // The workout page (once the Train tab) draws its own large title, so the shell draws none.
+    content = content ?? (
+      <AppShell title="Dashboard" ownHeader onBack={onCloseToday}>
         <DashboardScreen
+          onBack={onCloseToday}
           onStartWorkout={(workoutId) => {
             if (activeProgram !== null && storageAvailable) handleChoose(activeProgram.id, workoutId)
           }}
@@ -1378,32 +1443,10 @@ export function WorkoutFeature({
           // V6-03: a lift's name opens the one Lift page.
           onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
           // A backup due is the gear's marker here (S1); Settings spells it out in full.
-          notices={
-            !storageAvailable || staleActiveProgramNotice ? (
-              <>
-                {!storageAvailable ? <StorageUnavailableBanner /> : null}
-                {staleActiveProgramNotice ? (
-                  <p>The saved active program no longer exists; showing the first program instead.</p>
-                ) : null}
-              </>
-            ) : null
-          }
-          resume={
-            session && located
-              ? {
-                  programName: located.program.name,
-                  workoutName: located.workout.name,
-                  onResume: () =>
-                    minimised && onRestore
-                      ? onRestore()
-                      : handleChoose(session.programId, session.workoutId),
-                }
-              : null
-          }
+          notices={notices}
+          resume={resume}
         />
-        {discarded === null ? null : (
-          <Snackbar message="Workout discarded" actionLabel="Undo" onAction={handleUndoDiscard} />
-        )}
+        {discardedSnackbar}
       </AppShell>
     )
   }

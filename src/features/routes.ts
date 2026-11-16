@@ -9,3 +9,5 @@ export type AppRoute =
   | { tab: 'workout' }
   /** V6-03: the one Lift page, pushed over the tab it was opened from; Back returns there. */
   | { tab: 'lift'; exerciseId: string }
+  /** v7: the workout page (today's workout), pushed over Home; Back returns there. */
+  | { tab: 'today' }

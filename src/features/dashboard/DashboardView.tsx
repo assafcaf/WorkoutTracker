@@ -1,6 +1,7 @@
 import { useContext, useState, type ReactNode } from 'react'
 import { SettingsButton, ShellChromeContext } from '../../ui/AppShell'
 import { CalendarWeekCells } from '../../ui/CalendarWeek'
+import { SetFigure } from '../../ui/figures'
 import { Icon } from '../../ui/icons'
 import './DashboardScreen.css'
 import type { TrainCard, TrainLiftRow, WeekStrip } from './trainCard'
@@ -58,8 +59,10 @@ export type DockWorkout = {
   minutes: number
   /** V6-11: after a short Session of this Workout, the header's second line instead of the day. */
   finish?: string | null
-  /** V6-08: this Workout's latest Session note, one quiet line under the date. */
+  /** V6-08: this Workout's latest Session note, folded into the headline sentence (v7). */
   note?: string | null
+  /** v7: when it was last done, as the headline says it: `Monday`, or `Fri 2 Oct` further back. */
+  sameAs?: string | null
 }
 
 /** The Session in progress the dock offers to resume in place of a start. */
@@ -83,47 +86,25 @@ export type DashboardViewProps = {
   onOpenSession?(sessionId: string): void
   /** V6-03: opens the one Lift page: each lift's name on the card is a button to it. */
   onOpenLift?(exerciseId: string): void
-}
-
-/** The sync state in words: the cloud button's name and tooltip (V3-08), never a visible line. */
-function syncText(sync: Exclude<DashboardSync, { kind: 'offline' }>): string {
-  switch (sync.kind) {
-    case 'syncing':
-      return 'Syncing…'
-    case 'synced':
-      return `Synced ${sync.ago}`
-    case 'local':
-      return 'Saved on this phone'
-    case 'failed':
-      return 'Not synced · saved on this phone'
-  }
+  /** v7: the workout page is pushed over Home; Back returns there. Unset, no Back is drawn. */
+  onBack?(): void
 }
 
 /**
- * The header's cloud (V3-08): it presses to sync, and carries the sync state as its name and as a
- * quiet mark (a tick once synced, a dot when the last sync failed). Offline it is no button, only
- * the crossed-out cloud, named for what that means.
+ * v7 (study §1.1): the sync state is shown only when a sync actually failed, and then as words
+ * that press to try again. Synced, syncing, local or offline, the header says nothing about it.
  */
-function SyncButton({ sync, onSync }: { sync: DashboardSync; onSync(): void }): JSX.Element {
-  if (sync.kind === 'offline') {
-    return (
-      <span className="dashboard-sync-offline" role="img" aria-label="Offline · saved on this phone">
-        <Icon name="CloudOff" size={22} />
-      </span>
-    )
-  }
-  const text = syncText(sync)
+function SyncFailure({ sync, onSync }: { sync: DashboardSync; onSync(): void }): JSX.Element | null {
+  if (sync.kind !== 'failed') return null
   return (
     <button
       type="button"
-      className="icon-btn dashboard-icon-btn"
-      aria-label={`Sync now · ${text}`}
-      title={text}
+      className="btn-quiet dashboard-sync-failed"
+      aria-label="Sync now · Not synced · saved on this phone"
       data-sync={sync.kind}
       onClick={onSync}
     >
-      <Icon name={sync.kind === 'synced' ? 'CloudCheck' : 'Cloud'} size={22} />
-      {sync.kind === 'failed' ? <span className="dashboard-sync-dot" aria-hidden="true" /> : null}
+      Not synced · Retry
     </button>
   )
 }
@@ -253,74 +234,156 @@ function WeekStripDays({
   )
 }
 
-/**
- * `3 × 70 kg`: the planned Sets at the Set 1 Preset; `3 sets` with no weight to go on; and when
- * the Sets ramp, `4 sets · 47.5 → 62.5 kg` (V5-07).
- */
-function presetText(lift: TrainLiftRow): string | null {
-  if (lift.sets === undefined) return null
-  if (lift.load && lift.topLoad) return `${lift.sets} sets · ${lift.load.replace(/ kg$/, '')} → ${lift.topLoad}`
-  return lift.load ? `${lift.sets} × ${lift.load}` : `${lift.sets} sets`
+/** `70 kg` -> 70 kg; `BW`, `BW+5`, `BW−19` -> the signed Load; a ramp's or an unknown text as is. */
+function figureSet(load: string): { weightKg: number | null; loadKg?: number } | null {
+  const kg = /^(\d+(?:\.\d+)?) kg$/.exec(load)
+  if (kg) return { weightKg: Number(kg[1]) }
+  if (load === 'BW') return { weightKg: null, loadKg: 0 }
+  const bw = /^BW([+−])(\d+(?:\.\d+)?)$/.exec(load)
+  if (bw) return { weightKg: null, loadKg: (bw[1] === '+' ? 1 : -1) * Number(bw[2]) }
+  return null
+}
+
+/** A load as the ledger writes it (study §3, Numerals): the number, then a small ink-3 `kg`. */
+function LoadText({ load }: { load: string }): JSX.Element {
+  const set = figureSet(load)
+  if (set) return <SetFigure set={set} className="dashboard-step-load" />
+  return <span className="dashboard-step-load">{load}</span>
+}
+
+/** A lever as the row writes it, from a Bodyweight lift's signed Load or kg. */
+function leverLoad(lever: number, bodyweight: boolean): string {
+  const n = String(Math.round(lever * 100) / 100)
+  if (!bodyweight) return `${n} kg`
+  if (lever === 0) return 'BW'
+  return lever > 0 ? `BW+${n}` : `BW−${String(Math.round(Math.abs(lever) * 100) / 100)}`
 }
 
 /**
- * The row's second line (V6-01): the load the lift's status offers when it is not the Preset,
- * "Ready for 15 kg", or the Break's eased Preset, "Eased after 34 days off" -- the words the Set
- * screen and the Program tab use.
+ * v7 (study §1.1, step 4): one lift as today's Session opens it, `sets × kg`: `3 × 70 kg`, a ramp
+ * `4 × 47.5 → 62.5 kg`, `3 sets` with no weight to go on. A lift that goes up today shows the new
+ * load in the up colour; nothing else is coloured. No rep ranges: they live at the bar and on
+ * Program.
  */
-function stepNote(lift: TrainLiftRow): JSX.Element | null {
-  const advice = lift.advice
-  // A Break's eased Preset is said once for the card (V6-05), not on every row.
-  if (!advice || advice.kind === 'eased') return null
+function PresetFigure({ lift }: { lift: TrainLiftRow }): JSX.Element | null {
+  if (lift.sets === undefined) return null
+  const up = lift.advice?.kind === 'up' ? lift.advice : null
+  const load = up ? leverLoad(up.lever, lift.bodyweight ?? false) : lift.load
+  if (!load) return <span className="dashboard-step-preset">{`${lift.sets} sets`}</span>
   return (
-    <span className={advice.kind === 'up' ? 'dashboard-step-ready' : 'dashboard-step-hold'}>
-      {advice.kind === 'up' ? <Icon name="ArrowUp" size={14} /> : null}
-      <span>{advice.text}</span>
+    <span className="dashboard-step-preset" data-up={up ? 'true' : undefined}>
+      <span className="dashboard-step-sets">{lift.sets}</span>
+      <span className="set-figure-times dashboard-step-times">×</span>
+      {lift.topLoad && !up ? (
+        <span className="dashboard-step-load">
+          {`${load.replace(/ kg$/, '')} → ${lift.topLoad.replace(/ kg$/, '')}`}
+          <span className="set-figure-unit"> kg</span>
+        </span>
+      ) : (
+        <LoadText load={load} />
+      )}
     </span>
   )
 }
 
 /**
- * Today's Workout as it will be lifted (V2-05): one row per Plan with its Sets at the Set 1
- * Preset and the rep range, and a step-up marker on a lift that is ready. The workout's name,
- * size and duration live in the dock under it.
+ * The row's second line, only on a row that changes today: `↑ was 14 kg` when the lift goes up,
+ * or the lighter load its status offers (`Deload once: 55 kg`).
+ */
+function stepNote(lift: TrainLiftRow): JSX.Element | null {
+  const advice = lift.advice
+  // A Break's eased Preset is said once, in the headline (V6-05), not on every row.
+  if (!advice || advice.kind === 'eased') return null
+  if (advice.kind === 'up') {
+    return (
+      <span className="dashboard-step-ready">
+        <Icon name="ArrowUp" size={14} />
+        <span>{lift.load ? `was ${lift.load}` : advice.text}</span>
+      </span>
+    )
+  }
+  return <span className="dashboard-step-hold">{advice.text}</span>
+}
+
+/** `Seated biceps curls` -> `curls`: a 3+ word name's noun, lower case, for the headline. */
+function sentenceName(name: string): string {
+  const words = name.trim().split(/\s+/)
+  return (words.length >= 3 ? words[words.length - 1] : name).toLowerCase()
+}
+
+/**
+ * v7 (study §1.1): the headline sentence of what changes today. "Same as Monday, except curls
+ * move up to 15 kg." A deload week or a Break says so instead; a short Session's repeat and the
+ * Workout's last note fold in as sentences of their own.
+ */
+function Headline({ card, offered }: { card: TrainCard; offered: DockWorkout }): JSX.Element {
+  const changes: JSX.Element[] = []
+  for (const lift of card.lifts) {
+    const advice = lift.advice
+    if (!advice || advice.kind === 'eased') continue
+    const name = sentenceName(lift.name)
+    const load = leverLoad(advice.lever, lift.bodyweight ?? false)
+    const plural = /s$/.test(name)
+    changes.push(
+      <strong key={lift.exerciseId}>
+        {advice.kind === 'up' ? `${name} ${plural ? 'move' : 'moves'} up to ${load}` : `${name} ${plural ? 'drop' : 'drops'} to ${load}`}
+      </strong>,
+    )
+  }
+  const eased = card.lifts.find((lift) => lift.advice?.kind === 'eased')?.advice
+  const joined = changes.flatMap((change, i) => (i === 0 ? [change] : [i === changes.length - 1 ? ' and ' : ', ', change]))
+  let lead: ReactNode
+  if (card.deload) lead = 'Deload week: every load is 10 % lighter.'
+  else if (card.eased) {
+    const days = eased ? /(\d+) days off/.exec(eased.text)?.[1] : undefined
+    lead = days ? `Back after ${days} days off: loads eased 10 % for today.` : 'Back after a break: loads eased for today.'
+  } else {
+    const same = offered.sameAs ?? offered.last
+    if (same && changes.length > 0) lead = <>{`Same as ${same}, except `}{joined}.</>
+    else if (same) lead = `Same as ${same}.`
+    else if (changes.length > 0) lead = <>{'Today '}{joined}.</>
+    else lead = `First time on ${offered.name}.`
+  }
+  return (
+    <p className="dashboard-headline">
+      {offered.finish ? <span className="dashboard-headline-part">{`${offered.finish}. `}</span> : null}
+      {lead}
+      {offered.note ? <span className="dashboard-headline-note">{` ${offered.note}`}</span> : null}
+    </p>
+  )
+}
+
+/**
+ * Today's Workout as it will be lifted (V2-05, v7 step 4): one ledger row per Plan, its name and
+ * `sets × kg`, with an ↑ only on the rows that change.
  */
 function DueCard({ card, onOpenLift }: { card: TrainCard; onOpenLift?(exerciseId: string): void }): JSX.Element {
   return (
     <section className="dashboard-train" aria-label={card.name}>
-      {card.deload ? (
-        <p className="dashboard-step-deload">Deload week · Presets 10% lighter</p>
-      ) : card.eased ? (
-        <p className="dashboard-step-deload">Back after a break · loads eased for today</p>
-      ) : null}
       {card.lifts.length > 0 ? (
         <ul className="dashboard-steps" aria-label={`${card.name} lifts`}>
           {card.lifts.map((lift) => {
-            const preset = presetText(lift)
             const note = stepNote(lift)
             return (
               <li key={lift.exerciseId} className="dashboard-step">
                 <div className="dashboard-step-line">
-                  {onOpenLift ? (
-                    // V6-03: the lift's name opens its Lift page.
-                    <button
-                      type="button"
-                      className="dashboard-step-name lift-door btn-quiet"
-                      onClick={() => onOpenLift(lift.exerciseId)}
-                    >
-                      {lift.name}
-                    </button>
-                  ) : (
-                    <span className="dashboard-step-name">{lift.name}</span>
-                  )}
-                  {preset ? (
-                    <span className="dashboard-step-text">
-                      <span className="dashboard-step-preset">{preset}</span>
-                      {lift.reps ? <span className="dashboard-step-reps">{` · ${lift.reps}`}</span> : null}
-                    </span>
-                  ) : null}
+                  <div className="dashboard-step-main">
+                    {onOpenLift ? (
+                      // V6-03: the lift's name opens its Lift page.
+                      <button
+                        type="button"
+                        className="dashboard-step-name lift-door btn-quiet"
+                        onClick={() => onOpenLift(lift.exerciseId)}
+                      >
+                        {lift.name}
+                      </button>
+                    ) : (
+                      <span className="dashboard-step-name">{lift.name}</span>
+                    )}
+                    {note ? <div className="dashboard-step-note">{note}</div> : null}
+                  </div>
+                  <PresetFigure lift={lift} />
                 </div>
-                {note ? <div className="dashboard-step-note">{note}</div> : null}
               </li>
             )
           })}
@@ -331,38 +394,45 @@ function DueCard({ card, onOpenLift }: { card: TrainCard; onOpenLift?(exerciseId
 }
 
 /**
- * The tab's header (V3-08): the Workout on offer as the title ("Workout B") over the day and when
- * it was last done, then the cloud and the gear. With no Workout to offer it reads "Train".
+ * The workout page's header (v7): Back to Home, the day as a label, the sync only when it failed,
+ * the gear; then the Workout on offer as the 40 px title and the headline sentence under it. With
+ * no Workout to offer it reads "Train".
  */
 function Header({
   title,
   subtitle,
-  note,
+  headline,
   sync,
   onSync,
   onOpenSettings,
-}: { title: string; subtitle: string; note?: string | null } & Pick<DashboardViewProps, 'sync' | 'onSync' | 'onOpenSettings'>): JSX.Element {
-  // The app root's header slot ("Update ready") rides beside the Dashboard's own buttons.
+  onBack,
+}: {
+  title: string
+  subtitle: string
+  headline?: ReactNode
+} & Pick<DashboardViewProps, 'sync' | 'onSync' | 'onOpenSettings' | 'onBack'>): JSX.Element {
+  // The app root's header slot ("Update ready") rides beside the page's own buttons.
   const { trailing } = useContext(ShellChromeContext)
   return (
-    // The tab's one header: the shell around the Dashboard draws none of its own (`ownHeader`),
-    // so this one carries the shell header's classes too.
+    // The page's one header: the shell around it draws none of its own (`ownHeader`), so this
+    // one carries the shell header's classes too.
     <header className="dashboard-header app-header">
-      <div className="dashboard-heading">
-        <h1 className="dashboard-title">{title}</h1>
-        <p className="dashboard-status">{subtitle}</p>
-        {note ? (
-          <p className="dashboard-note" title={note}>
-            {note}
-          </p>
+      <div className="dashboard-topline">
+        {onBack ? (
+          <button type="button" className="icon-btn dashboard-back" aria-label="Back" onClick={onBack}>
+            <Icon name="ChevronLeft" size={24} />
+          </button>
         ) : null}
+        <p className="dashboard-status">{subtitle}</p>
+        {trailing ? <div className="dashboard-header-trailing app-header-trailing">{trailing}</div> : null}
+        <div className="dashboard-header-actions">
+          <SyncFailure sync={sync} onSync={onSync} />
+          {/* The shell's gear, which carries the backup-due marker when a backup is due. */}
+          <SettingsButton onOpen={onOpenSettings} />
+        </div>
       </div>
-      {trailing ? <div className="dashboard-header-trailing app-header-trailing">{trailing}</div> : null}
-      <div className="dashboard-header-actions">
-        <SyncButton sync={sync} onSync={onSync} />
-        {/* The shell's gear, which carries the backup-due marker when a backup is due. */}
-        <SettingsButton onOpen={onOpenSettings} />
-      </div>
+      <h1 className="dashboard-title">{title}</h1>
+      {headline}
     </header>
   )
 }
@@ -379,33 +449,32 @@ function ResumeDock({ resume }: { resume: DashboardResume }): JSX.Element {
 }
 
 /**
- * The dock (V3-08): the offered workout's time and "Change" on one line, over its start button.
- * The header names the workout and when it was last done; the rows show its size. A Program of
- * several workouts can offer another in the due one's place: "Change" steps through them.
+ * The dock (v7): the workout's size and time and "Do Workout A instead" on one line, over its
+ * Start bar. A Program of several workouts steps through them, one press each.
  */
 function StartDock({
   offered,
   workouts,
+  sets,
   onChange,
   onStart,
 }: {
   offered: DockWorkout
   workouts: DockWorkout[]
+  sets: number | null
   onChange(workoutId: string): void
   onStart(workoutId: string): void
 }): JSX.Element {
-  function next(): void {
-    const index = workouts.findIndex((workout) => workout.workoutId === offered.workoutId)
-    onChange(workouts[(index + 1) % workouts.length].workoutId)
-  }
+  const index = workouts.findIndex((workout) => workout.workoutId === offered.workoutId)
+  const other = workouts.length > 1 ? workouts[(index + 1) % workouts.length] : null
 
   return (
     <div className="dashboard-dock">
       <div className="dashboard-due-row">
-        <p className="dashboard-due-size">{`~${offered.minutes} min`}</p>
-        {workouts.length > 1 ? (
-          <button type="button" className="btn-quiet dashboard-change" aria-label="Choose another workout" onClick={next}>
-            Change
+        <p className="dashboard-due-size">{sets ? `${sets} sets · about ${offered.minutes} min` : `about ${offered.minutes} min`}</p>
+        {other ? (
+          <button type="button" className="btn-quiet dashboard-change" onClick={() => onChange(other.workoutId)}>
+            {`Do ${other.name} instead`}
           </button>
         ) : null}
       </div>
@@ -417,8 +486,9 @@ function StartDock({
 }
 
 /**
- * The Train home screen (E18 O24, V2-05): this week's strip, the workout due as Set 1 opens each
- * lift, and its start button docked at the bottom. With no Program yet it offers the Programs to pick from instead.
+ * The workout page (v7, once the Train tab; E18 O24, V2-05): today's Workout under a headline of
+ * what changes, this week's strip, each lift as Set 1 opens it, and Start docked at the bottom.
+ * Home's Today panel opens it. With no Program yet it offers the Programs to pick from instead.
  */
 export function DashboardView(props: DashboardViewProps): JSX.Element {
   const { data } = props
@@ -434,8 +504,8 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
   // The title is the Workout on offer (V3-08); a Session in progress names its own, and with no
   // Workout to offer (no Program yet, still loading) the tab's name stands in.
   let title = props.resume ? props.resume.workoutName : 'Train'
-  let subtitle = props.resume ? `${props.today} · in progress` : props.today
-  let note: string | null = null
+  const subtitle = props.resume ? `${props.today} · in progress` : props.today
+  let headline: ReactNode = null
 
   if (data.kind === 'no-program') {
     const selected = data.options.find((option) => option.id === data.selectedId) ?? null
@@ -503,14 +573,15 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     )
     if (!props.resume && offered) {
       title = offered.name
-      subtitle = offered.finish ?? (offered.last ? `${props.today} · last done ${offered.last}` : props.today)
-      note = offered.note ?? null
+      headline = card ? <Headline card={card} offered={offered} /> : null
     }
     if (!dock && due && offered) {
+      const sets = card?.lifts.reduce((sum, lift) => sum + (lift.sets ?? 0), 0) ?? 0
       dock = (
         <StartDock
           offered={offered}
           workouts={workouts}
+          sets={sets > 0 ? sets : null}
           onChange={(workoutId) => setChosen({ dueId, workoutId })}
           onStart={props.onStartWorkout}
         />
@@ -519,14 +590,15 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
   }
 
   return (
-    <div className="dashboard">
+    <div className="dashboard" data-page={props.onBack ? 'pushed' : undefined}>
       <Header
         title={title}
         subtitle={subtitle}
-        note={note}
+        headline={headline}
         sync={props.sync}
         onSync={props.onSync}
         onOpenSettings={props.onOpenSettings}
+        onBack={props.onBack}
       />
       {props.notices ? <div className="dashboard-notices">{props.notices}</div> : null}
       {body}

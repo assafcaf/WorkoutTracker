@@ -67,7 +67,7 @@ test('O21 pressing Use this on A/B Split makes it active and the Workout tab off
   await openProgramTab(user)
   await user.click(await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE))
 
-  await user.click(await screen.findByRole('button', { name: 'Train' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Home' }, SETTLE))
 
   // The Dashboard's dock offers Workout A, due first, and "Change" steps to Workout B.
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
@@ -124,7 +124,7 @@ test('O37 pressing Use this on Upper/Lower stores it and the Workout tab offers 
   await waitFor(async () => {
     expect((await db.settings.get('activeProgramId'))?.value).toBe('upper-lower')
   }, SETTLE)
-  await user.click(await screen.findByRole('button', { name: 'Train' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Home' }, SETTLE))
   expect(await workoutsOffered(user)).toEqual(['Upper', 'Lower'])
 })
 

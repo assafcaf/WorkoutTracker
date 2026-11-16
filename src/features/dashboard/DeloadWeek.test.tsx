@@ -40,7 +40,11 @@ function mountBoth(s: Services, now: number): void {
   )
 }
 
-const TRAIN_LINE = 'Deload week · Presets 10% lighter'
+// v7: the workout page says it in its headline sentence.
+const TRAIN_LINE = 'Deload week: every load is 10 % lighter.'
+
+/** A Train row's `sets × kg`, as its text reads (`4×60 kg`). */
+const presetOf = (row: HTMLElement): string | null | undefined => row.querySelector('.dashboard-step-preset')?.textContent
 const PROGRAM_LINE = 'Deload week · lighter Presets · End'
 
 /** Opens the Program head's overflow (the Programs panel) and taps "Start a deload week" (V4-08). */
@@ -182,7 +186,7 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     await db.settings.put({ key: 'deloadWeek', value: weekStart(TUE, 1), updatedAt: TUE })
     await setActiveProgramId('assaf-ab-2026', TUE)
     mount(servicesAt(TUE), TUE)
-    expect(await screen.findByText('Deload week · Presets 10% lighter', undefined, SETTLE)).toBeTruthy()
+    expect(await screen.findByText(TRAIN_LINE, undefined, SETTLE)).toBeTruthy()
     expect(screen.queryByRole('switch', { name: 'Deload week' })).toBeNull()
   })
 
@@ -191,7 +195,7 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     await setActiveProgramId('assaf-ab-2026', TUE)
     const s = servicesAt(TUE)
     const { onStartWorkout } = mount(s, TUE)
-    await waitFor(() => expect(screen.getByText('Deload week · Presets 10% lighter')).toBeTruthy(), SETTLE)
+    await waitFor(() => expect(screen.getByText(TRAIN_LINE)).toBeTruthy(), SETTLE)
     fireEvent.click(screen.getByRole('button', { name: /^Start / }))
     const [workoutId] = onStartWorkout.mock.calls[0] as [string]
     const started = await s.sessions.start('assaf-ab-2026', workoutId)
@@ -205,8 +209,8 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     const row = within(lifts).getByText('Back squat').closest('li') as HTMLElement
     // V2-05: the row reads the Set 1 Preset. V6-01: a Hold's next load is the Preset, so the row
     // offers no other load (the hint is the status's, and Hold has nothing to dial in).
-    expect(within(row).getByText('4 × 60 kg')).toBeTruthy()
-    expect(within(row).queryByText(/Ready for/)).toBeNull()
+    expect(presetOf(row)).toBe('4×60 kg')
+    expect(within(row).queryByText(/was /)).toBeNull()
     expect(within(row).queryByText(/step up/)).toBeNull()
   })
 
@@ -215,9 +219,10 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     mount(servicesAt(TUE), TUE)
     const lifts = await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
     const row = within(lifts).getByText('Back squat').closest('li') as HTMLElement
-    expect(within(row).getByText('4 × 60 kg')).toBeTruthy()
-    // V6-01: the hint is the status's next load, two steps up with 2 reps to spare.
-    expect(within(row).getByText('Ready for 65 kg')).toBeTruthy()
+    // V6-01: the change is the status's next load, two steps up with 2 reps to spare; v7 writes
+    // it as the row's load in the up colour, over "was 60 kg".
+    expect(presetOf(row)).toBe('4×65 kg')
+    expect(within(row).getByText('was 60 kg')).toBeTruthy()
   })
 })
 
@@ -244,7 +249,7 @@ describe('V4-08 the Deload week lives in the Program head\'s overflow', () => {
     mountBoth(servicesAt(TUE), TUE)
     const lifts = await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
     const squatRow = (): HTMLElement => within(lifts).getByText('Back squat').closest('li') as HTMLElement
-    expect(within(squatRow()).getByText('4 × 60 kg')).toBeTruthy()
+    expect(presetOf(squatRow())).toBe('4×60 kg')
 
     await startDeloadFromProgram()
 
@@ -254,8 +259,8 @@ describe('V4-08 the Deload week lives in the Program head\'s overflow', () => {
     const line = programLine() as HTMLElement
     const end = within(line).getByRole('button', { name: 'End deload week' })
     expect(end).toHaveTextContent('End')
-    await waitFor(() => expect(within(squatRow()).queryByText('4 × 60 kg')).toBeNull(), SETTLE)
-    expect(within(squatRow()).getByText(/^4 × 5\d(\.\d+)? kg$/)).toBeTruthy()
+    await waitFor(() => expect(presetOf(squatRow())).not.toBe('4×60 kg'), SETTLE)
+    expect(presetOf(squatRow())).toMatch(/^4×5\d(\.\d+)? kg$/)
     expect(screen.getByText(TRAIN_LINE)).toBeTruthy()
 
     // While on, the overflow no longer offers to start one.
@@ -266,6 +271,6 @@ describe('V4-08 the Deload week lives in the Program head\'s overflow', () => {
 
     fireEvent.click(end)
     await waitFor(() => expect(programLine()).toBeNull(), SETTLE)
-    await waitFor(() => expect(within(squatRow()).getByText('4 × 60 kg')).toBeTruthy(), SETTLE)
+    await waitFor(() => expect(presetOf(squatRow())).toBe('4×60 kg'), SETTLE)
   })
 })
