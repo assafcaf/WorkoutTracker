@@ -11,10 +11,25 @@
   color: var(--color-text);
 }
 
-/* V6-14: the one header ("Edit, Workout B, Mon 12 Oct"); it wraps, never truncates. */
+/* V6-14: the one header ("Edit, Workout B, Mon 12 Oct"); it wraps, never truncates. v7: drawn
+ * as every pushed page's compact bar (`.app-header-bar`): 56 px on the surface, the title centred
+ * in 16 px semibold over a hairline, sticky while the draft scrolls under it. */
 .session-editor-heading {
-  margin: 0;
-  font-size: var(--text-lg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(56px + var(--safe-top));
+  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) 0;
+  padding: var(--safe-top) var(--space-4) 0;
+  border-bottom: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.375rem;
+  text-align: center;
   overflow-wrap: break-word;
 }
 
@@ -35,7 +50,7 @@
 .session-editor-time-input {
   min-height: var(--tap-min);
   padding: 0 var(--space-3);
-  border: 1px solid var(--color-raised);
+  border: 1px solid var(--color-control);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -49,42 +64,50 @@
   color: var(--color-danger);
 }
 
+/* v7 (study §3, Ledger): an Exercise is rows on paper under its name, between hairlines -- not a
+ * card. */
 .session-editor-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .session-editor-group-heading {
   margin: 0;
-  font-size: var(--text-sm);
+  color: var(--color-text);
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-  color: var(--color-muted);
 }
 
 .session-editor-sets {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
   padding: 0;
   margin: 0;
   list-style: none;
 }
 
+/* One Set row: 52 px, a hairline between rows. */
 .session-editor-set {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+  min-height: 52px;
+}
+
+.session-editor-set + .session-editor-set {
+  border-top: 1px solid var(--color-hairline);
 }
 
 .session-editor-set-values {
   flex: 1;
   /* A Set's values stay on one line; at large text Edit and Delete wrap under them instead. */
   white-space: nowrap;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
 }
 
@@ -114,8 +137,6 @@
   padding: 0 var(--space-3);
   border: none;
   border-radius: var(--radius-sm);
-  background: var(--color-raised);
-  color: var(--color-text);
   font-size: var(--text-sm);
 }
 
@@ -133,9 +154,7 @@
   min-height: var(--tap-min);
   padding: 0 var(--space-4);
   border: none;
-  border-radius: var(--radius-pill);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  border-radius: var(--radius-md);
   font-size: var(--text-md);
 }
 
@@ -154,7 +173,7 @@
 .session-editor-note-input {
   min-height: calc(var(--tap-min) * 2);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-raised);
+  border: 1px solid var(--color-control);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);

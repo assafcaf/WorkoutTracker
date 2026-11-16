@@ -10,7 +10,7 @@
 //                                         `from` to the latest one, or null with fewer than 2
 //   changeText(measure, delta)         -> '+8.3 kg' | '+2 reps' | 'no change'
 //   changeTextFor(history, delta)      -> the same, but an assisted lift reads '1.5 kg less assistance'
-//   liftRecordRows(history)            -> heaviest set, best est. max, most reps at the current load
+//   liftRecordRows(history)            -> heaviest set, best est. strength, most reps at the current load
 //   sessionLog(history)                -> newest first, with the PR each Session set (records.ts)
 import type { SetEntry } from '../../types'
 import type { LiftHistory } from './liftHistory'
@@ -38,7 +38,7 @@ export function estimatedMax(weight: number, reps: number): number {
   return weight * (1 + reps / 30)
 }
 
-export const EST_MAX_FORMULA = 'Est. max ≈ weight × (1 + reps ÷ 30), from your best working set.'
+export const EST_MAX_FORMULA = 'Est. strength ≈ weight × (1 + reps ÷ 30), from your best working set.'
 
 /** Every straight set of `history` as levers, oldest Session first. */
 function allLevers(history: LiftHistory): number[] {
@@ -88,9 +88,9 @@ export function measureText(measure: Measure, value: number, bodyweight: boolean
   return `${oneDecimal(value)} kg`
 }
 
-/** What the measure is called: `est. max`, `load`, `best set`. */
+/** What the measure is called: `est. strength`, `load`, `best set`. */
 export function measureName(measure: Measure): string {
-  if (measure === 'est') return 'est. max'
+  if (measure === 'est') return 'est. strength'
   if (measure === 'load') return 'top load'
   return 'best set'
 }
@@ -127,12 +127,12 @@ export function changeTextFor(history: LiftHistory, delta: number): string {
   return changeText(measure, delta)
 }
 
-/** A Records row: `Best est. max` · `80 kg`, from `60 kg × 10` on its day. */
+/** A Records row: `Best est. strength` · `80 kg`, from `60 kg × 10` on its day. */
 export type RecordRow = { label: string; value: string; detail?: string; at: number }
 
 /**
  * The lift page's Records: `Heaviest set` (the highest lever, the most reps at it; `Least
- * assistance` or `Heaviest added load` on a Bodyweight lift; none on a plain one), `Best est. max`
+ * assistance` or `Heaviest added load` on a Bodyweight lift; none on a plain one), `Best est. strength`
  * (loaded lifts planned for 10 reps or fewer, as records.ts measures it) and `Most reps in a
  * set`. Deload Sessions count; ties keep the earliest.
  */
@@ -164,7 +164,7 @@ export function liftRecordRows(history: LiftHistory): RecordRow[] {
     const label = !bw ? 'Heaviest set' : heaviest.lever <= 0 ? 'Least assistance' : 'Heaviest added load'
     rows.push({ label, value: topText(heaviest, bw), at: heaviest.at })
   }
-  if (est) rows.push({ label: 'Best est. max', value: `${oneDecimal(est.value)} kg`, detail: topText(est, bw), at: est.at })
+  if (est) rows.push({ label: 'Best est. strength', value: `${oneDecimal(est.value)} kg`, detail: topText(est, bw), at: est.at })
   if (most) {
     const label = measure === 'reps' ? 'Most reps in a set' : `Most reps at ${leverText(most.lever, bw)}`
     rows.push({ label, value: plural(most.reps, 'rep'), at: most.at })

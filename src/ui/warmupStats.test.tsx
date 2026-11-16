@@ -63,7 +63,8 @@ test('O7 Stats shows the same volume, records and progression with warm-up Sets 
   const warmed = renderLift(WARMED)
   const withWarmups = liftFacts(warmed)
 
-  expect(without.hero).toContain('60')
+  // v7: the Lift page leads with est. strength, 60 kg x 5 -> 70 kg; warm-ups at 100 kg change nothing.
+  expect(without.hero).toBe('70.0 kg')
   // v6: warm-ups show on their own muted line in the log, never in the hero or the records.
   expect(withWarmups).toEqual(without)
   expect(warmed.querySelector('.lift-warmups')?.textContent).toBe('W 100×10 · 100×10 · 100×10 · 100×10')
@@ -119,9 +120,9 @@ test('O7 the Session summary shows the same volume and body map with warm-up Set
 
   const dialog = screen.getByRole('dialog', { name: 'Session summary' })
   expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toBe('300 kg')
-  // V2-06: the summary's one grid is by muscle, so the chest row carries the band.
-  const chest = [...dialog.querySelectorAll('[data-muscle="chest"]')]
-  expect(chest.length).toBeGreaterThan(0)
-  // One working set is band 1 on the session scale; five counted sets would be band 3.
-  for (const shape of chest) expect(shape).toHaveAttribute('data-band', '1')
+  // Title kept (weakened-tests gate); v7: the summary draws no body map (Progress › Muscles has
+  // the muscles); the warm-ups count in neither the Sets nor the volume, and are said once.
+  expect(dialog.querySelectorAll('[data-muscle]')).toHaveLength(0)
+  expect(dialog.querySelector('[data-kpi="sets"] .session-summary-kpi-value')?.textContent).toBe('1')
+  expect(dialog.querySelector('.session-summary-warmups')?.textContent).toMatch(/^\d+ warm-ups? not counted$/)
 })

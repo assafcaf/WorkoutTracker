@@ -1,7 +1,14 @@
 // E22-T8 [O20 O21 O22]: the Last week card and the Body row on the Progress home.
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+// v7 (study §1.7): the Last week table is cut from Progress -- it repeated the weeks strip in a
+// worse form. Each test keeps its title: it asserts the table is gone and that the week's numbers
+// it used to print are still what the engine (`lastWeekCard`) gives for that week.
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import sessionsJson from '../../test/fixtures/stats/sessions.json'
+import { loadCatalog, loadPrograms } from '../../data/catalog'
+import { dayMonth } from '../../domain/stats/words'
+import { lastWeekCard } from '../../domain/stats/weekCard'
+import type { Weekday } from '../../domain/stats/weeks'
 import { createServices } from '../../services'
 import { db } from '../../storage/db'
 import { setActiveProgramId, setWeekStart } from '../../storage/settingsStore'
@@ -16,6 +23,9 @@ const THU_15 = new Date(2026, 9, 15, 18, 5).getTime()
 const MON_19 = new Date(2026, 9, 19, 9, 0).getTime()
 const SETTLE = { timeout: 5000 }
 const fixture = sessionsJson as unknown as Session[]
+const catalog = loadCatalog()
+const program = loadPrograms().find((p) => p.id === 'assaf-ab-2026')!
+const planOf = (id: string) => program.workouts.flatMap((w) => w.exercises).find((e) => e.exerciseId === id)
 
 beforeEach(async () => {
   await db.open()
@@ -35,59 +45,72 @@ async function mount(sessions: Session[], now: number) {
   return { push }
 }
 
-const card = () => waitFor(() => screen.getByRole('region', { name: 'Last week' }), SETTLE)
-const row = (c: HTMLElement, label: string) => (within(c).getByText(label).closest('li') as HTMLElement).textContent
+/** The page has drawn (its Body row), and it has no Last week table. */
+async function noTable() {
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Body/ })).toBeTruthy(), SETTLE)
+  expect(screen.queryByRole('region', { name: 'Last week' })).toBeNull()
+  expect(document.querySelector('.progress-lastweek')).toBeNull()
+}
+
+const week = (sessions: Session[], now: number, weekStart: Weekday = 1) =>
+  lastWeekCard(sessions, now, (id) => catalog.get(id), planOf, weekStart, [])!
+
+/** `5 Oct` to `11 Oct`: the week's first and last day. */
+const span = (card: { start: number; end: number }) => [dayMonth(card.start), dayMonth(card.end - 12 * 3600_000)]
 
 describe('E22-T8 O20 the Last week card', () => {
   test('O20 reads the dates and four rows with their change on the week before', async () => {
     await mount(fixture, THU_15)
-    const c = await card()
-    expect(within(c).getByText('5–11 Oct')).toBeTruthy()
-    expect(row(c, 'Sessions')).toContain('3')
-    expect(row(c, 'Sessions')).toContain('same')
-    expect(row(c, 'Sets')).toContain('69')
-    expect(row(c, 'Sets')).toContain('same')
-    expect(row(c, 'Volume')).toContain('15,908 kg')
-    expect(row(c, 'Volume')).toContain('−11 %')
-    // v6 §6.2: the PRs row is cut from Last week (PRs show per Session, by the shared V5-06 rule).
-    expect(within(c).queryByText('PRs')).toBeNull()
+    await noTable()
+    const card = week(fixture, THU_15)
+    expect(span(card)).toEqual(['5 Oct', '11 Oct'])
+    expect(card.last.sessions).toBe(3)
+    expect(card.before.sessions).toBe(3)
+    expect(card.last.sets).toBe(69)
+    expect(card.before.sets).toBe(69)
+    expect(Math.round(card.last.volumeKg)).toBe(15908)
+    expect(Math.round(((card.last.volumeKg - card.before.volumeKg) / card.before.volumeKg) * 100)).toBe(-11)
   })
 
   test('O20 a drop in Sessions and Sets shows its signed difference', async () => {
     await mount(fixture, MON_19)
-    const c = await card()
-    expect(within(c).getByText('12–18 Oct')).toBeTruthy()
-    expect(row(c, 'Sessions')).toContain('−1')
-    expect(row(c, 'Sets')).toContain('−22')
-    expect(row(c, 'Volume')).toContain('11,000 kg')
-    expect(row(c, 'Volume')).toContain('−31 %')
-    expect(within(c).queryByText('PRs')).toBeNull()
+    await noTable()
+    const card = week(fixture, MON_19)
+    expect(span(card)).toEqual(['12 Oct', '18 Oct'])
+    expect(card.last.sessions - card.before.sessions).toBe(-1)
+    expect(card.last.sets - card.before.sets).toBe(-22)
+    expect(Math.round(card.last.volumeKg)).toBe(11000)
+    expect(Math.round(((card.last.volumeKg - card.before.volumeKg) / card.before.volumeKg) * 100)).toBe(-31)
   })
 
   test('O20 sits above This week', async () => {
+    // v7: neither This week nor Last week is on Progress; the weeks strip sits above the ledger,
+    // and the ledger above Muscles.
     await mount(fixture, THU_15)
-    const c = await card()
-    // V2-05: This week moved to Train. v6 §6.2: the card sits under the Lifts list and above Muscles.
+    await noTable()
     expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
-    const lifts = await waitFor(() => screen.getByRole('region', { name: 'Lifts' }), SETTLE)
-    expect(lifts.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const weeks = screen.getByRole('region', { name: 'Weeks' })
+    const lifts = screen.getByRole('region', { name: 'Lifts' })
+    expect(weeks.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const muscles = screen.getByRole('button', { name: /^Muscles/ })
-    expect(c.compareDocumentPosition(muscles) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(lifts.compareDocumentPosition(muscles) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   test('O20 a first week on record says so instead of showing changes', async () => {
     const onlyLast = fixture.filter((s) => s.startedAt >= new Date(2026, 9, 12).getTime())
     await mount(onlyLast, MON_19)
-    const c = await card()
-    expect(within(c).getByText('First week on record')).toBeTruthy()
-    expect(within(c).queryByText('same')).toBeNull()
-    expect(c.textContent).not.toContain('%')
+    await noTable()
+    expect(screen.queryByText('First week on record')).toBeNull()
+    const card = week(onlyLast, MON_19)
+    expect(card.before.sessions).toBe(0)
+    expect(card.last.sessions).toBeGreaterThan(0)
   })
 
   test('O20 shows no card when neither week had a Session', async () => {
-    await mount(fixture, new Date(2026, 11, 14, 9).getTime())
-    await waitFor(() => expect(screen.getByRole('button', { name: /Body/ })).toBeTruthy(), SETTLE)
-    expect(screen.queryByRole('region', { name: 'Last week' })).toBeNull()
+    const at = new Date(2026, 11, 14, 9).getTime()
+    await mount(fixture, at)
+    await noTable()
+    expect(lastWeekCard(fixture, at, (id) => catalog.get(id), planOf, 1, [])).toBeNull()
   })
 })
 
@@ -95,14 +118,14 @@ describe('E22-T8 O21 the trainee week', () => {
   test('O21 weekStart 6 on Mon 19 Oct covers Sat 10 to Fri 16 Oct', async () => {
     await setWeekStart(6, MON_19)
     await mount(fixture, MON_19)
-    const c = await card()
-    expect(within(c).getByText('10–16 Oct')).toBeTruthy()
+    await noTable()
+    expect(span(week(fixture, MON_19, 6))).toEqual(['10 Oct', '16 Oct'])
   })
 
   test('O21 with nothing stored it covers Mon 12 to Sun 18 Oct', async () => {
     await mount(fixture, MON_19)
-    const c = await card()
-    expect(within(c).getByText('12–18 Oct')).toBeTruthy()
+    await noTable()
+    expect(span(week(fixture, MON_19))).toEqual(['12 Oct', '18 Oct'])
   })
 })
 

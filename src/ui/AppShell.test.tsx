@@ -174,7 +174,7 @@ test('O7 AppShell holds a nav labelled Main with exactly the Workout, Program, E
     </AppShell>,
   )
 
-  expect(tabNames()).toEqual(['Train', 'Progress', 'Sessions', 'Program'])
+  expect(tabNames()).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
 })
 
 test('O7 AppShell marks the tab it was given, and no other, as the current page', () => {
@@ -258,7 +258,7 @@ test('O7 AppShell leaves the Settings tab named exactly Settings while the backu
   // The marker sits inside the gear, so unless the gear names itself the trainee -- and every
   // test that reaches Settings by name -- loses the control called "Settings".
   expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible()
-  expect(tabNames()).toEqual(['Train', 'Progress', 'Sessions', 'Program'])
+  expect(tabNames()).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
 })
 
 test('O7 AppShell shows no backup-due marker when settingsBadge is not set', () => {
@@ -278,7 +278,7 @@ test('O7 AppShell shows no backup-due marker when settingsBadge is not set', () 
 test('O7 TabBar offers the five tabs as buttons inside a nav labelled Main', () => {
   const { container } = render(<TabBar current="dashboard" onChange={vi.fn()} />)
 
-  expect(tabNames()).toEqual(['Train', 'Progress', 'Sessions', 'Program'])
+  expect(tabNames()).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
   // E3-T8's tap-target audit reads its floor off `.tab-bar-tab`, so the class is contract.
   expect([...container.querySelectorAll('nav.tab-bar button.tab-bar-tab')]).toHaveLength(4)
 })
@@ -290,7 +290,7 @@ test('M11 TabBar renders Workout, Program, Exercises, History and Settings in th
   const onChange = vi.fn()
   render(<TabBar current="dashboard" onChange={onChange} />)
 
-  const order = ['Train', 'Progress', 'Sessions', 'Program']
+  const order = ['Home', 'Progress', 'Sessions', 'Program']
   expect(tabNames()).toEqual(order)
 
   for (const name of order) {

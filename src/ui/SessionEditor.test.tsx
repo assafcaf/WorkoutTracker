@@ -114,6 +114,17 @@ function ordered(entries: SetEntry[]): SetEntry[] {
 
 // --- O13: what the editor shows -----------------------------------------------------------------
 
+
+/**
+ * v7: a Set row writes its Set through SetFigure (src/ui/figures), whose `×` sits in its own span,
+ * so a row's Set is found by its figure: `setFigure('60 × 8')` matches the `.set-figure` reading
+ * `60×8` (the spaces around the × are drawn by CSS).
+ */
+function setFigure(text: string): (content: string, element: Element | null) => boolean {
+  return (_content, element) =>
+    element !== null && element.classList.contains('set-figure') && element.textContent === text.replace(/ /g, '')
+}
+
 test('O13 SessionEditor shows the Workout name as its heading', () => {
   renderEditor()
 
@@ -136,9 +147,9 @@ test('O13 SessionEditor groups the Sets by Exercise, each Set with an edit and a
   renderEditor()
 
   const squat = group('Back squat')
-  expect(within(squat).getByText('60 × 8')).toBeVisible()
-  expect(within(squat).getByText('62.5 × 6')).toBeVisible()
-  expect(within(squat).getByText('65 × 5')).toBeVisible()
+  expect(within(squat).getByText(setFigure('60 × 8'))).toBeVisible()
+  expect(within(squat).getByText(setFigure('62.5 × 6'))).toBeVisible()
+  expect(within(squat).getByText(setFigure('65 × 5'))).toBeVisible()
   for (const setIndex of [1, 2, 3]) {
     expect(within(squat).getByRole('button', { name: new RegExp(`^Edit Back squat set ${setIndex},`) })).toBeVisible()
     expect(within(squat).getByRole('button', { name: new RegExp(`^Delete Back squat set ${setIndex},`) })).toBeVisible()
@@ -146,10 +157,10 @@ test('O13 SessionEditor groups the Sets by Exercise, each Set with an edit and a
   expect(within(squat).queryByRole('button', { name: /^Edit Back squat set 4,/ })).toBeNull()
 
   const dips = group('Dips')
-  expect(within(dips).getByText('BW × 10')).toBeVisible()
+  expect(within(dips).getByText(setFigure('BW × 10'))).toBeVisible()
   expect(within(dips).getByRole('button', { name: 'Edit Dips set 1, BW × 10' })).toBeVisible()
   expect(within(dips).getByRole('button', { name: 'Delete Dips set 1, BW × 10' })).toBeVisible()
-  expect(within(dips).queryByText('60 × 8')).toBeNull()
+  expect(within(dips).queryByText(setFigure('60 × 8'))).toBeNull()
 })
 
 test('O13 SessionEditor has one Add set under each Exercise', () => {
@@ -188,7 +199,7 @@ test('O14 SessionEditor saves a deleted Set gone and the Exercise\'s later Sets 
   const user = userEvent.setup()
 
   await user.click(within(group('Back squat')).getByRole('button', { name: /^Delete Back squat set 1,/ }))
-  expect(within(group('Back squat')).queryByText('60 × 8')).toBeNull()
+  expect(within(group('Back squat')).queryByText(setFigure('60 × 8'))).toBeNull()
   await user.click(saveButton())
 
   expect(await savedDraft(onSave)).toEqual({
@@ -276,8 +287,8 @@ test('O14 SessionEditor shows a rejected save\'s message and keeps the draft', a
   await user.click(saveButton())
 
   expect(await screen.findByRole('alert')).toHaveTextContent('the workout could not be saved')
-  expect(within(group('Back squat')).queryByText('60 × 8')).toBeNull()
-  expect(within(group('Back squat')).getByText('62.5 × 6')).toBeVisible()
+  expect(within(group('Back squat')).queryByText(setFigure('60 × 8'))).toBeNull()
+  expect(within(group('Back squat')).getByText(setFigure('62.5 × 6'))).toBeVisible()
   expect(saveButton()).toBeEnabled()
 })
 
@@ -446,7 +457,7 @@ test('V6-14 a warm-up Set reads "W 40 × 5", the W muted and named Warm-up', () 
 
   const squat = group('Back squat')
   const warmUp = within(squat).getAllByRole('listitem')[0]
-  expect(warmUp.querySelector('.session-editor-set-values')).toHaveTextContent(/^W\s?40 × 5$/)
+  expect(warmUp.querySelector('.session-editor-set-values')).toHaveTextContent(/^W\s?40\s?×\s?5$/)
   expect(warmUp.querySelector('.session-editor-set-kind')).toHaveAttribute('aria-hidden', 'true')
   expect(within(squat).getByRole('button', { name: 'Delete Back squat set 1, warm-up 40 × 5' })).toBeVisible()
   expect(within(squat).getByRole('button', { name: 'Delete Back squat set 2, 62.5 × 6' })).toBeVisible()
@@ -503,7 +514,7 @@ test('V6-13 Add exercise picks an Exercise and adds it with one Set, open on the
 
   expect(screen.queryByRole('dialog', { name: 'Add exercise' })).toBeNull()
   const dips = group('Dips')
-  expect(within(dips).getByText('BW × 8')).toBeVisible()
+  expect(within(dips).getByText(setFigure('BW × 8'))).toBeVisible()
   expect(within(dips).getByRole('button', { name: 'Edit Dips set 1, BW × 8' })).toHaveAttribute('aria-pressed', 'true')
 
   await user.click(saveButton())

@@ -40,6 +40,8 @@ export type DashboardScreenProps = {
   onOpenSession?(sessionId: string): void
   /** V6-03: opens the one Lift page from a lift's name. */
   onOpenLift?(exerciseId: string): void
+  /** v7: the workout page's Back, to Home. */
+  onBack?(): void
 }
 
 type Loaded = {
@@ -88,6 +90,18 @@ function workoutSummary(workout: Workout, loggedMinutes?: number): string {
   return `${exercises} exercises · ${sets} sets · ~${loggedMinutes ?? minutes} min`
 }
 
+const LONG_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/** v7: when a Workout was last done, as the headline says it: `Monday` this past week, else the day. */
+function sameAsText(last: number, now: number): string {
+  const day = (ms: number): number => {
+    const d = new Date(ms)
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  }
+  const days = Math.round((day(now) - day(last)) / 86_400_000)
+  return days >= 1 && days < 7 ? LONG_DAYS[new Date(last).getDay()] : formatDay(new Date(last), new Date(now))
+}
+
 function syncOf(view: SyncView, now: number): DashboardSync {
   const offline = view.status === 'offline' || (typeof navigator !== 'undefined' && navigator.onLine === false)
   if (offline) return { kind: 'offline' }
@@ -113,6 +127,7 @@ export function DashboardScreen({
   onOpenSessions,
   onOpenSession,
   onOpenLift,
+  onBack,
 }: DashboardScreenProps): JSX.Element {
   const services = useServices()
   const { sync, syncNow } = useSyncControls()
@@ -186,6 +201,7 @@ export function DashboardScreen({
           workoutId: workout.id,
           name: workout.name,
           last: last === null ? null : formatDay(new Date(last), new Date(at)),
+          sameAs: last === null ? null : sameAsText(last, at),
           // V6-15: one estimate for every Workout, the one the Program tab shows too.
           minutes: workoutMinutes(program, workout, sessions).minutes,
           ...noteOf(workout.id),
@@ -226,6 +242,7 @@ export function DashboardScreen({
       onOpenSessions={onOpenSessions}
       onOpenSession={onOpenSession}
       onOpenLift={onOpenLift}
+      onBack={onBack}
     />
   )
 }

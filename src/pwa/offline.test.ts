@@ -240,11 +240,11 @@ test('O4 with the network down the program picker renders the active program', a
   // The Dashboard (S1) reads the active program A/B Split as its workout due and its muscle
   // week planned against it; the program's own name is the Program tab's heading.
   const text = await screenText()
-  // V3-08: the workout due is Train's title, with its time in the dock.
-  expect(text).toMatch(/~\d+ min/)
+  // v7: the app opens on Home, whose Today panel names the workout due with its size and time.
+  expect(text).toMatch(/\d+ lifts · about \d+ min/)
   expect(text).toContain('Workout A')
-  // A fresh install has no sets yet: the lifts list, without the legend (V1-33).
-  expect(text).toContain('Back squat')
+  // A fresh install has no sets yet: the Lifts block is still drawn, each lift's line to come.
+  expect(text).toContain('Lifts · 12 weeks')
 }, LAUNCH_TIMEOUT)
 
 test('O4 with the network down the program picker offers the workouts to start', async () => {

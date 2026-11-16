@@ -125,7 +125,7 @@ export function LibraryList({
   return (
     <div className="library-list-container">
       {onNew === undefined ? null : (
-        <button type="button" className="btn-secondary" onClick={onNew}>
+        <button type="button" className="library-new btn-secondary" onClick={onNew}>
           New exercise
         </button>
       )}

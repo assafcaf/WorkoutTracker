@@ -67,7 +67,8 @@ async function syncSettled(): Promise<void> {
 test('O19 with an empty database the Workout tab shows No program yet', async () => {
   await renderApp()
 
-  expect(await screen.findByText('No program yet', undefined, SETTLE)).toBeVisible()
+  // v7: Home's first block is the plan pick.
+  expect(await screen.findByRole('heading', { name: 'Pick a plan' }, SETTLE)).toBeVisible()
 })
 
 test('O19 with an empty database the Workout tab shows no Workout start buttons', async () => {
@@ -75,16 +76,22 @@ test('O19 with an empty database the Workout tab shows no Workout start buttons'
   await appReady()
   await syncSettled()
 
-  expect(screen.queryAllByRole('button', { name: /^Start / })).toEqual([])
+  // v7: no Workout of any Program is offered; the dock's one Start is the plan pick's, and it
+  // names the first Workout of the plan picked.
+  expect(await screen.findByRole('radio', { name: /^A\/B Split/ }, SETTLE)).toHaveAttribute('aria-checked', 'true')
+  expect(screen.queryAllByRole('button', { name: /^Start / }).map((button) => button.textContent)).toEqual([
+    'Start Workout A',
+  ])
+  expect(screen.queryByRole('button', { name: /Open the workout\.$/ })).toBeNull()
 })
 
 test('O19 with an empty database Choose a program opens the Program tab', async () => {
   const user = userEvent.setup()
   await renderApp()
 
-  // The Dashboard (S8) offers the Programs to pick from in place, with "Use <program>" in its
-  // dock; the Program tab, with every Program's plan, is the tab bar's Program tab.
-  expect(await screen.findByRole('button', { name: 'Use A/B Split' }, SETTLE)).toBeVisible()
+  // v7: Home offers the Programs to pick from in place, with "Start <first workout>" in its dock;
+  // the Program tab, with every Program's plan, is the tab bar's Program tab.
+  expect(await screen.findByRole('radio', { name: /^A\/B Split/ }, SETTLE)).toBeVisible()
   await user.click(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('button', { name: 'Program' }))
 
   expect(screen.getByRole('button', { name: 'Program' })).toHaveAttribute('aria-current', 'page')
@@ -103,7 +110,7 @@ test('O20 with no stored choice the Workout tab offers the Workouts of the lates
 
   expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
-  expect(screen.queryByText('No program yet')).toBeNull()
+  expect(screen.queryByRole('heading', { name: 'Pick a plan' })).toBeNull()
 })
 
 test('O20 with no stored choice the latest Session’s Program is stored as activeProgramId', async () => {
@@ -140,10 +147,10 @@ test('O22 a sync that pulls activeProgramId makes the Workout tab offer that Pro
   const release = server.hold('/api/sync')
 
   await renderApp()
-  expect(await screen.findByText('No program yet', undefined, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('heading', { name: 'Pick a plan' }, SETTLE)).toBeVisible()
 
   release()
 
   expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
-  expect(screen.queryByText('No program yet')).toBeNull()
+  expect(screen.queryByRole('heading', { name: 'Pick a plan' })).toBeNull()
 })

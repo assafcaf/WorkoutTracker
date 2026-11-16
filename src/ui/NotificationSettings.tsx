@@ -81,7 +81,7 @@ export function NotificationSettings(props: NotificationSettingsProps): JSX.Elem
     // V2-09: Notifications and Reminders are one group, as one card: turn push on, then when.
     <section className="settings-group" aria-label="Reminders">
       <h2 className="settings-legend">Reminders</h2>
-      <div className="settings-card card">
+      <div className="settings-card">
         {explanation ? <p className="settings-action notify-note">{explanation}</p> : null}
         {status === 'off' ? (
           <button type="button" className="settings-action btn-quiet" onClick={onEnable}>

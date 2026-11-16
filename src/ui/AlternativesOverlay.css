@@ -5,21 +5,35 @@
  * one definition site.
  */
 
+/* v7: the compact bar every pushed page wears (`.app-header-bar`): 56 px on the surface over a
+ * hairline, the title centred, Close at the right. */
 .alternatives-overlay-header {
   position: sticky;
+  z-index: 1;
   top: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-bg);
+  gap: var(--space-1);
+  min-height: 56px;
+  margin-bottom: var(--space-3);
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+  background: var(--color-surface);
 }
 
 .alternatives-overlay-heading {
+  flex: 1;
+  min-width: 0;
   margin: 0;
-  font-size: var(--text-xl);
+  /* As wide again on the left as Close is on the right, so the title sits on the centre line. */
+  padding-left: var(--tap-min);
   color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.375rem;
+  text-align: center;
+  overflow-wrap: break-word;
 }
 
 /* V5-11: an X icon button, at least 44 x 44. */

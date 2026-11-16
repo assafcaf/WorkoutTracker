@@ -1,5 +1,5 @@
-/* Sparkline: a word-sized trend in --color-secondary over a hairline baseline. Every colour is a
- * token from src/styles/tokens.css. */
+/* Sparkline (study §3 Chart): a word-sized trend, a grey line and an end dot in the status
+ * colour. Every colour is a token from src/styles/tokens.css. */
 
 .sparkline {
   display: block;
@@ -7,21 +7,22 @@
   overflow: visible;
 }
 
-.sparkline-base {
-  stroke: var(--color-hairline);
-  stroke-width: 1px;
-}
-
 .sparkline-line {
   fill: none;
-  stroke: var(--color-secondary);
-  stroke-width: 1.75px;
+  stroke: var(--chart-b);
+  stroke-width: 1.5px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .sparkline-end {
-  fill: var(--color-secondary);
-  stroke: var(--color-surface);
-  stroke-width: 1.5px;
+  fill: var(--color-muted);
+}
+
+.sparkline-end[data-tone='up'] {
+  fill: var(--color-up);
+}
+
+.sparkline-end[data-tone='down'] {
+  fill: var(--color-down);
 }

@@ -9,12 +9,12 @@ export type LiftChartPoint = {
   /** Epoch ms: points sit on a time axis, so a deload week shows at its real width. */
   at: number
   value: number
-  /** A deload Session: a hollow point inside a shaded band, never joined to the line. */
+  /** A deload Session: a hollow point inside a grey band, never joined to the line. */
   deload: boolean
-  /** A real record: filled in the accent. */
+  /** A real record (`liftPrs` / `isRealRecord`): the standing one wears the gold ring. */
   record: boolean
-  /** Drawn over the point where it fits: the top-set reps (`8`) or the top set (`62.5×8`). */
-  label: string
+  /** v7: kept for callers; the chart draws no per-point labels. */
+  label?: string
   /** The readout's title: `Fri 9 Oct`. */
   date: string
   /** The readout's line: `60 kg × 10, 10`. */
@@ -25,22 +25,22 @@ export type LiftChartProps = {
   points: LiftChartPoint[]
   /** The chart's accessible name: one sentence on where the line went. */
   summary: string
-  /** How a value tick reads. */
+  /** How a value tick reads (and the record's `PR 90`). */
   tickText(value: number): string
-  /** Joins consecutive points as steps (top-set weight) rather than slopes (est. max). */
+  /** Joins consecutive points as steps (top-set weight) rather than slopes (est. strength). */
   step?: boolean
-  /** A caption over the value ticks, e.g. `est. max, kg`. */
+  /** A caption over the value ticks, e.g. `est. strength, kg`; left out, none. */
   axisLabel?: string
-  /** `Deload 21–25 Sep`: the caption under each deload band, by the band's first point id. */
+  /** `Deload 21–25 Sep`: the caption under each deload band. */
   bandCaption(fromAt: number, toAt: number): string
   /** Opens a point's Session from its readout. */
   onOpenSession?: (sessionId: string) => void
 }
 
 const HEIGHT = 168
-const PAD_TOP = 24
-const PAD_BOTTOM = 10
-const PAD_X = 14
+const PAD_TOP = 26
+const PAD_BOTTOM = 8
+const PAD_X = 8
 const FALLBACK_WIDTH = 300
 const GAP_MS = 14 * 24 * 3600_000
 /** The width of one character of the 0.75rem label font, as a share of the root font size. */
@@ -99,10 +99,11 @@ export function placeLabels(items: { x: number; width: number }[], order: number
 }
 
 /**
- * One lift over time (v6 §6.3): the non-deload Sessions joined as steps (weight) or a line (est.
- * max), each point labelled where its label fits, real records filled in the accent. Deload
- * Sessions are hollow, unjoined, inside a shaded band whose caption sits in one lane under the
- * axis -- never inside the plot, never overprinting. A gap of 14 days or more (a missed week of the lift) is a dashed segment.
+ * One lift over time (study §3 Chart, v7): the non-deload Sessions joined in one 2 px ink line
+ * (steps for the top-set weight, slopes for est. strength), three hairline gridlines labelled on
+ * the right, and no point labels. The latest point is a filled ink dot; the standing record --
+ * the best real record in the range -- is a gold ring with `PR 90`. A deload is a grey band with
+ * a hollow point, its caption in one lane under the axis. A gap of 14 days or more is dashed.
  * Each point owns a full-height column to tap or focus; the readout sits above the chart.
  */
 export function LiftChart({ points, summary, tickText, step = false, axisLabel, bandCaption, onOpenSession }: LiftChartProps): JSX.Element {
@@ -112,7 +113,7 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
 
   const charPx = rootFontPx() * CHAR_EM
   const values = points.map((p) => p.value)
-  const ticks = ticksFor(Math.min(...values), Math.max(...values), 3)
+  const ticks = ticksFor(Math.min(...values), Math.max(...values), 2)
   const low = ticks[0]
   const high = ticks[ticks.length - 1]
   const yOf = (v: number): number => PAD_TOP + (1 - (v - low) / (high - low || 1)) * (HEIGHT - PAD_TOP - PAD_BOTTOM)
@@ -134,11 +135,16 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
     const d = step ? `M${a.x},${a.y} H${b.x} V${b.y}` : `M${a.x},${a.y} L${b.x},${b.y}`
     ;(b.at - a.at >= GAP_MS ? dashed : solid).push(d)
   }
+  const lastLine = line.length > 0 ? placed.lastIndexOf(line[line.length - 1]) : -1
 
-  // Point labels: the latest first, then newest to oldest, each only where it fits.
-  const labelItems = placed.map((p) => ({ x: p.x, width: p.label.length * charPx + 4 }))
-  const order = placed.map((_, i) => end - i).filter((i) => !placed[i].deload)
-  const labelled = new Set(placeLabels(labelItems, order, 4, width))
+  // The standing record: the highest real record in the range, the latest of equals.
+  let best = -1
+  placed.forEach((p, i) => {
+    if (p.record && !p.deload && (best === -1 || p.value >= placed[best].value)) best = i
+  })
+  const prText = best === -1 ? '' : `PR ${tickText(placed[best].value)}`
+  const prWidth = prText.length * charPx + 4
+  const prX = best === -1 ? 0 : Math.max(prWidth / 2, Math.min(width - prWidth / 2, placed[best].x))
 
   // Deload bands: half the gap either side of the run.
   const bands = deloadRuns(points).map(([a, b]) => {
@@ -155,22 +161,10 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
   return (
     <div className="lift-chart">
       {chosen ? (
-        <ChartReadout
-          date={chosen.date}
-          value={chosen.readout}
-          sessionId={chosen.id}
-          onOpenSession={onOpenSession}
-        />
+        <ChartReadout date={chosen.date} value={chosen.readout} sessionId={chosen.id} onOpenSession={onOpenSession} />
       ) : null}
       {axisLabel ? <p className="lift-chart-axis-label">{axisLabel}</p> : null}
       <div className="lift-chart-grid">
-        <div className="lift-chart-y" aria-hidden="true" style={{ height: HEIGHT }}>
-          {ticks.map((tick) => (
-            <span key={tick} className="lift-chart-tick" style={{ top: yOf(tick) }}>
-              {tickText(tick)}
-            </span>
-          ))}
-        </div>
         <div className="lift-chart-canvas" ref={ref}>
           <svg className="lift-chart-svg" role="img" aria-label={summary} width={width} height={HEIGHT} viewBox={`0 0 ${width} ${HEIGHT}`}>
             {bands.map((b, i) => (
@@ -181,28 +175,26 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
             ))}
             {solid.length > 0 ? <path className="lift-chart-line" d={solid.join(' ')} /> : null}
             {dashed.length > 0 ? <path className="lift-chart-line lift-chart-gap" d={dashed.join(' ')} /> : null}
-            {placed.map((p, i) => (
-              <circle
-                key={p.id}
-                className={`lift-chart-point${p.deload ? ' lift-chart-point-deload' : p.record ? ' lift-chart-point-record' : ''}`}
-                data-record={p.record ? '' : undefined}
-                aria-pressed={selected === i}
-                cx={p.x}
-                cy={p.y}
-                r={p.record || i === end ? 5 : 3.5}
-              />
-            ))}
             {placed.map((p, i) => {
-              if (!labelled.has(i)) return null
-              const half = labelItems[i].width / 2
-              const anchor = p.x + half > width ? 'end' : p.x - half < 0 ? 'start' : 'middle'
-              const x = anchor === 'end' ? width : anchor === 'start' ? 0 : p.x
+              const kind = p.deload ? 'deload' : i === best ? 'record' : i === lastLine ? 'last' : null
+              if (kind === null && selected !== i) return null
               return (
-                <text key={`l${p.id}`} className="lift-chart-label" x={x} y={Math.max(12, p.y - 9)} textAnchor={anchor}>
-                  {p.label}
-                </text>
+                <circle
+                  key={p.id}
+                  className={`lift-chart-point${kind ? ` lift-chart-point-${kind}` : ''}`}
+                  data-record={kind === 'record' ? '' : undefined}
+                  aria-pressed={selected === i}
+                  cx={p.x}
+                  cy={p.y}
+                  r={kind === 'record' ? 5.5 : kind === 'deload' ? 4 : 4.5}
+                />
               )
             })}
+            {best === -1 ? null : (
+              <text className="lift-chart-pr" x={prX} y={Math.max(12, placed[best].y - 11)} textAnchor="middle">
+                {prText}
+              </text>
+            )}
           </svg>
           <div className="lift-chart-hits">
             {placed.map((p, i) => {
@@ -234,7 +226,13 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
             })}
           </div>
         </div>
-        <span aria-hidden="true" />
+        <div className="lift-chart-y" aria-hidden="true" style={{ height: HEIGHT }}>
+          {ticks.map((tick) => (
+            <span key={tick} className="lift-chart-tick" style={{ top: yOf(tick) }}>
+              {tickText(tick)}
+            </span>
+          ))}
+        </div>
         <div className="lift-chart-under" aria-hidden="true">
           <div className="lift-chart-dates">
             <span>{placed[0].date.replace(/^\S+ /, '')}</span>

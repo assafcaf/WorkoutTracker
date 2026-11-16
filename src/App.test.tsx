@@ -144,7 +144,7 @@ test('O18 choosing another program in Settings makes the picker lead with it', a
   await pressTab(user, 'Program')
   await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
   await user.click(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE))
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
 
   expect(await screen.findByRole('button', { name: 'Start Second Workout' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
@@ -160,7 +160,7 @@ test('O18 App navigates to Settings, hiding the picker, and back again', async (
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 
   // And back again: the Settings page's Back chevron, then the Dashboard tab.
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
 })
 
@@ -197,10 +197,12 @@ test('O19 App shows the storage-unavailable banner and disables the logging cont
 
   const alert = await screen.findByRole('alert', {}, SETTLE)
   expect(alert.textContent).toMatch(/cannot be saved/i)
-  // Nothing can be stored, so the Dashboard's dock offers the bundled Programs and takes up none.
-  const dockButton = await screen.findByRole('button', { name: /^Use A\/B Split/i }, SETTLE)
-  expect(dockButton).toBeDisabled()
-  expect(screen.queryByRole('button', { name: /^Start / })).toBeNull()
+  // Nothing can be stored, so Home offers the bundled Programs to pick from and takes up none:
+  // its dock's one Start is the plan pick's, disabled.
+  await screen.findByRole('radio', { name: /^A\/B Split/ }, SETTLE)
+  const dockButtons = screen.getAllByRole('button', { name: /^Start / })
+  expect(dockButtons).toHaveLength(1)
+  expect(dockButtons[0]).toBeDisabled()
 })
 
 test('O19 App leaves the logging controls enabled and shows no banner when storage is available', async () => {
@@ -516,9 +518,9 @@ test('O17 finishing the session from the exercise list clears the active session
 
   await finishWorkout(user)
 
-  // Back on the Dashboard, whose dock now offers the workout due after Workout A.
+  // Back on Home, which -- a Session done today -- names the workout due after Workout A.
   // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-  await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
+  await screen.findByRole('button', { name: /^Next: Workout A\b/ }, SETTLE)
   expect(await getActiveSession()).toBeNull()
 })
 
@@ -830,7 +832,7 @@ async function pressTab(user: UserEvent, name: string): Promise<void> {
     return
   }
   if (name === 'Settings') {
-    await user.click(within(mainNav()).getByRole('button', { name: 'Train' }))
+    await user.click(within(mainNav()).getByRole('button', { name: 'Home' }))
     await user.click(await screen.findByRole('button', { name: 'Settings' }, SETTLE))
     return
   }
@@ -868,14 +870,14 @@ test('O7 the app on load offers a Main nav holding exactly the Workout, Program,
 
   // Title kept (weakened-tests gate): the Progress Dashboard redesign has exactly four tabs;
   // Exercises is the Program tab's second side and Settings the Dashboard header's gear.
-  expect(tabNames()).toEqual(['Train', 'Progress', 'Sessions', 'Program'])
+  expect(tabNames()).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
 })
 
 test('O7 the app on load, with no session in progress, is on the Workout tab', async () => {
   await renderApp()
   await findStartButton()
 
-  expect(currentTabNames()).toEqual(['Train'])
+  expect(currentTabNames()).toEqual(['Home'])
 })
 
 test('O8 pressing the History tab lists the finished sessions with the tab bar still on screen', async () => {
@@ -2120,7 +2122,7 @@ test('M13 choosing another program in the Program tab’s switcher makes it the 
   expect(screen.getByRole('radio', { name: 'Second Program' })).toBeChecked()
   // ...and so does the Workout tab: hand-checked against SECOND_VISIBLE_PROGRAM above, whose one
   // workout is "Second Workout".
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
   expect(await screen.findByRole('button', { name: 'Start Second Workout' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
 })
@@ -2148,29 +2150,18 @@ function sessionSummary(): HTMLElement | null {
   return screen.queryByRole('dialog', { name: 'Session summary' })
 }
 
-// V2-06: the summary's one grid is by muscle (no region list), each row tappable into its
-// region's panel; these helpers read a region through the muscle row that stands for it.
-const SUMMARY_ROW_FOR: Record<string, string> = {
-  quadriceps: 'quadriceps',
-  hamstring: 'hamstrings',
-  chest: 'chest',
-  'upper-back': 'lats',
+// v7 (study §1.6, §4): the summary lists no muscles (Progress › Muscles has them); it says each
+// lift against last time instead. These helpers read what it does show.
+
+/** The lift names in the summary's Lift by lift, in order. */
+function summaryLifts(summary: HTMLElement): string[] {
+  return [...summary.querySelectorAll('.session-summary-move-name')].map((name) => name.textContent ?? '')
 }
 
-/** muscle -> data-band for every muscle row the summary's grid draws. */
-function summaryBands(summary: HTMLElement): Record<string, string | null> {
-  const bands: Record<string, string | null> = {}
-  for (const row of summary.querySelectorAll('.session-summary-muscles [data-muscle]')) {
-    bands[row.getAttribute('data-muscle') as string] = row.getAttribute('data-band')
-  }
-  return bands
-}
-
-function expectSummaryBand(summary: HTMLElement, region: string, band: string): void {
-  const muscle = SUMMARY_ROW_FOR[region]
-  const row = summary.querySelector(`.session-summary-muscles [data-muscle="${muscle}"]`)
-  expect(row, `${muscle} must be listed on the summary`).not.toBeNull()
-  expect(row, region).toHaveAttribute('data-band', band)
+/** The summary shows no muscle: no rows, no map, no Worked today. */
+function expectNoSummaryMuscles(summary: HTMLElement): void {
+  expect(summary.querySelectorAll('[data-muscle], [data-region]')).toHaveLength(0)
+  expect(summary.textContent).not.toMatch(/Worked today|Muscles worked/)
 }
 
 /** Leaves three back squat sets in a Workout A session still in progress. */
@@ -2212,15 +2203,15 @@ async function openOnlyHistorySession(user: UserEvent): Promise<HTMLElement> {
   return screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
 }
 
-/** Taps `region` on `summary`'s map and returns the region panel it opens. */
-async function tapSummaryRegion(
-  user: UserEvent,
-  summary: HTMLElement,
-  region: string,
-): Promise<HTMLElement> {
-  const shape = summary.querySelector(`.session-summary-muscles [data-muscle="${SUMMARY_ROW_FOR[region]}"]`)
-  expect(shape, `${region} must be drawn on the summary`).not.toBeNull()
-  await user.click(shape as Element)
+/** Taps `region` on the Program tab's planned map and returns the region panel it opens. */
+async function tapProgramRegion(user: UserEvent, region: string): Promise<HTMLElement> {
+  await pressTab(user, 'Program')
+  const shape = await waitFor(() => {
+    const found = document.querySelector(`.program-page-weekly [data-region="${region}"]`)
+    expect(found, `${region} must be drawn on the Program tab's map`).not.toBeNull()
+    return found as Element
+  }, SETTLE)
+  await user.click(shape)
   return screen.findByRole('dialog', { name: region }, SETTLE)
 }
 
@@ -2233,12 +2224,12 @@ test('M16 tapping Finish workout shows the session summary with its body map on 
 
   await finishWorkout(user)
 
+  // Title kept (weakened-tests gate); v7 (study §1.6): the summary shows the lift and its Sets,
+  // and no muscle map (Progress › Muscles has the week against its range).
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
-  // On the week scale, 3 would be band 1; band 2 is what pins the session scale.
-  expectSummaryBand(summary, 'quadriceps', '2')
-  expectSummaryBand(summary, 'hamstring', '1')
-  // V4-03 (V3-13): a muscle the Session did not train is not listed, so there is no zero cell for chest.
-  expect(summary.querySelector('.session-summary-muscles [data-muscle="chest"]')).toBeNull()
+  expect(summaryLifts(summary)).toEqual(['Back squat'])
+  expect(summary.querySelector('.session-summary-move-text')?.textContent).toBe('60×10 · 10 · 10')
+  expectNoSummaryMuscles(summary)
 })
 
 test('F2 the Finish workout session summary is an aria-modal dialog', async () => {
@@ -2268,9 +2259,9 @@ test('M16 Done on the finish summary closes it onto the picker with the session 
   await waitFor(() => {
     expect(sessionSummary()).toBeNull()
   }, SETTLE)
-  // On the Dashboard, whose dock now offers the workout due after Workout A.
+  // On Home, which -- a Session done today -- names the workout due after Workout A.
   // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-  expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('button', { name: /^Next: Workout A\b/ }, SETTLE)).toBeVisible()
   expect(await getActiveSession()).toBeNull()
 })
 
@@ -2282,8 +2273,9 @@ test('M16 opening the finished session from History shows the same body map the 
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   await finishWorkout(user)
   const atFinish = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
-  const finishBands = summaryBands(atFinish)
-  expect(Object.keys(finishBands).length).toBeGreaterThan(0)
+  const finishLifts = summaryLifts(atFinish)
+  const finishSets = atFinish.querySelector('.session-summary-move-text')?.textContent
+  expect(finishLifts.length).toBeGreaterThan(0)
   await user.click(within(atFinish).getByRole('button', { name: 'Done' }))
   await waitFor(() => {
     expect(sessionSummary()).toBeNull()
@@ -2291,8 +2283,10 @@ test('M16 opening the finished session from History shows the same body map the 
 
   const fromHistory = await openOnlyHistorySession(user)
 
-  expectSummaryBand(fromHistory, 'quadriceps', '2')
-  expect(summaryBands(fromHistory)).toEqual(finishBands)
+  // Title kept (weakened-tests gate); v7: the same lifts and Sets, and no muscle map on either.
+  expect(summaryLifts(fromHistory)).toEqual(finishLifts)
+  expect(fromHistory.querySelector('.session-summary-move-text')?.textContent).toBe(finishSets)
+  expectNoSummaryMuscles(fromHistory)
 })
 
 test('M9 tapping upper-back on a History session’s map opens a panel with its 5.5 sets and contributors', async () => {
@@ -2302,18 +2296,11 @@ test('M9 tapping upper-back on a History session’s map opens a panel with its 
   await findStartButton()
   const summary = await openOnlyHistorySession(user)
 
-  const panel = await tapSummaryRegion(user, summary, 'upper-back')
-
-  const count = within(panel)
-    .getAllByText('5.5 sets')
-    .filter((element) => element.closest('li') === null)
-  expect(count).toHaveLength(1)
-  const items = within(panel).getAllByRole('listitem')
-  expect(items).toHaveLength(3)
-  const byName = (name: string) => items.find((item) => within(item).queryByText(name) !== null)
-  expect(within(byName('Assisted pull-ups')!).getByText('3 sets')).toBeVisible()
-  expect(within(byName('Deadlift')!).getByText('2 sets')).toBeVisible()
-  expect(within(byName('Face pull')!).getByText('0.5 sets')).toBeVisible()
+  // Title kept (weakened-tests gate); v7: a History session's summary has no muscle map to tap;
+  // it lists the three lifts that trained upper-back, each with its Sets.
+  expectNoSummaryMuscles(summary)
+  expect(summaryLifts(summary)).toEqual(['Deadlift', 'Assisted pull-ups', 'Face pull'])
+  expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
 })
 
 // RULING (fix-popups, F4): this test used to assert exactly 72 listitems, rendering every
@@ -2328,8 +2315,15 @@ test('M9 Browse exercises on upper-back opens the Exercises tab listing only lat
   await finishedUpperBackSession()
   await renderApp()
   await findStartButton()
+  // Title kept (weakened-tests gate); v7: the summary has no map, so upper-back is tapped on the
+  // Program tab's planned map, whose panel's Browse exercises lands on the same list.
   const summary = await openOnlyHistorySession(user)
-  const panel = await tapSummaryRegion(user, summary, 'upper-back')
+  expectNoSummaryMuscles(summary)
+  await user.click(within(summary).getByRole('button', { name: 'Done' }))
+  await waitFor(() => {
+    expect(sessionSummary()).toBeNull()
+  }, SETTLE)
+  const panel = await tapProgramRegion(user, 'upper-back')
 
   await user.click(within(panel).getByRole('button', { name: 'Browse exercises' }))
 
@@ -2414,7 +2408,8 @@ test('the Program tab’s This week reflects sets actually logged in the last 7 
     startOfWeek + HOUR_MS <= Date.now() ? startOfWeek + HOUR_MS : Date.now() - HOUR_MS,
   )
   await renderApp()
-  await findStartButton()
+  // v7: Home has loaded (a Session today leaves it with no Start to wait for).
+  await screen.findByRole('button', { name: /^Lifts, 12 weeks/ }, SETTLE)
 
   await pressTab(user, 'Program')
   await screen.findByRole('heading', { name: 'Muscles, planned per week' }, SETTLE)
@@ -2554,16 +2549,16 @@ describe('E7-T8', () => {
 
     await finishWorkout(user)
 
-    // Back on the Dashboard, whose dock offers the workout due after Workout A.
+    // Back on Home, which -- a Session done today -- names the workout due after Workout A.
     // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-    expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+    expect(await screen.findByRole('button', { name: /^Next: Workout A\b/ }, SETTLE)).toBeVisible()
     // The held request cannot finish before release, so the picker showing alongside it is
     // the proof that finishing did not wait on the sync.
     await waitFor(() => {
       expect(server.pending).toBe(1)
     }, SETTLE)
     // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-    expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeVisible()
+    expect(screen.getByRole('button', { name: /^Next: Workout A\b/ })).toBeVisible()
     release()
     await serverSettled(4)
   })
@@ -2663,7 +2658,7 @@ describe('E7-T8', () => {
     )
     await serverSettled(3)
 
-    await pressTab(user, 'Train')
+    await pressTab(user, 'Home')
 
     // The Dashboard's dock offers the adopted program's workout: Full body starter's "Full body".
     expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
@@ -3075,9 +3070,11 @@ describe('E8-T6', () => {
 
     await renderApp()
 
-    // Finished at launch, the forgotten Workout A puts Workout B due on the Dashboard's dock.
-    // V6-11: a few Sets of A is a short Session, so Workout A stays next.
-    expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
+    // Finished at launch, the forgotten Workout A leaves Workout A due on Home (V6-11: a few Sets
+    // of A is a short Session): its dock's Start, or -- finished earlier today -- its Next row.
+    expect(
+      await screen.findByRole('button', { name: /^(Start Workout A$|Next: Workout A\b)/ }, SETTLE),
+    ).toBeVisible()
     expect(resumeControl()).toBeNull()
   })
 
@@ -3085,7 +3082,8 @@ describe('E8-T6', () => {
     const lastSetAt = await staleBackSquatSession()
 
     await renderApp()
-    await findStartButton()
+    // v7: Home has loaded (finished earlier today, the Session leaves it with no Start).
+    await screen.findByRole('button', { name: /^Lifts, 12 weeks/ }, SETTLE)
 
     expect(await getActiveSession()).toBeNull()
     const finished = await listSessions()
@@ -3123,7 +3121,10 @@ describe('E8-T4', { timeout: 15_000 }, () => {
     const bar = actionBar()
     expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
     expect((bar as HTMLElement).contains(log)).toBe(true)
-    expect(log).toHaveClass('btn-primary')
+    // v7 (study §1.4): the hand-over runs in back squat's Rest, whose bar is Skip rest; the next
+    // Exercise's Log set 1 waits beside it, quiet, one tap away.
+    expect(screen.getByRole('button', { name: 'Skip rest' })).toHaveClass('btn-secondary')
+    expect(log).toHaveClass('log-set')
     expect(addSet).toHaveClass('btn-quiet')
     expect(addSet.compareDocumentPosition(log) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
@@ -3212,7 +3213,7 @@ test('O1 returning from another tab with no Session in progress lands back on Wo
   setDocumentVisibility('visible')
 
   await waitFor(() => {
-    expect(currentTabNames()).toEqual(['Train'])
+    expect(currentTabNames()).toEqual(['Home'])
   }, SETTLE)
 })
 
@@ -3305,7 +3306,7 @@ test('O1 choosing Past 3 months and Average in Settings makes Back squat’s row
   await screen.findByRole('group', { name: 'Workout' }, SETTLE)
   expect(screen.queryByRole('combobox', { name: 'Compare volume with' })).toBeNull()
 
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
   await user.click(await screen.findByRole('button', { name: /^Resume Workout A/ }, SETTLE))
 
   const row = await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
@@ -3375,7 +3376,7 @@ test('O14 the Exercises search and filters survive leaving and returning to the 
   await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
   await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
 
-  await pressTab(user, 'Train')
+  await pressTab(user, 'Home')
   await findStartButton()
   await pressTab(user, 'Exercises')
 

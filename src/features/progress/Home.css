@@ -1,29 +1,14 @@
-/* The Progress home and All lifts (E18-T10, O20). Composes the global `.card`, `.btn-*` roles;
- * every colour, size and radius is a token. */
+/* The Progress home and All lifts (study §1.7, Ledger & Instrument): a headline, the weeks strip,
+ * the lifts as ledger rows on paper with hairlines, then Muscles and Body as quiet rows. No cards.
+ * Composes the global `.btn-*` roles; every colour, size and radius is a token. */
 
 .progress-home {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4) var(--space-6);
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-1) var(--space-6);
   background: var(--color-bg);
   color: var(--color-text);
-}
-
-.progress-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4) 0;
-}
-
-.progress-title {
-  margin: 0;
-  font-size: var(--text-xl);
-  line-height: 2.125rem;
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.02em;
 }
 
 .progress-date {
@@ -39,189 +24,137 @@
   font-weight: var(--weight-semibold);
 }
 
-/* V3-11: the one lead line over the cards -- the verdict and the climbed clause together. */
-.progress-lead {
+/* ---- the headline ---- */
+
+.progress-headline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* A 12 px upper-case label (study §3 Type). */
+.progress-eyebrow,
+.progress-ledger-head {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 1rem;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.progress-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: 1.2;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+}
+
+.progress-exceptions {
+  margin: 0;
+  color: var(--color-secondary);
   font-size: var(--text-md);
-  line-height: 1.375rem;
+  line-height: 1.5rem;
 }
 
-.progress-cards {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
+/* ---- the weeks strip: one column per week, a mark per Session in its Workout's colour ---- */
 
-/* One attention card in three lines (V2-08): name and verdict, the fact beside the mini ladder,
- * then the suggestion and Why?. The open button spans the first two lines (a 44 px target). */
-.progress-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-}
-
-.progress-card-open {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
-  min-height: var(--tap-min);
-  padding: 0;
-  border: 0;
-  text-align: left;
-}
-
-.progress-card-head {
+.progress-weeks {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  line-height: 1.375rem;
-}
-
-.progress-card-name {
-  min-width: 0;
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  overflow-wrap: break-word;
-  hyphens: manual;
-}
-
-.progress-card-kind {
-  flex: none;
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-}
-
-.progress-card-fact {
-  font-size: var(--text-sm);
-  line-height: 1.25rem;
-}
-
-.progress-card-fact .progress-card-value {
-  font-size: var(--text-sm);
-}
-
-.progress-card-against {
-  color: var(--color-muted);
-}
-
-.progress-card-suggestion {
-  margin: 0;
-  font-size: var(--text-sm);
-  line-height: 1.25rem;
-}
-
-.progress-card-value,
-.progress-row-value {
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  white-space: nowrap;
-}
-
-.progress-card-foot {
-  display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-3) var(--space-4);
 }
 
-/* A 44 px target drawn 28 px tall: the margins give the extra back to the card's padding. */
-.progress-card .progress-card-foot {
-  gap: var(--space-2);
-}
-
-.progress-card-foot .progress-why {
-  margin: -8px calc(var(--space-2) * -1) -8px 0;
-  padding: 0 var(--space-2) 0 var(--space-1);
-}
-
-.progress-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.progress-why {
-  min-height: var(--tap-min);
-  padding: 0 var(--space-2);
-  border: 0;
-  color: var(--color-primary);
-  font-weight: var(--weight-semibold);
-}
-
-.progress-why-lines {
-  margin: 0;
-  padding: var(--space-2) 0 0;
-  border-top: 1px solid var(--color-hairline);
-  list-style: none;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  line-height: 1.25rem;
-}
-
-.progress-mini {
-  flex: 1;
-  min-width: 0;
-  max-width: 160px;
-}
-
-/* ---- the week ---- */
-
-.progress-tile {
-  padding: var(--space-3);
-}
-
-.progress-tile-title {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-}
-
-/* ---- links and rows ---- */
-
-.progress-link,
-.progress-row {
+.progress-weeks-strip {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  width: 100%;
-  min-height: var(--tap-min);
-  padding: var(--space-2) 0;
-  border: 0;
-  border-top: 1px solid var(--color-hairline);
-  text-align: left;
+  gap: 10px;
 }
 
-.progress-link-main,
-.progress-row-main {
+.progress-week {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  flex: 1;
+  align-items: center;
+  gap: var(--space-1);
 }
 
-.progress-link-title,
-.progress-row-name {
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
+.progress-week-mark {
+  display: block;
+  box-sizing: border-box;
+  width: 22px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--heat-0);
 }
 
-.progress-link-sub,
-.progress-row-note {
+.progress-week-mark[data-slot='a'] {
+  background: var(--workout-a);
+}
+
+.progress-week-mark[data-slot='b'] {
+  background: var(--workout-b);
+}
+
+.progress-week-mark[data-slot='other'] {
+  background: var(--color-muted);
+}
+
+/* This week's Sessions still to come: hollow, in the next Workout's colour. */
+.progress-week-mark[data-slot='next-a'],
+.progress-week-mark[data-slot='next-b'],
+.progress-week-mark[data-slot='next-other'] {
+  border: 1.5px solid var(--color-muted);
+  background: transparent;
+}
+
+.progress-week-mark[data-slot='next-a'] {
+  border-color: var(--workout-a);
+}
+
+.progress-week-mark[data-slot='next-b'] {
+  border-color: var(--workout-b);
+}
+
+.progress-week-day {
+  margin-top: var(--space-1);
   color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-weeks-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 0 0 0 auto;
+  text-align: right;
+}
+
+.progress-weeks-total {
+  font-size: var(--text-lg);
+  line-height: 1.5rem;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-weeks-span {
+  color: var(--color-secondary);
   font-size: var(--text-sm);
   line-height: 1.25rem;
+}
+
+/* ---- the ledger ---- */
+
+.progress-ledger-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .progress-rows {
@@ -230,13 +163,128 @@
   list-style: none;
 }
 
-.progress-all {
-  padding: var(--space-2) var(--space-4) var(--space-6);
+/* A row (and a quiet link row): at least 56 px, a hairline under it, no box. */
+.progress-row,
+.progress-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-text);
+  text-align: left;
 }
 
-.progress-all .progress-mini {
-  flex: 0 0 96px;
+/* The name keeps room for a few words; at narrow widths and large text the sparkline and the
+ * numbers wrap under it, right-aligned, instead of crushing it. */
+.progress-row {
+  flex-wrap: wrap;
 }
+
+.progress-row-main,
+.progress-link-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 7.5rem;
+}
+
+.progress-row-name,
+.progress-link-title {
+  font-size: var(--text-md);
+  line-height: 1.375rem;
+  font-weight: var(--weight-regular);
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+
+.progress-row-note,
+.progress-link-sub {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+}
+
+.progress-row-note.status-mark {
+  font-weight: var(--weight-semibold);
+}
+
+.progress-row-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.progress-row-spark {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.progress-row-numbers {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 3.75rem;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.progress-row-value {
+  font-size: var(--text-lg);
+  line-height: 1.5rem;
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+/* The unit at half size in ink-3, right after the number (study §3 Numerals). */
+.progress-row-unit {
+  margin-left: 2px;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.progress-row-change {
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+  line-height: 1.375rem;
+  white-space: nowrap;
+}
+
+/* The starting points' value (a top set or a prescription) beside the name. */
+.progress-rows .progress-row > .progress-row-value {
+  font-size: var(--text-md);
+}
+
+/* ---- Muscles and Body: quiet rows after the ledger ---- */
+
+.progress-links {
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-link {
+  border-top: 0;
+}
+
+.progress-link:first-child {
+  border-top: 1px solid var(--color-hairline);
+}
+
+.progress-link > svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
+/* ---- the sparse states ---- */
 
 .progress-expect {
   margin: 0;
@@ -252,201 +300,8 @@
   border: 0;
 }
 
-.progress-lastweek-dates {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-regular);
-}
+/* ---- All lifts: the same ledger on a page of its own ---- */
 
-.progress-lastweek-rows {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  gap: var(--space-2);
-}
-
-.progress-lastweek-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: baseline;
-  gap: var(--space-3);
-}
-
-.progress-lastweek-label,
-.progress-lastweek-change {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.progress-lastweek-value {
-  font-weight: var(--weight-semibold);
-}
-
-.progress-lastweek-change {
-  min-width: 4ch;
-  text-align: right;
-}
-
-.progress-lastweek-first {
-  margin: var(--space-2) 0 0;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-/* ---- All lifts: the status filter (V2-08) ---- */
-
-/* Inset like the list under it; five segments share the width, so each pads less. */
-.progress-all-filter {
-  padding: var(--space-2) var(--space-4) 0;
-}
-
-.progress-all-filter .segmented-option {
-  flex: 1 1 auto;
-  padding: 0 var(--space-1);
-}
-
-.progress-all-empty {
-  margin: var(--space-3) var(--space-4);
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-/* ---- v6: the dashboard's sections, status tones and lift rows ---- */
-
-.progress-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.progress-section-title {
-  margin: 0;
-  font-size: var(--text-md);
-  line-height: 1.375rem;
-  font-weight: var(--weight-semibold);
-}
-
-.progress-more {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-/* A status in words, coloured by what it asks of the trainee. */
-.progress-status-decide {
-  color: var(--color-warn);
-}
-
-.progress-status-up {
-  color: var(--color-primary);
-}
-
-.progress-status-calm {
-  color: var(--color-muted);
-}
-
-.progress-card-kind.progress-status-decide {
-  color: var(--color-warn);
-}
-
-.progress-lifts {
-  padding: var(--space-2) var(--space-3) 0;
-}
-
-.progress-lifts-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding-bottom: var(--space-1);
-}
-
-.progress-lifts-unit {
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-}
-
-.progress-row-spark {
-  flex: none;
-  display: flex;
-  align-items: center;
-}
-
-.progress-row-spark .sparkline-line {
-  stroke: var(--color-text);
-  stroke-width: 2px;
-}
-
-.progress-row-spark .sparkline-end {
-  fill: var(--color-text);
-}
-
-.progress-row-numbers {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  align-items: flex-end;
-  min-width: 4.5rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.progress-row-change {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  line-height: 1.25rem;
-  white-space: nowrap;
-}
-
-/* Narrow screens and large text: the sparkline gives way to the numbers. */
-@media (max-width: 359px) {
-  .progress-row-spark {
-    display: none;
-  }
-}
-
-.progress-row-name {
-  overflow-wrap: break-word;
-  hyphens: manual;
-}
-
-/* The name keeps room for a whole word; the sparkline gives way first, and at large text the
- * numbers wrap under the name instead of running off the card. */
-.progress-lifts .progress-row,
-.progress-all .progress-row {
-  flex-wrap: wrap;
-  row-gap: var(--space-1);
-}
-
-.progress-lifts .progress-row-main,
-.progress-all .progress-row-main {
-  flex: 1 1 5.5em;
-  min-width: min-content;
-}
-
-.progress-lifts .progress-row-numbers,
-.progress-all .progress-row-numbers {
-  margin-left: auto;
-}
-
-.progress-row-spark {
-  flex-shrink: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.progress-lifts .progress-row,
-.progress-all .progress-row {
-  min-height: 56px;
-}
-
-.progress-lift-group + .progress-lift-group {
-  margin-top: var(--space-2);
-}
-
-.progress-group-title {
-  margin: var(--space-2) 0 var(--space-1);
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
+.progress-all {
+  padding: var(--space-2) var(--space-1) var(--space-6);
 }

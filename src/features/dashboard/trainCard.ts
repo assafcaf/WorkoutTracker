@@ -4,7 +4,7 @@ import { lastEntriesOf } from '../../domain/planLoad'
 import { presetForSet } from '../../domain/prefill'
 import type { ShortSession } from '../../domain/shortSession'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
-import { isEased, liftAdvice, liftStatus } from '../../domain/stats/status'
+import { BREAK_DAYS, daysOff, isEased, liftAdvice, liftStatus } from '../../domain/stats/status'
 import type { LiftAdvice } from '../../domain/stats/status'
 import type { DueWorkoutCard } from '../../domain/stats/train'
 import { weeksOf, type Weekday } from '../../domain/stats/weeks'
@@ -35,6 +35,10 @@ export type TrainLiftRow = {
    * null says nothing.
    */
   advice?: LiftAdvice | null
+  /** V7R-01: the Set 1 load before today's step up (`14 kg`), when the Preset holds the step. */
+  was?: string | null
+  /** v7: a Bodyweight lift, so the row writes a lever as `BW+5`, not `5 kg`. */
+  bodyweight?: boolean
 }
 
 /** Train's card: the due workout, its duration estimate and each lift as Set 1 opens it. */
@@ -106,14 +110,16 @@ export function trainCardOf(
     const plan = plans.get(lift.exerciseId)
     const exercise = resolve?.(lift.exerciseId)
     if (!plan || !exercise || !sessions) return row
-    const { load, topLoad, advice } = liftPlan(exercise, plan, sessions, now, deload)
+    const { load, topLoad, advice, before } = liftPlan(exercise, plan, sessions, now, deload)
     return {
       ...row,
       sets: plan.sets,
       load,
+      ...(before === undefined ? {} : { was: before.load }),
       ...(topLoad === undefined ? {} : { topLoad }),
       reps: `${plan.repRange[0]}–${plan.repRange[1]}`,
       advice,
+      ...(exercise.bodyweight ? { bodyweight: true } : {}),
     }
   })
   return {
@@ -137,9 +143,11 @@ export function liftPreset(
   plan: ExercisePlan,
   sessions: Session[],
   deload = false,
+  /** V7R-01: the step up applied to last time's Sets (`appliedStep`). */
+  stepUp = 0,
 ): { load: string | null; topLoad?: string; top: number | null } {
   const lastEntries = lastEntriesOf(sessions, plan.exerciseId)
-  const preset = presetForSet({ exercise, plan, setIndex: 1, lastEntries, today: [], deload })
+  const preset = presetForSet({ exercise, plan, setIndex: 1, lastEntries, today: [], deload, stepUp })
   const load = exercise.bodyweight
     ? leverText(preset.loadKg ?? 0, true)
     : preset.weightKg === null
@@ -150,7 +158,7 @@ export function liftPreset(
   let top = preset.weightKg
   if (!exercise.bodyweight && top !== null) {
     for (let setIndex = 2; setIndex <= plan.sets; setIndex += 1) {
-      const at = presetForSet({ exercise, plan, setIndex, lastEntries, deload }).weightKg
+      const at = presetForSet({ exercise, plan, setIndex, lastEntries, deload, stepUp }).weightKg
       if (at !== null && at > top) top = at
     }
   }
@@ -164,6 +172,12 @@ export function liftPreset(
  * V6-01, V6-05: one lift as Train and the Program tab show it, and as the Set screen opens it: the
  * Preset (`liftPreset`, eased for one Session when the lift is on a Break, as Progress's "Ease
  * back in" says) and the advice its status gives against that Preset (`liftAdvice`).
+ *
+ * V7R-01: a step up (`Ready for 15 kg`) is the Preset itself, as a Break's easing is (study §1.3:
+ * "if the weight changes today, the Preset already holds it"). The Sets open 15 at the bottom of
+ * the rep range, the advice reads `Up from 14 kg` with `Back to 14 kg` as the way back, and
+ * `before` keeps the Preset it came up from. Home, the workout page, Program and the Session all
+ * read this one function. A lighter load (`Deload once: 55 kg`, `Next: 50 kg`) stays an offer.
  */
 export function liftPlan(
   exercise: Exercise,
@@ -171,22 +185,50 @@ export function liftPlan(
   sessions: Session[],
   now: number,
   deload = false,
-): { load: string | null; topLoad?: string; top: number | null; advice: LiftAdvice | null } {
+): {
+  load: string | null
+  topLoad?: string
+  top: number | null
+  advice: LiftAdvice | null
+  before?: { load: string | null; topLoad?: string }
+} {
   const status = liftStatus(exercise, plan, sessions, now)
   const preset = liftPreset(exercise, plan, sessions, deload || isEased(status))
   // A deload week is already lighter on purpose: no other load is offered against it.
-  return { ...preset, advice: deload ? null : liftAdvice(status, preset.top, exercise.bodyweight) }
+  // V7R-03: a Break says the trainee's days off (since the last Session of any Workout), as Home
+  // does, unless only this lift has been away that long.
+  const off = daysOff(sessions, now)
+  const advice = deload
+    ? null
+    : liftAdvice(status, preset.top, exercise.bodyweight, off !== null && off >= BREAK_DAYS ? off : null)
+  if (advice === null || advice.kind !== 'up' || preset.top === null) return { ...preset, advice }
+  const from = preset.top
+  const step = Math.round((advice.lever - from) * 1000) / 1000
+  const raised = liftPreset(exercise, plan, sessions, false, step)
+  const was = leverText(from, exercise.bodyweight)
+  const before = preset.topLoad === undefined ? { load: preset.load } : { load: preset.load, topLoad: preset.topLoad }
+  return { ...raised, advice: { ...advice, text: `Up from ${was}`, use: `Back to ${was}`, from }, before }
 }
 
 /**
  * V6-15: the Program tab's kg cell: `47.5 → 62.5`, `70`, `BW+5`; `–` with no weight. V6-01: a
  * lift whose status offers another load says so, as Train does: `14 ↑15` (`↓` for lighter).
  */
-export function kgCellText(preset: { load: string | null; topLoad?: string; advice?: LiftAdvice | null }): string {
+export function kgCellText(preset: {
+  load: string | null
+  topLoad?: string
+  advice?: LiftAdvice | null
+  before?: { load: string | null; topLoad?: string }
+}): string {
   const bare = (text: string): string => text.replace(/ kg$/, '')
   if (preset.load === null) return '–'
-  const cell = preset.topLoad ? `${bare(preset.load)} → ${bare(preset.topLoad)}` : bare(preset.load)
+  const cellOf = (load: string, topLoad?: string): string => (topLoad ? `${bare(load)} → ${bare(topLoad)}` : bare(load))
   const advice = preset.advice
+  // V7R-01: a step already in the Preset reads as before, from the Preset it came up from: `14 ↑15`.
+  if (advice?.from !== undefined && preset.before?.load) {
+    return `${cellOf(preset.before.load, preset.before.topLoad)} ↑${bare(leverText(advice.lever, preset.load.startsWith('BW')))}`
+  }
+  const cell = cellOf(preset.load, preset.topLoad)
   if (!advice || advice.use === null) return cell
   return `${cell} ${advice.kind === 'up' ? '↑' : '↓'}${bare(advice.use.replace(/^Use /, ''))}`
 }

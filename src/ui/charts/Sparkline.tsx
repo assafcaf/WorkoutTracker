@@ -6,16 +6,19 @@ export type SparklineProps = {
   label: string
   width?: number
   height?: number
+  /** v7: the end dot wears the lift's status colour (up, flat or down); ink-3 when left out. */
+  tone?: 'up' | 'flat' | 'down'
 }
 
-const PAD = 4
+const PAD = 3
 
 /**
- * A word-sized trend (the Dashboard's Lifts rows): a hairline baseline, the values joined left to
- * right in time order with a larger value drawn higher, and a dot on the latest value. One value
- * draws the dot alone at mid-height; none draws an empty svg.
+ * A word-sized trend (the Progress ledger rows, study §3 Chart): the values joined left to right
+ * in time order in a grey line, a larger value drawn higher, and the latest value as a dot in the
+ * status colour. One value draws the dot alone at mid-height; none draws an empty svg. 72 × 26
+ * unless told otherwise.
  */
-export function Sparkline({ values, label, width = 64, height = 24 }: SparklineProps): JSX.Element {
+export function Sparkline({ values, label, width = 72, height = 26, tone = 'flat' }: SparklineProps): JSX.Element {
   const low = Math.min(...values)
   const high = Math.max(...values)
   const xOf = (index: number): number =>
@@ -33,14 +36,15 @@ export function Sparkline({ values, label, width = 64, height = 24 }: SparklineP
       height={height}
       viewBox={`0 0 ${width} ${height}`}
     >
-      <line className="sparkline-base" x1={PAD} x2={width - PAD} y1={height - 0.5} y2={height - 0.5} />
       {values.length > 1 ? (
         <polyline
           className="sparkline-line"
           points={values.map((value, index) => `${xOf(index).toFixed(1)},${yOf(value).toFixed(1)}`).join(' ')}
         />
       ) : null}
-      {last >= 0 ? <circle className="sparkline-end" cx={xOf(last)} cy={yOf(values[last])} r={3} /> : null}
+      {last >= 0 ? (
+        <circle className="sparkline-end" data-tone={tone} cx={xOf(last)} cy={yOf(values[last])} r={2.75} />
+      ) : null}
     </svg>
   )
 }

@@ -180,13 +180,14 @@ test('O5 the manifest background_color matches the --color-bg token, so the iOS 
 // [E10 O5] The two tests above pass whenever both sides drift together; these pin the Court
 // ivory the spec names, so the splash and status bar are the light field, not the old black.
 // [E17-T1 O4] Titles kept verbatim (the weakened-tests gate tracks tests by title); the bodies
-// pin the Progress Dashboard's --color-bg, #F6F6F8, which replaced the Court ivory.
+// pin the --color-bg of the day: v7's paper, #F6F6F3 (it replaced E17's #F6F6F8, which replaced
+// the Court ivory).
 test('O5 the manifest theme_color is the Court ivory #F5F1E8', () => {
-  expect((manifest().theme_color ?? '').toLowerCase()).toBe('#f6f6f8')
+  expect((manifest().theme_color ?? '').toLowerCase()).toBe('#f6f6f3')
 })
 
 test('O5 the manifest background_color is the Court ivory #F5F1E8', () => {
-  expect((manifest().background_color ?? '').toLowerCase()).toBe('#f6f6f8')
+  expect((manifest().background_color ?? '').toLowerCase()).toBe('#f6f6f3')
 })
 
 // [O15] Served from the root of the Cloudflare Worker behind Access (decision 0007 supersedes

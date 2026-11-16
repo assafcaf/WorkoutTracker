@@ -67,7 +67,7 @@ export function App({ services }: { services: Services }): JSX.Element {
 }
 
 /** Where a screen group's route lands: its tab, and on the Program tab its side. */
-function destinationOf(to: Exclude<AppRoute, { tab: 'lift' }>): Shown {
+function destinationOf(to: Exclude<AppRoute, { tab: 'lift' } | { tab: 'today' }>): Shown {
   switch (to.tab) {
     case 'exercises':
       return { tab: 'program', side: 'exercises', muscles: to.muscles }
@@ -83,7 +83,7 @@ function destinationOf(to: Exclude<AppRoute, { tab: 'lift' }>): Shown {
 }
 
 /**
- * The four tabs (Train, Progress, Sessions, Program), the full-screen Settings page off the
+ * The four tabs (Home, Progress, Sessions, Program), the full-screen Settings page off the
  * Dashboard's gear, and the Live session.
  *
  * A workout in progress is a full-screen Live session with the tabs hidden. Its chevron
@@ -109,6 +109,8 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
   const [minimised, setMinimised] = useState(false)
   // V6-03: the one Lift page, pushed over the tab it was opened from (which stays as it was).
   const [lift, setLift] = useState<string | null>(null)
+  // v7: the workout page, pushed over Home by its Today panel; Back (or any tab) returns to Home.
+  const [today, setToday] = useState(false)
   const liveRef = useRef<LiveStatus | null>(null)
   const lastExportedAt = useServiceData((s) => s.preferences.lastExportedAt(), ['preferences'])
   // V1-30: an install with nothing logged has nothing to back up, so the gear carries no dot.
@@ -132,6 +134,7 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
     setLaunching(false)
     setSettingsOpen(false)
     setLift(null)
+    setToday(false)
     setVisit((count) => count + 1)
     if (liveRef.current === null) setDashboardVisit((count) => count + 1)
     setShown(next)
@@ -144,12 +147,19 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
       setLift(to.exerciseId)
       return
     }
+    if (to.tab === 'today') {
+      setLaunching(false)
+      setToday(true)
+      return
+    }
     show(destinationOf(to))
   }
 
   /** The Live session's report: what the strip shows, and `null` once the session is over. */
   const handleLive = useCallback((status: LiveStatus | null) => {
     const ended = liveRef.current !== null && status === null
+    // A Session started from the workout page: once it is over (or minimised), Home is what is left.
+    if (liveRef.current === null && status !== null) setToday(false)
     liveRef.current = status
     setLive(status)
     if (ended) {
@@ -219,6 +229,9 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
         onMinimise={handleMinimise}
         onRestore={handleRestore}
         onLive={handleLive}
+        page={today ? 'today' : 'home'}
+        onOpenToday={() => navigate({ tab: 'today' })}
+        onCloseToday={() => setToday(false)}
       />
       {liveOnScreen ? null : settingsOpen ? (
         <AppShell title="Settings" onBack={() => setSettingsOpen(false)}>

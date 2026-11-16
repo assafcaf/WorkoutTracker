@@ -769,12 +769,15 @@ test('V3-01 logging back squat Set 4 brings up Lunges Set 1 with no tap, under a
   await user.click(await screen.findByRole('button', { name: /^Log set 4 / }, SETTLE))
 
   expect(await screen.findByRole('heading', { name: 'Lunges' }, SETTLE)).toBeVisible()
-  expect(screen.getByRole('region', { name: 'Get ready' })).toBeVisible()
-  // V4-01: the Just done block, headed by the Exercise it is about, under the Get ready card.
+  // v7 (study §1.4): Rest's Next panel names Lunges set 1.
+  expect(screen.getByRole('region', { name: 'Next set' })).toBeVisible()
+  // V4-01: the Just done block, headed by the Exercise it is about, under the Next panel.
   const block = screen.getByRole('region', { name: 'Exercise done' })
   expect(block.textContent).toMatch(/^Back squat done/)
   expect(block.textContent).not.toMatch(/\d+ vs \d+/)
-  expect(screen.getByRole('button', { name: /^Log set 1 / })).toHaveClass('btn-primary')
+  // v7: Skip rest is the bar during Rest; Log set 1 is still one tap away beside it.
+  expect(screen.getByRole('button', { name: 'Skip rest' })).toHaveClass('btn-secondary')
+  expect(screen.getByRole('button', { name: /^Log set 1 / })).toBeVisible()
   expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
   // The rest keeps running from back squat's Set 4.
   expect(screen.getByRole('timer', { name: 'Rest remaining' })).toBeVisible()
@@ -1589,7 +1592,8 @@ test('O21 the History link on the set screen opens History · Back squat listing
   // v6: Lift history is the one Lift page, headed by the lift; its log lists the earlier Session.
   const log = within(dialog).getByRole('list', { name: 'Sessions' })
   expect(within(log).getByText('Tue 6 Oct')).toBeVisible()
-  expect(log.querySelector('.lift-log-sets')?.textContent).toBe('80×8 · 80×8')
+  // v7: repeated Sets at one load share one figure (study §3 Numerals).
+  expect(log.querySelector('.lift-log-sets')?.textContent).toBe('80×8 · 8')
 })
 
 test('O21 closing History returns to the same open Set with its logged Set and rest intact', async () => {

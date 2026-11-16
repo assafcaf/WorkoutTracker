@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import { AlternativesList } from './AlternativesList'
 import { BodyMap } from './body/BodyMap'
+import { Icon } from './icons'
 import { MuscleChip } from './MuscleChip'
 import { toRegionCounts, type Region } from '../domain/muscles'
 import type { LibraryExercise, Muscle, Video } from '../types'
@@ -90,10 +91,13 @@ export function ExerciseDetail({
       aria-modal="true"
       aria-label={heading ?? entry.name}
     >
-      <button type="button" className="exercise-detail-back btn-quiet" onClick={onBack}>
-        Back
-      </button>
-      <h1 className="exercise-detail-heading">{heading ?? entry.name}</h1>
+      {/* v7: every pushed page's compact bar -- the back chevron, the title centred. */}
+      <header className="exercise-detail-bar">
+        <button type="button" className="exercise-detail-back btn-quiet" aria-label="Back" onClick={onBack}>
+          <Icon name="ChevronLeft" size={24} />
+        </button>
+        <h1 className="exercise-detail-heading">{heading ?? entry.name}</h1>
+      </header>
       {onEdit === undefined ? null : (
         <button type="button" className="btn-secondary" onClick={onEdit}>
           Edit

@@ -30,28 +30,42 @@ function open(exerciseId: string, onOpenSession?: (id: string) => void) {
 
 describe('E18-T11 O21 lift page', () => {
   it('O21 shows the verdict banner and the latest top set as the hero', () => {
-    // v6: the status block (label and action from liftStatus), then the latest top set.
+    // v7 (study §1.7): the status as a glyph and word, its action, and the reason with a line that
+    // sets expectations; then the one number -- est. strength at 44 px, its change over the same
+    // 12 weeks as the Progress row, and what it means. The latest top set is in Records and the log.
     open('back-squat')
     const status = within(screen.getByRole('region', { name: 'Status' }))
-    expect(status.getByText('▲ Moving')).toBeVisible()
+    expect(status.getByText('↑ Moving')).toBeVisible()
     expect(status.getByText('Next time: 62.5 kg × 9.')).toBeVisible()
-    const hero = within(screen.getByRole('region', { name: 'Latest top set' }))
-    expect(hero.getByText('62.5 kg × 8')).toBeVisible()
-    expect(hero.getByText('Wed 14 Oct · up 2.5 kg')).toBeVisible()
+    expect(
+      status.getByText('Wed 14 Oct was your first day at 62.5 kg; 8 reps on a new weight is normal. When every set reaches 10, go to 65 kg.'),
+    ).toBeVisible()
+    expect(screen.queryByRole('region', { name: 'Latest top set' })).toBeNull()
+    const hero = screen.getByRole('region', { name: 'Est. strength' })
+    expect(hero.querySelector('.lift-hero-value')?.textContent).toBe('79.2 kg')
+    expect(within(hero).getByText('↑ +9.2 since 24 Jul')).toHaveAttribute('data-tone', 'up')
+    expect(within(hero).getByText('Est. strength: the one-rep max your best set predicts')).toBeVisible()
   })
 
   it('O21 draws the ladder with the presets Step, 3M, 1Y and All, Step first', async () => {
-    // v6: one chart, Weight or Est. max, ranges 3M (default), 1Y and All -- never a Step tab.
+    // v7: one chip row -- Est. strength (first, chosen) or Top set, then 3M (default), 1Y and All
+    // as text tabs; never a Step tab.
     const user = userEvent.setup()
     open('back-squat')
-    expect(screen.getByRole('img', { name: /^Top-set weight, / })).toBeVisible()
+    expect(screen.getByRole('img', { name: /^Estimated strength, / })).toBeVisible()
     const shows = within(screen.getByRole('radiogroup', { name: 'Show' })).getAllByRole('radio')
-    expect(shows.map((p) => (p as HTMLInputElement).value)).toEqual(['weight', 'est'])
+    expect(shows.map((p) => (p as HTMLButtonElement).value)).toEqual(['est', 'weight'])
+    expect(shows.map((p) => p.textContent)).toEqual(['Est. strength', 'Top set'])
+    expect(shows[0]).toBeChecked()
     const presets = within(screen.getByRole('radiogroup', { name: 'Range' })).getAllByRole('radio')
-    expect(presets.map((p) => (p as HTMLInputElement).value)).toEqual(['3M', '1Y', 'all'])
+    expect(presets.map((p) => (p as HTMLButtonElement).value)).toEqual(['3M', '1Y', 'all'])
     expect(presets[0]).toBeChecked()
     await user.click(presets[1])
     expect(presets[1]).toBeChecked()
+    expect(presets[0]).not.toBeChecked()
+    await user.click(shows[1])
+    expect(shows[1]).toBeChecked()
+    expect(screen.getByRole('img', { name: /^Top-set weight, / })).toBeVisible()
   })
 
   it('O21 says the next step in reps at the weight', () => {
@@ -61,37 +75,43 @@ describe('E18-T11 O21 lift page', () => {
     expect(screen.getByText('Next time: 62.5 kg × 9.')).toBeVisible()
   })
 
-  it('O21 shows the e1RM line only on an e1RM lift', async () => {
-    // v6: the est. max is a chart view of loaded lifts, its formula footnoted once it is shown.
-    const user = userEvent.setup()
+  it('O21 shows the e1RM line only on an e1RM lift', () => {
+    // v7: est. strength is the loaded lift's headline, defined in one line, with no formula
+    // footnote; a Bodyweight lift has no Est. strength chip and leads with its top load instead.
     const squat = open('back-squat')
-    expect(screen.queryByText(/Est\. max ≈ weight/)).toBeNull()
-    await user.click(within(screen.getByRole('radiogroup', { name: 'Show' })).getByRole('radio', { name: 'Est. max' }))
-    expect(screen.getByRole('img', { name: /^Estimated max, / })).toBeVisible()
-    expect(screen.getByText('Est. max ≈ weight × (1 + reps ÷ 30), from your best working set.')).toBeVisible()
+    expect(screen.getByText('Est. strength: the one-rep max your best set predicts')).toBeVisible()
+    expect(screen.queryByText(/≈ weight ×/)).toBeNull()
     squat.unmount()
     open('assisted-pull-ups')
     expect(screen.queryByRole('radiogroup', { name: 'Show' })).toBeNull()
+    expect(screen.queryByText(/^Est\. strength/)).toBeNull()
+    const hero = screen.getByRole('region', { name: 'Top load' })
+    expect(hero.querySelector('.lift-hero-value')?.textContent).toBe('BW−19')
+    expect(within(hero).getByText('↑ 6 kg less assistance since 27 Jul')).toBeVisible()
+    expect(within(hero).getByText('Top load: the assistance on your top set; less is stronger')).toBeVisible()
   })
 
   it('O21 lists the bests table and the warm-ups as not counted', () => {
     open('back-squat')
     const table = screen.getByRole('table', { name: 'Records' })
     expect(within(table).getByText('Heaviest set')).toBeVisible()
-    expect(within(table).getByText('Best est. max')).toBeVisible()
+    expect(within(table).getByText('Best est. strength')).toBeVisible()
     expect(within(table).getByText('Most reps at 62.5 kg')).toBeVisible()
     // Warm-ups sit on their own muted line, never among the working Sets.
     expect(screen.getAllByText('W 20×10 · 37.5×5')[0]).toBeVisible()
   })
 
   it('O21 a stalled lift names how long and opens the Session it last moved in', async () => {
+    // v7: the reason is a sentence on the page (no Why?), with one line that sets expectations.
     const user = userEvent.setup()
     const onOpen = vi.fn()
     open('db-bench-press', onOpen)
-    expect(screen.getByText('■ Stalled')).toBeVisible()
+    expect(screen.getByText('= Stalled')).toBeVisible()
     expect(screen.getByText('Try a variation for 4 weeks.')).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'Why?' }))
-    expect(screen.getByText(/No new best at 13 kg since Fri 7 Aug/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Why?' })).toBeNull()
+    const reason = screen.getByText(/No new best at 13 kg since Fri 7 Aug/)
+    expect(reason).toBeVisible()
+    expect(reason.textContent).toMatch(/A few flat weeks are normal; one change usually restarts a lift\.$/)
     // A log row opens its Session.
     await user.click(within(screen.getByRole('list', { name: 'Sessions' })).getByRole('button', { name: /^Wed 14 Oct/ }))
     expect(onOpen).toHaveBeenCalledTimes(1)
@@ -99,12 +119,16 @@ describe('E18-T11 O21 lift page', () => {
   })
 
   it('O21 the 4 weeks ago toggle reads the then-and-now top sets', () => {
-    // v6: the toggle is cut; the hero says how the latest top set moved, and the deload week is
-    // named once, under the axis.
-    open('db-bench-press')
+    // v6: the toggle is cut. v7: the one number says how far it moved since the window's first
+    // Session, and the deload week is named once, under the axis, beside its grey band.
+    const { container } = open('db-bench-press')
     expect(screen.queryByRole('button', { name: '4 weeks ago' })).toBeNull()
-    expect(screen.getByText('Wed 14 Oct · same')).toBeVisible()
+    expect(screen.getByText('↑ +1.7 since 24 Jul')).toBeVisible()
     expect(screen.getByText('Deload 21–25 Sep')).toBeVisible()
+    expect(container.querySelectorAll('.lift-chart-band').length).toBeGreaterThan(0)
+    expect(container.querySelectorAll('.lift-chart-point-deload').length).toBeGreaterThan(0)
+    // No per-point labels: the chart's only text is the record's `PR` mark.
+    expect(container.querySelectorAll('.lift-chart-label')).toHaveLength(0)
   })
 
   it('O21 a lift never logged says so instead of drawing an axis', () => {

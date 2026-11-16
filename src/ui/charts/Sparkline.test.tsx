@@ -18,3 +18,11 @@ test('Sparkline with one value draws only the dot', () => {
   expect(container.querySelector('polyline')).toBeNull()
   expect(container.querySelectorAll('circle')).toHaveLength(1)
 })
+
+test('v7 Sparkline is 72 x 26 by default, with no baseline, and its end dot wears the status tone', () => {
+  const { container } = render(<Sparkline values={[60, 62.5, 65]} label="Deadlift" tone="up" />)
+  const svg = container.querySelector('svg')!
+  expect([svg.getAttribute('width'), svg.getAttribute('height')]).toEqual(['72', '26'])
+  expect(container.querySelector('line')).toBeNull()
+  expect(container.querySelector('circle')!.getAttribute('data-tone')).toBe('up')
+})

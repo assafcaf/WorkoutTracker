@@ -371,7 +371,7 @@ export function SessionsScreen({
           {sessionsByWeek(sessions, today, weekStartsOn).map((week) => (
             <section key={week.start} className="sessions-week" aria-label={week.label}>
               <h2 className="sessions-caption">{week.label}</h2>
-              <ul className="sessions-list card">
+              <ul className="sessions-list">
                 {week.sessions.map((session) => {
                   const count = recordCount(records, session.id)
                   const minutes = Math.max(

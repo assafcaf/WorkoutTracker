@@ -1,5 +1,5 @@
 /* LineChart (E4-T7): every colour comes through a `var(--…)` from src/styles/tokens.css. No
- * literal colour and no token added here. The series is the primary indigo, 2px (E17-T10, O19);
+ * literal colour and no token added here. The series is the primary ink, 2px (E17-T10, O19);
  * gridlines are the hairline; axis labels are --text-xs in --color-muted; all text uses the text
  * tokens, never the series colour.
  */
@@ -50,7 +50,7 @@
 }
 
 .line-chart-record {
-  fill: var(--color-primary);
+  fill: var(--color-pr);
   color: var(--color-on-primary);
 }
 

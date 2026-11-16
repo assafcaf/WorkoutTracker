@@ -359,7 +359,8 @@ test('O1 back squat past its last session’s volume shows Volume vs last workou
 })
 
 test('O2 an Exercise with no finished Session in the default baseline shows No previous workout and no progressbar', () => {
-  renderList([])
+  // V7R-06: the line shows once the lift has a logged Set, so one is logged here.
+  renderList([weightedEntry('back-squat', 1, 40, 10)])
 
   const item = row('Back squat')
   expect(within(item).getByText('No previous workout')).toBeVisible()
@@ -367,10 +368,18 @@ test('O2 an Exercise with no finished Session in the default baseline shows No p
 })
 
 test('O2 an Exercise with no finished Session inside a chosen period shows No workout in this period', () => {
-  renderList([], [], { period: '1w', aggregate: 'avg' })
+  renderList([weightedEntry('back-squat', 1, 40, 10)], [], { period: '1w', aggregate: 'avg' })
 
   const item = row('Back squat')
   expect(within(item).getByText('No workout in this period')).toBeVisible()
+  expect(within(item).queryByRole('progressbar')).toBeNull()
+})
+
+test('V7R-06 before a lift has a logged Set its row says nothing about volume, not "0%"', () => {
+  renderList([], [backSquatLastSession], { period: 'last' })
+
+  const item = row('Back squat')
+  expect(within(item).queryByText(/Volume vs/)).toBeNull()
   expect(within(item).queryByRole('progressbar')).toBeNull()
 })
 

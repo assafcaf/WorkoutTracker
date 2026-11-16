@@ -256,7 +256,8 @@ test('Lifts LineChart marks the points given as records and draws the rest plain
     'line-chart-point line-chart-plain',
     'line-chart-point line-chart-record',
   ])
-  expect(declarationsMatching(circles(container)[0]).get('fill')).toBe('var(--color-primary)')
+  // v7: a record point is gold, the PR colour (study §3), now that ink is the action colour.
+  expect(declarationsMatching(circles(container)[0]).get('fill')).toBe('var(--color-pr)')
   expect(declarationsMatching(circles(container)[1]).get('fill')).toBe('var(--color-secondary)')
 })
 

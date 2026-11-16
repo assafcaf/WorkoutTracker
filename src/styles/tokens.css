@@ -1,46 +1,65 @@
-/* The design system's one definition site (Progress Dashboard, E17).
+/* The design system's one definition site (Progress Dashboard, E17; palette roles, Ledger &
+ * Instrument, v7).
  *
  * Every colour, space, radius, size, font and motion value the app draws with is declared here
  * and used through `var(--…)` everywhere else, so the palette can only change in one place. The
- * set is closed: src/styles/tokens.test.ts holds this file to the 52 tokens of the spec's token
- * table, with their values, and nothing else.
+ * set is closed: src/styles/tokens.test.ts holds this file to the 62 tokens of its token table,
+ * with their values, and nothing else.
  *
- * The palette is light-only: a cool grey field, white cards, near-black ink, one indigo accent
- * for the primary action, and colour otherwise only in data. Every documented text/background
- * pair is asserted at its floor: 7:1 for numerals and the primary label, 4.5:1 for text and
- * 3:1 for data marks.
+ * The palette is light-only and colour is kept for meaning
+ * (docs/design/competitors-2026-11/study.md §3): paper, white surfaces, near-black ink, and ink
+ * is also the action colour (filled bars, the selected chip). Blue is *now*, green is *better*,
+ * rust is *lower*, gold is *a record*; the two workout hues belong to the calendar alone. Every
+ * documented text/background pair is asserted at its floor: 7:1 for numerals and the primary
+ * label, 4.5:1 for text and 3:1 for data marks.
  */
 :root {
-  /* Neutrals. Surfaces go from the grey field up through white cards to raised controls. */
-  --color-bg: #F6F6F8;
+  /* Neutrals: paper, surfaces, hairlines and the three inks. */
+  --color-bg: #F6F6F3;
   --color-surface: #FFFFFF;
-  --color-raised: #EEEEF2;
-  --color-hairline: #E3E3E9;
-  --color-control: #CACAD3;
-  --color-text: #16161D;
-  --color-secondary: #45454F;
-  --color-muted: #62626F;
+  --color-raised: #F1F1ED;
+  --color-hairline: #E3E3DE;
+  --color-control: #C9C9C3;
+  --color-text: #141518;
+  --color-secondary: #4A4B53;
+  --color-muted: #6C6D75;
 
-  /* Accent: the primary action and the active state, and nothing else. */
-  --color-primary: #4338A8;
-  --color-primary-pressed: #362C8C;
-  --color-primary-tint: #EEEDF8;
+  /* The action colour is ink: filled bars, the selected chip, links. Never a meaning. */
+  --color-primary: #141518;
+  --color-primary-pressed: #2E2F35;
+  --color-primary-tint: #ECECE8;
   --color-on-primary: #FFFFFF;
 
-  /* Status. */
+  /* Meaning. live = now (the current set, the rest arc, today); up = better than last time,
+   * Moving, Ready, a rep best; down = lowered, below the weekly range; pr = records only. Each
+   * has a tint to sit on. Never on buttons. */
+  --color-live: #2453D4;
+  --color-live-tint: #E8EEFC;
+  --color-up: #17794A;
+  --color-up-tint: #E2F2E9;
+  --color-down: #B04A1C;
+  --color-down-tint: #FBEAE2;
+  --color-pr: #8A6400;
+  --color-pr-tint: #FFF0C2;
+
+  /* Status kept for system states (a backup to make, storage unavailable) and destruction. */
   --color-warn: #8A5A12;
   --color-danger: #B42318;
 
-  /* Colour only in data: the four muscle-family marks, the four heat steps and the second
-   * chart series. */
+  /* The two Workouts' identity, on the calendar and the workout chip only. */
+  --workout-a: #256F91;
+  --workout-b: #96506F;
+
+  /* Colour in data: the four muscle-family marks, the neutral four-step heat ramp and the
+   * second chart series. */
   --data-push: #256F91;
   --data-pull: #96506F;
   --data-legs: #4F7A33;
   --data-core: #93611A;
-  --heat-0: #E6F1F2;
-  --heat-1: #A9D3D6;
-  --heat-2: #4E9DA4;
-  --heat-3: #1D6970;
+  --heat-0: #ECECE8;
+  --heat-1: #C6C7CC;
+  --heat-2: #8C8E97;
+  --heat-3: #3D3F47;
   --chart-b: #8A8A97;
 
   /* Effects: the scrim behind a sheet, and the sheet's shadow. */

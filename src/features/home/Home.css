@@ -1,0 +1,611 @@
+/* v7 Home, the landing dashboard (docs/design/competitors-2026-11/home/home.md). Four blocks on
+ * paper -- the Today panel is the screen's one surface -- and one Start bar docked above the tab
+ * bar. Every colour is a token: live is now, up/down are the status colours, pr is gold, the
+ * workout pair belongs to the ring, the chips and the grid alone. */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  /* Room under the last block for the dock, fixed just above the tab bar (the shell reserves the
+   * tab bar's own height). */
+  padding: var(--space-2) 20px 7rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ---- the date line and the gear ---- */
+
+.home-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  margin-right: -10px;
+}
+
+.home-date {
+  flex: 1;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-trailing {
+  display: flex;
+  align-items: center;
+}
+
+.home-notices {
+  margin-top: var(--space-2);
+}
+
+.home-notices > :last-child {
+  margin-bottom: 0;
+}
+
+/* The 12 px upper-case label every block opens with. */
+.home-label {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  line-height: 1rem;
+  text-transform: uppercase;
+}
+
+.home-chevron {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  color: var(--color-muted);
+}
+
+.home-up {
+  color: var(--color-up);
+  font-weight: var(--weight-semibold);
+}
+
+/* The gold count tag, `4 PR`: PrTag's own look (`.tag-pr`), with the count inside. */
+.home-pr {
+  white-space: nowrap;
+}
+
+/* The workout chip: the letter on its workout's colour, as the Sessions calendar draws a day. */
+.home-chip {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--color-muted);
+  color: var(--color-on-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+.home-chip[data-tone='push'] { background: var(--workout-a); }
+.home-chip[data-tone='pull'] { background: var(--workout-b); }
+.home-chip[data-tone='legs'] { background: var(--data-legs); }
+.home-chip[data-tone='core'] { background: var(--data-core); }
+
+/* ---- Block 1: Today, the one surface panel ---- */
+
+.home-today {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: var(--tap-min);
+  margin-top: var(--space-2);
+  padding: var(--space-4) 36px var(--space-4) 14px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+}
+
+.home-today.cell:active {
+  background: var(--color-raised);
+}
+
+.home-today-chevron {
+  position: absolute;
+  top: 14px;
+  right: 12px;
+}
+
+.home-today-text {
+  display: flex;
+  flex: 1 1 9rem;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-today-title {
+  margin-top: 3px;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.home-today-line {
+  margin-top: 5px;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+}
+
+.home-today-up {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 6px;
+  font-size: var(--text-sm);
+}
+
+/* The week ring: 112 px, one arc per planned Session. V7R-08: its centre is sized in px, as the
+ * hero numerals are (`--text-hero` is px), so "2/3 this week" stays inside the ring at 200 % text;
+ * the ring's accessible name says it at any size. */
+.home-ring {
+  position: relative;
+  display: block;
+  flex: 0 0 112px;
+  width: 112px;
+  height: 112px;
+}
+
+.home-ring-svg {
+  position: absolute;
+  inset: 0;
+}
+
+.home-ring-arc {
+  fill: none;
+  stroke: var(--heat-0);
+  stroke-linecap: round;
+  stroke-width: 11;
+}
+
+.home-ring-arc[data-tone='push'] { stroke: var(--workout-a); }
+.home-ring-arc[data-tone='pull'] { stroke: var(--workout-b); }
+.home-ring-arc[data-tone='legs'] { stroke: var(--data-legs); }
+.home-ring-arc[data-tone='core'] { stroke: var(--data-core); }
+.home-ring-arc[data-tone='gone'] { stroke: var(--chart-b); }
+
+.home-ring-arc[data-kind='due'] {
+  stroke: var(--color-live);
+  stroke-dasharray: 5 5;
+  stroke-width: 3;
+}
+
+.home-ring-centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-ring-count {
+  font-size: calc(var(--text-hero) * 0.4667);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.home-ring-of {
+  color: var(--color-muted);
+  font-size: calc(var(--text-hero) / 3);
+  font-weight: var(--weight-medium);
+}
+
+.home-ring-label {
+  margin-top: 3px;
+  color: var(--color-muted);
+  font-size: calc(var(--text-hero) / 5);
+  white-space: nowrap;
+  font-weight: var(--weight-medium);
+}
+
+/* ---- Block 1 for a new trainee: the plan pick ---- */
+
+.home-plans {
+  margin-top: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.home-plan-list {
+  margin-top: var(--space-2);
+}
+
+.home-plan {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-top: 1px solid var(--color-hairline);
+  font: inherit;
+  text-align: left;
+}
+
+.home-plan:first-child {
+  border-top: 0;
+}
+
+.home-plan-radio {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--color-control);
+  border-radius: var(--radius-pill);
+}
+
+.home-plan-radio[data-on='true'] {
+  border: 7px solid var(--color-text);
+}
+
+.home-plan-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-plan-name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+}
+
+.home-plan-summary {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---- Blocks 2 and 3: a header row, then the picture ---- */
+
+.home-block {
+  margin-top: 22px;
+}
+
+.home-block-head,
+.home-block-head-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.home-block-head {
+  flex-wrap: wrap;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  font: inherit;
+  text-align: left;
+}
+
+.home-block-head .home-label,
+.home-block-head-row .home-label {
+  flex: 1 0 auto;
+  white-space: nowrap;
+}
+
+/* V7R-07: the verdict and its chevron are one unit: they wrap together, to the right. */
+.home-block-end {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.home-verdict {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.home-verdict[data-tone='up'] { color: var(--color-up); }
+.home-verdict[data-tone='flat'] { color: var(--color-muted); font-weight: var(--weight-medium); }
+
+.home-sparks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.home-spark-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Seven 44 px cells a row; on a narrow phone or at large text the row wraps before a cell
+ * would shrink under the 44 px target. */
+.home-spark-cells {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  min-width: 0;
+}
+
+.home-spark-cell {
+  display: grid;
+  place-items: center;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+.home-spark-line {
+  fill: none;
+  stroke: var(--heat-2);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.home-spark-empty {
+  stroke: var(--color-control);
+  stroke-dasharray: 3 3;
+  stroke-width: 1.5;
+}
+
+.home-spark-end { fill: var(--chart-b); }
+.home-spark-end[data-tone='up'] { fill: var(--color-up); }
+.home-spark-end[data-tone='flat'] { fill: var(--color-muted); }
+.home-spark-end[data-tone='down'] { fill: var(--color-down); }
+
+.home-spark-pr {
+  fill: var(--color-pr-tint);
+  stroke: var(--color-pr);
+  stroke-width: 1.8;
+}
+
+.home-ghost-note {
+  margin: var(--space-2) 0 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+/* The Sessions block: one button, the grid and its count. */
+.home-sessions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  font: inherit;
+  text-align: left;
+}
+
+.home-block-head-row {
+  min-height: var(--tap-min);
+}
+
+.home-cal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) 22px;
+}
+
+.home-grid-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 14px);
+  grid-auto-columns: 14px;
+  gap: 4px;
+}
+
+.home-grid-day {
+  display: block;
+  /* A 14 px square with a 3 px corner: the radius tokens start at 6 px, which would make it a dot. */
+  clip-path: inset(0 round 3px);
+  background: var(--heat-0);
+}
+
+.home-grid-day[data-future='true'] { background: transparent; }
+.home-grid-day[data-tone='push'] { background: var(--workout-a); }
+.home-grid-day[data-tone='pull'] { background: var(--workout-b); }
+.home-grid-day[data-tone='legs'] { background: var(--data-legs); }
+.home-grid-day[data-tone='core'] { background: var(--data-core); }
+.home-grid-day[data-tone='gone'] { background: var(--chart-b); }
+
+.home-grid-day[data-today='true'] {
+  background: transparent;
+  outline: 2px solid var(--color-live);
+  outline-offset: -2px;
+}
+
+.home-grid-months {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 14px;
+  column-gap: 4px;
+  height: 14px;
+  margin-top: 6px;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 14px;
+}
+
+.home-grid-month {
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.home-cal-count {
+  display: flex;
+  flex: 1 1 6rem;
+  flex-direction: column;
+  padding-bottom: 18px;
+}
+
+.home-cal-number {
+  font-size: calc(var(--text-md) * 2.75);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.home-cal-number[data-zero='true'] {
+  color: var(--color-control);
+}
+
+.home-cal-caption {
+  margin-top: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.3;
+}
+
+/* ---- Block 4: Last time, one hairline row ---- */
+
+.home-last {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 22px;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-top: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline);
+  font: inherit;
+  text-align: left;
+}
+
+.home-last-name {
+  flex: 1 1 9rem;
+  min-width: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+}
+
+.home-last-detail {
+  color: var(--color-muted);
+  font-weight: var(--weight-regular);
+}
+
+.home-last-verdict {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+/* ---- the dock: one Start bar, fixed just above the tab bar ---- */
+
+.home-dock {
+  position: fixed;
+  right: 0;
+  bottom: calc(var(--tap-min) + var(--space-1) + 1px + var(--safe-bottom));
+  left: 0;
+  z-index: 5;
+  padding: var(--space-3) 20px;
+  background: var(--color-bg);
+}
+
+.home-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+/* A rest day keeps Start, as an outline: you can still train, but nothing is asking you to. */
+.home-start[data-style='outline'] {
+  border: 1.5px solid var(--color-text);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.home-start:disabled {
+  opacity: 0.5;
+}
+
+/* Resume during a live Session: the card's own spacing on Home. */
+.home .resume-card {
+  margin: var(--space-2) 0 0;
+}
+
+/* A narrow phone: the ring steps down so the title keeps its line. */
+@media (max-width: 359px) {
+  .home-ring {
+    flex-basis: 96px;
+    width: 96px;
+    height: 96px;
+  }
+
+  .home-ring-svg {
+    width: 96px;
+    height: 96px;
+  }
+
+  .home-today {
+    gap: var(--space-3);
+  }
+
+  .home-today-text {
+    flex-basis: 7rem;
+  }
+
+  .home-today-title {
+    font-size: var(--text-lg);
+  }
+
+  /* V7R-07: seven sparklines and the workout chip fit one row at 320 px: 36 px cells (the cell
+   * keeps its 44 px height, and 36 px clears WCAG 2.5.8's 24 px). */
+  .home-spark-cells {
+    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  }
+
+  .home-spark-cell {
+    min-width: 0;
+  }
+
+  .home-spark {
+    width: 100%;
+    max-width: 44px;
+    height: auto;
+  }
+}

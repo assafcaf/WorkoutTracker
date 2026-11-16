@@ -128,7 +128,7 @@ const EXPECTATIONS = [
   'Log your first workout and your lifts appear here.',
   'After 4 sessions a lift gets a status: going up, the same for a while, or below your best.',
   'When every set reaches the top of its rep range, the lift is ready for more load.',
-  'Records are a heavier set or a better estimated max, never volume.',
+  'Records are a heavier set or a better estimated strength, never volume.',
 ]
 
 type Top = { lever: number; reps: number }

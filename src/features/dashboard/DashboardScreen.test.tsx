@@ -98,20 +98,21 @@ describe('DashboardScreen', () => {
     await setActiveProgramId('assaf-ab-2026', NOW)
     const { onStartWorkout } = mount(services(NOW - 2 * 60_000))
 
-    // V3-08: the header names the workout due and when it was last done.
+    // v7: the header names the workout due, and its headline when it was last done.
     await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy(), SETTLE)
-    expect(screen.getByText('Tue 13 Oct · last done Fri 9 Oct')).toBeTruthy()
+    expect(screen.getByText('Tue 13 Oct')).toBeTruthy()
+    expect(screen.getByText('Same as Friday.')).toBeTruthy()
     expect(screen.queryByText('1/3')).toBeNull()
     expect(screen.queryByText('Muscle week')).toBeNull()
     const lifts = screen.getByRole('list', { name: 'Workout A lifts' })
     const squatRow = within(lifts).getByText('Back squat').closest('li') as HTMLElement
     // V2-05: Set 1 opens on last time's 60 kg over the Plan's 4 Sets. V6-01: one Session is Too
     // new for a verdict, so the row offers no other load, as Progress says.
-    expect(within(squatRow).getByText('4 × 60 kg')).toBeTruthy()
-    expect(within(squatRow).queryByText(/Ready for/)).toBeNull()
+    expect(squatRow.querySelector('.dashboard-step-preset')?.textContent).toBe('4×60 kg')
+    expect(within(squatRow).queryByText(/was /)).toBeNull()
     expect(within(screen.getByRole('button', { name: /^This week/ })).getByText('1 of 3')).toBeTruthy()
-    // V3-08: the sync state is the cloud button's name, not a line of text.
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Sync now · Synced 2 min ago' })).toBeTruthy(), SETTLE)
+    // v7 (study §1.1): synced, the header shows no sync at all.
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Sync now/ })).toBeNull(), SETTLE)
 
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
     expect(onStartWorkout).toHaveBeenCalledWith('workout-a')
@@ -127,7 +128,8 @@ describe('DashboardScreen', () => {
     // V2-05: with no history each row still reads the Preset Set 1 opens on (the start weight).
     expect(screen.queryByText('No sets yet')).toBeNull()
     const rows = within(screen.getByRole('list', { name: /lifts$/ })).getAllByRole('listitem')
-    expect(rows.every((row) => /\d+ (×|sets)/.test(row.textContent ?? ''))).toBe(true)
+    // v7: `sets × kg` (or `3 sets` with no weight to go on).
+    expect(rows.every((row) => /\d+(×| sets)/.test(row.querySelector('.dashboard-step-preset')?.textContent ?? ''))).toBe(true)
   })
 
   test("the estimate is the median of the workout's last logged durations once there are three", async () => {
@@ -143,7 +145,7 @@ describe('DashboardScreen', () => {
     mount(services())
     // Each Session ran 3,000,000 ms: 50 minutes. Workout A is due after B.
     // V2-05, V3-08: the dock carries the estimate alone; the card no longer repeats it.
-    await waitFor(() => expect(screen.getByText('~50 min')).toBeTruthy(), SETTLE)
+    await waitFor(() => expect(screen.getByText(/· about 50 min$/)).toBeTruthy(), SETTLE)
     expect(screen.queryByText('~50 min · from your logged workouts')).toBeNull()
   })
 
@@ -151,7 +153,7 @@ describe('DashboardScreen', () => {
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
     await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
-    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
     expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Workout B' })).toBeTruthy()
     const rows = within(screen.getByRole('list', { name: 'Workout B lifts' })).getAllByRole('listitem')
@@ -260,12 +262,13 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
     await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy(), SETTLE)
-    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
     const lifts = screen.getByRole('list', { name: 'Workout B lifts' })
     const row = within(lifts).getByText('Deadlift').closest('li') as HTMLElement
     // V6 (V5-07): these Sets ramp, 60 then 70, so the row opens on 60 and says where it goes.
-    expect(within(row).getByText('3 sets · 60 → 70 kg')).toBeTruthy()
-    expect(within(row).getByText('· 8–10')).toBeTruthy()
+    expect(row.querySelector('.dashboard-step-preset')?.textContent).toBe('3×60 → 70 kg')
+    // v7: no rep range on the row.
+    expect(row.textContent).not.toMatch(/8–10/)
   })
 
   test('V2-05 on a deload week each row reads the deloaded Preset', async () => {
@@ -275,11 +278,11 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     mount(services())
     const lifts = await screen.findByRole('list', { name: 'Workout B lifts' }, SETTLE)
     expect(lifts).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
     const a = screen.getByRole('list', { name: 'Workout A lifts' })
     const row = within(a).getByText('Back squat').closest('li') as HTMLElement
-    expect(within(row).getByText(/^4 × 5\d(\.\d+)? kg$/)).toBeTruthy()
-    expect(screen.getByText('Deload week · Presets 10% lighter')).toBeTruthy()
+    expect(row.querySelector('.dashboard-step-preset')?.textContent).toMatch(/^4×5\d(\.\d+)? kg$/)
+    expect(screen.getByText('Deload week: every load is 10 % lighter.')).toBeTruthy()
   })
 
   test('V6 V5-07 a ramped lift reads its Sets and its range, 4 sets · 47.5 → 62.5 kg', async () => {
@@ -294,12 +297,11 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
     await screen.findByRole('list', { name: 'Workout B lifts' }, SETTLE)
-    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
     const a = screen.getByRole('list', { name: 'Workout A lifts' })
     const row = within(a).getByText('Back squat').closest('li') as HTMLElement
 
-    expect(within(row).getByText('4 sets · 47.5 → 62.5 kg')).toBeTruthy()
-    expect(within(row).queryByText('4 × 47.5 kg')).toBeNull()
+    expect(row.querySelector('.dashboard-step-preset')?.textContent).toBe('4×47.5 → 62.5 kg')
   })
 })
 
@@ -329,7 +331,7 @@ describe('DashboardScreen V6 flow', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy(), SETTLE)
     // V6R-03: Workout B again, all of it, in plain words; no "lifts left" Start would not keep.
-    expect(screen.getByText('Workout B again · last one was cut short on Mon 12 Oct')).toBeTruthy()
+    expect(screen.getByText(/^Workout B again · last one was cut short on Mon 12 Oct\./)).toBeTruthy()
     expect(screen.queryByText(/lifts? left/)).toBeNull()
     // The week (from Monday) still counts it.
     expect(within(screen.getByRole('button', { name: /^This week/ })).getByText('1 of 3')).toBeTruthy()
@@ -349,9 +351,10 @@ describe('DashboardScreen V6 flow', () => {
     mount(services())
 
     await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy(), SETTLE)
-    expect(screen.getByText('Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight.')).toBeTruthy()
+    // v7: folded into the headline sentence.
+    expect(screen.getByText(/Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight\.$/)).toBeTruthy()
     // Change to Workout A: A has no note, so the line goes.
-    fireEvent.click(screen.getByRole('button', { name: 'Choose another workout' }))
-    expect(screen.queryByText(/^Note from/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
+    expect(screen.queryByText(/Note from/)).toBeNull()
   })
 })

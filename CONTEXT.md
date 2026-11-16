@@ -64,7 +64,8 @@ The best Set of one kind for an Exercise (heaviest, best estimated 1RM, and so o
 `recordsFor` names it; shown as "PR" in the UI. Since V6 a **PR** is only a new heaviest weight
 (less assistance, a first added load) or a new best estimated 1RM against every earlier Session
 (`asPr` / `isRealRecord` in `src/domain/stats/records.ts`); more reps at a weight already lifted
-is a **rep best**, shown quietly and never counted as a PR.
+is a **rep best**, shown quietly and never counted as a PR. Only a PR wears the gold `PrTag`
+(`src/ui/figures`). The UI calls the estimated 1RM "Est. strength" (never "Est. max").
 _Avoid_: Best, high score
 
 **Ladder**:
@@ -81,7 +82,10 @@ _Avoid_: Picker, spinner, wheel, slider
 
 **Preset**:
 What a Set opens with: last time's Set at this position, shifted by today's change; else the
-Exercise's defaults (a Swap's: the planned Exercise's).
+Exercise's defaults (a Swap's: the planned Exercise's). A lift's step up (Ready for 15 kg) is in
+the Preset itself, at the bottom of the rep range, as a deload or a Break's easing is (`liftPlan`,
+V7R-01): Home, the workout page and Program show what Start opens on, and the Set screen offers
+"Back to 14 kg".
 _Avoid_: Default, prefill, seed, suggestion
 
 **Swap**:
@@ -115,10 +119,17 @@ The Shell's sticky bottom slot; the screen showing decides what goes in it.
 _Avoid_: Footer, toolbar, CTA bar, bottom bar
 
 **Token**:
-One of the 49 custom properties (a closed set) that alone define a colour, space, radius or type size.
+One of the 62 custom properties (a closed set, `src/styles/tokens.css`) that alone define a colour,
+space, radius or type size.
 
 **Palette**:
-The colour Tokens: one light "Court" palette, no dark mode.
+The colour Tokens, by role, in one light palette with no dark mode (Ledger & Instrument,
+`docs/design/competitors-2026-11/study.md` §3): paper, surface and three inks, and ink is also the
+action colour (`--color-primary`). Colour is kept for meaning: `--color-live` (now), `--color-up`
+(better, Moving, Ready, a rep best), `--color-down` (lowered, below range) and `--color-pr`
+(records only), each with a tint; `--workout-a` and `--workout-b` for the calendar alone, apart
+from the muscle families' `--data-*`; a neutral heat ramp.
+_Avoid_: accent, Court
 
 **Service**:
 The only way the UI reads or writes the trainee's data or reaches sync. Each announces its writes on a

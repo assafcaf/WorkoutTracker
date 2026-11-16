@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
+import { openWorkoutPage } from './test/dashboard'
 import { db } from './storage/db'
 import { FakeSyncServer } from './test/fakeSyncServer'
 import type { Session } from './types'
@@ -69,6 +70,8 @@ test(
   async () => {
     const user = userEvent.setup()
     await renderApp()
+    // v7: Train's rows are the workout page's, which Home's Today panel opens.
+    await openWorkoutPage(user)
     const lifts = await screen.findByRole('list', { name: /lifts$/ }, SETTLE)
     await user.click(within(lifts).getAllByRole('button')[0])
     const name = (await screen.findByRole('heading', { level: 1 }, SETTLE)).textContent ?? ''

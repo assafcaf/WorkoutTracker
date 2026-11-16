@@ -10,9 +10,9 @@ type AllLiftsProps = ProgressPageProps<'lifts'> & {
 }
 
 /**
- * `All lifts` (v6): the dashboard's Lifts list on a page of its own -- every lift grouped by
- * Workout, with its one status, sparkline, latest top set and 4-week change. The dashboard now
- * carries the same list, so nothing links here any more (§6.2); the page stays registered for
+ * `All lifts` (v6, v7): the Progress ledger on a page of its own -- every lift once, in Plan
+ * order, with its status, a 12-week sparkline, its est. strength and 12-week change. The Progress
+ * home carries the same ledger, so nothing links here any more (§6.2); the page stays registered for
  * anything that still pushes `{ kind: 'lifts' }`.
  */
 export function AllLifts({ push, onBack, now = Date.now }: AllLiftsProps): JSX.Element {

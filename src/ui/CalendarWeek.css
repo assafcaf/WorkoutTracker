@@ -1,6 +1,8 @@
 /* One calendar week of seven day cells (V3-09): Sessions' six-week calendar draws six of them,
- * Train's week strip one. Session days are filled in the Workout's data token and carry its
- * letter; empty days are a dot; today is outlined. Every colour is a token. */
+ * Train's week strip one. Session days are filled in the Workout's own token (A and B: the
+ * --workout-* pair, kept for the calendar alone; a third and fourth Workout borrow --data-legs
+ * and --data-core) and carry its letter; empty days are a dot; today is outlined in live. Every
+ * colour is a token. */
 
 .calendar-week {
   display: grid;
@@ -20,8 +22,8 @@
   line-height: 1;
 }
 
-.calendar-day[data-workout="push"] { background: var(--data-push); }
-.calendar-day[data-workout="pull"] { background: var(--data-pull); }
+.calendar-day[data-workout="push"] { background: var(--workout-a); }
+.calendar-day[data-workout="pull"] { background: var(--workout-b); }
 .calendar-day[data-workout="legs"] { background: var(--data-legs); }
 .calendar-day[data-workout="core"] { background: var(--data-core); }
 .calendar-day[data-workout="gone"] { background: var(--chart-b); color: var(--color-text); }
@@ -38,7 +40,7 @@
 }
 
 .calendar-day[data-today] {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--color-live);
   outline-offset: -2px;
 }
 

@@ -44,15 +44,16 @@ export const STATUS_LABELS: Record<LiftStatusKind, string> = {
   moving: 'Moving',
 }
 
+/** v7 (study §3, Status): one glyph per tone -- ↑ better, = level, ↓ lower -- plus Too new and Break. */
 export const STATUS_GLYPHS: Record<LiftStatusKind, string> = {
   'too new': '○',
   break: '‖',
   ready: '↑',
   hold: '=',
   lowered: '↓',
-  slipping: '▼',
-  stalled: '■',
-  moving: '▲',
+  slipping: '↓',
+  stalled: '=',
+  moving: '↑',
 }
 
 /** Days without the lift after which it is on a Break. */
@@ -82,6 +83,11 @@ export type LiftStatus = {
   swap: boolean
   /** Break only: whole days since the lift was last done. */
   daysOff?: number
+  /**
+   * v7: when the status began -- Stalled: the Session of the last new best; Lowered: the Session
+   * the load dropped in. The Progress rows and headline say `Flat since 7 Aug`.
+   */
+  since?: number
 }
 
 export type LiftStatusInput = {
@@ -127,6 +133,15 @@ function spanText(from: number, to: number): string {
   const end = `${b.getDate()} ${MONTHS[b.getMonth()]}`
   if (a.getMonth() === b.getMonth()) return a.getDate() === b.getDate() ? end : `${a.getDate()}–${end}`
   return `${a.getDate()} ${MONTHS[a.getMonth()]}–${end}`
+}
+
+/**
+ * V7R-03: the trainee's days off -- calendar days since the last Session of any Workout (finished,
+ * not deleted) -- the one number Home, the workout page and the Set screen say; null with none.
+ */
+export function daysOff(sessions: Session[], now: number): number | null {
+  const starts = sessions.filter((s) => s.deletedAt === undefined && s.finishedAt != null).map((s) => s.startedAt)
+  return starts.length === 0 ? null : calendarDays(Math.max(...starts), now)
 }
 
 /** Whole local calendar days from `from`'s day to `to`'s day. */
@@ -265,13 +280,14 @@ export function liftStatusOf({ exercise, plan, history, notes, now }: LiftStatus
       const note = notes.get(at.sessionId)?.trim()
       const sets = plan?.sets ?? atTop(latest, bw).length
       const hi = plan?.repRange[1] ?? latest.top.reps
-      return make(
+      const lowered = make(
         'lowered',
         `${topText(latest.top, bw)} · down from ${L(from)} on ${humanDate(at.startedAt)}${note ? ` · note: “${firstWords(note, 6)}”` : ''}`,
         `Stay at ${L(load)} until all ${sets} sets reach ${hi}.`,
         `You lowered the weight from ${L(from)} to ${L(load)} on ${humanDate(at.startedAt)}${note ? `, with the note “${note.replace(/[.!?]+$/, '')}”` : ''}. A lower weight you chose is not a loss. When all ${sets} sets reach ${hi} at ${L(load)}, the app moves you back up to ${L(from)}.`,
         { lever: load, reps: hi },
       )
+      return { ...lowered, since: at.startedAt }
     }
   }
 
@@ -305,7 +321,7 @@ export function liftStatusOf({ exercise, plan, history, notes, now }: LiftStatus
       const lastDeload = deloads[deloads.length - 1]
       const run = deloads.filter((p) => lastDeload.startedAt - p.startedAt <= 7 * DAY)
       const most = Math.max(...real.filter((p) => p.top.lever === load).flatMap((p) => atTop(p, bw).map((s) => s.reps)))
-      return make(
+      const variation = make(
         'stalled',
         evidence,
         'Try a variation for 4 weeks.',
@@ -313,15 +329,17 @@ export function liftStatusOf({ exercise, plan, history, notes, now }: LiftStatus
         { lever: load, reps: null },
         true,
       )
+      return { ...variation, since }
     }
     const lighter = bw ? load : deloadWeight(load, exercise.weightStep)
-    return make(
+    const deload = make(
       'stalled',
       evidence,
       bw ? `Deload once: an easier session, then back to ${L(load)}.` : `Deload once: ${L(lighter)} × ${hi}, then back to ${L(load)}.`,
       `No new best and no extra reps at ${L(load)} in your last 4 sessions. One lighter session usually lets the next one move.`,
       { lever: lighter, reps: hi },
     )
+    return { ...deload, since }
   }
 
   const moveAt = real[lastMove]
@@ -395,18 +413,32 @@ export type LiftAdvice = {
   text: string
   /** The control's name on the Set screen, `Use 15 kg`; null when nothing is to be dialled in. */
   use: string | null
+  /**
+   * V7R-01: set when the step is already in the Preset (`liftPlan` applies a step up): the lever
+   * the Preset came up from, `14`. The text then reads `Up from 14 kg`, and `use` is the way
+   * back, `Back to 14 kg`.
+   */
+  from?: number
+}
+
+/** V7R-01: how far a Preset is raised for `advice` (`15 - 14` = 1); 0 when nothing is applied. */
+export function appliedStep(advice: LiftAdvice | null | undefined): number {
+  if (!advice || advice.from === undefined) return 0
+  return Math.round((advice.lever - advice.from) * 1000) / 1000
 }
 
 export function liftAdvice(
   status: LiftStatus | null | undefined,
   presetTop: number | null,
   bodyweight = false,
+  /** V7R-03: the trainee's days off (`daysOff`), said in place of the lift's own when given. */
+  off?: number | null,
 ): LiftAdvice | null {
   if (!status || !status.next || status.swap) return null
   if (isEased(status)) {
     // A Bodyweight lift's Load is never eased (as a deload leaves it): nothing to say.
     if (bodyweight) return null
-    return { kind: 'eased', lever: status.next.lever, text: `Eased after ${status.daysOff} days off`, use: null }
+    return { kind: 'eased', lever: status.next.lever, text: `Eased after ${off ?? status.daysOff} days off`, use: null }
   }
   if (presetTop === null || status.next.lever === presetTop) return null
   const lever = status.next.lever

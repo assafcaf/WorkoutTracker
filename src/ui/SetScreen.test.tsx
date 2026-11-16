@@ -603,6 +603,21 @@ test('O5 logging Set 2 of a Bodyweight Exercise at 12 reps announces it in the c
   })
 })
 
+test('V7R-05 after 3 warm-ups the first working Set is announced as Set 1, not Set 4', async () => {
+  const warmups: SetEntry[] = [30, 40, 50].map((weightKg, at) => ({
+    ...historyEntry(at + 1, weightKg, 5),
+    kind: 'warmup' as const,
+  }))
+  const { user } = renderWithLogged(warmups)
+
+  expect(logButton()).toHaveAccessibleName(/^Log set 1 /)
+  await user.click(logButton())
+
+  await waitFor(() => {
+    expect(screen.getByRole('status').textContent).toMatch(/^Set 1 logged · /)
+  })
+})
+
 // --- O6: no rest timer before any Set is logged in this Session -----------------------------
 
 test('O6 no rest timer renders when this Exercise has no Set logged in this Session', () => {
@@ -1297,6 +1312,16 @@ function prBadges(): HTMLElement[] {
   return screen.queryAllByLabelText('Personal record')
 }
 
+/** v7 (study §1.5): the record moment's one line under the track, if it shows. */
+function recordLine(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.set-record-line')
+}
+
+/** The record line's text, whitespace-collapsed ("PRHeaviest weight · 85 × 5"). */
+function recordLineText(): string {
+  return (recordLine()?.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
 /** The badges on the logged-set row whose button reads `name`. */
 function badgesOnRow(name: string): HTMLElement[] {
   const row = loggedSetButton(name).closest('li') as HTMLElement
@@ -1311,11 +1336,13 @@ test('O14 logging a Set that sets one record shows a toast naming it and the Set
 
   await user.click(logButton())
 
-  // V4-01: no toast; the Just done block names the Set and the record (R-R), with the PR tag.
-  const block = await screen.findByRole('region', { name: 'Just done' })
-  expect(block.textContent?.replace(/\s+/g, ' ')).toContain('Set 1 · 85 kg × 5')
-  expect(within(block).getByText('PR')).toHaveClass('tag-pr')
-  expect(within(block).getByText(/^Heaviest weight/)).toBeVisible()
+  // v7 (study §1.5): no toast; one line under the track, the gold PR tag, then the record and
+  // the Set (R-R).
+  await waitFor(() => expect(recordLine()).not.toBeNull())
+  const line = recordLine() as HTMLElement
+  expect(line).toHaveAttribute('data-kind', 'pr')
+  expect(within(line).getByText('PR')).toHaveClass('tag-pr')
+  expect(recordLineText()).toBe('PRHeaviest weight · 85 × 5')
   expect(document.querySelector('.toast')).toBeNull()
 })
 
@@ -1328,11 +1355,11 @@ test('O14 the toast joins every record label with a comma', async () => {
 
   await user.click(logButton())
 
-  // V4-01: one record name leads the one comparison line: "Heaviest weight · +5 kg on <day>".
-  const block = await screen.findByRole('region', { name: 'Just done' })
+  // v7: one record name leads the one line, then the Set and what it beat.
+  await waitFor(() => expect(recordLine()).not.toBeNull())
   const day = formatDay(new Date(BASE), new Date())
   // V6 (V5-13): it compares with the day beaten, "5 kg more than <day>".
-  expect(within(block).getByText(`Heaviest weight · 5 kg more than ${day}`)).toBeVisible()
+  expect(recordLineText()).toBe(`PRHeaviest weight · 85 × 5 · 5 kg more than ${day}`)
 })
 
 test('O14 logging a Set that sets no record shows no toast', async () => {
@@ -1346,8 +1373,9 @@ test('O14 logging a Set that sets no record shows no toast', async () => {
   await screen.findByText('Set 1 logged · 70 kg × 5')
 
   expect(screen.queryByText(/New PR/)).toBeNull()
-  const block = await screen.findByRole('region', { name: 'Just done' })
-  expect(within(block).queryByText('PR')).toBeNull()
+  // v7: a Set that sets nothing has no record line, and nothing restates it.
+  expect(recordLine()).toBeNull()
+  expect(screen.queryByText('PR')).toBeNull()
 })
 
 test('O14 a first-ever Exercise Session (no earlier Sessions) shows no toast', async () => {
@@ -1370,8 +1398,8 @@ test('O14 a record toast is not a modal', async () => {
   })
 
   await user.click(logButton())
-  const block = await screen.findByRole('region', { name: 'Just done' })
-  expect(within(block).getByText('PR')).toBeVisible()
+  await waitFor(() => expect(recordLine()).not.toBeNull())
+  expect(within(recordLine() as HTMLElement).getByText('PR')).toBeVisible()
 
   expect(screen.queryByRole('dialog')).toBeNull()
   expect(screen.queryByRole('alertdialog')).toBeNull()
@@ -1385,11 +1413,13 @@ test('O14 the record toast goes away after 3 s', async () => {
   })
 
   await tapWithFakeTimers(logButton())
-  expect(within(screen.getByRole('region', { name: 'Just done' })).getByText('PR')).toBeVisible()
+  expect(within(recordLine() as HTMLElement).getByText('PR')).toBeVisible()
 
-  // V4-01: the record stays in the Just done block for the whole rest, well past 3 s; no toast.
-  await vi.advanceTimersByTimeAsync(120_000)
-  expect(within(screen.getByRole('region', { name: 'Just done' })).getByText('PR')).toBeVisible()
+  // v7 (study §1.5): the PR line shows for 3 s and goes; never a toast.
+  await vi.advanceTimersByTimeAsync(2_900)
+  expect(recordLine()).not.toBeNull()
+  await vi.advanceTimersByTimeAsync(200)
+  expect(recordLine()).toBeNull()
   expect(document.querySelector('.toast')).toBeNull()
 })
 
@@ -1781,13 +1811,13 @@ test('O4 after the latest Set is deleted, rest follows the new latest Set', asyn
   await waitFor(() => expect(readoutValue(restReadout())).toBe('1:20'))
 })
 
-// E13-T11, V2-02: the next Set while rest is showing, in the Get ready card.
+// E13-T11, V2-02, v7 (study §1.4): the next Set while rest is showing, in Rest's Next panel.
 const NEXT_LINE = 'Change next set'
 
-/** The Get ready card's lines, one space between them, whitespace-collapsed. */
+/** The Next panel's lines, one space between them, whitespace-collapsed. */
 function getReadyText(): string {
-  const card = screen.getByRole('region', { name: 'Get ready' })
-  return Array.from(card.children, (line) => line.textContent ?? '')
+  const card = screen.getByRole('region', { name: 'Next set' })
+  return Array.from(card.querySelectorAll('p'), (line) => line.textContent ?? '')
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -1801,11 +1831,11 @@ test('O9 while resting before a planned Set the screen shows Next: set 2 · 60 k
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  // While rest runs the steppers fold into the Get ready card naming the next Set (S4, V2-02);
-  // the Log set bar under the rest panel logs it with one tap (V1-03).
+  // While rest runs the steppers fold into Rest's Next panel naming the next Set (S4, V2-02, v7);
+  // Log set beside Skip rest logs it with one tap (V1-03).
   const next = screen.getByRole('button', { name: NEXT_LINE })
   expect(next).toHaveAttribute('aria-expanded', 'false')
-  expect(getReadyText()).toMatch(/^Get ready · Set 2 60 kg × \d+ /)
+  expect(getReadyText()).toMatch(/^Next · Set 2 60 kg×\d+$/)
   expect(screen.queryByRole('button', { name: /^Weight, / })).toBeNull()
   expect(logButton()).toHaveClass('log-set')
   expect(cellReading(currentCell())).toBe(`2 60×${readoutValue(repsReadout())}`)
@@ -1822,7 +1852,7 @@ test('O9 a Bodyweight Exercise reads Next: set 2 · BW × 10–15', () => {
     restFrom: { entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 },
   })
 
-  expect(getReadyText()).toMatch(/^Get ready · Set 2 BW × \d+ /)
+  expect(getReadyText()).toMatch(/^Next · Set 2 BW×\d+$/)
   expect(logButton()).toHaveClass('log-set')
   expect(cellReading(currentCell())).toMatch(/^2 BW×\d+$/)
 })
@@ -1843,7 +1873,7 @@ test('O9 on an extra Set past the plan there is no Next line', () => {
     restFrom: { entry: historyEntry(4, 60, 10), planRestSeconds: 180 },
   })
 
-  // An extra Set keeps its steppers through rest: nothing folds into a Get ready card.
+  // An extra Set keeps its steppers through rest: nothing folds into Rest's Next panel.
   expect(screen.queryByRole('button', { name: NEXT_LINE })).toBeNull()
   expect(screen.getByRole('button', { name: /^Weight, / })).toBeVisible()
 })
@@ -1857,7 +1887,7 @@ test('O9 in the done state there is no Next line', () => {
   })
 
   expect(screen.queryByRole('button', { name: NEXT_LINE })).toBeNull()
-  expect(screen.queryByRole('region', { name: 'Get ready' })).toBeNull()
+  expect(screen.queryByRole('region', { name: 'Next set' })).toBeNull()
 })
 
 test('S4 the folded Next row adds last time’s Set at that position: · last 60 × 8', () => {
@@ -1869,7 +1899,7 @@ test('S4 the folded Next row adds last time’s Set at that position: · last 60
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(getReadyText()).toMatch(/^Get ready · Set 2 60 kg × \d+ Last time 60 × 8/)
+  expect(getReadyText()).toMatch(/^Next · Set 2 60 kg×\d+ Last time 60 × 8/)
   // Folded, the dated Last time line and the PR target line go with the steppers.
   expect(screen.queryByText(/^Last time .* · /)).toBeNull()
 })
@@ -2285,15 +2315,17 @@ test('F1 the rest panel is the first element of the set screen, before the links
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
   renderWithSessionRest([squatEntry(1, BASE)])
 
-  // S4: the rest panel is the dock under the body, in place of Log set; the body opens on the
-  // exercise's head, not on a timer.
+  // v7 (study §1.4): Rest is its own screen -- the ring is in the body, under the head and the
+  // track, and the dock holds Skip rest; the body still opens on the exercise's head.
   const screenEl = document.querySelector('.set-screen')
-  const panel = document.querySelector('.set-dock .rest-panel')
+  const panel = document.querySelector('.set-screen .rest-panel')
   expect(panel).not.toBeNull()
-  expect(screenEl?.contains(panel as Node)).toBe(false)
+  expect(panel).toHaveClass('rest-panel--ring')
+  expect(document.querySelector('.set-dock .rest-panel')).toBeNull()
   expect(screenEl?.firstElementChild).toHaveClass('set-head')
   expect(panel?.textContent).toContain('1:20')
   expect(panel?.querySelector('.rest-controls')).not.toBeNull()
+  expect(document.querySelector('.set-dock')?.querySelector('.skip-rest')?.textContent).toBe('Skip rest')
 })
 
 test('F1 the stylesheet keeps .rest-timer in the flow of the page, so it covers nothing', () => {
@@ -4401,11 +4433,10 @@ test('S4 while rest runs the effort chips name the Set just logged', async () =>
 
   const group = await screen.findByRole('group', { name: 'Reps in reserve' })
   const row = group.closest('.effort-row') as HTMLElement
-  // V4-01: the chips sit in the Just done block, which the Set heads: "SET 2 · 60 kg × 10",
-  // then "Reps left?". No "RIR" anywhere in the row (V1-14).
-  const block = group.closest('.just-done') as HTMLElement
-  expect(block.textContent?.replace(/\s+/g, ' ')).toMatch(/^Set 2 · 60 kg × 10/)
-  expect(row.textContent).toMatch(/^Reps left\?/)
+  // v7 (study §1.4, §3): one row names the Set just logged as a statement, "Set 2: reps left";
+  // no block restates the Set. No "RIR" anywhere in the row (V1-14).
+  expect(group.closest('.just-done')).toBeNull()
+  expect(row.textContent).toMatch(/^Set 2: reps left/)
   expect(row.textContent).not.toMatch(/RIR/)
 })
 
@@ -4415,13 +4446,14 @@ test('S5a a record shows a toast pinned at the top with the PR tag, and goes in 
 
   await tapWithFakeTimers(logButton())
 
-  // V4-01: nothing is pinned over the header; the PR tag sits in the Just done block, and stays.
+  // v7 (study §1.5): nothing is pinned over the header; the PR tag leads one line under the
+  // track, and the line goes after 3 s.
   expect(document.querySelector('.toast')).toBeNull()
-  const block = screen.getByRole('region', { name: 'Just done' })
-  expect(within(block).getByText('PR')).toHaveClass('tag-pr')
+  const line = recordLine() as HTMLElement
+  expect(within(line).getByText('PR')).toHaveClass('tag-pr')
   await vi.advanceTimersByTimeAsync(3100)
   expect(document.querySelector('.toast')).toBeNull()
-  expect(within(screen.getByRole('region', { name: 'Just done' })).getByText('PR')).toBeVisible()
+  expect(recordLine()).toBeNull()
 })
 
 test('S3b the ⋯ button opens the tools sheet: name, Close, and every tool as a row', async () => {
@@ -4543,8 +4575,9 @@ test('V2-02 during rest the Get ready card names the plate change from the bar j
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  const card = screen.getByRole('region', { name: 'Get ready' })
-  expect(within(card).getByText('70 kg × 8')).toBeVisible()
+  // v7 (study §1.4): Rest's Next panel, "70 kg × 8" with the plate change beside it.
+  const card = screen.getByRole('region', { name: 'Next set' })
+  expect(card.querySelector('.rest-next-set')?.textContent).toBe('70 kg×8')
   expect(within(card).getByText('Add 5 per side → 20 + 5')).toBeVisible()
 })
 
@@ -4603,10 +4636,10 @@ test('V3-01 a handed-over Exercise shows its verdict line with Add set over the 
   })
 
   const line = screen.getByRole('region', { name: 'Exercise done' })
-  const card = screen.getByRole('region', { name: 'Get ready' })
+  const card = screen.getByRole('region', { name: 'Next set' })
   expect(line.textContent).toMatch(/^Deadlift done/)
   expect(line.textContent).toContain('70×7 · 70×7 · 70×7 · Same as Mon 12 Oct')
-  // V4-01: read high, tap low -- the Get ready card sits under the cells, the block on the dock.
+  // V4-01, v7: read high, tap low -- the Next panel sits under the ring, the block under it.
   expect(card.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   fireEvent.click(within(line).getByRole('button', { name: 'Add set' }))
   expect(onAddSet).toHaveBeenCalledTimes(1)
@@ -4634,12 +4667,19 @@ test('V3-03 the rest dock is one row: countdown, −15 s, +15 s and Skip, with n
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  const row = document.querySelector('.rest-panel-main') as HTMLElement
-  expect(row.querySelector('[role="timer"]')).not.toBeNull()
-  for (const name of ['Rest 15 seconds less', 'Rest 15 seconds more', 'Skip rest']) {
-    expect(row.contains(screen.getByRole('button', { name }))).toBe(true)
+  // v7 (study §1.4): the countdown in its ring with −15 s and +15 s under it; Skip rest is the
+  // dock's bar, outlined, beside a quiet Log set; still no Use offer.
+  const panel = document.querySelector('.rest-panel--ring') as HTMLElement
+  expect(panel.querySelector('.rest-ring [role="timer"]')).not.toBeNull()
+  const controls = panel.querySelector('.rest-ring-controls') as HTMLElement
+  for (const name of ['Rest 15 seconds less', 'Rest 15 seconds more']) {
+    expect(controls.contains(screen.getByRole('button', { name }))).toBe(true)
   }
-  expect(screen.getByRole('button', { name: 'Skip rest' }).textContent).toBe('Skip')
+  const skip = screen.getByRole('button', { name: 'Skip rest' })
+  expect(skip.textContent).toBe('Skip rest')
+  expect(skip).toHaveClass('btn-secondary')
+  expect(skip.closest('.set-dock')).not.toBeNull()
+  expect(logButton()).not.toHaveClass('btn-primary')
   expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
 })
 
@@ -4655,7 +4695,7 @@ test('V3-05 three Warm-ups share one W cell: the row reads W, 1, 2, 3 and the ba
 
   await waitFor(() => expect(logButton().textContent).toMatch(/^Log warm-up 2 /))
   expect(screen.queryByRole('group', { name: 'Reps in reserve' })).toBeNull()
-  expect(screen.getByRole('region', { name: 'Get ready' }).textContent).not.toMatch(/Set 1/)
+  expect(screen.getByRole('region', { name: 'Next set' }).textContent).not.toMatch(/Set 1/)
 })
 
 test('V3-06 the set cells share the row width and never scroll sideways', () => {
@@ -4668,8 +4708,9 @@ test('V3-06 the set cells share the row width and never scroll sideways', () => 
 
 // --- UX v4: the live Session's help and honest delight (V4-01, V4-02, V4-04, V4-05, V4-06, V4-07)
 
-function justDoneBlock(): HTMLElement {
-  return screen.getByRole('region', { name: 'Just done' })
+/** v7 (study §1.4): Rest no longer restates the Set just logged; there is no Just done block. */
+function justDoneBlock(): HTMLElement | null {
+  return screen.queryByRole('region', { name: 'Just done' })
 }
 
 function textOf(element: Element | null): string {
@@ -4684,11 +4725,14 @@ test('V4-01 after a Set equal to last time, the Just done block heads it and rea
 
   await user.click(logButton())
 
-  const block = await screen.findByRole('region', { name: 'Just done' })
-  const day = formatDay(new Date(BASE), new Date())
-  expect(textOf(block.querySelector('.just-done-head'))).toBe('Set 1 · 85 kg × 5')
-  expect(textOf(block.querySelector('.just-done-line'))).toBe(`Same as ${day}`)
-  expect(within(block).queryByText('PR')).toBeNull()
+  // v7 (study §1.4): Rest drops the restatement of the Set just logged ("Same as <day>"); last
+  // time moves to the Next panel, about the Set to come.
+  const next = await screen.findByRole('region', { name: 'Next set' })
+  expect(justDoneBlock()).toBeNull()
+  expect(screen.queryByText(/^Same as /)).toBeNull()
+  expect(document.querySelector('.set-record-line')).toBeNull()
+  expect(textOf(next)).toContain('Last time 85 × 5')
+  expect(screen.queryByText('PR')).toBeNull()
 })
 
 test('V4-01 a Set under last time reads n rep under <day>, in the secondary colour', async () => {
@@ -4699,13 +4743,16 @@ test('V4-01 a Set under last time reads n rep under <day>, in the secondary colo
 
   await user.click(logButton())
 
-  const line = (await screen.findByRole('region', { name: 'Just done' })).querySelector('.just-done-line')
-  // V6 wave 3: one comparison sentence app-wide, the summary's "1 fewer rep than <day>".
-  expect(textOf(line)).toBe(`1 fewer rep than ${formatDay(new Date(BASE), new Date())}`)
-  expect(line?.getAttribute('data-kind')).toBe('down')
+  // v7 (study §1.4): a Set under last time is not restated on Rest at all -- nothing reads it,
+  // and nothing on the record line or the Next panel is ever red.
+  await screen.findByRole('region', { name: 'Next set' })
+  expect(justDoneBlock()).toBeNull()
+  expect(screen.queryByText(/fewer rep/)).toBeNull()
+  expect(document.querySelector('.set-record-line')).toBeNull()
   const decls = declarationsFor(restCss(), '.just-done-line')
   expect(decls.get('color')).toBe('var(--color-secondary)')
   expect(restCss()).not.toMatch(/\.just-done[^{]*\{[^}]*--color-danger/)
+  expect(restCss()).not.toMatch(/\.(set-record-line|rest-next)[^{]*\{[^}]*--color-danger/)
 })
 
 test('V4-01 with no last time the block reads First time logged', async () => {
@@ -4713,7 +4760,11 @@ test('V4-01 with no last time the block reads First time logged', async () => {
 
   await user.click(logButton())
 
-  expect(textOf(justDoneBlock().querySelector('.just-done-line'))).toBe('First time logged')
+  // v7: with no record there is no line under the track, and no block restates the Set.
+  await screen.findByRole('region', { name: 'Next set' })
+  expect(justDoneBlock()).toBeNull()
+  expect(document.querySelector('.set-record-line')).toBeNull()
+  expect(screen.queryByText('First time logged')).toBeNull()
 })
 
 test('V4-01 while rest runs the Get ready card sits right under the cells, the Just done block under it', async () => {
@@ -4721,9 +4772,12 @@ test('V4-01 while rest runs the Get ready card sits right under the cells, the J
 
   await user.click(logButton())
 
-  const card = await screen.findByRole('region', { name: 'Get ready' })
-  expect(document.querySelector('.set-cells')?.nextElementSibling).toBe(card)
-  expect(card.compareDocumentPosition(justDoneBlock()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // v7 (study §1.4): the ring sits right under the cells, the Next panel under it.
+  const card = await screen.findByRole('region', { name: 'Next set' })
+  const ring = document.querySelector('.rest-panel--ring') as HTMLElement
+  expect(document.querySelector('.set-cells')?.nextElementSibling).toBe(ring)
+  expect(ring.nextElementSibling).toBe(card)
+  expect(justDoneBlock()).toBeNull()
 })
 
 test('V4-01 a hand-over is headed <Exercise> done · 1 PR with Add set, its chips Set 3 reps left?', () => {
@@ -4745,7 +4799,8 @@ test('V4-01 a hand-over is headed <Exercise> done · 1 PR with Add set, its chip
   const block = screen.getByRole('region', { name: 'Exercise done' })
   expect(textOf(block.querySelector('.just-done-head'))).toBe('Deadlift done · 1 PR')
   expect(within(block).getByRole('button', { name: 'Add set' })).toBeVisible()
-  expect(textOf(block.querySelector('.effort-label'))).toBe('Set 3 reps left?')
+  // v7 (study §3): a statement, not a question-label.
+  expect(textOf(block.querySelector('.effort-label'))).toBe('Set 3: reps left')
   expect(block.textContent).not.toMatch(/\d+ vs \d+/)
   fireEvent.click(within(block).getByRole('button', { name: '2' }))
   expect(onPick).toHaveBeenCalledWith(2)
@@ -4784,9 +4839,13 @@ test('V6 a rep best reads rep best if logged, then Rep best on Rest, with no PR 
 
   await user.click(logButton())
 
-  const block = await screen.findByRole('region', { name: 'Just done' })
-  expect(textOf(block.querySelector('.just-done-line'))).toMatch(/^Rep best · /)
-  expect(within(block).queryByText('PR')).toBeNull()
+  // v7 (study §1.5): one quiet green line under the track, never gold, never a tag.
+  await waitFor(() => expect(document.querySelector('.set-record-line')).not.toBeNull())
+  const record = document.querySelector('.set-record-line') as HTMLElement
+  expect(record).toHaveAttribute('data-kind', 'rep-best')
+  expect(textOf(record)).toMatch(/^↑ Rep best · BW × 13 · /)
+  expect(within(record).queryByText('PR')).toBeNull()
+  expect(declarationsFor(restCss(), ".set-record-line[data-kind='rep-best']").get('color')).toBe('var(--color-up)')
   expect(prBadges()).toHaveLength(0)
 })
 
@@ -4800,8 +4859,11 @@ test('V6 a heavier Set still reads PR if logged, and its Just done line carries 
   expect(textOf(document.querySelector('.set-projection'))).toMatch(/PR if logged$/)
   await user.click(logButton())
 
-  const block = await screen.findByRole('region', { name: 'Just done' })
-  expect(textOf(block.querySelector('.just-done-line'))).toMatch(/^PR ?Heaviest weight · /)
+  // v7 (study §1.5): the PR line under the track leads with the gold tag.
+  await waitFor(() => expect(document.querySelector('.set-record-line')).not.toBeNull())
+  const block = document.querySelector('.set-record-line') as HTMLElement
+  expect(block).toHaveAttribute('data-kind', 'pr')
+  expect(textOf(block)).toMatch(/^PR ?Heaviest weight · /)
   expect(within(block).getByText('PR')).toHaveClass('tag-pr')
 })
 
@@ -4853,7 +4915,8 @@ test('V4-04 a Set with no Record plays no PR sound and flashes nothing', async (
 
 test('V4-04 the flash is the accent tint over 1.2 s, and none under reduced motion', () => {
   const css = restCss()
-  expect(css).toMatch(/@keyframes pr-flash\s*\{[^}]*background-color:\s*var\(--color-primary-tint\)/)
+  // v7: a record's accent is the gold PR tint (study §3, PR), no longer the indigo primary's.
+  expect(css).toMatch(/@keyframes pr-flash\s*\{[^}]*background-color:\s*var\(--color-pr-tint\)/)
   expect(css).toMatch(/\.logged-sets li\.pr-flash \.logged-set \{\s*animation: pr-flash 1\.2s/)
   const reduced = postcss
     .parse(css)
@@ -4875,7 +4938,7 @@ test('V4-06 an unanswered reps-left question stays on Now after rest, until answ
   // Rest is over: Now with its Dials, and the question for set 1 above them.
   expect(screen.queryByRole('button', { name: 'Skip rest' })).toBeNull()
   const row = (screen.getByRole('group', { name: 'Reps in reserve' }).closest('.effort-row') as HTMLElement)
-  expect(textOf(row.querySelector('.effort-label'))).toBe('Set 1 reps left?')
+  expect(textOf(row.querySelector('.effort-label'))).toBe('Set 1: reps left')
   expect(row.compareDocumentPosition(document.querySelector('.set-dials') as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(textOf(document.querySelector('.rest-over'))).toMatch(/^Rested 3:00 · \+0:0\d$/)
 
@@ -4893,11 +4956,11 @@ test('V4-06 the unanswered question goes once the next Set is logged', async () 
 
   await tapWithFakeTimers(logButton())
   await vi.advanceTimersByTimeAsync(181_000)
-  expect(screen.getByText('Set 1 reps left?')).toBeVisible()
+  expect(screen.getByText('Set 1: reps left')).toBeVisible()
 
   await tapWithFakeTimers(logButton())
 
-  expect(screen.queryByText('Set 1 reps left?')).toBeNull()
+  expect(screen.queryByText('Set 1: reps left')).toBeNull()
 })
 
 test('V4-05 on a Warm-up the line under the Dials and the Get ready card read Then set 1, never Last time', async () => {
@@ -4909,7 +4972,7 @@ test('V4-05 on a Warm-up the line under the Dials and the Get ready card read Th
 
   await logStep(user, 'Warm-up 1 of 3 · 50 kg × 5', 1)
 
-  const card = await screen.findByRole('region', { name: 'Get ready' })
+  const card = await screen.findByRole('region', { name: 'Next set' })
   expect(textOf(card)).toContain('Then set 1 · 100 × 8')
   expect(screen.queryByText(/Last time/)).toBeNull()
   expect(document.querySelector('p.warmup-ramp')).toBeNull()
@@ -5072,12 +5135,14 @@ function shortScreenDecls(selector: string): Map<string, string> {
 }
 
 test('V5 at 320 x 568 the Rest view tightens so the Just done chips clear the dock', () => {
-  // Measured in the browser: chips 356-400 against the action bar's top at 407 (was 408-452).
+  // v7: Rest's ring steps down with −15 s / +15 s beside it, and the Next panel tightens, so the
+  // reps-left chips sit over the Skip rest bar at 320 x 568.
   expect(shortScreenDecls('.just-done').get('padding')).toBe('var(--space-2) var(--space-3)')
-  expect(shortScreenDecls('.get-ready').get('padding')).toBe('var(--space-2) var(--space-3)')
+  expect(shortScreenDecls('.rest-next').get('padding')).toBe('var(--space-2) var(--space-3)')
+  expect(shortScreenDecls('.rest-ring').get('width')).toBe('144px')
+  expect(shortScreenDecls('.rest-panel.rest-panel--ring').get('flex-direction')).toBe('row')
   expect(shortScreenDecls('.set-cell').get('min-height')).toBe('52px')
   expect(shortScreenDecls('.set-head').get('min-height')).toBe('var(--tap-min)')
-  expect(shortScreenDecls('.set-screen:has(.get-ready) > .set-spacer').get('display')).toBe('none')
   // The hand-over block puts its chips under the heading, its Sets line after them.
   expect(shortScreenDecls('.exercise-verdict .effort-row').get('order')).toBe('1')
   expect(shortScreenDecls('.exercise-verdict .just-done-line').get('order')).toBe('2')
@@ -5136,30 +5201,34 @@ test('V6 V5-02 with askStartWeight the Plate line asks Set a starting weight unt
 
 // --- UX v6 flow: the warm-up line on Now (V6-16), Last time's day (V6-18), First time (V6-17) ---
 
+/** V6-16, v7 (study §1.2): the warm-up ramp offered as a dashed W cell in the track. */
 function warmupLine(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('.set-warmup-line')
+  return document.querySelector<HTMLElement>('.set-cells .warmup-offer')
 }
 
 test('V6-16 the first barbell lift shows its warm-up ramp above the cells, with Add', () => {
   renderBarbell([], { warmupLine: true })
 
-  const line = warmupLine() as HTMLElement
-  expect(line).not.toBeNull()
-  expect(textOf(line.querySelector('.set-warmup-line-text'))).toBe('Warm-up: 50×5 · 70×3 · 85×2')
-  const add = within(line).getByRole('button', { name: 'Add these warm-ups' })
-  expect(add).toHaveTextContent('Add')
-  const cells = document.querySelector('.set-cells') as HTMLElement
-  expect(line.compareDocumentPosition(cells) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // v7: no sentence above the track; the ramp is the track's first cell, W, dashed like a Set to
+  // come, named in full for a screen reader, and one tap adds it.
+  const cell = warmupLine() as HTMLElement
+  expect(cell).not.toBeNull()
+  expect(cell.tagName).toBe('BUTTON')
+  expect(cell).toHaveAttribute('data-state', 'planned')
+  expect(cell).toHaveAccessibleName('Add warm-ups: 50×5 · 70×3 · 85×2')
+  expect(textOf(cell.querySelector('.set-cell-index'))).toBe('W')
+  expect(textOf(cell.querySelector('.set-cell-value'))).toBe('50–85')
+  expect(document.querySelector('.set-cells')?.firstElementChild).toBe(cell)
+  expect(document.querySelector('.set-warmup-line')).toBeNull()
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'SetScreen.css'), 'utf-8')
-  const decls = declarationsFor(css, '.set-warmup-line-add')
-  expect(decls.get('min-height')).toBe('var(--tap-min)')
-  expect(decls.get('min-width')).toBe('var(--tap-min)')
+  const decls = declarationsFor(css, '.warmup-offer')
+  expect(decls.get('min-height')).toBe('64px')
 })
 
 test('V6-16 Add on the warm-up line starts the ramp, and the line goes', async () => {
   const { user } = renderBarbell([], { warmupLine: true })
 
-  await user.click(screen.getByRole('button', { name: 'Add these warm-ups' }))
+  await user.click(screen.getByRole('button', { name: /^Add warm-ups: / }))
 
   await waitFor(() => expect(rampLineText()).toBe('Warm-up 1 of 3 · 50 kg × 5'))
   expect(warmupLine()).toBeNull()

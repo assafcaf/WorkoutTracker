@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { presetForSet } from '../domain/prefill'
-import { isPrSet } from '../domain/prMoment'
+import { isSessionPrSet } from '../domain/prMoment'
 import { workingSets } from '../domain/setKind'
-import { formatSet, loadText } from '../domain/setText'
+import { formatSet } from '../domain/setText'
 import './ExerciseList.css'
-import { Icon } from './icons'
+import { SetCell, SetFigure } from './figures'
 import { VolumeVsBaseline } from './VolumeVsBaseline'
 import type {
   Exercise,
@@ -22,6 +22,8 @@ export type ExerciseListProps = {
   deload?: boolean
   /** V6-05: whether a lift opens eased this Session (its Break); its planned Sets show the eased Preset. */
   easedFor?(exerciseId: string): boolean
+  /** V7R-01: the step up a lift's Presets hold this Session (`appliedStep`); 0 or unset for none. */
+  stepUpFor?(exerciseId: string): number
   program: Program
   workout: Workout
   /**
@@ -91,6 +93,7 @@ function SetCells(props: {
   lastEntries: SetEntry[]
   current: boolean
   deload?: boolean
+  stepUp?: number
   onOpenNext(): void
   onOpenLogged(setIndex: number): void
 }): JSX.Element {
@@ -113,6 +116,7 @@ function SetCells(props: {
       lastEntries,
       today: assumed,
       deload: props.deload,
+      stepUp: props.stepUp,
     })
     assumed.push({
       exerciseId: exercise.id,
@@ -125,60 +129,58 @@ function SetCells(props: {
     upcoming.push({ position, ...preset })
   }
   const isRecord = (entry: SetEntry): boolean =>
-    isPrSet(exercise, plan, earlier, session, entry)
+    isSessionPrSet(exercise, plan, earlier, session, entry)
 
   return (
     <div className="all-cells">
       {warmups.length === 0 ? null : (
-        <span className="all-cell all-cell--done all-cell--warmup" aria-label={`${warmups.length} warm-ups`}>
-          <span className="all-cell-mark">
-            <Icon name="Check" size={12} />
-          </span>
+        <SetCell
+          as="span"
+          state="done"
+          className="all-cell all-cell--done all-cell--warmup"
+          headClassName="all-cell-mark"
+          aria-label={`${warmups.length} warm-ups`}
+        >
           <span className="all-cell-load">W</span>
           <span className="all-cell-reps">{warmups.length}</span>
-        </span>
+        </SetCell>
       )}
       {working.map((entry, at) => (
-        <button
+        <SetCell
           key={entry.setIndex}
-          type="button"
+          state={isRecord(entry) ? 'pr' : 'done'}
           className="all-cell all-cell--done cell"
+          headClassName="all-cell-mark"
           aria-label={`Set ${at + 1} · ${formatSet(entry)}`}
           onClick={() => onOpenLogged(entry.setIndex)}
+          index={entry.kind === undefined ? undefined : <b className="all-cell-kind">{KIND_LETTERS[entry.kind]}</b>}
         >
-          <span className="all-cell-mark">
-            {entry.kind === undefined ? null : <b className="all-cell-kind">{KIND_LETTERS[entry.kind]}</b>}
-            {isRecord(entry) ? <span className="tag tag-pr">PR</span> : <Icon name="Check" size={12} />}
-          </span>
-          <span className="all-cell-load">{loadText(entry)}</span>
-          <span className="all-cell-reps">×{entry.reps}</span>
-        </button>
+          <SetFigure set={entry} stack className="all-cell-figure" />
+        </SetCell>
       ))}
       {upcoming.map((cell, at) =>
         current && at === 0 ? (
-          <button
+          <SetCell
             key={cell.position}
-            type="button"
+            state="current"
             className="all-cell all-cell--current cell"
+            headClassName="all-cell-mark"
             aria-label={`Set ${cell.position} · ${formatSet(cell)} · next`}
             onClick={onOpenNext}
           >
-            <span className="all-cell-mark" />
-            <span className="all-cell-load">{loadText(cell)}</span>
-            <span className="all-cell-reps">×{cell.reps}</span>
-          </button>
+            <SetFigure set={cell} stack className="all-cell-figure" />
+          </SetCell>
         ) : (
-          <button
+          <SetCell
             key={cell.position}
-            type="button"
+            state="planned"
             className="all-cell all-cell--future cell"
+            headClassName="all-cell-mark"
             aria-label={`Set ${cell.position} · ${formatSet(cell)}`}
             onClick={onOpenNext}
           >
-            <span className="all-cell-mark" />
-            <span className="all-cell-load">{loadText(cell)}</span>
-            <span className="all-cell-reps">×{cell.reps}</span>
-          </button>
+            <SetFigure set={cell} stack className="all-cell-figure" />
+          </SetCell>
         ),
       )}
     </div>
@@ -282,11 +284,12 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         )
 
         // The volume against the baseline stays the row's to say, for a screen reader: the
-        // projection line above the list carries it on screen (Progress Dashboard S2).
+        // projection line above the list carries it on screen (Progress Dashboard S2). V7R-06:
+        // only once the lift has a logged working Set -- "0%" at 0 sets reads as "same as last time".
         const rowBody = (
           <>
             {label}
-            {exercise !== undefined ? (
+            {exercise !== undefined && working > 0 ? (
               <span className="exercise-volume">
                 <VolumeVsBaseline
                   exercise={exercise}
@@ -322,6 +325,7 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
                 lastEntries={props.lastEntries.get(effectiveId) ?? []}
                 current={props.currentId === effectiveId}
                 deload={props.deload === true || props.easedFor?.(effectiveId) === true}
+                stepUp={props.stepUpFor?.(effectiveId) ?? 0}
                 onOpenNext={open}
                 onOpenLogged={(setIndex) =>
                   props.onOpenLogged === undefined ? open() : props.onOpenLogged(effectiveId, setIndex)
