@@ -22,7 +22,10 @@ export type LiveHeaderProps = {
    * row. Left out, no count is shown.
    */
   sets?: { done: number; planned: number }
-  /** The Session's Records so far (V2-11): "· 1 PR" after the Sets count once there is one. */
+  /**
+   * The Session's Records so far. No longer shown (v7, study §1.5: no PR count in the live header;
+   * the PR is on its Set's cell); kept so callers still type-check.
+   */
   prs?: number
   /**
    * Planned Sets not yet logged (default 0). While any are left, Finish asks first in a Sheet;
@@ -44,7 +47,7 @@ export type LiveHeaderProps = {
  * ready" pill) rides along, so an update never has to wait for the workout to end to be offered.
  */
 export function LiveHeader(props: LiveHeaderProps): JSX.Element {
-  const { workoutName, startedAt, onMinimise, onFinish, onDiscard, sets, prs = 0, setsLeft = 0, heading = true, children } = props
+  const { workoutName, startedAt, onMinimise, onFinish, onDiscard, sets, setsLeft = 0, heading = true, children } = props
   const { trailing } = useContext(ShellChromeContext)
   const [confirming, setConfirming] = useState(false)
   const nothingLogged = sets !== undefined && sets.done === 0
@@ -59,7 +62,7 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
     const meta = metaRef.current
     if (timeDropped || meta === null || sets === undefined) return
     if (meta.scrollWidth > meta.clientWidth) setTimeDropped(true)
-  }, [timeDropped, sets, prs])
+  }, [timeDropped, sets])
 
   function handleFinish(): void {
     if (setsLeft > 0 || (nothingLogged && onDiscard !== undefined)) setConfirming(true)
@@ -86,12 +89,6 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
                 <span className="live-header-sets">{`${sets.done}/${sets.planned} sets`}</span>
               </>
             )}
-            {prs > 0 ? (
-              <>
-                <span aria-hidden="true">{' · '}</span>
-                <span className="live-header-prs">{`${prs} PR`}</span>
-              </>
-            ) : null}
           </p>
         </div>
         {trailing ? <div className="app-header-trailing live-header-trailing">{trailing}</div> : null}

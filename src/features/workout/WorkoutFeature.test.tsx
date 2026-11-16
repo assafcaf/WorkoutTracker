@@ -769,12 +769,15 @@ test('V3-01 logging back squat Set 4 brings up Lunges Set 1 with no tap, under a
   await user.click(await screen.findByRole('button', { name: /^Log set 4 / }, SETTLE))
 
   expect(await screen.findByRole('heading', { name: 'Lunges' }, SETTLE)).toBeVisible()
-  expect(screen.getByRole('region', { name: 'Get ready' })).toBeVisible()
-  // V4-01: the Just done block, headed by the Exercise it is about, under the Get ready card.
+  // v7 (study §1.4): Rest's Next panel names Lunges set 1.
+  expect(screen.getByRole('region', { name: 'Next set' })).toBeVisible()
+  // V4-01: the Just done block, headed by the Exercise it is about, under the Next panel.
   const block = screen.getByRole('region', { name: 'Exercise done' })
   expect(block.textContent).toMatch(/^Back squat done/)
   expect(block.textContent).not.toMatch(/\d+ vs \d+/)
-  expect(screen.getByRole('button', { name: /^Log set 1 / })).toHaveClass('btn-primary')
+  // v7: Skip rest is the bar during Rest; Log set 1 is still one tap away beside it.
+  expect(screen.getByRole('button', { name: 'Skip rest' })).toHaveClass('btn-secondary')
+  expect(screen.getByRole('button', { name: /^Log set 1 / })).toBeVisible()
   expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
   // The rest keeps running from back squat's Set 4.
   expect(screen.getByRole('timer', { name: 'Rest remaining' })).toBeVisible()

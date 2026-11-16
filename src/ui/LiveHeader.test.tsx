@@ -18,7 +18,10 @@ test('V2-11 after a PR the header sub-line ends · 1 PR', () => {
     />,
   )
 
-  expect(meta()).toMatch(/· 3\/23 sets · 1 PR$/)
+  // v7 (study §1.5): no PR count in the live header; the PR is on its Set's cell.
+  expect(meta()).toMatch(/· 3\/23 sets$/)
+  expect(meta()).not.toContain('PR')
+  expect(document.querySelector('.live-header-prs')).toBeNull()
 })
 
 test('V2-11 with no PR yet the header sub-line names no PR', () => {

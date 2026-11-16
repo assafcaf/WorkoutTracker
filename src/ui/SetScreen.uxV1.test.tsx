@@ -117,10 +117,14 @@ test('V1-03 during Rest the Log set bar shows under the Rest panel and logs in o
     restFrom: { entry: set(1, 47.5, 10, BASE), planRestSeconds: 180 },
   })
 
-  const panel = document.querySelector('.set-dock .rest-panel') as HTMLElement
+  // v7 (study §1.4): the Rest ring is in the body; the dock holds Skip rest, the outlined bar, and
+  // Log set beside it -- still one tap, still the only Log set.
+  const panel = document.querySelector('.set-screen .rest-panel') as HTMLElement
   const bar = screen.getByRole('button', { name: 'Log set 2 · 57.5 × 9' })
   expect(panel).not.toBeNull()
   expect(panel.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(bar.closest('.set-dock')).not.toBeNull()
+  expect(screen.getByRole('button', { name: 'Skip rest' }).closest('.set-dock')).not.toBeNull()
   expect(screen.getAllByRole('button', { name: /^Log set/ })).toHaveLength(1)
 
   await user.click(bar)
@@ -203,8 +207,8 @@ test('V1-07 during Rest the Next line ends with the per-side plates', () => {
     initial: [set(1, 60, 10, BASE)],
     restFrom: { entry: set(1, 60, 10, BASE), planRestSeconds: 180 },
   })
-  // V2-02: the Get ready card names the plates, as the change from the bar just lifted.
-  const card = screen.getByRole('region', { name: 'Get ready' })
+  // V2-02, v7: Rest's Next panel names the plates, as the change from the bar just lifted.
+  const card = screen.getByRole('region', { name: 'Next set' })
   expect(within(card).getByText('Same plates: 20')).toBeVisible()
 })
 

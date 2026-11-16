@@ -3115,7 +3115,10 @@ describe('E8-T4', { timeout: 15_000 }, () => {
     const bar = actionBar()
     expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
     expect((bar as HTMLElement).contains(log)).toBe(true)
-    expect(log).toHaveClass('btn-primary')
+    // v7 (study §1.4): the hand-over runs in back squat's Rest, whose bar is Skip rest; the next
+    // Exercise's Log set 1 waits beside it, quiet, one tap away.
+    expect(screen.getByRole('button', { name: 'Skip rest' })).toHaveClass('btn-secondary')
+    expect(log).toHaveClass('log-set')
     expect(addSet).toHaveClass('btn-quiet')
     expect(addSet.compareDocumentPosition(log) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()

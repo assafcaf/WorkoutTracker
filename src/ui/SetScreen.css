@@ -241,71 +241,6 @@
   font-weight: var(--weight-semibold);
 }
 
-/* The Get ready card (V2-02): while rest runs, the next Set as the hero of the empty middle, the
- * plate change, last time and the PR target, with "Change" to unfold the Dials. It grows to fill
- * the space down to the rest panel, so no gap opens between the cells and the countdown. The
- * done state's verdict (V2-11) takes the same card. */
-.get-ready {
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
-  padding: var(--space-4);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-lg);
-  background: var(--color-raised);
-}
-
-.get-ready-caption {
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.get-ready-set {
-  color: var(--color-text);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-}
-
-.get-ready-plates {
-  color: var(--color-text);
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
-}
-
-.get-ready-last {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--space-1);
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
-  white-space: pre-wrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.get-ready .get-ready-change {
-  display: inline-flex;
-  align-self: flex-end;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: var(--tap-min);
-  margin: 0 calc(var(--space-2) * -1) calc(var(--space-2) * -1) 0;
-  padding: 0 var(--space-2);
-  border: 0;
-  border-radius: var(--radius-md);
-  color: var(--color-primary);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-}
-
 /* The Just done block (V4-01), on the dock for the whole rest: the Set just logged as its
  * heading, its one comparison (a Record's PR tag leading it), and its reps-left chips. The
  * hand-over and the done state head it with the Exercise, "Deadlift done · 1 PR", Add set at
@@ -877,33 +812,6 @@
   font-weight: var(--weight-semibold);
 }
 
-/* V6-16: the first barbell lift's warm-up ramp, one quiet line above the cells, with Add. */
-.set-warmup-line {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0 var(--space-2);
-  margin: 0 0 var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--color-muted);
-}
-
-.set-warmup-line-add {
-  min-width: var(--tap-min);
-  min-height: var(--tap-min);
-  padding: 0 var(--space-2);
-  border: 0;
-  border-radius: var(--radius-sm);
-  color: var(--color-primary);
-  font: inherit;
-  font-weight: var(--weight-semibold);
-}
-
-/* Over `.btn-quiet`'s own colour, as the swap line's Undo swap is. */
-.set-warmup-line .set-warmup-line-add {
-  color: var(--color-primary);
-}
-
 /* V5-04: a zero-height anchor over the Dials; its snackbar hangs above it, over the spacer. */
 .set-snackbar-anchor {
   position: relative;
@@ -926,21 +834,6 @@
     padding: var(--space-2) var(--space-4);
   }
 
-  .get-ready {
-    position: relative;
-    flex: 0 0 auto;
-    gap: 2px;
-    margin-top: 0;
-    padding: var(--space-3);
-  }
-
-  .get-ready .get-ready-change {
-    position: absolute;
-    top: var(--space-1);
-    right: var(--space-1);
-    margin: 0;
-  }
-
   .effort-chip {
     min-height: var(--tap-min);
   }
@@ -960,14 +853,6 @@
     min-height: 52px;
   }
 
-  .set-screen:has(.get-ready) > .set-spacer {
-    display: none;
-  }
-
-  .get-ready {
-    padding: var(--space-2) var(--space-3);
-  }
-
   .just-done {
     gap: 2px;
     padding: var(--space-2) var(--space-3);
@@ -985,5 +870,457 @@
 
   .exercise-verdict .just-done-line {
     order: 2;
+  }
+}
+
+/* ---- v7: the instrument at the bar (study §1.3, Ledger & Instrument) ------------------------
+ * The weight and the reps at 88 px between 64 px steppers, centred in the space between the track
+ * and the Log bar (the two `.set-spacer`s share it): no empty band over the numbers. Readouts
+ * that are longer step down so "102.5 kg" still sits clear of both steppers. The sizes are px so
+ * large text grows the words around the instrument, not the instrument past the screen. */
+.set-instrument {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.set-instrument .set-dials {
+  gap: var(--space-2);
+}
+
+.set-instrument .dial--scrub {
+  grid-template-columns: 64px minmax(0, 1fr) 64px;
+}
+
+.set-instrument .dial--scrub .dial-step {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+}
+
+.set-instrument .dial--scrub .dial-body {
+  gap: var(--space-1);
+  min-height: 96px;
+}
+
+.set-instrument .dial--scrub .dial-readout {
+  font-size: calc(var(--text-display) * 1.375);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.set-instrument .dial--scrub .dial-readout[data-length='4'] {
+  font-size: calc(var(--text-display) * 1.0625);
+}
+
+.set-instrument .dial--scrub .dial-readout[data-length='long'] {
+  font-size: calc(var(--text-display) * 0.8125);
+}
+
+.set-instrument .dial--scrub .dial-unit {
+  font-size: var(--text-lg);
+}
+
+/* Under the weight: the plates for one side, drawn, with "Per side: 25 on a 20 kg bar" -- or,
+ * when they have not changed, "Same plates · Per side: 25" in one line. */
+.plate-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.plate-text {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  column-gap: var(--space-1);
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.plate-text .plate-line {
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+}
+
+.plate-same {
+  color: var(--color-muted);
+}
+
+.plate-bar {
+  display: flex;
+  align-items: center;
+  height: 56px;
+}
+
+.plate-bar-shaft,
+.plate-bar-sleeve {
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-control);
+}
+
+.plate-bar-shaft {
+  width: 88px;
+}
+
+.plate-bar-sleeve {
+  width: 28px;
+}
+
+.plate-bar-collar {
+  width: 8px;
+  height: 40%;
+  margin-right: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--color-muted);
+}
+
+.plate-bar-plate {
+  flex: none;
+  margin-right: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--color-muted);
+}
+
+.plate-bar-plate[data-heavy='true'] {
+  background: var(--color-text);
+}
+
+/* Last time, under the reps, centred with the numbers. */
+.set-instrument .set-projection {
+  text-align: center;
+}
+
+/* The space under the instrument matches the space over it. */
+.set-spacer--after {
+  flex: 1 1 0;
+}
+
+/* The ramp the W cell offers (V6-16): a dashed cell like a Set to come, narrower than a working
+ * Set's; its + says a tap adds it. */
+.warmup-offer {
+  display: flex;
+  flex: 0.75 1 0;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 64px;
+  padding: 5.5px 7.5px 7.5px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  text-align: left;
+}
+
+/* Its range, "30–50", breaks after the dash rather than clip in a narrow or large-text row. */
+.warmup-offer .set-cell-value {
+  white-space: normal;
+}
+
+/* ---- v7: the record moment (study §1.5) -------------------------------------------------------
+ * One line under the track. A real PR: the gold tag, then what it beat, for 3 s. A rep best: one
+ * quiet line in the up colour, never gold. */
+.set-record-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-record-line[data-kind='rep-best'] {
+  color: var(--color-up);
+}
+
+/* The PR tag leads; what it beat sits beside it and wraps under itself. */
+.set-record-line > span:not(.tag) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* ---- v7: Rest (study §1.4) -------------------------------------------------------------------
+ * The countdown is the hero, inside a 236 px ring that empties in the live colour; −15 s and
+ * +15 s under it; the next Set in the screen's one surface panel; one reps-left row. */
+.rest-panel--ring {
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.rest-ring {
+  position: relative;
+  width: 236px;
+  max-width: 100%;
+  aspect-ratio: 1;
+}
+
+/* The rest still to go, clockwise from the top, as a 10 px ring that empties in the live colour
+ * over a hairline track; the hole is the page. RestPanel paints the arc's share. It steps with the
+ * clock's half-second tick, so there is no motion to drop under reduced motion. */
+.rest-ring-arc {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-live);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 10px), var(--color-bg) calc(100% - 9px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 10px), var(--color-bg) calc(100% - 9px));
+}
+
+.rest-ring-centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.rest-panel--ring .rest-readout {
+  font-size: calc(var(--text-display) * 1.1875);
+  letter-spacing: -0.04em;
+  text-align: center;
+}
+
+.rest-panel--ring .rest-panel-of {
+  font-size: var(--text-md);
+  line-height: 1.5rem;
+}
+
+.rest-ring-controls {
+  flex: none;
+  justify-content: center;
+}
+
+.rest-ring-controls .rest-adjust {
+  flex: 0 0 auto;
+  min-width: 88px;
+  padding: 0 var(--space-4);
+}
+
+.rest-panel--ring .rest-panel-offer {
+  align-self: stretch;
+}
+
+/* "Next · Set 3 / 70 kg × 8" on the left, the plates and last time on the right. The whole panel
+ * is one tap target (its transparent Change button covers it) that unfolds the Dials. */
+.rest-next {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.rest-next:has(.rest-next-change:active) {
+  background: var(--color-raised);
+}
+
+.rest-next-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rest-next-caption {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rest-next-set {
+  color: var(--color-text);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rest-next-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  margin-left: auto;
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rest-next-last {
+  white-space: pre-wrap;
+}
+
+.rest-next-change {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* The press shows on the panel (`.rest-next:has(...)`), never over its words. */
+.rest-next .rest-next-change:active {
+  background: transparent;
+}
+
+.rest-next-change:focus-visible {
+  outline: 2px solid var(--color-live);
+  outline-offset: 2px;
+}
+
+/* During Rest the bar is Skip rest, outlined; Log set waits beside it, quiet, one tap away. */
+.log-dock--rest {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.skip-rest {
+  flex: 1 1 7rem;
+  min-height: var(--key-min);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.log-dock--rest .log-set--quiet {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  font-weight: var(--weight-semibold);
+}
+
+/* A narrow screen (320 px): the steppers step down to 56 px and the numbers with them. */
+@media (max-width: 360px) {
+  .set-instrument .dial--scrub {
+    grid-template-columns: 56px minmax(0, 1fr) 56px;
+  }
+
+  .set-instrument .dial--scrub .dial-step {
+    width: 56px;
+    height: 56px;
+  }
+
+  .set-instrument .dial--scrub .dial-readout {
+    font-size: calc(var(--text-display) * 1.1875);
+  }
+
+  .set-instrument .dial--scrub .dial-readout[data-length='4'] {
+    font-size: calc(var(--text-display) * 0.875);
+  }
+
+  .set-instrument .dial--scrub .dial-readout[data-length='long'] {
+    font-size: calc(var(--text-display) * 0.6875);
+  }
+}
+
+/* V1-20 at the instrument: a very narrow screen (195 px) keeps the dial.css floor. */
+@media (max-width: 280px) {
+  .set-instrument .dial--scrub {
+    grid-template-columns: var(--tap-min) minmax(0, 1fr) var(--tap-min);
+  }
+
+  .set-instrument .dial--scrub .dial-step {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+
+  .set-instrument .dial--scrub .dial-readout {
+    font-size: calc(var(--text-hero) * 0.6);
+  }
+
+  .set-instrument .dial--scrub .dial-readout[data-length='4'],
+  .set-instrument .dial--scrub .dial-readout[data-length='long'] {
+    font-size: calc(var(--text-hero) * 0.45);
+  }
+}
+
+/* A short screen (320 x 568): the instrument and the ring step down so the track, the numbers
+ * and the bar fit without a scroll. */
+@media (max-height: 640px) {
+  .set-instrument .dial--scrub .dial-body {
+    min-height: 72px;
+  }
+
+  .set-instrument .dial--scrub .dial-readout {
+    font-size: var(--text-display);
+  }
+
+  .set-instrument .dial--scrub .dial-readout[data-length='4'] {
+    font-size: calc(var(--text-display) * 0.8125);
+  }
+
+  .set-instrument .dial--scrub .dial-readout[data-length='long'] {
+    font-size: calc(var(--text-display) * 0.625);
+  }
+
+  .plate-bar {
+    height: 36px;
+  }
+
+  /* The ring steps down and −15 s / +15 s stand beside it, so the next Set and the reps-left
+   * row stay over the bar. */
+  .rest-ring {
+    width: 144px;
+  }
+
+  .rest-panel.rest-panel--ring {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2) var(--space-4);
+    margin-top: 0;
+  }
+
+  .rest-controls.rest-ring-controls {
+    flex-direction: column;
+  }
+
+  .rest-panel--ring .rest-readout {
+    font-size: calc(var(--text-display) * 0.8125);
+  }
+
+  .rest-panel--ring .rest-panel-of {
+    font-size: var(--text-sm);
+  }
+
+  .rest-next {
+    margin-top: 0;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .rest-next-set {
+    font-size: var(--text-lg);
+  }
+
+  .skip-rest,
+  .log-dock--rest .log-set--quiet {
+    min-height: 56px;
   }
 }
