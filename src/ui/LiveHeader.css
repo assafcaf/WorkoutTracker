@@ -86,14 +86,6 @@
   min-height: var(--tap-min);
 }
 
-/* The exercise the Now view is on, heading the set screen under the header (S3). */
-.live-exercise-title {
-  color: var(--color-text);
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  line-height: 1.3;
-}
-
 /* V1-20: a very narrow screen (195 px, or display zoom with large text) cannot hold the name
  * beside Minimise, All and Finish, so it read "Worko…". There the row wraps: the controls keep
  * the first line and the name with its meta line takes a full line under them. The header then

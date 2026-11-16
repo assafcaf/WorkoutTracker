@@ -1,7 +1,8 @@
 /* The exercise library (the Program tab's Exercises side, and the Program editor's picker), in
  * the Lifts tab's language (S6b): a raised search well with the magnifier, a row of 36 px
- * filter chips, and the exercises as one white card of 52 px rows split by hairlines, each with
- * its primary muscle's family dot.
+ * filter chips, and the exercises as 52 px rows split by hairlines, each with its primary
+ * muscle's family dot. v7 (study §3, Ledger): the rows sit on paper between hairlines, not in a
+ * white card, under a 12 px upper-case section label.
  *
  * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
  * one definition site. `.library-row-button` carries `min-height: var(--tap-min)` on its bare
@@ -73,7 +74,7 @@
 
 .library-filter .select {
   min-height: var(--tap-min);
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--color-control);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-secondary);
@@ -132,7 +133,7 @@
   height: 36px;
   min-height: 36px;
   padding: 0 var(--space-3);
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--color-control);
   background: var(--color-surface);
   color: var(--color-secondary);
   font-size: var(--text-sm);
@@ -159,16 +160,15 @@
   font-size: var(--text-sm);
 }
 
-/* The exercises: one card, a hairline between rows. */
+/* The exercises: rows on paper, a hairline between rows and above and below the list. */
 .library-list {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 0;
   margin: 0;
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  border-top: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline);
   list-style: none;
 }
 
@@ -187,7 +187,6 @@
 .library-row-pick {
   flex: none;
   min-height: var(--tap-min);
-  margin-right: var(--space-2);
   padding: 0 var(--space-3);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
@@ -200,7 +199,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-1) var(--space-3);
+  padding: var(--space-1) 0;
   border: 0;
   background: transparent;
   text-align: left;
@@ -241,10 +240,13 @@
 }
 
 .library-section-heading {
-  margin: var(--space-2) 0 10px;
-  color: var(--color-text);
-  font-size: var(--text-lg);
+  margin: var(--space-3) 0 6px;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
+  line-height: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .library-section-heading + .library-list {
@@ -264,5 +266,13 @@
   min-height: var(--tap-min);
   padding: 0 var(--space-4);
   font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+/* "New exercise" (custom exercises): a full-width secondary button at the tap floor. */
+.library-new {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
 }

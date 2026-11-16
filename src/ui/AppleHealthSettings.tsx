@@ -13,7 +13,7 @@ export function AppleHealthSettings(): JSX.Element {
   return (
     <section className="settings-group" aria-label="Apple Health">
       <h2 className="settings-legend">Apple Health</h2>
-      <div className="settings-card settings-health card">
+      <div className="settings-card settings-health">
         <HealthSetup
           open={open}
           ready={ready}

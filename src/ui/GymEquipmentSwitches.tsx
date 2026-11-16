@@ -27,7 +27,7 @@ export function GymEquipmentSwitches({ equipmentTypes, gymEquipment, onChange }:
   }
   return (
     <fieldset className="settings-group" aria-label="My gym's equipment">
-      <div className="settings-card card">
+      <div className="settings-card">
         {equipmentTypes.map((type) => (
           <div key={type} className="settings-action">
             <Switch

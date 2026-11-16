@@ -124,7 +124,7 @@
 }
 
 .muscles-bullet-done[data-under='true'] {
-  background: var(--color-warn);
+  background: var(--color-down);
 }
 
 .muscles-bullet-still {

@@ -64,13 +64,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* What was done at this Set last time, and when, over the steppers. */
-.set-last-time {
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-}
-
 /* The set cells: one row of SetCells (src/ui/figures/SetCell.tsx), which draw the four states
  * (planned dashed, current in live, done on the surface, PR with the gold tag); this sheet keeps
  * their layout. The cells share the row's width (V3-06), so the row never runs past the
@@ -446,8 +439,7 @@
   gap: var(--space-2);
 }
 
-.plate-line,
-.warmup-ramp {
+.plate-line {
   margin: 0;
   color: var(--color-muted);
   font-size: var(--text-sm);
@@ -770,8 +762,7 @@
 
 /* The info, alternatives and history controls kept their tap floor from E6 (ExerciseInfoLink). */
 .exercise-info,
-.open-alternatives,
-.open-history {
+.open-alternatives {
   min-height: var(--tap-min);
 }
 

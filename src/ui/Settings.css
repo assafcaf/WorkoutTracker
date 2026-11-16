@@ -1,6 +1,6 @@
-/* The Settings page, in the Progress Dashboard's system: each group an uppercase caption over
- * one white card of 52 px rows split by hairlines, as the mock's grouped lists (S6a's Sessions,
- * S3b's tools sheet) read.
+/* The Settings page: each group an uppercase caption over 52 px rows split by hairlines. v7
+ * (study §3, Ledger): the rows sit on paper between hairlines, not in a white card -- the group
+ * reaches 12 px into the gutter so each row's own inset lines its text up with the caption.
  *
  * Every colour comes through a `var(--…)` from src/styles/tokens.css. `.settings-action`
  * carries `min-height: var(--tap-min)` on its bare selector, which is where E3-T8's
@@ -35,12 +35,15 @@
   text-transform: uppercase;
 }
 
-/* One card of rows; the rows draw the hairlines between them. */
+/* One group of rows on paper; the rows draw the hairlines between them, the group the outer two. */
 .settings-card {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin: 0 calc(var(--space-3) * -1);
   padding: 0;
+  border-top: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .settings-action {
@@ -189,19 +192,6 @@ a.settings-action {
   font-weight: var(--weight-semibold);
 }
 
-/* The "Since a date" input (E8-T11) sits inside a `.settings-action` row, so it only needs its
- * own tap target and typography. */
-.settings-date {
-  min-height: var(--tap-min);
-  padding: 0 var(--space-3);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: var(--color-raised);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--text-sm);
-}
-
 /* Apple Health (V2-10): the Shortcut setup guide and its doc link, moved from the summary. */
 .settings-health > * {
   padding: var(--space-3);
@@ -224,8 +214,8 @@ a.settings-action {
   font-weight: var(--weight-semibold);
 }
 
-/* Data & sync (V2-09) carries more than one card: the backup rows, then the sets CSV and Apple
- * Health as their own cards under the one caption. */
+/* Data & sync (V2-09) carries more than one group of rows: the backup rows, then the sets CSV and
+ * Apple Health as their own groups under the one caption. */
 .settings-group > .settings-group {
   margin-top: var(--space-3);
 }

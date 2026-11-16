@@ -1,5 +1,5 @@
 /* The ladder (E18-T8): every colour is a `var(--…)` from src/styles/tokens.css, no literal
- * colour, no new token. The current tread and the selection are the primary indigo; the line
+ * colour, no new token. The current tread and the selection are the primary ink; the line
  * and plain dots are the secondary ink; bars are --chart-b; the deload hatch is --color-control.
  */
 

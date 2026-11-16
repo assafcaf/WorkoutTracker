@@ -97,7 +97,7 @@ export function DataTransfer(): JSX.Element {
 
   return (
     <section className="settings-group data-transfer" aria-label="Your data">
-      <div className="settings-card card">
+      <div className="settings-card">
         <button type="button" className="settings-action btn-quiet" onClick={handleExport}>
           <span className="settings-action-label">Export sets (CSV)</span>
           <Icon name="ChevronRight" size={18} />

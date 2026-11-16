@@ -28,6 +28,13 @@
   background: var(--color-raised);
 }
 
+/* The text and icon roles draw no box. v7: the browser's own button border used to show through
+ * on a bare quiet or danger button ("Add measurements", "Discard workout"); this reset has no
+ * specificity, so a site stylesheet that draws a border still wins. */
+:where(.btn-quiet, .btn-danger, .icon-btn) {
+  border: 0;
+}
+
 .btn-quiet {
   background: transparent;
   color: var(--color-text);
@@ -40,6 +47,7 @@
 .btn-danger {
   background: transparent;
   color: var(--color-danger);
+  font-weight: var(--weight-medium);
 }
 
 .btn-danger:active {

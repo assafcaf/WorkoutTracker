@@ -85,22 +85,6 @@
   font-weight: var(--weight-medium);
 }
 
-/* V6-08: the Workout's last Session note, one quiet line; the title attribute holds it whole. */
-/* V6-08, wave 3: the note reads in up to 2 lines, then ends in an ellipsis (at 200 % text one line
- * held only "Note from Wed 7 Oc…"). */
-.dashboard-note {
-  display: -webkit-box;
-  margin: 2px 0 0;
-  overflow: hidden;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  font-style: italic;
-  line-height: 1.25rem;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
 .dashboard-header-actions {
   display: flex;
   flex: none;
@@ -121,57 +105,6 @@
 
 .dashboard-header-actions .icon-btn {
   min-width: var(--tap-min);
-}
-
-.dashboard-icon-btn {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-width: var(--tap-min);
-  min-height: var(--tap-min);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-pill);
-}
-
-.dashboard-icon-btn:first-child:not(:last-child) {
-  color: var(--color-secondary);
-}
-
-/* The last sync failed (V3-08): a quiet dot on the cloud; its name says the rest. */
-.dashboard-sync-dot {
-  position: absolute;
-  top: 10px;
-  right: 9px;
-  width: 7px;
-  height: 7px;
-  border-radius: var(--radius-pill);
-  background: var(--color-danger);
-  color: var(--color-on-primary);
-}
-
-
-.dashboard-sync-offline {
-  display: grid;
-  place-items: center;
-  min-width: var(--tap-min);
-  min-height: var(--tap-min);
-  color: var(--color-secondary);
-}
-
-.dashboard-card-note {
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  line-height: 1rem;
-}
-
-/* ---- cards ---- */
-
-.dashboard-step-deload {
-  margin: 0;
-  color: var(--color-secondary);
-  font-size: var(--text-xs);
-  line-height: 1rem;
 }
 
 /* ---- this week (V2-05, V3-09): the Sessions calendar's current week, one button to Sessions ----
@@ -277,10 +210,6 @@
   border-top: 1px solid var(--color-hairline);
 }
 
-.dashboard-step-deload {
-  margin: var(--space-1) 0 0;
-}
-
 .dashboard-steps {
   margin: 0;
   padding: 0;
@@ -330,13 +259,6 @@
   text-align: start;
 }
 
-.dashboard-step-text {
-  flex: none;
-  margin-left: auto;
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-
 /* v7: the name and its one change line on the left, `sets × kg` on the right. */
 .dashboard-step-main {
   display: flex;
@@ -361,10 +283,6 @@
 
 .dashboard-step-preset .set-figure-unit {
   font-size: var(--text-xs);
-}
-
-.dashboard-step-reps {
-  color: var(--color-muted);
 }
 
 .dashboard-step-note {

@@ -108,7 +108,7 @@ export function Settings(props: SettingsProps): JSX.Element {
     <div className="settings">
       <fieldset className="settings-group">
         <legend className="settings-legend">Workout</legend>
-        <div className="settings-card card">
+        <div className="settings-card">
           <div className="settings-action">
             <Switch
               checked={trackEffort}
@@ -156,7 +156,7 @@ export function Settings(props: SettingsProps): JSX.Element {
       {notifications ? <NotificationSettings {...notifications} /> : null}
       <section className="settings-group" aria-label="Data & sync">
         <h2 className="settings-legend">Data &amp; sync</h2>
-        <div className="settings-card card">
+        <div className="settings-card">
           {sync ? (
             <>
               <p className="settings-account-email">{sync.accountEmail ?? 'Not signed in'}</p>

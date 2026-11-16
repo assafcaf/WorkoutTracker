@@ -32,7 +32,9 @@
   border: 1px solid var(--color-control);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
+  color: var(--color-text);
   font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
 }
 
 .body-error {
@@ -40,10 +42,14 @@
   font-size: var(--text-sm);
 }
 
+/* v7: a text action in ink, no box. */
 .body-more {
   align-self: flex-start;
   min-height: var(--tap-min);
+  padding: 0;
   color: var(--color-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
 }
 
 .body-chart {
@@ -69,8 +75,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-height: var(--tap-min);
+  min-height: 52px;
   border-bottom: 1px solid var(--color-hairline);
+  font-variant-numeric: tabular-nums;
 }
 
 .body-entry-day {
