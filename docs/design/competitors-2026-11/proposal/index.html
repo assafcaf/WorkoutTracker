@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ledger &amp; Instrument: proposed screens (2026-11)</title>
+<style>
+@font-face {
+  font-family: 'Geist';
+  src: url('../../../../src/assets/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 400 600;
+}
+:root {
+  /* Ledger & Instrument palette: roles, not hues */
+  --paper: #F6F6F3;      /* page */
+  --surface: #FFFFFF;    /* the one "now" panel per screen */
+  --line: #E3E3DE;       /* hairlines */
+  --ink: #141518;        /* text AND the action colour */
+  --ink-2: #4A4B53;      /* secondary text */
+  --ink-3: #6C6D75;      /* units, labels, planned values */
+  --live: #2453D4;       /* "now": current set, rest arc, today, selected tab */
+  --live-tint: #E8EEFC;
+  --up: #17794A;   --up-tint: #E2F2E9;    /* better than last time, moving */
+  --down: #B04A1C; --down-tint: #FBEAE2;  /* lowered, below range */
+  --pr: #8A6400;   --pr-tint: #FFF0C2;    /* records only */
+  --wA: #256F91;  --wB: #96506F;          /* workout identity (calendar) only */
+  --danger: #B42318;
+  --heat-0: #ECECE8; --heat-1: #C6C7CC; --heat-2: #8C8E97; --heat-3: #3D3F47;
+  /* type scale */
+  --t-12: 12px; --t-14: 14px; --t-16: 16px; --t-20: 20px; --t-28: 28px; --t-44: 44px; --t-88: 88px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Geist', 'Segoe UI', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--ink);
+  background: #DCDCD6;
+  padding: 48px;
+}
+.board-head { max-width: 2600px; margin-bottom: 32px; }
+.board-head h1 { font-size: 40px; font-weight: 600; letter-spacing: -0.02em; }
+.board-head p { font-size: 18px; color: var(--ink-2); margin-top: 6px; max-width: 1300px; line-height: 1.4; }
+.swatches { display: flex; gap: 14px; margin-top: 22px; flex-wrap: wrap; }
+.sw { width: 118px; font-size: 12px; color: var(--ink-2); line-height: 1.3; }
+.sw i { display: block; height: 44px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); margin-bottom: 6px; }
+.sw b { display: block; color: var(--ink); font-weight: 600; }
+.specimen { margin-top: 20px; display: flex; gap: 36px; align-items: baseline; font-size: 14px; color: var(--ink-2); }
+.row-of-phones { display: flex; gap: 40px; align-items: flex-start; }
+.cap { font-size: 15px; color: var(--ink-2); margin-bottom: 10px; width: 390px; line-height: 1.35; }
+.cap b { color: var(--ink); font-weight: 600; display: block; font-size: 17px; }
+
+/* ---------- phone ---------- */
+.phone {
+  width: 390px; height: 844px; background: var(--paper); position: relative; overflow: hidden;
+  border-radius: 0; box-shadow: 0 2px 18px rgba(0,0,0,.12);
+  font-size: var(--t-16); line-height: 1.35;
+}
+.scroll { position: absolute; inset: 0 0 84px 0; overflow: hidden; padding: 0 20px; }
+.u { font-size: .5em; color: var(--ink-3); font-weight: 500; margin-left: .12em; letter-spacing: 0; }
+.x { color: var(--ink-3); font-weight: 400; margin: 0 .12em; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--ink-3); } .live { color: var(--live); }
+.muted { color: var(--ink-3); } .sec { color: var(--ink-2); }
+.label { font-size: var(--t-12); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.h-screen { font-size: var(--t-28); font-weight: 600; letter-spacing: -0.015em; line-height: 1.15; }
+.lead { font-size: var(--t-16); color: var(--ink-2); line-height: 1.45; }
+.lead b { color: var(--ink); font-weight: 600; }
+.status { font-size: var(--t-14); font-weight: 600; white-space: nowrap; }
+.pr { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px;
+  background: var(--pr-tint); color: var(--pr); font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.ledger { border-top: 1px solid var(--line); }
+.ledger .r { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.ledger .r .n { flex: 1; min-width: 0; }
+.ledger .r .n .t { font-size: var(--t-16); font-weight: 500; }
+.ledger .r .n .s { font-size: var(--t-14); color: var(--ink-3); margin-top: 1px; }
+.ledger .r .v { text-align: right; font-size: var(--t-16); font-weight: 600; white-space: nowrap; }
+.ledger .r .v .s { font-size: var(--t-14); font-weight: 500; margin-top: 1px; color: var(--ink-2); }
+.ledger .r .s.up { color: var(--up); } .ledger .r .s.down { color: var(--down); } .ledger .r .s.flat { color: var(--ink-3); }
+.dock { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 20px 16px; background: var(--paper); }
+.bar { height: 60px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 18px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 8px; }
+.bar .x { color: #9A9BA2; }
+.bar.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+.tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: var(--paper);
+  border-top: 1px solid var(--line); display: flex; padding-top: 10px; }
+.tabbar div { flex: 1; text-align: center; font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.tabbar div svg { display: block; margin: 0 auto 4px; }
+.tabbar div.on { color: var(--live); }
+.with-tabs .dock { bottom: 84px; padding-bottom: 12px; }
+.with-tabs .scroll { bottom: 168px; }
+
+/* live header */
+.lhead { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 8px; border-bottom: 1px solid var(--line); }
+.lhead .ic { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+.lhead .mid { flex: 1; }
+.lhead .mid .t { font-size: var(--t-16); font-weight: 600; }
+.lhead .mid .s { font-size: 13px; color: var(--ink-3); }
+.lhead .fin { height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface);
+  font-size: 15px; font-weight: 600; display: flex; align-items: center; }
+
+/* set track */
+.track { display: flex; gap: 8px; margin-top: 14px; }
+.cell { flex: 1; height: 52px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center;
+  padding: 0 10px; font-size: 15px; font-weight: 600; background: transparent; border: 1px dashed #C9C9C3; color: var(--ink-3); position: relative; }
+.cell .i { font-size: 11px; font-weight: 600; color: var(--ink-3); display: flex; justify-content: space-between; align-items: center; }
+.cell.done { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.cell.now { border: 2px solid var(--live); background: var(--surface); color: var(--ink); }
+.cell.w { flex: 0 0 52px; padding: 0; align-items: center; }
+.ck { color: var(--ink-3); font-size: 12px; }
+.cv { display: block; white-space: nowrap; }
+
+/* instrument */
+.inst { text-align: center; }
+.num { font-size: var(--t-88); font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+.num .u { font-size: 22px; letter-spacing: 0; margin-left: 4px; }
+.stepper { display: flex; align-items: center; justify-content: space-between; }
+.stepper .b { width: 64px; height: 64px; border-radius: 16px; border: 1.5px solid #CFCFC9; display: flex; align-items: center;
+  justify-content: center; font-size: 30px; font-weight: 400; color: var(--ink); background: var(--surface); }
+.plates { display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 6px; height: 60px; }
+.plates .bar-s { width: 92px; height: 8px; background: #B9BAB4; border-radius: 2px; }
+.plates .col { width: 10px; height: 26px; background: #8F918A; border-radius: 2px; }
+.plates .p25 { width: 18px; height: 58px; background: var(--ink); border-radius: 3px; color: #fff; font-size: 0; }
+.plates .end { width: 30px; height: 8px; background: #B9BAB4; border-radius: 0 2px 2px 0; }
+
+/* rest ring */
+.ring { position: relative; width: 236px; height: 236px; margin: 0 auto; }
+.ring svg { position: absolute; inset: 0; }
+.ring .c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring .c .tm { font-size: 76px; font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+.chip { height: 48px; min-width: 64px; border-radius: 12px; border: 1.5px solid #CFCFC9; background: var(--surface);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; padding: 0 14px; }
+.panel { background: var(--surface); border-radius: 16px; padding: 14px 16px; }
+
+/* chart */
+.seg { display: flex; gap: 8px; align-items: center; }
+.seg span { height: 32px; padding: 0 12px; border-radius: 999px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center;
+  border: 1px solid var(--line); color: var(--ink-2); }
+.seg span.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.seg .t { border: 0; padding: 0 6px; color: var(--ink-3); font-weight: 500; }
+.seg .t.on { background: none; color: var(--ink); text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
+
+/* calendar mini */
+.weeks { display: flex; gap: 10px; align-items: flex-end; }
+.wk { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.wk .d { width: 22px; height: 8px; border-radius: 3px; background: var(--heat-0); }
+.wk .d.A { background: var(--wA); } .wk .d.B { background: var(--wB); }
+.wk .d.todo { background: transparent; border: 1.5px solid var(--live); }
+.wk .l { font-size: 11px; color: var(--ink-3); margin-top: 3px; }
+.days { display: flex; gap: 6px; }
+.day { flex: 1; text-align: center; font-size: 11px; color: var(--ink-3); font-weight: 500; }
+.day i { display: block; height: 28px; border-radius: 8px; margin-top: 4px; font-style: normal; font-size: 13px; font-weight: 700; color: #fff;
+  display: flex; align-items: center; justify-content: center; }
+.day i.A { background: var(--wA); } .day i.B { background: var(--wB); }
+.day i.e { color: var(--ink-3); } .day i.e::after { content: '\00b7'; font-size: 20px; }
+.day i.today { border: 2px solid var(--live); color: var(--live); }
+.day.tdy { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="board-head">
+  <h1>Ledger &amp; Instrument: one trainee, eight phases, six screens</h1>
+  <p>Lists read like a training ledger: rows on paper, hairlines, no cards. The set screen is an instrument: one number you can read from the bench. Ink is the action; colour only ever means something: blue is <i>now</i>, green is <i>better</i>, rust is <i>lower</i>, gold is a <i>record</i>, and teal/plum name Workout A/B on the calendar. Data: <code>scripts/render-states/stats-45.json</code>, Thursday 15 October, Workout B due.</p>
+  <div class="swatches">
+    <div class="sw"><i style="background:#F6F6F3"></i><b>paper</b>#F6F6F3 page</div>
+    <div class="sw"><i style="background:#FFFFFF"></i><b>surface</b>#FFFFFF the one "now" panel</div>
+    <div class="sw"><i style="background:#E3E3DE"></i><b>line</b>#E3E3DE hairlines</div>
+    <div class="sw"><i style="background:#141518"></i><b>ink</b>#141518 text + action</div>
+    <div class="sw"><i style="background:#4A4B53"></i><b>ink-2</b>#4A4B53 secondary</div>
+    <div class="sw"><i style="background:#6C6D75"></i><b>ink-3</b>#6C6D75 units, planned</div>
+    <div class="sw"><i style="background:#2453D4"></i><b>live</b>#2453D4 now / current</div>
+    <div class="sw"><i style="background:#17794A"></i><b>up</b>#17794A better, moving</div>
+    <div class="sw"><i style="background:#B04A1C"></i><b>down</b>#B04A1C lowered, below</div>
+    <div class="sw"><i style="background:#FFF0C2;border-color:#8A6400"></i><b>pr</b>#8A6400 on #FFF0C2 records only</div>
+    <div class="sw"><i style="background:#256F91"></i><b>workout A</b>#256F91 calendar only</div>
+    <div class="sw"><i style="background:#96506F"></i><b>workout B</b>#96506F calendar only</div>
+    <div class="sw"><i style="background:linear-gradient(90deg,#ECECE8 25%,#C6C7CC 25% 50%,#8C8E97 50% 75%,#3D3F47 75%)"></i><b>heat 0-3</b>neutral ramp, body map</div>
+  </div>
+  <div class="specimen">
+    <span style="font-size:88px;font-weight:600;letter-spacing:-.04em;color:var(--ink)">70<span class="u" style="font-size:22px">kg</span></span>
+    <span style="font-size:44px;font-weight:600;color:var(--ink)">2:41</span>
+    <span style="font-size:28px;font-weight:600;color:var(--ink)">Workout B</span>
+    <span style="font-size:20px;font-weight:600;color:var(--ink)">70<span class="u" style="font-size:12px">kg</span><span class="x">&times;</span>8</span>
+    <span>Geist 400/500/600 · 12 · 14 · 16 · 20 · 28 · 44 · 88 · tabular lining figures · units at half size in ink-3 · &times; in ink-3</span>
+  </div>
+</div>
+
+<div class="row-of-phones">
+
+<!-- ===================== 1. TRAIN ===================== -->
+<div>
+<div class="cap"><b>1 · Opening the app: Train</b>"What am I doing today, and what is different?" One sentence answers it; the list shows only today's loads; arrows mark the two lifts that change.</div>
+<div class="phone with-tabs" id="s-train">
+  <div class="scroll" style="padding-top:22px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="label">Thu 15 Oct · 2 of 3 this week</span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6C6D75" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </div>
+    <div class="h-screen" style="font-size:40px;margin-top:6px">Workout B</div>
+    <p class="lead" style="margin-top:10px">Same as Monday, except <b>curls move up to 15&nbsp;kg</b>. Pull-down stays at <b>46.25&nbsp;kg</b> until all three sets reach&nbsp;12 (elbow, Wed&nbsp;7&nbsp;Oct).</p>
+
+    <div class="days" style="margin-top:18px">
+      <div class="day">M<i class="B">B</i></div>
+      <div class="day">T<i class="e"></i></div>
+      <div class="day">W<i class="A">A</i></div>
+      <div class="day tdy">T<i class="today">B</i></div>
+      <div class="day">F<i class="e"></i></div>
+      <div class="day">S<i class="e"></i></div>
+      <div class="day">S<i class="e"></i></div>
+    </div>
+
+    <div class="ledger" style="margin-top:18px">
+      <div class="r"><div class="n"><div class="t">Deadlift</div><div class="s">After one set at 60 · aim for 8 reps</div></div><div class="v">2<span class="x">&times;</span>70<span class="u">kg</span></div></div>
+      <div class="r"><div class="n"><div class="t">Assisted pull-ups</div></div><div class="v">4<span class="x">&times;</span>BW&minus;19</div></div>
+      <div class="r"><div class="n"><div class="t">Narrow-grip pull-down</div><div class="s">Holding while the elbow settles</div></div><div class="v">3<span class="x">&times;</span>46.25<span class="u">kg</span></div></div>
+      <div class="r"><div class="n"><div class="t">Machine row</div></div><div class="v">4<span class="x">&times;</span>75<span class="u">kg</span></div></div>
+      <div class="r"><div class="n"><div class="t">Face pull</div></div><div class="v">3<span class="x">&times;</span>25<span class="u">kg</span></div></div>
+      <div class="r"><div class="n"><div class="t">Hyper-extension</div></div><div class="v">3<span class="x">&times;</span>BW+5</div></div>
+      <div class="r"><div class="n"><div class="t">Seated biceps curls</div><div class="s up">&uarr; was 14 kg</div></div><div class="v up">3<span class="x">&times;</span>15<span class="u">kg</span></div></div>
+    </div>
+  </div>
+  <div class="dock">
+    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--ink-3);margin-bottom:10px"><span>23 sets · about 66 min</span><span style="color:var(--ink);font-weight:600">Do Workout A instead</span></div>
+    <div class="bar">Start Workout B</div>
+  </div>
+  <div class="tabbar">
+    <div class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg>Train</div>
+    <div><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Progress</div>
+    <div><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Sessions</div>
+    <div><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Program</div>
+  </div>
+</div>
+</div>
+
+<!-- ===================== 2. SET ===================== -->
+<div>
+<div class="cap"><b>2 · Walking to the bar, then at it: Set screen</b>"What goes on the bar, and how many?" The weight changed, so the plates are drawn. One number, one bar to press.</div>
+<div class="phone" id="s-set">
+  <div class="lhead">
+    <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#141518" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="mid"><div class="t">Deadlift</div><div class="s">1 of 7 · 0:09 · 2 of 23 sets</div></div>
+    <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#141518" stroke-width="2"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></div>
+    <div class="fin">Finish</div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="track">
+      <div class="cell done w"><span class="i">W</span><span style="font-size:13px">1 <span class="ck">&check;</span></span></div>
+      <div class="cell done"><span class="i">1 <span class="ck">&check;</span></span><span class="cv">60<span class="x">&times;</span>10</span></div>
+      <div class="cell now"><span class="i" style="color:var(--live)">2</span><span class="cv">70<span class="x">&times;</span>8</span></div>
+      <div class="cell"><span class="i">3</span><span class="cv">70<span class="x">&times;</span>8</span></div>
+    </div>
+
+    <div style="text-align:center;margin-top:110px">
+      <div class="label">Set 2 of 3 · target 8&ndash;10</div>
+    </div>
+
+    <div class="stepper" style="margin-top:18px">
+      <div class="b">&minus;</div>
+      <div class="num">70<span class="u">kg</span></div>
+      <div class="b">+</div>
+    </div>
+    <div class="plates">
+      <div class="bar-s"></div><div class="col"></div><div class="p25"></div><div class="end"></div>
+    </div>
+    <div style="text-align:center;font-size:14px;color:var(--ink-2)">Per side: <b style="color:var(--ink)">25</b> on a 20&nbsp;kg bar</div>
+
+    <div class="stepper" style="margin-top:34px">
+      <div class="b">&minus;</div>
+      <div class="num">8<span class="u">reps</span></div>
+      <div class="b">+</div>
+    </div>
+    <div style="text-align:center;font-size:15px;color:var(--ink-2);margin-top:14px">Last time <b style="color:var(--ink)">70 &times; 7</b> · Mon 12 Oct</div>
+  </div>
+  <div class="dock"><div class="bar">Log set 2 <span class="x">·</span> 70 <span class="x">&times;</span> 8</div></div>
+</div>
+</div>
+
+<!-- ===================== 3. REST ===================== -->
+<div>
+<div class="cap"><b>3 · Rest (and the record moment)</b>"How long, and what's next?" The countdown is the hero. A rep best gets one quiet line; a real PR gets the gold tag on its set, nothing more.</div>
+<div class="phone" id="s-rest">
+  <div class="lhead">
+    <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#141518" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="mid"><div class="t">Deadlift</div><div class="s">1 of 7 · 0:12 · 3 of 23 sets</div></div>
+    <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#141518" stroke-width="2"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></div>
+    <div class="fin">Finish</div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="track">
+      <div class="cell done w"><span class="i">W</span><span style="font-size:13px">1 <span class="ck">&check;</span></span></div>
+      <div class="cell done"><span class="i">1 <span class="ck">&check;</span></span><span class="cv">60<span class="x">&times;</span>10</span></div>
+      <div class="cell done"><span class="i">2 <span class="ck">&check;</span></span><span class="cv">70<span class="x">&times;</span>8</span></div>
+      <div class="cell" style="border-color:var(--ink-3)"><span class="i">3</span><span class="cv">70<span class="x">&times;</span>8</span></div>
+    </div>
+    <div style="margin-top:12px;font-size:14px;color:var(--ink-2)"><span class="up" style="font-weight:600">&uarr; Rep best</span> · 70 &times; 8, one more than Monday</div>
+
+    <div class="ring" style="margin-top:26px">
+      <svg width="236" height="236" viewBox="0 0 236 236"><circle cx="118" cy="118" r="110" fill="none" stroke="#E3E3DE" stroke-width="8"/>
+        <circle cx="118" cy="118" r="110" fill="none" stroke="#2453D4" stroke-width="8" stroke-linecap="round"
+          stroke-dasharray="691.15" stroke-dashoffset="72.9" transform="rotate(-90 118 118)"/></svg>
+      <div class="c"><div class="tm">2:41</div><div style="font-size:14px;color:var(--ink-3);margin-top:4px">of 3:00</div></div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;margin-top:16px"><span class="chip">&minus;15 s</span><span class="chip">+15 s</span></div>
+
+    <div class="panel" style="margin-top:22px;display:flex;justify-content:space-between;align-items:center">
+      <div><div class="label">Next · set 3</div><div style="font-size:28px;font-weight:600;letter-spacing:-.02em;margin-top:2px">70<span class="u">kg</span><span class="x">&times;</span>8</div></div>
+      <div style="text-align:right;font-size:14px;color:var(--ink-2)">Same plates<br>Last time 70 &times; 7</div>
+    </div>
+    <div style="margin-top:16px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:14px;color:var(--ink-2);flex:1">Set 2: reps left</span>
+      <span class="chip" style="min-width:52px">0</span><span class="chip" style="min-width:52px">1</span><span class="chip" style="min-width:52px">2</span><span class="chip" style="min-width:52px">3+</span>
+    </div>
+  </div>
+  <div class="dock"><div class="bar ghost">Skip rest</div></div>
+</div>
+</div>
+
+<!-- ===================== 4. SUMMARY ===================== -->
+<div>
+<div class="cap"><b>4 · Right after: Summary</b>"Was that a good session?" A verdict per lift against last time, records on top, totals last. No muscle list, no share button competing with Done.</div>
+<div class="phone" id="s-summary">
+  <div class="scroll" style="padding-top:22px">
+    <span class="label">Mon 12 Oct · 66 min · done</span>
+    <div class="h-screen" style="font-size:40px;margin-top:6px">Workout B</div>
+    <p class="lead" style="margin-top:8px"><b>5 of 7 lifts beat Wednesday.</b> Two records. Pull-down dipped, as expected after Wednesday's elbow.</p>
+
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px"><span class="pr">PR</span><span style="flex:1;font-weight:500">Deadlift · heaviest</span><b>70<span class="u">kg</span><span class="x">&times;</span>7</b></div>
+      <div style="display:flex;align-items:center;gap:10px"><span class="pr">PR</span><span style="flex:1;font-weight:500">Machine row · est. strength</span><b>97.5<span class="u">kg</span></b></div>
+    </div>
+
+    <div class="label" style="margin-top:22px;margin-bottom:6px;display:flex;justify-content:space-between"><span>Lift by lift</span><span>vs Wed 7 Oct</span></div>
+    <div class="ledger">
+      <div class="r"><div class="n"><div class="t">Deadlift</div><div class="s">60&times;10 · 70&times;7 · 70&times;7</div></div><div class="v up">&uarr; +2.5 kg</div></div>
+      <div class="r"><div class="n"><div class="t">Assisted pull-ups</div><div class="s">BW&minus;19 &times; 6 · 6 · 6 · 5</div></div><div class="v up">&uarr; +3 reps</div></div>
+      <div class="r"><div class="n"><div class="t">Narrow-grip pull-down</div><div class="s">46.25 &times; 9 · 8 · 8</div></div><div class="v down">&darr; &minus;3 reps</div></div>
+      <div class="r"><div class="n"><div class="t">Machine row</div><div class="s">75 &times; 9 · 9 · 9 · 8</div></div><div class="v up">&uarr; +3 reps</div></div>
+      <div class="r"><div class="n"><div class="t">Face pull</div><div class="s">25 &times; 13 · 13 · 12</div></div><div class="v up">&uarr; +3 reps</div></div>
+      <div class="r"><div class="n"><div class="t">Hyper-extension</div><div class="s">BW+5 &times; 12 · 11 · 10</div></div><div class="v flat">= same</div></div>
+      <div class="r"><div class="n"><div class="t">Seated biceps curls</div><div class="s">14 &times; 12 · 12 · 12 · <span class="up">15 kg next</span></div></div><div class="v up">&uarr; +5 reps</div></div>
+    </div>
+    <div style="margin-top:12px;font-size:14px;color:var(--ink-3)">23 sets · 6,815 kg · 1 warm-up not counted</div>
+  </div>
+  <div class="dock">
+    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--ink-3);margin-bottom:10px"><span>Next: Workout A, Wednesday</span><span style="color:var(--ink);font-weight:600">Share</span></div>
+    <div class="bar">Done</div>
+  </div>
+</div>
+</div>
+
+<!-- ===================== 5. PROGRESS ===================== -->
+<div>
+<div class="cap"><b>5 · Later, reviewing: Progress</b>"Am I getting stronger?" The verdict in one line, consistency as weeks, then every lift as one ledger row: status, trend, number, change.</div>
+<div class="phone with-tabs" id="s-progress">
+  <div class="scroll" style="padding-top:22px;bottom:84px">
+    <span class="label">Since 20 Jul · 12 weeks</span>
+    <div class="h-screen" style="font-size:32px;margin-top:6px">12 of 14 lifts are moving</div>
+    <p class="lead" style="margin-top:8px">DB bench has been flat since 7&nbsp;Aug. Pull-down is down while the elbow settles; that is a choice, not a slide.</p>
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px">
+      <div class="weeks" id="weeks"></div>
+      <div style="text-align:right;font-size:14px;color:var(--ink-2);line-height:1.3"><b style="color:var(--ink);font-size:20px">15 sessions</b><br>in 6 weeks</div>
+    </div>
+
+    <div class="label" style="margin-top:20px;margin-bottom:4px;display:flex;justify-content:space-between"><span>Est. strength</span><span>change</span></div>
+    <div class="ledger" id="lifts"></div>
+  </div>
+  <div class="tabbar">
+    <div><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg>Train</div>
+    <div class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Progress</div>
+    <div><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Sessions</div>
+    <div><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Program</div>
+  </div>
+</div>
+</div>
+
+<!-- ===================== 6. LIFT ===================== -->
+<div>
+<div class="cap"><b>6 · Lift page: Deadlift</b>"Is this lift going up, and what do I do next time?" Status and advice as two sentences, one number, one chart, records, sessions.</div>
+<div class="phone" id="s-lift">
+  <div style="height:52px;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid var(--line)">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#141518" stroke-width="2"><path d="M14 7l-5 5 5 5"/></svg>
+    <span style="font-size:16px;font-weight:600">Deadlift</span>
+  </div>
+  <div style="padding:16px 20px 0">
+    <div class="status up">&uarr; Moving</div>
+    <div style="font-size:22px;font-weight:600;letter-spacing:-.01em;margin-top:4px">Next time: 70 kg &times; 8.</div>
+    <p class="lead" style="font-size:15px;margin-top:4px">Monday was your first day at 70&nbsp;kg; 7 reps on a new weight is normal. When every set reaches 10, go to 72.5.</p>
+
+    <div style="display:flex;align-items:baseline;gap:10px;margin-top:18px">
+      <span style="font-size:44px;font-weight:600;letter-spacing:-.03em;line-height:1">86.3<span class="u" style="font-size:18px">kg</span></span>
+      <span class="up" style="font-size:15px;font-weight:600">&uarr; +9.6 since 22 Jul</span>
+    </div>
+    <div style="font-size:13px;color:var(--ink-3);margin-top:2px">Est. strength: the one-rep max your best set predicts</div>
+
+    <div class="seg" style="margin-top:14px">
+      <span class="on">Est. strength</span><span>Top set</span>
+      <span style="flex:1;border:0"></span>
+      <span class="t on">3M</span><span class="t">1Y</span><span class="t">All</span>
+    </div>
+    <svg id="liftchart" width="350" height="170" style="margin-top:8px;display:block"></svg>
+
+    <div class="label" style="margin-top:10px;margin-bottom:2px">Records</div>
+    <div class="ledger">
+      <div class="r" style="min-height:44px"><div class="n"><div class="t" style="font-size:15px">Heaviest</div></div><div class="v" style="font-size:15px">70<span class="u">kg</span><span class="x">&times;</span>7 <span class="muted" style="font-weight:500;font-size:13px">12 Oct</span></div></div>
+      <div class="r" style="min-height:44px"><div class="n"><div class="t" style="font-size:15px">Best est. strength</div></div><div class="v" style="font-size:15px">90.0<span class="u">kg</span> <span class="muted" style="font-weight:500;font-size:13px">67.5&times;10 · 7 Oct</span></div></div>
+    </div>
+    <div class="label" style="margin-top:14px;margin-bottom:2px">Sessions</div>
+    <div class="ledger">
+      <div class="r" style="min-height:40px"><div class="n" style="font-size:15px;color:var(--ink-2)">Mon 12 Oct</div><div class="v" style="font-size:15px">60&times;10 · <span>70&times;7</span> <span class="pr">PR</span> · 70&times;7</div></div>
+      <div class="r" style="min-height:40px"><div class="n" style="font-size:15px;color:var(--ink-2)">Wed 7 Oct</div><div class="v" style="font-size:15px">57.5&times;10 · 67.5&times;10 · 67.5&times;10</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+</div>
+
+<script>
+// ---- Progress: weeks (A/B per session) and lifts (est. strength, 12 weeks, from stats-45.json) ----
+const weeks = [
+  ['7 Sep', ['A','B','A']], ['14 Sep', ['B']], ['21 Sep', ['A','B','A']],
+  ['28 Sep', ['B','A','B']], ['5 Oct', ['A','B','A']], ['12 Oct', ['B','A','todo']]
+];
+document.getElementById('weeks').innerHTML = weeks.map(([l, s]) => {
+  const cells = [0,1,2].map(i => `<div class="d ${s[i]||''}"></div>`).join('');
+  return `<div class="wk">${cells}<div class="l">${l.split(' ')[0]}</div></div>`;
+}).join('');
+
+const lifts = [
+  ['Back squat', 'up', 'Moving', [68.2,70.0,67.8,71.5,73.3,72.8,70.9,74.8,74.8,76.7,76.7,66.7,64.8,74.0,78.0,80.0,79.2], '79.2', '+11.0'],
+  ['Deadlift', 'up', 'Moving', [76.7,76.7,74.0,76.0,80.0,79.2,79.2,83.3,82.3,82.3,84.5,76.7,85.5,87.8,90.0,86.3], '86.3', '+9.6'],
+  ['Machine row', 'up', 'Moving', [73.3,73.3,76.0,76.0,78.0,78.0,80.0,82.3,84.5,86.7,88.7,76.0,91.0,93.3,95.0,97.5], '97.5', '+24.2'],
+  ['Seated biceps curls', 'up', 'Up to 15 kg', [13.3,13.7,14.0,14.7,15.0,15.4,16.0,16.4,16.8,17.3,17.3,15.0,18.2,18.7,19.1,19.6], '19.6', '+6.3'],
+  ['Cable push-down', 'up', 'Moving', [27.3,28.0,30.8,30.8,31.5,34.2,34.2,35.8,36.7,37.6,38.5,31.5,33.3,40.0,41.0,42.0,43.3], '43.3', '+16.0'],
+  ['DB bench press', 'flat', 'Flat since 7 Aug', [14.7,15.2,15.6,16.0,16.9,16.5,16.5,16.5,16.9,16.9,16.9,13.9,14.3,16.9,16.9,16.9,16.9], '16.9', '+2.2'],
+  ['Narrow-grip pull-down', 'down', 'Lowered', [58.3,59.8,61.2,60.0,61.5,61.5,63.0,61.7,63.2,64.8,64.8,56.7,63.3,63.3,61.7,60.1], '60.1', '+1.8'],
+  ['Face pull', 'up', 'Moving', [22.5,23.3,24.5,25.1,26.2,26.7,28.0,29.3,30.0,30.0,30.8,28.7,33.8,33.3,35.0,35.8], '35.8', '+13.3'],
+];
+function spark(vals, cls, w=72, h=26) {
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const pts = vals.map((v,i) => [i*(w-4)/(vals.length-1)+2, h-3-(v-mn)/(mx-mn||1)*(h-6)]);
+  const col = {up:'#17794A', down:'#B04A1C', flat:'#6C6D75'}[cls];
+  const d = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const l = pts[pts.length-1];
+  return `<svg width="${w}" height="${h}"><path d="${d}" fill="none" stroke="#9FA0A6" stroke-width="1.5" stroke-linejoin="round"/>`+
+    `<circle cx="${l[0]}" cy="${l[1]}" r="3" fill="${col}"/></svg>`;
+}
+const glyph = {up:'&uarr;', down:'&darr;', flat:'='};
+document.getElementById('lifts').innerHTML = lifts.map(([n, c, s, v, now, ch]) =>
+  `<div class="r" style="min-height:56px"><div class="n"><div class="t">${n}</div><div class="s ${c}" style="font-weight:600">${glyph[c]} ${s}</div></div>`+
+  `${spark(v,c)}<div class="v" style="min-width:64px">${now}<span class="u">kg</span><div class="s">${ch}</div></div></div>`
+).join('');
+
+// ---- Lift chart: deadlift est. strength, 3 months ----
+(function(){
+  const pts = [['17 Jul',74.8],['22 Jul',76.7],['27 Jul',76.7],['31 Jul',74.0],['5 Aug',76.0],['17 Aug',80.0],['21 Aug',79.2],['26 Aug',79.2],
+    ['31 Aug',83.3],['4 Sep',82.3],['9 Sep',82.3],['14 Sep',84.5],['23 Sep',76.7,'deload'],['28 Sep',85.5],['2 Oct',87.8],['7 Oct',90.0,'pr'],['12 Oct',86.3]];
+  // x by date (days since 17 Jul)
+  const day = s => { const [d,m] = s.split(' '); const mo = {Jul:6,Aug:7,Sep:8,Oct:9}[m]; return (Date.UTC(2026,mo,+d)-Date.UTC(2026,6,17))/864e5; };
+  const W=350, H=170, L=4, R=40, T=16, B=24, x0=0, x1=day('12 Oct');
+  const mn=70, mx=95;
+  const X = d => L + (day(d)-x0)/(x1-x0)*(W-L-R), Y = v => T + (mx-v)/(mx-mn)*(H-T-B);
+  let s = '';
+  for (const g of [70,80,90]) s += `<line x1="${L}" x2="${W-R}" y1="${Y(g)}" y2="${Y(g)}" stroke="#E3E3DE"/><text x="${W-R+8}" y="${Y(g)+4}" font-size="12" fill="#6C6D75">${g}</text>`;
+  // deload band
+  s += `<rect x="${X('23 Sep')-7}" y="${T}" width="14" height="${H-T-B}" fill="#ECECE8"/>`;
+  const main = pts.filter(p=>p[2]!=='deload');
+  s += `<path d="${main.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="#141518" stroke-width="2" stroke-linejoin="round"/>`;
+  const dl = pts.find(p=>p[2]==='deload');
+  s += `<circle cx="${X(dl[0])}" cy="${Y(dl[1])}" r="3.5" fill="#F6F6F3" stroke="#6C6D75" stroke-width="1.5"/>`;
+  const pr = pts.find(p=>p[2]==='pr');
+  s += `<circle cx="${X(pr[0])}" cy="${Y(pr[1])}" r="5" fill="#FFF0C2" stroke="#8A6400" stroke-width="2"/>`;
+  s += `<text x="${X(pr[0])-8}" y="${Y(pr[1])-9}" font-size="11" font-weight="700" fill="#8A6400" text-anchor="middle">PR 90</text>`;
+  const last = pts[pts.length-1];
+  s += `<circle cx="${X(last[0])}" cy="${Y(last[1])}" r="4.5" fill="#141518"/>`;
+  s += `<text x="${L}" y="${H-6}" font-size="12" fill="#6C6D75">17 Jul</text><text x="${X('23 Sep')}" y="${H-6}" font-size="12" fill="#6C6D75" text-anchor="middle">deload</text><text x="${W-R}" y="${H-6}" font-size="12" fill="#6C6D75" text-anchor="end">12 Oct</text>`;
+  document.getElementById('liftchart').innerHTML = s;
+})();
+</script>
+</body>
+</html>

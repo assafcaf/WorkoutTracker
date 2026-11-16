@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Before / after, per phase</title>
+<style>
+@font-face { font-family: 'Geist'; src: url('../../../../src/assets/fonts/Geist-Variable.woff2') format('woff2'); font-weight: 400 600; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Geist', 'Segoe UI', system-ui, sans-serif; background: #DCDCD6; color: #141518; padding: 40px; }
+h1 { font-size: 36px; font-weight: 600; letter-spacing: -.02em; }
+.sub { font-size: 17px; color: #4A4B53; margin: 6px 0 28px; }
+.grid { display: grid; grid-template-columns: repeat(3, auto); gap: 36px 56px; }
+.pair h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.pair p { font-size: 14px; color: #4A4B53; margin-bottom: 10px; max-width: 800px; line-height: 1.35; }
+.imgs { display: flex; gap: 16px; }
+.imgs figure { width: 390px; }
+.imgs figcaption { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #6C6D75; margin-bottom: 6px; }
+.frame { width: 390px; height: 844px; overflow: hidden; background: #fff; box-shadow: 0 2px 14px rgba(0,0,0,.12); }
+.frame img { width: 390px; display: block; }
+</style>
+</head>
+<body id="ba">
+<h1>Before and after, phase by phase</h1>
+<div class="sub">Left: the app today (v6 recheck shots, stats-45 seed). Right: the proposal in the Ledger &amp; Instrument language, same data.</div>
+<div class="grid">
+  <div class="pair"><h2>1 · Opening the app</h2><p>Today: a note in italics, a week strip, rep ranges on every row, a cloud with a red dot. Proposed: one sentence says what changed; only today's loads; arrows on the changes.</p>
+    <div class="imgs"><figure><figcaption>Now</figcaption><div class="frame"><img src="../../../ux-expert/iterations/v6/recheck/01-train.png"></div></figure>
+    <figure><figcaption>Proposed</figcaption><div class="frame"><img src="01-train.png"></div></figure></div></div>
+  <div class="pair"><h2>2 · At the bar</h2><p>Today: 280 px of empty band between the set tiles and the numbers; plates as "Per side: 20" in small grey. Proposed: one centred instrument, plates drawn, last time under the reps.</p>
+    <div class="imgs"><figure><figcaption>Now</figcaption><div class="frame"><img src="../../../ux-expert/iterations/v6/recheck/10-now-deadlift.png"></div></figure>
+    <figure><figcaption>Proposed</figcaption><div class="frame"><img src="02-set.png"></div></figure></div></div>
+  <div class="pair"><h2>3 · Rest and the record moment</h2><p>Today: five regions; the countdown is bottom-left and the only filled button logs the next set. A rep best wears the PR tag. Proposed: the countdown is the hero; a rep best is one quiet line.</p>
+    <div class="imgs"><figure><figcaption>Now</figcaption><div class="frame"><img src="../../../ux-expert/iterations/v6/live/after/30-rest-pr.png"></div></figure>
+    <figure><figcaption>Proposed</figcaption><div class="frame"><img src="03-rest.png"></div></figure></div></div>
+  <div class="pair"><h2>4 · Right after</h2><p>Today: a run-on stats line, then each lift as a sentence of numbers. Proposed: one verdict sentence, records, then a glyph and one number per lift.</p>
+    <div class="imgs"><figure><figcaption>Now</figcaption><div class="frame"><img src="../../../ux-expert/iterations/v6/recheck/32-past-summary.png"></div></figure>
+    <figure><figcaption>Proposed</figcaption><div class="frame"><img src="04-summary.png"></div></figure></div></div>
+  <div class="pair"><h2>5 · Later: Progress</h2><p>Today: four decision cards fill the first screen; no lift numbers until you scroll. Proposed: the verdict as a headline, weeks as consistency, every lift as one row.</p>
+    <div class="imgs"><figure><figcaption>Now</figcaption><div class="frame"><img src="../../../ux-expert/iterations/v6/recheck/02-progress.png"></div></figure>
+    <figure><figcaption>Proposed</figcaption><div class="frame"><img src="05-progress.png"></div></figure></div></div>
+  <div class="pair"><h2>6 · Lift page</h2><p>Today: a verdict card, two stacked segmented controls, rep labels on every point. Proposed: status and advice as sentences, one number with its meaning, one chart with one chip row.</p>
+    <div class="imgs"><figure><figcaption>Now</figcaption><div class="frame"><img src="../../../ux-expert/iterations/v6/recheck/33-door-summary-deadlift.png"></div></figure>
+    <figure><figcaption>Proposed</figcaption><div class="frame"><img src="06-lift.png"></div></figure></div></div>
+</div>
+</body>
+</html>
