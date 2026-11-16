@@ -63,7 +63,8 @@ test('O7 Stats shows the same volume, records and progression with warm-up Sets 
   const warmed = renderLift(WARMED)
   const withWarmups = liftFacts(warmed)
 
-  expect(without.hero).toContain('60')
+  // v7: the Lift page leads with est. strength, 60 kg x 5 -> 70 kg; warm-ups at 100 kg change nothing.
+  expect(without.hero).toBe('70.0 kg')
   // v6: warm-ups show on their own muted line in the log, never in the hero or the records.
   expect(withWarmups).toEqual(without)
   expect(warmed.querySelector('.lift-warmups')?.textContent).toBe('W 100×10 · 100×10 · 100×10 · 100×10')

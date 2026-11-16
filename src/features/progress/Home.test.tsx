@@ -17,8 +17,11 @@ process.env.TZ = 'Asia/Jerusalem' // the zone the fixture was written in
 
 const NOW = new Date(2026, 9, 15, 18, 5).getTime()
 const SETTLE = { timeout: 5000 }
-/** The v6 headline on the fixture (report §6.4). */
-const LEAD = 'This week 2 of 3 sessions · 4 lifts need a decision'
+/** The v7 headline on the fixture (study §1.7): Moving and Ready lifts of all 14. */
+const LEAD = '12 of 14 lifts are moving'
+/** The v7 exceptions sentence: the two lifts that are not moving, in Plan order. */
+const EXCEPTIONS =
+  'DB bench press has been flat since 7 Aug. Narrow-grip pull-down is lower on purpose since 7 Oct; that is a choice, not a slide.'
 /**
  * The v6 Muscles row on the fixture: the one muscle furthest from 10–20 sets a week, with its unit.
  * V6-19: Abs (3 of a planned 3) and Calves (8 of 8) are as planned, so Shoulders is named (§6.2).
@@ -47,93 +50,77 @@ async function mount(sessions: Session[]) {
 
 describe('E18-T10 O20 Progress home with 45 Sessions', () => {
   test('O20 opens on the verdict sentence, the count row and the climbed clause', async () => {
-    // v6 §6.2: one true headline, then the "Needs a decision" cards; no count row, no
-    // "stepped up" clause.
+    // v7 (study §1.7): the headline is the count of moving lifts and one sentence on the
+    // exceptions, under "Since 23 Jul · 12 weeks"; no count row, no "stepped up" clause, and the
+    // ledger follows -- no decision cards between them.
     await mount(fixture)
-    const lead = await waitFor(() => screen.getByText(LEAD), SETTLE)
+    const lead = await waitFor(() => screen.getByRole('heading', { name: LEAD }), SETTLE)
+    expect(screen.getByText('Since 23 Jul · 12 weeks')).toBeVisible()
+    expect(screen.getByText(EXCEPTIONS)).toBeVisible()
     expect(screen.queryByText(/stepped up/)).toBeNull()
     expect(screen.queryByText(/lifts moving/)).toBeNull()
-    const firstCard = screen.getByRole('region', { name: 'DB bench press' })
-    expect(lead.compareDocumentPosition(firstCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByText(/need a decision/)).toBeNull()
+    expect(screen.queryByRole('region', { name: 'DB bench press' })).toBeNull()
+    const lifts = screen.getByRole('region', { name: 'Lifts' })
+    expect(lead.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   test('O20 an attention card has its sentence, its suggestion and a Why? that expands in place', async () => {
+    // v7: the decision cards moved to Program; Progress reads. The lowered lift is one ledger row
+    // with its status, and the reason is in the headline sentence ("a choice, not a slide"), with
+    // no Why? anywhere and nothing screen-reader-only.
     const { push } = await mount(fixture)
-    const card = await waitFor(() => screen.getByRole('region', { name: 'Narrow-grip pull-down' }), SETTLE)
-    // v6 (V6-07): the reason is visible -- the evidence line carries the note -- and nothing is
-    // screen-reader-only.
-    expect(card.querySelector('.progress-visually-hidden')).toBeNull()
-    expect(card).not.toHaveAttribute('aria-describedby')
-    expect(within(card).getByText('↓ Lowered')).toBeVisible()
-    expect(within(card).getByText(/· note: “Right elbow sore on pull-downs, dropped…”$/)).toBeVisible()
-    expect(within(card).getByText('Stay at 46.25 kg until all 3 sets reach 12.')).toBeVisible()
-    expect(within(card).queryByText(/A lower weight you chose is not a loss/)).toBeNull()
-    fireEvent.click(within(card).getByRole('button', { name: 'Why?' }))
-    expect(within(card).getByText(/A lower weight you chose is not a loss/)).toBeTruthy()
-    fireEvent.click(within(card).getByRole('button', { name: 'Hide' }))
-    expect(within(card).queryByText(/A lower weight you chose is not a loss/)).toBeNull()
-    fireEvent.click(within(card).getAllByRole('button')[0])
+    await waitFor(() => screen.getByRole('heading', { name: LEAD }), SETTLE)
+    expect(screen.queryByRole('region', { name: 'Narrow-grip pull-down' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Needs a decision' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Why?' })).toBeNull()
+    expect(document.querySelector('.progress-visually-hidden')).toBeNull()
+    expect(screen.queryByText('Stay at 46.25 kg until all 3 sets reach 12.')).toBeNull()
+    const lifts = screen.getByRole('region', { name: 'Lifts' })
+    const row = within(lifts).getByRole('button', { name: /^Narrow-grip pull-down: Lowered\./ })
+    expect(within(row).getByText('↓ Lowered')).toBeVisible()
+    expect(screen.getByText(/Narrow-grip pull-down is lower on purpose since 7 Oct; that is a choice, not a slide\./)).toBeVisible()
+    fireEvent.click(row)
     expect(push).toHaveBeenCalledWith({ kind: 'lift', exerciseId: 'narrow-grip-pull-down' })
   })
 
   test('V2-08 a stalled card compares its top set with the day of its last record', async () => {
-    const { navigate } = await mount(fixture)
-    const card = await waitFor(() => screen.getByRole('region', { name: 'DB bench press' }), SETTLE)
-    expect(within(card).getByText('13 kg × 9 · no new best since Fri 7 Aug')).toBeTruthy()
-    // V6-04: the deload of 21–25 Sep already failed, so a variation, with a Swap link.
-    expect(within(card).getByText('Try a variation for 4 weeks.')).toBeTruthy()
-    // V6R-02: Swap › opens the live Session's short swap list for this lift, not the raw catalog.
-    fireEvent.click(within(card).getByRole('button', { name: 'Swap ›' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Replace DB bench press in Workout A' }, SETTLE)
+    // v7: the stalled lift is a ledger row that says since when ("Flat since 7 Aug"), with its
+    // est. strength and 12-week change; Swap lives on Program and at the bar, not here.
+    const { push, navigate } = await mount(fixture)
+    const lifts = await waitFor(() => screen.getByRole('region', { name: 'Lifts' }), SETTLE)
+    const row = within(lifts).getByRole('button', { name: /^DB bench press: Stalled, flat since 7 aug\. est\. strength 16\.9 kg, / })
+    expect(within(row).getByText('= Flat since 7 Aug')).toBeVisible()
+    expect(within(row).getByText('16.9')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /^Swap/ })).toBeNull()
+    expect(screen.queryByText('Try a variation for 4 weeks.')).toBeNull()
+    fireEvent.click(row)
+    expect(push).toHaveBeenCalledWith({ kind: 'lift', exerciseId: 'db-bench-press' })
     expect(navigate).not.toHaveBeenCalled()
-    const choices = within(dialog).getAllByRole('button', { name: /^Do .* instead$/ })
-    expect(choices.length).toBeGreaterThan(0)
-    expect(choices.length).toBeLessThanOrEqual(6)
-    // Lifts already in Workout A are not offered.
-    expect(within(dialog).queryByRole('button', { name: 'Do Push-ups instead' })).toBeNull()
-    const chosen = (choices[0].getAttribute('aria-label') ?? '').replace(/^Do (.*) instead$/, '$1')
-
-    // Choosing one swaps it into Workout A of the Program, with an Undo snackbar.
-    fireEvent.click(choices[0])
-    const workoutA = async () => {
-      const { programs } = await createServices({ now: () => NOW, storageAvailable: true }).programs.load()
-      return programs.find((p) => p.id === 'assaf-ab-2026')?.workouts.find((w) => w.id === 'workout-a')
-    }
-    await waitFor(async () => {
-      const ids = (await workoutA())?.exercises.map((plan) => plan.exerciseId) ?? []
-      expect(ids).not.toContain('db-bench-press')
-      expect(ids).toHaveLength(7)
-      expect(ids[2]).not.toBe('db-bench-press')
-    }, SETTLE)
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: /^Replace / })).toBeNull(), SETTLE)
-    const snackbar = await waitFor(() => {
-      const found = document.querySelector('.snackbar') as HTMLElement | null
-      expect(found).not.toBeNull()
-      return found as HTMLElement
-    }, SETTLE)
-    expect(snackbar).toHaveTextContent(`${chosen} replaces DB bench press in Workout A`)
-
-    // Undo puts DB bench press back in its place.
-    fireEvent.click(within(snackbar).getByRole('button', { name: 'Undo' }))
-    await waitFor(async () => expect((await workoutA())?.exercises[2].exerciseId).toBe('db-bench-press'), SETTLE)
-    await waitFor(() => expect(document.querySelector('.snackbar')).toBeNull(), SETTLE)
   })
 
   test('O20 the adherence tile reads 2 of 3 this week and its done days open their Session', async () => {
     // V2-05: the week moved to the top of Train. Progress Home draws no This week tile, and
-    // Train's strip over the same Sessions reads 2 of 3 with the two done days named.
+    // Train's strip over the same Sessions reads 2 of 3 with the two done days named. v7: Progress
+    // has the weeks strip -- 6 weeks of Sessions in the Workouts' colours, 15 in all.
     await mount(fixture)
     await waitFor(() => expect(screen.getByText(LEAD)).toBeTruthy(), SETTLE)
     expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
     expect(screen.queryByText('2 of 3 this week')).toBeNull()
-    const strip = weekStripOf(fixture, programJson as unknown as Program, NOW, 1)
-    expect(`${strip.done} of ${strip.planned}`).toBe('2 of 3')
-    expect(strip.days).toHaveLength(7)
-    expect(strip.days.filter((d) => d.workout !== null)).toHaveLength(2)
+    const weeks = screen.getByRole('region', { name: 'Weeks' })
+    const strip = within(weeks).getByRole('img', { name: /^15 sessions in 6 weeks\. Week of 7 Sep: 3;/ })
+    expect(strip.getAttribute('aria-label')).toMatch(/Week of 12 Oct: 2\.$/)
+    const marks = [...strip.querySelectorAll('.progress-week-mark')].map((m) => m.getAttribute('data-slot'))
+    expect(marks.filter((m) => m === 'a' || m === 'b')).toHaveLength(15)
+    expect(marks.filter((m) => m?.startsWith('next-'))).toHaveLength(1)
+    const train = weekStripOf(fixture, programJson as unknown as Program, NOW, 1)
+    expect(`${train.done} of ${train.planned}`).toBe('2 of 3')
+    expect(train.days).toHaveLength(7)
+    expect(train.days.filter((d) => d.workout !== null)).toHaveLength(2)
   })
 
   test('O20 the muscles finding opens Muscles, the moving list is collapsed and All 14 lifts opens the list', async () => {
-    // v6 §6.2: every lift is a row on the dashboard itself, grouped by Workout; the All lifts
+    // v6 §6.2, v7: every lift is one ledger row on the dashboard itself; the All lifts
     // link is gone and a row opens its Lift page.
     const { push } = await mount(fixture)
     await waitFor(() => expect(screen.getByRole('region', { name: 'Lifts' })).toBeTruthy(), SETTLE)

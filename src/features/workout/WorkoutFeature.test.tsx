@@ -1589,7 +1589,8 @@ test('O21 the History link on the set screen opens History · Back squat listing
   // v6: Lift history is the one Lift page, headed by the lift; its log lists the earlier Session.
   const log = within(dialog).getByRole('list', { name: 'Sessions' })
   expect(within(log).getByText('Tue 6 Oct')).toBeVisible()
-  expect(log.querySelector('.lift-log-sets')?.textContent).toBe('80×8 · 80×8')
+  // v7: repeated Sets at one load share one figure (study §3 Numerals).
+  expect(log.querySelector('.lift-log-sets')?.textContent).toBe('80×8 · 8')
 })
 
 test('O21 closing History returns to the same open Set with its logged Set and rest intact', async () => {

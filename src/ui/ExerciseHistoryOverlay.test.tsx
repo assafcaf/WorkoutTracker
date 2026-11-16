@@ -68,7 +68,8 @@ test('O21 each Session shows its date as Tue 6 Oct and its Sets as the Last time
   const dialog = open([newer])
 
   expect(within(within(dialog).getByRole('list', { name: 'Sessions' })).getByText('Tue 6 Oct')).toBeVisible()
-  expect(setsOf(dialog, 'Tue 6 Oct')).toBe('80×8 · 80×8 · 80×7')
+  // v7: repeated Sets at one load share one figure (study §3 Numerals).
+  expect(setsOf(dialog, 'Tue 6 Oct')).toBe('80×8 · 8 · 7')
 })
 
 test('O21 Sessions are listed newest first whatever order they arrive in', () => {
@@ -116,8 +117,9 @@ test('O21 a record Set carries the PR badge and the older Session does not', () 
   const tag = within(dialog).getByLabelText('Personal record, heaviest weight')
   expect(tag).toHaveClass('tag', 'tag-pr')
   expect(tag.textContent).toBe('PR')
-  expect(setsOf(dialog, 'Tue 6 Oct')).toBe('80×8 PR · 80×8 · 80×7')
-  expect(setsOf(dialog, 'Mon 28 Sep')).toBe('60×8 · 60×8')
+  // v7: the PR Set ends its run, so the tag follows the Set that earned it.
+  expect(setsOf(dialog, 'Tue 6 Oct')).toBe('80×8 PR · 80×8 · 7')
+  expect(setsOf(dialog, 'Mon 28 Sep')).toBe('60×8 · 8')
 })
 
 test('O21 with no finished Session of this Exercise the overlay reads No earlier Sessions', () => {
@@ -141,17 +143,19 @@ test('O21 the overlay is read-only: Close is its only button, and it calls onClo
   expect(onClose).toHaveBeenCalledTimes(1)
 })
 
-// v6: one chart -- the top-set weight by default, the est. max on its tab.
+// v7: one chart -- est. strength by default, the top-set weight on its chip.
 
 const WEEK = 7 * 24 * 3600_000
 
 test('v5 the history leads with the latest estimated max and the set behind it', () => {
-  // v6: it leads with the lift's status and its latest top set; the log follows the chart.
+  // v7: it leads with the lift's status, then its est. strength (80 × 8 -> 101.3 kg) and how far
+  // it moved since 28 Sep (60 × 8 -> 76 kg), defined in one line; the log follows the chart.
   const dialog = open([older, newer])
 
-  const hero = within(dialog).getByRole('region', { name: 'Latest top set' })
-  expect(within(hero).getByText('80 kg × 8')).toBeVisible()
-  expect(within(hero).getByText('Tue 6 Oct · up 20 kg')).toBeVisible()
+  const hero = within(dialog).getByRole('region', { name: 'Est. strength' })
+  expect(hero.querySelector('.lift-hero-value')?.textContent).toBe('101.3 kg')
+  expect(within(hero).getByText('↑ +25.3 since 28 Sep')).toBeVisible()
+  expect(within(hero).getByText('Est. strength: the one-rep max your best set predicts')).toBeVisible()
   expect(within(dialog).queryByText(/Epley/)).toBeNull()
   const list = within(dialog).getByRole('list', { name: 'Sessions' })
   expect(hero.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -160,27 +164,29 @@ test('v5 the history leads with the latest estimated max and the set behind it',
 test('v5 the chart is named by where the lift went, and marks new bests', async () => {
   const dialog = open([older, newer])
 
-  expect(within(dialog).getByRole('img', { name: 'Top-set weight, 60 on 28 Sep to 80 on 6 Oct' })).toBeVisible()
-  await userEvent.setup().click(within(within(dialog).getByRole('radiogroup', { name: 'Show' })).getByRole('radio', { name: 'Est. strength' }))
-  // 60 x 8 -> 76 kg on 28 Sep, 80 x 8 -> 101.3 kg on 6 Oct; the PR day is filled, not a dip.
+  // 60 x 8 -> 76 kg on 28 Sep, 80 x 8 -> 101.3 kg on 6 Oct; the record day wears the gold ring.
   const chart = within(dialog).getByRole('img', { name: 'Estimated strength, 76 on 28 Sep to 101.3 on 6 Oct' })
   expect(chart.querySelectorAll('circle[data-record]')).toHaveLength(1)
+  expect(chart.querySelector('.lift-chart-pr')?.textContent).toBe('PR 101.3')
+  await userEvent.setup().click(within(within(dialog).getByRole('radiogroup', { name: 'Show' })).getByRole('radio', { name: 'Top set' }))
+  expect(within(dialog).getByRole('img', { name: 'Top-set weight, 60 on 28 Sep to 80 on 6 Oct' })).toBeVisible()
 })
 
 test('v5 tapping a point reads its date, value and best set', async () => {
   const dialog = open([older, newer])
 
-  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Mon 28 Sep · 60 kg × 8, 8' }))
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Mon 28 Sep · 76 kg est. strength · 60 kg × 8, 8' }))
 
   const readout = within(dialog).getByRole('region', { name: 'Chart readout' })
   expect(readout.textContent).toContain('Mon 28 Sep')
-  expect(readout.textContent).toContain('60 kg × 8, 8')
+  expect(readout.textContent).toContain('76 kg est. strength · 60 kg × 8, 8')
 })
 
 test('v5 one Session shows its value but no chart yet', () => {
   const dialog = open([newer])
 
-  expect(within(within(dialog).getByRole('region', { name: 'Latest top set' })).getByText('80 kg × 8')).toBeVisible()
+  const hero = within(dialog).getByRole('region', { name: 'Est. strength' })
+  expect(hero.querySelector('.lift-hero-value')?.textContent).toBe('101.3 kg')
   expect(within(dialog).queryByRole('img')).toBeNull()
   expect(within(dialog).getByText(/One session in this range/)).toBeVisible()
 })

@@ -242,7 +242,8 @@ describe('v7 a rep best (Deadlift 70 × 8 after 70 × 7) shows no PR tag anywher
     )
     const rows = within(screen.getByRole('list', { name: 'Sessions' })).getAllByRole('listitem')
     const thu = rows.find((row) => row.textContent?.startsWith('Thu 15 Oct')) as HTMLElement
-    expect(thu.querySelector('.lift-log-sets')?.textContent).toBe('60×10 · 70×8 · 70×7')
+    // v7: repeated Sets at one load share a figure: 70 x 8 then 7 is `70×8 · 7`.
+    expect(thu.querySelector('.lift-log-sets')?.textContent).toBe('60×10 · 70×8 · 7')
     expect(thu.querySelector('.tag-pr')).toBeNull()
   })
 

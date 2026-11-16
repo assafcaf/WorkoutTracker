@@ -83,6 +83,11 @@ export type LiftStatus = {
   swap: boolean
   /** Break only: whole days since the lift was last done. */
   daysOff?: number
+  /**
+   * v7: when the status began -- Stalled: the Session of the last new best; Lowered: the Session
+   * the load dropped in. The Progress rows and headline say `Flat since 7 Aug`.
+   */
+  since?: number
 }
 
 export type LiftStatusInput = {
@@ -266,13 +271,14 @@ export function liftStatusOf({ exercise, plan, history, notes, now }: LiftStatus
       const note = notes.get(at.sessionId)?.trim()
       const sets = plan?.sets ?? atTop(latest, bw).length
       const hi = plan?.repRange[1] ?? latest.top.reps
-      return make(
+      const lowered = make(
         'lowered',
         `${topText(latest.top, bw)} · down from ${L(from)} on ${humanDate(at.startedAt)}${note ? ` · note: “${firstWords(note, 6)}”` : ''}`,
         `Stay at ${L(load)} until all ${sets} sets reach ${hi}.`,
         `You lowered the weight from ${L(from)} to ${L(load)} on ${humanDate(at.startedAt)}${note ? `, with the note “${note.replace(/[.!?]+$/, '')}”` : ''}. A lower weight you chose is not a loss. When all ${sets} sets reach ${hi} at ${L(load)}, the app moves you back up to ${L(from)}.`,
         { lever: load, reps: hi },
       )
+      return { ...lowered, since: at.startedAt }
     }
   }
 
@@ -306,7 +312,7 @@ export function liftStatusOf({ exercise, plan, history, notes, now }: LiftStatus
       const lastDeload = deloads[deloads.length - 1]
       const run = deloads.filter((p) => lastDeload.startedAt - p.startedAt <= 7 * DAY)
       const most = Math.max(...real.filter((p) => p.top.lever === load).flatMap((p) => atTop(p, bw).map((s) => s.reps)))
-      return make(
+      const variation = make(
         'stalled',
         evidence,
         'Try a variation for 4 weeks.',
@@ -314,15 +320,17 @@ export function liftStatusOf({ exercise, plan, history, notes, now }: LiftStatus
         { lever: load, reps: null },
         true,
       )
+      return { ...variation, since }
     }
     const lighter = bw ? load : deloadWeight(load, exercise.weightStep)
-    return make(
+    const deload = make(
       'stalled',
       evidence,
       bw ? `Deload once: an easier session, then back to ${L(load)}.` : `Deload once: ${L(lighter)} × ${hi}, then back to ${L(load)}.`,
       `No new best and no extra reps at ${L(load)} in your last 4 sessions. One lighter session usually lets the next one move.`,
       { lever: lighter, reps: hi },
     )
+    return { ...deload, since }
   }
 
   const moveAt = real[lastMove]
