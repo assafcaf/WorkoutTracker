@@ -66,8 +66,9 @@
   white-space: nowrap;
 }
 
-/* The set cells under the header: 56 px squares, done filled, next outlined, still to come
- * dashed; wider than the screen, the row scrolls sideways. */
+/* The set cells under the header: 56 px SetCells (src/ui/figures/SetCell.tsx draws the states:
+ * done on the surface, next outlined in live, still to come dashed); wider than the screen, the
+ * row scrolls sideways. */
 .all-cells {
   display: flex;
   gap: var(--space-2);
@@ -88,27 +89,17 @@
   width: 56px;
   min-height: 56px;
   padding: 0;
-  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
-  color: var(--color-text);
   line-height: 1rem;
-}
-
-.all-cell--done,
-.all-cell--done.cell {
-  border-color: var(--color-raised);
-  background: var(--color-raised);
 }
 
 .all-cell--warmup {
   width: 44px;
 }
 
-.all-cell--current {
-  border: 2px solid var(--color-primary);
-}
-
+/* V1-19: the planned cell's dashed border stays at 3:1 on the page and on a card, so it is
+ * ink-3 rather than the lighter control grey (SetCell's planned state draws the same). */
 .all-cell--future {
   border: 1.5px dashed var(--color-muted);
 }
@@ -132,19 +123,25 @@
   font-weight: var(--weight-semibold);
 }
 
-.all-cell-load {
+/* The stacked SetFigure: its load and its "×reps" are the cell's own lines. */
+.all-cell-figure {
+  display: contents;
+}
+
+.all-cell-load,
+.all-cell .set-figure-load {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   line-height: 1.125rem;
   font-variant-numeric: tabular-nums;
 }
 
-.all-cell--future .all-cell-load {
-  color: var(--color-secondary);
+.all-cell--future .set-figure-load {
   font-weight: var(--weight-medium);
 }
 
-.all-cell-reps {
+.all-cell-reps,
+.all-cell .set-figure-reps {
   color: var(--color-secondary);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;

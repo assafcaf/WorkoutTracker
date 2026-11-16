@@ -27,6 +27,7 @@ import type { BodyLog, ExercisePlan,LibraryExercise, Muscle, Program, Session, W
 import { Icon } from './icons'
 import { healthShortcutUrl, readHealthReady } from './healthShortcut'
 import { RegionPanel } from './RegionPanel'
+import { PrTag, SetFigure } from './figures'
 import { Sheet } from './Sheet'
 import { musclesForRegion } from './regionMuscles'
 import './SessionSummary.css'
@@ -264,9 +265,7 @@ export function SessionSummary({
 
         {headline ? (
           <p className="session-summary-win">
-            <span className="tag tag-pr" aria-label="Personal record">
-              PR
-            </span>
+            <PrTag />
             <span className="session-summary-win-text">{headline.text}</span>
             {headline.more ? <span className="session-summary-win-more">{headline.more}</span> : null}
           </p>
@@ -328,13 +327,11 @@ export function SessionSummary({
                     {lift.line.sets.map((set, index) => (
                       <span key={index} className="session-summary-move-set">
                         {index > 0 ? ' · ' : ''}
-                        {set.text}
+                        <SetFigure set={set.set} />
                         {set.pr ? (
                           <>
                             {' '}
-                            <span className="tag tag-pr" aria-label="Personal record">
-                              PR
-                            </span>
+                            <PrTag />
                           </>
                         ) : null}
                       </span>
@@ -358,9 +355,7 @@ export function SessionSummary({
             <ul className="session-summary-prs card">
               {records.map((record) => (
                 <li key={`${record.exerciseId}-${record.kind}`} className="session-summary-record">
-                  <span className="tag tag-pr" aria-label="Personal record">
-                    PR
-                  </span>
+                  <PrTag />
                   <span className="session-summary-record-text">
                     <span className="session-summary-record-label">{record.kind}</span>
                     <span className="session-summary-record-detail">

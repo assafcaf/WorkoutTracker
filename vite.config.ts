@@ -58,8 +58,8 @@ export default defineConfig({
         // Matches --color-bg in src/styles/tokens.css, so the iOS splash screen and status
         // bar do not seam against the app's own background on launch. Kept in sync by
         // src/pwa/manifest.test.ts's O5 tests rather than by reading tokens.css at config time.
-        theme_color: '#F6F6F8',
-        background_color: '#F6F6F8',
+        theme_color: '#F6F6F3',
+        background_color: '#F6F6F3',
         // Relative to the manifest, which the browser fetches from under `base`.
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },

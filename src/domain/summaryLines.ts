@@ -60,8 +60,11 @@ export function prHeadline(
 }
 
 export type LiftLine = {
-  /** The working Sets in order, compact: `70×8`; `pr` on the Set that set the lift's record. */
-  sets: { text: string; pr: boolean }[]
+  /**
+   * The working Sets in order, compact: `70×8`; `pr` on the Set that set the lift's record;
+   * `set` its load and reps, for a SetFigure to write.
+   */
+  sets: { text: string; pr: boolean; set: { weightKg: number | null; loadKg?: number; reps: number } }[]
   /** How the lift compares with last time (`exerciseComparison`): `1 rep more than Mon 12 Oct`, `2 of 4 sets`. */
   tail: string
 }
@@ -100,7 +103,11 @@ export function liftLine(
       : working.findIndex(
           (set) => set.kind !== 'drop' && leverOf(set, bodyweight) === record.lever && set.reps === record.reps,
         )
-  const sets = working.map((set, index) => ({ text: formatSetCompact(set), pr: index === prIndex }))
+  const sets = working.map((set, index) => ({
+    text: formatSetCompact(set),
+    pr: index === prIndex,
+    set: { weightKg: set.weightKg, reps: set.reps, ...(set.loadKg === undefined ? {} : { loadKg: set.loadKg }) },
+  }))
   if (working.length === 0) return { sets, tail: '' }
   if (plannedSets !== undefined && working.length < plannedSets) {
     return { sets, tail: exerciseComparison({ today: working, last: [], lastDay: '', plannedSets }) } // "2 of 4 sets"

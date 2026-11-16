@@ -282,13 +282,15 @@
   border-radius: var(--radius-pill);
 }
 
-/* The PR tag (S5b, S6a): an accent-outlined pill on the surface, as the mock's `.tag`. */
+/* The PR tag (src/ui/figures/PrTag.tsx; study §3, PR): gold ink on the gold tint, a small
+ * squared tag, for real records only -- a rep best never wears it. */
 .tag-pr {
   min-height: 20px;
-  padding: 0 7px;
-  border: 1.5px solid var(--color-primary);
-  background: var(--color-surface);
-  color: var(--color-primary);
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-pr-tint);
+  color: var(--color-pr);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   letter-spacing: 0.04em;

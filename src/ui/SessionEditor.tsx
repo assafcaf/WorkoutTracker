@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { formatDay } from '../domain/dates'
 import { newPlan } from '../domain/programs'
 import { formatSet } from '../domain/setText'
+import { SetFigure } from './figures'
 import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/setEdits'
 import type { Exercise, LibraryExercise, Session, SetEntry, SetKind } from '../types'
 import { Switch } from './controls'
@@ -284,7 +285,7 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
                           {KIND_MARKERS[entry.kind]}
                         </span>
                       ) : null}
-                      {setText(entry)}
+                      <SetFigure set={entry} />
                     </span>
                     <button
                       type="button"

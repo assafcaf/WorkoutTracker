@@ -1,0 +1,74 @@
+/* The shared marks (study §3): SetFigure, SetCell's four states and StatusMark's tones. Only
+ * what the language decides lives here -- numerals, the ×, state colours and borders. Each site
+ * keeps its own layout (cell size, padding, how a figure wraps) in its own stylesheet, keyed on
+ * the site class or on `data-state`. The PR tag's rule is `.tag-pr` in src/styles/components.css. */
+
+/* ---- SetFigure ---- */
+
+.set-figure {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* The unit after a weight, in ink-3 and smaller: `70 kg`. */
+.set-figure-unit {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+/* The ×, in ink-3 with thin space either side; both numbers keep the figure's weight. */
+.set-figure-times {
+  margin: 0 0.12em;
+  color: var(--color-muted);
+  font-weight: var(--weight-regular);
+}
+
+/* Stacked (load over ×reps), the × hugs its reps. */
+.set-figure[data-stack='true'] .set-figure-times {
+  margin: 0 0.06em 0 0;
+}
+
+/* ---- SetCell: the four states ---- */
+
+/* Planned is dashed in ink-3, not the study's lighter #C9C9C3: a dashed outline is the only mark
+ * of a Set to come, so it keeps 3:1 against the page and a card (V1-19). */
+.setcell[data-state='planned'] {
+  border: 1.5px dashed var(--color-muted);
+  color: var(--color-muted);
+}
+
+.setcell[data-state='current'] {
+  border: 2px solid var(--color-live);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.setcell[data-state='done'],
+.setcell[data-state='pr'] {
+  border: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.setcell[data-state='planned'] .set-figure {
+  font-weight: var(--weight-medium);
+}
+
+/* A cell that is a button still answers a press (the `cell` role's own press colour). */
+.setcell.cell:active {
+  background: var(--color-control);
+}
+
+/* ---- StatusMark: glyph and word in the status colour, no box ---- */
+
+.status-mark[data-tone='up'] {
+  color: var(--color-up);
+}
+
+.status-mark[data-tone='flat'] {
+  color: var(--color-muted);
+}
+
+.status-mark[data-tone='down'] {
+  color: var(--color-down);
+}

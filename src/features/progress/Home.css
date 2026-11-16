@@ -333,23 +333,6 @@
   font-size: var(--text-sm);
 }
 
-/* A status in words, coloured by what it asks of the trainee. */
-.progress-status-decide {
-  color: var(--color-warn);
-}
-
-.progress-status-up {
-  color: var(--color-primary);
-}
-
-.progress-status-calm {
-  color: var(--color-muted);
-}
-
-.progress-card-kind.progress-status-decide {
-  color: var(--color-warn);
-}
-
 .progress-lifts {
   padding: var(--space-2) var(--space-3) 0;
 }

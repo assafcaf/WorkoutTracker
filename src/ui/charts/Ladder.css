@@ -68,7 +68,7 @@
 }
 
 .ladder-dot-record {
-  fill: var(--color-primary);
+  fill: var(--color-pr);
   color: var(--color-on-primary);
 }
 

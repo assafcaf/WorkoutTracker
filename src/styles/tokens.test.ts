@@ -56,20 +56,41 @@ function normalise(value: string | undefined): string {
 
 // The Progress Dashboard palette (E17 spec, Design > Token table), written out by hand.
 const COLOUR_TOKENS: Record<string, string> = {
-  '--color-bg': '#F6F6F8',
+  '--color-bg': '#F6F6F3',
   '--color-surface': '#FFFFFF',
-  '--color-raised': '#EEEEF2',
-  '--color-hairline': '#E3E3E9',
-  '--color-control': '#CACAD3',
-  '--color-text': '#16161D',
-  '--color-secondary': '#45454F',
-  '--color-muted': '#62626F',
-  '--color-primary': '#4338A8',
-  '--color-primary-pressed': '#362C8C',
-  '--color-primary-tint': '#EEEDF8',
+  '--color-raised': '#F1F1ED',
+  '--color-hairline': '#E3E3DE',
+  '--color-control': '#C9C9C3',
+  '--color-text': '#141518',
+  '--color-secondary': '#4A4B53',
+  '--color-muted': '#6C6D75',
+  // v7 palette roles (docs/design/competitors-2026-11/study.md §3): ink is the action colour.
+  '--color-primary': '#141518',
+  '--color-primary-pressed': '#2E2F35',
+  '--color-primary-tint': '#ECECE8',
   '--color-on-primary': '#FFFFFF',
   '--color-warn': '#8A5A12',
   '--color-danger': '#B42318',
+}
+
+// v7 meaning colours, each with the tint it sits on: live (now), up (better, Moving, Ready, a
+// rep best), down (lowered, below range) and pr (records only).
+const ROLE_TOKENS: Record<string, string> = {
+  '--color-live': '#2453D4',
+  '--color-live-tint': '#E8EEFC',
+  '--color-up': '#17794A',
+  '--color-up-tint': '#E2F2E9',
+  '--color-down': '#B04A1C',
+  '--color-down-tint': '#FBEAE2',
+  '--color-pr': '#8A6400',
+  '--color-pr-tint': '#FFF0C2',
+}
+
+// v7: the two Workouts' identity, apart from the muscle-family --data-* marks. Same hues the
+// Sessions calendar has always drawn A and B in.
+const WORKOUT_TOKENS: Record<string, string> = {
+  '--workout-a': '#256F91',
+  '--workout-b': '#96506F',
 }
 
 // Colour only in data: the four muscle-family marks, the four heat steps and the second
@@ -79,10 +100,11 @@ const DATA_TOKENS: Record<string, string> = {
   '--data-pull': '#96506F',
   '--data-legs': '#4F7A33',
   '--data-core': '#93611A',
-  '--heat-0': '#E6F1F2',
-  '--heat-1': '#A9D3D6',
-  '--heat-2': '#4E9DA4',
-  '--heat-3': '#1D6970',
+  // v7: the heat ramp is neutral; colour is kept for meaning.
+  '--heat-0': '#ECECE8',
+  '--heat-1': '#C6C7CC',
+  '--heat-2': '#8C8E97',
+  '--heat-3': '#3D3F47',
   '--chart-b': '#8A8A97',
 }
 
@@ -158,10 +180,12 @@ const MOTION_TOKENS: Record<string, string> = {
   '--press-scale': '0.97',
 }
 
-// The spec's 52-token table, by name. `--font-sans`, `--safe-bottom` and `--safe-top` carry
+// The token table, by name: E17's 52 plus v7's ten role and workout tokens, 62 in all. `--font-sans`, `--safe-bottom` and `--safe-top` carry
 // values that are not a plain literal, so they are asserted on their own below.
 const DOCUMENTED_TOKENS = [
   ...Object.keys(COLOUR_TOKENS),
+  ...Object.keys(ROLE_TOKENS),
+  ...Object.keys(WORKOUT_TOKENS),
   ...Object.keys(DATA_TOKENS),
   ...Object.keys(EFFECT_TOKENS),
   ...Object.keys(SCALE_TOKENS),
@@ -207,6 +231,16 @@ const CONTRAST_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['--color-on-primary', '--heat-3'],
 ]
 
+// v7: each meaning colour as text on the page, on a surface and on its own tint; the workout
+// letters on their calendar fill.
+const ROLE_TEXT_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ...['--color-live', '--color-up', '--color-down', '--color-pr'].flatMap((fg) =>
+    ['--color-bg', '--color-surface', `${fg}-tint`].map((bg) => [fg, bg] as const),
+  ),
+  ['--color-on-primary', '--workout-a'],
+  ['--color-on-primary', '--workout-b'],
+]
+
 // Marks (3:1): every data colour on a card.
 const MARK_PAIRS: ReadonlyArray<readonly [string, string]> = [
   '--data-push',
@@ -214,6 +248,9 @@ const MARK_PAIRS: ReadonlyArray<readonly [string, string]> = [
   '--data-legs',
   '--data-core',
   '--chart-b',
+  '--workout-a',
+  '--workout-b',
+  '--color-live',
 ].map((fg) => [fg, '--color-surface'] as const)
 
 /** Each pair below `floor`, as a readable failure line; empty when every pair clears it. */
@@ -244,9 +281,9 @@ function compare(map: Record<string, string>): { actual: object; expected: objec
 }
 
 test('O1 tokens.css declares exactly the forty-nine documented tokens on :root', () => {
-  // Title kept (weakened-tests gate); the body asserts tokens.css declares the E17 52-token
-  // table exactly: every documented token, and nothing else (E17-T12 [O1]).
-  expect(DOCUMENTED_TOKENS).toHaveLength(52)
+  // Title kept (weakened-tests gate); the body asserts tokens.css declares the token table
+  // exactly: E17's 52 plus v7's ten role and workout tokens, and nothing else.
+  expect(DOCUMENTED_TOKENS).toHaveLength(62)
   expect([...tokens().keys()].sort()).toEqual(DOCUMENTED_TOKENS)
 })
 
@@ -262,7 +299,7 @@ test('O1 tokens.css declares exactly the thirty-six documented tokens on :root',
   expect(declared.filter((name) => COURT_ONLY_TOKENS.includes(name)), 'Court-only tokens').toEqual(
     [],
   )
-  expect(new Set(declared).size).toBe(52)
+  expect(new Set(declared).size).toBe(62)
 })
 
 test('O1 --shadow-card is an inset hairline expressed through --color-border', () => {
@@ -279,6 +316,39 @@ test('O1 tokens.css no longer declares --color-border, --color-on-accent or --sh
 test('O1 the colour tokens carry the documented palette values', () => {
   const { actual, expected } = compare(COLOUR_TOKENS)
   expect(actual).toEqual(expected)
+})
+
+test('v7 the live, up, down and pr role tokens and their tints carry the documented values', () => {
+  const { actual, expected } = compare(ROLE_TOKENS)
+  expect(actual).toEqual(expected)
+})
+
+test('v7 the Workout A and B tokens carry the calendar hues, apart from the --data-* family marks', () => {
+  const { actual, expected } = compare(WORKOUT_TOKENS)
+  expect(actual).toEqual(expected)
+  // The calendar paints A and B through these two, never through a muscle family's mark.
+  const calendar = read('src/ui/CalendarWeek.css')
+  expect(calendar).toMatch(/data-workout="push"\]\s*\{\s*background:\s*var\(--workout-a\)/)
+  expect(calendar).toMatch(/data-workout="pull"\]\s*\{\s*background:\s*var\(--workout-b\)/)
+})
+
+test('v7 ink is the action colour: --color-primary is --color-text', () => {
+  const declared = tokens()
+  expect(normalise(declared.get('--color-primary'))).toBe(normalise(declared.get('--color-text')))
+})
+
+test('v7 the heat ramp is neutral: no step carries a hue', () => {
+  const declared = tokens()
+  for (const name of ['--heat-0', '--heat-1', '--heat-2', '--heat-3']) {
+    const hex = normalise(declared.get(name))
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+    expect(Math.max(r, g, b) - Math.min(r, g, b), `${name} ${hex} carries a hue`).toBeLessThanOrEqual(12)
+  }
+})
+
+test('v7 role text: live, up, down and pr clear 4.5:1 on bg, surface and their own tint', () => {
+  expect(ROLE_TEXT_PAIRS).toHaveLength(14)
+  expect(pairsBelow(ROLE_TEXT_PAIRS, 4.5), 'these role pairs fall below 4.5:1').toEqual([])
 })
 
 test('O1 the four muscle-family tint and ink tokens carry the documented values', () => {
@@ -440,7 +510,8 @@ test('O2 primary label: --color-on-primary clears 7:1 on --color-primary and on 
 })
 
 test('O2 marks: every --data-* colour and --chart-b clear 3:1 on --color-surface', () => {
-  expect(MARK_PAIRS).toHaveLength(5)
+  // Title kept; v7 adds the two workout hues and --color-live to the marks.
+  expect(MARK_PAIRS).toHaveLength(8)
   expect(pairsBelow(MARK_PAIRS, 3), 'these data marks fall below 3:1 on a card').toEqual([])
 })
 

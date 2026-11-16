@@ -28,26 +28,19 @@
   background: var(--color-surface);
 }
 
-.lift-status-decide {
-  border-left-color: var(--color-warn);
+/* The status's tone (StatusMark, src/ui/figures): green up, rust down, ink-3 flat. */
+.lift-status-up {
+  border-left-color: var(--color-up);
 }
 
-.lift-status-up {
-  border-left-color: var(--color-primary);
+.lift-status-down {
+  border-left-color: var(--color-down);
 }
 
 .lift-status-label {
   margin: 0;
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-}
-
-.lift-status-decide .lift-status-label {
-  color: var(--color-warn);
-}
-
-.lift-status-up .lift-status-label {
-  color: var(--color-primary);
 }
 
 .lift-status-action {

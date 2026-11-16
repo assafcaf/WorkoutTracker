@@ -122,7 +122,7 @@ describe('E18-T7 O11 the home on the fixture at Thu 15 Oct 18:05', () => {
     // v6: the counts are each lift's one status (status.ts).
     expect(home.stage).toBe('full')
     expect(home.sentence).toBe('10 of 14 lifts moving.')
-    expect(home.counts).toBe('■ 1 stalled · ↓ 1 lowered · ↑ 2 ready · ▲ 10 moving')
+    expect(home.counts).toBe('= 1 stalled · ↓ 1 lowered · ↑ 2 ready · ↑ 10 moving')
     expect(home.climbed).toBe('12 of 14 lifts stepped up since Fri 18 Sep.')
     expect(home.adherence).toBe('2 of 3 this week')
   })

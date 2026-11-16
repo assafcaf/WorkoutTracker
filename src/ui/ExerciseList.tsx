@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { presetForSet } from '../domain/prefill'
 import { isPrSet } from '../domain/prMoment'
 import { workingSets } from '../domain/setKind'
-import { formatSet, loadText } from '../domain/setText'
+import { formatSet } from '../domain/setText'
 import './ExerciseList.css'
-import { Icon } from './icons'
+import { SetCell, SetFigure } from './figures'
 import { VolumeVsBaseline } from './VolumeVsBaseline'
 import type {
   Exercise,
@@ -130,55 +130,53 @@ function SetCells(props: {
   return (
     <div className="all-cells">
       {warmups.length === 0 ? null : (
-        <span className="all-cell all-cell--done all-cell--warmup" aria-label={`${warmups.length} warm-ups`}>
-          <span className="all-cell-mark">
-            <Icon name="Check" size={12} />
-          </span>
+        <SetCell
+          as="span"
+          state="done"
+          className="all-cell all-cell--done all-cell--warmup"
+          headClassName="all-cell-mark"
+          aria-label={`${warmups.length} warm-ups`}
+        >
           <span className="all-cell-load">W</span>
           <span className="all-cell-reps">{warmups.length}</span>
-        </span>
+        </SetCell>
       )}
       {working.map((entry, at) => (
-        <button
+        <SetCell
           key={entry.setIndex}
-          type="button"
+          state={isRecord(entry) ? 'pr' : 'done'}
           className="all-cell all-cell--done cell"
+          headClassName="all-cell-mark"
           aria-label={`Set ${at + 1} · ${formatSet(entry)}`}
           onClick={() => onOpenLogged(entry.setIndex)}
+          index={entry.kind === undefined ? undefined : <b className="all-cell-kind">{KIND_LETTERS[entry.kind]}</b>}
         >
-          <span className="all-cell-mark">
-            {entry.kind === undefined ? null : <b className="all-cell-kind">{KIND_LETTERS[entry.kind]}</b>}
-            {isRecord(entry) ? <span className="tag tag-pr">PR</span> : <Icon name="Check" size={12} />}
-          </span>
-          <span className="all-cell-load">{loadText(entry)}</span>
-          <span className="all-cell-reps">×{entry.reps}</span>
-        </button>
+          <SetFigure set={entry} stack className="all-cell-figure" />
+        </SetCell>
       ))}
       {upcoming.map((cell, at) =>
         current && at === 0 ? (
-          <button
+          <SetCell
             key={cell.position}
-            type="button"
+            state="current"
             className="all-cell all-cell--current cell"
+            headClassName="all-cell-mark"
             aria-label={`Set ${cell.position} · ${formatSet(cell)} · next`}
             onClick={onOpenNext}
           >
-            <span className="all-cell-mark" />
-            <span className="all-cell-load">{loadText(cell)}</span>
-            <span className="all-cell-reps">×{cell.reps}</span>
-          </button>
+            <SetFigure set={cell} stack className="all-cell-figure" />
+          </SetCell>
         ) : (
-          <button
+          <SetCell
             key={cell.position}
-            type="button"
+            state="planned"
             className="all-cell all-cell--future cell"
+            headClassName="all-cell-mark"
             aria-label={`Set ${cell.position} · ${formatSet(cell)}`}
             onClick={onOpenNext}
           >
-            <span className="all-cell-mark" />
-            <span className="all-cell-load">{loadText(cell)}</span>
-            <span className="all-cell-reps">×{cell.reps}</span>
-          </button>
+            <SetFigure set={cell} stack className="all-cell-figure" />
+          </SetCell>
         ),
       )}
     </div>

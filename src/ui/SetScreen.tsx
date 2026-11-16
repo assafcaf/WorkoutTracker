@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { validateEntry } from '../domain/dial'
 import { formatDay } from '../domain/dates'
 import { projectSet } from '../domain/liveProgress'
-import { formatSet, formatSetCompact } from '../domain/setText'
+import { formatSet } from '../domain/setText'
 import { deloadText } from '../domain/deload'
 import { presetForSet } from '../domain/prefill'
 import { countsTowardStats, workingSets } from '../domain/setKind'
@@ -22,6 +22,7 @@ import type { RestAdjustment, RestState } from '../domain/rest'
 import { useActionBarSlot } from './actionBarSlot'
 import { Segmented } from './controls'
 import { Icon } from './icons'
+import { PrTag, SetCell, SetFigure } from './figures'
 import { RestPanel } from './live/RestPanel'
 import { playPrSound, playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
@@ -289,11 +290,6 @@ function lastTimeSet(exerciseId: string, entries: SetEntry[], position: number):
   )
   if (sets.length === 0) return null
   return sets[Math.min(Math.max(position, 1), sets.length) - 1]
-}
-
-/** A Set's load as a cell shows it: `62.5`, `BW`, `BW+10`. */
-function cellText(set: { weightKg: number | null; reps: number; loadKg?: number }): string {
-  return formatSetCompact(set)
 }
 
 /** How often the rest timer re-reads the clock; it derives everything from timestamps. */
@@ -1818,9 +1814,12 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           data-dense={(warmupCell === null ? 0 : 1) + workingLogged.length + cells.length >= 5 ? 'true' : undefined}
         >
           {warmupCell === null ? null : (
-            <button
-              type="button"
+            <SetCell
+              state={warmupCell.current ? 'current' : 'done'}
               className="warmup-cell logged-set cell"
+              headClassName="set-cell-index"
+              index="W"
+              mark={null}
               data-current={warmupCell.current ? 'true' : undefined}
               data-kind="warmup"
               aria-label={
@@ -1834,13 +1833,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                 setToolsOpen(true)
               }}
             >
-              <span className="set-cell-index">
-                <span>W</span>
-              </span>
               <span className="set-cell-value">
                 {warmupCell.complete ? '✓' : `${warmupCell.done}/${warmupCell.total}`}
               </span>
-            </button>
+            </SetCell>
           )}
           {workingLogged.length === 0 ? null : (
             <ul className="logged-sets" aria-label="Sets logged">
@@ -1853,31 +1849,32 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                       .join(' ') || undefined
                   }
                 >
-                  <button
-                    type="button"
+                  <SetCell
+                    state={editing === entry.setIndex ? 'current' : isRecordSet(entry) ? 'pr' : 'done'}
                     className="logged-set cell"
+                    headClassName="set-cell-index"
                     aria-label={formatSet(entry)}
                     data-editing={editing === entry.setIndex ? 'true' : undefined}
                     data-kind={entry.kind}
                     onClick={() => openLogged(entry)}
-                  >
-                    <span className="set-cell-index">
-                      <span>
+                    index={
+                      <>
                         {ordinals.get(entry.setIndex) ?? ''}
                         {entry.kind === undefined ? null : (
                           <span className="set-kind-marker">{KIND_MARKERS[entry.kind]}</span>
                         )}
-                      </span>
-                      {isRecordSet(entry) ? (
-                        <span className="tag tag-pr" aria-label="Personal record">
-                          PR
-                        </span>
+                      </>
+                    }
+                    mark={
+                      isRecordSet(entry) ? (
+                        <PrTag />
                       ) : effortOf(entry) === null ? (
                         <Icon name="Check" size={12} />
-                      ) : null}
-                    </span>
-                    <CellValue set={entry} />
-                  </button>
+                      ) : null
+                    }
+                  >
+                    <SetFigure set={entry} className="set-cell-value" />
+                  </SetCell>
                   {/* A record's PR tag has the corner; its reps left show in the edit sheet. Reps
                       left, not "RIR" (V3-03, V1-14). */}
                   {effortOf(entry) === null || isRecordSet(entry) ? null : (
@@ -1890,14 +1887,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             </ul>
           )}
           {cells.map((cell) => (
-            <div
+            <SetCell
               key={cell.position}
+              state={cell.current ? 'current' : 'planned'}
               className={cell.current ? 'set-cell set-cell--current' : 'set-cell set-cell--future'}
+              headClassName="set-cell-index"
+              index={cell.position}
               aria-hidden="true"
             >
-              <span className="set-cell-index">{cell.position}</span>
-              <CellValue set={cell} />
-            </div>
+              <SetFigure set={cell} className="set-cell-value" />
+            </SetCell>
           ))}
         </div>
 
@@ -1983,7 +1982,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {justDoneComparison === null ? null : (
               <p className="just-done-line" data-kind={justDoneComparison.kind}>
                 {justDoneComparison.record === null || recordOf(justDone)?.pr !== true ? null : (
-                  <span className="tag tag-pr">PR</span>
+                  <PrTag label={null} />
                 )}
                 <span>{justDoneComparison.text}</span>
               </p>
@@ -2161,21 +2160,6 @@ function EffortRow(props: {
       <span className="effort-label">{props.label}</span>
       <EffortChips value={props.value} onPick={props.onPick} />
     </div>
-  )
-}
-
-/**
- * A cell's value, "70×7", in two parts that wrap at the "×" when the cell is narrow (V3-06):
- * "BW−19" over "×6".
- */
-function CellValue(props: { set: { weightKg: number | null; reps: number; loadKg?: number } }): JSX.Element {
-  const text = cellText(props.set)
-  const at = text.lastIndexOf('×')
-  return (
-    <span className="set-cell-value">
-      <span>{text.slice(0, at)}</span>
-      <span>{text.slice(at)}</span>
-    </span>
   )
 }
 

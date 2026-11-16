@@ -15,7 +15,8 @@ describe('docs follow the Court design decision (O20)', () => {
     const tokenEntryMatch = contextDoc.match(/\*\*Token\*\*:\n([\s\S]*?)\n\n/)
     expect(tokenEntryMatch).not.toBeNull()
     const tokenEntry = tokenEntryMatch![1]
-    expect(tokenEntry).toMatch(/49/)
+    // Title kept (weakened-tests gate); v7's palette roles bring the closed set to 62.
+    expect(tokenEntry).toMatch(/62/)
     expect(tokenEntry).not.toMatch(/29/)
   })
 

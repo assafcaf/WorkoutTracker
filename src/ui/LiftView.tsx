@@ -4,11 +4,11 @@ import type { LiftPoint } from '../domain/stats/liftHistory'
 import { EST_MAX_FORMULA, liftRecordRows, sessionLog, storyPoints } from '../domain/stats/liftStory'
 import { liftPrs } from '../domain/stats/records'
 import { liftStatus } from '../domain/stats/status'
-import type { LiftStatusKind } from '../domain/stats/status'
 import { dayMonth, humanDate, leverText, numberText, plural, topText } from '../domain/stats/words'
 import { formatSetCompact } from '../domain/setText'
 import type { Exercise, ExercisePlan, Session, SetKind } from '../types'
 import { Segmented } from './controls'
+import { PrTag, SetFigure, StatusMark, statusTone } from './figures'
 import { LiftChart } from './charts/LiftChart'
 import type { LiftChartPoint } from './charts/LiftChart'
 import './LiftView.css'
@@ -36,7 +36,7 @@ const RANGES: { value: Range; label: string }[] = [
 ]
 const SHOWS: { value: Show; label: string }[] = [
   { value: 'weight', label: 'Weight' },
-  { value: 'est', label: 'Est. max' },
+  { value: 'est', label: 'Est. strength' },
 ]
 const RANGE_DAYS: Record<Exclude<Range, 'all'>, number> = { '3M': 92, '1Y': 366 }
 const DAY = 24 * 3600_000
@@ -58,22 +58,17 @@ function deloadCaption(from: number, to: number): string {
   return a.getMonth() === b.getMonth() ? `Deload ${a.getDate()}–${end}` : `Deload ${a.getDate()} ${MONTHS[a.getMonth()]}–${end}`
 }
 
-function tone(kind: LiftStatusKind): string {
-  if (kind === 'moving') return 'up'
-  return kind === 'too new' ? 'calm' : 'decide'
-}
-
 /**
  * The one Lift page (v6 §6.3, V5-08, V6-09): reached from the dashboard's cards and rows and from
  * the live tools sheet's Lift history. Top to bottom:
  *   - the status block -- label, action and Why?, verbatim from `liftStatus`;
  *   - the hero: the latest top set, and how it moved (`Wed 14 Oct · up 2.5 kg`);
- *   - one chart: top-set weight as steps (or est. max), points labelled by their reps, records
+ *   - one chart: top-set weight as steps (or est. strength), points labelled by their reps, records
  *     filled, deloads hollow in a named band, ranges 3M / 1Y / All;
- *   - Records: heaviest set, best est. max, most reps at the current load;
+ *   - Records: heaviest set, best est. strength, most reps at the current load;
  *   - the session log, a PR tag only on the Set that set a real record, warm-ups on their own
  *     muted line, the Session note in quotes;
- *   - the est. max formula, once, after the Est. max view has been shown.
+ *   - the est. strength formula, once, after the Est. strength view has been shown.
  */
 export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap }: LiftViewProps): JSX.Element {
   const [range, setRange] = useState<Range>('3M')
@@ -139,11 +134,11 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
     record: records.has(p.sessionId),
     label: showing === 'est' ? `${numberText(p.top.lever)}×${p.top.reps}` : String(p.top.reps),
     date: humanDate(p.startedAt),
-    readout: showing === 'est' ? `${numberText(Math.round(valueOf(p) * 10) / 10)} kg est. max · ${atTopLine(p)}` : atTopLine(p),
+    readout: showing === 'est' ? `${numberText(Math.round(valueOf(p) * 10) / 10)} kg est. strength · ${atTopLine(p)}` : atTopLine(p),
   }))
   const line = chartPoints.filter((p) => !p.deload)
   const tick = showing === 'est' ? (v: number) => String(Math.round(v * 10) / 10) : plain ? (v: number) => String(v) : (v: number) => (bw ? L(v) : numberText(v))
-  const what = showing === 'est' ? 'Estimated max' : plain ? 'Top-set reps' : 'Top-set weight'
+  const what = showing === 'est' ? 'Estimated strength' : plain ? 'Top-set reps' : 'Top-set weight'
   const summary =
     line.length > 1
       ? `${what}, ${tick(line[0].value)} on ${dayMonth(line[0].at)} to ${tick(line[line.length - 1].value)} on ${dayMonth(line[line.length - 1].at)}`
@@ -159,8 +154,10 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
 
   return (
     <div className="lift-view">
-      <section className={`lift-status lift-status-${tone(status.kind)}`} aria-label="Status">
-        <p className="lift-status-label">{`${status.glyph} ${status.label}`}</p>
+      <section className={`lift-status lift-status-${statusTone(status.kind)}`} aria-label="Status">
+        <StatusMark as="p" className="lift-status-label" tone={statusTone(status.kind)} glyph={status.glyph}>
+          {status.label}
+        </StatusMark>
         <p className="lift-status-action">{status.action}</p>
         <div className="lift-status-foot">
           {status.swap && onSwap ? (
@@ -199,7 +196,7 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
             summary={summary}
             tickText={tick}
             step={showing === 'weight'}
-            axisLabel={showing === 'est' ? 'est. max, kg' : undefined}
+            axisLabel={showing === 'est' ? 'est. strength, kg' : undefined}
             bandCaption={deloadCaption}
             onOpenSession={onOpenSession}
           />
@@ -250,7 +247,7 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
                   {row.sets.map((s, i) => (
                     <Fragment key={s.setIndex}>
                       {i > 0 ? ' · ' : ''}
-                      {formatSetCompact(s)}
+                      <SetFigure set={s} />
                       {s.kind !== undefined ? (
                         <span className="set-kind-marker" title={KIND_NAMES[s.kind]}>
                           {` ${KIND_MARKERS[s.kind]}`}
@@ -259,9 +256,7 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
                       {row.record?.setIndex === s.setIndex ? (
                         <>
                           {' '}
-                          <span className="tag tag-pr" aria-label={`Personal record, ${row.record.kind.toLowerCase()}`}>
-                            PR
-                          </span>
+                          <PrTag label={`Personal record, ${row.record.kind.toLowerCase()}`} />
                         </>
                       ) : null}
                     </Fragment>

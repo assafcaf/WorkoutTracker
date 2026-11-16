@@ -161,9 +161,9 @@ test('v5 the chart is named by where the lift went, and marks new bests', async 
   const dialog = open([older, newer])
 
   expect(within(dialog).getByRole('img', { name: 'Top-set weight, 60 on 28 Sep to 80 on 6 Oct' })).toBeVisible()
-  await userEvent.setup().click(within(within(dialog).getByRole('radiogroup', { name: 'Show' })).getByRole('radio', { name: 'Est. max' }))
+  await userEvent.setup().click(within(within(dialog).getByRole('radiogroup', { name: 'Show' })).getByRole('radio', { name: 'Est. strength' }))
   // 60 x 8 -> 76 kg on 28 Sep, 80 x 8 -> 101.3 kg on 6 Oct; the PR day is filled, not a dip.
-  const chart = within(dialog).getByRole('img', { name: 'Estimated max, 76 on 28 Sep to 101.3 on 6 Oct' })
+  const chart = within(dialog).getByRole('img', { name: 'Estimated strength, 76 on 28 Sep to 101.3 on 6 Oct' })
   expect(chart.querySelectorAll('circle[data-record]')).toHaveLength(1)
 })
 

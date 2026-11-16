@@ -49,7 +49,7 @@ describe('v6 the measure a lift is charted by', () => {
 
 describe('v6 records and the log', () => {
   it('the Records are the heaviest set, the best est. max and the most reps in a set', () => {
-    expect(liftRecordRows(h('back-squat')).map((r) => r.label)).toEqual(['Heaviest set', 'Best est. max', 'Most reps at 62.5 kg'])
+    expect(liftRecordRows(h('back-squat')).map((r) => r.label)).toEqual(['Heaviest set', 'Best est. strength', 'Most reps at 62.5 kg'])
     expect(liftRecordRows(h('push-ups')).map((r) => r.label)).toEqual(['Most reps in a set'])
     expect(liftRecordRows(h('assisted-pull-ups'))[0].label).toBe('Least assistance')
   })
@@ -95,7 +95,7 @@ describe('v6 records and the log', () => {
 
   it('V6 wave 3: Best est. max is the records.ts best estimated 1RM, only on lifts it measures', () => {
     for (const [id, history] of histories) {
-      const est = liftRecordRows(history).find((r) => r.label === 'Best est. max')
+      const est = liftRecordRows(history).find((r) => r.label === 'Best est. strength')
       const best = liftBests(history).find((r) => r.label === 'Best estimated 1RM')
       if (best === undefined) expect(est, id).toBeUndefined()
       else {
@@ -104,7 +104,7 @@ describe('v6 records and the log', () => {
       }
     }
     // Seated biceps curls (10–12 reps) has no estimated max under the one rule.
-    expect(liftRecordRows(h('seated-biceps-curls')).map((r) => r.label)).not.toContain('Best est. max')
+    expect(liftRecordRows(h('seated-biceps-curls')).map((r) => r.label)).not.toContain('Best est. strength')
   })
 
   it('V6 wave 3: a Session PR count in Sessions equals the PR tags on its lifts pages', () => {

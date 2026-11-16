@@ -44,15 +44,16 @@ export const STATUS_LABELS: Record<LiftStatusKind, string> = {
   moving: 'Moving',
 }
 
+/** v7 (study §3, Status): one glyph per tone -- ↑ better, = level, ↓ lower -- plus Too new and Break. */
 export const STATUS_GLYPHS: Record<LiftStatusKind, string> = {
   'too new': '○',
   break: '‖',
   ready: '↑',
   hold: '=',
   lowered: '↓',
-  slipping: '▼',
-  stalled: '■',
-  moving: '▲',
+  slipping: '↓',
+  stalled: '=',
+  moving: '↑',
 }
 
 /** Days without the lift after which it is on a Break. */

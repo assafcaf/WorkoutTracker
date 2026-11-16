@@ -9,7 +9,7 @@ import type { AttentionCard, HomeCopy } from '../../domain/stats/copy'
 import { buildLiftHistories } from '../../domain/stats/liftHistory'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
 import { liftStatuses } from '../../domain/stats/status'
-import type { LiftStatus, LiftStatusKind } from '../../domain/stats/status'
+import type { LiftStatus } from '../../domain/stats/status'
 import { topText } from '../../domain/stats/words'
 import { STATS_MUSCLES, plannedPerWeek, windowAverage } from '../../domain/stats/muscles'
 import { muscleLabel } from '../../domain/muscleLabels'
@@ -21,6 +21,7 @@ import type { Services } from '../../services'
 import type { BodyLog, Exercise, ExercisePlan, LibraryExercise, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { Sparkline } from '../../ui/charts/Sparkline'
+import { StatusMark, statusTone } from '../../ui/figures'
 import { Icon } from '../../ui/icons'
 import type { AppRoute } from '../routes'
 import { useServiceData } from '../useServiceData'
@@ -108,12 +109,6 @@ const DAY = 24 * 3600_000
 const FOUR_WEEKS = 28 * DAY
 const THREE_MONTHS = 92 * DAY
 
-/** The colour family a status is drawn in: a decision, moving, or neither. */
-export function statusTone(kind: LiftStatusKind): 'decide' | 'up' | 'calm' {
-  if (kind === 'moving') return 'up'
-  return kind === 'too new' ? 'calm' : 'decide'
-}
-
 const kgText = (n: number): string => String(Math.round(n * 100) / 100)
 
 /** A lift name that never breaks at its hyphens (`Hyper-/extension`): non-breaking hyphens. */
@@ -173,9 +168,13 @@ export function LiftRow({ model, id, onOpen }: { model: ProgressModel; id: strin
     <button type="button" className="btn-quiet progress-row" aria-label={label} onClick={() => onOpen(id)}>
       <span className="progress-row-main">
         <span className="progress-row-name">{unbroken(name)}</span>
-        <span className={`progress-row-note progress-status-${status ? statusTone(status.kind) : 'calm'}`}>
-          {status ? `${status.glyph} ${status.label}` : 'Not logged yet'}
-        </span>
+        {status ? (
+          <StatusMark className="progress-row-note" tone={statusTone(status.kind)} glyph={status.glyph}>
+            {status.label}
+          </StatusMark>
+        ) : (
+          <span className="progress-row-note">Not logged yet</span>
+        )}
       </span>
       {facts && facts.values.length > 1 ? (
         <span className="progress-row-spark" aria-hidden="true">
@@ -248,7 +247,9 @@ function Card({
       <button type="button" className="btn-quiet progress-card-open" onClick={() => onOpen(card.exerciseId)}>
         <span className="progress-card-head">
           <span className="progress-card-name">{unbroken(name)}</span>
-          <span className={`progress-card-kind progress-status-${statusTone(card.kind)}`}>{`${card.glyph} ${card.label}`}</span>
+          <StatusMark className="progress-card-kind" tone={statusTone(card.kind)} glyph={card.glyph}>
+            {card.label}
+          </StatusMark>
         </span>
         <span className="progress-card-fact">{card.evidence}</span>
       </button>

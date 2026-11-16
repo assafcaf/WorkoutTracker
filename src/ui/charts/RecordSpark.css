@@ -16,7 +16,7 @@
 
 .record-spark-end {
   color: var(--color-on-primary);
-  fill: var(--color-primary);
+  fill: var(--color-pr);
   stroke: var(--color-surface);
   stroke-width: 1.5px;
 }

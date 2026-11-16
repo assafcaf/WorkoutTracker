@@ -4853,7 +4853,8 @@ test('V4-04 a Set with no Record plays no PR sound and flashes nothing', async (
 
 test('V4-04 the flash is the accent tint over 1.2 s, and none under reduced motion', () => {
   const css = restCss()
-  expect(css).toMatch(/@keyframes pr-flash\s*\{[^}]*background-color:\s*var\(--color-primary-tint\)/)
+  // v7: a record's accent is the gold PR tint (study §3, PR), no longer the indigo primary's.
+  expect(css).toMatch(/@keyframes pr-flash\s*\{[^}]*background-color:\s*var\(--color-pr-tint\)/)
   expect(css).toMatch(/\.logged-sets li\.pr-flash \.logged-set \{\s*animation: pr-flash 1\.2s/)
   const reduced = postcss
     .parse(css)
