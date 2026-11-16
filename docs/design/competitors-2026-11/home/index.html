@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home: the landing dashboard (Ledger &amp; Instrument, 2026-11)</title>
+<style>
+@font-face {
+  font-family: 'Geist';
+  src: url('../../../../src/assets/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 400 600;
+}
+:root {
+  --paper: #F6F6F3; --surface: #FFFFFF; --line: #E3E3DE;
+  --ink: #141518; --ink-2: #4A4B53; --ink-3: #6C6D75;
+  --live: #2453D4;
+  --up: #17794A; --up-tint: #E2F2E9;
+  --down: #B04A1C;
+  --pr: #8A6400; --pr-tint: #FFF0C2;
+  --wA: #256F91; --wB: #96506F;
+  --heat-0: #ECECE8; --spark: #9FA0A6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Geist', 'Segoe UI', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--ink); background: #DCDCD6; padding: 48px;
+}
+.board-head { margin-bottom: 30px; max-width: 2150px; }
+.board-head h1 { font-size: 40px; font-weight: 600; letter-spacing: -0.02em; }
+.board-head p { font-size: 18px; color: var(--ink-2); margin-top: 6px; max-width: 1500px; line-height: 1.4; }
+.row-of-phones { display: flex; gap: 40px; align-items: flex-start; }
+.cap { width: 390px; margin-bottom: 12px; font-size: 15px; color: var(--ink-2); line-height: 1.35; min-height: 124px; }
+.cap b { display: block; color: var(--ink); font-size: 17px; font-weight: 600; }
+.cap .q { display: block; margin-top: 4px; }
+.cap .a { display: block; margin-top: 2px; color: var(--ink); }
+
+.phone { width: 390px; height: 844px; background: var(--paper); position: relative; overflow: hidden;
+  box-shadow: 0 2px 18px rgba(0,0,0,.12); font-size: 16px; line-height: 1.35; }
+.scroll { position: absolute; inset: 0 0 168px 0; padding: 22px 20px 0; overflow: hidden; }
+.label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.top { display: flex; justify-content: space-between; align-items: center; height: 24px; }
+.chev { color: var(--ink-3); font-size: 20px; line-height: 1; font-weight: 400; }
+.u { font-size: .5em; color: var(--ink-3); font-weight: 500; margin-left: .12em; }
+
+/* Block 1: Today, the one surface panel */
+.today { background: var(--surface); border-radius: 18px; padding: 16px 16px 16px 14px; margin-top: 14px;
+  display: flex; gap: 16px; align-items: center; position: relative; }
+.today .chev { position: absolute; right: 14px; top: 14px; }
+.ring { width: 112px; height: 112px; position: relative; flex: 0 0 112px; }
+.ring svg { position: absolute; inset: 0; }
+.ring .c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring .c .n { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+.ring .c .n .of { color: var(--ink-3); font-weight: 500; font-size: 20px; }
+.ring .c .l { font-size: 11px; color: var(--ink-3); margin-top: 3px; font-weight: 500; }
+.today .t { flex: 1; min-width: 0; }
+.today h2 { font-size: 28px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.1; margin-top: 3px; }
+.today .m { font-size: 14px; color: var(--ink-3); margin-top: 5px; }
+.today .c2 { font-size: 14px; font-weight: 600; margin-top: 6px; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--ink-3); }
+.pr { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px;
+  background: var(--pr-tint); color: var(--pr); font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.chip { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px;
+  color: #fff; font-size: 11px; font-weight: 700; }
+.chip.A { background: var(--wA); } .chip.B { background: var(--wB); } .chip.F { background: var(--ink-3); }
+
+/* Blocks 2 and 3: on paper, header row + visual */
+.blk { margin-top: 26px; }
+.bh { display: flex; justify-content: space-between; align-items: baseline; }
+.bh .v { font-size: 16px; font-weight: 600; }
+.bh .v .chev { margin-left: 6px; }
+.sparks { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.sparks .r { display: flex; align-items: center; gap: 6px; height: 34px; }
+.sparks .r .chip { flex: 0 0 20px; }
+.sparks svg { flex: 1; }
+
+.cal { margin-top: 12px; display: flex; gap: 22px; align-items: flex-end; }
+.cal .grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 14px); gap: 4px; }
+.cal .grid i { width: 14px; height: 14px; border-radius: 3px; background: var(--heat-0); display: block; }
+.cal .grid i.A { background: var(--wA); } .cal .grid i.B { background: var(--wB); }
+.cal .grid i.now { background: transparent; box-shadow: inset 0 0 0 2px var(--live); }
+.cal .grid i.fut { background: transparent; }
+.cal .months { display: flex; font-size: 11px; color: var(--ink-3); margin-top: 6px; position: relative; height: 14px; }
+.cal .months span { position: absolute; }
+.cal .big { font-size: 44px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+.cal .big + div { font-size: 14px; color: var(--ink-3); margin-top: 4px; line-height: 1.3; }
+
+/* Block 4: last time, one ledger row */
+.last { margin-top: 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  min-height: 56px; display: flex; align-items: center; gap: 10px; }
+.last .n { flex: 1; font-size: 16px; font-weight: 500; }
+.last .n span { color: var(--ink-3); font-weight: 400; }
+.last .v { font-size: 14px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
+
+/* Plan picker (new user) */
+.plans { margin-top: 12px; }
+.plans .p { display: flex; align-items: center; gap: 12px; min-height: 56px; border-top: 1px solid var(--line); }
+.plans .p:first-child { border-top: 0; }
+.plans .p .n { flex: 1; font-size: 16px; font-weight: 500; }
+.plans .p .n div { font-size: 14px; color: var(--ink-3); font-weight: 400; }
+.radio { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #C9C9C3; }
+.radio.on { border: 7px solid var(--ink); }
+.ghost-note { font-size: 14px; color: var(--ink-3); margin-top: 10px; }
+
+.dock { position: absolute; left: 0; right: 0; bottom: 84px; padding: 12px 20px; background: var(--paper); }
+.bar { height: 60px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 18px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; }
+.bar.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+.dock .note { font-size: 14px; color: var(--ink-3); text-align: center; margin-bottom: 10px; }
+.tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: var(--paper);
+  border-top: 1px solid var(--line); display: flex; padding-top: 10px; }
+.tabbar div { flex: 1; text-align: center; font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.tabbar div svg { display: block; margin: 0 auto 4px; }
+.tabbar div.on { color: var(--live); }
+</style>
+</head>
+<body>
+
+<div class="board-head">
+  <h1>Home: the first screen, in five moments</h1>
+  <p>Four blocks, each a picture first and a number second: <b>today</b> (the week's ring and the one workout to do), <b>lifts</b> (14 trend lines, one dot of colour each), <b>sessions</b> (twelve weeks of the A/B calendar) and <b>last time</b>. Every block opens the tab where its detail lives. One ink bar, docked. Tabs: Home · Progress · Sessions · Program (Train becomes the workout page Home opens). Data: <code>scripts/render-states/stats-45.json</code>, read at each state's clock.</p>
+</div>
+
+<div class="row-of-phones" id="row"></div>
+
+<script>
+// ---------------- data (stats-45.json) ----------------
+const SESSIONS = ['2026-06-22A','2026-06-24B','2026-06-26A','2026-06-29B','2026-07-01A','2026-07-03B','2026-07-06A','2026-07-08B','2026-07-10A','2026-07-13B','2026-07-15A','2026-07-17B','2026-07-20A','2026-07-22B','2026-07-24A','2026-07-27B','2026-07-29A','2026-07-31B','2026-08-03A','2026-08-05B','2026-08-07A','2026-08-17B','2026-08-19A','2026-08-21B','2026-08-24A','2026-08-26B','2026-08-28A','2026-08-31B','2026-09-02A','2026-09-04B','2026-09-07A','2026-09-09B','2026-09-11A','2026-09-14B','2026-09-21A','2026-09-23B','2026-09-25A','2026-09-28B','2026-09-30A','2026-10-02B','2026-10-05A','2026-10-07B','2026-10-09A','2026-10-12B','2026-10-14A'];
+
+// Est. strength per session since 20 Jul (Epley, top working set); bodyweight lifts by their lever.
+const S = {"back-squat": [68.25, 70.0, 67.83, 71.5, 73.33, 72.83, 70.92, 74.75, 74.75, 76.67, 76.67, 66.67, 64.75, 74.0, 78.0, 80.0, 79.17], "lunges": [11.2, 11.2, 12.0, 12.3, 12.6, 13.33, 13.67, 14.0, 14.67, 15.03, 15.03, 12.6, 13.33, 16.4, 16.8, 16.8, 17.33], "db-bench-press": [14.67, 15.2, 15.6, 16.0, 16.9, 16.47, 16.47, 16.47, 16.9, 16.9, 16.9, 13.93, 14.3, 16.9, 16.9, 16.9, 16.9], "push-ups": [15, 16, 15, 17, 15, 16, 17, 15, 15, 17, 17, 15, 15, 17, 17, 17, 15], "machine-shoulder-press": [7.92, 8.12, 8.33, 9.5, 9.75, 10.0, 11.08, 11.38, 11.67, 11.67, 12.67, 11.38, 11.67, 14.25, 14.62, 15.0, 15.83], "lateral-raises": [5.47, 5.6, 5.87, 6.0, 6.0, 6.67, 7.0, 7.17, 7.33, 7.5, 8.0, 7.0, 7.17, 8.8, 9.0, 9.33, 9.33], "cable-push-down": [27.33, 28.0, 30.75, 30.75, 31.5, 34.17, 34.17, 35.83, 36.67, 37.58, 38.5, 31.5, 33.33, 40.0, 41.0, 42.0, 43.33], "deadlift": [76.67, 76.67, 74.0, 76.0, 80.0, 79.17, 79.17, 83.33, 82.33, 82.33, 84.5, 76.67, 85.5, 87.75, 90.0, 86.33], "assisted-pull-ups": [-24.94, -24.93, -24.92, -24.92, -22.95, -22.94, -22.93, -22.93, -22.92, -20.95, -20.95, -22.94, -20.93, -20.92, -18.95, -18.94], "narrow-grip-pull-down": [58.33, 59.79, 61.25, 60.0, 61.5, 61.5, 63.0, 61.67, 63.21, 64.75, 64.75, 56.67, 63.33, 63.33, 61.67, 60.12], "machine-row": [73.33, 73.33, 76.0, 76.0, 78.0, 78.0, 80.0, 82.33, 84.5, 86.67, 88.67, 76.0, 91.0, 93.33, 95.0, 97.5], "face-pull": [22.5, 23.33, 24.5, 25.08, 26.25, 26.67, 28.0, 29.33, 30.0, 30.0, 30.75, 28.67, 33.75, 33.33, 35.0, 35.83], "hyper-extension": [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 5.12, 5.12], "seated-biceps-curls": [13.33, 13.67, 14.0, 14.67, 15.03, 15.4, 16.0, 16.4, 16.8, 17.33, 17.33, 15.03, 18.2, 18.67, 19.13, 19.6]};
+const ROW_A = ['back-squat','lunges','db-bench-press','push-ups','machine-shoulder-press','lateral-raises','cable-push-down'];
+const ROW_B = ['deadlift','assisted-pull-ups','narrow-grip-pull-down','machine-row','face-pull','hyper-extension','seated-biceps-curls'];
+// liftStatus() kinds as Progress reads them on 15 Oct: 12 moving (Ready counts as moving), 1 flat, 1 lowered.
+const STATUS = { 'db-bench-press': 'flat', 'narrow-grip-pull-down': 'down' };
+// Wed 14 Oct, Workout A: heaviest-weight PRs (isRealRecord) on these four.
+const PR_14 = ['back-squat','lunges','machine-shoulder-press','cable-push-down'];
+
+// ---------------- pieces ----------------
+const C = { up:'#17794A', down:'#B04A1C', flat:'#6C6D75', grey:'#9FA0A6', A:'#256F91', B:'#96506F', live:'#2453D4', heat:'#ECECE8', pr:'#8A6400', prt:'#FFF0C2', ink:'#141518' };
+
+function ring(segs, done, planned, label) {
+  // segs: 'A' | 'B' | 'due' | 'open', one per planned session
+  const r = 48, cx = 56, cy = 56, n = segs.length, gap = 14; // gap in degrees
+  const arc = (a0, a1) => {
+    const p = a => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
+    const [x0, y0] = p(a0), [x1, y1] = p(a1);
+    return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  };
+  let s = '';
+  segs.forEach((k, i) => {
+    const a0 = i * 360 / n + gap / 2, a1 = (i + 1) * 360 / n - gap / 2;
+    if (k === 'A' || k === 'B') s += `<path d="${arc(a0, a1)}" fill="none" stroke="${C[k]}" stroke-width="11" stroke-linecap="round"/>`;
+    else if (k === 'due') s += `<path d="${arc(a0, a1)}" fill="none" stroke="${C.live}" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>`;
+    else s += `<path d="${arc(a0, a1)}" fill="none" stroke="${C.heat}" stroke-width="11" stroke-linecap="round"/>`;
+  });
+  return `<div class="ring"><svg width="112" height="112">${s}</svg><div class="c"><div class="n">${done}<span class="of">/${planned}</span></div><div class="l">${label}</div></div></div>`;
+}
+
+function spark(vals, end, opts = {}) {
+  const w = 44, h = 30;
+  if (!vals) return `<svg width="${w}" height="${h}"><line x1="2" x2="${w-2}" y1="${h-6}" y2="${h-6}" stroke="#D6D6D0" stroke-width="1.5" stroke-dasharray="3 3"/></svg>`;
+  // the trend: a 3-session moving average, so one off day does not zig-zag the line
+  vals = vals.map((v, i, a) => { const w3 = a.slice(Math.max(0, i - 2), i + 1); return w3.reduce((x, y) => x + y, 0) / w3.length; });
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const pts = vals.map((v, i) => [i * (w - 8) / (vals.length - 1) + 3, h - 5 - (v - mn) / (mx - mn || 1) * (h - 10)]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const l = pts[pts.length - 1];
+  const dot = opts.pr
+    ? `<circle cx="${l[0]}" cy="${l[1]}" r="3.6" fill="${C.prt}" stroke="${C.pr}" stroke-width="1.8"/>`
+    : `<circle cx="${l[0]}" cy="${l[1]}" r="3.2" fill="${C[end]}"/>`;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${d}" fill="none" stroke="${C.grey}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>${dot}</svg>`;
+}
+
+function sparkRows(mode) {
+  if (mode === 'empty') return `<div class="sparks"><div class="r">${[0,1,2,3,4,5,6].map(() => spark(null)).join('')}</div></div>`;
+  const row = (ids, k) => `<div class="r"><span class="chip ${k}">${k}</span>${ids.map(id => {
+    if (mode === 'empty') return spark(null);
+    const end = mode === 'break' ? 'grey' : (STATUS[id] || 'up');
+    return spark(S[id], end, { pr: mode === 'after' && PR_14.includes(id) });
+  }).join('')}</div>`;
+  return `<div class="sparks">${row(ROW_A, 'A')}${row(ROW_B, 'B')}</div>`;
+}
+
+const ymd = d => d.toISOString().slice(0, 10);
+function calendar(todayStr, todayState, empty = false, weeks = 12) {
+  // columns = weeks (Mon..Sun), last column = this week
+  const byDay = Object.fromEntries(SESSIONS.map(s => [s.slice(0, 10), s[10]]));
+  const today = new Date(todayStr + 'T12:00:00Z');
+  const dow = (today.getUTCDay() + 6) % 7;
+  const mon = new Date(today); mon.setUTCDate(today.getUTCDate() - dow);
+  const start = new Date(mon); start.setUTCDate(mon.getUTCDate() - 7 * (weeks - 1));
+  let cells = '', count = 0, monthMarks = [], lastMonth = -1;
+  for (let w = 0; w < weeks; w++) {
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(start); day.setUTCDate(start.getUTCDate() + w * 7 + d);
+      const key = ymd(day);
+      let cls = '';
+      if (key > todayStr) cls = 'fut';
+      else if (key === todayStr && todayState) cls = todayState;
+      else if (byDay[key] && !empty) { cls = byDay[key]; count++; }
+      if (key === todayStr && todayState === 'now') cls = 'now';
+      cells += `<i class="${cls}"></i>`;
+      if (d === 0 && day.getUTCMonth() !== lastMonth) {
+        if (lastMonth !== -1 || day.getUTCDate() <= 7) monthMarks.push([w, day.toLocaleString('en', { month: 'short', timeZone: 'UTC' })]);
+        lastMonth = day.getUTCMonth();
+      }
+    }
+  }
+  if (todayState === 'A' || todayState === 'B') count++;
+  const months = monthMarks.map(([w, m]) => `<span style="left:${w * 18}px">${m}</span>`).join('');
+  return { html: `<div><div class="grid">${cells}</div><div class="months">${months}</div></div>`, count };
+}
+
+const ICON = {
+  home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  progress: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  sessions: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  program: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+};
+const tabbar = () => `<div class="tabbar">${[['home','Home'],['progress','Progress'],['sessions','Sessions'],['program','Program']].map(([k, l], i) =>
+  `<div class="${i === 0 ? 'on' : ''}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${ICON[k]}</svg>${l}</div>`).join('')}</div>`;
+const gear = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6C6D75" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+const topRow = date => `<div class="top"><span class="label">${date}</span>${gear}</div>`;
+const chev = '<span class="chev">&rsaquo;</span>';
+
+function liftsBlock(mode) {
+  const right = {
+    normal: `<span class="v up">&uarr; 12 of 14 moving${chev}</span>`,
+    after: `<span class="v up">&uarr; 12 of 14 moving${chev}</span>`,
+    break: `<span class="v flat" style="font-weight:500">As you left them${chev}</span>`,
+    empty: `<span class="v flat" style="font-weight:500"></span>`,
+  }[mode];
+  return `<div class="blk"><div class="bh"><span class="label">Lifts · 12 weeks</span>${right}</div>${sparkRows(mode)}
+    ${mode === 'empty' ? '<div class="ghost-note">Each lift draws its line after 4 sessions.</div>' : ''}</div>`;
+}
+function sessionsBlock(todayStr, todayState, mode) {
+  const cal = calendar(todayStr, todayState, mode === 'empty');
+  const side = mode === 'empty'
+    ? `<div style="flex:1"><div class="big flat" style="color:#C6C7CC">0</div><div>Every session lands here</div></div>`
+    : `<div style="flex:1"><div class="big">${cal.count}</div><div>sessions in<br>12 weeks</div></div>`;
+  return `<div class="blk"><div class="bh"><span class="label">Sessions · 12 weeks</span>${mode === 'empty' ? '' : chev}</div>
+    <div class="cal">${cal.html}${side}</div></div>`;
+}
+const lastRow = (n, v) => `<div class="last"><span class="chip A">A</span><div class="n">${n}</div><div class="v">${v}</div>${chev}</div>`;
+
+// ---------------- the five states ----------------
+const STATES = [
+  {
+    id: 'a-training-day', title: 'a · Training day', clock: 'Fri 16 Oct, 07:40',
+    q: '"What am I doing today?"', a: 'Workout B, one thing changes, Start.',
+    body: () => `${topRow('Fri 16 Oct')}
+      <div class="today">${ring(['B','A','due'], 2, 3, 'this week')}
+        <div class="t"><span class="label">Today</span><h2>Workout B</h2>
+        <div class="m">7 lifts · about 66 min</div>
+        <div class="c2 up">&uarr; Curls up to 15 kg</div></div>${chev}</div>
+      ${liftsBlock('normal')}
+      ${sessionsBlock('2026-10-16', 'now', 'normal')}
+      ${lastRow('Wed 14 Oct <span>· 71 min</span>', '<span class="up">&uarr; 5 of 7</span><span class="pr">4 PR</span>')}`,
+    dock: `<div class="bar">Start Workout B</div>`,
+  },
+  {
+    id: 'b-rest-day', title: 'b · Rest day', clock: 'Thu 15 Oct, 18:05',
+    q: '"Am I on track this week?"', a: 'Yes: 2 of 3 done, Workout B tomorrow.',
+    body: () => `${topRow('Thu 15 Oct')}
+      <div class="today">${ring(['B','A','open'], 2, 3, 'this week')}
+        <div class="t"><span class="label">Rest day</span><h2>On track</h2>
+        <div class="m">Next: Workout B, Friday</div></div>${chev}</div>
+      ${liftsBlock('normal')}
+      ${sessionsBlock('2026-10-15', '', 'normal')}
+      ${lastRow('Wed 14 Oct <span>· 71 min</span>', '<span class="up">&uarr; 5 of 7</span><span class="pr">4 PR</span>')}`,
+    dock: `<div class="bar ghost">Start Workout B</div>`,
+  },
+  {
+    id: 'c-after-a-break', title: 'c · After a break of 3+ weeks', clock: 'Mon 9 Nov, 07:40 (26 days since the last session)',
+    q: '"Have I lost it, and where do I start?"', a: 'Your lines are where you left them; Workout B, a little lighter.',
+    body: () => `${topRow('Mon 9 Nov')}
+      <div class="today">${ring(['due','open','open'], 0, 3, 'this week')}
+        <div class="t"><span class="label">Welcome back</span><h2>Workout B</h2>
+        <div class="m">26 days off · loads eased 10&nbsp;% for today</div></div>${chev}</div>
+      ${liftsBlock('break')}
+      ${sessionsBlock('2026-11-09', 'now', 'normal')}
+      ${lastRow('Wed 14 Oct <span>· 26 days ago</span>', '')}`,
+    dock: `<div class="bar">Start Workout B</div>`,
+  },
+  {
+    id: 'd-after-a-workout', title: 'd · Right after a workout', clock: 'Wed 14 Oct, 19:20 (Workout A finished 18:55)',
+    q: '"Did today count?"', a: 'Yes: the ring moved to 2 of 3, 5 of 7 lifts beat Friday, 4 records.',
+    body: () => `${topRow('Wed 14 Oct')}
+      <div class="today">${ring(['B','A','open'], 2, 3, 'this week')}
+        <div class="t"><span class="label">Done today</span><h2>Workout A</h2>
+        <div class="m">71 min · 23 sets</div>
+        <div class="c2" style="display:flex;gap:8px;align-items:center"><span class="up">&uarr; 5 of 7 lifts</span><span class="pr">4 PR</span></div></div>${chev}</div>
+      ${liftsBlock('after')}
+      ${sessionsBlock('2026-10-14', 'A', 'normal')}
+      <div class="last"><span class="chip B">B</span><div class="n">Next: Workout B <span>· Friday</span></div>${chev}</div>`,
+    dock: ``,
+  },
+  {
+    id: 'e-new-user', title: 'e · Brand-new user', clock: 'First open, no Sessions, no Program',
+    q: '"How do I start?"', a: 'Pick one of three plans; the first workout is the next tap.',
+    body: () => `${topRow('Fri 16 Oct')}
+      <div class="today" style="display:block;padding:16px">
+        <span class="label">Pick a plan</span>
+        <div class="plans">
+          <div class="p"><span class="radio on"></span><div class="n">Full body starter<div>3 a week · 4 lifts</div></div></div>
+          <div class="p"><span class="radio"></span><div class="n">A/B Split<div>3 a week · 2 workouts of 7</div></div></div>
+          <div class="p"><span class="radio"></span><div class="n">Upper/Lower<div>4 a week · 2 workouts</div></div></div>
+        </div></div>
+      ${liftsBlock('empty')}
+      ${sessionsBlock('2026-10-16', 'now', 'empty')}`,
+    dock: `<div class="bar">Start Full body</div>`,
+  },
+];
+
+document.getElementById('row').innerHTML = STATES.map(s => `
+  <div>
+    <div class="cap"><b>${s.title}</b>${s.clock}<span class="q">${s.q}</span><span class="a">${s.a}</span></div>
+    <div class="phone" id="${s.id}">
+      <div class="scroll">${s.body()}</div>
+      ${s.dock ? `<div class="dock">${s.dock}</div>` : ''}
+      ${tabbar()}
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>
