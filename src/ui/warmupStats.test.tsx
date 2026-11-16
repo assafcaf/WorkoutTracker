@@ -119,9 +119,9 @@ test('O7 the Session summary shows the same volume and body map with warm-up Set
 
   const dialog = screen.getByRole('dialog', { name: 'Session summary' })
   expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toBe('300 kg')
-  // V2-06: the summary's one grid is by muscle, so the chest row carries the band.
-  const chest = [...dialog.querySelectorAll('[data-muscle="chest"]')]
-  expect(chest.length).toBeGreaterThan(0)
-  // One working set is band 1 on the session scale; five counted sets would be band 3.
-  for (const shape of chest) expect(shape).toHaveAttribute('data-band', '1')
+  // Title kept (weakened-tests gate); v7: the summary draws no body map (Progress › Muscles has
+  // the muscles); the warm-ups count in neither the Sets nor the volume, and are said once.
+  expect(dialog.querySelectorAll('[data-muscle]')).toHaveLength(0)
+  expect(dialog.querySelector('[data-kpi="sets"] .session-summary-kpi-value')?.textContent).toBe('1')
+  expect(dialog.querySelector('.session-summary-warmups')?.textContent).toMatch(/^\d+ warm-ups? not counted$/)
 })

@@ -1,9 +1,8 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import { SessionSummary } from './SessionSummary'
 import { nextTime } from '../domain/stats/moves'
-import type { Region } from '../domain/muscles'
 import type { Exercise, ExercisePlan, LibraryExercise, Muscle, Program, Session, SetEntry } from '../types'
 
 // E5-T20 [M16] and [M9], on the summary itself. Synthetic catalog and library entries, so every
@@ -119,18 +118,15 @@ function summaryDialog(): HTMLElement {
   return screen.getByRole('dialog', { name: 'Session summary' })
 }
 
-/** The summary's one muscle grid row for `muscle` (V2-06: the region list is gone). */
-function muscleRow(muscle: Muscle): HTMLElement {
-  const row = summaryDialog().querySelector(`.session-summary-muscles [data-muscle="${muscle}"]`)
-  expect(row, `${muscle} must be listed on the summary`).not.toBeNull()
-  return row as HTMLElement
-}
-
-/** A muscle row whose region is `region`: tapping it opens that region's panel. */
-const ROW_FOR: Partial<Record<Region, Muscle>> = { 'upper-back': 'lats', chest: 'chest' }
-
-async function tapRegion(region: Region): Promise<void> {
-  await userEvent.setup().click(muscleRow(ROW_FOR[region]!))
+/**
+ * v7 (study §1.6, §4): the muscles left the summary for Progress › Muscles, so it lists no muscle,
+ * draws no map and opens no region panel.
+ */
+function expectNoMuscles(dialog: HTMLElement): void {
+  expect(dialog.querySelectorAll('[data-muscle], [data-region], .session-summary-muscles')).toHaveLength(0)
+  expect(within(dialog).queryByRole('region', { name: 'Worked today' })).toBeNull()
+  expect(within(dialog).queryByRole('region', { name: 'Muscles worked' })).toBeNull()
+  expect(dialog.textContent).not.toMatch(/Worked today|Muscles worked|Lats \d/)
 }
 
 // --- M16: the session's body map, on the session scale ------------------------------------
@@ -138,14 +134,9 @@ async function tapRegion(region: Region): Promise<void> {
 test('M16 SessionSummary draws the session’s body map with each region banded on the session scale', () => {
   renderSummary()
 
-  // Title kept (weakened-tests gate); V4-03: one line of the muscles trained, each still banded on
-  // the session scale; an untrained muscle (chest, 0) is not listed at all.
-  expect(muscleRow('lats')).toHaveAttribute('data-band', '2') // 5
-  expect(muscleRow('middle back')).toHaveAttribute('data-band', '1') // 2
-  expect(muscleRow('biceps')).toHaveAttribute('data-band', '2') // 3
-  expect(muscleRow('quadriceps')).toHaveAttribute('data-band', '1') // 1
-  expect(muscleRow('glutes')).toHaveAttribute('data-band', '1') // 0.5
-  expect(summaryDialog().querySelector('.session-summary-muscles [data-muscle="chest"]')).toBeNull()
+  // Title kept (weakened-tests gate); v7 (study §1.6): "Worked today" moved to Progress › Muscles,
+  // weekly, where the range means something; the summary draws no muscle at all.
+  expectNoMuscles(summaryDialog())
 })
 
 test('M16 SessionSummary for a session with no sets draws every region in band 0', () => {
@@ -162,13 +153,12 @@ test('M16 SessionSummary for a session with no sets draws every region in band 0
 test('V2-06 the summary has one muscle grid, named in the Progress vocabulary', () => {
   renderSummary()
 
-  // V4-03: the one muscle list is a single line, still in the Progress vocabulary.
+  // Title kept (weakened-tests gate); v7 (study §1.6, §4): no muscle grid at all, in any
+  // vocabulary; the muscles live in Progress › Muscles.
   const dialog = summaryDialog()
-  expect(dialog.querySelectorAll('.session-summary-muscles')).toHaveLength(1)
-  expect(dialog.querySelector('.region-heat, [data-region]')).toBeNull()
-  expect(dialog.textContent).not.toMatch(/Middle back|Quadriceps|Abdominals/)
-  expect(muscleRow('middle back').textContent).toBe('Mid back 2')
-  expect(muscleRow('quadriceps').textContent).toBe('Quads 1')
+  expectNoMuscles(dialog)
+  expect(dialog.querySelector('.region-heat')).toBeNull()
+  expect(dialog.textContent).not.toMatch(/Middle back|Mid back|Quadriceps|Quads|Abdominals/)
 })
 
 // --- F2/F3: the summary renders as a modal popup (fix-popups) ------------------------------
@@ -196,14 +186,12 @@ test('F3 SessionSummary\'s dialog carries the shared overlay-panel class', () =>
 test('O23 SessionSummary shows exactly one session-scale body-map legend', () => {
   renderSummary()
 
-  // Title kept (weakened-tests gate); V4-03 (V3-13): Worked today is one line of numbers, so it
-  // needs no legend: no heat legend and no "sets / session".
+  // Title kept (weakened-tests gate); v7: no muscles, so no legend of any kind and no
+  // "sets / session".
   const dialog = summaryDialog()
-  expect(dialog.querySelectorAll('.heat-legend')).toHaveLength(0)
+  expect(dialog.querySelectorAll('.heat-legend, .body-map-legend')).toHaveLength(0)
   expect(dialog.textContent).not.toContain('sets / session')
-  expect(dialog.querySelector('.session-summary-muscles')?.textContent).toBe(
-    'Worked today: Lats 5 · Biceps 3 · Mid back 2 · Quads 1 · Glutes 0.5',
-  )
+  expectNoMuscles(dialog)
 })
 
 test('M16 Done on the session summary calls onClose', async () => {
@@ -220,36 +208,27 @@ test('M16 Done on the session summary calls onClose', async () => {
 test('M9 tapping upper-back on the summary map opens a panel showing its 7 sets', async () => {
   renderSummary()
 
-  await tapRegion('upper-back')
-
-  const panel = await screen.findByRole('dialog', { name: 'upper-back' })
-  const countOutsideList = within(panel)
-    .getAllByText('7 sets')
-    .filter((element) => element.closest('li') === null)
-  expect(countOutsideList).toHaveLength(1)
+  // Title kept (weakened-tests gate); v7: the summary has no muscle to tap, so no region panel;
+  // Progress › Muscles opens the panels now.
+  expectNoMuscles(summaryDialog())
+  expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
 })
 
 test('M9 tapping upper-back on the summary map lists Pulldown (4 sets) and Row (3 sets) as its contributors', async () => {
   renderSummary()
 
-  await tapRegion('upper-back')
-
-  const panel = await screen.findByRole('dialog', { name: 'upper-back' })
-  const items = within(panel).getAllByRole('listitem')
-  expect(items).toHaveLength(2)
-  const pulldown = items.find((item) => within(item).queryByText('Pulldown') !== null)
-  const row = items.find((item) => within(item).queryByText('Row') !== null)
-  expect(pulldown, 'Pulldown must be listed').toBeDefined()
-  expect(row, 'Row must be listed').toBeDefined()
-  expect(within(pulldown!).getByText('4 sets')).toBeVisible()
-  expect(within(row!).getByText('3 sets')).toBeVisible()
+  // Title kept (weakened-tests gate); v7: no region panel, so no contributors list; the lifts
+  // themselves are listed once, in Lift by lift.
+  const dialog = summaryDialog()
+  expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
+  expect(within(dialog).queryAllByRole('button', { name: /^(Lats|Mid back)/ })).toHaveLength(0)
 })
 
 test('M9 tapping a region the session did not train opens a panel with 0 sets and no contributors', async () => {
   renderSummary()
 
-  // Title kept (weakened-tests gate); V4-03 (V3-13): a muscle the Session did not train is not
-  // listed, so there is nothing to tap and no panel of 0 sets.
+  // Title kept (weakened-tests gate); V4-03 (V3-13), v7: no muscle is listed, so there is nothing
+  // to tap and no panel of 0 sets.
   const dialog = summaryDialog()
   expect(dialog.querySelector('[data-muscle="chest"]')).toBeNull()
   expect(within(dialog).queryByRole('button', { name: /^Chest/ })).toBeNull()
@@ -257,28 +236,24 @@ test('M9 tapping a region the session did not train opens a panel with 0 sets an
 })
 
 test('M9 Browse exercises on the summary’s upper-back panel hands up lats and middle back', async () => {
-  const user = userEvent.setup()
   const { onBrowse } = renderSummary()
 
-  await tapRegion('upper-back')
-  const panel = await screen.findByRole('dialog', { name: 'upper-back' })
-  await user.click(within(panel).getByRole('button', { name: 'Browse exercises' }))
-
-  expect(onBrowse).toHaveBeenCalledTimes(1)
-  expect([...onBrowse.mock.calls[0][0]].sort()).toEqual(['lats', 'middle back'])
+  // Title kept (weakened-tests gate); v7: no region panel, so no Browse exercises and nothing is
+  // handed up.
+  expect(within(summaryDialog()).queryByRole('button', { name: 'Browse exercises' })).toBeNull()
+  expect(onBrowse).not.toHaveBeenCalled()
 })
 
 test('M9 Close on the region panel closes the panel and leaves the summary up', async () => {
   const user = userEvent.setup()
   const { onClose } = renderSummary()
 
-  await tapRegion('upper-back')
-  const panel = await screen.findByRole('dialog', { name: 'upper-back' })
-  await user.click(within(panel).getByRole('button', { name: 'Close' }))
-
-  await waitFor(() => {
-    expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
-  })
+  // Title kept (weakened-tests gate); v7: no region panel to close; the Share sheet is the only
+  // panel the summary opens, and closing it leaves the summary up.
+  await user.click(within(summaryDialog()).getByRole('button', { name: 'Share' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Share session' })
+  expect(sheet).toBeVisible()
+  expect(screen.queryByRole('dialog', { name: 'upper-back' })).toBeNull()
   expect(summaryDialog()).toBeVisible()
   expect(onClose).not.toHaveBeenCalled()
 })
@@ -418,28 +393,28 @@ test('O16 SessionSummary lists a PR set in the Session as Bench press · Heavies
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  // Title kept (weakened-tests gate); V4-03: the one PR is the headline, the Exercise, the set,
-  // its kind and the gain over the old record; a single PR gets no Records list.
-  const line = dialog.querySelector('.session-summary-win-text') as HTMLElement
-  expect(line).toBeVisible()
-  expect(line.textContent).toBe('Bench press 85 kg × 5 · heaviest weight, +5 kg')
-  expect(recordRows(dialog)).toEqual([])
+  // Title kept (weakened-tests gate); v7 (study §1.6): the PR is a gold row under the verdict
+  // sentence: the lift, the record's kind in words, and the Set that set it on the right.
+  expect(recordRows(dialog)).toEqual([' · heaviest | Bench press'])
+  const row = dialog.querySelector('.session-summary-record') as HTMLElement
+  expect(row).toBeVisible()
+  expect(row.querySelector('.session-summary-record-figure')?.textContent).toBe('85 kg×5')
+  expect(dialog.querySelector('.session-summary-win')).toBeNull()
 })
 
 test('O16 SessionSummary marks each listed PR with one .tag-pr reading PR', () => {
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  // Title kept (weakened-tests gate); V4-03: one PR treatment, the tag: once on the headline and
-  // once on the Set that set it in Lift by lift.
-  const win = dialog.querySelector('.session-summary-win') as HTMLElement
-  const tags = win.querySelectorAll('.tag.tag-pr')
+  // Title kept (weakened-tests gate); v7: one PR treatment, the tag on its PR row; Lift by lift
+  // carries none (the records come first, study §3 PR).
+  const rows = [...dialog.querySelectorAll('.session-summary-record')]
+  expect(rows).toHaveLength(1)
+  const tags = rows[0].querySelectorAll('.tag.tag-pr')
   expect(tags).toHaveLength(1)
   expect(tags[0].textContent).toBe('PR')
-  const lift = dialog.querySelector('.session-summary-move') as HTMLElement
-  const liftTags = lift.querySelectorAll('.tag.tag-pr')
-  expect(liftTags).toHaveLength(1)
-  expect(liftTags[0].closest('.session-summary-move-set')?.textContent).toBe('85×5 PR')
+  expect(dialog.querySelector('.session-summary-move .tag-pr')).toBeNull()
+  expect(dialog.querySelectorAll('.tag-pr')).toHaveLength(1)
 })
 
 test('O16 SessionSummary with no PRs shows no .tag-pr', () => {
@@ -453,25 +428,24 @@ test('O16 SessionSummary shows duration, volume and PRs above the body map', () 
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderWithStats(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  // Title kept (weakened-tests gate); E18 O26: duration and the records come first, volume is
-  // the last quiet line, after the body map.
-  const map = dialog.querySelector('.session-summary-muscles [data-muscle]')!
+  // Title kept (weakened-tests gate); v7: no body map. The order is the day and duration, the
+  // verdict sentence, the PR rows, Lift by lift, then the one totals line with the volume.
   expect(kpiValue(dialog, 'duration')).toBe('52 min')
   expect(kpiValue(dialog, 'volume')).toMatch(/^1,275 kg/)
-  // V4-03: the PR is the headline now, still above the muscles.
-  const elements = [
-    dialog.querySelector('[data-kpi="duration"]') as HTMLElement,
-    dialog.querySelector('.session-summary-win') as HTMLElement,
-  ]
-  for (const element of elements) {
-    const text = element.textContent
+  const order = [
+    dialog.querySelector('[data-kpi="duration"]'),
+    dialog.querySelector('.session-summary-sentence'),
+    dialog.querySelector('.session-summary-record'),
+    within(dialog).getByRole('region', { name: 'Lift by lift' }),
+    dialog.querySelector('[data-kpi="volume"]'),
+  ] as HTMLElement[]
+  for (let at = 1; at < order.length; at += 1) {
     expect(
-      element.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING,
-      `${text} must come before the body map`,
+      order[at - 1].compareDocumentPosition(order[at]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      `${order[at - 1].textContent} must come before ${order[at].textContent}`,
     ).toBeTruthy()
   }
-  const volume = dialog.querySelector('[data-kpi="volume"]') as HTMLElement
-  expect(volume.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+  expectNoMuscles(dialog)
 })
 
 test('O16 SessionSummary with no PRs shows no PR list', () => {
@@ -480,6 +454,7 @@ test('O16 SessionSummary with no PRs shows no PR list', () => {
 
   expect(kpiValue(dialog, 'duration')).toBe('52 min')
   expect(within(dialog).queryAllByRole('listitem')).toHaveLength(0)
+  expect(within(dialog).queryByRole('region', { name: 'Records' })).toBeNull()
   expect(dialog.textContent).not.toContain('Heaviest set')
 })
 
@@ -515,26 +490,26 @@ test('S5b the KPI strip reads duration, volume against the last same Workout, wo
   session.entries.push({ kind: 'warmup', exerciseId: 'bench', setIndex: 0, weightKg: 40, reps: 5, loggedAt: BASE + 500 })
   const dialog = renderS5b(session, [earlier])
 
-  // Title kept (weakened-tests gate); V4-03: one figures line, duration, Sets and the comparison
-  // with the last same Workout ("vs Wed 8 Nov: volume +6.3 %"); the PR count left for the
-  // headline, the volume line last and the kilos alone.
+  // Title kept (weakened-tests gate); v7 (study §1.6): the duration sits with the day over the
+  // heading; one totals line reads the Sets, the volume (one small number, no % headline) and the
+  // warm-ups; the records are said by the verdict sentence and the PR rows, never a PR count.
+  expect(dialog.querySelector('.session-summary-label')?.textContent).toMatch(/^\w{3} \d{1,2} \w{3} · 52 min$|^\d{1,2} \w{3} \d{4} · 52 min$/)
   expect(kpiValue(dialog, 'duration')).toBe('52 min')
   expect(kpiValue(dialog, 'volume')).toBe('1,275 kg')
   expect(kpiValue(dialog, 'sets')).toBe('3')
   expect(dialog.querySelector('[data-kpi="prs"]')).toBeNull()
-  expect(dialog.querySelector('.session-summary-figures')?.textContent).toMatch(
-    /^52 min · 3 sets · vs \w{3} \d{1,2} \w{3}: volume \+6\.3 %$/,
-  )
+  expect(dialog.querySelector('[data-kpi="comparison"]')).toBeNull()
+  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('3 sets · 1,275 kg · 1 warm-up not counted')
+  expect(dialog.textContent).not.toMatch(/%/)
 })
 
 test('S5b each record row carries a PR tag and a sparkline of that record over the Sessions', () => {
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderS5b(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  // Title kept (weakened-tests gate); V4-03: one PR is the headline and gets no Records list;
-  // with two, the list shows one row per counted record, the PR tag and the word of its kind
-  // carry it (no sparkline).
-  expect(within(dialog).queryByRole('region', { name: 'Records' })).toBeNull()
+  // Title kept (weakened-tests gate); v7: every PR is a row, one or many: the PR tag and the
+  // record's kind in words carry it (no sparkline).
+  expect(within(within(dialog).getByRole('region', { name: 'Records' })).getAllByRole('listitem')).toHaveLength(1)
   cleanup()
   const two = twoRecordSessions()
   const both = renderS5b(two.today, two.earlier)
@@ -550,42 +525,44 @@ test('S5b each record row carries a PR tag and a sparkline of that record over t
 test('S5b Worked today lists the regions as heat squares on the session scale', () => {
   renderSummary()
 
-  // Title kept (weakened-tests gate); V4-03 (V3-13): no heat squares; each trained muscle is a
-  // "name sets" button in one line, still banded on the session scale and tappable into its panel.
-  const worked = within(summaryDialog()).getByRole('region', { name: 'Worked today' })
-  const lats = worked.querySelector('[data-muscle="lats"]') as HTMLElement
-  expect(lats).toHaveAccessibleName('Lats, 5 sets')
-  expect(lats).toHaveAttribute('data-band', '2')
-  expect(worked.querySelector('.heat-cell')).toBeNull()
-  expect(worked.querySelector('[data-muscle="glutes"]')?.textContent).toBe('Glutes 0.5')
+  // Title kept (weakened-tests gate); v7 (study §1.6): no Worked today at all; Progress › Muscles
+  // shows the week against its range.
+  const dialog = summaryDialog()
+  expectNoMuscles(dialog)
+  expect(dialog.querySelector('.heat-cell')).toBeNull()
 })
 
 test('S5b the exercise table gives each Exercise its best set, volume and change against last time', () => {
   const earlier = benchSession('before', BASE - 7 * 24 * 60 * MINUTE, 50, 3, 80, 5)
   const dialog = renderS5b(benchSession('pr', BASE, 52, 3, 85, 5), [earlier])
 
-  // Title kept (weakened-tests gate); V4-03: no table; each lift is one plain sentence, its Sets
-  // with the PR tag on the record Set, then the change against last time, with no "record" word.
+  // Title kept (weakened-tests gate); v7: no table; each lift is its name over its Sets in the
+  // repeated-reps form, and one verdict on the right, glyph first, with no "record" word.
   expect(within(dialog).queryByRole('table')).toBeNull()
   const row = within(dialog).getByText('Bench press', { selector: '.session-summary-move-name' }).closest('.session-summary-move') as HTMLElement
   expect(row.querySelector('.session-summary-move-top')).toBeNull()
-  // V5: the change is the live Session's sentence (`exerciseComparison`), with last time's day.
-  expect(row.querySelector('.session-summary-move-text')?.textContent).toBe('85×5 PR · 85×5 · 85×5 · +5 kg top set on Wed 8 Nov')
+  expect(row.querySelector('.session-summary-move-text')?.textContent).toBe('85×5 · 5 · 5')
+  const verdict = row.querySelector('.session-summary-verdict') as HTMLElement
+  expect(verdict.textContent).toBe('↑ +5 kg')
+  expect(verdict).toHaveAttribute('data-tone', 'up')
   expect(row.textContent).not.toContain('record')
 })
 
 test('S5b the dock offers Share as the secondary action beside Done', () => {
   const dialog = renderS5b(benchSession('d', BASE, 52, 1, 40, 5))
 
-  // V2-10: the dock is exactly Share… (secondary, holding Apple Health) and Done (the one accent).
+  // Title kept (weakened-tests gate); v7 (study §1.6, §4): Done is the dock's one button and the
+  // one primary; Share is a text link at the foot of the body, holding Apple Health.
   const dock = dialog.querySelector('.session-summary-dock') as HTMLElement
   const buttons = within(dock).getAllByRole('button')
-  expect(buttons).toHaveLength(2)
-  const share = within(dock).getByRole('button', { name: 'Share…' })
+  expect(buttons).toHaveLength(1)
   const done = within(dock).getByRole('button', { name: 'Done' })
-  expect(share).toHaveClass('btn-secondary')
   expect(done).toHaveClass('btn-primary')
-  expect(dock.querySelectorAll('.btn-primary')).toHaveLength(1)
+  expect(dialog.querySelectorAll('.btn-primary')).toHaveLength(1)
+  const share = within(dialog).getByRole('button', { name: 'Share' })
+  expect(share).toHaveClass('btn-quiet')
+  expect(share).not.toHaveClass('btn-secondary')
+  expect(share.closest('.session-summary-foot')).not.toBeNull()
   expect(share.compareDocumentPosition(done) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(within(dialog).queryByRole('button', { name: 'Send to Apple Health' })).toBeNull()
 })
@@ -665,44 +642,50 @@ function renderWeek(extra: { onDeloadChange?: (on: boolean) => void; deload?: bo
 test('O26 the summary reads "What Wed did for your week" with 2 of 3 sessions and 6 of 9 sets', () => {
   const dialog = renderWeek()
 
-  // Title kept (weakened-tests gate); V4-03: the week is one line near the end, the Sessions this
-  // week against the Program's 3 a week and the Workout Train puts up next; weekly, no streak.
+  // Title kept (weakened-tests gate); v7 (study §1.6): the week left the summary (Train and
+  // Sessions own it); what comes next is one line, "Next: Workout B". Weekly, no streak.
   expect(within(dialog).queryByRole('heading', { name: 'What Wed did for your week' })).toBeNull()
-  expect(dialog.querySelector('.session-summary-week')?.textContent).toBe('This week 2 of 3 · next up Workout B')
+  expect(dialog.querySelector('.session-summary-week')).toBeNull()
+  expect(dialog.textContent).not.toContain('This week')
+  expect(dialog.querySelector('.session-summary-next')?.textContent).toBe('Next: Workout B')
   expect(dialog.textContent).not.toMatch(/streak/i)
 })
 
 test('O26 a 71-minute Session reads 1 h 11 min on its own line, apart from the week figures', () => {
   const dialog = renderWeek()
 
+  // v7: with the day, over the heading, apart from the totals line.
   expect(kpiValue(dialog, 'duration')).toBe('1 h 11 min')
   const duration = dialog.querySelector('[data-kpi="duration"]') as HTMLElement
-  const week = dialog.querySelector('.session-summary-week') as HTMLElement
-  expect(week.contains(duration)).toBe(false)
+  expect(duration.closest('.session-summary-label')).not.toBeNull()
+  const totals = dialog.querySelector('.session-summary-totals') as HTMLElement
+  expect(totals.contains(duration)).toBe(false)
   expect(duration.textContent).not.toContain('sessions')
 })
 
 test('O26 each lift reads its move in words beside its top set', () => {
   const dialog = renderWeek()
 
-  // Title kept (weakened-tests gate); V4-03: the move is one plain sentence after the name.
+  // Title kept (weakened-tests gate); v7: the name, its Sets in the repeated-reps form, and the
+  // move as one verdict on the right.
   const move = dialog.querySelector('.session-summary-move') as HTMLElement
   expect(move.querySelector('.session-summary-move-name')?.textContent).toBe('Bench press')
-  // V5: worded as the live Session words it.
-  expect(move.querySelector('.session-summary-move-text')?.textContent).toBe('85×5 PR · 85×5 · 85×5 · +5 kg top set on Wed 7 Oct')
+  expect(move.querySelector('.session-summary-move-text')?.textContent).toBe('85×5 · 5 · 5')
+  expect(move.querySelector('.session-summary-verdict')?.textContent).toBe('↑ +5 kg')
+  expect(dialog.querySelector('.session-summary-versus')?.textContent).toBe('vs Wed 7 Oct')
 })
 
 test('O26 the records list counts the Session records once, with the kind and its gain', () => {
   const dialog = renderWeek()
 
-  // Title kept (weakened-tests gate); V4-03: the one record is said once, as the headline, with
-  // no "+n more" and no Records list; the set it names appears at most twice on the page.
-  expect(within(dialog).queryByRole('region', { name: 'Records' })).toBeNull()
-  expect(dialog.querySelector('.session-summary-win-text')?.textContent).toBe(
-    'Bench press 85 kg × 5 · heaviest weight, +5 kg',
-  )
+  // Title kept (weakened-tests gate); v7: the one record is one PR row and one word in the verdict
+  // sentence ("One record."), never "+n more".
+  const rows = within(within(dialog).getByRole('region', { name: 'Records' })).getAllByRole('listitem')
+  expect(rows).toHaveLength(1)
+  expect(rows[0].textContent).toBe('PRBench press · heaviest85 kg×5')
+  expect(dialog.querySelector('.session-summary-sentence')?.textContent).toBe('Bench press beat Wed 7 Oct. One record.')
   expect(dialog.querySelector('.session-summary-win-more')).toBeNull()
-  expect((dialog.textContent ?? '').split('85 kg × 5').length - 1).toBeLessThanOrEqual(2)
+  expect(dialog.textContent).not.toMatch(/more PR/)
 })
 
 test('O26 Next time lists what the next Session should do', () => {
@@ -711,26 +694,22 @@ test('O26 Next time lists what the next Session should do', () => {
   const lines = nextTime(wed.id, [...earlier, wed], resolve, WEEK_PROGRAM)
   expect(lines.length).toBeGreaterThan(0)
 
-  // Title kept (weakened-tests gate); V4-03: "Next time · n of m reps at …" left the summary (the
-  // lift page shows it); what comes next is the week line's next Workout.
+  // Title kept (weakened-tests gate); V4-03, v7: "Next time · n of m reps at …" is the lift page's;
+  // what comes next on the summary is the next Workout, "Next: Workout B".
   expect(within(dialog).queryByRole('region', { name: 'Next time' })).toBeNull()
   for (const line of lines) expect(dialog.textContent).not.toContain(line)
   expect(dialog.textContent).not.toMatch(/\d+ of \d+ reps at/)
-  expect(dialog.querySelector('.session-summary-week')?.textContent).toContain('next up Workout B')
+  expect(dialog.querySelector('.session-summary-next')?.textContent).toBe('Next: Workout B')
 })
 
 test('O26 Worked today lists the 12 muscles, in sets, with warm-ups left out', () => {
   const dialog = renderWeek()
 
-  // Title kept (weakened-tests gate); V4-03 (V3-13): only the muscles trained, most sets first,
-  // in sets, with the 2 warm-ups left out (they would make Chest 5).
-  const rows = [...dialog.querySelectorAll('.session-summary-muscles [data-muscle]')]
-  expect(rows.map((r) => r.getAttribute('data-muscle'))).toEqual(['chest', 'triceps'])
-  const chest = dialog.querySelector('.session-summary-muscles [data-muscle="chest"]') as HTMLElement
-  expect(chest.textContent).toBe('Chest 3')
-  expect(chest).toHaveAttribute('data-band', '2')
-  expect(dialog.querySelector('.session-summary-muscles [data-muscle="triceps"]')?.textContent).toBe('Triceps 1.5')
-  expect(dialog.querySelector('.session-summary-muscles')?.textContent).toBe('Worked today: Chest 3 · Triceps 1.5')
+  // Title kept (weakened-tests gate); v7: no muscles on the summary; the warm-ups are still left
+  // out of the counts, and said once in the totals line.
+  expectNoMuscles(dialog)
+  expect(kpiValue(dialog, 'sets')).toBe('3')
+  expect(dialog.querySelector('.session-summary-totals')?.textContent).toContain('2 warm-ups not counted')
 })
 
 test('O26 the summary says 2 warm-ups not counted', () => {
@@ -742,13 +721,17 @@ test('O26 the summary says 2 warm-ups not counted', () => {
 test('O26 volume is the last quiet line of the summary body, after the muscles and Next time', () => {
   const dialog = renderWeek()
 
-  // V4-03: the comparison moved up to the figures, so the volume line is the kilos alone.
+  // Title kept (weakened-tests gate); v7: the volume is one small number in the totals line,
+  // after Lift by lift; only "Next" and Share follow it.
   const volume = dialog.querySelector('[data-kpi="volume"]') as HTMLElement
   expect(volume.textContent).toBe('1,275 kg')
+  const totals = volume.closest('.session-summary-totals') as HTMLElement
+  expect(totals.textContent).toBe('3 sets · 1,275 kg · 2 warm-ups not counted')
+  const lifts = within(dialog).getByRole('region', { name: 'Lift by lift' })
+  expect(lifts.compareDocumentPosition(totals) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   const body = dialog.querySelector('.session-summary-body') as HTMLElement
-  expect(body.lastElementChild).toBe(volume.closest('.session-summary-volume'))
-  const muscles = dialog.querySelector('.session-summary-muscles') as HTMLElement
-  expect(muscles.compareDocumentPosition(volume) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(body.lastElementChild).toBe(dialog.querySelector('.session-summary-foot'))
+  expect(totals.nextElementSibling).toBe(dialog.querySelector('.session-summary-foot'))
 })
 
 test('O26 the Deload session switch reflects the Session and reports a change', async () => {
@@ -773,16 +756,19 @@ test('O26 a deload Session shows the Deload session switch on', () => {
 test('V2-10 the summary leads with Best today, the top Record, under the figures', () => {
   const dialog = renderWeek()
 
-  // Title kept (weakened-tests gate); V4-03: no separate "Best today" line; the top Record is the
-  // headline, under the heading and above the figures and Lift by lift.
+  // Title kept (weakened-tests gate); v7: no "Best today" line and no headline PR; the verdict
+  // sentence leads, right under the heading, then the PR rows, then Lift by lift.
   expect(dialog.querySelector('.session-summary-best')).toBeNull()
   expect(dialog.textContent).not.toContain('Best today')
-  const win = dialog.querySelector('.session-summary-win') as HTMLElement
-  expect(win.textContent).toBe('PRBench press 85 kg × 5 · heaviest weight, +5 kg')
-  const figures = dialog.querySelector('.session-summary-figures') as HTMLElement
+  expect(dialog.querySelector('.session-summary-win')).toBeNull()
+  const head = dialog.querySelector('.session-summary-head') as HTMLElement
+  const sentence = dialog.querySelector('.session-summary-sentence') as HTMLElement
+  expect(head.nextElementSibling).toBe(sentence)
+  expect(sentence.querySelector('.session-summary-sentence-lead')?.textContent).toBe('Bench press beat Wed 7 Oct.')
+  const records = within(dialog).getByRole('region', { name: 'Records' })
   const lifts = within(dialog).getByRole('region', { name: 'Lift by lift' })
-  expect(win.compareDocumentPosition(figures) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(win.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(sentence.compareDocumentPosition(records) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(records.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
 test('V2-10 a Session with no Record shows no Best today line', () => {
@@ -908,18 +894,22 @@ test('V3-02 Lift by lift never reads a bare Same: it names the Sets, Same as las
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 50, 3, 80, 5), [before])
 
-  // Title kept (weakened-tests gate); V4-03: the sentence names each Set; V5: then the live
-  // Session's "Same as <last time's day>".
-  expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('80×5 · 80×5 · 80×5 · Same as Wed 7 Oct')
+  // Title kept (weakened-tests gate); v7: the Sets are named in the repeated-reps form beside
+  // the "= same" verdict, and the sentence says it matched.
+  expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('80×5 · 5 · 5')
+  expect(dialog.querySelector('.session-summary-verdict')?.textContent).toBe('= same')
+  expect(dialog.querySelector('.session-summary-sentence')?.textContent).toBe('Bench press matched Wed 7 Oct.')
 })
 
 test('V3-02 a lift with 1 of 3 Sets logged reads 1 of 3 sets, with no vs comparison', () => {
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
 
-  const text = dialog.querySelector('.session-summary-move-text')?.textContent ?? ''
-  expect(text).toContain('1 of 3 sets')
-  expect(text).not.toContain('vs')
+  const verdict = dialog.querySelector('.session-summary-verdict') as HTMLElement
+  expect(verdict.textContent).toBe('1 of 3 sets')
+  expect(verdict).toHaveAttribute('data-tone', 'flat')
+  expect(dialog.querySelector('.session-summary-versus')).toBeNull()
+  expect(dialog.querySelector('.session-summary-move')?.textContent).not.toContain('vs')
 })
 
 // --- V4-03: one win, one comparison, and what comes next -------------------------------------
@@ -928,7 +918,11 @@ test('V4-03 several PRs: the headline is the first, "+1 more PR", and the Record
   const { earlier, today } = twoRecordSessions()
   const dialog = renderS5b(today, earlier)
 
-  expect(dialog.querySelector('.session-summary-win-more')?.textContent).toBe('+1 more PR')
+  // Title kept (weakened-tests gate); v7: no headline PR; the sentence counts them ("Two
+  // records.") and the Records list shows both.
+  expect(dialog.querySelector('.session-summary-win-more')).toBeNull()
+  expect(dialog.querySelector('.session-summary-sentence-rest')?.textContent).toBe('Two records.')
+  expect(dialog.querySelector('.session-summary-sentence-lead')?.textContent).toMatch(/^Both lifts beat /)
   expect(within(within(dialog).getByRole('region', { name: 'Records' })).getAllByRole('listitem')).toHaveLength(2)
 })
 
@@ -939,20 +933,20 @@ test('V4-03 a rep record by one reads +1 rep, never +1 reps', () => {
   const dialog = renderS5b(today, [before])
 
   // V6 (V5-06): one more rep at the heaviest weight is a PR because it lifts the estimated 1RM
-  // (85 × 6/30 − 85 × 5/30 = +2.8 kg); the lift line still counts the rep, "1 rep more".
-  expect(dialog.querySelector('.session-summary-win-text')?.textContent).toBe(
-    'Bench press 85 kg × 6 · estimated 1RM, +2.8 kg',
-  )
+  // (85 × (1 + 6/30) = 102 kg); v7: its row says "est. strength", the lift's verdict "+1 rep".
+  expect(recordRows(dialog)).toEqual([' · est. strength | Bench press'])
+  expect(dialog.querySelector('.session-summary-record-figure')?.textContent).toBe('102 kg')
   expect(dialog.textContent).not.toContain('+1 reps')
-  expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('85×6 PR · 85×5 · 85×5 · 1 rep more than Wed 8 Nov')
+  expect(dialog.querySelector('.session-summary-move-text')?.textContent).toBe('85×6 · 5 · 5')
+  expect(dialog.querySelector('.session-summary-verdict')?.textContent).toBe('↑ +1 rep')
 })
 
 test('V4-03 a partial Session reads "1 of 3 sets" in the figures, with no % comparison', () => {
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
 
-  // Title kept (weakened-tests gate); V6-11: 1 of 3 is under half, so it also says it was short.
-  expect(dialog.querySelector('.session-summary-figures')?.textContent).toBe('20 min · Short session · 1 of 3 sets')
+  // Title kept (weakened-tests gate); V6-11, v7: the totals line says it was short, 1 of 3 sets.
+  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('Short session · 1 of 3 sets · 400 kg')
   expect(dialog.textContent).not.toMatch(/%/)
 })
 
@@ -962,7 +956,7 @@ test('V6-11 under half the planned Sets reads "Short session · n of N sets"; ha
   expect(short.querySelector('[data-kpi="short"]')?.textContent).toBe('Short session')
   cleanup()
   const most = renderBench(benchSession('wed-14', WED, 40, 2, 80, 5), [before])
-  expect(most.querySelector('.session-summary-figures')?.textContent).toBe('40 min · 2 of 3 sets')
+  expect(most.querySelector('.session-summary-totals')?.textContent).toBe('2 of 3 sets · 800 kg')
   expect(most.querySelector('[data-kpi="short"]')).toBeNull()
 })
 
@@ -970,17 +964,23 @@ test('V4-03 a full Session compares with the last same Workout: "vs <day>: volum
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 50, 3, 85, 5), [before])
 
-  expect(dialog.querySelector('[data-kpi="comparison"]')?.textContent).toBe('vs Wed 7 Oct: volume +6.3 %')
+  // Title kept (weakened-tests gate); v7 (study §1.6): the comparison is per lift, under
+  // "vs Wed 7 Oct", with no volume % headline.
+  expect(dialog.querySelector('.session-summary-versus')?.textContent).toBe('vs Wed 7 Oct')
+  expect(dialog.querySelector('.session-summary-verdict')?.textContent).toBe('↑ +5 kg')
+  expect(dialog.querySelector('[data-kpi="comparison"]')).toBeNull()
+  expect(dialog.textContent).not.toMatch(/%/)
 })
 
 test('V4-03 the summary never shows a zero muscle, a legend or Best today, and Share… and Done stay the dock', () => {
   const dialog = renderWeek()
 
-  for (const muscle of dialog.querySelectorAll('.session-summary-muscles [data-muscle]')) {
-    expect(muscle.textContent).not.toMatch(/ 0$/)
-  }
+  // Title kept (weakened-tests gate); v7: no muscle at all, no legend, no Best today; the dock is
+  // Done alone and Share is the text link above it.
+  expectNoMuscles(dialog)
   expect(dialog.textContent).not.toContain('sets / session')
   expect(dialog.textContent).not.toContain('Best today')
   const dock = dialog.querySelector('.session-summary-dock') as HTMLElement
-  expect(within(dock).getAllByRole('button').map((b) => b.textContent)).toEqual(['Share…', 'Done'])
+  expect(within(dock).getAllByRole('button').map((b) => b.textContent)).toEqual(['Done'])
+  expect(within(dialog).getByRole('button', { name: 'Share' }).closest('.session-summary-foot')).not.toBeNull()
 })

@@ -1,6 +1,7 @@
-/* The session summary (E18 O26, V4-03): heading and day, the one win, the figures with the
- * comparison, each lift's sentence, the records (2 or more), the muscles worked, the week line and
- * the volume, over a Share / Done dock.
+/* The session summary (study §1.6, Ledger & Instrument; v7 build-plan step 8): the day and
+ * duration, the Workout, one verdict sentence, the PR rows in gold, Lift by lift with one
+ * ↑ / = / ↓ per lift, one totals line, "Next" with Share as a text link, over a dock holding Done.
+ * Rows sit on paper with hairlines; no cards for lists.
  *
  * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
  * one definition site.
@@ -17,34 +18,52 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4) var(--space-5);
+  gap: var(--space-4);
+  padding: var(--space-4) 20px var(--space-5);
 }
 
+/* The day and duration (Edit beside them on a past workout) over the Workout, which has the
+ * full width to itself. */
 .session-summary-head {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+}
+
+.session-summary-head-row {
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
-  min-height: 52px;
+  min-height: var(--tap-min);
 }
 
-.session-summary-heading {
+.session-summary-label {
   flex: 1;
+  min-width: 0;
   margin: 0;
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  line-height: 2.125rem;
-  letter-spacing: -0.02em;
-}
-
-.session-summary-date {
-  padding-bottom: var(--space-1);
   color: var(--color-muted);
   font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.session-summary-label .session-summary-kpi-value {
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+/* 40 px on Summary (study §3, Type: twice --text-lg), scaling with the reader's text size; at
+ * large text "Workout B" breaks between its words. */
+.session-summary-heading {
+  margin: 0;
+  font-size: calc(var(--text-lg) * 2);
+  font-weight: var(--weight-semibold);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .session-summary-edit {
   display: grid;
+  flex: none;
   place-items: center;
   width: var(--tap-min);
   min-height: var(--tap-min);
@@ -53,72 +72,72 @@
   border-radius: var(--radius-md);
 }
 
-/* V4-03: the one win, the Session's first PR: "[PR] Deadlift 70 kg × 8 · rep record, +1 rep". */
-.session-summary-win {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px var(--space-2);
+/* "5 of 7 lifts beat Wednesday. Two records.": the comparison in ink, the rest in ink-2. */
+.session-summary-sentence {
   margin: 0;
-  font-size: var(--text-md);
+  color: var(--color-secondary);
+  font-size: var(--text-lg);
+  line-height: 1.4;
 }
 
-.session-summary-win-text {
+.session-summary-sentence-lead {
+  color: var(--color-text);
   font-weight: var(--weight-semibold);
 }
 
-.session-summary-win-more {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-/* "This week 3 of 3 · next up Workout A": weekly, never a streak. */
-.session-summary-week {
-  margin: 0;
-  font-size: var(--text-md);
-  font-variant-numeric: tabular-nums;
-}
-
-/* The figures: duration, working sets and records on their own line, never inside another cell. */
-.session-summary-lead {
+/* The PR rows: gold tag, the lift and the record's kind, the figure on the right. */
+.session-summary-prs {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.session-summary-figures,
-.session-summary-warmups,
-.session-summary-quiet,
-.session-summary-volume {
   margin: 0;
-  font-size: var(--text-sm);
+  padding: 0;
+  list-style: none;
 }
 
-.session-summary-figures {
+.session-summary-record {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+  min-height: var(--tap-min);
   font-size: var(--text-md);
-  font-variant-numeric: tabular-nums;
 }
 
-.session-summary-warmups,
-.session-summary-quiet,
-.session-summary-volume,
-.session-summary-kpi-note {
-  color: var(--color-muted);
+.session-summary-record-text {
+  flex: 1 1 10em;
+  min-width: 0;
 }
 
-.session-summary-kpi-value {
+.session-summary-record-detail {
+  font-weight: var(--weight-medium);
+}
+
+.session-summary-record-label {
+  color: var(--color-secondary);
+}
+
+.session-summary-record-figure {
+  flex: none;
+  margin-left: auto;
   font-weight: var(--weight-semibold);
-}
-
-.session-summary-volume .session-summary-kpi-value {
-  font-weight: var(--weight-regular);
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
 }
 
 .session-summary-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: var(--space-1);
+}
+
+/* "LIFT BY LIFT ... VS WED 7 OCT": a 12 px upper-case label row over a hairline. */
+.session-summary-caption-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .session-summary-caption {
@@ -130,123 +149,121 @@
   text-transform: uppercase;
 }
 
-.session-summary-prs {
-  margin: 0;
-  padding: 0 var(--space-3);
-  list-style: none;
-}
-
-.session-summary-record {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 56px;
-}
-
-.session-summary-record + .session-summary-record {
-  border-top: 1px solid var(--color-hairline);
-}
-
-.session-summary-record-text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-  font-size: var(--text-sm);
-}
-
-.session-summary-record-label {
-  font-weight: var(--weight-semibold);
-}
-
-.session-summary-record-detail {
-  color: var(--color-secondary);
-}
-
-/* Worked today (V4-03, closes V3-13): one line of the muscles trained, most sets first. */
-.session-summary-worked {
-  margin-top: var(--space-1);
-}
-
-/* Lift by lift: the name, then one plain sentence: "60×10 · 70×8 PR · 70×7 · 1 rep more". */
+/* Lift by lift: the name over its Sets in small grey, the one verdict on the right. */
 .session-summary-moves {
-  padding: 0 var(--space-3);
+  display: flex;
+  flex-direction: column;
 }
 
 .session-summary-move {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 0;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
-.session-summary-move + .session-summary-move {
-  border-top: 1px solid var(--color-hairline);
+.session-summary-move-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .session-summary-move-name {
   font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-medium);
 }
 
 /* V6-03: the lift's name is the door to its Lift page, a 44 px tall target. */
 .session-summary-move-name.lift-door {
   display: flex;
   align-items: center;
+  align-self: flex-start;
+  max-width: 100%;
   min-height: var(--tap-min);
+  margin: calc(-1 * var(--space-2)) 0 calc(-1 * var(--space-1));
   padding: 0;
   border: 0;
   border-radius: var(--radius-sm);
   color: var(--color-text);
   font: inherit;
   font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-medium);
   text-align: start;
 }
 
 .session-summary-move-text {
-  color: var(--color-secondary);
+  color: var(--color-muted);
   font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .session-summary-move-set {
   white-space: nowrap;
 }
 
-.session-summary-move-tail {
-  color: var(--color-text);
+/* The ×, the unit and the reps all in the row's grey: the figures here are history, not news. */
+.session-summary-move-text .set-figure-times {
+  color: inherit;
 }
 
-/* The muscles as one wrapping line; each name is a button into its region's panel. */
-.session-summary-muscles {
+/* The verdict: glyph and words in the status colour (StatusMark), at most half the row. */
+.session-summary-verdict {
+  flex: none;
+  max-width: 50%;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums lining-nums;
+  text-align: end;
+}
+
+.session-summary-verdict[data-tone='flat'] {
+  font-weight: var(--weight-medium);
+}
+
+/* One line of totals: "23 sets · 6,815 kg · 1 warm-up not counted". */
+.session-summary-totals,
+.session-summary-quiet {
   margin: 0;
+  color: var(--color-muted);
   font-size: var(--text-sm);
-  line-height: 1.6;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
-.session-summary-worked-label {
+.session-summary-totals .session-summary-kpi-value {
+  font-weight: var(--weight-regular);
+}
+
+/* "Next: Workout A" on the left, Share as a text link on the right. */
+.session-summary-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--space-3);
+  margin-top: calc(-1 * var(--space-2));
+}
+
+.session-summary-next {
+  margin: 0;
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+}
+
+.session-summary-share {
+  min-height: var(--tap-min);
+  margin-right: calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
 }
 
-.session-summary-muscles .session-summary-muscle {
-  white-space: nowrap;
-}
-
-.session-summary-muscle {
-  display: inline;
-  padding: var(--space-1) 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  text-decoration: underline dotted var(--color-hairline);
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-/* The Share… sheet: share as text, or send to Apple Health. */
+/* The Share sheet: share as text, or send to Apple Health. */
 .session-summary-share-sheet {
   display: flex;
   flex-direction: column;
@@ -263,26 +280,13 @@
   font-size: var(--text-md);
 }
 
-/* The dock: Share and Done, pinned under the scrolling body. */
+/* The dock: Done, the one filled ink bar, pinned under the scrolling body. */
 .session-summary-dock {
   position: sticky;
   bottom: 0;
   display: flex;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4) calc(var(--space-3) + var(--safe-bottom));
-  border-top: 1px solid var(--color-hairline);
-  background: var(--color-surface);
-}
-
-.session-summary-share {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  width: 112px;
-  min-height: 56px;
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
+  padding: var(--space-3) 20px calc(var(--space-3) + var(--safe-bottom));
+  background: var(--color-bg);
 }
 
 .session-summary-done {
@@ -290,14 +294,20 @@
   min-height: 56px;
   padding: 0 var(--space-4);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--color-primary);
   color: var(--color-on-primary);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
 }
 
-/* Save changes to program: the inline offer under Worked today (E19-T15). */
+/* Save changes to program: the inline offer under the totals (E19-T15). */
+.session-summary-save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 .session-summary-save-list {
   margin: 0;
   padding-left: var(--space-4);
@@ -316,7 +326,6 @@
   align-self: flex-start;
   gap: var(--space-2);
   min-height: var(--tap-min);
-  margin-top: var(--space-2);
   padding: 0 var(--space-2);
   margin-left: calc(-1 * var(--space-2));
   border: 0;
