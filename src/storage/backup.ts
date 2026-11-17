@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Photo, PhotoAlign, PhotoAngle } from './photoStore'
+import { captureInfoOf, type Photo, type PhotoAlign, type PhotoAngle, type PhotoCaptureInfo } from './photoStore'
 import type { BodyLog, CustomExercise, PlateInventory, Session, UserProgram, VolumeBaseline } from '../types'
 
 /** Bumped whenever the shape below changes in a way `readBackup` cannot translate on its own. */
@@ -64,7 +64,7 @@ export type BackupPhoto = {
   height: number
   align: PhotoAlign | null
   createdAt: number
-}
+} & PhotoCaptureInfo
 
 /** A stored Photo as a backup entry (bytes to base64). */
 export function encodeBackupPhoto(photo: Photo): BackupPhoto {
@@ -83,6 +83,7 @@ export function encodeBackupPhoto(photo: Photo): BackupPhoto {
     height: photo.height,
     align: photo.align,
     createdAt: photo.createdAt,
+    ...captureInfoOf(photo),
   }
 }
 
@@ -101,6 +102,7 @@ export function decodeBackupPhoto(photo: BackupPhoto): Photo {
     height: photo.height,
     align: photo.align,
     createdAt: photo.createdAt,
+    ...captureInfoOf(photo),
   }
 }
 

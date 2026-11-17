@@ -13,6 +13,7 @@
     "worker:dev": "wrangler dev"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "1.2.3",
     "dexie": "4.0.8",
     "jose": "5.10.0",
     "react": "18.3.1",

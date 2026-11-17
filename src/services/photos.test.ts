@@ -48,4 +48,20 @@ describe('E26-T7 O1 the photos service', () => {
     const { service } = make(false)
     await expect(service.add(input('2026-11-01'))).rejects.toMatchObject({ code: 'storage-unavailable' })
   })
+
+  test('photos v2: add keeps the capture fields and list returns them', async () => {
+    const { service } = make()
+    const info = {
+      camera: 'environment' as const,
+      roll: 0.5,
+      pitch: -1,
+      bodyScale: { full: 0.6, torso: 0.2 },
+      source: 'live' as const,
+      streamWidth: 1440,
+      streamHeight: 1920,
+    }
+    await service.add({ ...input('2026-11-12'), ...info })
+    const [back] = await service.list()
+    expect(back).toMatchObject(info)
+  })
 })

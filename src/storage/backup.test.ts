@@ -708,3 +708,28 @@ test('E26-T9 O4 decodeBackupPhoto turns base64 back into the original bytes', ()
   expect(decoded.id).toBe('p-1')
   expect(decoded.type).toBe('image/jpeg')
 })
+
+test('photos v2: a backup carries the capture fields there and back', () => {
+  const info = {
+    camera: 'user' as const,
+    roll: -0.5,
+    pitch: 4,
+    bodyScale: { full: null, torso: 0.19 },
+    bodyLines: { head: 0.05, feet: 0.97 },
+    source: 'native' as const,
+    streamWidth: 1080,
+    streamHeight: 1440,
+  }
+  const original = { ...photoFixture(), ...info }
+  const encoded = encodeBackupPhoto(original)
+  expect(encoded).toMatchObject(info)
+  const decoded = decodeBackupPhoto(JSON.parse(JSON.stringify(encoded)))
+  expect(decoded).toMatchObject(info)
+  expect(Array.from(new Uint8Array(decoded.data))).toEqual([1, 2, 3, 255])
+})
+
+test('photos v2: an old backup photo with no capture fields decodes to the old shape', () => {
+  const decoded = decodeBackupPhoto(encodeBackupPhoto(photoFixture()))
+  expect(decoded.camera).toBeUndefined()
+  expect(Object.keys(decoded)).not.toContain('bodyScale')
+})
