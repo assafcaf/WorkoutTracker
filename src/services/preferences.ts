@@ -5,8 +5,10 @@ import { upsertBodyEntry, removeBodyEntry as dropBodyEntry, validateBodyEntry } 
 import { callStorage, ServiceError } from './errors'
 import {
   getBodyLog,
+  getHeightCm,
   getBodyweightOverrides,
   setBodyLog,
+  setHeightCm as storeHeightCm,
   getExerciseNotes,
   getGymEquipment,
   getLastExportedAt,
@@ -144,8 +146,13 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       if (!valid) throw new ServiceError('storage-failed', 'the body entry is not valid')
       await write(async () => setBodyLog(upsertBodyEntry(await getBodyLog(), valid), deps.now()))
     },
-    heightCm: () => Promise.reject(new Error('NotImplementedError')),
-    setHeightCm: () => Promise.reject(new Error('NotImplementedError')),
+    heightCm: () => callStorage(deps, getHeightCm, 'heightCm read failed'),
+    setHeightCm: async (cm) => {
+      if (cm !== null && !(Number.isFinite(cm) && cm >= 100 && cm <= 250)) {
+        throw new ServiceError('storage-failed', 'the height is not valid')
+      }
+      await write(() => storeHeightCm(cm, deps.now()))
+    },
     removeBodyEntry: (day) =>
       write(async () => setBodyLog(dropBodyEntry(await getBodyLog(), day), deps.now())),
   }

@@ -257,14 +257,14 @@ export const HEIGHT_CM_KEY = 'heightCm'
 
 /** The stored height in cm, or null unless a finite number in 100..250. */
 export async function getHeightCm(): Promise<number | null> {
-  throw new Error('NotImplementedError')
+  const value = (await db.settings.get(HEIGHT_CM_KEY))?.value
+  return typeof value === 'number' && Number.isFinite(value) && value >= 100 && value <= 250 ? value : null
 }
 
 /** Stores the height in cm; null deletes the row. */
 export async function setHeightCm(cm: number | null, now: number = Date.now()): Promise<void> {
-  void cm
-  void now
-  throw new Error('NotImplementedError')
+  if (cm === null) await db.settings.delete(HEIGHT_CM_KEY)
+  else await db.settings.put({ key: HEIGHT_CM_KEY, value: cm, updatedAt: now })
 }
 
 /** Stores the whole `log` in the one `bodyLog` row. */
