@@ -1,16 +1,23 @@
 // Test helpers for starting a workout. v7: the app opens on Home, whose dock starts the workout
 // due; Home's Today panel (or its "Next" row) opens the workout page, whose dock offers the due
-// workout with one "Start" button and steps through the Program's others with "Do <name> instead".
-import { screen } from '@testing-library/react'
+// workout with one "Start" button and steps through the Program's others with the › arrow beside
+// its title ("Next workout: <name>").
+import { screen, within } from '@testing-library/react'
 import type userEvent from '@testing-library/user-event'
 
 type User = ReturnType<typeof userEvent.setup>
 
 const SETTLE = { timeout: 3000 }
 
-/** The "Do Workout B instead" control of the workout page's dock, if it is on screen. */
+/** The workout page, if it is on screen. */
+function workoutPage(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.dashboard')
+}
+
+/** The workout page's › arrow ("Next workout: Workout B"), if it is on screen. */
 function changeButton(): HTMLElement | null {
-  return screen.queryByRole('button', { name: /^Do .+ instead$/ })
+  const page = workoutPage()
+  return page ? within(page).queryByRole('button', { name: /^Next workout: / }) : null
 }
 
 /** The dock's start button, once Home or the workout page has loaded its Program. */
@@ -23,14 +30,14 @@ export async function findStartButton(): Promise<HTMLElement> {
  * "Next" row); on the workout page already, does nothing.
  */
 export async function openWorkoutPage(user: User): Promise<boolean> {
-  if (changeButton()) return false
+  if (workoutPage()) return false
   const door = await screen.findByRole('button', { name: /Open the workout\.$/ }, SETTLE).catch(() => null)
-  if (!door || changeButton()) return false
+  if (!door || workoutPage()) return false
   await user.click(door)
   return true
 }
 
-/** Steps the dock to `workoutName` with "Do … instead" and returns its start button. */
+/** Steps the workout page to `workoutName` with its › arrow and returns its start button. */
 export async function offerWorkout(user: User, workoutName: string): Promise<HTMLElement> {
   const name = `Start ${workoutName}`
   if (!screen.queryByRole('button', { name })) await openWorkoutPage(user)
@@ -48,7 +55,7 @@ export async function startFromDashboard(user: User, workoutName: string): Promi
   await user.click(await offerWorkout(user, workoutName))
 }
 
-/** Every workout the workout page can start, in the order "Do … instead" steps through them. */
+/** Every workout the workout page can start, in the order its › arrow steps through them. */
 export async function workoutsOffered(user: User): Promise<string[]> {
   const opened = await openWorkoutPage(user)
   // The workout page loads its own data: wait for its dock, not Home's.

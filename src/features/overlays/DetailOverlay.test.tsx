@@ -152,8 +152,38 @@ test("D7 DetailOverlay opens a similar exercise's own detail through onOpenDetai
   expect(onOpenDetail).toHaveBeenCalledWith('Alpha_Curl')
 })
 
-test('D7 DetailOverlay renders nothing for a libraryId the library does not have', () => {
-  const { container } = render(<DetailOverlay {...curlProps({ libraryId: 'No_Such_Exercise' })} />)
+// D7's "renders nothing for a libraryId the library does not have" was the silent failure the
+// user reported (Exercise info did nothing); D8 below replaces it with an overlay that says so.
+test('D7 DetailOverlay says there is no info for a libraryId the library does not have', () => {
+  render(<DetailOverlay {...curlProps({ libraryId: 'No_Such_Exercise' })} />)
 
-  expect(container).toBeEmptyDOMElement()
+  expect(screen.getByRole('dialog', { name: 'Exercise info' })).toBeVisible()
+  expect(screen.getByRole('status')).toHaveTextContent('No info for this exercise yet.')
+})
+
+// --- Exercise info never fails silently (2026-11-17) ----------------------------------------
+
+test('D8 an id the library lacks still opens the overlay, saying there is no info, with Back', async () => {
+  const user = userEvent.setup()
+  const onBack = vi.fn()
+  render(<DetailOverlay {...curlProps({ libraryId: 'custom-123', heading: 'My cable thing', onBack })} />)
+
+  const overlay = screen.getByRole('dialog', { name: 'My cable thing' })
+  expect(within(overlay).getByRole('status')).toHaveTextContent('No info for this exercise yet.')
+  await user.click(within(overlay).getByRole('button', { name: 'Back' }))
+  expect(onBack).toHaveBeenCalledTimes(1)
+})
+
+test('D8 before the library has loaded the overlay says it is loading, not that there is no info', () => {
+  render(<DetailOverlay {...curlProps({ libraryId: 'Target_Curl', library: [] })} />)
+
+  expect(screen.getByRole('status')).toHaveTextContent('Loading exercise info…')
+})
+
+test('D8 a library exercise that is in no catalog entry opens its own detail (the Y raises case)', async () => {
+  const data = await realData()
+  render(<DetailOverlay {...curlProps({ ...data, libraryId: 'edb-dumbbell-incline-y-raise' })} />)
+
+  expect(screen.getByRole('dialog', { name: 'Y raises' })).toBeVisible()
+  expect(screen.getByText(/Y shape/)).toBeVisible()
 })

@@ -14,7 +14,10 @@ test('L6 the share of library entries with a video is at least the measured floo
   const library = await loadLibrary()
   const videos = await loadVideos()
 
-  const coverage = videos.size / library.size
+  // The floor was measured over the 876 free-exercise-db entries; the exercises-dataset extras
+  // (edb-*) carry no videos, so they stay out of the share.
+  const base = [...library.keys()].filter((id) => !id.startsWith('edb-'))
+  const coverage = videos.size / base.length
 
   expect(coverage).toBeGreaterThanOrEqual(COVERAGE_FLOOR)
 })

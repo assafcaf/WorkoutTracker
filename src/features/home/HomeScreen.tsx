@@ -11,6 +11,7 @@ import { Icon } from '../../ui/icons'
 import { ResumeCard } from '../../ui/ResumeCard'
 import { useServiceData } from '../useServiceData'
 import { homeModelOf, type HomeLast, type HomeModel, type HomeToday } from './homeModel'
+import { WorkoutArrows } from '../../ui/WorkoutArrows'
 import { LiftLines } from './LiftLines'
 import { SessionGrid } from './SessionGrid'
 import { WeekRing } from './WeekRing'
@@ -24,8 +25,8 @@ export type HomeActions = {
   onStartWorkout(workoutId: string): void
   /** A new trainee's pick: makes `programId` the active Program and starts `workoutId`. */
   onPickPlan(programId: string, workoutId: string): void
-  /** Opens the workout page (today's workout, pushed over Home). */
-  onOpenToday(): void
+  /** Opens the workout page (today's workout, or `workoutId` the arrows switched to). */
+  onOpenToday(workoutId?: string): void
   onOpenSession(sessionId: string): void
   onOpenSessions(): void
   onOpenProgress(): void
@@ -255,6 +256,31 @@ export function HomeView(props: HomeViewProps): JSX.Element {
   const selectedId = picked ?? model?.plans[0]?.id ?? null
   const selected = model?.plans.find((plan) => plan.id === selectedId) ?? null
 
+  // The workout the Today panel's ‹ › arrows switched to; forgotten when the due one changes.
+  const workouts = model?.workouts ?? []
+  const dueWorkoutId = model?.dueWorkoutId ?? null
+  const [chosen, setChosen] = useState<{ dueId: string | null; workoutId: string | null }>({ dueId: dueWorkoutId, workoutId: null })
+  if (chosen.dueId !== dueWorkoutId) setChosen({ dueId: dueWorkoutId, workoutId: null })
+  const chosenWorkout =
+    chosen.workoutId !== null && chosen.workoutId !== dueWorkoutId
+      ? (workouts.find((w) => w.workoutId === chosen.workoutId) ?? null)
+      : null
+  const offeredId = chosenWorkout?.workoutId ?? dueWorkoutId
+  const offeredIndex = Math.max(0, workouts.findIndex((w) => w.workoutId === offeredId))
+  const step =
+    workouts.length > 1
+      ? {
+          prev: workouts[(offeredIndex - 1 + workouts.length) % workouts.length],
+          next: workouts[(offeredIndex + 1) % workouts.length],
+          onStep: (workoutId: string) => setChosen({ dueId: dueWorkoutId, workoutId }),
+        }
+      : null
+  const shownToday: HomeToday | null = model
+    ? chosenWorkout
+      ? { ...model.today, title: chosenWorkout.name, lines: chosenWorkout.lines, up: null, prs: 0 }
+      : model.today
+    : null
+
   let dock: JSX.Element | null = null
   if (resume) {
     dock = (
@@ -263,7 +289,9 @@ export function HomeView(props: HomeViewProps): JSX.Element {
       </button>
     )
   } else if (model?.dock?.kind === 'start') {
-    const { workoutId, label, style } = model.dock
+    const { style } = model.dock
+    const workoutId = chosenWorkout?.workoutId ?? model.dock.workoutId
+    const label = chosenWorkout ? `Start ${chosenWorkout.name}` : model.dock.label
     dock = (
       <button type="button" className="btn-primary home-start" data-style={style} onClick={() => props.onStartWorkout(workoutId)}>
         {label}
@@ -305,14 +333,16 @@ export function HomeView(props: HomeViewProps): JSX.Element {
           {resume ? null : model.state === 'new' ? (
             <PlanPicker model={model} selectedId={selectedId} onSelect={setPicked} />
           ) : (
-            <TodayPanel
-              today={model.today}
-              onOpen={() => {
-                const target = model.today.target
-                if (target?.kind === 'session') props.onOpenSession(target.sessionId)
-                else if (target?.kind === 'workout') props.onOpenToday()
-              }}
-            />
+            <WorkoutArrows step={step} className="home-today-row">
+              <TodayPanel
+                today={shownToday ?? model.today}
+                onOpen={() => {
+                  const target = model.today.target
+                  if (target?.kind === 'session') props.onOpenSession(target.sessionId)
+                  else if (target?.kind === 'workout') props.onOpenToday(chosenWorkout?.workoutId)
+                }}
+              />
+            </WorkoutArrows>
           )}
 
           <section className="home-block" aria-label="Lifts">

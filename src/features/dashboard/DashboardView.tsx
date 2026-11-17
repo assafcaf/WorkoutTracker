@@ -1,4 +1,5 @@
 import { useContext, useState, type ReactNode } from 'react'
+import { WorkoutArrows, type WorkoutRef, type WorkoutStep } from '../../ui/WorkoutArrows'
 import { SettingsButton, ShellChromeContext } from '../../ui/AppShell'
 import { CalendarWeekCells } from '../../ui/CalendarWeek'
 import { SetFigure } from '../../ui/figures'
@@ -76,6 +77,8 @@ export type DashboardViewProps = {
   onSync(): void
   onOpenSettings(): void
   onStartWorkout(workoutId: string): void
+  /** The workout to open on instead of the one due: the one Home's arrows had switched to. */
+  initialWorkoutId?: string
   /** Notes drawn under the header (storage unavailable, a backup due). */
   notices?: ReactNode
   /** A Session in progress: the dock resumes it rather than starting another. */
@@ -400,10 +403,26 @@ function DueCard({ card, onOpenLift }: { card: TrainCard; onOpenLift?(exerciseId
  * the gear; then the Workout on offer as the 40 px title and the headline sentence under it. With
  * no Workout to offer it reads "Train".
  */
+/** The workouts either side of `offered` in Program order, wrapping; null with fewer than two. */
+function stepOf(
+  workouts: WorkoutRef[],
+  offeredId: string,
+  onStep: (workoutId: string) => void,
+): WorkoutStep | null {
+  if (workouts.length < 2) return null
+  const index = Math.max(0, workouts.findIndex((workout) => workout.workoutId === offeredId))
+  return {
+    prev: workouts[(index - 1 + workouts.length) % workouts.length],
+    next: workouts[(index + 1) % workouts.length],
+    onStep,
+  }
+}
+
 function Header({
   title,
   subtitle,
   headline,
+  step = null,
   sync,
   onSync,
   onOpenSettings,
@@ -412,6 +431,7 @@ function Header({
   title: string
   subtitle: string
   headline?: ReactNode
+  step?: WorkoutStep | null
 } & Pick<DashboardViewProps, 'sync' | 'onSync' | 'onOpenSettings' | 'onBack'>): JSX.Element {
   // The app root's header slot ("Update ready") rides beside the page's own buttons.
   const { trailing } = useContext(ShellChromeContext)
@@ -433,7 +453,9 @@ function Header({
           <SettingsButton onOpen={onOpenSettings} />
         </div>
       </div>
-      <h1 className="dashboard-title">{title}</h1>
+      <WorkoutArrows step={step} className="dashboard-title-row">
+        <h1 className="dashboard-title">{title}</h1>
+      </WorkoutArrows>
       {headline}
     </header>
   )
@@ -451,34 +473,22 @@ function ResumeDock({ resume }: { resume: DashboardResume }): JSX.Element {
 }
 
 /**
- * The dock (v7): the workout's size and time and "Do Workout A instead" on one line, over its
- * Start bar. A Program of several workouts steps through them, one press each.
+ * The dock (v7): the workout's size and time over its Start bar. Switching workout is the
+ * title's ‹ › arrows (2026-11-17), not a button down here.
  */
 function StartDock({
   offered,
-  workouts,
   sets,
-  onChange,
   onStart,
 }: {
   offered: DockWorkout
-  workouts: DockWorkout[]
   sets: number | null
-  onChange(workoutId: string): void
   onStart(workoutId: string): void
 }): JSX.Element {
-  const index = workouts.findIndex((workout) => workout.workoutId === offered.workoutId)
-  const other = workouts.length > 1 ? workouts[(index + 1) % workouts.length] : null
-
   return (
     <div className="dashboard-dock">
       <div className="dashboard-due-row">
         <p className="dashboard-due-size">{sets ? `${sets} sets · about ${offered.minutes} min` : `about ${offered.minutes} min`}</p>
-        {other ? (
-          <button type="button" className="btn-quiet dashboard-change" onClick={() => onChange(other.workoutId)}>
-            {`Do ${other.name} instead`}
-          </button>
-        ) : null}
       </div>
       <button type="button" className="btn-primary dashboard-start" onClick={() => onStart(offered.workoutId)}>
         {`Start ${offered.name}`}
@@ -497,8 +507,11 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
   // The workout "Change" picked, held here so the card and the dock show the same one (V1-21).
   // It is forgotten when the workout due changes.
   const dueId = data.kind === 'ready' ? (data.due?.workoutId ?? null) : null
-  const [chosen, setChosen] = useState<{ dueId: string | null; workoutId: string | null }>({ dueId, workoutId: null })
-  if (chosen.dueId !== dueId) setChosen({ dueId, workoutId: null })
+  const [chosen, setChosen] = useState<{ dueId: string | null; workoutId: string | null }>({
+    dueId,
+    workoutId: props.initialWorkoutId ?? null,
+  })
+  if (chosen.dueId !== dueId) setChosen({ dueId, workoutId: props.initialWorkoutId ?? null })
   let body: JSX.Element | null = null
   // A Session in progress is resumable whatever else the Dashboard is still working out. The
   // dock keeps its place in the tree as the data arrives, so a press on it is never lost.
@@ -508,6 +521,7 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
   let title = props.resume ? props.resume.workoutName : 'Train'
   const subtitle = props.resume ? `${props.today} · in progress` : props.today
   let headline: ReactNode = null
+  let step: WorkoutStep | null = null
 
   if (data.kind === 'no-program') {
     const selected = data.options.find((option) => option.id === data.selectedId) ?? null
@@ -575,18 +589,13 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     )
     if (!props.resume && offered) {
       title = offered.name
+      step = stepOf(workouts, offered.workoutId, (workoutId) => setChosen({ dueId, workoutId }))
       headline = card ? <Headline card={card} offered={offered} /> : null
     }
     if (!dock && due && offered) {
       const sets = card?.lifts.reduce((sum, lift) => sum + (lift.sets ?? 0), 0) ?? 0
       dock = (
-        <StartDock
-          offered={offered}
-          workouts={workouts}
-          sets={sets > 0 ? sets : null}
-          onChange={(workoutId) => setChosen({ dueId, workoutId })}
-          onStart={props.onStartWorkout}
-        />
+        <StartDock offered={offered} sets={sets > 0 ? sets : null} onStart={props.onStartWorkout} />
       )
     }
   }
@@ -597,6 +606,7 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
         title={title}
         subtitle={subtitle}
         headline={headline}
+        step={step}
         sync={props.sync}
         onSync={props.onSync}
         onOpenSettings={props.onOpenSettings}

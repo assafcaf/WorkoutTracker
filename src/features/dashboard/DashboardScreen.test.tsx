@@ -153,7 +153,7 @@ describe('DashboardScreen', () => {
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
     await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
-    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Next workout: / }))
     expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Workout B' })).toBeTruthy()
     const rows = within(screen.getByRole('list', { name: 'Workout B lifts' })).getAllByRole('listitem')
@@ -262,7 +262,7 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
     await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy(), SETTLE)
-    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Next workout: / }))
     const lifts = screen.getByRole('list', { name: 'Workout B lifts' })
     const row = within(lifts).getByText('Deadlift').closest('li') as HTMLElement
     // V6 (V5-07): these Sets ramp, 60 then 70, so the row opens on 60 and says where it goes.
@@ -278,7 +278,7 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     mount(services())
     const lifts = await screen.findByRole('list', { name: 'Workout B lifts' }, SETTLE)
     expect(lifts).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Next workout: / }))
     const a = screen.getByRole('list', { name: 'Workout A lifts' })
     const row = within(a).getByText('Back squat').closest('li') as HTMLElement
     expect(row.querySelector('.dashboard-step-preset')?.textContent).toMatch(/^4×5\d(\.\d+)? kg$/)
@@ -297,7 +297,7 @@ describe('DashboardScreen V2-05 today’s Workout as the live Session opens it',
     await setActiveProgramId('assaf-ab-2026', NOW)
     mount(services())
     await screen.findByRole('list', { name: 'Workout B lifts' }, SETTLE)
-    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Next workout: / }))
     const a = screen.getByRole('list', { name: 'Workout A lifts' })
     const row = within(a).getByText('Back squat').closest('li') as HTMLElement
 
@@ -354,7 +354,7 @@ describe('DashboardScreen V6 flow', () => {
     // v7: folded into the headline sentence.
     expect(screen.getByText(/Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight\.$/)).toBeTruthy()
     // Change to Workout A: A has no note, so the line goes.
-    fireEvent.click(screen.getByRole('button', { name: /^Do .+ instead$/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Next workout: / }))
     expect(screen.queryByText(/Note from/)).toBeNull()
   })
 })

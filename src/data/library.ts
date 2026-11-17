@@ -29,14 +29,20 @@ export const MUSCLES: readonly Muscle[] = [
 ]
 
 /**
- * The bundled free-exercise-db library, keyed by its `id` (a catalog exercise's `libraryId`).
+ * The bundled exercise library, keyed by its `id` (a catalog exercise's `libraryId`): the
+ * free-exercise-db entries, then the exercises-dataset entries free-exercise-db lacks
+ * (`library/extra-exercises.json`, ids `edb-*`, built by `scripts/build-extra-library.py` with
+ * every duplicate of a free-exercise-db entry left out).
  *
- * Loads `src/data/library/exercises.json` with a dynamic `import()`, so the ~1 MB dataset gets
- * its own chunk instead of landing in the Workout tab's start-up bundle.
+ * Loads both files with a dynamic `import()`, so the datasets get their own chunks instead of
+ * landing in the Workout tab's start-up bundle.
  */
 export async function loadLibrary(): Promise<Map<string, LibraryExercise>> {
-  const { default: entries } = await import('./library/exercises.json')
-  const library = entries as unknown as LibraryExercise[]
+  const [{ default: entries }, { default: extra }] = await Promise.all([
+    import('./library/exercises.json'),
+    import('./library/extra-exercises.json'),
+  ])
+  const library = [...(entries as unknown as LibraryExercise[]), ...(extra as unknown as LibraryExercise[])]
   return new Map(library.map((exercise) => [exercise.id, withGymName(exercise)] as const))
 }
 

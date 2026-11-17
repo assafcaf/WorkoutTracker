@@ -121,3 +121,9 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+
+/* The overlay for an exercise the library has no entry for: it says so instead of failing. */
+.exercise-detail-none {
+  margin: var(--space-4) 0;
+  color: var(--color-muted);
+}

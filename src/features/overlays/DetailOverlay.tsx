@@ -1,6 +1,7 @@
 import { photoUrls } from '../../data/photos'
 import type { Exercise, LibraryExercise, Video } from '../../types'
 import { ExerciseDetail } from '../../ui/ExerciseDetail'
+import { Icon } from '../../ui/icons'
 
 export type DetailOverlayProps = {
   libraryId: string
@@ -19,8 +20,9 @@ export type DetailOverlayProps = {
 }
 
 /**
- * The exercise detail overlay App.tsx renders over the current view (E5-T8, E5-T15). Renders
- * nothing while `libraryId` is not in `library` (not loaded yet, or a stale id).
+ * The exercise detail overlay App.tsx renders over the current view (E5-T8, E5-T15). An id the
+ * library lacks never fails silently: the overlay still opens, saying the library is loading or
+ * that there is no info for that exercise, with Back.
  */
 export function DetailOverlay({
   libraryId,
@@ -36,7 +38,22 @@ export function DetailOverlay({
   onEdit,
 }: DetailOverlayProps): JSX.Element | null {
   const entry = library.find((candidate) => candidate.id === libraryId)
-  if (!entry) return null
+  if (!entry) {
+    const title = heading ?? catalog.get(libraryId)?.name ?? 'Exercise info'
+    return (
+      <article className="exercise-detail overlay-panel" role="dialog" aria-modal="true" aria-label={title}>
+        <header className="exercise-detail-bar">
+          <button type="button" className="exercise-detail-back btn-quiet" aria-label="Back" onClick={onBack}>
+            <Icon name="ChevronLeft" size={24} />
+          </button>
+          <h1 className="exercise-detail-heading">{title}</h1>
+        </header>
+        <p className="exercise-detail-none" role="status">
+          {library.length === 0 ? 'Loading exercise info…' : 'No info for this exercise yet.'}
+        </p>
+      </article>
+    )
+  }
 
   const libraryMap = new Map(library.map((item) => [item.id, item] as const))
   const catalogLibraryIds = new Set(Array.from(catalog.values(), (exercise) => exercise.libraryId))

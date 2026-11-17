@@ -116,7 +116,16 @@ export type HomeModel = {
   dock: HomeDock | null
   /** The Programs a new trainee picks from (state `new`). */
   plans: PlanOption[]
+  /**
+   * Every workout of the active Program the Today panel's ‹ › arrows step through, in Program
+   * order, with the due one's id; empty unless the panel offers a workout and there are several.
+   */
+  workouts?: HomeWorkout[]
+  dueWorkoutId?: string | null
 }
+
+/** A workout Home's arrows can switch the Today panel and the Start bar to. */
+export type HomeWorkout = { workoutId: string; name: string; lines: string[] }
 
 export type HomeInput = {
   /** The active Program; null for a new trainee. */
@@ -485,5 +494,18 @@ export function homeModelOf(input: HomeInput): HomeModel {
         ? null
         : { kind: 'start', workoutId: due.workout.id, label: `Start ${due.workout.name}`, style: state === 'rest' ? 'outline' : 'ink' }
 
-  return { state, date, today, lifts, calendar, last, dock, plans: [] }
+  // The Today panel's ‹ › arrows: every visible workout with its own size line, while the panel
+  // offers a workout (not done today, not live) and the Program has more than one.
+  const workouts: HomeWorkout[] =
+    today.target?.kind === 'workout' && shown.workouts.filter((w) => !w.hidden).length > 1
+      ? shown.workouts
+          .filter((w) => !w.hidden)
+          .map((w) => {
+            const lifts = w.exercises.filter((plan) => resolve(plan.exerciseId) !== undefined).length
+            const minutes = workoutMinutes(shown, w, sessions).minutes
+            return { workoutId: w.id, name: w.name, lines: [`${lifts} lift${lifts === 1 ? '' : 's'} · about ${minutes} min`] }
+          })
+      : []
+
+  return { state, date, today, lifts, calendar, last, dock, plans: [], workouts, dueWorkoutId: due?.workout.id ?? null }
 }

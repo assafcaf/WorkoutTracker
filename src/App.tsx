@@ -111,6 +111,8 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
   const [lift, setLift] = useState<string | null>(null)
   // v7: the workout page, pushed over Home by its Today panel; Back (or any tab) returns to Home.
   const [today, setToday] = useState(false)
+  // The workout Home's arrows had switched to when the workout page was opened, if any.
+  const [todayWorkoutId, setTodayWorkoutId] = useState<string | undefined>(undefined)
   const liveRef = useRef<LiveStatus | null>(null)
   const lastExportedAt = useServiceData((s) => s.preferences.lastExportedAt(), ['preferences'])
   // V1-30: an install with nothing logged has nothing to back up, so the gear carries no dot.
@@ -149,6 +151,7 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
     }
     if (to.tab === 'today') {
       setLaunching(false)
+      setTodayWorkoutId(to.workoutId)
       setToday(true)
       return
     }
@@ -230,7 +233,8 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
         onRestore={handleRestore}
         onLive={handleLive}
         page={today ? 'today' : 'home'}
-        onOpenToday={() => navigate({ tab: 'today' })}
+        onOpenToday={(workoutId) => navigate({ tab: 'today', workoutId })}
+        todayWorkoutId={todayWorkoutId}
         onCloseToday={() => setToday(false)}
       />
       {liveOnScreen ? null : settingsOpen ? (

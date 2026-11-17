@@ -29,9 +29,11 @@ import {
 import { BACKUP_SCHEMA_VERSION, type BackupFile } from './storage/backup'
 import { loadPrograms } from './data/catalog'
 import type { LibraryExercise, Program, Session, SetEntry } from './types'
-// The real 876-entry library fixture, imported directly (not through `loadLibrary()`) so the
-// E5-T3 tests below can compute their own expected counts independently of the app's code.
+// The real library fixture (free-exercise-db plus the exercises-dataset extras), imported
+// directly (not through `loadLibrary()`) so the E5-T3 tests below can compute their own expected
+// counts independently of the app's code.
 import libraryFixture from './data/library/exercises.json'
+import extraLibraryFixture from './data/library/extra-exercises.json'
 import { FakeSyncServer } from './test/fakeSyncServer'
 import { findStartButton, startFromDashboard, workoutsOffered } from './test/dashboard'
 import { adoptSignedInAccount } from './sync/syncClient'
@@ -49,7 +51,7 @@ async function toolsRow(user: UserEvent, name?: string): Promise<void> {
   if (name !== undefined) await user.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }))
 }
 
-const LIBRARY = libraryFixture as unknown as LibraryExercise[]
+const LIBRARY = [...libraryFixture, ...extraLibraryFixture] as unknown as LibraryExercise[]
 
 // E9-T6: full-body-starter is hidden and never offered, so the O18/M13 "choosing another
 // program" tests below need a second *visible* program of their own rather than it. This
@@ -1401,7 +1403,7 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
   // V6-03: My lifts sits above the catalog; the catalog still shows its first 10.
   expect(catalogRows()).toHaveLength(10)
   const pager = screen.getByRole('navigation', { name: 'Pages' })
-  expect(within(pager).getByText('Page 1 of 88')).toBeVisible()
+  expect(within(pager).getByText(`Page 1 of ${Math.ceil(LIBRARY.length / 10)}`)).toBeVisible()
   expect(within(pager).getByRole('button', { name: 'Previous' })).toBeDisabled()
   expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
   expect(currentTabNames()).toEqual(['Program'])
@@ -1447,7 +1449,8 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
     })
   }, SETTLE)
   let pager = screen.getByRole('navigation', { name: 'Pages' })
-  expect(within(pager).getByText('Page 1 of 4')).toBeVisible()
+  // 7 pages since the exercises-dataset extras joined the library (4 before).
+  expect(within(pager).getByText('Page 1 of 7')).toBeVisible()
   expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
 
   await user.click(within(pager).getByRole('button', { name: 'Next' }))
@@ -1459,7 +1462,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
     })
   }, SETTLE)
   expect(
-    within(screen.getByRole('navigation', { name: 'Pages' })).getByText('Page 2 of 4'),
+    within(screen.getByRole('navigation', { name: 'Pages' })).getByText('Page 2 of 7'),
   ).toBeVisible()
 
   // Clearing the search and setting muscle to biceps and equipment to dumbbell narrows to
@@ -1477,7 +1480,7 @@ test('L10 the search box narrows by name, the muscle and equipment filters narro
     expect(catalogRows()).toHaveLength(10)
   }, SETTLE)
   pager = screen.getByRole('navigation', { name: 'Pages' })
-  expect(within(pager).getByText('Page 1 of 3')).toBeVisible()
+  expect(within(pager).getByText(`Page 1 of ${Math.ceil(bicepsDumbbellMatches.length / 10)}`)).toBeVisible()
   expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
 
   // Typing "lat" back in on top of those two filters matches nothing in the real library
@@ -2334,7 +2337,8 @@ test('M9 Browse exercises on upper-back opens the Exercises tab listing only lat
     (exercise) =>
       exercise.primaryMuscles.includes('lats') || exercise.primaryMuscles.includes('middle back'),
   )
-  expect(upperBack).toHaveLength(72)
+  expect(upperBack.length).toBeGreaterThan(10)
+  const lastPage = Math.ceil(upperBack.length / 10)
   await waitFor(() => {
     expect(currentTabNames()).toEqual(['Program'])
     expect(screen.getByRole('radio', { name: 'Exercises' })).toBeChecked()
@@ -2360,21 +2364,21 @@ test('M9 Browse exercises on upper-back opens the Exercises tab listing only lat
   }
   recordCurrentPage()
   let pager = screen.getByRole('navigation', { name: 'Pages' })
-  expect(within(pager).getByText('Page 1 of 8')).toBeVisible()
+  expect(within(pager).getByText(`Page 1 of ${lastPage}`)).toBeVisible()
 
-  for (let page = 2; page <= 8; page += 1) {
+  for (let page = 2; page <= lastPage; page += 1) {
     await user.click(within(pager).getByRole('button', { name: 'Next' }))
-    const expectedCount = page < 8 ? 10 : 2
+    const expectedCount = page < lastPage ? 10 : upperBack.length - (lastPage - 1) * 10
     await waitFor(() => {
       expect(screen.getAllByRole('listitem')).toHaveLength(expectedCount)
     }, SETTLE)
     pager = screen.getByRole('navigation', { name: 'Pages' })
-    expect(within(pager).getByText(`Page ${page} of 8`)).toBeVisible()
+    expect(within(pager).getByText(`Page ${page} of ${lastPage}`)).toBeVisible()
     recordCurrentPage()
   }
   expect(within(pager).getByRole('button', { name: 'Next' })).toBeDisabled()
 
-  expect(seenNames).toHaveLength(72)
+  expect(seenNames).toHaveLength(upperBack.length)
   expect([...seenMuscles].sort()).toEqual(['lats', 'middle back'])
   expect(screen.queryByText('Barbell Bench Press - Medium Grip')).toBeNull()
 }, 20000)
