@@ -60,7 +60,7 @@ test('S6 AlternativesList lists every ranked alternative, each offering "Do this
     />,
   )
 
-  expect(screen.getAllByRole('listitem')).toHaveLength(49)
+  expect(screen.getAllByRole('listitem')).toHaveLength(134)
 
   const hammerCurls = rowNamed('Hammer Curls')
   const choose = within(hammerCurls).getByRole('button', { name: 'Do Hammer Curls instead' })
@@ -82,9 +82,9 @@ test('S6 typing in the search box narrows the alternatives list by name', async 
       onOpenDetail={vi.fn()}
     />,
   )
-  expect(screen.getAllByRole('listitem')).toHaveLength(49)
+  expect(screen.getAllByRole('listitem')).toHaveLength(134)
 
-  // "cross body" matches exactly one of the 49 alternatives' names: "Cross Body Hammer Curl".
+  // "cross body" matches exactly one of the 134 (49 before the exercises-dataset extras) alternatives' names: "Cross Body Hammer Curl".
   await user.type(screen.getByRole('searchbox', { name: /search/i }), 'cross body')
 
   const rows = screen.getAllByRole('listitem')

@@ -152,7 +152,8 @@ test('V6-10 Deadlift lists at most 6, the logged Hyper-extension first, with no 
   expect(names.length).toBeLessThanOrEqual(6)
   expect(names[0]).toBe('Hyper-extension')
   expect(names.join(' ')).not.toMatch(/band|chain/i)
-  expect(names).toContain('Romanian Deadlift')
+  // With the exercises-dataset extras the top 6 shift; a plain deadlift variant still ranks.
+  expect(names).toContain('Deficit Deadlift')
   expect(screen.getByRole('button', { name: 'Do Hyper-extension instead' })).toBeVisible()
 })
 
@@ -197,5 +198,5 @@ test('V6-10 a lift already in today’s Workout is not offered as a swap', async
 
   expect(rowNames()).not.toContain('Hyper-extension')
   expect(rowNames()).not.toContain('Hyperextensions (Back Extensions)')
-  expect(rowNames()).toContain('Romanian Deadlift')
+  expect(rowNames()).toContain('Deficit Deadlift')
 })

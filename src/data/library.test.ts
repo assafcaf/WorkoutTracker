@@ -62,10 +62,34 @@ function fixtureLibrary(ids: string[]): Map<string, LibraryExercise> {
 // Every one of the 14 catalog exercises' libraryId, per the mapping table.
 const CATALOG_LIBRARY_IDS = catalogSeed.map((exercise) => exercise.libraryId)
 
-test('L1 loadLibrary returns exactly 876 entries', async () => {
+test('L1 loadLibrary returns the 876 free-exercise-db entries plus every exercises-dataset extra', async () => {
   const library = await loadLibrary()
+  const { default: extra } = await import('./library/extra-exercises.json')
 
-  expect(library.size).toBe(876)
+  expect(library.size).toBe(876 + extra.length)
+  expect(extra.length).toBeGreaterThan(800)
+})
+
+test('L1 no exercises-dataset extra reuses a free-exercise-db id, and every extra is edb-*', async () => {
+  const { default: base } = await import('./library/exercises.json')
+  const { default: extra } = await import('./library/extra-exercises.json')
+  const baseIds = new Set(base.map((entry) => entry.id))
+
+  expect(extra.filter((entry) => baseIds.has(entry.id))).toEqual([])
+  expect(extra.filter((entry) => !entry.id.startsWith('edb-'))).toEqual([])
+})
+
+test('L1 no two library entries of the same equipment share a name', async () => {
+  const library = [...(await loadLibrary()).values()]
+  const seen = new Map<string, string>()
+  const clashes: string[] = []
+  for (const entry of library) {
+    const key = `${entry.equipment}|${entry.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`
+    const other = seen.get(key)
+    if (other) clashes.push(`${other} / ${entry.id}`)
+    seen.set(key, entry.id)
+  }
+  expect(clashes).toEqual([])
 })
 
 test('L1 loadLibrary keys each entry by its free-exercise-db id', async () => {

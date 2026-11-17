@@ -146,3 +146,38 @@ describe('Home: the other moments', () => {
     expect(screen.queryByRole('button', { name: /^Start / })).toBeNull()
   })
 })
+
+// --- 2026-11-17: ‹ › on the Today panel switch the workout -----------------------------------
+
+describe('Home: the Today panel’s arrows', () => {
+  test('› switches the panel and the Start bar to the next workout, and the panel opens that one', () => {
+    const actions = draw(modelAt(TRAINING))
+    expect(screen.getByRole('button', { name: /^Today: Workout B\./ })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next workout: Workout A' }))
+
+    const today = screen.getByRole('button', { name: /^Today: Workout A\./ })
+    expect(today).toHaveAccessibleName(/7 lifts · about \d+ min/)
+    fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
+    expect(actions.onStartWorkout).toHaveBeenCalledWith('workout-a')
+    fireEvent.click(today)
+    expect(actions.onOpenToday).toHaveBeenCalledWith('workout-a')
+  })
+
+  test('‹ steps back, wrapping round, to the workout due, which opens as before', () => {
+    const actions = draw(modelAt(TRAINING))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous workout: Workout A' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Previous workout: Workout B' }))
+
+    const today = screen.getByRole('button', { name: /^Today: Workout B\./ })
+    expect(today).toHaveAccessibleName(/Up: Curls up to 15 kg/)
+    fireEvent.click(today)
+    expect(actions.onOpenToday).toHaveBeenCalledWith(undefined)
+  })
+
+  test('no arrows once today’s workout is done', () => {
+    draw(modelAt(DONE))
+    expect(screen.queryByRole('button', { name: /^(Next|Previous) workout: / })).toBeNull()
+  })
+})

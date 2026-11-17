@@ -28,6 +28,8 @@ export type DashboardScreenProps = {
   /** Starts (or resumes) `workoutId` of the active Program. */
   onStartWorkout(workoutId: string): void
   onOpenSettings(): void
+  /** The workout to open on instead of the one due (Home's arrows picked it). */
+  initialWorkoutId?: string
   /** The clock; `Date.now` unless a test fixes it. */
   now?: () => number
   /** Notes drawn under the header (storage unavailable, a backup due). */
@@ -128,6 +130,7 @@ export function DashboardScreen({
   onOpenSession,
   onOpenLift,
   onBack,
+  initialWorkoutId,
 }: DashboardScreenProps): JSX.Element {
   const services = useServices()
   const { sync, syncNow } = useSyncControls()
@@ -243,6 +246,7 @@ export function DashboardScreen({
       onOpenSession={onOpenSession}
       onOpenLift={onOpenLift}
       onBack={onBack}
+      initialWorkoutId={initialWorkoutId}
     />
   )
 }

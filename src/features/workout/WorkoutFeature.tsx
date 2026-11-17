@@ -92,8 +92,10 @@ export type WorkoutFeatureProps = {
    * root around it) the feature opens on the workout page, as the Train tab did.
    */
   page?: 'home' | 'today'
-  /** v7: Home's Today panel opens the workout page. */
-  onOpenToday?(): void
+  /** v7: Home's Today panel opens the workout page, on `workoutId` when Home's arrows picked one. */
+  onOpenToday?(workoutId?: string): void
+  /** The workout the workout page opens on instead of the one due. */
+  todayWorkoutId?: string
   /** v7: the workout page's Back, to Home. */
   onCloseToday?(): void
 }
@@ -294,6 +296,7 @@ export function WorkoutFeature({
   onRestore,
   onLive,
   page = 'today',
+  todayWorkoutId,
   onOpenToday,
   onCloseToday,
 }: WorkoutFeatureProps): JSX.Element | null {
@@ -943,11 +946,17 @@ export function WorkoutFeature({
   }
 
   /** `SetScreen.onOpenInfo`: the detail overlay for the catalog exercise on screen (E5-T15). */
+  // Resolves library and custom exercises too, not only catalog ones: an exercise the app cannot
+  // describe still opens the overlay, which says so, rather than the tap doing nothing.
   function handleOpenInfoForExercise(exerciseId: string): void {
-    const exercise = catalog.get(exerciseId)
-    if (!exercise) return
+    const exercise = resolveListExercise(exerciseId)
     const plannedId = session ? plannedExerciseIdFor(session, exerciseId) : exerciseId
-    setOverlay({ kind: 'detail', libraryId: exercise.libraryId, heading: exercise.name, plannedId })
+    setOverlay({
+      kind: 'detail',
+      libraryId: exercise?.libraryId ?? exerciseId,
+      heading: exercise?.name,
+      plannedId,
+    })
   }
 
   /** `SetScreen.onOpenAlternatives`: the ranked alternatives for the plan behind `exerciseId`. */
@@ -1426,7 +1435,7 @@ export function WorkoutFeature({
                 .then(() => handleChoose(programId, workoutId))
                 .catch(() => undefined)
             }}
-            onOpenToday={() => onOpenToday?.()}
+            onOpenToday={(workoutId) => onOpenToday?.(workoutId)}
             onOpenSession={(sessionId) => navigate({ tab: 'history', sessionId })}
             onOpenSessions={() => navigate({ tab: 'history' })}
             onOpenProgress={() => navigate({ tab: 'progress' })}
@@ -1442,6 +1451,7 @@ export function WorkoutFeature({
       <AppShell title="Dashboard" ownHeader onBack={onCloseToday}>
         <DashboardScreen
           onBack={onCloseToday}
+          initialWorkoutId={todayWorkoutId}
           onStartWorkout={(workoutId) => {
             if (activeProgram !== null && storageAvailable) handleChoose(activeProgram.id, workoutId)
           }}

@@ -333,8 +333,8 @@ describe('DashboardView in the app shell', () => {
     const props = renderView({ data: { ...READY, workouts: WORKOUTS } })
     expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeTruthy()
 
-    // v7: "Change" reads "Do Workout B instead".
-    fireEvent.click(screen.getByRole('button', { name: 'Do Workout B instead' }))
+    // 2026-11-17: the title's › arrow ("Next workout: Workout B") replaced "Do Workout B instead".
+    fireEvent.click(screen.getByRole('button', { name: 'Next workout: Workout B' }))
 
     // V3-08: the header follows the workout offered, and the dock its time.
     expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy()
@@ -342,7 +342,7 @@ describe('DashboardView in the app shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout B' }))
     expect(props.onStartWorkout).toHaveBeenCalledWith('workout-b')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Do Workout A instead' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Previous workout: Workout A' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
   })
 
@@ -362,14 +362,14 @@ describe('DashboardView in the app shell', () => {
     })
     expect(screen.getByRole('region', { name: 'Workout A' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Do Workout B instead' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Next workout: Workout B' }))
     expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Workout B' })).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Workout A' })).toBeNull()
     const rows = within(screen.getByRole('list', { name: 'Workout B lifts' })).getAllByRole('listitem')
     expect(within(rows[0]).getByText('Deadlift')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Do Workout A instead' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Next workout: Workout A' }))
     expect(screen.getByRole('region', { name: 'Workout A' })).toBeTruthy()
     const back = within(screen.getByRole('list', { name: 'Workout A lifts' })).getAllByRole('listitem')
     expect(within(back[0]).getByText('Back squat')).toBeTruthy()
@@ -377,7 +377,7 @@ describe('DashboardView in the app shell', () => {
 
   test('a program of one workout offers no Change', () => {
     renderView({ data: { ...READY, workouts: [WORKOUTS[0]] } })
-    expect(screen.queryByRole('button', { name: /^Do .+ instead$/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^(Next|Previous) workout: / })).toBeNull()
   })
 
   test('a Session in progress turns the dock into Resume, even before the week is worked out', () => {
@@ -453,7 +453,7 @@ describe('DashboardView V3', () => {
     expect(cloud.getAttribute('data-sync')).toBe('failed')
   })
 
-  test('V3-08 the dock is the time, Change and Start: no "due" line and no exercise or set count', () => {
+  test('V3-08 the dock is the time and Start, the switch is the title\'s arrows: no "due" line and no exercise or set count', () => {
     const { container } = render(
       <DashboardView
         today="Thu 15 Oct"
@@ -468,9 +468,12 @@ describe('DashboardView V3', () => {
       />,
     )
     const dock = container.querySelector('.dashboard-dock') as HTMLElement
-    // v7: the dock is the size and time, "Do Workout B instead" and Start; no "due" line.
+    // The dock is the size and time and Start; switching moved to the title's ‹ › (2026-11-17).
     expect(within(dock).getByText('9 sets · about 53 min')).toBeTruthy()
-    expect(within(dock).getByRole('button', { name: 'Do Workout B instead' })).toBeTruthy()
+    expect(within(dock).queryByRole('button', { name: /instead$/ })).toBeNull()
+    const header = container.querySelector('.dashboard-header') as HTMLElement
+    expect(within(header).getByRole('button', { name: 'Next workout: Workout B' })).toBeTruthy()
+    expect(within(header).getByRole('button', { name: 'Previous workout: Workout B' })).toBeTruthy()
     expect(within(dock).getByRole('button', { name: 'Start Workout A' })).toBeTruthy()
     expect(dock.textContent).not.toMatch(/due|exercises/)
     expect(screen.getByText('Thu 15 Oct')).toBeTruthy()
@@ -583,5 +586,25 @@ describe('DashboardView V6 wave 3', () => {
     // v7: said once, in the headline sentence.
     expect(screen.getByText('Back after 34 days off: loads eased 10 % for today.')).toBeTruthy()
     expect(screen.queryByText('Eased after 34 days off')).toBeNull()
+  })
+})
+
+describe('DashboardView: opened on the workout Home’s arrows picked (2026-11-17)', () => {
+  const WORKOUTS = [
+    { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', minutes: 53 },
+    { workoutId: 'workout-b', name: 'Workout B', last: null, minutes: 48 },
+  ]
+
+  test('initialWorkoutId opens the page on that workout, title and Start alike', () => {
+    renderView({ data: { ...READY, workouts: WORKOUTS }, initialWorkoutId: 'workout-b' })
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeTruthy()
+  })
+
+  test('with no initialWorkoutId the page opens on the workout due', () => {
+    renderView({ data: { ...READY, workouts: WORKOUTS } })
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
   })
 })

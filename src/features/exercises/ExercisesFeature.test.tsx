@@ -5,6 +5,7 @@ import { createServices } from '../../services'
 import { db } from '../../storage/db'
 import type { LibraryExercise } from '../../types'
 import libraryFixture from '../../data/library/exercises.json'
+import extraLibraryFixture from '../../data/library/extra-exercises.json'
 import { ServicesProvider } from '../ServicesProvider'
 import { ExercisesFeature } from './ExercisesFeature'
 
@@ -15,7 +16,7 @@ import { ExercisesFeature } from './ExercisesFeature'
 // (src/ui/LibraryList.test.tsx) and were proven wired into App in src/App.test.tsx's L9/L10 --
 // this only proves the same wiring holds through ExercisesFeature + real services.
 
-const LIBRARY = libraryFixture as unknown as LibraryExercise[]
+const LIBRARY = [...libraryFixture, ...extraLibraryFixture] as unknown as LibraryExercise[]
 const NOW = 1_700_000_000_000
 const SETTLE = { timeout: 2000 }
 

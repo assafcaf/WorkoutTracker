@@ -1,0 +1,33 @@
+/* ‹ and › either side of a workout's name (Home's Today panel, the workout page's title). */
+.workout-arrows {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.workout-arrows > :not(.workout-arrow) {
+  flex: 1;
+  min-width: 0;
+}
+
+.workout-arrow {
+  flex: none;
+}
+
+.workout-arrow-prev {
+  margin-left: calc(var(--space-2) * -1);
+}
+
+.workout-arrow-next {
+  margin-right: calc(var(--space-2) * -1);
+}
+
+/* Home: the arrows sit either side of the Today panel. */
+.home-today-row {
+  align-items: stretch;
+}
+
+/* The workout page: the arrows sit either side of the title. */
+.dashboard-title-row {
+  align-items: center;
+}
