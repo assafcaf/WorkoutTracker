@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatDay } from '../domain/dates'
+import { buildShareCard } from '../domain/shareCard'
 import { sessionChanges } from '../domain/sessionChanges'
 import { bodyweightOn } from '../domain/bodyLog'
 import { sessionVolume } from '../domain/volume'
@@ -18,6 +19,7 @@ import { Icon } from './icons'
 import { healthShortcutUrl, readHealthReady } from './healthShortcut'
 import { PrTag, SetFigure, StatusMark } from './figures'
 import { Sheet } from './Sheet'
+import { shareCardImage } from './ShareCard'
 import './SessionSummary.css'
 
 export type SessionSummaryProps = {
@@ -232,6 +234,14 @@ export function SessionSummary({
     }
   }
 
+  async function shareImage(): Promise<void> {
+    try {
+      await shareCardImage(buildShareCard(session, earlierSessions, resolve, planOf, workoutName))
+    } catch {
+      // The share sheet dismissed: nothing to tell the trainee.
+    }
+  }
+
   return (
     <div
       role="dialog"
@@ -416,6 +426,17 @@ export function SessionSummary({
             >
               <Icon name="Share" size={20} />
               Share as text
+            </button>
+            <button
+              type="button"
+              className="session-summary-share-option btn-secondary"
+              onClick={() => {
+                setShareOpen(false)
+                void shareImage()
+              }}
+            >
+              <Icon name="Share" size={20} />
+              Share as image
             </button>
             <button
               type="button"
