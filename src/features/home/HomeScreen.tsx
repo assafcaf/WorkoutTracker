@@ -11,7 +11,7 @@ import { Icon } from '../../ui/icons'
 import { ResumeCard } from '../../ui/ResumeCard'
 import { useServiceData } from '../useServiceData'
 import { homeModelOf, type HomeLast, type HomeModel, type HomeToday } from './homeModel'
-import { WorkoutArrows } from '../../ui/WorkoutArrows'
+import { WorkoutArrows, type WorkoutStep } from '../../ui/WorkoutArrows'
 import { LiftLines } from './LiftLines'
 import { SessionGrid } from './SessionGrid'
 import { WeekRing } from './WeekRing'
@@ -128,31 +128,49 @@ function todayName(today: HomeToday, target: string): string {
   return `${parts.join('. ')}. ${target}`
 }
 
-/** Block 1: the one surface panel, the week ring beside the day's workout. One button. */
-function TodayPanel({ today, onOpen }: { today: HomeToday; onOpen(): void }): JSX.Element {
+/**
+ * Block 1: the one surface panel, the week ring beside the day's workout, on one row. The ‹ ›
+ * arrows (when the Program has more than one workout) sit either side of the workout's name, not
+ * the ring. The open button stretches over the whole panel, so a tap anywhere but an arrow opens it.
+ */
+function TodayPanel({
+  today,
+  step,
+  onOpen,
+}: {
+  today: HomeToday
+  step: WorkoutStep | null
+  onOpen(): void
+}): JSX.Element {
   const target = today.target?.kind === 'session' ? 'Open its summary.' : 'Open the workout.'
   return (
-    <button type="button" className="home-today cell" aria-label={todayName(today, target)} onClick={onOpen}>
+    <div className="home-today" data-arrows={step ? 'true' : undefined}>
       {today.ring ? <WeekRing ring={today.ring} /> : null}
-      <span className="home-today-text" aria-hidden="true">
-        <span className="home-label">{today.label}</span>
-        {today.title ? <span className="home-today-title">{today.title}</span> : null}
-        {today.lines.map((line) => (
-          <span key={line} className="home-today-line">
-            {line}
+      <WorkoutArrows step={step} className="home-today-row">
+        <button type="button" className="home-today-open cell" aria-label={todayName(today, target)} onClick={onOpen}>
+          <span className="home-today-text" aria-hidden="true">
+            <span className="home-label">{today.label}</span>
+            {today.title ? <span className="home-today-title">{today.title}</span> : null}
+            {today.lines.map((line) => (
+              <span key={line} className="home-today-line">
+                {line}
+              </span>
+            ))}
+            {today.up || today.prs > 0 ? (
+              <span className="home-today-up">
+                {today.up ? <span className="home-up">{`↑ ${today.up}`}</span> : null}
+                {today.prs > 0 ? <span className="tag tag-pr home-pr">{`${today.prs} PR`}</span> : null}
+              </span>
+            ) : null}
           </span>
-        ))}
-        {today.up || today.prs > 0 ? (
-          <span className="home-today-up">
-            {today.up ? <span className="home-up">{`↑ ${today.up}`}</span> : null}
-            {today.prs > 0 ? <span className="tag tag-pr home-pr">{`${today.prs} PR`}</span> : null}
-          </span>
-        ) : null}
-      </span>
-      <span className="home-chevron home-today-chevron" aria-hidden="true">
-        <Icon name="ChevronRight" size={18} />
-      </span>
-    </button>
+        </button>
+      </WorkoutArrows>
+      {step ? null : (
+        <span className="home-chevron home-today-chevron" aria-hidden="true">
+          <Icon name="ChevronRight" size={18} />
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -333,16 +351,15 @@ export function HomeView(props: HomeViewProps): JSX.Element {
           {resume ? null : model.state === 'new' ? (
             <PlanPicker model={model} selectedId={selectedId} onSelect={setPicked} />
           ) : (
-            <WorkoutArrows step={step} className="home-today-row">
-              <TodayPanel
-                today={shownToday ?? model.today}
-                onOpen={() => {
-                  const target = model.today.target
-                  if (target?.kind === 'session') props.onOpenSession(target.sessionId)
-                  else if (target?.kind === 'workout') props.onOpenToday(chosenWorkout?.workoutId)
-                }}
-              />
-            </WorkoutArrows>
+            <TodayPanel
+              today={shownToday ?? model.today}
+              step={step}
+              onOpen={() => {
+                const target = model.today.target
+                if (target?.kind === 'session') props.onOpenSession(target.sessionId)
+                else if (target?.kind === 'workout') props.onOpenToday(chosenWorkout?.workoutId)
+              }}
+            />
           )}
 
           <section className="home-block" aria-label="Lifts">
