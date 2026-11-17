@@ -22,9 +22,10 @@
   margin-right: calc(var(--space-2) * -1);
 }
 
-/* Home: the arrows sit either side of the Today panel. */
+/* Home: the arrows sit either side of the Today panel's workout name, beside the week ring. */
 .home-today-row {
-  align-items: stretch;
+  flex: 1 1 0;
+  align-items: center;
 }
 
 /* The workout page: the arrows sit either side of the title. */

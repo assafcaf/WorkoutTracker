@@ -58,7 +58,10 @@ describe('Home: the training day (a)', () => {
     const today = screen.getByRole('button', { name: /^Today: Workout B\./ })
     expect(today).toHaveAccessibleName(/7 lifts · about 66 min/)
     expect(today).toHaveAccessibleName(/Up: Curls up to 15 kg/)
-    expect(within(today).getByRole('img', { name: '2 of 3 sessions this week' })).toBeTruthy()
+    // The week ring sits on the panel's row, beside the workout (outside the open button).
+    const panel = today.closest<HTMLElement>('.home-today')
+    expect(panel).not.toBeNull()
+    expect(within(panel as HTMLElement).getByRole('img', { name: '2 of 3 sessions this week' })).toBeTruthy()
     fireEvent.click(today)
     expect(actions.onOpenToday).toHaveBeenCalledTimes(1)
   })
@@ -174,6 +177,18 @@ describe('Home: the Today panel’s arrows', () => {
     expect(today).toHaveAccessibleName(/Up: Curls up to 15 kg/)
     fireEvent.click(today)
     expect(actions.onOpenToday).toHaveBeenCalledWith(undefined)
+  })
+
+  test('the arrows flank the workout name, not the week ring, on the ring’s row', () => {
+    draw(modelAt(TRAINING))
+    const next = screen.getByRole('button', { name: 'Next workout: Workout A' })
+    const arrows = next.closest<HTMLElement>('.workout-arrows')
+    const panel = next.closest<HTMLElement>('.home-today')
+    expect(arrows).not.toBeNull()
+    expect(panel).not.toBeNull()
+    const ring = within(panel as HTMLElement).getByRole('img', { name: /sessions this week$/ })
+    expect((arrows as HTMLElement).contains(ring)).toBe(false)
+    expect((arrows as HTMLElement).contains(screen.getByRole('button', { name: /^Today: Workout B\./ }))).toBe(true)
   })
 
   test('no arrows once today’s workout is done', () => {

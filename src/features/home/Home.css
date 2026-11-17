@@ -101,23 +101,63 @@
 .home-today {
   position: relative;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-4);
   width: 100%;
   min-height: var(--tap-min);
   margin-top: var(--space-2);
   padding: var(--space-4) 36px var(--space-4) 14px;
-  border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   color: var(--color-text);
+}
+
+/* With ‹ › the arrows take the right edge; the ring steps down so the workout keeps its room. */
+.home-today[data-arrows='true'] {
+  gap: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+.home-today[data-arrows='true'] .home-ring,
+.home-today[data-arrows='true'] .home-ring-svg {
+  flex-basis: 88px;
+  width: 88px;
+  height: 88px;
+}
+
+.home-today:has(.home-today-open:active) {
+  background: var(--color-raised);
+}
+
+.home-today-open {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   font: inherit;
   text-align: left;
 }
 
-.home-today.cell:active {
-  background: var(--color-raised);
+/* The open button's tap area stretches over the whole panel; the arrows sit above it. */
+.home-today-open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+}
+
+/* The press shows on the whole panel (above), not on the text alone. */
+.home-today-open.cell:active {
+  background: transparent;
+}
+
+.home-today .workout-arrow {
+  position: relative;
+  z-index: 1;
 }
 
 .home-today-chevron {
@@ -128,7 +168,7 @@
 
 .home-today-text {
   display: flex;
-  flex: 1 1 9rem;
+  flex: 1 1 0;
   flex-direction: column;
   min-width: 0;
 }
@@ -583,10 +623,6 @@
 
   .home-today {
     gap: var(--space-3);
-  }
-
-  .home-today-text {
-    flex-basis: 7rem;
   }
 
   .home-today-title {
