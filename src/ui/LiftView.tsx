@@ -8,7 +8,7 @@ import { liftStatus } from '../domain/stats/status'
 import type { LiftStatus } from '../domain/stats/status'
 import { dayMonth, humanDate, leverText, numberText } from '../domain/stats/words'
 import { formatSetCompact } from '../domain/setText'
-import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
+import type { BodyLog, Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
 import { PrTag, SetFigure, StatusMark, statusTone } from './figures'
 import { LiftChart } from './charts/LiftChart'
 import type { LiftChartPoint } from './charts/LiftChart'
@@ -25,6 +25,8 @@ export type LiftViewProps = {
   onOpenSession?: (sessionId: string) => void
   /** Offers a variation when the status's action is a change of exercise. */
   onSwap?: () => void
+  /** The body log; with a bodyweight on or before the latest session, Est. strength also reads as a multiple of it. */
+  bodyLog?: BodyLog
 }
 
 type Range = '3M' | '1Y' | 'all'

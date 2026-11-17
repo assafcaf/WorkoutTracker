@@ -2,7 +2,7 @@ import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import type { Resolve } from '../../domain/muscles'
 import type { Weekday } from '../../domain/stats/weeks'
-import type { ExercisePlan, Program, Session } from '../../types'
+import type { BodyLog, ExercisePlan, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { LiftView } from '../../ui/LiftView'
 import type { AppRoute } from '../routes'
@@ -22,6 +22,8 @@ export type LiftPageViewProps = {
   onOpenSession?: (sessionId: string) => void
   /** Offers a variation (Swap ›) when the lift's status asks for one. */
   onSwap?: () => void
+  /** The body log, passed to the lift page for the relative-strength line. */
+  bodyLog?: BodyLog
 }
 
 function planFor(program: Program | undefined, exerciseId: string): ExercisePlan | undefined {
@@ -36,7 +38,7 @@ function planFor(program: Program | undefined, exerciseId: string): ExercisePlan
  * The lift page inside Progress (v6): the one `LiftView`, the same page the live tools sheet's
  * Lift history opens, for the lift under the active Program's Plan.
  */
-export function LiftPageView({ exerciseId, sessions, program, resolve, now, onOpenSession, onSwap }: LiftPageViewProps): JSX.Element {
+export function LiftPageView({ exerciseId, sessions, program, resolve, now, onOpenSession, onSwap, bodyLog }: LiftPageViewProps): JSX.Element {
   const exercise = resolve(exerciseId)
   if (!exercise) {
     return <p className="lift-empty">No sessions of this lift yet. Log a set and its history appears here.</p>
@@ -49,6 +51,7 @@ export function LiftPageView({ exerciseId, sessions, program, resolve, now, onOp
       now={now}
       onOpenSession={onOpenSession}
       onSwap={onSwap}
+      bodyLog={bodyLog}
     />
   )
 }
