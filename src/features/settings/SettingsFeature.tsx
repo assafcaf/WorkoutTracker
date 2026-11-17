@@ -4,6 +4,7 @@ import { useServiceData } from '../useServiceData'
 import { useServices, useSyncControls } from '../ServicesProvider'
 import { Settings } from '../../ui/Settings'
 import { BackupBadge, isBackupDue } from '../../ui/BackupBadge'
+import { Sheet } from '../../ui/Sheet'
 import { ImportConfirm } from '../../ui/ImportConfirm'
 import { ServiceError, type PendingImport } from '../../services'
 import type { PushTestOutcome } from '../../services/push'
@@ -30,6 +31,7 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
   const syncControls = useSyncControls()
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  const [askPhotos, setAskPhotos] = useState(false)
 
   // Settings is never inside a session in progress.
   useEffect(() => {
@@ -154,7 +156,17 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
 
   function handleExport(): void {
     setImportError(null)
-    services.backup.export().catch(() => {
+    services.backup
+      .hasPhotos()
+      .then((has) => (has ? setAskPhotos(true) : services.backup.export()))
+      .catch(() => {
+        // Nothing was written; the settings screen stays up with nothing to undo.
+      })
+  }
+
+  function handleExportAnswer(includePhotos: boolean): void {
+    setAskPhotos(false)
+    services.backup.export({ includePhotos }).catch(() => {
       // Nothing was written; the settings screen stays up with nothing to undo.
     })
   }
@@ -233,6 +245,17 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
           void syncControls.adoptAccount()
         }}
       />
+      {askPhotos ? (
+        <Sheet label="Include photos in the backup" onClose={() => setAskPhotos(false)}>
+          <p>Include your progress photos in the backup? The file gets much larger.</p>
+          <button type="button" className="btn-primary" onClick={() => handleExportAnswer(true)}>
+            Include photos
+          </button>
+          <button type="button" className="btn-quiet" onClick={() => handleExportAnswer(false)}>
+            Without photos
+          </button>
+        </Sheet>
+      ) : null}
       {importError ? <div role="alert">{importError}</div> : null}
       {pendingImport ? (
         <ImportConfirm

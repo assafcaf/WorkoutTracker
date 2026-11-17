@@ -110,7 +110,7 @@ describe('O5 createServices returns exactly the service API', () => {
   })
 
   test('O5 the backup service has exactly the BackupService operations', () => {
-    expect(ownKeys(services().backup)).toEqual(['confirmImport', 'export', 'read'])
+    expect(ownKeys(services().backup)).toEqual(['confirmImport', 'export', 'hasPhotos', 'read'])
   })
 
   test('O5 the sync service has exactly the SyncService operations', () => {
