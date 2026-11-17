@@ -8,6 +8,8 @@ import { AllLifts } from './AllLifts'
 import { Home } from './Home'
 import { BodyPage } from './BodyPage'
 import { ComparePage } from './photos/compare/ComparePage'
+import { PhotosPage } from './photos/viewer/PhotosPage'
+import type { PhotoAngle } from '../../storage/photoStore'
 
 /** The pages the Progress tab pushes. `home` is the tab's own screen; the others push over it. */
 export type ProgressPage =
@@ -16,7 +18,10 @@ export type ProgressPage =
   | { kind: 'lift'; exerciseId: string }
   | { kind: 'muscles' }
   | { kind: 'body' }
-  | { kind: 'compare' }
+  /** The photo Compare page; the photos viewer opens it on an angle and two photos (by id). */
+  | { kind: 'compare'; angle?: PhotoAngle; before?: string; after?: string }
+  /** The Photos page: every progress photo by angle, newest first, and its full-screen viewer. */
+  | { kind: 'photos' }
 
 export type ProgressPageKind = ProgressPage['kind']
 
@@ -32,12 +37,14 @@ export type ProgressPageProps<K extends ProgressPageKind = ProgressPageKind> = {
 }
 
 export type ProgressPages = {
-  [K in Exclude<ProgressPageKind, 'body' | 'compare'>]: ComponentType<ProgressPageProps<K>>
+  [K in Exclude<ProgressPageKind, 'body' | 'compare' | 'photos'>]: ComponentType<ProgressPageProps<K>>
 } & {
   /** Optional so a group built before the Body page (E22-T7) still types; the registered group has it. */
   body?: ComponentType<ProgressPageProps<'body'>>
   /** Optional until E26-T8 registers the photo Compare page. */
   compare?: ComponentType<ProgressPageProps<'compare'>>
+  /** Optional so a group built before the Photos page still types; the registered group has it. */
+  photos?: ComponentType<ProgressPageProps<'photos'>>
 }
 
 function placeholder(title: string): FunctionComponent<Pick<ProgressPageProps, 'onBack'>> {
@@ -71,3 +78,6 @@ PROGRESS_PAGES.body = BodyPage
 
 // E26-T8: the photo Compare page (append-only).
 PROGRESS_PAGES.compare = ComparePage
+
+// The Photos page and its full-screen viewer (append-only).
+PROGRESS_PAGES.photos = PhotosPage

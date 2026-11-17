@@ -231,3 +231,82 @@ describe('O5 store half: remove and restore', () => {
     expect(await photoStore.list()).toHaveLength(1)
   })
 })
+
+describe('photos v2: what the capture knew is stored with the photo', () => {
+  const INFO = {
+    camera: 'environment' as const,
+    roll: 1.25,
+    pitch: -3.5,
+    bodyScale: { full: 0.62, torso: 0.21 },
+    bodyLines: { head: 0.08, feet: 0.94 },
+    source: 'live' as const,
+    streamWidth: 1440,
+    streamHeight: 1920,
+  }
+
+  test('camera, angles, body scale, lines, path and stream size read back unchanged after a restart', async () => {
+    stubStorage({})
+    const { io } = fakeIo({ width: 1200, height: 1600 })
+    await photoStore.add({ file: CAMERA_FILE, day: '2026-11-17', angle: 'front', align: ALIGN, ...INFO }, io)
+    db.close()
+    await db.open()
+    const [back] = await photoStore.list()
+    expect(back).toMatchObject(INFO)
+    expect(back.align).toEqual(ALIGN)
+    expect(bytesOf(back.data)).toBe(RENDERED_LATIN1)
+  })
+
+  test('a body scale with hidden ankles keeps full as null', async () => {
+    stubStorage({})
+    const { io } = fakeIo({ width: 800, height: 600 })
+    await photoStore.add(
+      { file: CAMERA_FILE, day: '2026-11-17', angle: 'side', align: null, bodyScale: { full: null, torso: 0.2 } },
+      io,
+    )
+    const [back] = await photoStore.list()
+    expect(back.bodyScale).toEqual({ full: null, torso: 0.2 })
+  })
+
+  test('a photo saved without capture fields has exactly the old shape', async () => {
+    stubStorage({})
+    const { io } = fakeIo({ width: 800, height: 600 })
+    await photoStore.add({ file: CAMERA_FILE, day: '2026-11-17', angle: 'front', align: null }, io)
+    const [back] = await photoStore.list()
+    expect(Object.keys(back).sort()).toEqual(
+      ['align', 'createdAt', 'data', 'day', 'height', 'id', 'angle', 'type', 'width'].sort(),
+    )
+  })
+
+  test('a photo stored before v2 (no capture fields) still lists and reads', async () => {
+    await db.photos.put({
+      id: 'old',
+      day: '2026-11-01',
+      angle: 'front',
+      data: new Uint8Array([9]).buffer,
+      type: 'image/jpeg',
+      width: 10,
+      height: 20,
+      align: null,
+      createdAt: 1,
+    })
+    const [back] = await photoStore.list()
+    expect(back.id).toBe('old')
+    expect(back.camera).toBeUndefined()
+    expect(back.roll).toBeUndefined()
+    expect(back.bodyScale).toBeUndefined()
+  })
+
+  test('captureInfoOf drops malformed fields and keeps the good ones', () => {
+    expect(
+      photoStore.captureInfoOf({
+        camera: 'sideways' as never,
+        roll: Number.NaN,
+        pitch: 2,
+        bodyScale: { full: 0.5, torso: -1 },
+        bodyLines: { head: 0.1, feet: Number.POSITIVE_INFINITY },
+        source: 'fax' as never,
+        streamWidth: 640,
+      }),
+    ).toEqual({ pitch: 2 })
+  })
+})

@@ -82,8 +82,18 @@ test('O3 installing the service worker precaches every hashed asset the build em
 test('O3 installing the service worker precaches every file the build serves', () => {
   // The worker and its Workbox runtime are the two files the browser fetches itself; a worker
   // that precached its own script could never be replaced by a newer one.
-  const served = app.files.filter((file) => file !== 'sw.js' && !/^workbox-[^/]+\.js$/.test(file))
+  // The pose model's wasm under mediapipe/ (photos v2) is about 15 MB, over Workbox's 2 MiB
+  // limit and needed only for progress photos: it is runtime-cached instead (next test).
+  const served = app.files.filter(
+    (file) => file !== 'sw.js' && !/^workbox-[^/]+\.js$/.test(file) && !file.startsWith('mediapipe/'),
+  )
   expect(sw.cachedUrls().map(distPathOfCached).sort()).toEqual([...served].sort())
+})
+
+test('photos v2: the pose wasm is served from the build but kept out of the precache', () => {
+  expect(app.files).toEqual(expect.arrayContaining(['mediapipe/wasm/vision_wasm_internal.wasm', 'mediapipe/wasm/vision_wasm_internal.js']))
+  expect(sw.cachedUrls().filter((url) => distPathOfCached(url).startsWith('mediapipe/'))).toEqual([])
+  expect(sw.cachedUrls().some((url) => /\.task$/.test(url))).toBe(false)
 })
 
 test('O3 the service worker does not precache itself', () => {

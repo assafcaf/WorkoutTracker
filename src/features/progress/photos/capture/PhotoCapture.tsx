@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ChangeEvent, PointerEvent as ReactPointerEvent } from 'react'
-import type { NewPhoto, Photo, PhotoAlign, PhotoAngle } from '../../../../storage/photoStore'
+import type { ChangeEvent } from 'react'
+import type { NewPhoto, Photo, PhotoAngle, PhotoCamera, PhotoCaptureInfo } from '../../../../storage/photoStore'
 import { Segmented } from '../../../../ui/controls'
-import { IDENTITY_ALIGN, cssTransform, dragged, pinched, tiltDegrees } from './align'
-import type { Point } from './align'
+import { AlignView } from './AlignView'
 import { openDeviceCamera } from './camera'
 import type { LiveFeed, OpenCamera } from './camera'
+import { saveFacing, savedFacing } from './cameraPrefs'
+import { LiveView } from './LiveView'
+import { loadPoseModel } from './pose'
+import type { LoadPose } from './pose'
+import { unlockCaptureSound } from './sound'
+import { useObjectUrl } from './useObjectUrl'
 import './PhotoCapture.css'
 
 export type PhotoCaptureProps = {
@@ -17,6 +22,8 @@ export type PhotoCaptureProps = {
   onClose(): void
   /** The live camera; defaults to the device's. */
   openCamera?: OpenCamera
+  /** The pose model for the distance cue; defaults to MediaPipe, loaded when the live camera opens. Null turns it off. */
+  loadPose?: LoadPose | null
 }
 
 const ANGLES: { value: PhotoAngle; label: string }[] = [
@@ -24,27 +31,16 @@ const ANGLES: { value: PhotoAngle; label: string }[] = [
   { value: 'side', label: 'Side' },
   { value: 'back', label: 'Back' },
 ]
-const GHOSTS = [35, 60, 0] as const
-const TIMER_SECONDS = 10
-const LEVEL_WITHIN_DEGREES = 1.5
+const CAMERAS: { value: PhotoCamera; label: string }[] = [
+  { value: 'user', label: 'Front camera' },
+  { value: 'environment', label: 'Back camera' },
+]
+const UNAVAILABLE = 'Camera preview unavailable on this phone, so Take photo opens the iPhone camera.'
 
-type Step = 'pick' | 'live' | 'align'
-type Timer = '10' | 'off'
+type Step = 'pick' | 'live' | 'align' | 'saved'
 
-/** An object URL for `source` while it is mounted; none where the browser has no such thing. */
-function useObjectUrl(source: Blob | null): string | null {
-  const url = useMemo(
-    () => (source && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(source) : null),
-    [source],
-  )
-  useEffect(
-    () => () => {
-      if (url && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(url)
-    },
-    [url],
-  )
-  return url
-}
+/** The camera a photo was taken with; photos from before v2 came from the front camera. */
+const cameraOf = (photo: Photo): PhotoCamera => photo.camera ?? 'user'
 
 const photoBlob = (photo: Photo | undefined): Blob | null =>
   photo ? new Blob([photo.data], { type: photo.type }) : null
@@ -54,73 +50,153 @@ function shortDate(day: string): string {
   return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
+/** The next view of a check-in after `current`, in the order front, side, back, skipping views already taken. */
+function nextView(current: PhotoAngle, taken: ReadonlySet<PhotoAngle>): PhotoAngle | null {
+  const order = ANGLES.map((a) => a.value)
+  const after = order.slice(order.indexOf(current) + 1)
+  return after.find((a) => !taken.has(a)) ?? null
+}
+
 /**
- * Takes a progress photo and lines it up (E26-T7, decision 0026). The file input always works;
- * the live camera with a ghost, level and timer is tried first and any failure falls back to
- * the file input in the same tap. The new photo is aligned over the last one of its view by a
- * stored transform; its pixels never change.
+ * Takes progress photos and lines each up (E26-T7, decision 0026, photos v2). The file input always
+ * works; the live camera (front or back, chosen per view) with a ghost, level, distance cue and
+ * timer is tried first and any failure falls back to the file input in the same tap. Each new photo
+ * is aligned over the last one of its view and camera by a stored transform; its pixels never
+ * change. After a save the flow offers the next view of the day's check-in, or Done.
  */
-export function PhotoCapture({ photos, day, onSave, onClose, openCamera = openDeviceCamera }: PhotoCaptureProps): JSX.Element {
+export function PhotoCapture({
+  photos,
+  day,
+  onSave,
+  onClose,
+  openCamera = openDeviceCamera,
+  loadPose = loadPoseModel,
+}: PhotoCaptureProps): JSX.Element {
   const [step, setStep] = useState<Step>('pick')
   const [angle, setAngle] = useState<PhotoAngle>('front')
+  const [facing, setFacing] = useState<PhotoCamera>(() => savedFacing('front'))
   const [note, setNote] = useState('')
   const [feed, setFeed] = useState<LiveFeed | null>(null)
+  const [switching, setSwitching] = useState(false)
   const [image, setImage] = useState<Blob | null>(null)
+  const [info, setInfo] = useState<PhotoCaptureInfo>({})
+  const [savedHere, setSavedHere] = useState<PhotoAngle[]>([])
   const cameraInput = useRef<HTMLInputElement>(null)
   const libraryInput = useRef<HTMLInputElement>(null)
+  const mounted = useRef(true)
 
-  const reference = useMemo(() => photos.find((p) => p.angle === angle), [photos, angle]) // newest first
+  // Newest first: the reference is the last photo of this view taken with this camera.
+  const reference = useMemo(() => photos.find((p) => p.angle === angle && cameraOf(p) === facing), [photos, angle, facing])
   const referenceBlob = useMemo(() => photoBlob(reference), [reference])
   const referenceUrl = useObjectUrl(referenceBlob)
+  const takenToday = useMemo(
+    () => new Set<PhotoAngle>([...photos.filter((p) => p.day === day).map((p) => p.angle), ...savedHere]),
+    [photos, day, savedHere],
+  )
 
-  const stopFeed = (): void => {
-    feed?.stop()
-    setFeed(null)
-  }
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   useEffect(() => () => feed?.stop(), [feed])
   // The control that opened this screen is gone; leave no stray focus ring on the new one.
   useEffect(() => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
   }, [])
 
-  const took = (blob: Blob): void => {
+  const chooseView = (next: PhotoAngle): void => {
+    setAngle(next)
+    setFacing(savedFacing(next))
+  }
+  const chooseCamera = (next: PhotoCamera): void => {
+    setFacing(next)
+    saveFacing(angle, next)
+  }
+
+  const stopFeed = (): void => {
+    feed?.stop()
+    setFeed(null)
+  }
+
+  const took = (blob: Blob, captured: PhotoCaptureInfo): void => {
     setImage(blob)
+    setInfo(captured)
     setStep('align')
   }
 
   const takePhoto = async (): Promise<void> => {
     setNote('')
+    unlockCaptureSound()
     const motion = (window as unknown as { DeviceMotionEvent?: { requestPermission?: () => Promise<string> } }).DeviceMotionEvent
     if (typeof motion?.requestPermission === 'function') void motion.requestPermission().catch(() => undefined)
     try {
-      setFeed(await openCamera())
+      setFeed(await openCamera(facing))
       setStep('live')
     } catch {
-      setNote('Camera preview unavailable on this phone, so Take photo opens the iPhone camera.')
+      setNote(UNAVAILABLE)
       cameraInput.current?.click()
     }
   }
 
-  const chosen = (event: ChangeEvent<HTMLInputElement>): void => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (file) took(file)
+  /** Front to back or back: the old tracks stop before the other camera is asked for (WebKit 179363). */
+  const switchCamera = async (next: PhotoCamera): Promise<void> => {
+    const previous = facing
+    feed?.stop()
+    setFeed(null)
+    setSwitching(true)
+    chooseCamera(next)
+    try {
+      const opened = await openCamera(next)
+      if (mounted.current) setFeed(opened)
+      else opened.stop()
+    } catch {
+      chooseCamera(previous)
+      try {
+        const reopened = await openCamera(previous)
+        if (mounted.current) setFeed(reopened)
+        else reopened.stop()
+      } catch {
+        if (mounted.current) {
+          setStep('pick')
+          setNote(UNAVAILABLE)
+        }
+      }
+    } finally {
+      if (mounted.current) setSwitching(false)
+    }
   }
 
-  if (step === 'live' && feed) {
+  const chosen =
+    (source: 'native' | 'library') =>
+    (event: ChangeEvent<HTMLInputElement>): void => {
+      const file = event.target.files?.[0]
+      event.target.value = ''
+      if (file) took(file, source === 'native' ? { camera: facing, source } : { source })
+    }
+
+  const view = ANGLES.find((a) => a.value === angle) ?? ANGLES[0]
+
+  if (step === 'live') {
     return (
       <LiveView
         feed={feed}
-        angle={angle}
+        facing={facing}
+        switching={switching}
+        view={view}
+        reference={reference}
+        referenceBlob={referenceBlob}
         referenceUrl={referenceUrl}
-        referenceAlign={reference?.align ?? null}
+        loadPose={loadPose ?? undefined}
         onClose={() => {
           stopFeed()
           setStep('pick')
         }}
-        onFrame={(blob) => {
+        onSwitch={(next) => void switchCamera(next)}
+        onFrame={(blob, captured) => {
           stopFeed()
-          took(blob)
+          took(blob, captured)
         }}
       />
     )
@@ -133,15 +209,68 @@ export function PhotoCapture({ photos, day, onSave, onClose, openCamera = openDe
         angle={angle}
         referenceUrl={referenceUrl}
         referenceAlign={reference?.align ?? null}
+        initialLines={info.bodyLines ?? null}
         onRetake={() => {
           setImage(null)
           setStep('pick')
         }}
-        onSave={async (align) => {
-          await onSave({ file: image, day, angle, align })
-          onClose()
+        onSave={async (align, lines) => {
+          const rest: PhotoCaptureInfo = { ...info }
+          delete rest.bodyLines
+          await onSave({ file: image, day, angle, align, ...rest, ...(lines ? { bodyLines: lines } : {}) })
+          setSavedHere((list) => [...list, angle])
+          setImage(null)
+          setStep('saved')
         }}
       />
+    )
+  }
+
+  if (step === 'saved') {
+    const next = nextView(angle, takenToday)
+    const nextLabel = next ? ANGLES.find((a) => a.value === next)?.label : null
+    return (
+      <div className="photo-capture">
+        <header className="photo-header">
+          <span className="photo-header-end" />
+          <h1 className="photo-title">Saved</h1>
+          <span className="photo-header-end" />
+        </header>
+        <div className="photo-body">
+          <section className="photo-card" aria-label="Check-in" role="status">
+            <p className="photo-card-label">{`${shortDate(day)} check-in`}</p>
+            <p>
+              {next
+                ? `${view.label} photo saved. ${nextLabel} next, from the same spot.`
+                : `${view.label} photo saved. Every view for today is done.`}
+            </p>
+          </section>
+        </div>
+        <footer className="photo-actions">
+          {next && nextLabel ? (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                chooseView(next)
+                setNote('')
+                setStep('pick')
+              }}
+            >
+              {`Next: ${nextLabel}`}
+            </button>
+          ) : null}
+          {next ? (
+            <button type="button" className="btn-secondary" onClick={onClose}>
+              Done
+            </button>
+          ) : (
+            <button type="button" className="btn-primary" onClick={onClose}>
+              Done
+            </button>
+          )}
+        </footer>
+      </div>
     )
   }
 
@@ -155,12 +284,14 @@ export function PhotoCapture({ photos, day, onSave, onClose, openCamera = openDe
         <span className="photo-header-end" />
       </header>
       <div className="photo-body">
-        <Segmented name="photo-angle" label="View" value={angle} options={ANGLES} onChange={setAngle} />
+        <Segmented name="photo-angle" label="View" value={angle} options={ANGLES} onChange={chooseView} />
+        <Segmented name="photo-camera" label="Camera" value={facing} options={CAMERAS} onChange={chooseCamera} />
         <section className="photo-card" aria-label="Setup">
           <p className="photo-card-label">Same setup every time</p>
           <p>
-            Phone at chest height on a shelf, 2.5 m away. Tape on the floor where your toes go. Same light, same time of
-            day, arms relaxed 15 cm from your body.
+            {facing === 'environment'
+              ? 'Phone at chest height on a shelf, 2.5 m away; level it before you walk to your spot. Ticks speed up as you near the right distance, and one high tone means it matches. Same light, arms relaxed 15 cm from your body.'
+              : 'Phone at chest height on a shelf, 2.5 m away. Tape on the floor where your toes go. Same light, same time of day, arms relaxed 15 cm from your body.'}
           </p>
         </section>
         {reference ? (
@@ -184,217 +315,17 @@ export function PhotoCapture({ photos, day, onSave, onClose, openCamera = openDe
           Choose from library
         </button>
       </footer>
-      <input ref={cameraInput} className="photo-file" hidden type="file" accept="image/*" capture="user" aria-label="Camera photo" onChange={chosen} />
-      <input ref={libraryInput} className="photo-file" hidden type="file" accept="image/*" aria-label="Library photo" onChange={chosen} />
-    </div>
-  )
-}
-
-function LiveView({
-  feed,
-  angle,
-  referenceUrl,
-  referenceAlign,
-  onClose,
-  onFrame,
-}: {
-  feed: LiveFeed
-  angle: PhotoAngle
-  referenceUrl: string | null
-  referenceAlign: PhotoAlign | null
-  onClose(): void
-  onFrame(blob: Blob): void
-}): JSX.Element {
-  const video = useRef<HTMLVideoElement>(null)
-  const [ghostIndex, setGhostIndex] = useState(0)
-  const [timer, setTimer] = useState<Timer>('off')
-  const [count, setCount] = useState<number | null>(null)
-  const [tilt, setTilt] = useState<number | null>(null)
-  const ghost = GHOSTS[ghostIndex]
-  const onFrameRef = useRef(onFrame)
-  onFrameRef.current = onFrame
-
-  useEffect(() => {
-    if (video.current) feed.attach(video.current)
-  }, [feed])
-
-  useEffect(() => {
-    const onMotion = (event: Event): void => {
-      const g = (event as Event & { accelerationIncludingGravity?: { x: number | null; y: number | null } })
-        .accelerationIncludingGravity
-      if (g && g.x !== null && g.y !== null) setTilt(tiltDegrees(g.x, g.y))
-    }
-    window.addEventListener('devicemotion', onMotion)
-    return () => window.removeEventListener('devicemotion', onMotion)
-  }, [])
-
-  useEffect(() => {
-    if (count === null) return
-    if (count > 0) {
-      const id = setTimeout(() => setCount(count - 1), 1000)
-      return () => clearTimeout(id)
-    }
-    setCount(null)
-    void feed.grab().then((blob) => onFrameRef.current(blob))
-  }, [count, feed])
-
-  const shutter = (): void => {
-    if (count !== null) {
-      setCount(null)
-      return
-    }
-    if (timer === 'off') void feed.grab().then(onFrame)
-    else setCount(TIMER_SECONDS)
-  }
-
-  return (
-    <div className="photo-live">
-      <video ref={video} className="photo-video" playsInline muted />
-      {referenceUrl && ghost > 0 ? (
-        <img
-          className="photo-ghost"
-          src={referenceUrl}
-          alt={`Last ${angle} photo`}
-          style={{ opacity: ghost / 100, transform: cssTransform(referenceAlign) }}
-        />
-      ) : null}
-      {referenceUrl && ghost === 0 ? <span className="photo-visually-hidden">{`Last ${angle} photo hidden`}</span> : null}
-      <header className="photo-header photo-header-live">
-        <button type="button" className="btn-quiet" onClick={onClose}>
-          Close
-        </button>
-        <h1 className="photo-title">{ANGLES.find((a) => a.value === angle)?.label}</h1>
-        <button type="button" className="chip photo-chip" onClick={() => setGhostIndex((ghostIndex + 1) % GHOSTS.length)}>
-          {`Ghost ${ghost}%`}
-        </button>
-      </header>
-      {tilt !== null ? (
-        <p className="photo-level" data-level={Math.abs(tilt) <= LEVEL_WITHIN_DEGREES}>
-          {Math.abs(tilt) <= LEVEL_WITHIN_DEGREES ? 'Level' : `Tilt ${Math.round(Math.abs(tilt))}°`}
-        </p>
-      ) : null}
-      {count !== null ? <p className="photo-countdown">{count}</p> : null}
-      <div className="photo-live-controls">
-        <Segmented
-          name="photo-timer"
-          label="Timer"
-          value={timer}
-          options={[
-            { value: '10', label: '10 s' },
-            { value: 'off', label: 'Off' },
-          ]}
-          onChange={setTimer}
-        />
-        <button type="button" className="icon-btn photo-shutter" aria-label="Shutter" onClick={shutter} />
-      </div>
-    </div>
-  )
-}
-
-function AlignView({
-  image,
-  angle,
-  referenceUrl,
-  referenceAlign,
-  onRetake,
-  onSave,
-}: {
-  image: Blob
-  angle: PhotoAngle
-  referenceUrl: string | null
-  referenceAlign: PhotoAlign | null
-  onRetake(): void
-  onSave(align: PhotoAlign): Promise<void>
-}): JSX.Element {
-  const url = useObjectUrl(image)
-  const [align, setAlign] = useState<PhotoAlign>(IDENTITY_ALIGN)
-  const [ghost, setGhost] = useState(50)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const pointers = useRef(new Map<number, Point>())
-
-  const pos = (event: ReactPointerEvent): Point => ({ x: event.clientX, y: event.clientY })
-  const down = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    pointers.current.set(event.pointerId, pos(event))
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }
-  const move = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    const before = pointers.current.get(event.pointerId)
-    if (!before) return
-    const now = pos(event)
-    const others = [...pointers.current.entries()].filter(([id]) => id !== event.pointerId).map(([, p]) => p)
-    pointers.current.set(event.pointerId, now)
-    const rect = event.currentTarget.getBoundingClientRect()
-    if (others.length === 0) {
-      setAlign((a) => dragged(a, now.x - before.x, now.y - before.y, { w: rect.width, h: rect.height }))
-    } else {
-      setAlign((a) => pinched(a, [before, others[0]], [now, others[0]]))
-    }
-  }
-  const up = (event: ReactPointerEvent): void => {
-    pointers.current.delete(event.pointerId)
-  }
-
-  const save = async (): Promise<void> => {
-    setSaving(true)
-    setError('')
-    try {
-      await onSave(align)
-    } catch {
-      setError('Could not save the photo')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="photo-capture">
-      <header className="photo-header">
-        <button type="button" className="btn-quiet" onClick={onRetake}>
-          Retake
-        </button>
-        <h1 className="photo-title">Line up</h1>
-        <button type="button" className="btn-quiet" disabled={saving} onClick={() => void save()}>
-          Save
-        </button>
-      </header>
-      <div className="photo-body">
-        <div
-          className="photo-stage"
-          role="group"
-          aria-label="Alignment"
-          onPointerDown={down}
-          onPointerMove={move}
-          onPointerUp={up}
-          onPointerCancel={up}
-        >
-          {url ? <img className="photo-new" src={url} alt="New photo" style={{ transform: cssTransform(align) }} /> : null}
-          {referenceUrl && ghost > 0 ? (
-            <img
-              className="photo-ghost"
-              src={referenceUrl}
-              alt={`Last ${angle} photo`}
-              style={{ opacity: ghost / 100, transform: cssTransform(referenceAlign) }}
-            />
-          ) : null}
-        </div>
-        {error ? (
-          <p className="photo-note" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <p className="photo-note">Drag to move, pinch to resize and turn. The original photo is never changed.</p>
-        <div className="photo-align-actions">
-          <button type="button" className="btn-secondary" onClick={() => setAlign(IDENTITY_ALIGN)}>
-            Reset
-          </button>
-          {referenceUrl ? (
-            <button type="button" className="btn-secondary" onClick={() => setGhost(ghost === 50 ? 0 : 50)}>
-              Ghost
-            </button>
-          ) : null}
-        </div>
-      </div>
+      <input
+        ref={cameraInput}
+        className="photo-file"
+        hidden
+        type="file"
+        accept="image/*"
+        capture={facing === 'environment' ? 'environment' : 'user'}
+        aria-label="Camera photo"
+        onChange={chosen('native')}
+      />
+      <input ref={libraryInput} className="photo-file" hidden type="file" accept="image/*" aria-label="Library photo" onChange={chosen('library')} />
     </div>
   )
 }

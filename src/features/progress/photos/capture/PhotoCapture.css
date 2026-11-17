@@ -124,16 +124,224 @@
   color: var(--color-on-primary);
 }
 
-.photo-video {
+/* The stream and the ghost share one box and one fit (contain), so they are drawn at the same
+   scale; the front camera's preview and its ghost are mirrored together, never the saved frame. */
+.photo-viewfinder {
+  position: absolute;
+  inset: 0;
+}
+
+.photo-video,
+.photo-ghost-live,
+.photo-lines {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+}
+
+.photo-video[data-mirrored='true'] {
+  transform: scaleX(-1);
+}
+
+.photo-lines {
+  pointer-events: none;
+  overflow: visible;
+}
+
+.photo-lines line {
+  stroke: var(--color-up-tint);
+  stroke-width: 6;
+  stroke-dasharray: 24 12;
+  vector-effect: non-scaling-stroke;
+}
+
+.photo-guides {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+}
+
+/* The level: a fixed reference line, a line that turns with the phone, a dot for the pitch. */
+.photo-gauge {
+  position: relative;
+  width: 60%;
+  height: 44px;
+}
+
+.photo-gauge-ref,
+.photo-gauge-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+}
+
+.photo-gauge-ref {
+  background: var(--color-on-primary);
+  opacity: 0.45;
+  left: 30%;
+  right: 30%;
+}
+
+.photo-gauge-line {
+  background: var(--color-on-primary);
+}
+
+.photo-gauge-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-on-primary);
+}
+
+.photo-gauge[data-matched='true'] .photo-gauge-line,
+.photo-gauge[data-matched='true'] .photo-gauge-ref,
+.photo-gauge[data-matched='true'] .photo-gauge-dot {
+  background: var(--color-up-tint);
+  opacity: 1;
+}
+
+.photo-cue {
+  font-weight: var(--weight-semibold);
+}
+
+/* Distance: one bar, closer on the left, the green zone in the middle. */
+.photo-distance {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.photo-distance-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.photo-distance-end {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.photo-bar {
+  position: relative;
+  flex: 1;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-pressed);
+  color: var(--color-on-primary);
+}
+
+/* +-3 % of the +-20 % range is 15 % of the bar, centred. */
+.photo-bar-zone {
+  position: absolute;
+  left: 42.5%;
+  width: 15%;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-up);
+}
+
+.photo-bar-dot {
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: var(--radius-pill);
+  background: var(--color-on-primary);
+  border: 3px solid var(--color-primary);
+  transition: left 0.25s linear;
+}
+
+.photo-distance[data-matched='true'] .photo-bar-dot {
+  background: var(--color-up-tint);
+}
+
+.photo-distance-number {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.photo-live-note {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.photo-switching {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-size: var(--text-lg);
+  pointer-events: none;
+}
+
+.photo-switch {
+  min-width: var(--tap-min);
+}
+
+.photo-shutter:disabled {
+  opacity: 0.4;
+}
+
+/* Head and feet marks on the align screen: 44 px tall handles around a thin line. */
+.photo-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.photo-marks-box {
+  position: absolute;
+}
+
+.photo-mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--tap-min);
+  margin-top: calc(var(--tap-min) / -2);
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: ns-resize;
+}
+
+.photo-mark-line {
+  flex: 1;
+  height: 0;
+  border-top: 2px dashed var(--color-live);
+}
+
+.photo-mark:focus-visible .photo-mark-line {
+  border-top-style: solid;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-bar-dot {
+    transition: none;
+  }
 }
 
 .photo-header-live {
   position: relative;
+  z-index: 1;
   color: var(--color-on-primary);
 }
 

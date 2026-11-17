@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { formatDay } from '../domain/dates'
 import { buildShareCard } from '../domain/shareCard'
 import { sessionChanges } from '../domain/sessionChanges'
@@ -68,6 +69,11 @@ export type SessionSummaryProps = {
   bodyLog?: BodyLog
   /** Opens a URL (the Apple Health Shortcut, E24-T11); defaults to navigating the page to it. */
   openUrl?(url: string): void
+  /**
+   * Photos2: the Session day's progress photos, one line under the totals (the caller draws it:
+   * the "Add progress photos" action on Finish, the day's thumbnails on a past workout).
+   */
+  photos?: ReactNode
 }
 
 /** The duration's value and unit: `52` `min`, or `1 h 05` `min` from an hour up. */
@@ -146,6 +152,7 @@ export function SessionSummary({
   workout,
   onSaveChanges,
   bodyLog = [],
+  photos = null,
   openUrl = (url: string): void => {
     window.location.href = url
   },
@@ -366,6 +373,8 @@ export function SessionSummary({
             </>
           ) : null}
         </p>
+
+        {photos}
 
         {offerOpen && changes.length > 0 ? (
           <section className="session-summary-save card" aria-label="Save changes to program">
