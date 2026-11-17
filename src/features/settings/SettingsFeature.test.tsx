@@ -100,6 +100,7 @@ function buildServices(sync: SyncService): Services {
     sessions: createSessionService(deps),
     programs: createProgramService(deps),
     preferences: createPreferenceService(deps),
+    photos: {} as Services['photos'],
     catalog: createCatalogService(deps),
     backup: createBackupService({ ...deps, replaceRemote: sync.replaceRemote }),
     transfer: {} as Services['transfer'],

@@ -28,6 +28,7 @@ function servicesWith(sync: SyncService): Services {
     sessions: {} as Services['sessions'],
     programs: {} as Services['programs'],
     preferences: {} as Services['preferences'],
+    photos: {} as Services['photos'],
     catalog: {} as Services['catalog'],
     backup: {} as Services['backup'],
     transfer: {} as Services['transfer'],

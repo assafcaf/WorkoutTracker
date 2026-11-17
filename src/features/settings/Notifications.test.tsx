@@ -56,6 +56,7 @@ function build(
     sessions: createSessionService(deps),
     programs: createProgramService(deps),
     preferences: createPreferenceService(deps),
+    photos: {} as Services['photos'],
     catalog: createCatalogService(deps),
     backup: createBackupService({ ...deps, replaceRemote: async () => ok }),
     transfer: {} as Services['transfer'],
