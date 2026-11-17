@@ -8,7 +8,7 @@ import { liftStatus } from '../domain/stats/status'
 import type { LiftStatus } from '../domain/stats/status'
 import { dayMonth, humanDate, leverText, numberText } from '../domain/stats/words'
 import { formatSetCompact } from '../domain/setText'
-import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind } from '../types'
+import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
 import { PrTag, SetFigure, StatusMark, statusTone } from './figures'
 import { LiftCalculator } from './LiftCalculator'
 import { LiftChart } from './charts/LiftChart'
@@ -26,8 +26,6 @@ export type LiftViewProps = {
   onOpenSession?: (sessionId: string) => void
   /** Offers a variation when the status's action is a change of exercise. */
   onSwap?: () => void
-  /** The trainee's bar and plates for the lift calculator; the default set when omitted. */
-  plates?: PlateInventory | null
 }
 
 type Range = '3M' | '1Y' | 'all'
@@ -156,7 +154,7 @@ export function setRuns(sets: SetEntry[], prSetIndex: number | null): SetRun[] {
  *   - one ink line, the standing record a gold ring, deloads a grey band, no point labels;
  *   - Records, then the Sessions as set rows with the PR tag on the Set that earned it.
  */
-export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap, plates }: LiftViewProps): JSX.Element {
+export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap }: LiftViewProps): JSX.Element {
   const [range, setRange] = useState<Range>('3M')
   const [show, setShow] = useState<Show>('est')
   const [showAll, setShowAll] = useState(false)
@@ -276,7 +274,6 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap,
             name={exercise.name}
             weightKg={real[real.length - 1].top.lever}
             reps={real[real.length - 1].top.reps}
-            plates={plates}
             onClose={() => setCalcOpen(false)}
           />
         ) : null}
