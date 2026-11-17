@@ -32,9 +32,6 @@ const INIT = `(() => {
   }
   globalThis.Date = PinnedDate
   window.__freeze = () => { frozen = now() }
-  // Dev-only: React StrictMode runs useObjectUrl's cleanup once on mount and revokes the ghost's
-  // URL (production renders once). Keep object URLs alive so dev shows what production shows.
-  URL.revokeObjectURL = () => {}
   window.__scene = { s: 1.1, roll: 0, waist: 0.84 }
   try { localStorage.setItem('photoCamera.front', 'environment') } catch {}
 
