@@ -420,7 +420,7 @@ export function LiveView({
           label="Timer"
           value={timer}
           options={[
-            { value: '10', label: '10 s' },
+            { value: '10', label: '10s' },
             { value: 'off', label: 'Off' },
           ]}
           onChange={setTimer}

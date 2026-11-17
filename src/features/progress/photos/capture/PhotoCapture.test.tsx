@@ -180,7 +180,7 @@ describe('E26-T7 O3 the live camera, when it works', () => {
     setup({ openCamera: async () => live })
     fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
-    fireEvent.click(screen.getByRole('radio', { name: '10 s' }))
+    fireEvent.click(screen.getByRole('radio', { name: '10s' }))
     fireEvent.click(screen.getByRole('button', { name: 'Shutter' }))
     expect(await screen.findByText('10')).toBeVisible()
     expect(live.grab).not.toHaveBeenCalled()

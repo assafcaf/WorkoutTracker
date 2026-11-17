@@ -223,6 +223,19 @@
   text-align: center;
 }
 
+/* The bar can sit over the photo's top edge: a dark scrim keeps it readable over any picture. */
+.photo-live .photo-distance {
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 88%, transparent);
+  color: var(--color-on-primary);
+}
+
+.photo-live .photo-distance .photo-bar {
+  background: color-mix(in srgb, var(--color-on-primary) 28%, transparent);
+}
+
 .photo-distance-row {
   display: flex;
   align-items: center;
@@ -345,14 +358,49 @@
   color: var(--color-on-primary);
 }
 
-.photo-chip {
+/* Ghost and camera switch: quiet chips on the dark chrome, a dark fill with a grey outline (the
+   shared `.chip` is a white control for light screens, so this outranks it). */
+.photo-live .photo-chip {
   min-height: var(--tap-min);
+  min-width: var(--tap-min);
   padding: 0 var(--space-3);
-  border: 0;
+  border: 1px solid var(--color-muted);
   border-radius: var(--radius-pill);
   background: var(--color-primary-pressed);
   color: var(--color-on-primary);
   font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.photo-live .photo-chip:active {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.photo-live .photo-chip:disabled {
+  opacity: 0.4;
+}
+
+/* Close on the dark header: white, as the title (the light screens' secondary grey is 1.6:1). */
+.photo-live .photo-header-live .btn-quiet {
+  min-height: var(--tap-min);
+  color: var(--color-on-primary);
+}
+
+.photo-live .photo-header-live .btn-quiet:active {
+  background: var(--color-primary-pressed);
+  color: var(--color-on-primary);
+}
+
+/* The timer keeps its full "10s" at 390 px: it does not shrink, and each segment is at least
+   the tap floor wide. */
+.photo-live-controls .segmented {
+  flex: none;
+}
+
+.photo-live-controls .segmented-option {
+  flex: 1 0 auto;
+  min-width: var(--tap-min);
 }
 
 .photo-level {
