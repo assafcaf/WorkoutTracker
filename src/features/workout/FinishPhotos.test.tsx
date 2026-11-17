@@ -41,5 +41,5 @@ test('Photos2 O1 the finish summary has one Add progress photos action that open
   const add = await within(summary).findByRole('button', { name: 'Add progress photos' }, SETTLE)
   expect(within(summary).getAllByRole('button', { name: /photo/i })).toHaveLength(1)
   await user.click(add)
-  expect(await screen.findByRole('heading', { name: 'New photo' })).toBeVisible()
+  expect(await screen.findByRole('heading', { name: /^(Front|Side|Back)(, mirror)?$/ })).toBeVisible()
 })

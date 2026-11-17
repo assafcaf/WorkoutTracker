@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import type { NewPhoto, Photo, PhotoAngle, PhotoCamera, PhotoCaptureInfo } from '../../../../storage/photoStore'
-import { Segmented } from '../../../../ui/controls'
+import type { NewPhoto, Photo, PhotoAngle, PhotoCamera, PhotoCaptureInfo, PhotoMode } from '../../../../storage/photoStore'
+import { modeOf } from '../flip'
 import { AlignView } from './AlignView'
 import { openDeviceCamera } from './camera'
 import type { LiveFeed, OpenCamera } from './camera'
-import { saveFacing, savedFacing } from './cameraPrefs'
+import { saveFacing, saveMode, saveView, savedFacing, savedMode, savedView } from './cameraPrefs'
 import { LiveView } from './LiveView'
+import type { CameraState } from './LiveView'
 import { loadPoseModel } from './pose'
 import type { LoadPose } from './pose'
 import { unlockCaptureSound } from './sound'
@@ -31,13 +32,8 @@ const ANGLES: { value: PhotoAngle; label: string }[] = [
   { value: 'side', label: 'Side' },
   { value: 'back', label: 'Back' },
 ]
-const CAMERAS: { value: PhotoCamera; label: string }[] = [
-  { value: 'user', label: 'Front camera' },
-  { value: 'environment', label: 'Back camera' },
-]
-const UNAVAILABLE = 'Camera preview unavailable on this phone, so Take photo opens the iPhone camera.'
 
-type Step = 'pick' | 'live' | 'align' | 'saved'
+type Step = 'live' | 'align' | 'saved'
 
 /** The camera a photo was taken with; photos from before v2 came from the front camera. */
 const cameraOf = (photo: Photo): PhotoCamera => photo.camera ?? 'user'
@@ -57,12 +53,33 @@ function nextView(current: PhotoAngle, taken: ReadonlySet<PhotoAngle>): PhotoAng
   return after.find((a) => !taken.has(a)) ?? null
 }
 
+/** The setup advice for the mode and camera, as the camera view's tips card says it. */
+function setupCopy(mode: PhotoMode, facing: PhotoCamera, hand: string): { title: string; text: string } {
+  if (mode === 'mirror') {
+    return {
+      title: 'In the mirror.',
+      text: `Back camera at a full-length mirror, phone in your ${hand} hand at face height, held straight up. Stand where your feet show, about 1.3 m from the mirror, and mark the spot. Same light, same time of day; not right after a shower.`,
+    }
+  }
+  return facing === 'environment'
+    ? {
+        title: 'On a stand.',
+        text: 'Phone on a shelf or stand at chest height, back camera facing you. 10 s timer. Mark where your toes go. Ticks speed up as you near the right distance, and one high tone means it matches.',
+      }
+    : {
+        title: 'On a stand.',
+        text: 'Phone on a shelf or stand at chest height, screen facing you. Tape on the floor where your toes go. Same light, same time of day, arms relaxed 15 cm from your body.',
+      }
+}
+
 /**
- * Takes progress photos and lines each up (E26-T7, decision 0026, photos v2). The file input always
- * works; the live camera (front or back, chosen per view) with a ghost, level, distance cue and
- * timer is tried first and any failure falls back to the file input in the same tap. Each new photo
- * is aligned over the last one of its view and camera by a stored transform; its pixels never
- * change. After a save the flow offers the next view of the day's check-in, or Done.
+ * Takes progress photos and lines each up (E26-T7, decision 0026, photos v2, mirror mode). Capture
+ * opens straight onto the live camera with the last-used view and each view's remembered mode
+ * (Mirror for front and side, Stand for back the first time); every choice sits on the camera view
+ * and changing one reconfigures it in place. When the live camera fails, the camera view says so
+ * and "Use camera app" opens the iPhone camera; "Choose from library" is always there. Each new
+ * photo is aligned over the last one of its view, mode and camera by a stored transform; its pixels
+ * never change. After a save the flow offers the next view of the day's check-in, or Done.
  */
 export function PhotoCapture({
   photos,
@@ -72,21 +89,30 @@ export function PhotoCapture({
   openCamera = openDeviceCamera,
   loadPose = loadPoseModel,
 }: PhotoCaptureProps): JSX.Element {
-  const [step, setStep] = useState<Step>('pick')
-  const [angle, setAngle] = useState<PhotoAngle>('front')
-  const [facing, setFacing] = useState<PhotoCamera>(() => savedFacing('front'))
-  const [note, setNote] = useState('')
+  const [step, setStep] = useState<Step>('live')
+  const [angle, setAngle] = useState<PhotoAngle>(() => savedView())
+  const [mode, setMode] = useState<PhotoMode>(() => savedMode(savedView()))
+  const [standFacing, setStandFacing] = useState<PhotoCamera>(() => savedFacing(savedView()))
   const [feed, setFeed] = useState<LiveFeed | null>(null)
-  const [switching, setSwitching] = useState(false)
+  const [camera, setCamera] = useState<CameraState>('opening')
   const [image, setImage] = useState<Blob | null>(null)
   const [info, setInfo] = useState<PhotoCaptureInfo>({})
   const [savedHere, setSavedHere] = useState<PhotoAngle[]>([])
+  const [keepMirror, setKeepMirror] = useState(false)
+  const [tipsHidden, setTipsHidden] = useState(false)
   const cameraInput = useRef<HTMLInputElement>(null)
   const libraryInput = useRef<HTMLInputElement>(null)
-  const mounted = useRef(true)
+  const lastGood = useRef<PhotoCamera | null>(null)
+  const askedMotion = useRef(false)
+  const facing: PhotoCamera = mode === 'mirror' ? 'environment' : standFacing
+  const latest = useRef({ mode, angle })
+  latest.current = { mode, angle }
 
-  // Newest first: the reference is the last photo of this view taken with this camera.
-  const reference = useMemo(() => photos.find((p) => p.angle === angle && cameraOf(p) === facing), [photos, angle, facing])
+  // Newest first: the reference is the last photo of this view taken in this mode with this camera.
+  const reference = useMemo(
+    () => photos.find((p) => p.angle === angle && modeOf(p) === mode && cameraOf(p) === facing),
+    [photos, angle, mode, facing],
+  )
   const referenceBlob = useMemo(() => photoBlob(reference), [reference])
   const referenceUrl = useObjectUrl(referenceBlob)
   const takenToday = useMemo(
@@ -94,30 +120,75 @@ export function PhotoCapture({
     [photos, day, savedHere],
   )
 
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
-  useEffect(() => () => feed?.stop(), [feed])
   // The control that opened this screen is gone; leave no stray focus ring on the new one.
   useEffect(() => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
   }, [])
 
-  const chooseView = (next: PhotoAngle): void => {
-    setAngle(next)
-    setFacing(savedFacing(next))
-  }
-  const chooseCamera = (next: PhotoCamera): void => {
-    setFacing(next)
-    saveFacing(angle, next)
+  // The live camera, opened for the current camera while the camera view shows. The cleanup stops
+  // every old track before the other camera is asked for (WebKit 179363); a failed switch in Stand
+  // mode reopens the camera that worked.
+  useEffect(() => {
+    if (step !== 'live') return
+    let cancelled = false
+    let opened: LiveFeed | null = null
+    setCamera('opening')
+    openCamera(facing).then(
+      (f) => {
+        if (cancelled) {
+          f.stop()
+          return
+        }
+        opened = f
+        lastGood.current = facing
+        setFeed(f)
+        setCamera('open')
+      },
+      () => {
+        if (cancelled) return
+        const back = lastGood.current
+        if (latest.current.mode === 'stand' && back && back !== facing) {
+          setStandFacing(back)
+          saveFacing(latest.current.angle, back)
+          return
+        }
+        setCamera('failed')
+      },
+    )
+    return () => {
+      cancelled = true
+      opened?.stop()
+      setFeed(null)
+    }
+  }, [step, facing, openCamera])
+
+  const touch = (): void => {
+    unlockCaptureSound()
+    if (askedMotion.current) return
+    askedMotion.current = true
+    const motion = (window as unknown as { DeviceMotionEvent?: { requestPermission?: () => Promise<string> } }).DeviceMotionEvent
+    if (typeof motion?.requestPermission === 'function') void motion.requestPermission().catch(() => undefined)
   }
 
-  const stopFeed = (): void => {
-    feed?.stop()
-    setFeed(null)
+  // Opening is the tap that brought the trainee here: ask for motion now, while it still counts.
+  useEffect(() => {
+    touch()
+  }, [])
+
+  const chooseView = (next: PhotoAngle): void => {
+    setAngle(next)
+    saveView(next)
+    setMode(savedMode(next))
+    setStandFacing(savedFacing(next))
+    setKeepMirror(false)
+  }
+  const chooseMode = (next: PhotoMode): void => {
+    setMode(next)
+    saveMode(angle, next)
+  }
+  const switchCamera = (next: PhotoCamera): void => {
+    setStandFacing(next)
+    saveFacing(angle, next)
   }
 
   const took = (blob: Blob, captured: PhotoCaptureInfo): void => {
@@ -126,81 +197,30 @@ export function PhotoCapture({
     setStep('align')
   }
 
-  const takePhoto = async (): Promise<void> => {
-    setNote('')
-    unlockCaptureSound()
-    const motion = (window as unknown as { DeviceMotionEvent?: { requestPermission?: () => Promise<string> } }).DeviceMotionEvent
-    if (typeof motion?.requestPermission === 'function') void motion.requestPermission().catch(() => undefined)
-    try {
-      setFeed(await openCamera(facing))
-      setStep('live')
-    } catch {
-      setNote(UNAVAILABLE)
-      cameraInput.current?.click()
-    }
-  }
-
-  /** Front to back or back: the old tracks stop before the other camera is asked for (WebKit 179363). */
-  const switchCamera = async (next: PhotoCamera): Promise<void> => {
-    const previous = facing
-    feed?.stop()
-    setFeed(null)
-    setSwitching(true)
-    chooseCamera(next)
-    try {
-      const opened = await openCamera(next)
-      if (mounted.current) setFeed(opened)
-      else opened.stop()
-    } catch {
-      chooseCamera(previous)
-      try {
-        const reopened = await openCamera(previous)
-        if (mounted.current) setFeed(reopened)
-        else reopened.stop()
-      } catch {
-        if (mounted.current) {
-          setStep('pick')
-          setNote(UNAVAILABLE)
-        }
-      }
-    } finally {
-      if (mounted.current) setSwitching(false)
-    }
-  }
-
   const chosen =
     (source: 'native' | 'library') =>
     (event: ChangeEvent<HTMLInputElement>): void => {
       const file = event.target.files?.[0]
       event.target.value = ''
-      if (file) took(file, source === 'native' ? { camera: facing, source } : { source })
+      if (file) took(file, source === 'native' ? { camera: facing, source, mode } : { source })
     }
 
   const view = ANGLES.find((a) => a.value === angle) ?? ANGLES[0]
-
-  if (step === 'live') {
-    return (
-      <LiveView
-        feed={feed}
-        facing={facing}
-        switching={switching}
-        view={view}
-        reference={reference}
-        referenceBlob={referenceBlob}
-        referenceUrl={referenceUrl}
-        loadPose={loadPose ?? undefined}
-        onClose={() => {
-          stopFeed()
-          setStep('pick')
-        }}
-        onSwitch={(next) => void switchCamera(next)}
-        onFrame={(blob, captured) => {
-          stopFeed()
-          took(blob, captured)
-        }}
+  const inputs = (
+    <>
+      <input
+        ref={cameraInput}
+        className="photo-file"
+        hidden
+        type="file"
+        accept="image/*"
+        capture={facing === 'environment' ? 'environment' : 'user'}
+        aria-label="Camera photo"
+        onChange={chosen('native')}
       />
-    )
-  }
+      <input ref={libraryInput} className="photo-file" hidden type="file" accept="image/*" aria-label="Library photo" onChange={chosen('library')} />
+    </>
+  )
 
   if (step === 'align' && image) {
     return (
@@ -212,7 +232,7 @@ export function PhotoCapture({
         initialLines={info.bodyLines ?? null}
         onRetake={() => {
           setImage(null)
-          setStep('pick')
+          setStep('live')
         }}
         onSave={async (align, lines) => {
           const rest: PhotoCaptureInfo = { ...info }
@@ -253,8 +273,7 @@ export function PhotoCapture({
               className="btn-primary"
               onClick={() => {
                 chooseView(next)
-                setNote('')
-                setStep('pick')
+                setStep('live')
               }}
             >
               {`Next: ${nextLabel}`}
@@ -274,58 +293,71 @@ export function PhotoCapture({
     )
   }
 
-  return (
-    <div className="photo-capture">
-      <header className="photo-header">
-        <button type="button" className="btn-quiet" onClick={onClose}>
-          Close
-        </button>
-        <h1 className="photo-title">New photo</h1>
-        <span className="photo-header-end" />
-      </header>
-      <div className="photo-body">
-        <Segmented name="photo-angle" label="View" value={angle} options={ANGLES} onChange={chooseView} />
-        <Segmented name="photo-camera" label="Camera" value={facing} options={CAMERAS} onChange={chooseCamera} />
-        <section className="photo-card" aria-label="Setup">
-          <p className="photo-card-label">Same setup every time</p>
+  const hand = reference?.phoneHand ?? 'right'
+  const copy = setupCopy(mode, facing, hand)
+  const otherModePhotos = photos.some((p) => p.angle === angle && modeOf(p) !== mode)
+  const showTips = !tipsHidden && !reference
+  const notes = (
+    <>
+      {angle === 'back' && mode === 'mirror' && !keepMirror ? (
+        <div className="photo-live-card" role="group" aria-label="Back in a mirror">
+          <p>A back photo needs the phone on a stand, or a second mirror. Use Stand?</p>
+          <div className="photo-live-card-actions">
+            <button type="button" className="chip photo-chip" onClick={() => chooseMode('stand')}>
+              Use Stand
+            </button>
+            <button type="button" className="chip photo-chip" onClick={() => setKeepMirror(true)}>
+              Keep Mirror
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {mode === 'mirror' && !reference && otherModePhotos ? (
+        <p className="photo-live-note">No mirror photo yet. This one becomes the reference.</p>
+      ) : null}
+      {showTips ? (
+        <section className="photo-live-card" aria-label="Setup">
           <p>
-            {facing === 'environment'
-              ? 'Phone at chest height on a shelf, 2.5 m away; level it before you walk to your spot. Ticks speed up as you near the right distance, and one high tone means it matches. Same light, arms relaxed 15 cm from your body.'
-              : 'Phone at chest height on a shelf, 2.5 m away. Tape on the floor where your toes go. Same light, same time of day, arms relaxed 15 cm from your body.'}
+            <strong>{copy.title}</strong> {copy.text}
           </p>
+          <div className="photo-live-card-actions">
+            <button type="button" className="chip photo-chip" onClick={() => setTipsHidden(true)}>
+              Hide tips
+            </button>
+          </div>
         </section>
-        {reference ? (
-          <section className="photo-card photo-next" aria-label="Next to match">
-            {referenceUrl ? <img className="photo-thumb" src={referenceUrl} alt="" /> : null}
-            <div>
-              <p className="photo-card-label">Next to match</p>
-              <p>
-                Your {shortDate(reference.day)} {angle} photo is the reference. You will line the new one up with it.
-              </p>
-            </div>
-          </section>
-        ) : null}
-      </div>
-      <footer className="photo-actions">
-        {note ? <p className="photo-note">{note}</p> : null}
-        <button type="button" className="btn-primary" onClick={() => void takePhoto()}>
-          Take photo
-        </button>
-        <button type="button" className="btn-secondary" onClick={() => libraryInput.current?.click()}>
-          Choose from library
-        </button>
-      </footer>
-      <input
-        ref={cameraInput}
-        className="photo-file"
-        hidden
-        type="file"
-        accept="image/*"
-        capture={facing === 'environment' ? 'environment' : 'user'}
-        aria-label="Camera photo"
-        onChange={chosen('native')}
+      ) : null}
+    </>
+  )
+
+  return (
+    <>
+      <LiveView
+        key={`${angle}-${mode}-${facing}`}
+        feed={feed}
+        facing={facing}
+        camera={camera}
+        view={view}
+        mode={mode}
+        reference={reference}
+        referenceBlob={referenceBlob}
+        referenceUrl={referenceUrl}
+        referenceDay={reference ? shortDate(reference.day) : null}
+        loadPose={loadPose ?? undefined}
+        notes={notes}
+        onView={chooseView}
+        onMode={chooseMode}
+        onClose={() => {
+          feed?.stop()
+          onClose()
+        }}
+        onSwitch={switchCamera}
+        onFrame={(blob, captured) => took(blob, captured)}
+        onCameraApp={() => cameraInput.current?.click()}
+        onLibrary={() => libraryInput.current?.click()}
+        onTouch={touch}
       />
-      <input ref={libraryInput} className="photo-file" hidden type="file" accept="image/*" aria-label="Library photo" onChange={chosen('library')} />
-    </div>
+      {inputs}
+    </>
   )
 }

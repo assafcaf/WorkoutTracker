@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The progress photo the capture asks for</title>
+<!-- Board: what the guided capture (decision 0026, photos v2, mirror mode) asks you to take. Rendered to
+     board.png by render.cjs; the three capture screens in shots/ are real screenshots of LiveView
+     made by live.cjs. Ledger & Instrument palette (docs/design/competitors-2026-11/study.md §3). -->
+<style>
+@font-face { font-family: 'Geist'; src: url('../../../../../src/assets/fonts/Geist-Variable.woff2') format('woff2'); font-weight: 400 600; }
+:root {
+  --paper: #F6F6F3; --surface: #FFFFFF; --line: #E3E3DE; --ink: #141518; --ink-2: #4A4B53; --ink-3: #6C6D75;
+  --live: #2453D4; --up: #17794A; --up-tint: #E2F2E9; --down: #B04A1C; --down-tint: #FBEAE2;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #DCDCD6; font-family: 'Geist', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums lining-nums; color: var(--ink); }
+#board { width: 640px; background: var(--paper); padding: 36px 28px 40px; }
+h1 { font-size: 34px; font-weight: 600; line-height: 1.12; letter-spacing: -0.01em; }
+.lede { font-size: 18px; color: var(--ink-2); line-height: 1.4; margin-top: 10px; }
+section { margin-top: 34px; }
+.label { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); display: flex; gap: 10px; align-items: baseline; }
+.label b { color: var(--ink); font-weight: 600; }
+h2 { font-size: 24px; font-weight: 600; margin-top: 6px; line-height: 1.2; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-top: 14px; }
+svg text { font-family: 'Geist', 'Segoe UI', system-ui, sans-serif; }
+.rules { list-style: none; margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 17px; line-height: 1.3; }
+.rules li { padding-left: 22px; position: relative; }
+.rules li::before { content: ''; position: absolute; left: 2px; top: 7px; width: 9px; height: 9px; border-radius: 50%; background: var(--up); }
+.views { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+.view figcaption { font-size: 17px; font-weight: 600; margin-top: 6px; }
+.view figcaption span { display: block; font-size: 14px; font-weight: 400; color: var(--ink-2); }
+.frame { display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.state { display: grid; grid-template-columns: 250px 1fr; gap: 18px; margin-top: 18px; align-items: start; }
+.state img { width: 250px; display: block; border-radius: 22px; border: 1px solid #000; }
+.step { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.state h3 { font-size: 26px; font-weight: 600; margin-top: 6px; line-height: 1.15; }
+.state p { font-size: 17px; line-height: 1.4; color: var(--ink-2); margin-top: 8px; }
+.state p b { color: var(--ink); font-weight: 600; }
+.chk { list-style: none; margin-top: 12px; font-size: 16px; line-height: 1.6; }
+.chk li::before { content: attr(data-m); display: inline-block; width: 24px; font-weight: 600; }
+.chk .ok::before { color: var(--up); }
+.chk .no::before { color: var(--down); }
+.grid { display: grid; grid-template-columns: 54px repeat(3, 1fr); gap: 8px; align-items: center; margin-top: 12px; }
+.grid .h { font-size: 16px; font-weight: 600; text-align: center; }
+.grid .r { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); writing-mode: vertical-rl; transform: rotate(180deg); justify-self: center; }
+.tag { display: inline-block; font-size: 15px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+.tag.up { color: var(--up); background: var(--up-tint); }
+.tag.down { color: var(--down); background: var(--down-tint); }
+.cap { font-size: 14px; color: var(--ink-2); text-align: center; line-height: 1.25; margin-top: 4px; min-height: 36px; }
+.cap.down { color: var(--down); }
+.foot { font-size: 14px; color: var(--ink-3); margin-top: 28px; line-height: 1.4; }
+hr { border: 0; border-top: 1px solid var(--line); margin-top: 34px; }
+</style>
+</head>
+<body>
+<div id="board">
+  <h1>The photo it asks you to take</h1>
+  <p class="lede">The same picture every time: same mirror, same spot, same phone height, same light. Then the only thing that changes between photos is you.</p>
+
+  <!-- 1. Setup -->
+  <section>
+    <div class="label"><b>1</b> The setup</div>
+    <h2>In front of a mirror, phone in hand</h2>
+    <div class="panel" style="padding: 8px 8px 4px">
+      <svg id="setup" viewBox="0 0 584 300" width="100%" role="img" aria-label="Side view of the setup: standing in front of a mirror, phone held at face height, back camera to the mirror; the back photo on a stand with a timer"></svg>
+    </div>
+    <ul class="rules">
+      <li>Back camera at a full-length mirror</li>
+      <li>Phone upright at face height, same hand</li>
+      <li>About 1.3 m; mark where your toes go</li>
+      <li>Same light; not right after a shower</li>
+      <li>Head to feet in the frame</li>
+      <li>Back photo: phone on a stand, 10 s timer</li>
+    </ul>
+    <div class="views" id="views"></div>
+  </section>
+
+  <hr>
+
+  <!-- 2. Capture -->
+  <section>
+    <div class="label"><b>2</b> The screen guides you</div>
+    <h2>One cue at a time, until it says Matched</h2>
+
+    <div class="state">
+      <img src="shots/a-adjust.png" alt="Capture screen in Mirror mode: Raise the phone, the height dot below the mark">
+      <div>
+        <div class="step"><span class="dot" style="background: var(--ink)"></span>Adjust</div>
+        <h3>Raise the phone</h3>
+        <p>The phone is level, but held <b>lower</b> than last time: your shoulders sit higher in the frame. The scale on the left shows the dot under last time's mark. One cue at a time: tilt, then height, then feet, then distance.</p>
+        <ul class="chk">
+          <li class="ok" data-m="✓">Level: pitch within 1.5°</li>
+          <li class="no" data-m="✕">Height: about 5 cm low</li>
+          <li data-m="…">Distance comes next</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="state">
+      <img src="shots/b-hold.png" alt="Capture screen in Mirror mode: Hold still, 3, the countdown ring around the shutter">
+      <div>
+        <div class="step"><span class="dot" style="background: var(--up); opacity: .5"></span>Counting down</div>
+        <h3>Hold still · 3</h3>
+        <p>Everything matched for 0.6 s, so it counts 3 · 2 · 1 by itself. No need to reach for the shutter; the frame is taken when the phone stops moving.</p>
+        <ul class="chk">
+          <li class="ok" data-m="✓">Level, height, distance</li>
+          <li class="ok" data-m="✓">Feet in frame</li>
+          <li data-m="…">1.5 s countdown</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="state">
+      <img src="shots/c-matched.png" alt="Capture screen in Mirror mode: Matched, the last mirror photo's ghost over the body">
+      <div>
+        <div class="step"><span class="dot" style="background: var(--up)"></span>Take it</div>
+        <h3 style="color: var(--up)">Matched</h3>
+        <p>Everything is green and the 6 Oct mirror photo's ghost (35%) sits on you. You can see the screen, so it stays silent; auto-capture starts the countdown. View and Mirror / Stand are switched right on this screen.</p>
+        <ul class="chk">
+          <li class="ok" data-m="✓">Level</li>
+          <li class="ok" data-m="✓">Same phone height</li>
+          <li class="ok" data-m="✓">Same distance from the mirror</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- 3. Result -->
+  <section>
+    <div class="label"><b>3</b> The result</div>
+    <h2>Twelve weeks you can compare</h2>
+    <p class="lede" style="font-size: 17px">Same size, feet on the same line, head at the same height. The green lines run through every photo.</p>
+    <div style="margin-top: 12px"><span class="tag up">With guidance</span></div>
+    <div class="grid" id="guided"></div>
+
+    <div style="margin-top: 26px"><span class="tag down">Without guidance</span></div>
+    <p class="lede" style="font-size: 17px; margin-top: 8px">The same three days, hand-held. Is the waist smaller, or is the phone farther away?</p>
+    <div class="grid" id="unguided"></div>
+  </section>
+
+  <p class="foot">Illustrated silhouettes, not real people. The three capture screens are screenshots of the app's live view (LiveView) in Mirror mode, with a drawn camera feed, a simulated level and a stubbed pose model.</p>
+</div>
+
+<script>
+const WALL = '#d9d4cb', FLOOR = '#b9b2a6', SKIN = '#6e5a4c', BACK = '#5b4a40'
+const NS = 'http://www.w3.org/2000/svg'
+
+// One person in a 600 x 800 frame (the seeded silhouette of scripts/ux-review/shoot.mjs): head top
+// at y 107, soles at y 700. `waist` narrows over the weeks.
+function person(view, waist, fill) {
+  if (view === 'side') {
+    // Left side to the camera: facing the left of the frame.
+    const b = 30 * waist // belly
+    return `<g fill="${fill}">
+      <ellipse cx="292" cy="165" rx="46" ry="58"/>
+      <path d="M262 168 q-14 8 -6 16 l8 2 z"/>
+      <rect x="282" y="208" width="36" height="44" rx="8"/>
+      <path d="M268 255 C252 262 248 300 252 330 C256 360 ${270 - b} 390 ${268 - b} 430 C${266 - b} 470 266 500 270 520
+               L276 700 L316 700 L322 540 C330 500 342 470 342 430 C342 380 340 330 338 300 C336 270 324 256 310 252 Z"/>
+      <path d="M262 700 l-34 0 q-4 -10 6 -14 l28 -2 z"/>
+      <ellipse cx="308" cy="384" rx="20" ry="120" transform="rotate(4 308 384)" fill="${fill === SKIN ? '#5f4d41' : fill}" opacity="0.9"/>
+    </g>`
+  }
+  const shoulder = 125, hip = 92 * waist, mid = 88 * waist
+  return `<g fill="${fill}" transform="translate(300 0)">
+    <ellipse cx="0" cy="165" rx="48" ry="58"/>
+    <rect x="-22" y="210" width="44" height="40"/>
+    <path d="M${-shoulder} 260 Q0 235 ${shoulder} 260 L${mid + 6} 420 L${hip} 500 L${hip - 10} 700 L10 700 L0 540 L-10 700 L${-hip + 10} 700 L${-hip} 500 L${-mid - 6} 420 Z"/>
+    <ellipse cx="${-(shoulder + 8)}" cy="380" rx="22" ry="120" transform="rotate(4.6 ${-(shoulder + 8)} 380)"/>
+    <ellipse cx="${shoulder + 8}" cy="380" rx="22" ry="120" transform="rotate(-4.6 ${shoulder + 8} 380)"/>
+  </g>`
+}
+
+// One photo: wall, floor, the person under a camera transform (scale about the centre, roll, shift).
+function photo({ view, waist, s = 1, rot = 0, dx = 0, dy = 0, wall = WALL, floor = FLOOR, lines = null, refLines = null, dim = 0 }) {
+  const fill = view === 'back' ? BACK : SKIN
+  const cam = `translate(${300 + dx} ${400 + dy}) rotate(${rot}) scale(${s}) translate(-300 -400)`
+  let g = `<svg viewBox="0 0 600 800" class="frame" preserveAspectRatio="xMidYMid slice">
+    <g transform="${cam}"><rect x="-600" y="-600" width="1800" height="1260" fill="${wall}"/><rect x="-600" y="660" width="1800" height="800" fill="${floor}"/>
+    ${person(view, waist, fill)}</g>`
+  if (dim) g += `<rect width="600" height="800" fill="#000" opacity="${dim}"/>`
+  if (lines) for (const y of [107, 700]) g += `<line x1="0" x2="600" y1="${y}" y2="${y}" stroke="#17794A" stroke-width="7" stroke-dasharray="26 14"/>`
+  if (refLines) for (const y of [107, 700]) g += `<line x1="0" x2="600" y1="${y}" y2="${y}" stroke="#B04A1C" stroke-width="7" stroke-dasharray="26 14" opacity=".9"/>`
+  return g + '</svg>'
+}
+
+// 1. The three views.
+document.getElementById('views').innerHTML = [
+  ['front', 'Front', 'Mirror, facing it'],
+  ['side', 'Side', 'Mirror, left side to it'],
+  ['back', 'Back', 'Stand + 10 s timer'],
+].map(([v, t, sub]) => `<figure class="view">${photo({ view: v, waist: 0.95, lines: true })}<figcaption>${t}<span>${sub}</span></figcaption></figure>`).join('')
+
+// 1. The side-view diagram of the room.
+document.getElementById('setup').innerHTML = `
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#141518"/></marker>
+  </defs>
+  <rect x="0" y="0" width="584" height="300" fill="#FFFFFF"/>
+  <!-- floor -->
+  <line x1="12" y1="260" x2="400" y2="260" stroke="#141518" stroke-width="2"/>
+  <!-- full-length mirror on the wall, its reflection faint behind the glass -->
+  <rect x="40" y="14" width="10" height="246" fill="#E3E3DE"/>
+  <rect x="50" y="22" width="9" height="236" fill="#CFE0F2" stroke="#8C8E97" stroke-width="1.5"/>
+  <g fill="#6e5a4c" opacity="0.16" transform="translate(-14 0)">
+    <ellipse cx="38" cy="68" rx="13" ry="16"/>
+    <path d="M28 94 C24 120 24 150 28 175 L30 258 L46 258 L48 175 C52 150 52 120 48 94 Z"/>
+  </g>
+  <!-- person in profile, facing the mirror, phone held up at face height -->
+  <g fill="#6e5a4c">
+    <ellipse cx="262" cy="68" rx="15" ry="18"/>
+    <rect x="256" y="84" width="12" height="10"/>
+    <path d="M249 94 C244 120 244 150 249 175 L252 258 L264 258 L266 180 L270 258 L282 258 L280 175 C284 150 284 120 278 94 Z"/>
+  </g>
+  <!-- the raised arm: upper arm out, forearm up to the phone -->
+  <path d="M262 104 L236 124 L222 92" stroke="#5f4d41" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- phone, upright: back camera to the mirror, screen to you -->
+  <rect x="210" y="62" width="10" height="40" rx="3" fill="#141518"/>
+  <circle cx="210" cy="70" r="3.5" fill="#2453D4"/>
+  <!-- the camera sees the mirror: head to feet of the reflection -->
+  <path d="M208 70 L59 26 L59 258 Z" fill="#2453D4" opacity="0.07"/>
+  <line x1="208" y1="70" x2="59" y2="26" stroke="#2453D4" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <line x1="208" y1="70" x2="59" y2="258" stroke="#2453D4" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <!-- level at face height -->
+  <line x1="59" y1="70" x2="208" y2="70" stroke="#17794A" stroke-width="2" stroke-dasharray="7 5"/>
+  <!-- floor mark under the toes -->
+  <rect x="244" y="257" width="24" height="6" fill="#17794A"/>
+  <!-- distance to the mirror -->
+  <line x1="62" y1="282" x2="252" y2="282" stroke="#141518" stroke-width="1.5" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <rect x="112" y="270" width="86" height="24" fill="#FFFFFF"/>
+  <text x="155" y="288" text-anchor="middle" font-size="18" font-weight="600" fill="#141518">~1.3 m</text>
+  <!-- labels -->
+  <text x="70" y="44" font-size="15" font-weight="600" fill="#141518">Full-length mirror</text>
+  <text x="130" y="96" font-size="15" font-weight="600" fill="#17794A" text-anchor="middle">level, face height</text>
+  <text x="128" y="150" font-size="14" fill="#2453D4" text-anchor="middle">back camera</text>
+  <text x="128" y="167" font-size="14" fill="#2453D4" text-anchor="middle">sees head to feet</text>
+  <text x="282" y="40" font-size="14" font-weight="600" fill="#141518">Screen faces you:</text>
+  <text x="282" y="57" font-size="13" fill="#4A4B53">you read every cue</text>
+  <text x="276" y="250" font-size="14" font-weight="600" fill="#17794A">mark</text>
+  <!-- inset: the back photo on a stand -->
+  <rect x="412" y="14" width="160" height="272" rx="10" fill="#F6F6F3" stroke="#E3E3DE"/>
+  <text x="492" y="40" font-size="15" font-weight="600" fill="#141518" text-anchor="middle">Back: Stand + timer</text>
+  <line x1="424" y1="236" x2="560" y2="236" stroke="#141518" stroke-width="1.5"/>
+  <rect x="428" y="150" width="40" height="5" rx="2" fill="#8C8E97"/>
+  <rect x="432" y="155" width="4" height="81" fill="#C6C7CC"/><rect x="460" y="155" width="4" height="81" fill="#C6C7CC"/>
+  <rect x="446" y="118" width="8" height="32" rx="2" fill="#141518"/>
+  <circle cx="454" cy="126" r="2.6" fill="#2453D4"/>
+  <g fill="#5b4a40">
+    <ellipse cx="528" cy="88" rx="10" ry="12"/>
+    <path d="M519 102 C516 122 516 150 519 168 L521 234 L530 234 L531 172 L534 234 L543 234 L541 168 C544 150 544 122 540 102 Z"/>
+  </g>
+  <line x1="456" y1="126" x2="514" y2="126" stroke="#17794A" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="492" y="258" font-size="14" fill="#4A4B53" text-anchor="middle">back to the phone,</text>
+  <text x="492" y="276" font-size="14" fill="#4A4B53" text-anchor="middle">10 s timer, sounds on</text>
+  <!-- same light -->
+  <g transform="translate(360 150)" stroke="#8A6400" stroke-width="2" fill="none">
+    <circle r="8" fill="#FFF0C2"/>
+    <path d="M0 -13 v-5 M0 13 v5 M-13 0 h-5 M13 0 h5"/>
+  </g>
+  <text x="360" y="188" font-size="13" fill="#4A4B53" text-anchor="middle">same light</text>
+`
+
+// 3. The result: three check-ins.
+const DAYS = [['25 Aug', 1.0], ['6 Oct', 0.92], ['17 Nov', 0.85]]
+const VIEWS = [['front', 'Front'], ['side', 'Side'], ['back', 'Back']]
+let g = '<div></div>' + DAYS.map(([d]) => `<div class="h">${d}</div>`).join('')
+for (const [v, name] of VIEWS) {
+  g += `<div class="r">${name}</div>`
+  for (const [, w] of DAYS) g += `<div>${photo({ view: v, waist: w, lines: true })}</div>`
+}
+document.getElementById('guided').innerHTML = g
+
+// Without guidance: different distance, tilt, crop and light each time.
+const BAD = [
+  { s: 1.0, rot: 0, dx: 0, dy: 0, cap: 'Reference' },
+  { s: 1.3, rot: -4, dx: 30, dy: 60, wall: '#cfc6b4', floor: '#aea490', cap: '1.9 m · tilted 4° · feet cut' },
+  { s: 0.72, rot: 2, dx: -40, dy: -50, wall: '#e6e3dc', floor: '#c9c4ba', dim: 0.12, cap: '3.5 m · tilted 2° · dim' },
+]
+let u = '<div></div>' + DAYS.map(([d]) => `<div class="h">${d}</div>`).join('')
+u += `<div class="r">Front</div>`
+DAYS.forEach(([, w], i) => {
+  const b = BAD[i]
+  u += `<div>${photo({ view: 'front', waist: w, ...b, refLines: true })}</div>`
+})
+u += '<div></div>' + BAD.map((b, i) => `<div class="cap ${i ? 'down' : ''}">${b.cap}</div>`).join('')
+document.getElementById('unguided').innerHTML = u
+</script>
+</body>
+</html>

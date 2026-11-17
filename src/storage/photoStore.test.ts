@@ -310,3 +310,27 @@ describe('photos v2: what the capture knew is stored with the photo', () => {
     ).toEqual({ pitch: 2 })
   })
 })
+
+describe('mirror mode: the mode, phone height and hand are stored with the photo', () => {
+  test('mode, phoneHeight and phoneHand read back unchanged after a restart', async () => {
+    stubStorage({})
+    const { io } = fakeIo({ width: 1200, height: 1600 })
+    const info = { mode: 'mirror' as const, phoneHeight: -0.42, phoneHand: 'right' as const, camera: 'environment' as const }
+    await photoStore.add({ file: CAMERA_FILE, day: '2026-11-17', angle: 'front', align: null, ...info }, io)
+    db.close()
+    await db.open()
+    const [back] = await photoStore.list()
+    expect(back).toMatchObject(info)
+  })
+
+  test('malformed mirror fields are dropped; good ones are kept', () => {
+    expect(
+      photoStore.captureInfoOf({ mode: 'selfie' as never, phoneHeight: Number.NaN, phoneHand: 'both' as never }),
+    ).toEqual({})
+    expect(photoStore.captureInfoOf({ mode: 'stand', phoneHeight: 0, phoneHand: 'left' })).toEqual({
+      mode: 'stand',
+      phoneHeight: 0,
+      phoneHand: 'left',
+    })
+  })
+})
