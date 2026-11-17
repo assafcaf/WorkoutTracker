@@ -7,6 +7,7 @@ import { LiftPage } from './LiftPage'
 import { AllLifts } from './AllLifts'
 import { Home } from './Home'
 import { BodyPage } from './BodyPage'
+import { ComparePage } from './photos/compare/ComparePage'
 
 /** The pages the Progress tab pushes. `home` is the tab's own screen; the others push over it. */
 export type ProgressPage =
@@ -67,3 +68,6 @@ PROGRESS_PAGES.lifts = AllLifts
 
 // E22-T7: the Body page (append-only).
 PROGRESS_PAGES.body = BodyPage
+
+// E26-T8: the photo Compare page (append-only).
+PROGRESS_PAGES.compare = ComparePage
