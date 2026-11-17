@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The progress photo the capture asks for</title>
+<!-- Board: what the guided capture (decision 0026, photos v2) asks you to take. Rendered to
+     board.png by render.cjs; the three capture screens in shots/ are real screenshots of LiveView
+     made by live.cjs. Ledger & Instrument palette (docs/design/competitors-2026-11/study.md §3). -->
+<style>
+@font-face { font-family: 'Geist'; src: url('../../../../../src/assets/fonts/Geist-Variable.woff2') format('woff2'); font-weight: 400 600; }
+:root {
+  --paper: #F6F6F3; --surface: #FFFFFF; --line: #E3E3DE; --ink: #141518; --ink-2: #4A4B53; --ink-3: #6C6D75;
+  --live: #2453D4; --up: #17794A; --up-tint: #E2F2E9; --down: #B04A1C; --down-tint: #FBEAE2;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #DCDCD6; font-family: 'Geist', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums lining-nums; color: var(--ink); }
+#board { width: 640px; background: var(--paper); padding: 36px 28px 40px; }
+h1 { font-size: 34px; font-weight: 600; line-height: 1.12; letter-spacing: -0.01em; }
+.lede { font-size: 18px; color: var(--ink-2); line-height: 1.4; margin-top: 10px; }
+section { margin-top: 34px; }
+.label { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); display: flex; gap: 10px; align-items: baseline; }
+.label b { color: var(--ink); font-weight: 600; }
+h2 { font-size: 24px; font-weight: 600; margin-top: 6px; line-height: 1.2; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-top: 14px; }
+svg text { font-family: 'Geist', 'Segoe UI', system-ui, sans-serif; }
+.rules { list-style: none; margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 17px; line-height: 1.3; }
+.rules li { padding-left: 22px; position: relative; }
+.rules li::before { content: ''; position: absolute; left: 2px; top: 7px; width: 9px; height: 9px; border-radius: 50%; background: var(--up); }
+.views { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+.view figcaption { font-size: 17px; font-weight: 600; margin-top: 6px; }
+.view figcaption span { display: block; font-size: 14px; font-weight: 400; color: var(--ink-2); }
+.frame { display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.state { display: grid; grid-template-columns: 250px 1fr; gap: 18px; margin-top: 18px; align-items: start; }
+.state img { width: 250px; display: block; border-radius: 22px; border: 1px solid #000; }
+.step { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.state h3 { font-size: 26px; font-weight: 600; margin-top: 6px; line-height: 1.15; }
+.state p { font-size: 17px; line-height: 1.4; color: var(--ink-2); margin-top: 8px; }
+.state p b { color: var(--ink); font-weight: 600; }
+.chk { list-style: none; margin-top: 12px; font-size: 16px; line-height: 1.6; }
+.chk li::before { content: attr(data-m); display: inline-block; width: 24px; font-weight: 600; }
+.chk .ok::before { color: var(--up); }
+.chk .no::before { color: var(--down); }
+.grid { display: grid; grid-template-columns: 54px repeat(3, 1fr); gap: 8px; align-items: center; margin-top: 12px; }
+.grid .h { font-size: 16px; font-weight: 600; text-align: center; }
+.grid .r { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); writing-mode: vertical-rl; transform: rotate(180deg); justify-self: center; }
+.tag { display: inline-block; font-size: 15px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+.tag.up { color: var(--up); background: var(--up-tint); }
+.tag.down { color: var(--down); background: var(--down-tint); }
+.cap { font-size: 14px; color: var(--ink-2); text-align: center; line-height: 1.25; margin-top: 4px; min-height: 36px; }
+.cap.down { color: var(--down); }
+.foot { font-size: 14px; color: var(--ink-3); margin-top: 28px; line-height: 1.4; }
+hr { border: 0; border-top: 1px solid var(--line); margin-top: 34px; }
+</style>
+</head>
+<body>
+<div id="board">
+  <h1>The photo it asks you to take</h1>
+  <p class="lede">The same picture every time: same spot, same height, same distance, same light. Then the only thing that changes between photos is you.</p>
+
+  <!-- 1. Setup -->
+  <section>
+    <div class="label"><b>1</b> The setup</div>
+    <h2>Phone on a shelf, you 2.5 m away</h2>
+    <div class="panel" style="padding: 8px 8px 4px">
+      <svg id="setup" viewBox="0 0 584 300" width="100%" role="img" aria-label="Side view of the setup"></svg>
+    </div>
+    <ul class="rules">
+      <li>Back camera, phone upright</li>
+      <li>Chest height, on a shelf or stand</li>
+      <li>2.5 m; tape where your toes go</li>
+      <li>Same light, same time of day</li>
+      <li>Head to feet in the frame</li>
+      <li>Arms relaxed, ~15 cm from body</li>
+    </ul>
+    <div class="views" id="views"></div>
+  </section>
+
+  <hr>
+
+  <!-- 2. Capture -->
+  <section>
+    <div class="label"><b>2</b> The screen guides you</div>
+    <h2>One cue at a time, until it says Matched</h2>
+
+    <div class="state">
+      <img src="shots/a-adjust.png" alt="Capture screen: Tilt right 2.5 degrees, 8% closer">
+      <div>
+        <div class="step"><span class="dot" style="background: var(--ink)"></span>Adjust</div>
+        <h3>Tilt right 2.5°</h3>
+        <p>The level comes first. The bar already shows you are <b>8% closer</b> than last time, so <b>Step back</b> is the next cue.</p>
+        <ul class="chk">
+          <li class="no" data-m="✕">Level: off by 2.5°</li>
+          <li class="no" data-m="✕">Distance: dot left of green</li>
+          <li class="no" data-m="✕">Ghost: you are bigger than it</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="state">
+      <img src="shots/b-hold.png" alt="Capture screen: Hold still, level green, distance in the green zone">
+      <div>
+        <div class="step"><span class="dot" style="background: var(--up); opacity: .5"></span>Settling</div>
+        <h3>Hold still</h3>
+        <p>Level is green and the dot is inside the green zone (±3%). It waits half a second so a sway does not count.</p>
+        <ul class="chk">
+          <li class="ok" data-m="✓">Level: within 1°</li>
+          <li class="ok" data-m="✓">Distance: 1% off</li>
+          <li data-m="…">Holding 0.5 s</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="state">
+      <img src="shots/c-matched.png" alt="Capture screen: Matched, the last photo's ghost over the body">
+      <div>
+        <div class="step"><span class="dot" style="background: var(--up)"></span>Take it</div>
+        <h3 style="color: var(--up)">Matched</h3>
+        <p>Everything is green and the 6 Oct photo's ghost (35%) sits on you. One high tone, so you know with the screen facing away. Use the 10 s timer.</p>
+        <ul class="chk">
+          <li class="ok" data-m="✓">Level</li>
+          <li class="ok" data-m="✓">Same distance</li>
+          <li class="ok" data-m="✓">Lines up with the ghost</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- 3. Result -->
+  <section>
+    <div class="label"><b>3</b> The result</div>
+    <h2>Twelve weeks you can compare</h2>
+    <p class="lede" style="font-size: 17px">Same size, feet on the same line, head at the same height. The green lines run through every photo.</p>
+    <div style="margin-top: 12px"><span class="tag up">With guidance</span></div>
+    <div class="grid" id="guided"></div>
+
+    <div style="margin-top: 26px"><span class="tag down">Without guidance</span></div>
+    <p class="lede" style="font-size: 17px; margin-top: 8px">The same three days, hand-held. Is the waist smaller, or is the phone farther away?</p>
+    <div class="grid" id="unguided"></div>
+  </section>
+
+  <p class="foot">Illustrated silhouettes, not real people. The three capture screens are screenshots of the app's live view (LiveView), with a drawn camera feed, a simulated level and a stubbed pose model.</p>
+</div>
+
+<script>
+const WALL = '#d9d4cb', FLOOR = '#b9b2a6', SKIN = '#6e5a4c', BACK = '#5b4a40'
+const NS = 'http://www.w3.org/2000/svg'
+
+// One person in a 600 x 800 frame (the seeded silhouette of scripts/ux-review/shoot.mjs): head top
+// at y 107, soles at y 700. `waist` narrows over the weeks.
+function person(view, waist, fill) {
+  if (view === 'side') {
+    // Left side to the camera: facing the left of the frame.
+    const b = 30 * waist // belly
+    return `<g fill="${fill}">
+      <ellipse cx="292" cy="165" rx="46" ry="58"/>
+      <path d="M262 168 q-14 8 -6 16 l8 2 z"/>
+      <rect x="282" y="208" width="36" height="44" rx="8"/>
+      <path d="M268 255 C252 262 248 300 252 330 C256 360 ${270 - b} 390 ${268 - b} 430 C${266 - b} 470 266 500 270 520
+               L276 700 L316 700 L322 540 C330 500 342 470 342 430 C342 380 340 330 338 300 C336 270 324 256 310 252 Z"/>
+      <path d="M262 700 l-34 0 q-4 -10 6 -14 l28 -2 z"/>
+      <ellipse cx="308" cy="384" rx="20" ry="120" transform="rotate(4 308 384)" fill="${fill === SKIN ? '#5f4d41' : fill}" opacity="0.9"/>
+    </g>`
+  }
+  const shoulder = 125, hip = 92 * waist, mid = 88 * waist
+  return `<g fill="${fill}" transform="translate(300 0)">
+    <ellipse cx="0" cy="165" rx="48" ry="58"/>
+    <rect x="-22" y="210" width="44" height="40"/>
+    <path d="M${-shoulder} 260 Q0 235 ${shoulder} 260 L${mid + 6} 420 L${hip} 500 L${hip - 10} 700 L10 700 L0 540 L-10 700 L${-hip + 10} 700 L${-hip} 500 L${-mid - 6} 420 Z"/>
+    <ellipse cx="${-(shoulder + 8)}" cy="380" rx="22" ry="120" transform="rotate(4.6 ${-(shoulder + 8)} 380)"/>
+    <ellipse cx="${shoulder + 8}" cy="380" rx="22" ry="120" transform="rotate(-4.6 ${shoulder + 8} 380)"/>
+  </g>`
+}
+
+// One photo: wall, floor, the person under a camera transform (scale about the centre, roll, shift).
+function photo({ view, waist, s = 1, rot = 0, dx = 0, dy = 0, wall = WALL, floor = FLOOR, lines = null, refLines = null, dim = 0 }) {
+  const fill = view === 'back' ? BACK : SKIN
+  const cam = `translate(${300 + dx} ${400 + dy}) rotate(${rot}) scale(${s}) translate(-300 -400)`
+  let g = `<svg viewBox="0 0 600 800" class="frame" preserveAspectRatio="xMidYMid slice">
+    <g transform="${cam}"><rect x="-600" y="-600" width="1800" height="1260" fill="${wall}"/><rect x="-600" y="660" width="1800" height="800" fill="${floor}"/>
+    ${person(view, waist, fill)}</g>`
+  if (dim) g += `<rect width="600" height="800" fill="#000" opacity="${dim}"/>`
+  if (lines) for (const y of [107, 700]) g += `<line x1="0" x2="600" y1="${y}" y2="${y}" stroke="#17794A" stroke-width="7" stroke-dasharray="26 14"/>`
+  if (refLines) for (const y of [107, 700]) g += `<line x1="0" x2="600" y1="${y}" y2="${y}" stroke="#B04A1C" stroke-width="7" stroke-dasharray="26 14" opacity=".9"/>`
+  return g + '</svg>'
+}
+
+// 1. The three views.
+document.getElementById('views').innerHTML = [
+  ['front', 'Front', 'Facing the phone'],
+  ['side', 'Side', 'Left side to the phone'],
+  ['back', 'Back', 'Back to the phone'],
+].map(([v, t, sub]) => `<figure class="view">${photo({ view: v, waist: 0.95, lines: true })}<figcaption>${t}<span>${sub}</span></figcaption></figure>`).join('')
+
+// 1. The side-view diagram of the room.
+document.getElementById('setup').innerHTML = `
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#141518"/></marker>
+  </defs>
+  <rect x="0" y="0" width="584" height="300" fill="#FFFFFF"/>
+  <!-- wall behind the person and floor -->
+  <rect x="520" y="16" width="10" height="244" fill="#E3E3DE"/>
+  <line x1="12" y1="260" x2="572" y2="260" stroke="#141518" stroke-width="2"/>
+  <!-- shelf / stand -->
+  <rect x="34" y="138" width="78" height="8" rx="2" fill="#8C8E97"/>
+  <rect x="40" y="146" width="6" height="114" fill="#C6C7CC"/><rect x="100" y="146" width="6" height="114" fill="#C6C7CC"/>
+  <!-- phone, upright, back camera to the person -->
+  <rect x="78" y="88" width="14" height="50" rx="3" fill="#141518"/>
+  <circle cx="92" cy="98" r="3.5" fill="#2453D4"/>
+  <!-- field of view: head to feet -->
+  <path d="M95 98 L470 40 L470 260 Z" fill="#2453D4" opacity="0.07"/>
+  <line x1="95" y1="98" x2="470" y2="40" stroke="#2453D4" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <line x1="95" y1="98" x2="470" y2="262" stroke="#2453D4" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <!-- chest height line -->
+  <line x1="95" y1="98" x2="505" y2="98" stroke="#17794A" stroke-width="2" stroke-dasharray="7 5"/>
+  <!-- person in profile, facing the phone (side view of the room) -->
+  <g fill="#6e5a4c">
+    <ellipse cx="468" cy="68" rx="15" ry="18"/>
+    <rect x="462" y="84" width="12" height="10"/>
+    <path d="M455 94 C450 120 450 150 455 175 L458 258 L470 258 L472 180 L476 258 L488 258 L486 175 C490 150 490 120 484 94 Z"/>
+    <ellipse cx="470" cy="140" rx="7" ry="38"/>
+  </g>
+  <!-- floor tape -->
+  <rect x="446" y="257" width="22" height="6" fill="#17794A"/>
+  <!-- distance -->
+  <line x1="74" y1="282" x2="466" y2="282" stroke="#141518" stroke-width="1.5" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <rect x="236" y="270" width="68" height="24" fill="#FFFFFF"/>
+  <text x="270" y="288" text-anchor="middle" font-size="20" font-weight="600" fill="#141518">2.5 m</text>
+  <!-- labels -->
+  <text x="16" y="40" font-size="17" font-weight="600" fill="#141518">Back camera</text>
+  <text x="16" y="60" font-size="15" fill="#4A4B53">screen faces the wall</text>
+  <line x1="60" y1="66" x2="80" y2="86" stroke="#141518" stroke-width="1.2"/>
+  <text x="16" y="186" font-size="17" font-weight="600" fill="#141518">Chest height</text>
+  <text x="16" y="206" font-size="15" fill="#4A4B53">shelf or stand, level</text>
+  <text x="300" y="122" font-size="16" font-weight="600" fill="#17794A" text-anchor="middle">chest height, straight on</text>
+  <text x="340" y="160" font-size="16" fill="#2453D4" text-anchor="middle">head to feet in frame</text>
+  <text x="476" y="288" font-size="14" font-weight="600" fill="#17794A">tape</text>
+  <!-- same light -->
+  <g transform="translate(548 40)" stroke="#8A6400" stroke-width="2" fill="none">
+    <circle r="9" fill="#FFF0C2"/>
+    <path d="M0 -15 v-6 M0 15 v6 M-15 0 h-6 M15 0 h6 M-11 -11 l-4 -4 M11 11 l4 4 M-11 11 l-4 4 M11 -11 l4 -4"/>
+  </g>
+  <text x="572" y="86" font-size="14" fill="#4A4B53" text-anchor="end">same light</text>
+`
+
+// 3. The result: three check-ins.
+const DAYS = [['25 Aug', 1.0], ['6 Oct', 0.92], ['17 Nov', 0.85]]
+const VIEWS = [['front', 'Front'], ['side', 'Side'], ['back', 'Back']]
+let g = '<div></div>' + DAYS.map(([d]) => `<div class="h">${d}</div>`).join('')
+for (const [v, name] of VIEWS) {
+  g += `<div class="r">${name}</div>`
+  for (const [, w] of DAYS) g += `<div>${photo({ view: v, waist: w, lines: true })}</div>`
+}
+document.getElementById('guided').innerHTML = g
+
+// Without guidance: different distance, tilt, crop and light each time.
+const BAD = [
+  { s: 1.0, rot: 0, dx: 0, dy: 0, cap: 'Reference' },
+  { s: 1.3, rot: -4, dx: 30, dy: 60, wall: '#cfc6b4', floor: '#aea490', cap: '1.9 m · tilted 4° · feet cut' },
+  { s: 0.72, rot: 2, dx: -40, dy: -50, wall: '#e6e3dc', floor: '#c9c4ba', dim: 0.12, cap: '3.5 m · tilted 2° · dim' },
+]
+let u = '<div></div>' + DAYS.map(([d]) => `<div class="h">${d}</div>`).join('')
+u += `<div class="r">Front</div>`
+DAYS.forEach(([, w], i) => {
+  const b = BAD[i]
+  u += `<div>${photo({ view: 'front', waist: w, ...b, refLines: true })}</div>`
+})
+u += '<div></div>' + BAD.map((b, i) => `<div class="cap ${i ? 'down' : ''}">${b.cap}</div>`).join('')
+document.getElementById('unguided').innerHTML = u
+</script>
+</body>
+</html>
