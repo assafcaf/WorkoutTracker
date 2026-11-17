@@ -56,6 +56,8 @@ import { useServiceData } from '../useServiceData'
 import { useAppBadge } from '../../ui/useAppBadge'
 import { useWakeLock } from '../../ui/useWakeLock'
 import { useRestPush } from './useRestPush'
+import { dayOf } from '../../domain/bodyLog'
+import { SessionPhotos } from '../progress/photos/session/SessionPhotos'
 
 export type WorkoutFeatureProps = {
   /** Sends the app to another tab: the Program tab from "Choose a program", Exercises from a summary. */
@@ -1520,6 +1522,7 @@ export function WorkoutFeature({
               createdAt: stored?.createdAt ?? Date.now(),
             })
           }}
+          photos={<SessionPhotos day={dayOf(summarySession.startedAt)} variant="finish" />}
           onClose={() => setSummarySession(null)}
           onBrowse={(muscles) => {
             setSummarySession(null)

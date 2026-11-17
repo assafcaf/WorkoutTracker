@@ -1,0 +1,190 @@
+/* Progress photos from a Session (src/features/progress/photos/session/SessionPhotos.tsx):
+ * one quiet line on the summary, a Photos row on the editor. Ledger & Instrument: ink on paper,
+ * hairlines, tabular numerals; no colour that does not mean something. Tokens only. */
+
+.session-photos {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+}
+
+/* The day line: the thumbnails and "3 photos · front, side, back", one tap to see them. */
+.session-photos-line {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  text-align: left;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.session-photos-strip {
+  display: flex;
+  flex: none;
+  gap: var(--space-1);
+}
+
+.session-photos-mini {
+  width: 24px;
+  height: 32px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  object-fit: cover;
+}
+
+.session-photos-count {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "Add progress photos" / "Add photos": a quiet text action, a full tap tall. */
+.session-photos-action {
+  flex: none;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.session-photos-line + .session-photos-action {
+  margin-left: 0;
+}
+
+/* The editor's row: "Photos" on the left, as the other rows label themselves. */
+.session-photos--editor {
+  flex-wrap: wrap;
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--color-hairline);
+}
+
+.session-photos-label {
+  flex: none;
+  min-width: calc(var(--tap-min) * 1.5);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.session-photos--editor .session-photos-action {
+  margin-left: 0;
+}
+
+.session-photos-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-photos-item {
+  position: relative;
+  width: var(--tap-min);
+  height: calc(var(--tap-min) * 4 / 3);
+}
+
+.session-photos-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  object-fit: cover;
+}
+
+/* Delete: a small mark in the thumbnail's corner on a full-size tap target. */
+.session-photos-delete {
+  position: absolute;
+  top: calc(-1 * var(--space-3));
+  right: calc(-1 * var(--space-3));
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  background: transparent;
+}
+
+.session-photos-delete:active {
+  background: transparent;
+}
+
+.session-photos-delete-mark {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+
+/* The day's photos, larger, in the sheet the line opens. */
+.session-photos-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.session-photos-sheet-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.session-photos-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.session-photos-figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.session-photos-large {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  object-fit: cover;
+}
+
+.session-photos-caption {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+/* The capture screen, over the summary (an overlay) and the editor, and above any sheet. */
+.session-photos-capture {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow-y: auto;
+  background: var(--color-bg);
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}

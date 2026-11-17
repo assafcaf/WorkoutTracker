@@ -25,6 +25,8 @@ import { SessionEditor } from '../../ui/SessionEditor'
 import { Sheet } from '../../ui/Sheet'
 import { Snackbar } from '../../ui/Snackbar'
 import { SessionSummary } from '../../ui/SessionSummary'
+import { dayOf } from '../../domain/bodyLog'
+import { SessionPhotos } from '../progress/photos/session/SessionPhotos'
 import type { AppRoute } from '../routes'
 import { useServices } from '../ServicesProvider'
 import { useServiceData } from '../useServiceData'
@@ -283,6 +285,7 @@ export function SessionsScreen({
             now={today}
             addable={addable}
             plannedIds={plannedIdsOf(editSession)}
+            renderPhotos={(day) => <SessionPhotos day={day} variant="editor" />}
             onSave={async (draft) => {
               await services.sessions.save(draft)
               setEditingId(null)
@@ -307,6 +310,7 @@ export function SessionsScreen({
             now={today}
             addable={addable}
             plannedIds={plannedIdsOf(pastDraft)}
+            renderPhotos={(day) => <SessionPhotos day={day} variant="editor" />}
             onSave={async (draft) => {
               await services.sessions.logPast(draft)
               setPastDraft(null)
@@ -422,6 +426,7 @@ export function SessionsScreen({
           program={programs.find((program) => program.id === summarySession.programId)}
           weekStartsOn={weekStartsOn}
           bodyLog={bodyLog}
+          photos={<SessionPhotos day={dayOf(summarySession.startedAt)} variant="past" />}
           onClose={() => setSummarySessionId(null)}
           onEdit={() => {
             setSummarySessionId(null)

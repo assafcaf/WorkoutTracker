@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import { dayOf } from '../domain/bodyLog'
 import { formatDay } from '../domain/dates'
 import { newPlan } from '../domain/programs'
 import { formatSet } from '../domain/setText'
@@ -36,6 +38,11 @@ export type SessionEditorProps = {
   addable?: LibraryExercise[]
   /** The Workout's planned Exercise ids: one added that is not among them is saved in `added`. */
   plannedIds?: string[]
+  /**
+   * Photos2: the Photos row for the draft's day (YYYY-MM-DD), drawn under the note; the caller
+   * owns it (the day's thumbnails, Delete with Undo, Add photos). No row without it.
+   */
+  renderPhotos?(day: string): ReactNode
 }
 
 /** The Set whose values the Dials are editing. */
@@ -117,7 +124,7 @@ function firstSetOf(session: Session, exerciseId: string | undefined): OpenSet |
 /** The History editor (E12-T6): edits a draft of a finished Session, saved in one write. */
 export function SessionEditor(props: SessionEditorProps): JSX.Element {
   const { session, workoutName, resolve, focusExerciseId, onSave, onCancel, onDelete } = props
-  const { mode = 'edit', now, addable, plannedIds = [] } = props
+  const { mode = 'edit', now, addable, plannedIds = [], renderPhotos } = props
   const [picking, setPicking] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [draft, setDraft] = useState<Session>(session)
@@ -372,7 +379,9 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
         />
       </label>
 
-      {noSets ? <p className="session-editor-invalid">{NO_SETS_LEFT}</p> : null}
+      {renderPhotos ? renderPhotos(dayOf(draft.startedAt)) : null}
+
+      {noSets ?<p className="session-editor-invalid">{NO_SETS_LEFT}</p> : null}
 
       {error === null ? null : (
         <p className="session-editor-error" role="alert">
