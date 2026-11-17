@@ -4,7 +4,7 @@ import type { Exercise, ExercisePlan, LibraryExercise, Program, Workout } from '
 import { workoutEstimate } from '../domain/dashboard'
 import { newPlan, validateProgram } from '../domain/programs'
 import type { ProgramFault } from '../domain/programs'
-import { matchesQuery } from '../domain/search'
+import { matchesExercise } from '../domain/search'
 import { exerciseFamily, familyImpact, type FamilyImpact } from '../domain/programVolume'
 import { bodyweightOf } from '../domain/bodyweight'
 import { WEIGHT_STEPS } from '../domain/dial'
@@ -432,7 +432,7 @@ export function ProgramEditor({
       setFocusUid(uid)
     }
 
-  const matches = library.filter((e) => matchesQuery(e.name, search))
+  const matches = library.filter((e) => matchesExercise(e, search))
   const pickerTitle = picking?.swapUid ? 'Swap exercise' : 'Add exercise'
 
   const impact =

@@ -75,3 +75,8 @@ export function matchesQuery(name: string, query: string): boolean {
     return exp !== undefined && normalizeWords(exp).every(some)
   })
 }
+
+/** Whether `query` finds an Exercise by its name or any of its aliases. */
+export function matchesExercise(exercise: { name: string; aliases?: string[] }, query: string): boolean {
+  return matchesQuery(exercise.name, query) || (exercise.aliases ?? []).some((alias) => matchesQuery(alias, query))
+}

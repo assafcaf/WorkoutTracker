@@ -1,4 +1,5 @@
 import type { LibraryExercise, Muscle, Video } from '../types'
+import gymNames from './library/gym-names.json'
 
 /**
  * The free-exercise-db commit `src/data/library/exercises.json` is pinned to. Also used to
@@ -36,7 +37,23 @@ export const MUSCLES: readonly Muscle[] = [
 export async function loadLibrary(): Promise<Map<string, LibraryExercise>> {
   const { default: entries } = await import('./library/exercises.json')
   const library = entries as unknown as LibraryExercise[]
-  return new Map(library.map((exercise) => [exercise.id, exercise] as const))
+  return new Map(library.map((exercise) => [exercise.id, withGymName(exercise)] as const))
+}
+
+/** A gym name and/or search aliases for a library entry, from `library/gym-names.json`. */
+type GymName = { name?: string; aliases?: string[] }
+
+/**
+ * `exercise` under the name people say at the gym, when `library/gym-names.json` gives one
+ * ("Rope push-down", not "Triceps Pushdown - Rope Attachment"). The free-exercise-db name and
+ * any listed aliases stay searchable through `aliases`. Entries with no gym name pass unchanged.
+ */
+function withGymName(exercise: LibraryExercise): LibraryExercise {
+  const gym = (gymNames as Record<string, GymName>)[exercise.id]
+  if (!gym) return exercise
+  const name = gym.name ?? exercise.name
+  const aliases = [...(name === exercise.name ? [] : [exercise.name]), ...(gym.aliases ?? [])]
+  return { ...exercise, name, aliases }
 }
 
 /**

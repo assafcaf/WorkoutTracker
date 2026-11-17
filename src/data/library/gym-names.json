@@ -1,0 +1,15 @@
+{
+  "Band_Assisted_Pull-Up": { "aliases": ["Assisted pull-up machine", "Pull-up machine"] },
+  "Dip_Machine": { "name": "Machine dips", "aliases": ["Assisted dip machine"] },
+  "Dumbbell_Alternate_Bicep_Curl": { "name": "Alternate DB curls", "aliases": ["Alternating dumbbell curl"] },
+  "Dumbbell_One-Arm_Shoulder_Press": { "name": "Single DB shoulder press", "aliases": ["Single-arm dumbbell shoulder press"] },
+  "Dumbbell_Rear_Lunge": { "name": "Reverse lunge", "aliases": ["DB reverse lunge"] },
+  "Front_Incline_Dumbbell_Raise": { "name": "Y raises", "aliases": ["Incline Y raise"] },
+  "Goblet_Squat": { "name": "Goblet squat" },
+  "One-Arm_Dumbbell_Row": { "name": "Single-arm DB row", "aliases": ["One-arm dumbbell row"] },
+  "One-Arm_Kettlebell_Swings": { "name": "KB swing", "aliases": ["Kettlebell swing"] },
+  "Plyo_Push-up": { "name": "Explosive push-ups", "aliases": ["Clap push-up", "Plyo push-up"] },
+  "Reverse_Machine_Flyes": { "name": "Rear delt fly", "aliases": ["Rear delt fly machine", "Reverse pec deck"] },
+  "Straight-Arm_Dumbbell_Pullover": { "name": "DB pull-over", "aliases": ["Dumbbell pullover"] },
+  "Triceps_Pushdown_-_Rope_Attachment": { "name": "Rope push-down", "aliases": ["Triceps rope pushdown"] }
+}
