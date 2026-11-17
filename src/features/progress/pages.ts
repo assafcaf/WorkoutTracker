@@ -15,6 +15,7 @@ export type ProgressPage =
   | { kind: 'lift'; exerciseId: string }
   | { kind: 'muscles' }
   | { kind: 'body' }
+  | { kind: 'compare' }
 
 export type ProgressPageKind = ProgressPage['kind']
 
@@ -30,10 +31,12 @@ export type ProgressPageProps<K extends ProgressPageKind = ProgressPageKind> = {
 }
 
 export type ProgressPages = {
-  [K in Exclude<ProgressPageKind, 'body'>]: ComponentType<ProgressPageProps<K>>
+  [K in Exclude<ProgressPageKind, 'body' | 'compare'>]: ComponentType<ProgressPageProps<K>>
 } & {
   /** Optional so a group built before the Body page (E22-T7) still types; the registered group has it. */
   body?: ComponentType<ProgressPageProps<'body'>>
+  /** Optional until E26-T8 registers the photo Compare page. */
+  compare?: ComponentType<ProgressPageProps<'compare'>>
 }
 
 function placeholder(title: string): FunctionComponent<Pick<ProgressPageProps, 'onBack'>> {

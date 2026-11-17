@@ -9,6 +9,7 @@ import { Snackbar } from '../../ui/Snackbar'
 import type { Services } from '../../services'
 import { useServiceData } from '../useServiceData'
 import { useServices } from '../ServicesProvider'
+import { PhotoCaptureFlow } from './photos/capture/PhotoCaptureFlow'
 import type { ProgressPageProps } from './pages'
 import './BodyPage.css'
 
@@ -60,6 +61,7 @@ export function BodyView({ log, heightCm = null, onSaveHeight, now, onBack, onSa
   const [removed, setRemoved] = useState<BodyEntry | null>(null)
   const [heightText, setHeightText] = useState(heightCm === null ? '' : String(heightCm))
   const [heightError, setHeightError] = useState('')
+  const [capturing, setCapturing] = useState(false)
   const latestWaist = [...log].reverse().find((e) => e.waistCm !== undefined)?.waistCm
   const ratio = latestWaist === undefined ? null : waistToHeight(latestWaist, heightCm)
   const saveHeight = (): void => {
@@ -77,6 +79,8 @@ export function BodyView({ log, heightCm = null, onSaveHeight, now, onBack, onSa
     const timer = setTimeout(() => setRemoved(null), UNDO_MS)
     return () => clearTimeout(timer)
   }, [removed])
+
+  if (capturing) return <PhotoCaptureFlow day={today} onClose={() => setCapturing(false)} />
 
   const available = METRICS.filter((m) => log.some((e) => e[m.metric] !== undefined))
   const current = available.find((m) => m.metric === chosen) ?? available[0]
@@ -200,6 +204,12 @@ export function BodyView({ log, heightCm = null, onSaveHeight, now, onBack, onSa
             Save height
           </button>
           {ratio !== null ? <p className="body-ratio">{`Waist-to-height ${ratio.toFixed(2)}`}</p> : null}
+        </section>
+
+        <section className="body-photos" aria-label="Photos">
+          <button type="button" className="btn-secondary" onClick={() => setCapturing(true)}>
+            Add photo
+          </button>
         </section>
 
         {current ? (
