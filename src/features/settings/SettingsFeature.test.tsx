@@ -219,6 +219,69 @@ test('O13 SettingsFeature exports hands the browser a backup holding every logge
   expect(handed.sessions).toEqual(CURRENT)
 })
 
+// --- E26-T9 O4: photos in the export ------------------------------------------------------------
+
+async function storePhoto(): Promise<void> {
+  await db.photos.put({
+    id: 'p-1',
+    day: '2026-11-01',
+    angle: 'front',
+    data: new Uint8Array([1, 2, 3, 255]).buffer,
+    type: 'image/jpeg',
+    width: 30,
+    height: 40,
+    align: null,
+    createdAt: NOW,
+  })
+}
+
+test('E26-T9 O4 Export asks whether to include photos when photos exist, and Include photos puts them in the file', async () => {
+  const user = userEvent.setup()
+  await db.photos.clear()
+  await storePhoto()
+  const downloads = captureDownloads()
+  renderFeature(buildServices(fakeSync()))
+
+  await user.click(await screen.findByRole('button', { name: 'Export' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Include photos' }, SETTLE))
+
+  await waitFor(() => {
+    expect(downloads).toHaveLength(1)
+  }, SETTLE)
+  const handed = JSON.parse(await downloads[0].text()) as BackupFile
+  expect(handed.photos?.map((p) => p.id)).toEqual(['p-1'])
+})
+
+test('E26-T9 O4 answering Without photos exports the backup with no photos in it', async () => {
+  const user = userEvent.setup()
+  await db.photos.clear()
+  await storePhoto()
+  const downloads = captureDownloads()
+  renderFeature(buildServices(fakeSync()))
+
+  await user.click(await screen.findByRole('button', { name: 'Export' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Without photos' }, SETTLE))
+
+  await waitFor(() => {
+    expect(downloads).toHaveLength(1)
+  }, SETTLE)
+  const handed = JSON.parse(await downloads[0].text()) as BackupFile
+  expect('photos' in handed).toBe(false)
+})
+
+test('E26-T9 O4 Export with photos waits for the answer before handing over any file', async () => {
+  const user = userEvent.setup()
+  await db.photos.clear()
+  await storePhoto()
+  const downloads = captureDownloads()
+  renderFeature(buildServices(fakeSync()))
+
+  await user.click(await screen.findByRole('button', { name: 'Export' }, SETTLE))
+
+  expect(await screen.findByRole('button', { name: 'Include photos' }, SETTLE)).toBeInTheDocument()
+  expect(downloads).toHaveLength(0)
+})
+
 // --- O13: imports with confirmation ------------------------------------------------------------
 
 test('O13 SettingsFeature confirming an import replaces the database with the chosen file\'s sessions', async () => {

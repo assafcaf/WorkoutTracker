@@ -52,7 +52,7 @@ export type { ImportPlan }
 export type PendingImport = { file: BackupFile; plan: ImportPlan }
 
 export type BackupService = {
-  export(): Promise<void>
+  export(options?: { includePhotos?: boolean }): Promise<void>
   read(text: string): Promise<PendingImport>
   confirmImport(pending: PendingImport): Promise<SyncResult>
 }
@@ -165,7 +165,7 @@ export function createBackupService(
   deps: ServiceDeps & { replaceRemote: () => Promise<SyncResult> },
 ): BackupService {
   return {
-    async export() {
+    async export(_options?: { includePhotos?: boolean }) {
       return callStorage(
         deps,
         async () => {

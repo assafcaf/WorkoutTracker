@@ -1,3 +1,4 @@
+import type { Photo, PhotoAlign, PhotoAngle } from './photoStore'
 import type { BodyLog, CustomExercise, PlateInventory, Session, UserProgram, VolumeBaseline } from '../types'
 
 /** Bumped whenever the shape below changes in a way `readBackup` cannot translate on its own. */
@@ -11,6 +12,8 @@ export type BackupFile = {
   schemaVersion: 1
   exportedAt: number
   sessions: Session[]
+  /** Progress photos (E26), only when the export was asked to include them. */
+  photos?: BackupPhoto[]
   settings: {
     activeProgramId: string
     lastExportedAt: number | null
@@ -46,6 +49,30 @@ export type BackupFile = {
     /** The workout reminders, or null when turned off (E24). Absent when never set. */
     workoutReminders?: Record<string, unknown> | null
   }
+}
+
+/** A photo as a backup file carries it: the bytes as base64 text. */
+export type BackupPhoto = {
+  id: string
+  day: string
+  angle: PhotoAngle
+  /** The image bytes, base64. */
+  data: string
+  type: string
+  width: number
+  height: number
+  align: PhotoAlign | null
+  createdAt: number
+}
+
+/** A stored Photo as a backup entry (bytes to base64). */
+export function encodeBackupPhoto(_photo: Photo): BackupPhoto {
+  throw new Error('NotImplementedError')
+}
+
+/** A backup entry back to a stored Photo (base64 to an ArrayBuffer). */
+export function decodeBackupPhoto(_photo: BackupPhoto): Photo {
+  throw new Error('NotImplementedError')
 }
 
 /**

@@ -9,6 +9,7 @@ import { createChangeBus } from './changes'
 import { ServiceError } from './errors'
 import { createBackupService, type PendingImport } from './backup'
 import type { SyncResult } from '../sync/syncClient'
+import type { Photo } from '../storage/photoStore'
 
 // `fake-indexeddb/auto` is installed globally in src/test/setup.ts; see storage/backup.test.ts.
 beforeEach(async () => {
@@ -679,4 +680,111 @@ test('E24-T2 O5 workoutReminders survives export and import into an empty app; u
   await db.settings.clear()
   await service.confirmImport(await service.read(second))
   expect((await db.settings.get('workoutReminders'))?.value).toEqual(mine)
+})
+
+// --- E26-T9 O4: photos in the backup ----------------------------------------------------------
+
+function storedPhoto(id: string, bytes: number[]): Photo {
+  return {
+    id,
+    day: '2026-11-01',
+    angle: 'side',
+    data: new Uint8Array(bytes).buffer,
+    type: 'image/jpeg',
+    width: 30,
+    height: 40,
+    align: null,
+    createdAt: BASE,
+  }
+}
+
+async function photoExportedFile(options?: { includePhotos?: boolean }): Promise<BackupFile> {
+  installDownloadFallback()
+  await createBackupService(makeDeps()).export(options)
+  const createObjectURL = URL.createObjectURL as ReturnType<typeof vi.fn>
+  return JSON.parse(await (createObjectURL.mock.calls[0][0] as Blob).text()) as BackupFile
+}
+
+test('E26-T9 O4 export without the photos option leaves them out even when photos exist', async () => {
+  await db.photos.clear()
+  await db.photos.put(storedPhoto('p-1', [1, 2, 3, 255]))
+
+  const file = await photoExportedFile()
+
+  expect('photos' in file).toBe(false)
+})
+
+test('E26-T9 O4 export with includePhotos writes every photo with its bytes as base64', async () => {
+  await db.photos.clear()
+  await db.photos.put(storedPhoto('p-1', [1, 2, 3, 255]))
+
+  const file = await photoExportedFile({ includePhotos: true })
+
+  expect(file.photos).toEqual([
+    {
+      id: 'p-1',
+      day: '2026-11-01',
+      angle: 'side',
+      data: 'AQID/w==',
+      type: 'image/jpeg',
+      width: 30,
+      height: 40,
+      align: null,
+      createdAt: BASE,
+    },
+  ])
+})
+
+test('E26-T9 O4 confirmImport of a file with photos replaces the stored photos with the backup\'s', async () => {
+  await db.photos.clear()
+  await db.photos.put(storedPhoto('old', [9]))
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+  const file: BackupFile = {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: BASE,
+    sessions: [],
+    photos: [
+      { id: 'p-1', day: '2026-11-01', angle: 'side', data: 'AQID/w==', type: 'image/jpeg', width: 30, height: 40, align: null, createdAt: BASE },
+    ],
+    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+  }
+
+  await service.confirmImport(await service.read(JSON.stringify(file)))
+
+  const stored = await db.photos.toArray()
+  expect(stored.map((p) => p.id)).toEqual(['p-1'])
+  expect(Array.from(new Uint8Array(stored[0].data))).toEqual([1, 2, 3, 255])
+  expect(stored[0].type).toBe('image/jpeg')
+})
+
+test('E26-T9 O4 confirmImport of a file without photos leaves the stored photos alone', async () => {
+  await db.photos.clear()
+  await db.photos.put(storedPhoto('keep', [7, 8]))
+  installDownloadFallback()
+  const service = createBackupService(makeDeps())
+  const file: BackupFile = {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: BASE,
+    sessions: [],
+    settings: { activeProgramId: 'assaf-ab-2026', lastExportedAt: null },
+  }
+
+  await service.confirmImport(await service.read(JSON.stringify(file)))
+
+  expect((await db.photos.toArray()).map((p) => p.id)).toEqual(['keep'])
+})
+
+test('E26-T9 O4 photos exported with includePhotos come back after a restore', async () => {
+  await db.photos.clear()
+  await db.photos.put(storedPhoto('p-1', [1, 2, 3, 255]))
+  const text = JSON.stringify(await photoExportedFile({ includePhotos: true }))
+  await db.photos.clear()
+  const service = createBackupService(makeDeps())
+
+  await service.confirmImport(await service.read(text))
+
+  const stored = await db.photos.toArray()
+  expect(stored.map((p) => p.id)).toEqual(['p-1'])
+  expect(Array.from(new Uint8Array(stored[0].data))).toEqual([1, 2, 3, 255])
 })

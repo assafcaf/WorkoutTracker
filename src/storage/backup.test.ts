@@ -15,7 +15,15 @@ import {
   setVolumeBaseline,
   setWeightStep,
 } from './settingsStore'
-import { BACKUP_SCHEMA_VERSION, backupFileName, importPlan, type BackupFile } from './backup'
+import {
+  BACKUP_SCHEMA_VERSION,
+  backupFileName,
+  decodeBackupPhoto,
+  encodeBackupPhoto,
+  importPlan,
+  type BackupFile,
+} from './backup'
+import type { Photo } from './photoStore'
 import { createChangeBus } from '../services/changes'
 import { ServiceError } from '../services/errors'
 import { createSessionService } from '../services/sessions'
@@ -651,4 +659,52 @@ test('O7 importing a backup without settings.userPrograms leaves no User Program
   await expect(importThroughService(preE8Backup())).resolves.toBeUndefined()
 
   expect(await getUserPrograms()).toEqual([])
+})
+
+// --- E26-T9 O4: photo encode/decode -----------------------------------------------------------
+
+function photoFixture(): Photo {
+  return {
+    id: 'p-1',
+    day: '2026-11-01',
+    angle: 'front',
+    data: new Uint8Array([1, 2, 3, 255]).buffer,
+    type: 'image/jpeg',
+    width: 30,
+    height: 40,
+    align: { scale: 1.5, rotate: 2, dx: 3, dy: -4 },
+    createdAt: 1_700_000_000_000,
+  }
+}
+
+test('E26-T9 O4 encodeBackupPhoto writes the bytes as base64 and keeps every other field', () => {
+  expect(encodeBackupPhoto(photoFixture())).toEqual({
+    id: 'p-1',
+    day: '2026-11-01',
+    angle: 'front',
+    data: 'AQID/w==',
+    type: 'image/jpeg',
+    width: 30,
+    height: 40,
+    align: { scale: 1.5, rotate: 2, dx: 3, dy: -4 },
+    createdAt: 1_700_000_000_000,
+  })
+})
+
+test('E26-T9 O4 decodeBackupPhoto turns base64 back into the original bytes', () => {
+  const decoded = decodeBackupPhoto({
+    id: 'p-1',
+    day: '2026-11-01',
+    angle: 'front',
+    data: 'AQID/w==',
+    type: 'image/jpeg',
+    width: 30,
+    height: 40,
+    align: null,
+    createdAt: 1_700_000_000_000,
+  })
+  expect(Array.from(new Uint8Array(decoded.data))).toEqual([1, 2, 3, 255])
+  expect(decoded.align).toBeNull()
+  expect(decoded.id).toBe('p-1')
+  expect(decoded.type).toBe('image/jpeg')
 })
