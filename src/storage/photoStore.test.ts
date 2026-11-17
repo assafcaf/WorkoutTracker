@@ -6,15 +6,14 @@ import { getPersistenceAnswer } from './persist'
 
 // `fake-indexeddb/auto` is installed globally in src/test/setup.ts.
 
-/** The bytes of a Blob; jsdom's Blob has no reliable `.text()`. */
-function bytesOf(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error)
-    reader.readAsText(blob)
-  })
+/** A stored image's bytes as a latin-1 string, one char per byte. */
+function bytesOf(data: ArrayBuffer): string {
+  return Array.from(new Uint8Array(data), (b) => String.fromCharCode(b)).join('')
 }
+
+/** What the fake render produces: a JPEG header, then metadata-free pixels. */
+const RENDERED_BYTES = new Uint8Array([0xff, 0xd8, 0xff, 0xdb, ...Array.from('CLEANPIXELS', (c) => c.charCodeAt(0))])
+const RENDERED_LATIN1 = '\xff\xd8\xff\xdbCLEANPIXELS'
 
 /** A camera file: a JPEG header, an EXIF block with GPS, then pixels. */
 const CAMERA_FILE = new Blob(['\xff\xd8\xff\xe1', 'Exif\0\0', 'GPSLatitude=32.08', 'PIXELS'], {
@@ -28,7 +27,7 @@ function fakeIo(size: { width: number; height: number }) {
     decode: async () => size,
     render: async (_file, target) => {
       rendered.push(target)
-      return new Blob(['\xff\xd8\xff\xdb', 'CLEANPIXELS'], { type: 'image/jpeg' })
+      return new Blob([RENDERED_BYTES], { type: 'image/jpeg' })
     },
   }
   return { io, rendered }
@@ -75,8 +74,8 @@ describe('O1 saved photo survives a restart', () => {
     expect(back.align).toEqual(ALIGN)
     expect(back.width).toBe(1200)
     expect(back.height).toBe(1600)
-    // fake-indexeddb clones a jsdom Blob into a plain object, so its bytes cannot be read back here.
-    expect(back.blob).toBeTruthy()
+    expect(back.type).toBe('image/jpeg')
+    expect(bytesOf(back.data)).toBe(RENDERED_LATIN1)
   })
 
   test('an unaligned photo reads back with align null', async () => {
@@ -106,14 +105,15 @@ describe('O1 saved photo survives a restart', () => {
 })
 
 describe('O2 stored image has no EXIF and is at most 1600 px', () => {
-  test('the stored blob is the re-encoded one, with no Exif or GPS bytes', async () => {
+  test('the stored data is the re-encoded image, with no Exif or GPS bytes', async () => {
     stubStorage({})
     const { io } = fakeIo({ width: 3000, height: 4000 })
     const saved = await photoStore.add(
       { file: CAMERA_FILE, day: '2026-11-17', angle: 'back', align: null },
       io,
     )
-    const stored = await bytesOf(saved.blob)
+    const stored = bytesOf(saved.data)
+    expect(stored).toBe(RENDERED_LATIN1)
     expect(stored).not.toContain('Exif')
     expect(stored).not.toContain('GPS')
   })
@@ -218,6 +218,8 @@ describe('O5 store half: remove and restore', () => {
     expect(back.day).toBe('2026-11-17')
     expect(back.angle).toBe('side')
     expect(back.align).toEqual(ALIGN)
+    expect(back.type).toBe('image/jpeg')
+    expect(bytesOf(back.data)).toBe(RENDERED_LATIN1)
     expect(back.createdAt).toBe(saved.createdAt)
   })
 

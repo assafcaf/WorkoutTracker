@@ -8,7 +8,10 @@ export type Photo = {
   /** Local calendar day, YYYY-MM-DD. */
   day: string
   angle: PhotoAngle
-  blob: Blob
+  /** The re-encoded image bytes. */
+  data: ArrayBuffer
+  /** Mime type of the data, e.g. image/jpeg. */
+  type: string
   width: number
   height: number
   align: PhotoAlign | null
