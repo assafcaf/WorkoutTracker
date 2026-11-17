@@ -15,6 +15,7 @@ import { putSessions } from '../../storage/sessionStore'
 import type { Session, UserProgram } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
 import { ProgramFeature } from './ProgramFeature'
+import { ProgramSwitcher } from '../../ui/program/ProgramHead'
 
 const NOW = 1_700_000_000_000
 const SETTLE = { timeout: 2000 }
@@ -82,6 +83,26 @@ test('O10 ProgramFeature switches the active Program when another is chosen', as
 
   expect(await screen.findByRole('heading', { name: 'Second Program' }, SETTLE)).toBeVisible()
   expect(screen.getByRole('radio', { name: 'Second Program' })).toBeChecked()
+})
+
+test('P1 ProgramFeature switches the active Program from the selector under the title, without Edit', async () => {
+  await saveUserProgram(extraVisibleProgram(), NOW)
+  const user = userEvent.setup()
+  renderFeature()
+  await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
+
+  const selector = screen.getByRole('combobox', { name: 'Switch program' })
+  expect(selector).toHaveValue('assaf-ab-2026')
+  await user.selectOptions(selector, 'Second Program')
+
+  expect(await screen.findByRole('heading', { name: 'Second Program' }, SETTLE)).toBeVisible()
+  expect(screen.getByRole('combobox', { name: 'Switch program' })).toHaveValue('user-second')
+})
+
+test('P1 ProgramSwitcher draws no selector while only one Program is offered', () => {
+  render(<ProgramSwitcher programs={[{ id: 'only', name: 'Only' }]} activeProgramId="only" onChoose={vi.fn()} />)
+
+  expect(screen.queryByRole('combobox', { name: 'Switch program' })).toBeNull()
 })
 
 test('O10 ProgramFeature opens the editor on New program and reports onInSession(true)', async () => {

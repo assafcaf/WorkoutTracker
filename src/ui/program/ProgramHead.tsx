@@ -1,4 +1,5 @@
 import { Icon } from '../icons'
+import { Select } from '../controls'
 import '../ProgramPage.css'
 
 export type ProgramHeadActionsProps = {
@@ -32,6 +33,37 @@ export function ProgramHeadActions({
         <Icon name="Ellipsis" size={22} />
       </button>
     </>
+  )
+}
+
+export type ProgramSwitcherProps = {
+  programs: readonly { id: string; name: string }[]
+  activeProgramId: string
+  onChoose(id: string): void
+}
+
+/**
+ * The selector under the Program's title: switches the active Program in one choice, without
+ * Edit or the Programs panel. Not drawn while only one Program is offered.
+ */
+export function ProgramSwitcher({ programs, activeProgramId, onChoose }: ProgramSwitcherProps): JSX.Element | null {
+  if (programs.length < 2) return null
+  return (
+    <label className="program-switcher">
+      <span className="program-switcher-label">Switch program</span>
+      <Select
+        className="program-switcher-select"
+        aria-label="Switch program"
+        value={activeProgramId}
+        onChange={(event) => onChoose(event.target.value)}
+      >
+        {programs.map((program) => (
+          <option key={program.id} value={program.id}>
+            {program.name}
+          </option>
+        ))}
+      </Select>
+    </label>
   )
 }
 

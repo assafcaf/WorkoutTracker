@@ -14,7 +14,7 @@ import { workoutEstimate } from '../../domain/dashboard'
 import { workoutMinutes } from '../../domain/stats/train'
 import { kgCellText, liftPlan } from '../dashboard/trainCard'
 import { ProgramPage } from '../../ui/ProgramPage'
-import { ProgramDeloadLine, ProgramDeloadStart, ProgramHeadActions } from '../../ui/program/ProgramHead'
+import { ProgramDeloadLine, ProgramDeloadStart, ProgramHeadActions, ProgramSwitcher } from '../../ui/program/ProgramHead'
 import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
 import { programDecisions } from '../../domain/programDecisions'
 import { useProgramSwap } from '../progress/useProgramSwap'
@@ -275,6 +275,13 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         ) : undefined
       }
     >
+      {active ? (
+        <ProgramSwitcher
+          programs={offeredPrograms}
+          activeProgramId={active.id}
+          onChoose={handleActiveProgramChange}
+        />
+      ) : null}
       {active && deloadOn ? <ProgramDeloadLine onEnd={() => setDeload(false)} /> : null}
       <ProgramPage
         head="none"
