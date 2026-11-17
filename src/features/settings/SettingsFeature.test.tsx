@@ -32,6 +32,7 @@ beforeEach(async () => {
   await db.open()
   await db.sessions.clear()
   await db.settings.clear()
+  await db.photos.clear()
 })
 
 let anchorClick: { mockRestore(): void } | null = null

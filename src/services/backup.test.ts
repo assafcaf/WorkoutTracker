@@ -90,7 +90,7 @@ function makeDeps(replaceRemote: () => Promise<SyncResult> = vi.fn().mockResolve
 test('O5 createBackupService exposes exactly export, read and confirmImport, each working', async () => {
   const service = createBackupService(makeDeps())
 
-  expect(Object.keys(service).sort()).toEqual(['confirmImport', 'export', 'read'])
+  expect(Object.keys(service).sort()).toEqual(['confirmImport', 'export', 'hasPhotos', 'read'])
 
   // The shape alone proves nothing if none of the three actually do their job -- exercise one.
   installDownloadFallback()
@@ -773,6 +773,16 @@ test('E26-T9 O4 confirmImport of a file without photos leaves the stored photos 
   await service.confirmImport(await service.read(JSON.stringify(file)))
 
   expect((await db.photos.toArray()).map((p) => p.id)).toEqual(['keep'])
+})
+
+test('E26-T9 O4 hasPhotos is false with no photos and true once one is stored', async () => {
+  await db.photos.clear()
+  const service = createBackupService(makeDeps())
+  await expect(service.hasPhotos()).resolves.toBe(false)
+
+  await db.photos.put(storedPhoto('p-1', [1]))
+
+  await expect(service.hasPhotos()).resolves.toBe(true)
 })
 
 test('E26-T9 O4 photos exported with includePhotos come back after a restore', async () => {
