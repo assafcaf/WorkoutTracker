@@ -1,10 +1,13 @@
-// Screenshots of the real live capture view (LiveView.tsx) in three states, for board.html.
+// Screenshots of the real live capture view (LiveView.tsx) in Mirror mode, three states, for board.html.
 // The app runs unchanged in Vite dev; only its inputs are faked in the page:
 //   - the camera: getUserMedia returns a canvas stream of an illustrated room and silhouette,
 //   - the level: synthetic `devicemotion` events (iOS-style fused gravity) at a chosen roll,
+//   - the phone height: the drawn body shifts up or down in the frame (scene.dy) as a lower or
+//     higher phone would show it,
 //   - the pose model: the @mediapipe/tasks-vision module is swapped for a stub that returns the
 //     landmarks of the drawn silhouette, so the distance bar measures the drawing,
-//   - the reference: one back-camera front photo seeded in IndexedDB (the ghost).
+//   - the reference: one back-camera Mirror-mode front photo seeded in IndexedDB (the ghost).
+// Capture opens straight onto the camera (Front, Mirror the first time): no setup screen.
 // Run (dev server up on --url): NODE_PATH=<node_modules with playwright> PW_CHANNEL=msedge \
 //   node live.cjs [--url http://127.0.0.1:5181/]
 const path = require('path')
@@ -32,13 +35,14 @@ const INIT = `(() => {
   }
   globalThis.Date = PinnedDate
   window.__freeze = () => { frozen = now() }
-  window.__scene = { s: 1.1, roll: 0, waist: 0.84 }
-  try { localStorage.setItem('photoCamera.front', 'environment') } catch {}
+  window.__scene = { s: 1.1, roll: 0, waist: 0.84, dy: 0 }
 
   const W = 600, H = 800
   // The silhouette of scripts/ux-review/shoot.mjs, scaled by s about the frame centre.
-  window.__drawBody = (g, angle, waist, s) => {
+  // In a mirror the phone is in the right hand, held up at face height: image right is your right.
+  window.__drawBody = (g, angle, waist, s, dy = 0) => {
     g.save()
+    g.translate(0, dy * H)
     g.translate(W / 2, H / 2); g.scale(s, s); g.translate(-W / 2, -H / 2)
     g.translate(W / 2, 0)
     g.fillStyle = angle === 'back' ? '#5b4a40' : '#6e5a4c'
@@ -50,9 +54,11 @@ const INIT = `(() => {
     g.lineTo(mid + 6, 420); g.lineTo(hip, 500); g.lineTo(hip - 10, 700); g.lineTo(10, 700)
     g.lineTo(0, 540); g.lineTo(-10, 700); g.lineTo(-hip + 10, 700); g.lineTo(-hip, 500)
     g.lineTo(-mid - 6, 420); g.closePath(); g.fill()
-    for (const dir of [-1, 1]) {
-      g.beginPath(); g.ellipse(dir * (shoulder + 8), 380, 22, 120, dir * -0.08, 0, Math.PI * 2); g.fill()
-    }
+    g.beginPath(); g.ellipse(-(shoulder + 8), 380, 22, 120, 0.08, 0, Math.PI * 2); g.fill()
+    g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = g.fillStyle; g.lineWidth = 40
+    g.beginPath(); g.moveTo(shoulder - 6, 272); g.lineTo(shoulder + 40, 350); g.lineTo(122, 210); g.stroke()
+    g.fillStyle = '#141518'
+    g.beginPath(); g.roundRect(100, 150, 44, 86, 8); g.fill()
     g.restore()
   }
   window.__room = (g) => {
@@ -60,10 +66,11 @@ const INIT = `(() => {
     g.fillStyle = '#b9b2a6'; g.fillRect(-100, 660, W + 200, H)
   }
   // Landmarks of that drawing, normalised, MediaPipe indices.
-  window.__landmarks = (s) => {
+  window.__landmarks = (s, dy = 0) => {
     const m = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 1 }))
-    const at = (i, x, y) => { m[i] = { x: 0.5 + ((x - 300) * s) / W, y: 0.5 + ((y - 400) * s) / H, visibility: 1 } }
+    const at = (i, x, y) => { m[i] = { x: 0.5 + ((x - 300) * s) / W, y: 0.5 + ((y - 400) * s) / H + dy, visibility: 1 } }
     at(0, 300, 170); at(11, 190, 262); at(12, 410, 262); at(23, 220, 500); at(24, 380, 500)
+    at(15, 210, 560); at(16, 422, 205)
     at(27, 245, 690); at(28, 355, 690); at(29, 245, 698); at(30, 355, 698); at(31, 240, 700); at(32, 360, 700)
     return m
   }
@@ -76,7 +83,7 @@ const INIT = `(() => {
     g.setTransform(1, 0, 0, 1, 0, 0)
     g.translate(W / 2, H / 2); g.rotate((-sc.roll * Math.PI) / 180); g.translate(-W / 2, -H / 2)
     window.__room(g)
-    window.__drawBody(g, 'front', sc.waist, sc.s)
+    window.__drawBody(g, 'front', sc.waist, sc.s, sc.dy)
   }
   setInterval(paint, 33); paint()
   const md = navigator.mediaDevices || {}
@@ -103,7 +110,7 @@ const POSE_STUB = `
 export const FilesetResolver = { forVisionTasks: async () => ({}) }
 export const PoseLandmarker = {
   createFromOptions: async () => ({
-    detectForVideo: () => ({ landmarks: window.__scene.s > 0 ? [window.__landmarks(window.__scene.s)] : [] }),
+    detectForVideo: () => ({ landmarks: window.__scene.s > 0 ? [window.__landmarks(window.__scene.s, window.__scene.dy)] : [] }),
     detect: () => ({ landmarks: [window.__landmarks(1)] }),
     setOptions: async () => {},
     close() {},
@@ -129,7 +136,9 @@ async function seedReference(page) {
     const row = {
       id: 'example-ref-front', day: '2026-10-06', angle: 'front', data: await blob.arrayBuffer(), type: 'image/jpeg',
       width: W, height: H, align: { scale: 1, rotate: 0, dx: 0, dy: 0 }, createdAt: Date.parse('2026-10-06T08:00:00'),
-      camera: 'environment', source: 'live', roll: 0, pitch: 0,
+      camera: 'environment', source: 'live', roll: 0, pitch: 0, mode: 'mirror', phoneHand: 'right',
+      // Phone height at pitch 0: the shoulders' row against the frame middle, in torso lengths.
+      phoneHeight: (sh.y - 0.5) / (mid(lm[23], lm[24]).y - sh.y),
       bodyScale: { full: d(sh, mid(lm[27], lm[28])), torso: d(sh, mid(lm[23], lm[24])) },
       bodyLines: { head: 0.15, feet: 0.875 },
     }
@@ -167,11 +176,11 @@ async function openLive(browser, scene) {
   await sleep(500)
   await page.locator('.progress-link-title', { hasText: /^Body$/ }).first().click()
   await sleep(500)
+  await page.evaluate((sc) => Object.assign(window.__scene, sc), scene)
   await page.getByRole('button', { name: 'Add photo' }).click()
   await sleep(500)
   await page.evaluate((sc) => Object.assign(window.__scene, sc), scene)
-  await page.getByRole('button', { name: 'Take photo' }).click()
-  await page.waitForSelector('.photo-live', { timeout: 10000 })
+  await page.waitForSelector('.photo-live[data-mode="mirror"]', { timeout: 10000 })
   return { app, page }
 }
 
@@ -181,40 +190,40 @@ const cueIs = (text) => `(() => { const c = document.querySelector('.photo-cue')
   const browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {})
   require('fs').mkdirSync(OUT, { recursive: true })
 
-  // (a) 8 % closer than the reference, phone rolled 2.5°: the level speaks first.
+  // (a) Level, but the phone held about 5 cm lower than last time: "Raise the phone".
   {
-    const { app, page } = await openLive(browser, { s: 1.08, roll: 2.5, waist: 0.84 })
-    await page.waitForFunction(`(() => { const n = document.querySelector('.photo-distance-number'); return n && n.textContent === '8% closer' })()`, null, { timeout: 15000 })
-    await page.waitForFunction(cueIs('Tilt right 2.5°'), null, { timeout: 15000 })
+    const { app, page } = await openLive(browser, { s: 1.0, roll: 0, waist: 0.84, dy: -0.07 })
+    await page.waitForFunction(cueIs('Raise the phone'), null, { timeout: 15000 })
+    await page.waitForSelector('.photo-height', { timeout: 15000 })
+    await sleep(600)
     await page.evaluate(() => window.__freeze())
     await sleep(800)
     await page.screenshot({ path: path.join(OUT, 'a-adjust.png') })
     await app.close()
   }
 
-  // (b) Level, distance inside the zone, the 500 ms dwell still running: "Hold still".
+  // (b) Everything matched for 0.6 s: the countdown "Hold still · 3", the ring full.
   {
-    // No body yet ("Step into frame"), so the distance smoother starts fresh at the new size.
-    const { app, page } = await openLive(browser, { s: 0, roll: 0, waist: 0.84 })
-    await page.waitForFunction(`!!document.querySelector('.photo-gauge[data-matched="true"]')`, null, { timeout: 15000 })
-    await page.waitForFunction(cueIs('Step into frame'), null, { timeout: 15000 })
-    await page.evaluate(() => Object.assign(window.__scene, { s: 1.01 }))
-    // Freeze the clock the moment the cue turns to "Hold still", so the dwell never completes.
+    const { app, page } = await openLive(browser, { s: 1.0, roll: 0, waist: 0.84, dy: 0 })
     await page.waitForFunction(
-      `(() => { const c = document.querySelector('.photo-cue'); if (c && c.textContent === 'Hold still') { window.__freeze(); return true } return false })()`,
+      `(() => { const c = document.querySelector('.photo-cue'); if (c && c.textContent === 'Hold still · 3') { window.__freeze(); return true } return false })()`,
       null,
-      { timeout: 15000, polling: 'raf' },
+      { timeout: 20000, polling: 'raf' },
     )
-    await sleep(1200)
+    await sleep(1000)
     await page.screenshot({ path: path.join(OUT, 'b-hold.png') })
     await app.close()
   }
 
-  // (c) Everything in its zone: "Matched", the ghost of the 6 Oct photo over the live body.
+  // (c) Everything in its zone: "Matched", the ghost of the 6 Oct mirror photo over the live body.
   {
-    const { app, page } = await openLive(browser, { s: 1.0, roll: 0, waist: 0.84 })
-    await page.waitForFunction(cueIs('Matched'), null, { timeout: 15000 })
-    await sleep(800)
+    const { app, page } = await openLive(browser, { s: 1.0, roll: 0, waist: 0.84, dy: 0 })
+    await page.waitForFunction(
+      `(() => { const c = document.querySelector('.photo-cue'); if (c && c.textContent === 'Matched') { window.__freeze(); return true } return false })()`,
+      null,
+      { timeout: 20000, polling: 'raf' },
+    )
+    await sleep(1000)
     await page.screenshot({ path: path.join(OUT, 'c-matched.png') })
     await app.close()
   }

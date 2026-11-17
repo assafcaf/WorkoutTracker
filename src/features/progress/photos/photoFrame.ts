@@ -3,11 +3,15 @@ import type { CSSProperties } from 'react'
 import { shortDay } from '../../../domain/lifts'
 import type { Photo } from '../../../storage/photoStore'
 
-/** A photo's saved transform as CSS: dx and dy are fractions of the frame, rotate is degrees. */
-export function transformOf(photo: Photo): CSSProperties {
+/**
+ * A photo's saved transform as CSS: dx and dy are fractions of the frame, rotate is degrees.
+ * `flip` draws a mirror photo turned over first (next to a stand photo; display only).
+ */
+export function transformOf(photo: Pick<Photo, 'align'>, flip = false): CSSProperties {
   const a = photo.align
-  if (!a) return {}
-  return { transform: `translate(${a.dx * 100}%, ${a.dy * 100}%) rotate(${a.rotate}deg) scale(${a.scale})` }
+  if (!a) return flip ? { transform: 'scaleX(-1)' } : {}
+  const align = `translate(${a.dx * 100}%, ${a.dy * 100}%) rotate(${a.rotate}deg) scale(${a.scale})`
+  return { transform: flip ? `scaleX(-1) ${align}` : align }
 }
 
 /**

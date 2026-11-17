@@ -80,5 +80,5 @@ test('Photos2 O2 Log a past workout shows the Photos row for the logged day', as
   await screen.findByRole('heading', { name: /^Log · Workout A · / }, SETTLE)
   const row = await screen.findByRole('group', { name: 'Photos' }, SETTLE)
   await user.click(within(row).getByRole('button', { name: 'Add photos' }))
-  expect(await screen.findByRole('heading', { name: 'New photo' })).toBeVisible()
+  expect(await screen.findByRole('heading', { name: /^(Front|Side|Back)(, mirror)?$/ })).toBeVisible()
 })

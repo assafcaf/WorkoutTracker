@@ -183,6 +183,14 @@ export const RAW_TUNING: LevelTuning = {
   prefilter: 5,
 }
 
+/** Mirror mode, phone in hand: roll is relaxed (the align rotation fixes it at compare); pitch is not. */
+export const MIRROR_ROLL: Band = { enter: 2.0, leave: 4.0 }
+
+/** A tuning with mirror mode's relaxed roll band. */
+export function mirrorTuning(tuning: LevelTuning): LevelTuning {
+  return { ...tuning, roll: MIRROR_ROLL }
+}
+
 /** Beyond this roll the phone is not pointing at the subject, and the level hides (as iOS's does). */
 export const HIDE_ROLL_DEGREES = 25
 /** With no motion event for this long the level hides. */
@@ -204,6 +212,7 @@ export class LevelTracker {
   private trigger = new Hysteresis([FUSED_TUNING.roll, FUSED_TUNING.pitch], FUSED_TUNING.dwellMs)
   private history: { t: number; roll: number; pitch: number }[] = []
   private lastAt: number | null = null
+  private mirror = false
   /** The latest filtered angles, or null before the first sample. */
   angles: Angles | null = null
 
@@ -212,7 +221,7 @@ export class LevelTracker {
   private tune(fused: boolean): void {
     if (this.fused === fused) return
     this.fused = fused
-    const tuning = fused ? FUSED_TUNING : RAW_TUNING
+    const tuning = this.tuning
     this.rollFilter = new OneEuroFilter(tuning.filter)
     this.pitchFilter = new OneEuroFilter(tuning.filter)
     this.rollMedian = new MedianWindow(tuning.prefilter)
@@ -221,7 +230,16 @@ export class LevelTracker {
   }
 
   get tuning(): LevelTuning {
-    return this.fused === false ? RAW_TUNING : FUSED_TUNING
+    const base = this.fused === false ? RAW_TUNING : FUSED_TUNING
+    return this.mirror ? mirrorTuning(base) : base
+  }
+
+  /** Mirror mode relaxes the roll band; switching rebuilds only the matched state. */
+  setMirror(on: boolean): void {
+    if (this.mirror === on) return
+    this.mirror = on
+    const tuning = this.tuning
+    this.trigger = new Hysteresis([tuning.roll, tuning.pitch], tuning.dwellMs)
   }
 
   /** Takes one `devicemotion` event at `tMs`. */
@@ -287,7 +305,15 @@ const degrees = (n: number): string => `${Number.isInteger(n) ? n : n.toFixed(1)
  * each only past its inner band. Null inside both, where the dwell is running ("Hold still"). Once
  * matched, nothing is said until the Hysteresis lets go past the outer band.
  */
-export function levelWords(err: Angles, shown: Angles, tuning: LevelTuning): string | null {
+export function levelWords(err: Angles, shown: Angles, tuning: LevelTuning, mirror = false): string | null {
+  if (mirror) {
+    // Phone in hand, screen toward you: pitch first, it is the one that cannot be fixed later.
+    // Positive pitch is the top leaning toward you, so it is tilted away (the sign is a device check).
+    if (Math.abs(err.pitch) > tuning.pitch.enter)
+      return err.pitch > 0 ? `Tilt top away ${degrees(shown.pitch)}` : `Tilt top toward you ${degrees(shown.pitch)}`
+    if (Math.abs(err.roll) > tuning.roll.enter) return `Tilt ${err.roll > 0 ? 'right' : 'left'} ${degrees(shown.roll)}`
+    return null
+  }
   if (Math.abs(err.roll) > tuning.roll.enter) return `Tilt ${err.roll > 0 ? 'right' : 'left'} ${degrees(shown.roll)}`
   if (Math.abs(err.pitch) > tuning.pitch.enter) return `Top ${err.pitch > 0 ? 'toward' : 'away'} ${degrees(shown.pitch)}`
   return null

@@ -16,6 +16,13 @@ export type PhotoSource = 'live' | 'native' | 'library'
 export type PhotoBodyScale = { full: number | null; torso: number }
 /** The top of the head and the soles, as fractions of the photo's height from its top. */
 export type PhotoBodyLines = { head: number; feet: number }
+/**
+ * How a photo was set up (mirror mode): back camera at a mirror with the phone in hand, or the
+ * phone on a stand with a timer. Photos without one count as `stand`.
+ */
+export type PhotoMode = 'mirror' | 'stand'
+/** The hand that held the phone in a mirror photo, by image side (image right is your right). */
+export type PhotoHand = 'left' | 'right'
 
 /**
  * What the capture knew when the photo was taken (photos v2). Every field is optional: photos
@@ -33,6 +40,12 @@ export type PhotoCaptureInfo = {
   /** The live stream's size when the frame was taken. */
   streamWidth?: number
   streamHeight?: number
+  /** Mirror or stand (mirror mode); absent means stand. */
+  mode?: PhotoMode
+  /** The phone's height against the body at the shutter, in torso lengths (higher is larger). */
+  phoneHeight?: number
+  /** The hand holding the phone in a mirror photo. */
+  phoneHand?: PhotoHand
 }
 
 export type Photo = {
@@ -75,6 +88,9 @@ export function captureInfoOf(source: PhotoCaptureInfo): PhotoCaptureInfo {
     info.streamWidth = source.streamWidth
     info.streamHeight = source.streamHeight
   }
+  if (source.mode === 'mirror' || source.mode === 'stand') info.mode = source.mode
+  if (finite(source.phoneHeight)) info.phoneHeight = source.phoneHeight
+  if (source.phoneHand === 'left' || source.phoneHand === 'right') info.phoneHand = source.phoneHand
   return info
 }
 

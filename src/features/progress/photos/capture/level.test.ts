@@ -10,6 +10,8 @@ import {
   anglesOf,
   gravityOf,
   levelWords,
+  MIRROR_ROLL,
+  mirrorTuning,
   median,
   steppedDegrees,
   upsideSign,
@@ -285,5 +287,33 @@ describe('the words', () => {
     expect(levelWords({ roll: 0.2, pitch: -3 }, { roll: 0, pitch: 3 }, FUSED_TUNING)).toBe('Top away 3°')
     expect(levelWords({ roll: 0.2, pitch: 2 }, { roll: 0, pitch: 2 }, FUSED_TUNING)).toBe('Top toward 2°')
     expect(levelWords({ roll: 0.5, pitch: 1 }, { roll: 0.5, pitch: 1 }, FUSED_TUNING)).toBeNull()
+  })
+})
+
+describe('mirror mode level', () => {
+  test('roll is relaxed to in 2.0 out 4.0; pitch keeps 1.5 / 3.0', () => {
+    expect(MIRROR_ROLL).toEqual({ enter: 2.0, leave: 4.0 })
+    expect(mirrorTuning(FUSED_TUNING).pitch).toEqual(FUSED_TUNING.pitch)
+    const tracker = new LevelTracker()
+    tracker.setMirror(true)
+    const stand = new LevelTracker()
+    let mirrorMatched = false
+    let standMatched = false
+    for (let t = 0; t < 1500; t += 16) {
+      tracker.push(fused(1.8, 0), t)
+      stand.push(fused(1.8, 0), t)
+      mirrorMatched = tracker.matched(t)
+      standMatched = stand.matched(t)
+    }
+    expect(mirrorMatched).toBe(true)
+    expect(standMatched).toBe(false)
+  })
+
+  test('mirror words put pitch first and say which way to tilt the top', () => {
+    const tuning = mirrorTuning(FUSED_TUNING)
+    expect(levelWords({ roll: 3, pitch: 2 }, { roll: 3, pitch: 2 }, tuning, true)).toBe('Tilt top away 2°')
+    expect(levelWords({ roll: 0, pitch: -2 }, { roll: 0, pitch: 2 }, tuning, true)).toBe('Tilt top toward you 2°')
+    expect(levelWords({ roll: 2.5, pitch: 0 }, { roll: 2.5, pitch: 0 }, tuning, true)).toBe('Tilt right 2.5°')
+    expect(levelWords({ roll: 1.8, pitch: 1 }, { roll: 2, pitch: 1 }, tuning, true)).toBeNull()
   })
 })

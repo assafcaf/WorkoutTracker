@@ -69,3 +69,24 @@ describe('E26-T8 O5 deleting a photo', () => {
     expect(await db.photos.get('a')).toBeDefined()
   })
 })
+
+describe('mirror mode: compare flips a mirror photo next to a stand one', () => {
+  test('the mirror photo is drawn flipped against a stand photo; Flip turns the after photo over too', async () => {
+    await db.photos.clear()
+    await db.photos.bulkPut([photo('a', '2026-10-12'), { ...photo('b', '2026-11-17'), mode: 'mirror' }])
+    const user = await mount()
+    const frames = () => [...screen.getByTestId('compare-wipe').querySelectorAll('img')]
+    await waitFor(() => expect(frames().map((img) => img.getAttribute('data-flipped'))).toEqual(['false', 'true']))
+    expect(frames()[1].style.transform).toBe('scaleX(-1) translate(0%, 0%) rotate(0deg) scale(1)')
+    expect(screen.getByText('Mirror')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Flip' }))
+    expect(frames().map((img) => img.getAttribute('data-flipped'))).toEqual(['false', 'false'])
+  })
+
+  test('two photos of the same mode are never flipped', async () => {
+    await mount()
+    const flips = [...screen.getByTestId('compare-wipe').querySelectorAll('img')].map((img) => img.getAttribute('data-flipped'))
+    expect(flips).toEqual(['false', 'false'])
+    expect(screen.queryByText('Mirror')).toBeNull()
+  })
+})

@@ -10,6 +10,7 @@ import { BodyPage } from '../../BodyPage'
 const NOW = new Date(2026, 10, 17, 9, 0).getTime()
 
 beforeEach(async () => {
+  localStorage.clear()
   await db.open()
   await db.settings.clear()
   await db.photos.clear()
@@ -25,7 +26,8 @@ describe('E26-T7 O4 the entry point on Progress > Body', () => {
       </ServicesProvider>,
     )
     await user.click(await screen.findByRole('button', { name: 'Add photo' }, { timeout: 5000 }))
-    expect(await screen.findByRole('heading', { name: 'New photo' })).toBeVisible()
+    // Capture opens straight onto the camera view (Front, Mirror the first time).
+    expect(await screen.findByRole('heading', { name: 'Front, mirror' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Close' }))
     expect(await screen.findByLabelText('Bodyweight (kg)')).toBeVisible()
   })

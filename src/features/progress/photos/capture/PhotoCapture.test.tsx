@@ -1,5 +1,5 @@
 // E26-T7: take and align a progress photo (the spike's layers L0 file input, L1 align, L2 live).
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Photo } from '../../../../storage/photoStore'
@@ -56,8 +56,14 @@ function setup(over: Partial<Parameters<typeof PhotoCapture>[0]> = {}) {
   return { onSave, onClose }
 }
 
+/** The tests written for photos v2 run in Stand mode, which keeps all of its behaviour. */
+function standEverywhere(): void {
+  for (const view of ['front', 'side', 'back']) localStorage.setItem(`photoMode.${view}`, 'stand')
+}
+
 beforeEach(() => {
   localStorage.clear()
+  standEverywhere()
   URL.createObjectURL = vi.fn(() => 'blob:test')
   URL.revokeObjectURL = vi.fn()
 })
@@ -69,19 +75,23 @@ afterEach(() => {
 describe('E26-T7 O1 the file-input path always works', () => {
   test('O1 the setup guidance, the three views and both ways to add a photo are offered', () => {
     setup()
-    expect(screen.getByRole('heading', { name: 'New photo' })).toBeVisible()
+    // Capture opens straight onto the camera view; the choices and the setup tips sit on it.
+    expect(screen.getByRole('heading', { name: 'Front' })).toBeVisible()
     expect(screen.getByRole('radio', { name: 'Front' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Side' })).toBeVisible()
     expect(screen.getByRole('radio', { name: 'Back' })).toBeVisible()
     expect(screen.getByText(/chest height/i)).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Take photo' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Use camera app' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Choose from library' })).toBeVisible()
   })
 
   test('O1 when the live camera fails, Take photo opens the camera file input in the same tap and says why', async () => {
     const click = vi.spyOn(HTMLInputElement.prototype, 'click')
     setup()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Take photo' }))
+    // The camera view says why, and Use camera app opens the iPhone camera in that tap.
+    expect(await screen.findByText(/Camera preview unavailable/)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Shutter' })).toBeDisabled()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Use camera app' }))
     await waitFor(() => expect(click).toHaveBeenCalled())
     const camera = screen.getByLabelText('Camera photo') as HTMLInputElement
     expect(camera.type).toBe('file')
@@ -114,7 +124,8 @@ describe('E26-T7 O1 the file-input path always works', () => {
     const user = userEvent.setup()
     fireEvent.change(screen.getByLabelText('Library photo'), { target: { files: [FILE] } })
     await user.click(await screen.findByRole('button', { name: 'Retake' }))
-    expect(screen.getByRole('heading', { name: 'New photo' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Front' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Shutter' })).toBeVisible()
     expect(onSave).not.toHaveBeenCalled()
   })
 })
@@ -165,7 +176,6 @@ describe('E26-T7 O3 the live camera, when it works', () => {
     const live = feed()
     setup({ photos: [photo('front', '2026-11-10')], openCamera: async () => live })
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Take photo' }))
     expect(await screen.findByRole('button', { name: 'Ghost 35%' })).toBeVisible()
     expect(screen.getByRole('img', { name: 'Last front photo' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Shutter' }))
@@ -178,7 +188,6 @@ describe('E26-T7 O3 the live camera, when it works', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const live = feed()
     setup({ openCamera: async () => live })
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
     fireEvent.click(screen.getByRole('radio', { name: '10s' }))
     fireEvent.click(screen.getByRole('button', { name: 'Shutter' }))
@@ -195,7 +204,6 @@ describe('E26-T7 O3 the live camera, when it works', () => {
   test('O3 the level reads the phone tilt from its gravity, and says Level within 1.5 degrees', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     setup({ openCamera: async () => feed() })
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
     // Raw gravity only (no `acceleration`): the stronger filter and the 1.5 degree band.
     const holdFor = async (ms: number, x: number, y: number): Promise<void> => {
@@ -217,7 +225,6 @@ describe('E26-T7 O3 the live camera, when it works', () => {
   test('photos v2: the level reads fused gravity, so a tap on the phone does not move it', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     setup({ openCamera: async () => feed() })
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
     // iOS reports a tap as user acceleration in both fields; gravity is their difference.
     const sample = (shake: number): void => {
@@ -250,11 +257,12 @@ describe('E26-T7 O3 the live camera, when it works', () => {
     const live = feed()
     const { onClose } = setup({ openCamera: async () => live })
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Take photo' }))
-    await user.click(await screen.findByRole('button', { name: 'Close' }))
+    await screen.findByRole('button', { name: 'Shutter' })
+    await waitFor(() => expect(live.attach).toHaveBeenCalled())
+    // No setup screen behind the camera view: Close ends the capture.
+    await user.click(screen.getByRole('button', { name: 'Close' }))
     expect(live.stop).toHaveBeenCalled()
-    expect(onClose).not.toHaveBeenCalled()
-    expect(screen.getByRole('heading', { name: 'New photo' })).toBeVisible()
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -290,20 +298,22 @@ describe('photos v2 back camera and switching', () => {
   test('the camera choice is offered, named, and the native camera input follows it', async () => {
     setup()
     const user = userEvent.setup()
-    expect(screen.getByRole('radio', { name: 'Front camera' })).toBeChecked()
+    const flip = await screen.findByRole('button', { name: 'Switch to back camera' })
+    expect(flip).toHaveTextContent('Back camera')
     expect((screen.getByLabelText('Camera photo') as HTMLInputElement).getAttribute('capture')).toBe('user')
-    await user.click(screen.getByRole('radio', { name: 'Back camera' }))
+    await user.click(flip)
+    expect(await screen.findByRole('button', { name: 'Switch to front camera' })).toBeVisible()
     expect((screen.getByLabelText('Camera photo') as HTMLInputElement).getAttribute('capture')).toBe('environment')
   })
 
   test('the choice is remembered per view', async () => {
     setup()
     const user = userEvent.setup()
-    await user.click(screen.getByRole('radio', { name: 'Back camera' }))
+    await user.click(await screen.findByRole('button', { name: 'Switch to back camera' }))
     await user.click(screen.getByRole('radio', { name: 'Side' }))
-    expect(screen.getByRole('radio', { name: 'Front camera' })).toBeChecked()
+    expect(await screen.findByRole('button', { name: 'Switch to back camera' })).toBeVisible()
     await user.click(screen.getByRole('radio', { name: 'Front' }))
-    expect(screen.getByRole('radio', { name: 'Back camera' })).toBeChecked()
+    expect(await screen.findByRole('button', { name: 'Switch to front camera' })).toBeVisible()
   })
 
   test('switching stops the old tracks before asking for the other camera, and mirrors only the front', async () => {
@@ -317,7 +327,6 @@ describe('photos v2 back camera and switching', () => {
     })
     setup({ openCamera })
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
     expect(document.querySelector('video')?.getAttribute('data-mirrored')).toBe('true')
     const flip = screen.getByRole('button', { name: 'Switch to back camera' })
@@ -333,9 +342,9 @@ describe('photos v2 back camera and switching', () => {
     const backPhoto: Photo = { ...photo('front', '2026-11-12'), id: 'back-cam', camera: 'environment' }
     setup({ photos: [backPhoto, photo('front', '2026-11-10')], openCamera: async (f) => feedFor(f ?? 'user') })
     const user = userEvent.setup()
-    expect(screen.getByText(/Your 10 Nov front photo/)).toBeVisible()
-    await user.click(screen.getByRole('radio', { name: 'Back camera' }))
-    expect(screen.getByText(/Your 12 Nov front photo/)).toBeVisible()
+    expect(await screen.findByText('Matching 10 Nov')).toBeVisible()
+    await user.click(await screen.findByRole('button', { name: 'Switch to back camera' }))
+    expect(await screen.findByText('Matching 12 Nov')).toBeVisible()
   })
 
   test('a failed switch reopens the camera that worked', async () => {
@@ -346,7 +355,6 @@ describe('photos v2 back camera and switching', () => {
     })
     setup({ openCamera })
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Take photo' }))
     await user.click(await screen.findByRole('button', { name: 'Switch to back camera' }))
     await waitFor(() => expect(openCamera).toHaveBeenCalledTimes(3))
     expect(await screen.findByRole('button', { name: 'Switch to back camera' })).toBeEnabled()
@@ -356,11 +364,19 @@ describe('photos v2 back camera and switching', () => {
   test('the native camera path saves the camera and the path with the photo', async () => {
     const { onSave } = setup()
     const user = userEvent.setup()
-    await user.click(screen.getByRole('radio', { name: 'Back camera' }))
+    await user.click(await screen.findByRole('button', { name: 'Switch to back camera' }))
     fireEvent.change(screen.getByLabelText('Camera photo'), { target: { files: [FILE] } })
     await user.click(await screen.findByRole('button', { name: 'Save' }))
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith({ file: FILE, day: DAY, angle: 'front', align: IDENTITY, camera: 'environment', source: 'native' }),
+      expect(onSave).toHaveBeenCalledWith({
+        file: FILE,
+        day: DAY,
+        angle: 'front',
+        align: IDENTITY,
+        camera: 'environment',
+        source: 'native',
+        mode: 'stand',
+      }),
     )
   })
 })
@@ -369,7 +385,6 @@ describe('photos v2 what the shutter stores', () => {
   test('a live frame saves its camera, path, stream size and the median angles at the shutter', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const { onSave } = setup({ openCamera: async (f) => feedFor(f ?? 'user') })
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
     const g = { x: 9.80665 * Math.sin(Math.PI / 90), y: -9.80665 * Math.cos(Math.PI / 90), z: 0 }
     for (let t = 0; t < 1000; t += 16) {
@@ -393,10 +408,14 @@ describe('photos v2 what the shutter stores', () => {
 describe('photos v2 the distance cue', () => {
   test('the pose model loads only when the live camera opens', async () => {
     const load = vi.fn(fakePose(() => 1).load)
-    setup({ photos: [withScale(photo('front', '2026-11-10'))], openCamera: async () => feedFor('user'), loadPose: load })
-    expect(load).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
+    let open: (feed: LiveFeed) => void = () => undefined
+    const opening = new Promise<LiveFeed>((resolve) => {
+      open = resolve
+    })
+    setup({ photos: [withScale(photo('front', '2026-11-10'))], openCamera: () => opening, loadPose: load })
     await screen.findByRole('button', { name: 'Shutter' })
+    expect(load).not.toHaveBeenCalled()
+    await act(async () => open(feedFor('user')))
     await waitFor(() => expect(load).toHaveBeenCalledTimes(1))
   })
 
@@ -404,7 +423,6 @@ describe('photos v2 the distance cue', () => {
     let size = 1.1
     const pose = fakePose(() => size)
     setup({ photos: [withScale(photo('front', '2026-11-10'))], openCamera: async () => feedFor('user'), loadPose: pose.load })
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
     videoHasFrames()
     const distance = await screen.findByRole('group', { name: 'Distance' }, { timeout: 3000 })
@@ -419,7 +437,6 @@ describe('photos v2 the distance cue', () => {
     let size: number | null = 0.85
     const pose = fakePose(() => size)
     setup({ photos: [withScale(photo('front', '2026-11-10'))], openCamera: async () => feedFor('user'), loadPose: pose.load })
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
     videoHasFrames()
     expect(await screen.findByText('Come closer', {}, { timeout: 3000 })).toBeVisible()
@@ -433,7 +450,6 @@ describe('photos v2 the distance cue', () => {
     const image = vi.spyOn(pose.model, 'image')
     ;(globalThis as { createImageBitmap?: unknown }).createImageBitmap = vi.fn(async () => ({ width: 600, height: 800 }))
     setup({ photos: [photo('front', '2026-11-10')], openCamera: async () => feedFor('user'), loadPose: pose.load })
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
     videoHasFrames()
     expect(await screen.findByText('Step back', {}, { timeout: 3000 })).toBeVisible()
@@ -444,7 +460,6 @@ describe('photos v2 the distance cue', () => {
   test('without the model, the reference head and feet lines are drawn instead', async () => {
     const ref: Photo = { ...photo('front', '2026-11-10'), bodyLines: { head: 0.1, feet: 0.9 } }
     setup({ photos: [ref], openCamera: async () => feedFor('user') })
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     expect(await screen.findByRole('img', { name: 'Head and feet lines from the last photo' })).toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'Distance' })).toBeNull()
   })
@@ -452,7 +467,6 @@ describe('photos v2 the distance cue', () => {
   test('the shutter stores the body scale and lines measured live', async () => {
     const pose = fakePose(() => 1)
     const { onSave } = setup({ openCamera: async () => feedFor('user'), loadPose: pose.load })
-    fireEvent.click(screen.getByRole('button', { name: 'Take photo' }))
     await screen.findByRole('button', { name: 'Shutter' })
     videoHasFrames()
     await act(async () => {
@@ -489,9 +503,8 @@ describe('photos v2 the distance cue', () => {
     const backRef: Photo = { ...withScale(photo('front', '2026-11-10')), camera: 'environment' }
     setup({ photos: [backRef], openCamera: async (f) => feedFor(f ?? 'user'), loadPose: pose.load })
     const user = userEvent.setup()
-    await user.click(screen.getByRole('radio', { name: 'Back camera' }))
-    await user.click(screen.getByRole('button', { name: 'Take photo' }))
-    await screen.findByRole('button', { name: 'Shutter' })
+    await user.click(await screen.findByRole('button', { name: 'Switch to back camera' }))
+    await screen.findByRole('button', { name: 'Switch to front camera' })
     videoHasFrames()
     await waitFor(() => expect(tones.filter((hz) => hz === 1200).length).toBeGreaterThan(0), { timeout: 3000 })
     size = 1
@@ -537,5 +550,260 @@ describe('photos v2 a check-in in one go', () => {
     await user.click(await screen.findByRole('button', { name: 'Save' }))
     await user.click(await screen.findByRole('button', { name: 'Done' }))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+// --- mirror mode: the camera view holds every choice; Mirror and Stand ------------------------
+
+/** A mirror reference matching body(1) at pitch 0 (h = -1.5) unless told otherwise. */
+const mirrorRef = (over: Partial<Photo> = {}): Photo => ({
+  ...photo('front', '2026-11-10'),
+  id: 'mirror-ref',
+  camera: 'environment',
+  mode: 'mirror',
+  bodyScale: { full: 0.6, torso: 0.2 },
+  phoneHeight: -1.5,
+  ...over,
+})
+
+/** body(1) with the shoulders and hips moved down by `dy` (the phone held higher). */
+const lowered = (dy: number, over: Parameters<typeof body>[1] = {}) =>
+  body(1, {
+    11: { y: 0.2 + dy },
+    12: { y: 0.2 + dy },
+    23: { y: 0.4 + dy },
+    24: { y: 0.4 + dy },
+    27: { y: 0.8 + dy },
+    28: { y: 0.8 + dy },
+    ...over,
+  })
+
+function poseOf(marks: () => ReturnType<typeof body> | null): () => Promise<PoseModel> {
+  const model: PoseModel = { video: () => marks(), image: async () => body(1), close: () => undefined }
+  return async () => model
+}
+
+async function liveMirror(over: Partial<Parameters<typeof PhotoCapture>[0]> = {}) {
+  const opened: string[] = []
+  const live = feedFor('environment')
+  const result = setup({
+    openCamera: async (f) => {
+      opened.push(f ?? 'user')
+      return live
+    },
+    ...over,
+  })
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Shutter' })).toBeEnabled())
+  videoHasFrames()
+  return { ...result, live, opened }
+}
+
+describe('mirror mode: choices on the camera view', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  test('capture opens on the camera, Front and Mirror the first time, with the back camera', async () => {
+    const { opened } = await liveMirror()
+    expect(opened).toEqual(['environment'])
+    expect(screen.getByRole('heading', { name: 'Front, mirror' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'Front' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Mirror' })).toBeChecked()
+    expect(document.querySelector('video')?.getAttribute('data-mirrored')).toBe('false')
+  })
+
+  test('Mirror has no timer and no camera switch; Auto is on and Sounds off', async () => {
+    await liveMirror()
+    expect(screen.queryByRole('radio', { name: '10s' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Switch to/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Auto on' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Sounds off' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('the mirror tips say face height and about 1.3 m, never 2.5 m', async () => {
+    await liveMirror()
+    const tips = screen.getByRole('region', { name: 'Setup' })
+    expect(tips).toHaveTextContent(/phone in your right hand at face height/)
+    expect(tips).toHaveTextContent(/about 1\.3 m from the mirror/)
+    expect(document.body.textContent).not.toMatch(/2\.5 m/)
+  })
+
+  test('the mode is remembered per view; Back starts as Stand; the view last used opens next time', async () => {
+    const { live } = await liveMirror()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('radio', { name: 'Back' }))
+    expect(screen.getByRole('radio', { name: 'Stand' })).toBeChecked()
+    expect(await screen.findByRole('heading', { name: 'Back' })).toBeVisible()
+    await user.click(screen.getByRole('radio', { name: 'Side' }))
+    expect(screen.getByRole('radio', { name: 'Mirror' })).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: 'Stand' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    expect(live.stop).toHaveBeenCalled()
+    cleanup()
+    setup({ openCamera: async (f) => feedFor(f ?? 'user') })
+    expect(screen.getByRole('radio', { name: 'Side' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Stand' })).toBeChecked()
+  })
+
+  test('Back in a mirror asks inline; Use Stand switches, Keep Mirror keeps it', async () => {
+    await liveMirror()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('radio', { name: 'Back' }))
+    await user.click(screen.getByRole('radio', { name: 'Mirror' }))
+    const note = screen.getByRole('group', { name: 'Back in a mirror' })
+    expect(note).toHaveTextContent('A back photo needs the phone on a stand, or a second mirror. Use Stand?')
+    await user.click(screen.getByRole('button', { name: 'Keep Mirror' }))
+    expect(screen.queryByRole('group', { name: 'Back in a mirror' })).toBeNull()
+    expect(screen.getByRole('radio', { name: 'Mirror' })).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: 'Front' }))
+    await user.click(screen.getByRole('radio', { name: 'Back' }))
+    await user.click(screen.getByRole('button', { name: 'Use Stand' }))
+    expect(screen.getByRole('radio', { name: 'Stand' })).toBeChecked()
+  })
+
+  test('changing the mode reopens the camera in place: Stand keeps the view\'s own camera', async () => {
+    const { opened } = await liveMirror()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('radio', { name: 'Stand' }))
+    await waitFor(() => expect(opened).toEqual(['environment', 'user']))
+    expect(await screen.findByRole('button', { name: 'Switch to back camera' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: '10s' })).toBeVisible()
+  })
+
+  test('references are per view, mode and camera: a stand photo never guides a mirror one', async () => {
+    const standPhoto: Photo = { ...photo('front', '2026-11-12'), camera: 'environment' }
+    await liveMirror({ photos: [standPhoto] })
+    expect(screen.queryByRole('img', { name: 'Last front photo' })).toBeNull()
+    expect(screen.getByText('No mirror photo yet. This one becomes the reference.')).toBeVisible()
+    cleanup()
+    localStorage.clear()
+    await liveMirror({ photos: [standPhoto, mirrorRef()] })
+    expect(screen.getByRole('img', { name: 'Last front photo' })).toBeVisible()
+    expect(screen.getByText('Matching 10 Nov')).toBeVisible()
+  })
+
+  test('the native camera fallback uses the back camera and stores the mirror mode', async () => {
+    const { onSave } = setup()
+    expect((screen.getByLabelText('Camera photo') as HTMLInputElement).getAttribute('capture')).toBe('environment')
+    fireEvent.change(screen.getByLabelText('Camera photo'), { target: { files: [FILE] } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith({
+        file: FILE,
+        day: DAY,
+        angle: 'front',
+        align: IDENTITY,
+        camera: 'environment',
+        source: 'native',
+        mode: 'mirror',
+      }),
+    )
+  })
+})
+
+describe('mirror mode: the cues', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  test('a phone lower than last time says Raise the phone, then Matched once it is back', async () => {
+    let marks = lowered(-0.1) // shoulders higher in the frame: the phone is lower
+    await liveMirror({ photos: [mirrorRef()], loadPose: poseOf(() => marks) })
+    expect(await screen.findByText('Raise the phone', {}, { timeout: 4000 })).toBeVisible()
+    expect(screen.getByRole('group', { name: 'Phone height' })).toBeInTheDocument()
+    marks = lowered(0)
+    expect(await screen.findByText('Matched', {}, { timeout: 4000 })).toBeVisible()
+  })
+
+  test('a phone higher than last time says Lower the phone', async () => {
+    await liveMirror({ photos: [mirrorRef()], loadPose: poseOf(() => lowered(0.1)) })
+    expect(await screen.findByText('Lower the phone', {}, { timeout: 4000 })).toBeVisible()
+  })
+
+  test('hidden ankles say Step back until your feet show; distance words name the mirror', async () => {
+    let marks = body(1, { 27: { visibility: 0.1 }, 28: { visibility: 0.1 } })
+    await liveMirror({ photos: [mirrorRef()], loadPose: poseOf(() => marks) })
+    expect(await screen.findByText('Step back until your feet show', {}, { timeout: 4000 })).toBeVisible()
+    marks = body(1.1)
+    expect(await screen.findByText('Step back from the mirror', {}, { timeout: 4000 })).toBeVisible()
+  })
+
+  test('the other hand from last time shows a hint, without blocking Matched', async () => {
+    const raisedRight = body(1, { 16: { x: 0.62, y: 0.1 } })
+    await liveMirror({ photos: [mirrorRef({ phoneHand: 'left' })], loadPose: poseOf(() => raisedRight) })
+    fireEvent.click(screen.getByRole('button', { name: 'Auto on' }))
+    expect(await screen.findByText('Phone in your left hand, like last time', {}, { timeout: 4000 })).toBeVisible()
+    expect(await screen.findByText('Matched', {}, { timeout: 4000 })).toBeVisible()
+  })
+
+  test('mirror mode is silent by default', async () => {
+    const tones: number[] = []
+    class FakeAudio {
+      state = 'running'
+      currentTime = 0
+      destination = {}
+      resume = async () => undefined
+      createOscillator() {
+        const o = { type: '', frequency: { value: 0 }, connect: () => undefined, start: () => tones.push(o.frequency.value), stop: () => undefined }
+        return o
+      }
+      createGain() {
+        return { gain: { value: 0 }, connect: () => undefined }
+      }
+    }
+    ;(globalThis as { AudioContext?: unknown }).AudioContext = FakeAudio
+    let size = 1.15
+    await liveMirror({ photos: [mirrorRef()], loadPose: poseOf(() => body(size)) })
+    fireEvent.click(screen.getByRole('button', { name: 'Auto on' }))
+    expect(await screen.findByRole('group', { name: 'Distance' }, { timeout: 4000 })).toHaveTextContent('15% closer')
+    size = 1
+    expect(await screen.findByText('Matched', {}, { timeout: 4000 })).toBeVisible()
+    expect(tones).toEqual([])
+    Reflect.deleteProperty(globalThis, 'AudioContext')
+  })
+})
+
+describe('mirror mode: the shutter', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  test('all matched starts a visible 3 2 1, then takes the frame once and stores mode, height and hand', async () => {
+    const raisedRight = body(1, { 16: { x: 0.62, y: 0.1 } })
+    const { live, onSave } = await liveMirror({ photos: [mirrorRef()], loadPose: poseOf(() => raisedRight) })
+    expect(await screen.findByText('Hold still · 3', {}, { timeout: 5000 })).toBeVisible()
+    expect(live.grab).not.toHaveBeenCalled()
+    expect(await screen.findByRole('heading', { name: 'Line up' }, { timeout: 5000 })).toBeVisible()
+    expect(live.grab).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    const saved = (onSave.mock.calls[0] as unknown as [Record<string, unknown>])[0]
+    expect(saved).toMatchObject({ mode: 'mirror', camera: 'environment', source: 'live', phoneHand: 'right' })
+    expect(saved.phoneHeight).toBeCloseTo(-1.5, 1)
+  })
+
+  test('a tap starts a 2 s countdown instead of shooting at once; a second tap cancels it', async () => {
+    const { live } = await liveMirror()
+    fireEvent.click(screen.getByRole('button', { name: 'Auto on' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Shutter' }))
+    expect(await screen.findByText('Hold still · 2')).toBeVisible()
+    expect(live.grab).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Shutter' }))
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 2400))
+    })
+    expect(live.grab).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Shutter' }))
+    await waitFor(() => expect(live.grab).toHaveBeenCalledTimes(1), { timeout: 3000 })
+  })
+
+  test('with Auto off, matched never shoots by itself', async () => {
+    const { live } = await liveMirror({ photos: [mirrorRef()], loadPose: poseOf(() => body(1)) })
+    fireEvent.click(screen.getByRole('button', { name: 'Auto on' }))
+    expect(await screen.findByText('Matched', {}, { timeout: 4000 })).toBeVisible()
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 2500))
+    })
+    expect(live.grab).not.toHaveBeenCalled()
   })
 })
