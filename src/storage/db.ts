@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { Session } from '../types'
+import type { Photo } from './photoStore'
 
 /**
  * A row of the `settings` table. E1-T6 owns what goes in it; `db.ts` only declares the table
@@ -20,6 +21,7 @@ export type SettingRow = {
 export class WorkoutDb extends Dexie {
   sessions!: Table<Session, string>
   settings!: Table<SettingRow, string>
+  photos!: Table<Photo, string>
 
   constructor() {
     super('workout-tracker')
@@ -41,6 +43,12 @@ export class WorkoutDb extends Dexie {
             session.updatedAt = session.finishedAt ?? session.startedAt
           }),
       )
+    // Version 3 (E26-T1): progress photos, kept on the phone only.
+    this.version(3).stores({
+      sessions: 'id, startedAt, finishedAt, updatedAt',
+      settings: 'key',
+      photos: 'id, day',
+    })
   }
 }
 
