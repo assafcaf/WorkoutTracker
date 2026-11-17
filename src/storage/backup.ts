@@ -1,3 +1,4 @@
+import { db } from './db'
 import type { Photo, PhotoAlign, PhotoAngle } from './photoStore'
 import type { BodyLog, CustomExercise, PlateInventory, Session, UserProgram, VolumeBaseline } from '../types'
 
@@ -66,13 +67,59 @@ export type BackupPhoto = {
 }
 
 /** A stored Photo as a backup entry (bytes to base64). */
-export function encodeBackupPhoto(_photo: Photo): BackupPhoto {
-  throw new Error('NotImplementedError')
+export function encodeBackupPhoto(photo: Photo): BackupPhoto {
+  const bytes = new Uint8Array(photo.data)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  }
+  return {
+    id: photo.id,
+    day: photo.day,
+    angle: photo.angle,
+    data: btoa(binary),
+    type: photo.type,
+    width: photo.width,
+    height: photo.height,
+    align: photo.align,
+    createdAt: photo.createdAt,
+  }
 }
 
 /** A backup entry back to a stored Photo (base64 to an ArrayBuffer). */
-export function decodeBackupPhoto(_photo: BackupPhoto): Photo {
-  throw new Error('NotImplementedError')
+export function decodeBackupPhoto(photo: BackupPhoto): Photo {
+  const binary = atob(photo.data)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return {
+    id: photo.id,
+    day: photo.day,
+    angle: photo.angle,
+    data: bytes.buffer,
+    type: photo.type,
+    width: photo.width,
+    height: photo.height,
+    align: photo.align,
+    createdAt: photo.createdAt,
+  }
+}
+
+/** Whether any progress photo is stored. */
+export async function hasStoredPhotos(): Promise<boolean> {
+  return (await db.photos.count()) > 0
+}
+
+/** Every stored photo as a backup entry. */
+export async function readBackupPhotos(): Promise<BackupPhoto[]> {
+  return (await db.photos.toArray()).map(encodeBackupPhoto)
+}
+
+/** Replaces every stored photo with `photos`, in one transaction. */
+export async function replaceStoredPhotos(photos: BackupPhoto[]): Promise<void> {
+  await db.transaction('rw', db.photos, async () => {
+    await db.photos.clear()
+    await db.photos.bulkPut(photos.map(decodeBackupPhoto))
+  })
 }
 
 /**

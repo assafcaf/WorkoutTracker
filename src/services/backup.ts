@@ -2,8 +2,11 @@ import {
   BACKUP_SCHEMA_VERSION,
   BackupFormatError,
   backupFileName,
+  hasStoredPhotos,
   importPlan,
   readBackup,
+  readBackupPhotos,
+  replaceStoredPhotos,
   type BackupFile,
   type ImportPlan,
 } from '../storage/backup'
@@ -53,13 +56,14 @@ export type PendingImport = { file: BackupFile; plan: ImportPlan }
 
 export type BackupService = {
   export(options?: { includePhotos?: boolean }): Promise<void>
+  /** Whether any progress photo is stored (decides if Export asks about photos). */
   hasPhotos(): Promise<boolean>
   read(text: string): Promise<PendingImport>
   confirmImport(pending: PendingImport): Promise<SyncResult>
 }
 
 /** Every logged session and the settings this app owns, as of `now` (moved from storage, E11-T15). */
-async function buildBackupFile(now: number): Promise<BackupFile> {
+async function buildBackupFile(now: number, includePhotos = false): Promise<BackupFile> {
   const [
     sessions,
     activeProgramRow,
@@ -103,6 +107,7 @@ async function buildBackupFile(now: number): Promise<BackupFile> {
     schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: now,
     sessions,
+    ...(includePhotos ? { photos: await readBackupPhotos() } : {}),
     settings: {
       activeProgramId,
       lastExportedAt,
@@ -167,15 +172,15 @@ export function createBackupService(
 ): BackupService {
   return {
     async hasPhotos() {
-      return false
+      return callStorage(deps, () => hasStoredPhotos(), 'the photos could not be checked')
     },
 
-    async export(_options?: { includePhotos?: boolean }) {
+    async export(options?: { includePhotos?: boolean }) {
       return callStorage(
         deps,
         async () => {
           const now = deps.now()
-          await shareBackupFile(await buildBackupFile(now), now)
+          await shareBackupFile(await buildBackupFile(now, options?.includePhotos === true), now)
           deps.bus.emit('preferences')
         },
         'the backup could not be exported',
@@ -274,6 +279,8 @@ export function createBackupService(
             if (toPut.length > 0) await putRows(toPut)
             if (toDelete.length > 0) await deleteKeys(toDelete)
           })
+
+          if (file.photos !== undefined) await replaceStoredPhotos(file.photos)
 
           const result = await deps.replaceRemote()
           for (const topic of CHANGE_TOPICS) deps.bus.emit(topic)
