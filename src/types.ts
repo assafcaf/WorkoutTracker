@@ -165,6 +165,7 @@ export type VolumeBaseline =
 
 /** A Body metric the trainee logs: Bodyweight in kg, or a measurement in cm (E22). */
 export type BodyMetric = 'weightKg' | 'waistCm' | 'chestCm' | 'armsCm' | 'thighsCm'
+  | 'hipsCm' | 'neckCm' | 'shouldersCm' | 'calvesCm'
 
 /** One Body entry: a local `YYYY-MM-DD` day and any of the metrics (E22). */
 export type BodyEntry = { day: string } & Partial<Record<BodyMetric, number>>
