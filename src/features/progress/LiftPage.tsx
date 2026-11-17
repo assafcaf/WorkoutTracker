@@ -68,6 +68,7 @@ export function LiftPage({ page, onBack, navigate, now = Date.now }: LiftPagePro
   const sessionsData = useServiceData((services) => services.sessions.list(), ['sessions'])
   const programsData = useServiceData((services) => services.programs.load(), ['programs'])
   const catalogData = useServiceData((services) => services.catalog.load(), [])
+  const bodyLogData = useServiceData((services) => services.preferences.bodyLog().catch((): BodyLog => []), ['preferences'])
   const overridesData = useServiceData(
     (services) => services.preferences.bodyweightOverrides().catch((): Record<string, boolean> => ({})),
     ['preferences'],
@@ -95,6 +96,7 @@ export function LiftPage({ page, onBack, navigate, now = Date.now }: LiftPagePro
         program={programs.find((p) => p.id === activeProgramId)}
         resolve={resolve}
         now={now()}
+        bodyLog={bodyLogData.status === 'ready' ? bodyLogData.data : undefined}
         onOpenSession={navigate ? (sessionId) => navigate({ tab: 'history', sessionId }) : undefined}
         // V6R-02: the short swap list, replacing the lift in the Program, with Undo.
         onSwap={canSwap(page.exerciseId) ? () => openSwap(page.exerciseId) : undefined}

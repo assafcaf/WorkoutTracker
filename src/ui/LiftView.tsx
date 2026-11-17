@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { buildLiftHistories, leverOf, straightSets } from '../domain/stats/liftHistory'
 import type { LiftHistory, LiftPoint } from '../domain/stats/liftHistory'
 import { changeSince, changeTextFor, liftRecordRows, measureOf, sessionLog, storyPoints } from '../domain/stats/liftStory'
+import { relativeStrength } from '../domain/stats/relativeStrength'
 import { liftPrs } from '../domain/stats/records'
 import type { Measure } from '../domain/stats/liftStory'
 import { liftStatus } from '../domain/stats/status'
@@ -155,7 +156,7 @@ export function setRuns(sets: SetEntry[], prSetIndex: number | null): SetRun[] {
  *   - one ink line, the standing record a gold ring, deloads a grey band, no point labels;
  *   - Records, then the Sessions as set rows with the PR tag on the Set that earned it.
  */
-export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap }: LiftViewProps): JSX.Element {
+export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap, bodyLog }: LiftViewProps): JSX.Element {
   const [range, setRange] = useState<Range>('3M')
   const [show, setShow] = useState<Show>('est')
   const [showAll, setShowAll] = useState(false)
@@ -198,6 +199,7 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
         : measure === 'load'
           ? L(Math.round(latestStory.value * 100) / 100)
           : String(Math.round(latestStory.value))
+  const relative = measure === 'est' && latestStory && bodyLog ? relativeStrength(latestStory.value, bodyLog, latestStory.at) : null
   const heroUnit = measure === 'est' ? 'kg' : measure === 'reps' ? 'reps' : ''
 
   const records = liftPrs(history)
@@ -263,6 +265,7 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
             </span>
           ) : null}
         </p>
+        {relative ? <p className="lift-hero-definition lift-hero-relative">{relative.text}</p> : null}
         <p className="lift-hero-definition">{definition.text}</p>
       </section>
 
