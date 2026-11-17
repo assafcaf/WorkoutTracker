@@ -77,3 +77,47 @@ now, up green for "lined up", tabular numerals. The camera view alone is dark, a
   checks listed above first, and about 15 MB of model files outside the precache.
 - Not verified: anything on the iPhone. The installed-app camera, the motion permission and
   persistence need the operator's phone after deploy (`iphone` resource).
+
+## Outcome (photos v2, 2026-11-17)
+The owner tried E26 on the iPhone: no back camera, a jittery tilt, and no sense of distance.
+`docs/design/photos-2026-11/stability-and-distance.md` set the fixes; built as recommended:
+- **Back camera.** A Front/Back camera choice on the setup screen and a named 44 px switch in the
+  live view, remembered per view in localStorage (device-local). A switch stops every old track and
+  clears the video before asking for the other camera (WebKit 179363) and disables the shutter
+  while it runs; a failed switch reopens the camera that worked. The back camera prefers a
+  remembered deviceId, else the plain "Back Camera" lens by label (never ultra-wide, dual, triple or
+  telephoto), else `facingMode`; on the first grant it reopens on the plain lens and remembers it.
+  Only the front preview and its ghost are mirrored; the saved frame never is. The native-camera
+  input's `capture` follows the choice. References are per view **and** camera (photos from before
+  v2 count as front).
+- **Level.** Gravity = `accelerationIncludingGravity − acceleration` (CoreMotion's fused gravity on
+  iOS), raw with a median of 5 when `acceleration` is missing; roll and pitch; a 1€ filter (0.5 Hz,
+  β 0.05, dcutoff 1 Hz; raw 0.3 Hz, β 0.03); a Schmitt trigger (roll in ≤ 1.0° out > 2.0°, pitch
+  in ≤ 1.5° out > 3.0°, 300 ms dwell; raw roll 1.5/2.5°, 500 ms); a spec-convention sign flip
+  detected when upright. Motion events never set state: the line and pitch dot are drawn every
+  animation frame, the words ("Tilt right 2.5°", "Top away 3°") at 10 Hz in 0.5° steps. The target
+  is the reference photo's stored angles (else 0/0); the shutter stores the median of the last
+  0.5 s. Hidden past 25° of roll or after 1 s without events.
+- **Distance.** The ghost and the video share one box and `object-fit: contain`; the stream asks
+  for 1440×1920, 3:4, all `ideal`. MediaPipe Pose Landmarker lite (CPU, VIDEO mode, about 9 Hz),
+  loaded by dynamic import only when the live camera opens: S = shoulder-mid to ankle-mid (torso
+  ratio when an ankle is hidden), r = S/S_ref, median of 5, EMA of log r with τ 0.4 s; green zone in
+  ±3 % out ±5 % with a 500 ms dwell; one "◄ closer / farther ►" bar over ±20 % with a whole-percent
+  number (4 Hz); one cue at a time (tilt, then distance, "Step into frame", "Matched"). S_ref is
+  stored with each live photo; a reference without one is measured once on its still. With the
+  back camera, Web Audio ticks speed up as you near the zone and one high tone marks Matched; the
+  10 s timer beeps. Without the model (offline before first use, unsupported) the reference's head
+  and feet lines are drawn; they come from the landmarks, or the user marks them on the align
+  screen ("Head & feet").
+- **Data.** `Photo` gained optional `camera`, `roll`, `pitch`, `bodyScale`, `bodyLines`, `source`
+  (`live` / `native` / `library`) and `streamWidth` / `streamHeight`. A photo without them keeps its
+  old shape, malformed values are dropped, backups carry them. No schema version (no new index).
+- **Check-in.** After a save the flow offers "Next: Side", then "Next: Back" (skipping views
+  already taken that day), and Done; `PhotoCaptureFlow`'s props are unchanged.
+- **Cache.** `vision_bundle` (155 KB) is a lazy chunk in the precache. The wasm (15 MB) is copied
+  from the npm package into `dist/mediapipe/wasm/` at build time, and the lite model (about 5.8 MB)
+  is fetched from Google's model bucket; both are runtime-cached CacheFirst, outside the precache.
+- **Not verified on the iPhone:** the research's section 6 checks (fused gravity while the camera
+  is live and its noise, the sign of `gy`, the real stream size and field of view, back-camera
+  labels and lens switching, a re-prompt on switching, pose `r` noise at 2.5 m), plus Web Audio
+  while the camera runs and the model's first load and offline reuse in the Home Screen app.
