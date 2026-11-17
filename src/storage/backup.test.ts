@@ -733,3 +733,11 @@ test('photos v2: an old backup photo with no capture fields decodes to the old s
   expect(decoded.camera).toBeUndefined()
   expect(Object.keys(decoded)).not.toContain('bodyScale')
 })
+
+test('mirror mode: a backup carries mode, phone height and hand there and back', () => {
+  const info = { mode: 'mirror' as const, phoneHeight: 0.31, phoneHand: 'left' as const }
+  const encoded = encodeBackupPhoto({ ...photoFixture(), ...info })
+  expect(encoded).toMatchObject(info)
+  expect(decodeBackupPhoto(JSON.parse(JSON.stringify(encoded)))).toMatchObject(info)
+  expect(Object.keys(decodeBackupPhoto(encodeBackupPhoto(photoFixture())))).not.toContain('mode')
+})

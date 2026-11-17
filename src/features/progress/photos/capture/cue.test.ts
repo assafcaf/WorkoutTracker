@@ -39,3 +39,37 @@ describe('pickCue', () => {
     expect(pickCue(level(false, false), { kind: 'loading' })).toEqual({ kind: 'none', text: '' })
   })
 })
+
+describe('pickCue in mirror mode', () => {
+  const measured = (matched: boolean, word: string | null = null) => ({ kind: 'measured' as const, matched, word })
+
+  test('the order is tilt, then phone height, then feet in frame, then distance, then Matched', () => {
+    const off = measured(false, 'Step back from the mirror')
+    expect(pickCue(level(true, false, 'Tilt top away 2'), off, 'Matched', { height: measured(false, 'Raise the phone'), feet: false }).kind).toBe('level')
+    expect(pickCue(level(true, true), off, 'Matched', { height: measured(false, 'Raise the phone'), feet: false })).toEqual({
+      kind: 'height',
+      text: 'Raise the phone',
+    })
+    expect(pickCue(level(true, true), off, 'Matched', { height: measured(true), feet: false })).toEqual({
+      kind: 'frame',
+      text: 'Step back until your feet show',
+    })
+    expect(pickCue(level(true, true), off, 'Matched', { height: measured(true), feet: true })).toEqual({
+      kind: 'distance',
+      text: 'Step back from the mirror',
+    })
+    expect(pickCue(level(true, true), measured(true), 'Matched', { height: measured(true), feet: true })).toEqual({
+      kind: 'matched',
+      text: 'Matched',
+    })
+  })
+
+  test('a height between its bands says Hold still; no body still says Step into frame', () => {
+    expect(pickCue(level(true, true), { kind: 'off' }, 'Level', { height: measured(false) }).text).toBe('Hold still')
+    expect(pickCue(level(true, true), { kind: 'no-body' }, 'Level', { feet: null }).text).toBe('Step into frame')
+  })
+
+  test('with no reference, level and feet in frame is the first photo\'s "Level"', () => {
+    expect(pickCue(level(true, true), { kind: 'off' }, 'Level', { feet: true })).toEqual({ kind: 'matched', text: 'Level' })
+  })
+})

@@ -9,6 +9,7 @@ import { useServiceData } from '../../../useServiceData'
 import type { Services } from '../../../../services'
 import type { ProgressPageProps } from '../../pages'
 import { changeParts, daysApart } from './summary'
+import { pairFlips } from '../flip'
 import { dayLabel, transformOf, useImageUrl } from '../photoFrame'
 import './ComparePage.css'
 
@@ -23,9 +24,10 @@ const ANGLES: { value: PhotoAngle; label: string }[] = [
 
 type Mode = 'wipe' | 'side'
 
-function Frame({ photo }: { photo: Photo }): JSX.Element {
+/** One photo through its saved transform; `flip` turns a mirror photo over next to a stand one. */
+function Frame({ photo, flip }: { photo: Photo; flip: boolean }): JSX.Element {
   const url = useImageUrl(photo)
-  return <img className="compare-img" src={url} alt="" style={transformOf(photo)} />
+  return <img className="compare-img" src={url} alt="" data-flipped={flip} style={transformOf(photo, flip)} />
 }
 
 export type CompareViewProps = {
@@ -59,6 +61,7 @@ export function CompareView({
   const [beforeId, setBeforeId] = useState<string | null>(initial.before ?? null)
   const [afterId, setAfterId] = useState<string | null>(initial.after ?? null)
   const [removed, setRemoved] = useState<Photo | null>(null)
+  const [extraFlip, setExtraFlip] = useState(false)
 
   useEffect(() => {
     if (!removed) return
@@ -86,7 +89,10 @@ export function CompareView({
     return (
       <div className="compare-card">
         <label className="compare-card-pick">
-          <span className="compare-card-label">{label}</span>
+          <span className="compare-card-label">
+            {label}
+            {photo.mode === 'mirror' ? <span className="photo-mirror-chip">Mirror</span> : null}
+          </span>
           <Select
             aria-label={`${label} date`}
             value={photo.id}
@@ -116,6 +122,8 @@ export function CompareView({
     body = <p className="compare-note">Take two photos of the same view to compare them.</p>
   } else {
     const parts = changeParts({ before: before.day, after: after.day, log, sessions, exercises })
+    const flips = pairFlips(before, after, extraFlip)
+    const flipOf = (p: Photo): boolean => (p === before ? flips.before : flips.after)
     body = (
       <>
         <div className="compare-cards">
@@ -124,9 +132,9 @@ export function CompareView({
         </div>
         {mode === 'wipe' ? (
           <div className="compare-frame" data-testid="compare-wipe">
-            <Frame photo={before} />
+            <Frame photo={before} flip={flips.before} />
             <div className="compare-after" style={{ clipPath: `inset(0 0 0 ${pos}%)` }}>
-              <Frame photo={after} />
+              <Frame photo={after} flip={flips.after} />
             </div>
             <span className="compare-handle" style={{ left: `${pos}%` }} aria-hidden="true" />
             <input
@@ -145,7 +153,7 @@ export function CompareView({
           <div className="compare-pair" data-testid="compare-side">
             {[before, after].map((p) => (
               <div className="compare-frame" key={p.id}>
-                <Frame photo={p} />
+                <Frame photo={p} flip={flipOf(p)} />
                 <span className="compare-date compare-date--before">{dayLabel(p.day)}</span>
               </div>
             ))}
@@ -161,6 +169,14 @@ export function CompareView({
           ]}
           onChange={setMode}
         />
+        <button
+          type="button"
+          className="chip compare-flip"
+          aria-pressed={extraFlip}
+          onClick={() => setExtraFlip(!extraFlip)}
+        >
+          Flip
+        </button>
         <div className="compare-summary">
           <span className="compare-apart">{daysApart(before.day, after.day)} days apart</span>
           {parts.length > 0 ? <span className="compare-change">{parts.join(' · ')}</span> : null}

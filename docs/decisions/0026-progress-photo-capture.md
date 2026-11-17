@@ -121,3 +121,52 @@ The owner tried E26 on the iPhone: no back camera, a jittery tilt, and no sense 
   is live and its noise, the sign of `gy`, the real stream size and field of view, back-camera
   labels and lens switching, a re-prompt on switching, pose `r` noise at 2.5 m), plus Web Audio
   while the camera runs and the model's first load and offline reuse in the Home Screen app.
+
+## Outcome (mirror mode, 2026-11-17)
+The owner will take the photos in front of a mirror, not from a shelf 2.5 m away.
+`docs/design/photos-2026-11/mirror-mode.md` set the redesign; built in its order, with one change
+the owner asked for during the build: there is no setup screen.
+- **Camera first.** Capture opens straight onto the live camera with the last-used view (Front the
+  first time) and that view's remembered mode. Every choice is a compact 44 px control on the
+  camera view: View (Front / Side / Back) and How (Mirror / Stand) under the header, the ghost in
+  it, the timer and camera switch (Stand only) by the shutter. Changing one reconfigures the view
+  in place. "Use camera app" (the native camera, `capture` following the camera) and "Choose from
+  library" stay on the camera view; when the live camera fails it says so there. Setup tips show
+  as an inline card while a view and mode have no reference yet; the Back + Mirror note ("A back
+  photo needs the phone on a stand, or a second mirror. Use Stand?", Use Stand / Keep Mirror) is
+  inline too. Close ends the capture. The motion permission is asked on opening and again on the
+  first tap if needed.
+- **Two modes**, remembered per view in localStorage (`photoMode.<view>`, `photoView`): Mirror is
+  the default for Front and Side (back camera, locked; no timer, no camera switch; silent unless
+  Sounds is on), Stand for Back (photos v2 unchanged: the timer, now defaulting to 10 s with the
+  back camera, the switch and the sounds). References are per view **+ mode + camera**; photos
+  without a mode count as Stand.
+- **Mirror cues**, one at a time: tilt (pitch first; roll relaxed to in 2.0° / out 4.0°), phone
+  height, feet in frame ("Step back until your feet show"), distance ("Step back from the mirror"
+  / "Step closer to the mirror"), Matched. Phone height h = (y_shoulderMid - y_horizon) / torso
+  with y_horizon = 0.5 + 0.75·tan(pitch), median of 5 then EMA τ 0.4 s, in ±0.10 out ±0.18 with a
+  500 ms dwell, "Raise the phone" / "Lower the phone", and a vertical height scale on the
+  viewfinder's left edge. The hand is the raised wrist's image side; "Phone in your right hand,
+  like last time" is a non-blocking hint. A stand photo never guides a mirror one ("No mirror
+  photo yet. This one becomes the reference."); a mirror reference without a stored height is
+  measured once on its still.
+- **Auto-capture** (`autoCapture.ts`, pure): all matched 0.6 s (1 s for a first photo), then a
+  1.5 s "Hold still · 3 · 2 · 1" with a ring round the shutter, then the frame at the first tick
+  with `rotationRate` under 15°/s (at most 0.4 s more). A tap starts a 2 s countdown; a tap
+  during any countdown cancels it. Auto can be turned off. A 120 ms flash and "Got it" mark the
+  shot (no flash with reduced motion).
+- **Data.** `Photo` gained optional `mode` (`mirror` / `stand`), `phoneHeight` (torso lengths)
+  and `phoneHand`; malformed values are dropped; backups carry them. Saved pixels are never
+  flipped.
+- **Compare and viewer.** A mirror photo is drawn with `scaleX(-1)` before its align transform only
+  next to a Stand photo (Compare: the other of the pair; viewer: any Stand photo of that angle);
+  same-mode pairs never flip. A "Mirror" chip marks mirror photos; Compare has a Flip toggle.
+  Auto-align (L1 automatic) is still not built; `mirroredPoints` (x to 1 - x) is ready for it.
+- **Not verified on the iPhone** (mirror-mode.md section 3): pose visibility on a reflection and
+  r noise hand-held; h noise and the sign of the pitch term; the raised wrist behind the phone and
+  its image side; the smallest distance with feet in frame at the owner's mirror; rotation rate
+  while holding still and auto-shot sharpness; focus and glare on the mirror; time to level
+  hand-held and the relaxed roll band; the plain back lens; Stand for Back end to end; Compare of
+  a mirror and a stand photo. Also: the pitch words' direction ("Tilt top away" for a positive
+  pitch), and whether motion permission granted on opening (no fresh tap) holds in the Home
+  Screen app.

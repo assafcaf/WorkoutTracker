@@ -69,7 +69,7 @@ describe('Photos2 O1 the finish summary offers progress photos for the Session d
     const user = userEvent.setup()
     renderPhotos({ day: DAY, variant: 'finish' })
     await user.click(await screen.findByRole('button', { name: 'Add progress photos' }, SETTLE))
-    expect(await screen.findByRole('heading', { name: 'New photo' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: /^(Front|Side|Back)(, mirror)?$/ })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Close' }))
     expect(await screen.findByRole('button', { name: 'Add progress photos' })).toBeVisible()
   })
@@ -78,7 +78,7 @@ describe('Photos2 O1 the finish summary offers progress photos for the Session d
     const user = userEvent.setup()
     const services = renderPhotos({ day: DAY, variant: 'finish' })
     await user.click(await screen.findByRole('button', { name: 'Add progress photos' }, SETTLE))
-    await screen.findByRole('heading', { name: 'New photo' })
+    await screen.findByRole('heading', { name: /^(Front|Side|Back)(, mirror)?$/ })
     fireEvent.change(screen.getByLabelText('Library photo'), {
       target: { files: [new File(['pixels'], 'me.jpg', { type: 'image/jpeg' })] },
     })
@@ -133,7 +133,7 @@ describe('Photos2 O2 the Session editor has a Photos row', () => {
       expect(within(row).getAllByRole('img').map((img) => img.getAttribute('alt'))).toEqual(['Front photo', 'Back photo']),
     )
     await user.click(within(row).getByRole('button', { name: 'Add photos' }))
-    expect(await screen.findByRole('heading', { name: 'New photo' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: /^(Front|Side|Back)(, mirror)?$/ })).toBeVisible()
   })
 
   test('O2 with no photos that day, the row still offers Add photos', async () => {

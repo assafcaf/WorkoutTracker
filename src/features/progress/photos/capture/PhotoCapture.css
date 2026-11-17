@@ -426,15 +426,204 @@
   pointer-events: none;
 }
 
-.photo-live-controls {
+/* The bottom chrome: the controls row, then the camera-app and library ways in. */
+.photo-live-bottom {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.photo-live-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-5) var(--space-4);
+  padding: var(--space-3) 0 var(--space-1);
+}
+
+.photo-live-more {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.photo-live .photo-live-more .btn-quiet {
+  min-height: var(--tap-min);
+  color: var(--color-on-primary);
+  font-size: var(--text-sm);
+}
+
+/* View and mode: two compact segmented controls under the header, on the dark chrome. */
+.photo-live-setup {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-2);
+}
+
+.photo-live-setup .segmented {
+  flex: none;
+  background: var(--color-primary-pressed);
+  color: var(--color-on-primary);
+  border-color: var(--color-muted);
+}
+
+.photo-live-setup .segmented-option {
+  flex: 0 0 auto;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  color: var(--color-on-primary);
+  font-size: var(--text-sm);
+}
+
+.photo-live .segmented .segmented-option:has(.segmented-input:checked) {
+  background: var(--color-on-primary);
+  color: var(--color-primary);
+}
+
+/* Inline notes on the camera view (setup tips, the back-in-a-mirror note): a dark scrim card. */
+.photo-live-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 88%, transparent);
+  color: var(--color-on-primary);
+  font-size: var(--text-sm);
+}
+
+.photo-live-card p {
+  margin: 0;
+}
+
+.photo-live-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.photo-matching,
+.photo-hand {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-primary) 80%, transparent);
+  color: var(--color-on-primary);
+}
+
+/* Mirror mode's phone height: a short vertical scale on the viewfinder's left edge. */
+.photo-height {
+  position: absolute;
+  left: var(--space-2);
+  top: 38%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 80%, transparent);
+  color: var(--color-on-primary);
+  font-size: var(--text-xs);
+}
+
+.photo-height-scale {
+  position: relative;
+  width: 12px;
+  height: 120px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-on-primary) 28%, transparent);
+}
+
+.photo-height-ref {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--color-up-tint);
+}
+
+.photo-height-dot {
+  position: absolute;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: var(--radius-pill);
+  background: var(--color-on-primary);
+  border: 3px solid var(--color-primary);
+  transition: top 0.25s linear;
+}
+
+.photo-height[data-matched='true'] .photo-height-dot {
+  background: var(--color-up-tint);
+}
+
+/* Auto-capture: a ring round the shutter fills over the 0.6 s confirm, then holds for 3 2 1. */
+.photo-shutter {
+  position: relative;
+}
+
+.photo-shutter[data-phase='confirming']::after,
+.photo-shutter[data-phase='counting']::after,
+.photo-shutter[data-phase='steadying']::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border: 4px solid var(--color-up-tint);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+}
+
+.photo-shutter[data-phase='confirming']::after {
+  animation: photo-ring-fill 0.6s linear both;
+}
+
+@keyframes photo-ring-fill {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.photo-live .photo-toggle[aria-pressed='true'] {
+  border-color: var(--color-up-tint);
+}
+
+.photo-flash {
+  position: absolute;
+  inset: 0;
+  background: var(--color-on-primary);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.photo-live-failed {
+  max-width: 320px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-height-dot {
+    transition: none;
+  }
+
+  .photo-flash {
+    display: none;
+  }
+
+  .photo-shutter[data-phase='confirming']::after {
+    animation: none;
+  }
 }
 
 .photo-shutter {
@@ -470,4 +659,16 @@
 
 .photo-actions .btn-primary {
   border: 0;
+}
+
+/* The view and mode row pushes the cue over the picture: a dark scrim keeps it readable. */
+.photo-live .photo-cue {
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-primary) 85%, transparent);
+  color: var(--color-on-primary);
+}
+
+.photo-live .photo-cue[data-level='true'] {
+  color: var(--color-up-tint);
 }

@@ -254,3 +254,13 @@
 .photo-viewer-compare {
   margin-bottom: var(--space-4);
 }
+
+/* Mirror mode: a mirror photo is marked; among stand photos it is drawn flipped. */
+.photo-viewer-info .photo-mirror-chip {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  opacity: 0.8;
+}

@@ -1,6 +1,6 @@
 // Photos viewer: the Photos page (angle tabs, newest-first timeline, empty state) and its
 // full-screen viewer (step between dates, timelapse, Compare, delete with Undo), over props.
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
 import type { Photo, PhotoAngle } from '../../../../storage/photoStore'
@@ -136,6 +136,28 @@ describe('photos viewer: full screen, one angle across dates', () => {
     expect(screen.getByRole('img', { name: 'Front photo, 12 Oct' })).toHaveStyle({
       transform: 'translate(5%, -2%) rotate(2deg) scale(1.1)',
     })
+  })
+
+  test('mirror mode: a mirror photo among stand ones is drawn flipped and marked Mirror', async () => {
+    const mirrorPhoto: Photo = { ...photo('m1', '2026-11-17', 'front', { scale: 1.1, rotate: 2, dx: 0.05, dy: -0.02 }), mode: 'mirror' }
+    const { user } = mount({ photos: [photo('f0', '2026-09-30'), mirrorPhoto] })
+    await user.click(screen.getByRole('button', { name: /Front photo, 17 Nov/ }))
+    const viewer = screen.getByRole('dialog', { name: 'Front photos' })
+    expect(within(viewer).getByText('Mirror')).toBeVisible()
+    await waitFor(() =>
+      expect(screen.getByRole('img', { name: 'Front photo, 17 Nov' })).toHaveStyle({
+        transform: 'scaleX(-1) translate(5%, -2%) rotate(2deg) scale(1.1)',
+      }),
+    )
+    await user.click(within(viewer).getByRole('button', { name: /Previous/ }))
+    expect(screen.getByRole('img', { name: /^Front photo, 30 Sep/ }).style.transform).not.toContain('scaleX')
+  })
+
+  test('mirror mode: mirror photos among mirror photos are never flipped', async () => {
+    const m = (id: string, day: string): Photo => ({ ...photo(id, day), mode: 'mirror' })
+    const { user } = mount({ photos: [m('m0', '2026-09-30'), m('m1', '2026-11-17')] })
+    await user.click(screen.getByRole('button', { name: /Front photo, 17 Nov/ }))
+    expect(screen.getByRole('img', { name: 'Front photo, 17 Nov' }).style.transform).not.toContain('scaleX')
   })
 
   test('Previous and Next step between dates of the same angle, named by the date they go to', async () => {

@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Photo, PhotoAngle } from '../../../../storage/photoStore'
 import type { BodyLog } from '../../../../types'
 import { Icon } from '../../../../ui/icons'
+import { flipNextTo } from '../flip'
 import { dayLabel, transformOf } from '../photoFrame'
 import { ANGLE_NAMES, PLAY_MS, sinceFirst, weightOnDay, type CompareRequest } from './timeline'
 
@@ -33,7 +34,7 @@ export type PhotoViewerProps = {
  * so a step never draws the old photo at the new photo's transform; each new photo fades in over
  * --motion-fast unless the trainee asked for reduced motion (then it simply changes).
  */
-function ViewerImage({ photo, label, still }: { photo: Photo; label: string; still: boolean }): JSX.Element {
+function ViewerImage({ photo, label, still, flip }: { photo: Photo; label: string; still: boolean; flip: boolean }): JSX.Element {
   const [shown, setShown] = useState<{ photo: Photo; url?: string }>({ photo })
   useEffect(() => {
     if (typeof URL.createObjectURL !== 'function') {
@@ -51,7 +52,7 @@ function ViewerImage({ photo, label, still }: { photo: Photo; label: string; sti
       className="photo-viewer-img"
       src={shown.url}
       alt={label}
-      style={transformOf(shown.photo)}
+      style={transformOf(shown.photo, flip && shown.photo === photo)}
       draggable={false}
       onLoad={(event) => {
         if (!still) event.currentTarget.animate?.([{ opacity: 0.4 }, { opacity: 1 }], { duration: FADE_MS, easing: 'ease-out' })
@@ -178,11 +179,13 @@ export function PhotoViewer({
         onPointerUp={onPointerUp}
         onPointerCancel={() => (swipe.current = null)}
       >
-        <ViewerImage photo={current} label={`${name} photo, ${label(current)}`} still={reducedMotion} />
+        {/* A mirror photo among stand ones is drawn flipped, so the body keeps its sides as the dates change. */}
+        <ViewerImage photo={current} label={`${name} photo, ${label(current)}`} still={reducedMotion} flip={flipNextTo(current, photos)} />
       </div>
 
       <section className="photo-viewer-info" aria-live={playing ? 'off' : 'polite'}>
         <h2 className="photo-viewer-date">{label(current)}</h2>
+        {current.mode === 'mirror' ? <span className="photo-mirror-chip">Mirror</span> : null}
         {kg !== null ? <p className="photo-viewer-weight">{`${kg} kg`}</p> : null}
         <p className="photo-viewer-since">{sinceFirst(first, current, log)}</p>
       </section>
