@@ -49,23 +49,19 @@ How a Set was performed, stored as the Set's optional `kind`: `warmup`, `drop`, 
 `amrap`. A normal (working) Set has no `kind`.
 
 **AMRAP**:
-A Set of kind `amrap`: the Plan's bottom rep count is a floor, so the counter reads "8+ reps".
-A Plan's `amrapLast` opens its last planned Set on it.
+A Set of kind `amrap`: the Plan's bottom rep count is a floor ("8+ reps").
 
 **Warm-up**:
-A Set of kind `warmup`: logged and shown, but records, the e1RM series and progression ignore
-it (`countsTowardStats`).
+A Set of kind `warmup`: logged, ignored by records and progression (`countsTowardStats`).
 
 **Rest**:
 The time after a Set, from its `loggedAt` and `restSeconds` (else the Plan's); the **rest timer** shows it.
 
 **Record**:
-The best Set of one kind for an Exercise (heaviest, best estimated 1RM, and so on), as
-`recordsFor` names it; shown as "PR" in the UI. Since V6 a **PR** is only a new heaviest weight
-(less assistance, a first added load) or a new best estimated 1RM against every earlier Session
-(`asPr` / `isRealRecord` in `src/domain/stats/records.ts`); more reps at a weight already lifted
-is a **rep best**, shown quietly and never counted as a PR. Only a PR wears the gold `PrTag`
-(`src/ui/figures`). The UI calls the estimated 1RM "Est. strength" (never "Est. max").
+A **PR**: a new heaviest weight (less assistance, a first added load) or best estimated 1RM
+against every earlier Session (`isRealRecord`, `src/domain/stats/records.ts`, decision 0024).
+More reps at a known weight is a **rep best**, never a PR. Only a PR wears the gold `PrTag`.
+The estimated 1RM is shown as "Est. strength".
 _Avoid_: Best, high score
 
 **Ladder**:
@@ -77,32 +73,27 @@ One selectable position on a Ladder, and the unit a Dial snaps to.
 _Avoid_: Stop, notch, tick, step
 
 **Dial**:
-The scroll-snap column the trainee sets reps or weight with; a keypad covers values off the Rungs.
+The control that sets reps or weight; a keypad covers values off the Rungs.
 _Avoid_: Picker, spinner, wheel, slider
 
 **Preset**:
-What a Set opens with: last time's Set at this position, shifted by today's change; else the
-Exercise's defaults (a Swap's: the planned Exercise's). A lift's step up (Ready for 15 kg) is in
-the Preset itself, at the bottom of the rep range, as a deload or a Break's easing is (`liftPlan`,
-V7R-01): Home, the workout page and Program show what Start opens on, and the Set screen offers
-"Back to 14 kg".
+What a Set opens with: last time's Set at this position, shifted by today's change (a step up,
+a deload, a Break's easing; `liftPlan`, decision 0025); else the Exercise's defaults (a Swap's:
+the planned Exercise's).
 _Avoid_: Default, prefill, seed, suggestion
 
 **Swap**:
 An Alternative standing in for a planned Exercise for one Session.
 
 **Bodyweight**:
-An Exercise logged with no weight (absent, not `0`), only an optional Load. The catalog sets
-the default; the trainee's synced override wins.
+An Exercise logged with no weight (absent, not `0`), only an optional Load.
 
 **Load**:
-The signed weight on a Bodyweight Set, in kg: positive when added (a belt), negative when assisted
-(a band or machine). Never `0`; absent on a plain Bodyweight Set and on loaded Sets. The Weight
-Dial sets it on a Bodyweight Exercise; its `BW` Rung means no Load.
+The signed weight on a Bodyweight Set, in kg: positive when added, negative when assisted.
+Never `0`; absent on a plain Bodyweight Set and on loaded Sets.
 
 **Region**:
-A zone of the body map, shaded by how many sets reached it. Each of the 17 muscles maps to at
-least one.
+A zone of the body map, shaded by how many sets reached it.
 
 **Muscle family**:
 Push, pull, legs or core: the group every muscle and Region belongs to, and its chip's tint.
@@ -115,7 +106,7 @@ The frame around the screen showing: header, tab bar and Action bar. Not the **p
 _Avoid_: Chrome, frame, layout, app shell
 
 **Action bar**:
-The Shell's sticky bottom slot; the screen showing decides what goes in it.
+The Shell's sticky bottom slot.
 _Avoid_: Footer, toolbar, CTA bar, bottom bar
 
 **Token**:
@@ -123,12 +114,9 @@ One of the 62 custom properties (a closed set, `src/styles/tokens.css`) that alo
 space, radius or type size.
 
 **Palette**:
-The colour Tokens, by role, in one light palette with no dark mode (Ledger & Instrument,
-`docs/design/competitors-2026-11/study.md` §3): paper, surface and three inks, and ink is also the
-action colour (`--color-primary`). Colour is kept for meaning: `--color-live` (now), `--color-up`
-(better, Moving, Ready, a rep best), `--color-down` (lowered, below range) and `--color-pr`
-(records only), each with a tint; `--workout-a` and `--workout-b` for the calendar alone, apart
-from the muscle families' `--data-*`; a neutral heat ramp.
+The colour Tokens by role, light only (Ledger & Instrument, `docs/design/competitors-2026-11/study.md`
+§3): ink is text and action; colour only means something: `--color-live`, `--color-up`,
+`--color-down`, `--color-pr` (records only), `--workout-a`/`-b` (calendar only).
 _Avoid_: accent, Court
 
 **Service**:
@@ -162,9 +150,6 @@ The Warm-up Sets proposed before the first working Set of a barbell Exercise.
 The trainee's first weekday (`Date.getDay()` numbering, Monday when unset); every week goes
 through `weekStart(ms, weekStartsOn)`.
 
-**Last week card**:
-Last full week against the one before (`lastWeekCard`).
-
 **Contract version**:
 `CONTRACT_VERSION` (`src/contract`), sent as `X-Contract-Version`; no header means 1.
 
@@ -176,7 +161,7 @@ steps); Bodyweight Exercises and start weights are left alone.
 The stored week the trainee chose to deload; `isDeloadWeek` places it through `weekStart`.
 
 **Rest push**:
-The "Rest over" push the Worker sends at a rest's end.
+The "Rest over" push sent at a rest's end.
 
 **Reminder**:
 A weekday-and-time push to train (synced `workoutReminders`).
