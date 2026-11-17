@@ -48,10 +48,21 @@ export type BodyViewProps = {
   onBack: (() => void) | undefined
   onSave(entry: BodyEntry): Promise<void>
   onDelete(day: string): Promise<void>
+  /** Opens the Photos page; the Photos section offers View photos only when given. */
+  onOpenPhotos?(): void
 }
 
 /** The Body page's drawing: the form, the chart by metric and the entries, over a loaded log. */
-export function BodyView({ log, heightCm = null, onSaveHeight, now, onBack, onSave, onDelete }: BodyViewProps): JSX.Element {
+export function BodyView({
+  log,
+  heightCm = null,
+  onSaveHeight,
+  now,
+  onBack,
+  onSave,
+  onDelete,
+  onOpenPhotos,
+}: BodyViewProps): JSX.Element {
   const today = dayOf(now)
   const [day, setDay] = useState(today)
   const [fields, setFields] = useState<Fields>({})
@@ -210,6 +221,11 @@ export function BodyView({ log, heightCm = null, onSaveHeight, now, onBack, onSa
           <button type="button" className="btn-secondary" onClick={() => setCapturing(true)}>
             Add photo
           </button>
+          {onOpenPhotos ? (
+            <button type="button" className="btn-quiet body-more" onClick={onOpenPhotos}>
+              View photos
+            </button>
+          ) : null}
         </section>
 
         {current ? (
@@ -271,7 +287,7 @@ async function load(s: Services): Promise<Loaded> {
 export type BodyPageProps = ProgressPageProps<'body'> & { now?: () => number }
 
 /** The Progress tab's Body page: reads the body log, saves and deletes entries through it. */
-export function BodyPage({ onBack, now = Date.now }: BodyPageProps): JSX.Element {
+export function BodyPage({ push, onBack, now = Date.now }: BodyPageProps): JSX.Element {
   const loaded = useServiceData(load, ['preferences'])
   const services = useServices()
   if (loaded.status !== 'ready') return <AppShell title="Body" onBack={onBack}>{null}</AppShell>
@@ -285,6 +301,7 @@ export function BodyPage({ onBack, now = Date.now }: BodyPageProps): JSX.Element
       onBack={onBack}
       onSave={(entry) => services.preferences.saveBodyEntry(entry)}
       onDelete={(day) => services.preferences.removeBodyEntry(day)}
+      onOpenPhotos={() => push({ kind: 'photos' })}
     />
   )
 }

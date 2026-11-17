@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { CSSProperties } from 'react'
-import { shortDay } from '../../../../domain/lifts'
+import { useEffect, useState } from 'react'
 import type { BodyLog, Exercise, Session } from '../../../../types'
 import type { Photo, PhotoAngle } from '../../../../storage/photoStore'
 import { AppShell } from '../../../../ui/AppShell'
@@ -11,6 +9,7 @@ import { useServiceData } from '../../../useServiceData'
 import type { Services } from '../../../../services'
 import type { ProgressPageProps } from '../../pages'
 import { changeParts, daysApart } from './summary'
+import { dayLabel, transformOf, useImageUrl } from '../photoFrame'
 import './ComparePage.css'
 
 /** How long Undo stays offered after a delete. */
@@ -24,33 +23,10 @@ const ANGLES: { value: PhotoAngle; label: string }[] = [
 
 type Mode = 'wipe' | 'side'
 
-/** A photo's saved transform as CSS: dx and dy are fractions of the frame, rotate is degrees. */
-function transformOf(photo: Photo): CSSProperties {
-  const a = photo.align
-  if (!a) return {}
-  return { transform: `translate(${a.dx * 100}%, ${a.dy * 100}%) rotate(${a.rotate}deg) scale(${a.scale})` }
-}
-
-function useImageUrl(photo: Photo): string {
-  const url = useMemo(() => {
-    if (typeof URL.createObjectURL !== 'function') return ''
-    return URL.createObjectURL(new Blob([photo.data], { type: photo.type }))
-  }, [photo])
-  useEffect(
-    () => () => {
-      if (url && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(url)
-    },
-    [url],
-  )
-  return url
-}
-
 function Frame({ photo }: { photo: Photo }): JSX.Element {
   const url = useImageUrl(photo)
   return <img className="compare-img" src={url} alt="" style={transformOf(photo)} />
 }
-
-const dayLabel = (day: string): string => shortDay(new Date(`${day}T12:00:00`).getTime(), new Date())
 
 export type CompareViewProps = {
   photos: Photo[]
@@ -61,6 +37,8 @@ export type CompareViewProps = {
   onDelete(photo: Photo): Promise<void>
   onRestore(photo: Photo): Promise<void>
   undoMs?: number
+  /** The angle and the two photos (by id) to open on; the angle's first and last by default. */
+  initial?: { angle?: PhotoAngle; before?: string; after?: string }
 }
 
 /** The Compare page's drawing, over loaded photos. */
@@ -73,12 +51,13 @@ export function CompareView({
   onDelete,
   onRestore,
   undoMs = UNDO_MS,
+  initial = {},
 }: CompareViewProps): JSX.Element {
-  const [angle, setAngle] = useState<PhotoAngle>('front')
+  const [angle, setAngle] = useState<PhotoAngle>(initial.angle ?? 'front')
   const [mode, setMode] = useState<Mode>('wipe')
   const [pos, setPos] = useState(50)
-  const [beforeId, setBeforeId] = useState<string | null>(null)
-  const [afterId, setAfterId] = useState<string | null>(null)
+  const [beforeId, setBeforeId] = useState<string | null>(initial.before ?? null)
+  const [afterId, setAfterId] = useState<string | null>(initial.after ?? null)
   const [removed, setRemoved] = useState<Photo | null>(null)
 
   useEffect(() => {
@@ -219,7 +198,7 @@ async function load(s: Services): Promise<Loaded> {
 export type ComparePageProps = ProgressPageProps<'compare'> & { undoMs?: number }
 
 /** The Progress tab's Compare page: two dates of one angle, aligned by their saved transforms. */
-export function ComparePage({ onBack, undoMs }: ComparePageProps): JSX.Element {
+export function ComparePage({ page, onBack, undoMs }: ComparePageProps): JSX.Element {
   const services = useServices()
   const loaded = useServiceData(load, ['preferences'])
   if (loaded.status !== 'ready') return <AppShell title="Compare" onBack={onBack}>{null}</AppShell>
@@ -230,6 +209,7 @@ export function ComparePage({ onBack, undoMs }: ComparePageProps): JSX.Element {
       onDelete={(photo) => services.photos.remove(photo.id)}
       onRestore={(photo) => services.photos.restore(photo)}
       undoMs={undoMs}
+      initial={{ angle: page.angle, before: page.before, after: page.after }}
     />
   )
 }

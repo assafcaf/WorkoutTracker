@@ -1,0 +1,21 @@
+{
+  "about": "Progress photos for shoot.mjs --photos: each check-in is drawn in the page as a JPEG (a wall, a floor and a silhouette whose waist narrows over time), placed a little off-centre, with the align transform that puts it back. bodyLog is merged into the settings.",
+  "bodyLog": [
+    { "day": "2026-08-25", "weightKg": 86.4, "waistCm": 94 },
+    { "day": "2026-09-08", "weightKg": 85.6 },
+    { "day": "2026-09-22", "weightKg": 84.9, "waistCm": 92 },
+    { "day": "2026-10-06", "weightKg": 84.1 },
+    { "day": "2026-10-20", "weightKg": 83.5, "waistCm": 90 },
+    { "day": "2026-11-03", "weightKg": 82.8 },
+    { "day": "2026-11-17", "weightKg": 82.2, "waistCm": 88 }
+  ],
+  "photos": [
+    { "day": "2026-08-25", "angles": ["front", "side", "back"], "waist": 1.0, "shift": [18, 10], "light": 0 },
+    { "day": "2026-09-08", "angles": ["front", "side"], "waist": 0.97, "shift": [-14, -6], "light": 1 },
+    { "day": "2026-09-22", "angles": ["front", "side", "back"], "waist": 0.94, "shift": [8, 14], "light": 2 },
+    { "day": "2026-10-06", "angles": ["front"], "waist": 0.92, "shift": [-20, 4], "light": 0 },
+    { "day": "2026-10-20", "angles": ["front", "side", "back"], "waist": 0.89, "shift": [12, -10], "light": 1 },
+    { "day": "2026-11-03", "angles": ["front", "back"], "waist": 0.87, "shift": [-6, 12], "light": 2 },
+    { "day": "2026-11-17", "angles": ["front", "side", "back"], "waist": 0.85, "shift": [0, 0], "light": 0 }
+  ]
+}
