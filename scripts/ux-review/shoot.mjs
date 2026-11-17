@@ -9,6 +9,8 @@
 //
 // Options:
 //   --state <file.json>   seed `sessions` + `settings` (and pin the clock to its `now`)
+//   --photos <file.json>  seed progress photos drawn in the page (and merge its `bodyLog` into the
+//                         settings); see scripts/render-states/photos.json
 //   --viewport 390x844    CSS viewport (default 390x844)
 //   --dpr 1               device scale factor (default 1)
 //   --font 200%           root font size (simulates large text; e.g. 200%)
@@ -59,6 +61,7 @@ export async function openApp({
   now = null,
   url = 'http://127.0.0.1:5173/',
   full = false,
+  photos = null,
 } = {}) {
   const st = typeof state === 'string' ? JSON.parse(readFileSync(resolve(state), 'utf8')) : state
   const [width, height] = viewport.split('x').map(Number)
@@ -115,6 +118,13 @@ export async function openApp({
         }),
       { sessions, settings },
     )
+    if (!photos) {
+      await page.reload()
+      await page.waitForSelector('nav[aria-label="Main"], header, main', { timeout: 20000 })
+    }
+  }
+  if (photos) {
+    await seedPhotos(page, typeof photos === 'string' ? JSON.parse(readFileSync(resolve(photos), 'utf8')) : photos)
     await page.reload()
     await page.waitForSelector('nav[aria-label="Main"], header, main', { timeout: 20000 })
   }
@@ -180,6 +190,106 @@ export async function openApp({
   return { page, browser, run, shot, close: () => browser.close() }
 }
 
+/**
+ * Draws each check-in of a photos state as a 600x800 JPEG in the page (a wall, a floor and a
+ * silhouette whose waist follows `waist`), drawn `shift` px off-centre with the `align` transform
+ * that puts it back, and stores them in the `photos` table the way photoStore.add does (bytes plus
+ * type). The state's `bodyLog` replaces the `bodyLog` setting.
+ */
+async function seedPhotos(page, st) {
+  await page.waitForFunction(() => indexedDB.databases().then((d) => d.some((x) => x.name === 'workout-tracker')))
+  await page.evaluate(
+    async ({ checkIns, bodyLog }) => {
+      const W = 600
+      const H = 800
+      const walls = ['#d9d4cb', '#d2cec6', '#dcd8d0']
+      const draw = (angle, waist, [ox, oy], light) => {
+        const c = document.createElement('canvas')
+        c.width = W
+        c.height = H
+        const g = c.getContext('2d')
+        g.fillStyle = walls[light % walls.length]
+        g.fillRect(0, 0, W, H)
+        g.fillStyle = '#b9b2a6'
+        g.fillRect(0, 660, W, H - 660)
+        g.save()
+        g.translate(W / 2 + ox, oy)
+        g.fillStyle = angle === 'back' ? '#5b4a40' : '#6e5a4c'
+        const side = angle === 'side'
+        const shoulder = side ? 70 : 125
+        const hip = (side ? 62 : 92) * waist
+        const mid = (side ? 60 : 88) * waist
+        g.beginPath()
+        g.ellipse(side ? 10 : 0, 165, 48, 58, 0, 0, Math.PI * 2)
+        g.fill()
+        g.fillRect(-22, 210, 44, 40)
+        g.beginPath()
+        g.moveTo(-shoulder, 260)
+        g.quadraticCurveTo(0, 235, shoulder, 260)
+        g.lineTo(mid + 6, 420)
+        g.lineTo(hip, 500)
+        g.lineTo(hip - 10, 700)
+        g.lineTo(10, 700)
+        g.lineTo(0, 540)
+        g.lineTo(-10, 700)
+        g.lineTo(-hip + 10, 700)
+        g.lineTo(-hip, 500)
+        g.lineTo(-mid - 6, 420)
+        g.closePath()
+        g.fill()
+        if (!side) {
+          for (const dir of [-1, 1]) {
+            g.beginPath()
+            g.ellipse(dir * (shoulder + 8), 380, 22, 120, dir * -0.08, 0, Math.PI * 2)
+            g.fill()
+          }
+        } else {
+          g.beginPath()
+          g.ellipse(14, 380, 20, 118, 0.05, 0, Math.PI * 2)
+          g.fillStyle = '#5f4d41'
+          g.fill()
+        }
+        g.restore()
+        return new Promise((ok) => c.toBlob((blob) => ok(blob), 'image/jpeg', 0.85))
+      }
+      const rows = []
+      let n = 0
+      for (const checkIn of checkIns) {
+        for (const angle of checkIn.angles) {
+          const shift = checkIn.shift ?? [0, 0]
+          const blob = await draw(angle, checkIn.waist ?? 1, shift, checkIn.light ?? 0)
+          rows.push({
+            id: `seed-photo-${checkIn.day}-${angle}`,
+            day: checkIn.day,
+            angle,
+            data: await blob.arrayBuffer(),
+            type: 'image/jpeg',
+            width: W,
+            height: H,
+            align: { scale: 1, rotate: 0, dx: -shift[0] / W, dy: -shift[1] / H },
+            createdAt: Date.parse(`${checkIn.day}T08:00:00`) + n++,
+          })
+        }
+      }
+      await new Promise((ok, fail) => {
+        const req = indexedDB.open('workout-tracker')
+        req.onerror = () => fail(req.error)
+        req.onsuccess = () => {
+          const db = req.result
+          const stores = bodyLog ? ['photos', 'settings'] : ['photos']
+          const tx = db.transaction(stores, 'readwrite')
+          tx.objectStore('photos').clear()
+          for (const row of rows) tx.objectStore('photos').put(row)
+          if (bodyLog) tx.objectStore('settings').put({ key: 'bodyLog', value: bodyLog, updatedAt: Date.now() })
+          tx.oncomplete = () => (db.close(), ok())
+          tx.onerror = () => fail(tx.error)
+        }
+      })
+    },
+    { checkIns: st.photos ?? [], bodyLog: st.bodyLog ?? null },
+  )
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2)
   const opts = {}
@@ -193,7 +303,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   }
   if (opts.out) steps.push(`shot:${opts.out}`)
   if (!steps.length) {
-    console.error('usage: node scripts/ux-review/shoot.mjs [--state f.json] [--viewport WxH] [--dpr n] [--font 200%] [--reduced-motion] [--out f.png] <step>...')
+    console.error('usage: node scripts/ux-review/shoot.mjs [--state f.json] [--photos f.json] [--viewport WxH] [--dpr n] [--font 200%] [--reduced-motion] [--out f.png] <step>...')
     process.exit(64)
   }
   const app = await openApp(opts)

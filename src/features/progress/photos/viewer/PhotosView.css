@@ -1,0 +1,256 @@
+/* The Photos page and its full-screen viewer: angle tabs, a newest-first timeline by month, and
+ * one angle across its dates. Tokens only (Ledger & Instrument, study §3). */
+
+.photos-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-5);
+  color: var(--color-text);
+}
+
+.photos-summary {
+  margin: 0;
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.photos-timeline,
+.photos-month {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.photos-month-title {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photos-cell {
+  min-width: 0;
+}
+
+.photos-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 0;
+  text-align: left;
+}
+
+.photos-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+}
+
+.photos-thumb-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photos-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  column-gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.photos-caption-date {
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+
+.photos-caption-kg {
+  color: var(--color-secondary);
+}
+
+.photos-none {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.photos-none .btn-secondary {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+}
+
+.photos-note {
+  margin: 0;
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+}
+
+.photos-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.photos-empty-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.photos-empty-text {
+  margin: 0;
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+}
+
+.photos-empty-action {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+}
+
+/* The viewer: the shared overlay shape (above the tab bar), laid out as one column. */
+.photo-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+  color: var(--color-text);
+}
+
+.photo-viewer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+.photo-viewer-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+
+.photo-viewer-icon:disabled {
+  color: var(--color-control);
+}
+
+.photo-viewer-count {
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.photo-viewer-frame {
+  position: relative;
+  align-self: center;
+  flex: none;
+  width: min(100%, max(7rem, calc((100dvh - 19rem) * 3 / 4)));
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.photo-viewer-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* No broken-image glyph or alt text while the bytes are still being turned into a URL. */
+.photo-viewer-img:not([src]) {
+  visibility: hidden;
+}
+
+.photo-viewer-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+}
+
+.photo-viewer-date {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.photo-viewer-weight {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.photo-viewer-since {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.photo-viewer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.photo-viewer-step {
+  flex: none;
+}
+
+.photo-viewer-play,
+.photo-viewer-compare {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  font-weight: var(--weight-semibold);
+}
+
+.photo-viewer-play {
+  flex: 1;
+}
+
+.photo-viewer-compare {
+  margin-bottom: var(--space-4);
+}

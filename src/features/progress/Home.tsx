@@ -406,7 +406,7 @@ type HomeProps = ProgressPageProps<'home'> & {
 /**
  * The Progress tab's own screen (study §1.7, v7): a phase for reading, not deciding. The headline
  * count of moving lifts and one sentence on the exceptions, the weeks strip in the Workouts'
- * colours, every lift as one ledger row, then Muscles and Body as quiet rows. Decisions (Swap,
+ * colours, every lift as one ledger row, then Muscles, Body and Photos as quiet rows. Decisions (Swap,
  * add load) live on Program and Train; there are no cards and no Last week table here.
  */
 export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element {
@@ -490,6 +490,13 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
                 <span className="progress-link-sub">
                   {latestWeight ? `${latestWeight.kg} kg · ${dayText(latestWeight.day)}` : 'Log your bodyweight'}
                 </span>
+              </span>
+              <Icon name="ChevronRight" size={20} />
+            </button>
+            <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'photos' })}>
+              <span className="progress-link-main">
+                <span className="progress-link-title">Photos</span>
+                <span className="progress-link-sub">Front, side and back over time</span>
               </span>
               <Icon name="ChevronRight" size={20} />
             </button>
