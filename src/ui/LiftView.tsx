@@ -11,6 +11,7 @@ import { dayMonth, humanDate, leverText, numberText } from '../domain/stats/word
 import { formatSetCompact } from '../domain/setText'
 import type { BodyLog, Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
 import { PrTag, SetFigure, StatusMark, statusTone } from './figures'
+import { LiftCalculator } from './LiftCalculator'
 import { LiftChart } from './charts/LiftChart'
 import type { LiftChartPoint } from './charts/LiftChart'
 import './LiftView.css'
@@ -160,6 +161,7 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap,
   const [range, setRange] = useState<Range>('3M')
   const [show, setShow] = useState<Show>('est')
   const [showAll, setShowAll] = useState(false)
+  const [calcOpen, setCalcOpen] = useState(false)
 
   const live = sessions.filter((s) => s.deletedAt === undefined && s.finishedAt !== null)
   const history = buildLiftHistories(
@@ -267,6 +269,19 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap,
         </p>
         {relative ? <p className="lift-hero-definition lift-hero-relative">{relative.text}</p> : null}
         <p className="lift-hero-definition">{definition.text}</p>
+        {measure === 'est' ? (
+          <button type="button" className="btn-quiet lift-calc-open" onClick={() => setCalcOpen(true)}>
+            What can I lift ›
+          </button>
+        ) : null}
+        {calcOpen && measure === 'est' ? (
+          <LiftCalculator
+            name={exercise.name}
+            weightKg={real[real.length - 1].top.lever}
+            reps={real[real.length - 1].top.reps}
+            onClose={() => setCalcOpen(false)}
+          />
+        ) : null}
       </section>
 
       <section className="lift-chart-section" aria-label="Chart">
