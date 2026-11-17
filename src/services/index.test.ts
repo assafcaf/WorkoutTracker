@@ -36,7 +36,7 @@ function ownKeys(value: object): string[] {
 describe('O5 createServices returns exactly the service API', () => {
   test('O5 createServices returns exactly sessions, programs, preferences, catalog, backup, sync and the bus', () => {
     expect(ownKeys(services())).toEqual(
-      ['backup', 'bus', 'catalog', 'preferences', 'programs', 'push', 'sessions', 'sync', 'transfer'],
+      ['backup', 'bus', 'catalog', 'photos', 'preferences', 'programs', 'push', 'sessions', 'sync', 'transfer'],
     )
   })
 
@@ -80,6 +80,7 @@ describe('O5 createServices returns exactly the service API', () => {
       'deloadWeek',
       'exerciseNote',
       'gymEquipment',
+      'heightCm',
       'keepScreenOnDuringRest',
       'lastExportedAt',
       'plateInventory',
@@ -89,6 +90,7 @@ describe('O5 createServices returns exactly the service API', () => {
       'setDeloadWeek',
       'setExerciseNote',
       'setGymEquipment',
+      'setHeightCm',
       'setKeepScreenOnDuringRest',
       'setPlateInventory',
       'setTrackEffort',
@@ -108,7 +110,7 @@ describe('O5 createServices returns exactly the service API', () => {
   })
 
   test('O5 the backup service has exactly the BackupService operations', () => {
-    expect(ownKeys(services().backup)).toEqual(['confirmImport', 'export', 'read'])
+    expect(ownKeys(services().backup)).toEqual(['confirmImport', 'export', 'hasPhotos', 'read'])
   })
 
   test('O5 the sync service has exactly the SyncService operations', () => {

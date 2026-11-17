@@ -29,6 +29,7 @@ import { playPrSound, playRestOver, unlockRestSound } from './restSound'
 import { RepsDial } from './RepsDial'
 import { RestDial } from './RestDial'
 import { SetKindRow, setKindLabel } from './SetKindRow'
+import { LiftCalculator } from './LiftCalculator'
 import { Sheet } from './Sheet'
 import { Snackbar } from './Snackbar'
 import { useWakeLock } from './useWakeLock'
@@ -590,6 +591,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The exercise tools sheet (S3b), its segment and whether its Set type row is open.
   const [toolsOpen, setToolsOpen] = useState(false)
+  const [calcOpen, setCalcOpen] = useState(false)
   const [toolsSegment, setToolsSegment] = useState<ToolsSegment>(props.plates ? 'warmup' : 'notes')
   const [kindsOpen, setKindsOpen] = useState(false)
 
@@ -1570,6 +1572,24 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </div>
     )
 
+  // The lift's latest top set, from last time's Sets: the calculator opens on it (loaded lifts only).
+  const calcSet =
+    exercise.bodyweight === true
+      ? null
+      : (workingSets(history)
+          .filter((entry) => entry.weightKg !== null && entry.weightKg > 0 && entry.reps > 0)
+          .sort((a, b) => (b.weightKg as number) - (a.weightKg as number) || b.reps - a.reps)[0] ?? null)
+  const calculatorSheet =
+    !calcOpen || calcSet === null ? null : (
+      <LiftCalculator
+        name={exercise.name}
+        weightKg={calcSet.weightKg as number}
+        reps={calcSet.reps}
+        plates={plates}
+        onClose={() => setCalcOpen(false)}
+      />
+    )
+
   const toolsSheet = !toolsOpen ? null : (
     <Sheet label={`${exercise.name} tools`} onClose={() => setToolsOpen(false)}>
       <div className="sheet-head">
@@ -1677,6 +1697,13 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           <span className="sheet-row-label">Exercise info</span>
           <span className="sheet-row-chevron"><Icon name="ChevronRight" size={18} /></span>
         </button>
+        {calcSet !== null ? (
+          <button type="button" className="sheet-row cell" onClick={() => handOff(() => setCalcOpen(true))}>
+            <span className="sheet-row-icon"><Icon name="Dumbbell" /></span>
+            <span className="sheet-row-label">What can I lift</span>
+            <span className="sheet-row-chevron"><Icon name="ChevronRight" size={18} /></span>
+          </button>
+        ) : null}
         <button type="button" className="sheet-row cell" onClick={() => handOff(() => onOpenHistory?.(exercise.id))}>
           <span className="sheet-row-icon"><Icon name="ChartLine" /></span>
           <span className="sheet-row-label">Lift history</span>
@@ -2221,6 +2248,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {actionBar === null ? dock : createPortal(dock, actionBar)}
 
       {toolsSheet}
+      {calculatorSheet}
       {editSheet}
       {restDialSheet}
 

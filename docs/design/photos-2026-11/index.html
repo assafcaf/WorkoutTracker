@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Progress photos: capture, align, compare (E26-T6 mocks, 390x844)</title>
+<style>
+@font-face { font-family: 'Geist'; src: url('../../../src/assets/fonts/Geist-Variable.woff2') format('woff2'); font-weight: 400 600; }
+:root {
+  --paper:#F6F6F3; --surface:#FFFFFF; --line:#E3E3DE; --ink:#141518; --ink-2:#4A4B53; --ink-3:#6C6D75;
+  --live:#2453D4; --live-tint:#E8EEFC; --up:#17794A; --up-tint:#E2F2E9; --down:#B04A1C; --down-tint:#FBEAE2;
+  --control:#C9C9C3; --raised:#F1F1ED;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Geist','Segoe UI',system-ui,sans-serif; font-variant-numeric:tabular-nums lining-nums; color:var(--ink); background:#DCDCD6; padding:32px; }
+h1 { font-size:28px; font-weight:600; margin-bottom:6px; }
+.sub { font-size:14px; color:var(--ink-2); margin-bottom:24px; max-width:900px; }
+.row { display:flex; gap:32px; flex-wrap:wrap; }
+figure { display:flex; flex-direction:column; gap:8px; }
+figcaption { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-2); max-width:390px; }
+.phone { width:390px; height:844px; background:var(--paper); position:relative; overflow:hidden; }
+.sb { height:47px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 28px 6px; font-size:15px; font-weight:600; position:relative; }
+.dark .sb, .dark .hdr { color:#fff; }
+.hdr { display:flex; align-items:center; justify-content:space-between; padding:8px 16px; height:52px; position:relative; }
+.hdr h2 { font-size:20px; font-weight:600; }
+.btn { height:52px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:500; }
+.btn.pri { background:var(--ink); color:#fff; }
+.btn.sec { background:var(--surface); border:1px solid var(--line); color:var(--ink); }
+.lbl { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-3); }
+.seg { display:flex; background:var(--raised); border-radius:10px; padding:3px; gap:3px; }
+.seg span { flex:1; height:38px; display:flex; align-items:center; justify-content:center; font-size:14px; border-radius:8px; color:var(--ink-2); }
+.seg span.on { background:var(--ink); color:#fff; font-weight:500; }
+.dark .seg { background:rgba(255,255,255,.14); } .dark .seg span { color:#fff; height:34px; } .dark .seg span.on { background:#fff; color:var(--ink); }
+.cam { position:absolute; inset:0; background:linear-gradient(180deg,#3a3d44 0%,#25272c 55%,#17181b 100%); }
+.floor { position:absolute; left:0; right:0; bottom:0; height:230px; background:linear-gradient(180deg,#2c2e33,#121316); }
+.sil { position:absolute; }
+.ghost { fill:none; stroke:#fff; stroke-width:3; stroke-dasharray:7 6; opacity:.7; }
+.live-fig { fill:#9aa0ad; opacity:.75; }
+.chips { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.chip { height:30px; border-radius:15px; padding:0 12px; display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500; background:rgba(255,255,255,.16); color:#fff; }
+.chip.ok { background:var(--up-tint); color:var(--up); } .chip.bad { background:var(--down-tint); color:var(--down); }
+.cue { position:absolute; left:16px; right:16px; top:150px; text-align:center; color:#fff; }
+.cue b { display:block; font-size:44px; font-weight:600; letter-spacing:-.02em; }
+.cue span { font-size:14px; color:rgba(255,255,255,.75); }
+.level { position:absolute; left:50%; top:122px; width:200px; margin-left:-100px; height:4px; background:rgba(255,255,255,.35); border-radius:2px; }
+.level i { position:absolute; top:-6px; width:16px; height:16px; border-radius:8px; background:#fff; left:112px; border:2px solid var(--live); }
+.level em { position:absolute; left:92px; top:-9px; width:16px; height:22px; border-left:2px solid rgba(255,255,255,.6); border-right:2px solid rgba(255,255,255,.6); }
+.shutter { width:76px; height:76px; border-radius:38px; border:4px solid #fff; display:flex; align-items:center; justify-content:center; }
+.shutter i { width:58px; height:58px; border-radius:29px; background:#fff; }
+.card { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+.note { font-size:14px; color:var(--ink-2); line-height:1.4; }
+.tag { display:inline-flex; height:24px; align-items:center; padding:0 8px; border-radius:6px; font-size:12px; font-weight:600; }
+.tag.up { background:var(--up-tint); color:var(--up); } .tag.live { background:var(--live-tint); color:var(--live); }
+.num { font-size:20px; font-weight:600; } .unit { font-size:10px; color:var(--ink-3); margin-left:2px; font-weight:400; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="fig" viewBox="0 0 120 400">
+      <circle cx="60" cy="26" r="20"/>
+      <path d="M22 62 Q60 50 98 62 L108 170 L92 172 L86 112 L82 214 L72 214 L66 130 L60 130 L54 130 L48 214 L38 214 L34 112 L28 172 L12 170 Z"/>
+      <path d="M38 214 L56 214 L54 392 L36 392 Z M64 214 L82 214 L84 392 L66 392 Z"/>
+    </symbol>
+  </defs>
+</svg>
+<h1>Progress photos: capture, align, compare</h1>
+<p class="sub">Mocks for E26-T6 at 390x844 in the Ledger &amp; Instrument language. Layers: L0 guides and native camera, L1 alignment after capture, L2 live ghost and level, L3 live pose cues. Decision: docs/design/photos-2026-11/decision-0026-progress-photo-capture.md (to be filed as docs/decisions/0026-progress-photo-capture.md). The camera is dark because it is a viewfinder; every other surface is paper.</p>
+<div class="row">
+
+<figure><div class="phone dark" id="s01">
+  <div class="cam"><div class="floor"></div></div>
+  <div class="sb"><span>9:41</span><span>5G</span></div>
+  <div class="hdr"><span style="font-size:16px">Close</span><h2>Front</h2><span class="chip" style="height:28px">Ghost 35%</span></div>
+  <div class="level"><em></em><i></i></div>
+  <div class="cue"><b>Step back</b><span>You are 7% closer than last time</span></div>
+  <svg class="sil" style="left:127px;top:268px" width="140" height="440" viewBox="0 0 120 400"><use href="#fig" class="ghost"/></svg>
+  <svg class="sil" style="left:112px;top:244px" width="168" height="480" viewBox="0 0 120 400"><use href="#fig" class="live-fig"/></svg>
+  <div style="position:absolute;left:0;right:0;top:640px;display:flex;justify-content:space-between;align-items:center;padding:0 24px">
+    <div class="seg" style="width:116px"><span class="on">10 s</span><span>Off</span></div>
+    <div class="shutter"><i></i></div>
+    <div class="seg" style="width:116px"><span class="on">Front</span><span>Back</span></div>
+  </div>
+  <div style="position:absolute;left:16px;right:16px;top:742px"><div class="chips"><span class="chip bad">Distance</span><span class="chip ok">Centre</span><span class="chip ok">Turn</span><span class="chip ok">Level</span><span class="chip ok">Shoulders</span></div></div>
+</div><figcaption>01 Capture, live (L2 + L3): ghost of the last photo, level, one cue at a time</figcaption></figure>
+
+<figure><div class="phone" id="s02">
+  <div class="sb"><span>9:41</span><span>5G</span></div>
+  <div class="hdr"><span style="font-size:16px;color:var(--ink-2)">Close</span><h2>New photo</h2><span style="width:40px"></span></div>
+  <div style="padding:8px 16px;display:flex;flex-direction:column;gap:16px">
+    <div class="seg"><span class="on">Front</span><span>Side</span><span>Back</span></div>
+    <div class="card">
+      <div class="lbl" style="margin-bottom:8px">Same setup every time</div>
+      <div class="note">Phone at chest height on a shelf, 2.5 m away. Tape on the floor where your toes go. Same light, same time of day, arms relaxed 15 cm from your body.</div>
+    </div>
+    <div class="card">
+      <div class="lbl" style="margin-bottom:6px">Your spot</div>
+      <div style="font-size:16px">Hall, shelf by the door, 2.5 m</div>
+      <div class="note" style="margin-top:4px;color:var(--ink-3)">Last photo 17 Nov, front</div>
+    </div>
+    <div class="card" style="display:flex;gap:12px;align-items:center">
+      <div style="width:56px;height:72px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#d9d6cf,#bdb9b0);flex:none"><svg width="56" height="72" viewBox="0 0 120 400" style="fill:#7d7a72"><use href="#fig"/></svg></div>
+      <div><div style="font-size:16px;font-weight:500">Next to match</div><div class="note">Your 17 Nov front photo is the reference. You will line the new one up with it.</div></div>
+    </div>
+  </div>
+  <div style="position:absolute;left:16px;right:16px;bottom:34px;display:flex;flex-direction:column;gap:10px">
+    <div class="note" style="text-align:center;font-size:12px;color:var(--ink-3)">Camera preview unavailable on this phone, so Take photo opens the iPhone camera.</div>
+    <div class="btn pri">Take photo</div>
+    <div class="btn sec">Choose from library</div>
+  </div>
+</div><figcaption>02 Capture, fallback (L0): setup card, then the iPhone camera or the library</figcaption></figure>
+
+<figure><div class="phone" id="s03">
+  <div class="sb"><span>9:41</span><span>5G</span></div>
+  <div class="hdr"><span style="font-size:16px;color:var(--ink-2)">Retake</span><h2>Line up</h2><span style="font-size:16px;font-weight:600">Save</span></div>
+  <div style="margin:8px 16px 0;height:520px;border-radius:12px;position:relative;overflow:hidden;background:linear-gradient(180deg,#d9d6cf,#bdb9b0)">
+    <svg style="position:absolute;left:104px;top:56px;fill:#7d7a72" width="150" height="440" viewBox="0 0 120 400"><use href="#fig"/></svg>
+    <svg style="position:absolute;left:100px;top:46px" width="156" height="452" viewBox="0 0 120 400"><use href="#fig" class="ghost" style="stroke:#141518;opacity:.85"/></svg>
+    <span class="tag up" style="position:absolute;left:12px;top:12px">Lined up automatically</span>
+    <span class="tag live" style="position:absolute;right:12px;top:12px">Ghost 50%</span>
+  </div>
+  <div style="padding:12px 16px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="note">Off by</span><span><span class="num">1.2</span><span class="unit">% of height</span></span></div>
+    <div class="note" style="color:var(--ink-3)">Drag to move, pinch to resize and turn. The original photo is never changed.</div>
+    <div style="display:flex;gap:10px"><div class="btn sec" style="flex:1">Reset</div><div class="btn sec" style="flex:1">Auto</div><div class="btn sec" style="flex:1">Ghost</div></div>
+  </div>
+</div><figcaption>03 Align (L1): pose fit over the ghost, nudge by hand, original untouched</figcaption></figure>
+
+<figure><div class="phone" id="s04">
+  <div class="sb"><span>9:41</span><span>5G</span></div>
+  <div class="hdr"><span style="font-size:16px;color:var(--ink-2)">Back</span><h2>Compare</h2><span style="width:40px"></span></div>
+  <div style="padding:4px 16px;display:flex;flex-direction:column;gap:12px">
+    <div class="seg"><span class="on">Front</span><span>Side</span><span>Back</span></div>
+    <div style="display:flex;gap:8px">
+      <div class="card" style="flex:1;padding:10px 12px"><div class="lbl">Before</div><div style="font-size:16px;font-weight:500">12 Oct</div><div class="note" style="font-size:12px">82.4 kg</div></div>
+      <div class="card" style="flex:1;padding:10px 12px;border-color:var(--ink)"><div class="lbl">After</div><div style="font-size:16px;font-weight:500">17 Nov</div><div class="note" style="font-size:12px">80.9 kg</div></div>
+    </div>
+  </div>
+  <div style="margin:12px 16px 0;height:470px;border-radius:12px;position:relative;overflow:hidden;background:linear-gradient(180deg,#d9d6cf,#bdb9b0)">
+    <svg style="position:absolute;left:84px;top:36px;fill:#8a877f" width="158" height="430" viewBox="0 0 120 400"><use href="#fig"/></svg>
+    <div style="position:absolute;left:0;top:0;bottom:0;width:48%;overflow:hidden;background:linear-gradient(180deg,#cfccc5,#aeaaa1)">
+      <svg style="position:absolute;left:84px;top:36px;fill:#6b6862" width="170" height="430" viewBox="0 0 120 400"><use href="#fig"/></svg>
+    </div>
+    <div style="position:absolute;left:48%;top:0;bottom:0;width:2px;background:#fff"></div>
+    <div style="position:absolute;left:48%;top:215px;width:36px;height:36px;margin-left:-17px;border-radius:18px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ink-2)">&#8596;</div>
+    <span class="tag" style="position:absolute;left:10px;bottom:10px;background:#fff">12 Oct</span>
+    <span class="tag" style="position:absolute;right:10px;bottom:10px;background:#fff">17 Nov</span>
+  </div>
+  <div style="padding:12px 16px;display:flex;flex-direction:column;gap:12px">
+    <div class="seg"><span class="on">Wipe</span><span>Side by side</span></div>
+    <div style="display:flex;justify-content:space-between"><span class="note">36 days apart</span><span class="tag up">&minus;1.5 kg</span></div>
+  </div>
+</div><figcaption>04 Compare: wipe slider over two lined-up photos of the same view</figcaption></figure>
+
+</div>
+</body>
+</html>

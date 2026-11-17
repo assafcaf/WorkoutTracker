@@ -2,14 +2,16 @@ import { Fragment, useState } from 'react'
 import { buildLiftHistories, leverOf, straightSets } from '../domain/stats/liftHistory'
 import type { LiftHistory, LiftPoint } from '../domain/stats/liftHistory'
 import { changeSince, changeTextFor, liftRecordRows, measureOf, sessionLog, storyPoints } from '../domain/stats/liftStory'
+import { relativeStrength } from '../domain/stats/relativeStrength'
 import { liftPrs } from '../domain/stats/records'
 import type { Measure } from '../domain/stats/liftStory'
 import { liftStatus } from '../domain/stats/status'
 import type { LiftStatus } from '../domain/stats/status'
 import { dayMonth, humanDate, leverText, numberText } from '../domain/stats/words'
 import { formatSetCompact } from '../domain/setText'
-import type { Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
+import type { BodyLog, Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
 import { PrTag, SetFigure, StatusMark, statusTone } from './figures'
+import { LiftCalculator } from './LiftCalculator'
 import { LiftChart } from './charts/LiftChart'
 import type { LiftChartPoint } from './charts/LiftChart'
 import './LiftView.css'
@@ -25,6 +27,8 @@ export type LiftViewProps = {
   onOpenSession?: (sessionId: string) => void
   /** Offers a variation when the status's action is a change of exercise. */
   onSwap?: () => void
+  /** The body log; with a bodyweight on or before the latest session, Est. strength also reads as a multiple of it. */
+  bodyLog?: BodyLog
 }
 
 type Range = '3M' | '1Y' | 'all'
@@ -153,10 +157,11 @@ export function setRuns(sets: SetEntry[], prSetIndex: number | null): SetRun[] {
  *   - one ink line, the standing record a gold ring, deloads a grey band, no point labels;
  *   - Records, then the Sessions as set rows with the PR tag on the Set that earned it.
  */
-export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap }: LiftViewProps): JSX.Element {
+export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap, bodyLog }: LiftViewProps): JSX.Element {
   const [range, setRange] = useState<Range>('3M')
   const [show, setShow] = useState<Show>('est')
   const [showAll, setShowAll] = useState(false)
+  const [calcOpen, setCalcOpen] = useState(false)
 
   const live = sessions.filter((s) => s.deletedAt === undefined && s.finishedAt !== null)
   const history = buildLiftHistories(
@@ -196,6 +201,7 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
         : measure === 'load'
           ? L(Math.round(latestStory.value * 100) / 100)
           : String(Math.round(latestStory.value))
+  const relative = measure === 'est' && latestStory && bodyLog ? relativeStrength(latestStory.value, bodyLog, latestStory.at) : null
   const heroUnit = measure === 'est' ? 'kg' : measure === 'reps' ? 'reps' : ''
 
   const records = liftPrs(history)
@@ -261,7 +267,21 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap 
             </span>
           ) : null}
         </p>
+        {relative ? <p className="lift-hero-definition lift-hero-relative">{relative.text}</p> : null}
         <p className="lift-hero-definition">{definition.text}</p>
+        {measure === 'est' ? (
+          <button type="button" className="btn-quiet lift-calc-open" onClick={() => setCalcOpen(true)}>
+            What can I lift ›
+          </button>
+        ) : null}
+        {calcOpen && measure === 'est' ? (
+          <LiftCalculator
+            name={exercise.name}
+            weightKg={real[real.length - 1].top.lever}
+            reps={real[real.length - 1].top.reps}
+            onClose={() => setCalcOpen(false)}
+          />
+        ) : null}
       </section>
 
       <section className="lift-chart-section" aria-label="Chart">

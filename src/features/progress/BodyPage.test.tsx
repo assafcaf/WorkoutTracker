@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test } from 'vitest'
 import { createServices } from '../../services'
 import { db } from '../../storage/db'
-import { getBodyLog, setBodyLog } from '../../storage/settingsStore'
+import { getBodyLog, getHeightCm, setBodyLog, setHeightCm } from '../../storage/settingsStore'
 import type { BodyLog } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
 import { ProgressFeature } from './ProgressFeature'
@@ -172,5 +172,93 @@ describe('E22-T7 the page is registered', () => {
     expect(await screen.findByLabelText('Bodyweight (kg)', undefined, SETTLE)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.getByRole('button', { name: 'Open body' })).toBeVisible()
+  })
+})
+
+describe('E26-T5 O13 the new measurement fields', () => {
+  test.each([
+    ['Hips (cm)', 'hipsCm', '96'],
+    ['Neck (cm)', 'neckCm', '38'],
+    ['Shoulders (cm)', 'shouldersCm', '120'],
+    ['Calves (cm)', 'calvesCm', '37'],
+  ])('O13 %s is stored under %s', async (label, metric, value) => {
+    const user = await mount()
+    await user.click(screen.getByRole('button', { name: 'Add measurements' }))
+    await user.type(screen.getByLabelText(label), value)
+    await user.click(save())
+    await waitFor(async () => expect(await stored()).toEqual([{ day: '2026-10-15', [metric]: Number(value) }]), SETTLE)
+  })
+
+  test('O13 a logged hips value is offered as a chart metric and charted', async () => {
+    const user = await mount([{ day: '2026-10-15', weightKg: 80, hipsCm: 96 }])
+    await screen.findByRole('radiogroup', { name: 'Metric' }, SETTLE)
+    await user.click(screen.getByRole('radio', { name: 'Hips' }))
+    expect(screen.getByRole('img', { name: 'Hips chart' })).toBeVisible()
+  })
+
+  test('O13 a new measurement out of range shows an inline error and stores nothing', async () => {
+    const user = await mount()
+    await user.click(screen.getByRole('button', { name: 'Add measurements' }))
+    await user.type(screen.getByLabelText('Neck (cm)'), '400')
+    await user.click(save())
+    expect(await screen.findByRole('alert')).toHaveTextContent(/10.*300/)
+    expect(await stored()).toEqual([])
+  })
+})
+
+describe('E26-T5 O14 waist-to-height', () => {
+  test('O14 with a height set and a latest waist, the ratio shows to two decimals', async () => {
+    await setHeightCm(180, NOW)
+    await mount([{ day: '2026-10-15', waistCm: 90 }])
+    expect(await screen.findByText('Waist-to-height 0.50', undefined, SETTLE)).toBeVisible()
+  })
+
+  test('O14 the ratio uses the latest waist entry', async () => {
+    await setHeightCm(180, NOW)
+    await mount([
+      { day: '2026-10-01', waistCm: 99 },
+      { day: '2026-10-15', waistCm: 85 },
+    ])
+    expect(await screen.findByText('Waist-to-height 0.47', undefined, SETTLE)).toBeVisible()
+  })
+
+  test('O14 with no height, the ratio is not shown', async () => {
+    await mount([{ day: '2026-10-15', waistCm: 90 }])
+    await screen.findByRole('list', { name: 'Entries' }, SETTLE)
+    expect(screen.queryByText(/Waist-to-height/)).toBeNull()
+  })
+
+  test('O14 with a height but no waist, the ratio is not shown', async () => {
+    await setHeightCm(180, NOW)
+    await mount([{ day: '2026-10-15', weightKg: 80 }])
+    await screen.findByRole('list', { name: 'Entries' }, SETTLE)
+    expect(screen.queryByText(/Waist-to-height/)).toBeNull()
+  })
+
+  test('O14 the height field shows the stored height', async () => {
+    await setHeightCm(176.5, NOW)
+    await mount()
+    await waitFor(() => expect(screen.getByLabelText('Height (cm)')).toHaveValue(176.5), SETTLE)
+  })
+
+  test('O14 saving a height persists it and the ratio appears', async () => {
+    const user = await mount([{ day: '2026-10-15', waistCm: 90 }])
+    await screen.findByRole('list', { name: 'Entries' }, SETTLE)
+    expect(screen.queryByText(/Waist-to-height/)).toBeNull()
+    await user.type(screen.getByLabelText('Height (cm)'), '180')
+    await user.click(screen.getByRole('button', { name: 'Save height' }))
+    await waitFor(async () => expect(await getHeightCm()).toBe(180), SETTLE)
+    expect(await screen.findByText('Waist-to-height 0.50', undefined, SETTLE)).toBeVisible()
+  })
+
+  test('O14 the preferences service refuses a height outside 100..250 and stores nothing', async () => {
+    const services = createServices({ now: () => NOW, storageAvailable: true })
+    await expect(services.preferences.setHeightCm(99)).rejects.toMatchObject({ name: 'ServiceError' })
+    await expect(services.preferences.setHeightCm(251)).rejects.toMatchObject({ name: 'ServiceError' })
+    expect(await getHeightCm()).toBeNull()
+    await services.preferences.setHeightCm(175)
+    expect(await services.preferences.heightCm()).toBe(175)
+    await services.preferences.setHeightCm(null)
+    expect(await services.preferences.heightCm()).toBeNull()
   })
 })

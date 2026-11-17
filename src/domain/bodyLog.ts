@@ -1,6 +1,6 @@
 import type { BodyEntry, BodyLog, BodyMetric } from '../types'
 
-const METRICS: BodyMetric[] = ['weightKg', 'waistCm', 'chestCm', 'armsCm', 'thighsCm']
+const METRICS: BodyMetric[] = ['weightKg', 'waistCm', 'chestCm', 'armsCm', 'thighsCm', 'hipsCm', 'neckCm', 'shouldersCm', 'calvesCm']
 const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -49,6 +49,12 @@ export function validateBodyLog(raw: unknown, now: number = Date.now()): BodyLog
     if (e) log = upsertBodyEntry(log, e)
   }
   return log
+}
+
+/** Waist over height rounded to 2 decimals; null with no valid height. */
+export function waistToHeight(waistCm: number, heightCm: number | null | undefined): number | null {
+  if (typeof heightCm !== 'number' || !Number.isFinite(heightCm) || heightCm <= 0) return null
+  return Math.round((waistCm / heightCm) * 100) / 100
 }
 
 export function upsertBodyEntry(log: BodyLog, entry: BodyEntry): BodyLog {

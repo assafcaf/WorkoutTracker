@@ -1,3 +1,5 @@
+import { db } from './db'
+import type { Photo, PhotoAlign, PhotoAngle } from './photoStore'
 import type { BodyLog, CustomExercise, PlateInventory, Session, UserProgram, VolumeBaseline } from '../types'
 
 /** Bumped whenever the shape below changes in a way `readBackup` cannot translate on its own. */
@@ -11,6 +13,8 @@ export type BackupFile = {
   schemaVersion: 1
   exportedAt: number
   sessions: Session[]
+  /** Progress photos (E26), only when the export was asked to include them. */
+  photos?: BackupPhoto[]
   settings: {
     activeProgramId: string
     lastExportedAt: number | null
@@ -46,6 +50,76 @@ export type BackupFile = {
     /** The workout reminders, or null when turned off (E24). Absent when never set. */
     workoutReminders?: Record<string, unknown> | null
   }
+}
+
+/** A photo as a backup file carries it: the bytes as base64 text. */
+export type BackupPhoto = {
+  id: string
+  day: string
+  angle: PhotoAngle
+  /** The image bytes, base64. */
+  data: string
+  type: string
+  width: number
+  height: number
+  align: PhotoAlign | null
+  createdAt: number
+}
+
+/** A stored Photo as a backup entry (bytes to base64). */
+export function encodeBackupPhoto(photo: Photo): BackupPhoto {
+  const bytes = new Uint8Array(photo.data)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  }
+  return {
+    id: photo.id,
+    day: photo.day,
+    angle: photo.angle,
+    data: btoa(binary),
+    type: photo.type,
+    width: photo.width,
+    height: photo.height,
+    align: photo.align,
+    createdAt: photo.createdAt,
+  }
+}
+
+/** A backup entry back to a stored Photo (base64 to an ArrayBuffer). */
+export function decodeBackupPhoto(photo: BackupPhoto): Photo {
+  const binary = atob(photo.data)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return {
+    id: photo.id,
+    day: photo.day,
+    angle: photo.angle,
+    data: bytes.buffer,
+    type: photo.type,
+    width: photo.width,
+    height: photo.height,
+    align: photo.align,
+    createdAt: photo.createdAt,
+  }
+}
+
+/** Whether any progress photo is stored. */
+export async function hasStoredPhotos(): Promise<boolean> {
+  return (await db.photos.count()) > 0
+}
+
+/** Every stored photo as a backup entry. */
+export async function readBackupPhotos(): Promise<BackupPhoto[]> {
+  return (await db.photos.toArray()).map(encodeBackupPhoto)
+}
+
+/** Replaces every stored photo with `photos`, in one transaction. */
+export async function replaceStoredPhotos(photos: BackupPhoto[]): Promise<void> {
+  await db.transaction('rw', db.photos, async () => {
+    await db.photos.clear()
+    await db.photos.bulkPut(photos.map(decodeBackupPhoto))
+  })
 }
 
 /**

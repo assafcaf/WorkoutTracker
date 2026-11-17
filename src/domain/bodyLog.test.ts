@@ -7,6 +7,7 @@ import {
   upsertBodyEntry,
   validateBodyEntry,
   validateBodyLog,
+  waistToHeight,
 } from './bodyLog'
 import type { BodyLog } from '../types'
 
@@ -169,5 +170,56 @@ describe('bodyweightOn and bodySeries (O3)', () => {
   test('dayOf is the local YYYY-MM-DD', () => {
     expect(dayOf(at(9, 5, 23))).toBe('2026-10-05')
     expect(dayOf(new Date(2026, 0, 1, 0, 0).getTime())).toBe('2026-01-01')
+  })
+})
+
+describe('E26-T5 O13 hips, neck, shoulders and calves', () => {
+  const NEW = ['hipsCm', 'neckCm', 'shouldersCm', 'calvesCm'] as const
+
+  test.each(NEW)('O13 %s is stored, rounded to 0.1', (metric) => {
+    expect(validateBodyEntry({ day: '2026-10-10', [metric]: 40.26 }, NOW)).toEqual({ day: '2026-10-10', [metric]: 40.3 })
+  })
+
+  test.each(NEW)('O13 %s outside 10..300 or not a finite number is refused', (metric) => {
+    expect(validateBodyEntry({ day: '2026-10-10', [metric]: 9.9 }, NOW)).toBeNull()
+    expect(validateBodyEntry({ day: '2026-10-10', [metric]: 300.1 }, NOW)).toBeNull()
+    expect(validateBodyEntry({ day: '2026-10-10', [metric]: 0 }, NOW)).toBeNull()
+    expect(validateBodyEntry({ day: '2026-10-10', [metric]: Number.NaN }, NOW)).toBeNull()
+    expect(validateBodyEntry({ day: '2026-10-10', [metric]: '40' }, NOW)).toBeNull()
+    expect(validateBodyEntry({ day: '2026-10-10', [metric]: 10 }, NOW)).toEqual({ day: '2026-10-10', [metric]: 10 })
+    expect(validateBodyEntry({ day: '2026-10-10', [metric]: 300 }, NOW)).toEqual({ day: '2026-10-10', [metric]: 300 })
+  })
+
+  test('O13 an entry mixing old and new metrics keeps every one', () => {
+    const e = { day: '2026-10-10', weightKg: 79, waistCm: 85, hipsCm: 95, neckCm: 38, shouldersCm: 120, calvesCm: 37 }
+    expect(validateBodyEntry(e, NOW)).toEqual(e)
+  })
+
+  test('O13 a stored log without the new metrics still loads unchanged', () => {
+    const old = [{ day: '2026-10-01', weightKg: 80, waistCm: 85 }]
+    expect(validateBodyLog(old, NOW)).toEqual(old)
+  })
+
+  test.each(NEW)('O13 %s is charted as a series like the others', (metric) => {
+    const log: BodyLog = [
+      { day: '2026-10-01', weightKg: 80 },
+      { day: '2026-10-15', [metric]: 41 },
+    ]
+    expect(validateBodyLog(log, NOW)).toEqual(log)
+    expect(bodySeries(validateBodyLog(log, NOW), metric)).toEqual([{ at: at(9, 15), value: 41 }])
+  })
+})
+
+describe('E26-T5 O14 waistToHeight', () => {
+  test('O14 waist over height, to two decimals', () => {
+    expect(waistToHeight(90, 180)).toBe(0.5)
+    expect(waistToHeight(85, 178)).toBe(0.48)
+    expect(waistToHeight(100, 170)).toBe(0.59)
+  })
+  test('O14 no valid height answers null', () => {
+    expect(waistToHeight(90, null)).toBeNull()
+    expect(waistToHeight(90, undefined)).toBeNull()
+    expect(waistToHeight(90, 0)).toBeNull()
+    expect(waistToHeight(90, -170)).toBeNull()
   })
 })

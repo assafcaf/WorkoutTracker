@@ -1,0 +1,1 @@
+- Find the next unused epic with Glob `E2*` (or `E<n>*`) under `.work/tickets`, not `*/epic.md` (matches nothing here) and not a bare `*` on `.work` (20 s ripgrep timeout) — the epic key list is what the create step needs (E26, 2026-11-17)

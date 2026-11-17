@@ -1,0 +1,217 @@
+/* Progress photo capture (E26-T7, mocks in docs/design/photos-2026-11). Tokens only. */
+
+.photo-capture {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.photo-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+}
+
+.photo-header > :first-child {
+  justify-self: start;
+}
+
+.photo-header > :last-child {
+  justify-self: end;
+}
+
+.photo-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.photo-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+}
+
+.photo-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.photo-card p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.photo-card .photo-card-label {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  margin-bottom: var(--space-1);
+}
+
+.photo-next {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.photo-thumb {
+  width: 56px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.photo-actions > button {
+  min-height: calc(var(--tap-min) + var(--space-2));
+  font-size: var(--text-md);
+}
+
+.photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.photo-note {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.photo-stage {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  background: var(--color-raised);
+  border-radius: var(--radius-lg);
+  touch-action: none;
+}
+
+.photo-new,
+.photo-ghost {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.photo-align-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.photo-align-actions > button {
+  flex: 1;
+}
+
+/* The camera view alone is dark, as a viewfinder. */
+.photo-live {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.photo-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-header-live {
+  position: relative;
+  color: var(--color-on-primary);
+}
+
+.photo-chip {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-pressed);
+  color: var(--color-on-primary);
+  font-size: var(--text-sm);
+}
+
+.photo-level {
+  position: relative;
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.photo-level[data-level='true'] {
+  color: var(--color-up-tint);
+}
+
+.photo-countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-size: var(--text-display);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.photo-live-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-4);
+}
+
+.photo-shutter {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-pill);
+  border: 4px solid var(--color-on-primary);
+  background: var(--color-on-primary);
+}
+
+.photo-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.photo-file {
+  display: none;
+}
+
+.photo-capture .segmented .segmented-option:has(.segmented-input:checked) {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  outline: 0;
+}
+
+.photo-header .btn-quiet {
+  color: var(--color-secondary);
+  font-size: var(--text-sm);
+}
+
+.photo-actions .btn-primary {
+  border: 0;
+}
