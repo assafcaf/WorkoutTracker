@@ -64,3 +64,16 @@ now, up green for "lined up", tabular numerals. The camera view alone is dark, a
   `createImageBitmap`. If L2 fails on the device it ships as an opt-in; the layers below stand.
 - About 15 MB of cache is used only by people who open photos; the Workbox 2 MiB precache limit
   means these files must not go through the precache glob.
+
+## Outcome (E26, 2026-11-17)
+- Built: layers L0-L2. The native camera (`<input capture>`) with a manual align screen under the
+  last photo's ghost always works; when the live camera opens, it shows the ghost (35 / 60 % / off),
+  a level from `devicemotion` gravity (within 1.5 degrees reads "Level") and a 10 s timer, and any
+  camera failure falls back to the native camera. Photos are stored on the phone only, as an
+  `ArrayBuffer` plus its type (not a `Blob`), re-encoded to at most 1600 px with no EXIF
+  (`src/storage/photoStore.ts`); the first save asks `navigator.storage.persist()` once; backups
+  include photos only when asked.
+- Not built: L3 (on-device pose cues for distance and turn, and auto-capture). It needs the device
+  checks listed above first, and about 15 MB of model files outside the precache.
+- Not verified: anything on the iPhone. The installed-app camera, the motion permission and
+  persistence need the operator's phone after deploy (`iphone` resource).
