@@ -51,6 +51,13 @@ export function validateBodyLog(raw: unknown, now: number = Date.now()): BodyLog
   return log
 }
 
+/** Waist over height rounded to 2 decimals; null with no valid height. */
+export function waistToHeight(waistCm: number, heightCm: number | null | undefined): number | null {
+  void waistCm
+  void heightCm
+  throw new Error('NotImplementedError')
+}
+
 export function upsertBodyEntry(log: BodyLog, entry: BodyEntry): BodyLog {
   const rest = log.filter((e) => e.day !== entry.day)
   const at = rest.findIndex((e) => e.day > entry.day)

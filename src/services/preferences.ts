@@ -76,6 +76,10 @@ export type PreferenceService = {
   saveBodyEntry(entry: BodyEntry): Promise<void>
   /** Drops the entry of `day` (E22-T2). */
   removeBodyEntry(day: string): Promise<void>
+  /** The height in cm, or null when unset (E26-T5). */
+  heightCm(): Promise<number | null>
+  /** Stores the height; rejects with a ServiceError outside 100..250 (E26-T5). */
+  setHeightCm(cm: number | null): Promise<void>
 }
 
 /**
@@ -140,6 +144,8 @@ export function createPreferenceService(deps: ServiceDeps): PreferenceService {
       if (!valid) throw new ServiceError('storage-failed', 'the body entry is not valid')
       await write(async () => setBodyLog(upsertBodyEntry(await getBodyLog(), valid), deps.now()))
     },
+    heightCm: () => Promise.reject(new Error('NotImplementedError')),
+    setHeightCm: () => Promise.reject(new Error('NotImplementedError')),
     removeBodyEntry: (day) =>
       write(async () => setBodyLog(dropBodyEntry(await getBodyLog(), day), deps.now())),
   }

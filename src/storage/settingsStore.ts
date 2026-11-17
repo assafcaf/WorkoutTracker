@@ -252,6 +252,21 @@ export async function getBodyLog(): Promise<BodyLog> {
   return validateBodyLog((await db.settings.get(BODY_LOG_KEY))?.value)
 }
 
+/** The `settings` table key the body height in cm is kept under (E26-T5). */
+export const HEIGHT_CM_KEY = 'heightCm'
+
+/** The stored height in cm, or null unless a finite number in 100..250. */
+export async function getHeightCm(): Promise<number | null> {
+  throw new Error('NotImplementedError')
+}
+
+/** Stores the height in cm; null deletes the row. */
+export async function setHeightCm(cm: number | null, now: number = Date.now()): Promise<void> {
+  void cm
+  void now
+  throw new Error('NotImplementedError')
+}
+
 /** Stores the whole `log` in the one `bodyLog` row. */
 export async function setBodyLog(log: BodyLog, now: number = Date.now()): Promise<void> {
   await db.settings.put({ key: BODY_LOG_KEY, value: log, updatedAt: now })
