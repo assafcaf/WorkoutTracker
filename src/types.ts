@@ -42,6 +42,8 @@ export type LibraryExercise = {
   instructions: string[]
   category: string
   images: string[]
+  /** Other names the pickers find it by; the free-exercise-db name when a gym name replaced it. */
+  aliases?: string[]
 }
 
 /** An Exercise the trainee created; merged into the catalog by `CatalogService` (E19). */

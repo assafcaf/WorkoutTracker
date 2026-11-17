@@ -5,7 +5,7 @@ import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { myLifts } from '../../domain/myLifts'
 import { newPlan, uuid } from '../../domain/programs'
-import { matchesQuery } from '../../domain/search'
+import { matchesExercise, matchesQuery } from '../../domain/search'
 import { CustomExerciseForm, type CustomExerciseValues } from '../../ui/CustomExerciseForm'
 import { GymEquipmentSwitches } from '../../ui/GymEquipmentSwitches'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
@@ -165,7 +165,7 @@ export function ExercisesFeature({
   }
 
   const filteredLibrary = library.filter((exercise) => {
-    const matchesSearch = matchesQuery(exercise.name, search)
+    const matchesSearch = matchesExercise(exercise, search)
     const matchesMuscle = muscle === '' || exercise.primaryMuscles.includes(muscle as Muscle)
     const matchesEquipment =
       equipment === ''

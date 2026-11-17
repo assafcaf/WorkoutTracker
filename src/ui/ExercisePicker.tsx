@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { matchesQuery } from '../domain/search'
+import { matchesExercise } from '../domain/search'
 import type { LibraryExercise } from '../types'
 import './ExercisePicker.css'
 
@@ -17,7 +17,7 @@ export type ExercisePickerProps = {
  */
 export function ExercisePicker({ library, taken, onPick, onClose }: ExercisePickerProps): JSX.Element {
   const [query, setQuery] = useState('')
-  const shown = library.filter((entry) => !taken.includes(entry.id) && matchesQuery(entry.name, query))
+  const shown = library.filter((entry) => !taken.includes(entry.id) && matchesExercise(entry, query))
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Add exercise" className="overlay-panel exercise-picker">
