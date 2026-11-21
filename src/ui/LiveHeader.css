@@ -28,7 +28,21 @@
   border: 0;
 }
 
-/* The name over one small line: the elapsed time and the Sets count (V1-10), so the title row
+/* DX-19: line 2, "1 of 23 sets · 4 min", is the goal-gradient cue, so it is body size in ink, and
+ * a 2 px bar under the whole header fills in ink as Sets are logged. */
+.live-header-progress {
+  height: 2px;
+  margin-bottom: -1px;
+  background: transparent;
+}
+
+.live-header-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-text);
+}
+
+/* The name over one line: the elapsed time and the Sets count (V1-10), so the title row
  * holds both and still fits at 320 px. */
 .live-header-title {
   display: flex;
@@ -50,9 +64,9 @@
 
 .live-header-meta {
   overflow: hidden;
-  color: var(--color-secondary);
-  font-size: var(--text-xs);
-  line-height: 1rem;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  line-height: 1.25rem;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -64,18 +78,13 @@
   margin-right: var(--space-2);
 }
 
-/* Whatever rides under the header row (the Now | All switch) keeps the screen's side padding. */
-.live-header > :not(.live-header-row) {
+/* Whatever rides under the header row keeps the screen's side padding. */
+.live-header > :not(.live-header-row, .live-header-progress) {
   margin: 0 var(--space-4) var(--space-2);
 }
 
-/* Finish with planned Sets left (V1-06): the count, then Finish workout over Keep going. */
-.finish-confirm-left {
-  margin-bottom: var(--space-4);
-  color: var(--color-secondary);
-  font-size: var(--text-md);
-}
-
+/* Finish with planned Sets left (DX-14): the question as the title, Finish Session over Keep
+ * going, an X to close. */
 .finish-confirm-actions {
   display: flex;
   flex-direction: column;

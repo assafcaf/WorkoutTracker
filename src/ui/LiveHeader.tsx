@@ -1,7 +1,6 @@
-import { useContext, useLayoutEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ShellChromeContext } from './AppShell'
-import { ElapsedTime } from './ElapsedTime'
 import { Icon } from './icons'
 import { Sheet } from './Sheet'
 import './LiveHeader.css'
@@ -13,13 +12,13 @@ export type LiveHeaderProps = {
   onMinimise(): void
   onFinish(): void
   /**
-   * Throws the Session away (iteration 5): offered in the Finish sheet, and the only way out of it
-   * while nothing is logged, so a workout started by mistake is one tap from gone.
+   * No longer offered here (DX-14): Discard lives once, at the bottom of the All view, with Undo.
+   * Kept so callers still type-check.
    */
   onDiscard?(): void
   /**
-   * Today's working Sets against the Workout's planned Sets, shown as "2/23 sets" in the title
-   * row. Left out, no count is shown.
+   * Today's working Sets against the Workout's planned Sets: line 2 reads "1 of 23 sets · 4 min"
+   * and the 2 px bar under the header fills to their fraction (DX-19). Left out, neither shows.
    */
   sets?: { done: number; planned: number }
   /**
@@ -28,8 +27,8 @@ export type LiveHeaderProps = {
    */
   prs?: number
   /**
-   * Planned Sets not yet logged (default 0). While any are left, Finish asks first in a Sheet;
-   * with none left, Finish ends the Session in one tap.
+   * Planned Sets not yet logged (default 0). With none left, Finish ends the Session in one tap;
+   * with some left it asks once, "Finish with 22 sets not logged?" (DX-14).
    */
   setsLeft?: number
   /**
@@ -37,25 +36,34 @@ export type LiveHeaderProps = {
    * `false`: there the exercise it is on is the screen's heading.
    */
   heading?: boolean
-  /** What sits in the header row before Finish: the Now | All button (V3-07). */
+  /** What sits in the header row before Finish: the Set | All control (DX-19). */
   children?: ReactNode
 }
 
+/** Whole minutes since `startedAt`, re-read every 15 s: "4 min" (DX-19). */
+function useElapsedMinutes(startedAt: number): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), 15_000)
+    return () => clearInterval(id)
+  }, [startedAt])
+  return Math.max(0, Math.floor((now - startedAt) / 60_000))
+}
+
 /**
- * The Live session's header (S2/S3): a chevron that minimises the session, the workout's name
- * over its elapsed time and Sets count, and Finish. The app root's trailing slot (the "Update
+ * The Live session's header (S2/S3, DX-19): a chevron that minimises the session, the workout's
+ * name over "1 of 23 sets · 4 min" at body size in ink, the Set | All control, and Finish; a 2 px
+ * bar under the whole header fills as Sets are logged. The app root's trailing slot (the "Update
  * ready" pill) rides along, so an update never has to wait for the workout to end to be offered.
  */
 export function LiveHeader(props: LiveHeaderProps): JSX.Element {
-  const { workoutName, startedAt, onMinimise, onFinish, onDiscard, sets, setsLeft = 0, heading = true, children } = props
+  const { workoutName, startedAt, onMinimise, onFinish, sets, setsLeft = 0, heading = true, children } = props
   const { trailing } = useContext(ShellChromeContext)
   const [confirming, setConfirming] = useState(false)
-  const nothingLogged = sets !== undefined && sets.done === 0
-  // V5-01: with Sets logged, Discard asks once more, naming what is lost; with none, it is one tap.
-  const [discarding, setDiscarding] = useState(false)
-  const logged = sets?.done ?? 0
-  // V5-15: at large text the title line cannot hold the elapsed time and the Sets count; the
-  // time goes and the count stays. Measured once it renders; once dropped it stays dropped.
+  const minutes = useElapsedMinutes(startedAt)
+  // V5-15: at large text the line cannot hold the Sets count and the minutes; the minutes go and
+  // the count stays. Measured once it renders; once dropped it stays dropped.
   const metaRef = useRef<HTMLParagraphElement>(null)
   const [timeDropped, setTimeDropped] = useState(false)
   useLayoutEffect(() => {
@@ -64,10 +72,13 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
     if (meta.scrollWidth > meta.clientWidth) setTimeDropped(true)
   }, [timeDropped, sets])
 
+  // DX-14: a fully logged Session finishes in one tap; otherwise one plain question.
   function handleFinish(): void {
-    if (setsLeft > 0 || (nothingLogged && onDiscard !== undefined)) setConfirming(true)
+    if (setsLeft > 0) setConfirming(true)
     else onFinish()
   }
+
+  const fraction = sets === undefined || sets.planned <= 0 ? 0 : Math.min(1, sets.done / sets.planned)
 
   return (
     <header className="app-header live-header">
@@ -82,94 +93,65 @@ export function LiveHeader(props: LiveHeaderProps): JSX.Element {
             <span className="live-header-name">{workoutName}</span>
           )}
           <p className="live-header-meta" ref={metaRef}>
-            {timeDropped ? null : <ElapsedTime startedAt={startedAt} />}
             {sets === undefined ? null : (
+              <span className="live-header-sets">{`${sets.done} of ${sets.planned} sets`}</span>
+            )}
+            {timeDropped ? null : (
               <>
-                {timeDropped ? null : <span aria-hidden="true">{' · '}</span>}
-                <span className="live-header-sets">{`${sets.done}/${sets.planned} sets`}</span>
+                {sets === undefined ? null : <span aria-hidden="true">{' · '}</span>}
+                <span role="timer" aria-label="Workout time" className="live-header-time">{`${minutes} min`}</span>
               </>
             )}
           </p>
         </div>
         {trailing ? <div className="app-header-trailing live-header-trailing">{trailing}</div> : null}
-        {/* The Now | All switch rides in the row, before Finish (V3-07): no band under it. */}
+        {/* The Set | All control rides in the row, before Finish (DX-19): no band under it. */}
         {children}
         <button type="button" className="finish-workout btn-secondary" onClick={handleFinish}>
           Finish
         </button>
       </div>
-      {confirming ? (
-        <Sheet
-          label="Finish workout?"
-          onClose={() => {
-            setConfirming(false)
-            setDiscarding(false)
-          }}
+      {sets === undefined ? null : (
+        <div
+          className="live-header-progress"
+          role="progressbar"
+          aria-label="Sets logged"
+          aria-valuemin={0}
+          aria-valuemax={sets.planned}
+          aria-valuenow={sets.done}
         >
+          <span className="live-header-progress-fill" style={{ width: `${(fraction * 100).toFixed(2)}%` }} />
+        </div>
+      )}
+      {confirming ? (
+        <Sheet label="Finish Session?" onClose={() => setConfirming(false)}>
           <div className="sheet-head">
-            <h2 className="sheet-title">Finish workout?</h2>
+            <h2 className="sheet-title">
+              {`Finish with ${setsLeft} ${setsLeft === 1 ? 'set' : 'sets'} not logged?`}
+            </h2>
+            <button
+              type="button"
+              className="sheet-close icon-btn"
+              aria-label="Close"
+              onClick={() => setConfirming(false)}
+            >
+              <Icon name="X" size={24} />
+            </button>
           </div>
-          <p className="finish-confirm-left">
-            {nothingLogged ? 'Nothing logged yet' : `${setsLeft} ${setsLeft === 1 ? 'set' : 'sets'} not logged`}
-          </p>
           <div className="finish-confirm-actions">
-            {/* V5-01: with nothing logged there is nothing to finish: Discard leads instead. */}
-            {nothingLogged && onDiscard !== undefined ? (
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  setConfirming(false)
-                  onDiscard()
-                }}
-              >
-                Discard workout
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  setConfirming(false)
-                  onFinish()
-                }}
-              >
-                Finish workout
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setConfirming(false)
+                onFinish()
+              }}
+            >
+              Finish Session
+            </button>
             <button type="button" className="btn-secondary" onClick={() => setConfirming(false)}>
               Keep going
             </button>
-            {nothingLogged && onDiscard !== undefined ? (
-              // Still there, quietly, for an empty Session someone does want kept.
-              <button
-                type="button"
-                className="btn-quiet"
-                onClick={() => {
-                  setConfirming(false)
-                  onFinish()
-                }}
-              >
-                Finish workout
-              </button>
-            ) : null}
-            {onDiscard === undefined || nothingLogged ? null : (
-              <button
-                type="button"
-                className="btn-danger"
-                onClick={() => {
-                  if (logged > 0 && !discarding) {
-                    setDiscarding(true)
-                    return
-                  }
-                  setConfirming(false)
-                  setDiscarding(false)
-                  onDiscard()
-                }}
-              >
-                {discarding ? `Discard ${logged} logged ${logged === 1 ? 'set' : 'sets'}` : 'Discard workout'}
-              </button>
-            )}
           </div>
         </Sheet>
       ) : null}

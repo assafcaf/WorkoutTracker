@@ -17,7 +17,7 @@
 //              two non-deload Sessions             -> "Stay at 46.25 kg until all 3 sets reach 12."
 //   5 Slipping at the same load as the best of the 4 Sessions before the last 2, both of the last
 //              2 have fewer top-set reps           -> "Next time: stay at 47.5 kg and aim for 10."
-//   6 Stalled  no record, no step up and no extra straight reps at a load in the last 4 Sessions
+//   6 Flat     no record, no step up and no extra straight reps at a load in the last 4 Sessions
 //              -> "Deload once: 12 kg × 10, then back to 13 kg." / a deload already inside the
 //                 stall: "Try a variation for 4 weeks." (Swap)
 //   7 Moving   anything else                       -> "Next time: 62.5 kg × 9."
@@ -33,6 +33,11 @@ import { humanDate, leverText, numberText, plural, topText } from './words'
 
 export type LiftStatusKind = 'too new' | 'break' | 'ready' | 'hold' | 'lowered' | 'slipping' | 'stalled' | 'moving'
 
+/**
+ * The status words the trainee reads (CONTEXT.md, Lift status): Moving, Ready, Flat and Lowered
+ * on every screen, plus the rarer Too new, Break, Hold and Slipping. The code kind `stalled` reads
+ * "Flat" -- never "Stalled".
+ */
 export const STATUS_LABELS: Record<LiftStatusKind, string> = {
   'too new': 'Too new',
   break: 'Break',
@@ -40,7 +45,7 @@ export const STATUS_LABELS: Record<LiftStatusKind, string> = {
   hold: 'Hold',
   lowered: 'Lowered',
   slipping: 'Slipping',
-  stalled: 'Stalled',
+  stalled: 'Flat',
   moving: 'Moving',
 }
 
@@ -84,7 +89,7 @@ export type LiftStatus = {
   /** Break only: whole days since the lift was last done. */
   daysOff?: number
   /**
-   * v7: when the status began -- Stalled: the Session of the last new best; Lowered: the Session
+   * v7: when the status began -- Flat: the Session of the last new best; Lowered: the Session
    * the load dropped in. The Progress rows and headline say `Flat since 7 Aug`.
    */
   since?: number
@@ -301,7 +306,7 @@ export function liftStatusOf({ exercise, plan, history, notes, now }: LiftStatus
         'slipping',
         `${L(load)} × ${latest.top.reps} · was × ${best.top.reps} on ${humanDate(best.startedAt)}`,
         `Next time: stay at ${L(load)} and aim for ${best.top.reps}.`,
-        `At ${L(load)} you did ${best.top.reps} on ${humanDate(best.startedAt)}. The last 2 sessions at the same weight were lower: ${previous.top.reps}, then ${latest.top.reps}. Two sessions below your best at the same weight is a slip. If the next one is lower again, this becomes Stalled.`,
+        `At ${L(load)} you did ${best.top.reps} on ${humanDate(best.startedAt)}. The last 2 sessions at the same weight were lower: ${previous.top.reps}, then ${latest.top.reps}. Two sessions below your best at the same weight is a slip. If the next one is lower again, this becomes Flat.`,
         { lever: load, reps: best.top.reps },
       )
     }

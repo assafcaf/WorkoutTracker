@@ -110,7 +110,7 @@ function moveText(
   const v = verdictOf(upto, records, point.startedAt)
   if (v.kind === 'stalled' && plan) {
     const target = straightSets(point.workingSets).filter((s) => leverOf(s, bw) === cur.lever).length * plan.repRange[1]
-    return `Held ${leverText(cur.lever, bw)} · ${now} of ${target} · stalled ${v.sessionsSince} sessions`
+    return `Held ${leverText(cur.lever, bw)} · ${now} of ${target} · flat ${v.sessionsSince} sessions`
   }
   return `More reps · ${now} vs ${before}`
 }

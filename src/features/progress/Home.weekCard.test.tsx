@@ -83,17 +83,16 @@ describe('E22-T8 O20 the Last week card', () => {
     expect(Math.round(((card.last.volumeKg - card.before.volumeKg) / card.before.volumeKg) * 100)).toBe(-31)
   })
 
-  test('O20 sits above This week', async () => {
-    // v7: neither This week nor Last week is on Progress; the weeks strip sits above the ledger,
-    // and the ledger above Muscles.
+  test('DX-12 Muscles sits above the ledger; there is no weeks strip', async () => {
+    // DX-02: the weeks strip is gone (Sessions owns the calendar); DX-12: Muscles and Body sit
+    // under the headline, above the ledger.
     await mount(fixture, THU_15)
     await noTable()
     expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
-    const weeks = screen.getByRole('region', { name: 'Weeks' })
+    expect(screen.queryByRole('region', { name: 'Weeks' })).toBeNull()
     const lifts = screen.getByRole('region', { name: 'Lifts' })
-    expect(weeks.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const muscles = screen.getByRole('button', { name: /^Muscles/ })
-    expect(lifts.compareDocumentPosition(muscles) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(muscles.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   test('O20 a first week on record says so instead of showing changes', async () => {
@@ -130,7 +129,7 @@ describe('E22-T8 O21 the trainee week', () => {
 })
 
 describe('E22-T8 O22 the Body row', () => {
-  test('O22 shows the latest bodyweight and its date, and opens the Body page', async () => {
+  test('DX-12 shows the latest bodyweight and its change, and opens the Body page', async () => {
     await db.settings.put({
       key: 'bodyLog',
       value: [
@@ -140,7 +139,7 @@ describe('E22-T8 O22 the Body row', () => {
       updatedAt: 1,
     })
     const { push } = await mount(fixture, THU_15)
-    const body = await waitFor(() => screen.getByRole('button', { name: /78\.5 kg · 15 Oct/ }), SETTLE)
+    const body = await waitFor(() => screen.getByRole('button', { name: 'Body · 78.5 kg, −1.5 kg' }), SETTLE)
     fireEvent.click(body)
     expect(push).toHaveBeenCalledWith({ kind: 'body' })
   })

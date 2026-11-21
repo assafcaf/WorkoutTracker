@@ -11,7 +11,8 @@ import { dayMonth, humanDate, leverText, numberText } from '../domain/stats/word
 import { formatSetCompact } from '../domain/setText'
 import type { BodyLog, Exercise, ExercisePlan, Session, SetEntry, SetKind } from '../types'
 import { PrTag, SetFigure, StatusMark, statusTone } from './figures'
-import { LiftCalculator } from './LiftCalculator'
+import { repMaxTable } from '../domain/calculator'
+import { DEFAULT_PLATE_INVENTORY } from '../domain/plates'
 import { LiftChart } from './charts/LiftChart'
 import type { LiftChartPoint } from './charts/LiftChart'
 import './LiftView.css'
@@ -29,6 +30,23 @@ export type LiftViewProps = {
   onSwap?: () => void
   /** The body log; with a bodyweight on or before the latest session, Est. strength also reads as a multiple of it. */
   bodyLog?: BodyLog
+  /** Opens the Exercise's info ("How to do it ›", at the top of the page); no link without it. */
+  onHowTo?: () => void
+}
+
+/** The Rep maxes section's reps, 1 to 10 (DX-12). */
+const REP_MAX_REPS = 10
+
+/**
+ * The Rep maxes (DX-12): what the latest top set predicts for 1 to 10 reps, each rounded down to
+ * the Exercise's weight step so every load is one the trainee can put on.
+ */
+export function repMaxes(weightKg: number, reps: number, weightStep: number): { reps: number; kg: number }[] {
+  const est = weightKg * (1 + reps / 30)
+  const step = weightStep > 0 ? weightStep : 0.5
+  return repMaxTable(est, DEFAULT_PLATE_INVENTORY)
+    .slice(0, REP_MAX_REPS)
+    .map((row) => ({ reps: row.reps ?? 1, kg: Math.floor(row.rawKg / step + 1e-9) * step }))
 }
 
 type Range = '3M' | '1Y' | 'all'
@@ -155,13 +173,13 @@ export function setRuns(sets: SetEntry[], prSetIndex: number | null): SetRun[] {
  *     change since the range's first Session, and what it means;
  *   - one chip row: Est. strength / Top set, then 3M 1Y All as text tabs;
  *   - one ink line, the standing record a gold ring, deloads a grey band, no point labels;
- *   - Records, then the Sessions as set rows with the PR tag on the Set that earned it.
+ *   - Records, the Rep maxes (DX-12), then the Sessions as set rows with the PR tag on the Set
+ *     that earned it.
  */
-export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap, bodyLog }: LiftViewProps): JSX.Element {
+export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap, bodyLog, onHowTo }: LiftViewProps): JSX.Element {
   const [range, setRange] = useState<Range>('3M')
   const [show, setShow] = useState<Show>('est')
   const [showAll, setShowAll] = useState(false)
-  const [calcOpen, setCalcOpen] = useState(false)
 
   const live = sessions.filter((s) => s.deletedAt === undefined && s.finishedAt !== null)
   const history = buildLiftHistories(
@@ -172,9 +190,16 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap,
   const status = liftStatus(exercise, plan, sessions, now)
   const real = (history?.points.filter((p) => !p.deload && p.top !== null) ?? []) as Real[]
 
+  const howTo = onHowTo ? (
+    <button type="button" className="btn-quiet lift-howto" onClick={onHowTo}>
+      How to do it ›
+    </button>
+  ) : null
+
   if (!history || !status || real.length === 0) {
     return (
       <div className="lift-view">
+        {howTo}
         <p className="lift-empty">No sessions of this lift yet. Log a set and its history appears here.</p>
       </div>
     )
@@ -239,9 +264,12 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap,
   const log = sessionLog(history)
   const notes = new Map(live.flatMap((s) => (s.note ? [[s.id, s.note] as const] : [])))
   const shownLog = showAll ? log : log.slice(0, LOG_PREVIEW)
+  const latestTop = real[real.length - 1]
+  const maxes = measure === 'est' ? repMaxes(latestTop.top.lever, latestTop.top.reps, exercise.weightStep) : []
 
   return (
     <div className="lift-view">
+      {howTo}
       <section className="lift-status" aria-label="Status">
         <StatusMark as="p" className="lift-status-label" tone={tone} glyph={status.glyph}>
           {status.label}
@@ -269,19 +297,6 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap,
         </p>
         {relative ? <p className="lift-hero-definition lift-hero-relative">{relative.text}</p> : null}
         <p className="lift-hero-definition">{definition.text}</p>
-        {measure === 'est' ? (
-          <button type="button" className="btn-quiet lift-calc-open" onClick={() => setCalcOpen(true)}>
-            What can I lift ›
-          </button>
-        ) : null}
-        {calcOpen && measure === 'est' ? (
-          <LiftCalculator
-            name={exercise.name}
-            weightKg={real[real.length - 1].top.lever}
-            reps={real[real.length - 1].top.reps}
-            onClose={() => setCalcOpen(false)}
-          />
-        ) : null}
       </section>
 
       <section className="lift-chart-section" aria-label="Chart">
@@ -355,6 +370,23 @@ export function LiftView({ exercise, plan, sessions, now, onOpenSession, onSwap,
               ))}
             </tbody>
           </table>
+        </section>
+      ) : null}
+
+      {maxes.length > 0 ? (
+        <section className="lift-maxes" aria-labelledby={`lift-maxes-${exercise.id}`}>
+          <h3 id={`lift-maxes-${exercise.id}`} className="lift-section-title">
+            Rep maxes
+          </h3>
+          <p className="lift-maxes-caption">{`From ${L(latestTop.top.lever)} × ${latestTop.top.reps} on ${dayMonth(latestTop.startedAt)}`}</p>
+          <dl className="lift-maxes-list">
+            {maxes.map((row) => (
+              <div key={row.reps} className="lift-maxes-row">
+                <dt>{`${row.reps} ${row.reps === 1 ? 'rep' : 'reps'}`}</dt>
+                <dd>{`${numberText(row.kg)} kg`}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
       ) : null}
 

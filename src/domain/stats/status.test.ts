@@ -23,13 +23,13 @@ const of = (id: string) => all.get(id)!
 const EXPECTED: [string, string, string][] = [
   ['narrow-grip-pull-down', 'Lowered', 'Stay at 46.25 kg until all 3 sets reach 12.'],
   ['push-ups', 'Ready', 'Add load or a harder variation.'],
-  ['db-bench-press', 'Stalled', 'Try a variation for 4 weeks.'],
+  ['db-bench-press', 'Flat', 'Try a variation for 4 weeks.'],
   ['seated-biceps-curls', 'Ready', 'Next time: 15 kg.'],
   ['back-squat', 'Moving', 'Next time: 62.5 kg × 9.'],
 ]
 
 describe('v6 §6.4 the expected statuses on stats-45', () => {
-  it('the pull-down is Lowered, Push-ups and biceps curls Ready, DB bench Stalled, Back squat Moving, each with its action', () => {
+  it('the pull-down is Lowered, Push-ups and biceps curls Ready, DB bench Flat, Back squat Moving, each with its action', () => {
     expect(EXPECTED.map(([id]) => [id, of(id).label, of(id).action])).toEqual(EXPECTED)
   })
 
@@ -68,7 +68,7 @@ describe('v6 §6.1 the rules behind them', () => {
   it('a stall with no deload inside offers one: deload once, then back', () => {
     const noDeload = sessions.filter((x) => !x.deload)
     const s = liftStatuses(program, noDeload, resolve, NOW).get('db-bench-press')!
-    expect(s.label).toBe('Stalled')
+    expect(s.label).toBe('Flat')
     expect(s.action).toBe('Deload once: 12 kg × 10, then back to 13 kg.')
     expect(s.next).toEqual({ lever: 12, reps: 10 })
   })
@@ -180,7 +180,7 @@ describe('V6-01 the advice that reaches the bar: one value for Train, Program an
       entries: [{ exerciseId: 'x', setIndex: 1, weightKg: 60, reps: 8, loggedAt: 0 }],
     }))
     const s = liftStatus(ex, plan, list, NOW)!
-    expect(s.label).toBe('Stalled')
+    expect(s.label).toBe('Flat')
     expect(liftAdvice(s, 60)).toEqual({ kind: 'down', lever: 55, text: 'Deload once: 55 kg', use: 'Use 55 kg' })
   })
 

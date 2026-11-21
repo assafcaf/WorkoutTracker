@@ -1,5 +1,5 @@
-/* The Progress home and All lifts (study §1.7, Ledger & Instrument): a headline, the weeks strip,
- * the lifts as ledger rows on paper with hairlines, then Muscles and Body as quiet rows. No cards.
+/* The Progress home and All lifts (study §1.7, DX-02, DX-12): a headline, Muscles and Body as two
+ * quiet rows, then the lifts as ledger rows on paper with hairlines. No cards, no calendar.
  * Composes the global `.btn-*` roles; every colour, size and radius is a token. */
 
 .progress-home {
@@ -9,12 +9,6 @@
   padding: var(--space-2) var(--space-1) var(--space-6);
   background: var(--color-bg);
   color: var(--color-text);
-}
-
-.progress-date {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  line-height: 1.25rem;
 }
 
 .progress-sentence {
@@ -32,16 +26,6 @@
   gap: var(--space-2);
 }
 
-/* A 12 px upper-case label (study §3 Type). */
-.progress-eyebrow,
-.progress-ledger-head {
-  margin: 0;
-  color: var(--color-text);
-  font-size: var(--text-sm);
-  line-height: 1.25rem;
-  font-weight: var(--weight-semibold);
-}
-
 .progress-title {
   margin: 0;
   font-size: var(--text-xl);
@@ -57,102 +41,29 @@
   line-height: 1.5rem;
 }
 
-/* ---- the weeks strip: one column per week, a mark per Session in its Workout's colour ---- */
-
-.progress-weeks {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3) var(--space-4);
-}
-
-.progress-weeks-strip {
-  display: flex;
-  gap: 10px;
-}
-
-.progress-week {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.progress-week-mark {
-  display: block;
-  box-sizing: border-box;
-  width: 22px;
-  height: 8px;
-  border-radius: var(--radius-pill);
-  background: var(--heat-0);
-}
-
-.progress-week-mark[data-slot='a'] {
-  background: var(--workout-a);
-}
-
-.progress-week-mark[data-slot='b'] {
-  background: var(--workout-b);
-}
-
-.progress-week-mark[data-slot='other'] {
-  background: var(--color-muted);
-}
-
-/* This week's Sessions still to come: hollow, in the next Workout's colour. */
-.progress-week-mark[data-slot='next-a'],
-.progress-week-mark[data-slot='next-b'],
-.progress-week-mark[data-slot='next-other'] {
-  border: 1.5px solid var(--color-muted);
-  background: transparent;
-}
-
-.progress-week-mark[data-slot='next-a'] {
-  border-color: var(--workout-a);
-}
-
-.progress-week-mark[data-slot='next-b'] {
-  border-color: var(--workout-b);
-}
-
-.progress-week-day {
-  margin-top: var(--space-1);
+/* The meta line under the sentence (DX-02): grey 14 px, sentence case. */
+.progress-meta {
+  margin: 0;
   color: var(--color-muted);
-  font-size: var(--text-xs);
-  line-height: 1rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.progress-weeks-count {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  margin: 0 0 0 auto;
-  text-align: right;
-}
-
-.progress-weeks-total {
-  font-size: var(--text-lg);
-  line-height: 1.5rem;
-  font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
-}
-
-.progress-weeks-span {
-  color: var(--color-secondary);
   font-size: var(--text-sm);
   line-height: 1.25rem;
 }
 
 /* ---- the ledger ---- */
 
-.progress-ledger-head {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
+/* A plain section header (DX-20): 14 px semibold ink, sentence case. */
+.progress-subhead {
+  margin: var(--space-4) 0 0;
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  font-weight: var(--weight-semibold);
+}
+
+.progress-subhead:first-child {
+  margin-top: 0;
 }
 
 .progress-rows {
@@ -262,7 +173,7 @@
   font-size: var(--text-md);
 }
 
-/* ---- Muscles and Body: quiet rows after the ledger ---- */
+/* ---- Muscles and Body: a two-row group under the headline (DX-12) ---- */
 
 .progress-links {
   display: flex;
@@ -277,25 +188,39 @@
   border-top: 1px solid var(--color-hairline);
 }
 
+.progress-link-title {
+  flex: none;
+}
+
+/* The row's verdict, right of the name, wrapping under it when long. */
+.progress-link-sub {
+  flex: 1 1 8rem;
+  min-width: 0;
+  text-align: right;
+}
+
 .progress-link > svg {
   flex: none;
   color: var(--color-muted);
 }
 
-/* ---- the sparse states ---- */
+/* ---- the empty state (DX-21): one line, one outline action ---- */
 
-.progress-expect {
+.progress-empty {
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.progress-empty-line {
   margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--color-muted);
+  color: var(--color-secondary);
   font-size: var(--text-md);
   line-height: 1.5rem;
 }
 
 .progress-start {
   min-height: var(--tap-min);
-  border: 0;
+  padding: 0 var(--space-4);
 }
 
 /* ---- All lifts: the same ledger on a page of its own ---- */

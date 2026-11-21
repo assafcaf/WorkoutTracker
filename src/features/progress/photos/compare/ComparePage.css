@@ -33,7 +33,7 @@
 
 .compare-card-label {
   color: var(--color-muted);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
 }
 
 .compare-delete {

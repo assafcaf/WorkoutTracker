@@ -56,8 +56,6 @@ import { useServiceData } from '../useServiceData'
 import { useAppBadge } from '../../ui/useAppBadge'
 import { useWakeLock } from '../../ui/useWakeLock'
 import { useRestPush } from './useRestPush'
-import { dayOf } from '../../domain/bodyLog'
-import { SessionPhotos } from '../progress/photos/session/SessionPhotos'
 
 export type WorkoutFeatureProps = {
   /** Sends the app to another tab: the Program tab from "Choose a program", Exercises from a summary. */
@@ -1024,7 +1022,6 @@ export function WorkoutFeature({
   ): JSX.Element {
     return (
       <LiveHeader
-        onDiscard={handleDiscard}
         workoutName={workout.name}
         heading={heading}
         startedAt={liveSession.startedAt}
@@ -1415,7 +1412,7 @@ export function WorkoutFeature({
           }
         : null
     const discardedSnackbar =
-      discarded === null ? null : <Snackbar message="Workout discarded" actionLabel="Undo" onAction={handleUndoDiscard} />
+      discarded === null ? null : <Snackbar message="Session discarded" actionLabel="Undo" onAction={handleUndoDiscard} />
 
     // v7: the Home tab opens on the landing dashboard; its Today panel pushes the workout page.
     content =
@@ -1532,7 +1529,6 @@ export function WorkoutFeature({
               createdAt: stored?.createdAt ?? Date.now(),
             })
           }}
-          photos={<SessionPhotos day={dayOf(summarySession.startedAt)} variant="finish" />}
           onClose={() => setSummarySession(null)}
           onBrowse={(muscles) => {
             setSummarySession(null)

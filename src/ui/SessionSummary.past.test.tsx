@@ -99,9 +99,37 @@ test('V6 past summary names the muscles "Muscles worked", in whole Sets', () => 
   expect(dialog.querySelectorAll('[data-muscle]')).toHaveLength(0)
 })
 
-test('V6 past summary keeps Delete workout, which calls onDelete', async () => {
+test('DX-14 Session detail has Edit as text in its header and a Back, and no Done bar or Delete link', async () => {
   const onDelete = vi.fn()
   const dialog = renderPast(onDelete)
-  await userEvent.click(within(dialog).getByRole('button', { name: 'Delete workout' }))
-  expect(onDelete).toHaveBeenCalledTimes(1)
+  expect(within(dialog).queryByRole('button', { name: /Delete/ })).toBeNull()
+  expect(within(dialog).queryByRole('button', { name: 'Done' })).toBeNull()
+  expect(dialog.querySelector('.session-summary-dock')).toBeNull()
+  const edit = within(dialog).getByRole('button', { name: 'Edit session' })
+  expect(edit.closest('.session-summary-bar')).not.toBeNull()
+  expect(within(dialog).getByRole('button', { name: 'Back' }).closest('.session-summary-bar')).not.toBeNull()
+})
+
+test('DX-14 Session detail embedded in a page has no panel and no Back of its own; Edit stays', async () => {
+  const onEdit = vi.fn()
+  render(
+    <SessionSummary
+      session={mon12}
+      resolve={(id) => catalog.get(id)}
+      library={library}
+      workoutName={workout.name}
+      earlierSessions={sessions.filter((s) => s.startedAt < mon12.startedAt)}
+      planFor={(id) => workout.exercises.find((plan) => plan.exerciseId === id)}
+      workout={workout}
+      program={program}
+      onClose={vi.fn()}
+      onEdit={onEdit}
+      embedded
+    />,
+  )
+  expect(screen.queryByRole('dialog')).toBeNull()
+  const region = screen.getByRole('region', { name: 'Session summary' })
+  expect(within(region).queryByRole('button', { name: 'Back' })).toBeNull()
+  await userEvent.click(within(region).getByRole('button', { name: 'Edit session' }))
+  expect(onEdit).toHaveBeenCalledTimes(1)
 })

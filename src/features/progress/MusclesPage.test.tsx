@@ -101,22 +101,42 @@ test('V2-06 the 4 weeks matrix follows the stored week start', async () => {
   expect(screen.getByText('weeks of 20 Sep – 11 Oct')).toBeVisible()
 })
 
-test('O22 a row prints whole numbers against its plan, half up', () => {
+test('DX-03 a row prints whole numbers, and no plan when the plan equals what was done', () => {
   show()
   const lats = screen.getByRole('button', { name: /^Lats/ })
-  expect(lats).toHaveTextContent('19')
-  expect(lats).toHaveTextContent('plan 19')
-  // V6-19: Calves meets its own plan of 8, so it reads "as planned" rather than its plan number.
-  expect(screen.getByRole('button', { name: /^Calves/ })).toHaveTextContent('8 sets/week · as planned')
+  expect(lats).toHaveTextContent('Lats19 sets/week')
+  expect(lats).not.toHaveTextContent('plan')
+  // DX-03: one range, one verdict -- Calves meeting its own plan of 8 is still below 10–20.
+  expect(screen.getByRole('button', { name: /^Calves/ })).toHaveTextContent('Calves8 sets/week · below 10–20')
+  expect(document.body.textContent).not.toMatch(/as planned/)
 })
 
-test('O22 each row draws a done bar, a plan tick and the muted 10-20 band', () => {
+test('O22 each row draws a done bar and the muted 10-20 band; the plan tick only where plan differs', () => {
   show()
   const lats = screen.getByRole('button', { name: /^Lats/ })
   expect(lats.querySelector('[data-part="done"]')).not.toBeNull()
-  expect(lats.querySelector('[data-part="plan"]')).not.toBeNull()
+  expect(lats.querySelector('[data-part="plan"]')).toBeNull()
   expect(lats.querySelector('[data-part="band"]')).not.toBeNull()
   expect(lats.querySelector('[data-part="still"]')).toBeNull()
+})
+
+test('DX-03 a muscle done short of its plan shows the plan tick and "plan N"', () => {
+  // Drop the latest Session of the 2-week window: some muscles fall short of the plan.
+  const window = existing.filter((x) => x.startedAt < new Date(2026, 9, 12).getTime())
+  const latest = window.reduce((a, b) => (b.startedAt > a.startedAt ? b : a))
+  render(
+    <MusclesView
+      data={{ sessions: window.filter((x) => x !== latest), program, resolve: (id) => catalog.get(id), library }}
+      now={NOW}
+      onBack={vi.fn()}
+    />,
+  )
+  const rows = screen.getAllByRole('button').filter((b) => b.hasAttribute('data-muscle'))
+  const short = rows.filter((b) => /plan \d+/.test(b.textContent ?? ''))
+  expect(short.length).toBeGreaterThan(0)
+  for (const row of rows) {
+    expect(row.querySelector('[data-part="plan"]') !== null).toBe(short.includes(row))
+  }
 })
 
 test('O22 a row opens its contributors with the arithmetic', async () => {
@@ -163,17 +183,16 @@ test('O22 the body map is an index: a region opens its muscle row', async () => 
 // V1-26: a row outside the weekly set range says so in words, not by position alone.
 test('V1-26 rows below or above the weekly range say so in words', () => {
   show()
-  // V6-19: a count is per week, and a low the plan itself sets (Abs 3 of 3, Calves 8 of 8) reads
-  // "as planned", not "below 10"; above the range is still said.
-  expect(screen.getByRole('button', { name: /^Abs/ })).toHaveTextContent('3 sets/week · as planned')
-  expect(screen.getByRole('button', { name: /^Calves/ })).toHaveTextContent('8 sets/week · as planned')
-  expect(screen.getByRole('button', { name: /^Shoulders/ })).toHaveTextContent('21 sets/week · above 20')
+  // DX-03: "Calves · 8 sets/week · below 10–20", whatever the plan says.
+  expect(screen.getByRole('button', { name: /^Abs/ })).toHaveTextContent('3 sets/week · below 10–20')
+  expect(screen.getByRole('button', { name: /^Calves/ })).toHaveTextContent('8 sets/week · below 10–20')
+  expect(screen.getByRole('button', { name: /^Shoulders/ })).toHaveTextContent('21 sets/week · above 10–20')
   expect(screen.getByRole('button', { name: /^Lats/ })).not.toHaveTextContent(/below|above/)
 })
 
-test('V6-19 an average reads sets/week with its plan; This week reads sets so far', async () => {
+test('V6-19 an average reads sets/week; This week reads sets so far', async () => {
   show()
-  expect(screen.getByRole('button', { name: /^Lats/ })).toHaveTextContent('19 sets/week · plan 19')
+  expect(screen.getByRole('button', { name: /^Lats/ })).toHaveTextContent('19 sets/week')
   expect(screen.getByRole('button', { name: /^Abs/ })).not.toHaveTextContent('plan 3')
   await userEvent.setup().click(screen.getByRole('radio', { name: 'This week' }))
   expect(screen.getByRole('button', { name: /^Lats/ })).not.toHaveTextContent('sets/week')
@@ -185,5 +204,7 @@ test('V1-26 the headline says "above" for a muscle over the range, not "at the t
   const sentence = screen.getByText(/^On plan for 2 weeks/)
   expect(sentence).toHaveTextContent('Shoulders 21 is above the typical 10–20.')
   expect(sentence).not.toHaveTextContent(/Shoulders 21[^.]*at the top/)
-  expect(sentence).toHaveTextContent('Lats 19 sits at the top of the typical 10–20.')
+  // DX-03: the rows below the range are named in the same sentence; the near-top clause is gone.
+  expect(sentence).toHaveTextContent('Calves 8 and Abs 3 are below it.')
+  expect(sentence).not.toHaveTextContent(/at the top/)
 })

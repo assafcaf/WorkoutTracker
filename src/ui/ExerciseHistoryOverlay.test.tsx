@@ -172,14 +172,18 @@ test('v5 the chart is named by where the lift went, and marks new bests', async 
   expect(within(dialog).getByRole('img', { name: 'Top-set weight, 60 on 28 Sep to 80 on 6 Oct' })).toBeVisible()
 })
 
-test('v5 tapping a point reads its date, value and best set', async () => {
+test('DX-18 the readout reads the latest point, and scrubbing moves it to another', async () => {
   const dialog = open([older, newer])
-
-  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Mon 28 Sep · 76 kg est. strength · 60 kg × 8, 8' }))
-
-  const readout = within(dialog).getByRole('region', { name: 'Chart readout' })
-  expect(readout.textContent).toContain('Mon 28 Sep')
-  expect(readout.textContent).toContain('76 kg est. strength · 60 kg × 8, 8')
+  const readout = () => within(dialog).getByRole('region', { name: 'Chart readout' })
+  expect(readout().textContent).toContain('Tue 6 Oct')
+  // No per-point tap targets: one scrub area over the plot.
+  expect(within(dialog).queryByRole('button', { name: /^Mon 28 Sep/ })).toBeNull()
+  const scrub = within(dialog).getByRole('slider', { name: 'Sessions on the chart' })
+  scrub.focus()
+  await userEvent.setup().keyboard('{ArrowLeft}')
+  expect(scrub).toHaveAttribute('aria-valuetext', 'Mon 28 Sep · 76 kg est. strength · 60 kg × 8, 8')
+  expect(readout().textContent).toContain('Mon 28 Sep')
+  expect(readout().textContent).toContain('76 kg est. strength · 60 kg × 8, 8')
 })
 
 test('v5 one Session shows its value but no chart yet', () => {

@@ -65,7 +65,7 @@ describe('E18-T7 R-C number and word formats', () => {
 
   it('R-C verdict words and glyphs exactly', () => {
     expect(verdictLabel('moving')).toBe('▲ Moving')
-    expect(verdictLabel('stalled')).toBe('■ Stalled')
+    expect(verdictLabel('stalled')).toBe('■ Flat')
     expect(verdictLabel('slipping')).toBe('▼ Slipping')
     expect(verdictLabel('too new')).toBe('○ Too new')
   })
@@ -122,7 +122,7 @@ describe('E18-T7 O11 the home on the fixture at Thu 15 Oct 18:05', () => {
     // v6: the counts are each lift's one status (status.ts).
     expect(home.stage).toBe('full')
     expect(home.sentence).toBe('10 of 14 lifts moving.')
-    expect(home.counts).toBe('= 1 stalled · ↓ 1 lowered · ↑ 2 ready · ↑ 10 moving')
+    expect(home.counts).toBe('= 1 flat · ↓ 1 lowered · ↑ 2 ready · ↑ 10 moving')
     expect(home.climbed).toBe('12 of 14 lifts stepped up since Fri 18 Sep.')
     expect(home.adherence).toBe('2 of 3 this week')
   })
@@ -155,7 +155,7 @@ describe('E18-T7 O11 the home on the fixture at Thu 15 Oct 18:05', () => {
 
   it('O11 a stalled card gives its weeks whole, its sessions and its date', () => {
     const bench = home.cards[0]
-    expect(bench.label).toBe('Stalled')
+    expect(bench.label).toBe('Flat')
     expect(bench.evidence).toBe('13 kg × 9 · no new best since Fri 7 Aug')
     expect(bench.suggestion).toBe('Try a variation for 4 weeks.')
     expect(bench.swap).toBe(true)

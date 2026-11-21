@@ -112,7 +112,7 @@
   text-align: center;
 }
 
-/* The "Similar exercises" section heading (E17-T5); v7: the 12 px upper-case section label. */
+/* The "Similar exercises" section heading (E17-T5); DX-20: 14 px semibold ink, sentence case. */
 .exercise-detail-similar-heading {
   margin: var(--space-2) 0 0;
   color: var(--color-text);

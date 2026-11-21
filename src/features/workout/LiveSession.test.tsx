@@ -57,14 +57,14 @@ async function resumeWorkoutAWithSets(
     })
   }
   const user = renderFeature(services)
-  await screen.findByRole('button', { name: 'All exercises' }, SETTLE)
+  await screen.findByRole('radio', { name: 'All' }, SETTLE)
   return { user }
 }
 
 /** As `resumeWorkoutAWithSets`, then one tap on All: every Exercise's cells. */
 async function startWorkoutAWithSets(count: number) {
   const resumed = await resumeWorkoutAWithSets(count)
-  await resumed.user.click(await screen.findByRole('button', { name: 'All exercises' }, SETTLE))
+  await resumed.user.click(await screen.findByRole('radio', { name: 'All' }, SETTLE))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   return resumed
 }
@@ -107,21 +107,21 @@ function counts(): string | undefined {
 test('Live All shows the Sets count in the header and the Now | All switch', async () => {
   await startWorkoutAWithSets(2)
 
-  expect(screen.getByRole('button', { name: 'Now' })).toBeVisible()
-  expect(counts()).toBe('2/23 sets')
+  expect(screen.getByRole('radio', { name: 'Set' })).toBeVisible()
+  expect(counts()).toBe('2 of 23 sets')
 })
 
 test('Live Now opens the Exercise the session is on at its next Set, with the rest of the Workout under it', async () => {
   const { user } = await startWorkoutAWithSets(2)
 
-  await user.click(screen.getByRole('button', { name: 'Now' }))
+  await user.click(screen.getByRole('radio', { name: 'Set' }))
 
   expect(await screen.findByText('Set 3 of 4', undefined, SETTLE)).toBeVisible()
-  expect(screen.getByRole('button', { name: 'All exercises' })).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'All' })).toBeVisible()
   // V2-03: Now shows this Exercise alone; the rest of the Workout is All's, one tap away.
   expect(screen.queryByRole('list', { name: 'Rest of the workout' })).toBeNull()
 
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
 })
 
@@ -130,7 +130,7 @@ test('Live All logs the pre-filled next Set in one tap, a whole-Session put', as
 
   await user.click(screen.getByRole('button', { name: /^Log set 3 · 60 / }))
 
-  await waitFor(() => expect(counts()).toBe('3/23 sets'), SETTLE)
+  await waitFor(() => expect(counts()).toBe('3 of 23 sets'), SETTLE)
   const stored = await db.sessions.toArray()
   expect(stored[0].entries.filter((entry) => entry.exerciseId === 'back-squat')).toHaveLength(3)
 })
@@ -153,7 +153,7 @@ test('V1-01 given a Workout on the Dashboard, when Start is tapped, then the Now
   await startFromDashboard(user, 'Workout A')
 
   expect(await screen.findByText('Set 1 of 4', undefined, SETTLE)).toBeVisible()
-  expect(screen.getByRole('button', { name: 'All exercises' })).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'All' })).toBeVisible()
   expect(screen.getByRole('button', { name: /^Log set / })).toBeVisible()
 })
 
@@ -161,9 +161,9 @@ test('V1-01 given a Session with Sets logged, when the app reopens, then it land
   const { user } = await resumeWorkoutAWithSets(2)
 
   expect(await screen.findByText('Set 3 of 4', undefined, SETTLE)).toBeVisible()
-  expect(screen.getByRole('button', { name: 'All exercises' })).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'All' })).toBeVisible()
 
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
 })
 
@@ -178,7 +178,7 @@ test('V1-01 given a reload 10 s into a 3:00 Rest, when the Session reopens, then
 test('V1-01 given every planned Set logged, when the app reopens, then it lands on All with nothing left to open', async () => {
   await resumeWorkoutADone()
 
-  expect(await screen.findByRole('button', { name: 'Now' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('radio', { name: 'Set' }, SETTLE)).toBeVisible()
 })
 
 // --- V1-06: Finish asks first while planned Sets remain ---------------------------------------
@@ -189,8 +189,8 @@ test('V1-06 given 2 of 23 Sets logged, when Finish is tapped, then a Sheet says 
 
   await user.click(screen.getByRole('button', { name: 'Finish' }))
 
-  const sheet = await screen.findByRole('dialog', { name: 'Finish workout?' }, SETTLE)
-  expect(within(sheet).getByText('21 sets not logged')).toBeVisible()
+  const sheet = await screen.findByRole('dialog', { name: 'Finish Session?' }, SETTLE)
+  expect(within(sheet).getByRole('heading', { name: 'Finish with 21 sets not logged?' })).toBeVisible()
   await user.click(within(sheet).getByRole('button', { name: 'Keep going' }))
 
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
@@ -204,8 +204,8 @@ test('V1-06 given Sets left, when Finish workout is confirmed in the Sheet, then
   await screen.findByText('Set 3 of 4', undefined, SETTLE)
 
   await user.click(screen.getByRole('button', { name: 'Finish' }))
-  const sheet = await screen.findByRole('dialog', { name: 'Finish workout?' }, SETTLE)
-  await user.click(within(sheet).getByRole('button', { name: 'Finish workout' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Finish Session?' }, SETTLE)
+  await user.click(within(sheet).getByRole('button', { name: 'Finish Session' }))
 
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
   const stored = await db.sessions.toArray()
@@ -218,7 +218,7 @@ test('V1-06 given every planned Set logged, when Finish is tapped, then the summ
   await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
 
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
-  expect(screen.queryByRole('dialog', { name: 'Finish workout?' })).toBeNull()
+  expect(screen.queryByRole('dialog', { name: 'Finish Session?' })).toBeNull()
 })
 
 // --- V1-10: the slim live header ---------------------------------------------------------------
@@ -229,7 +229,7 @@ test('V1-10 given a live Session, when its header shows, then the title row hold
 
   const header = document.querySelector('header.live-header') as HTMLElement
   const row = header.querySelector('.live-header-row') as HTMLElement
-  expect(within(row).getByText('2/23 sets')).toBeVisible()
+  expect(within(row).getByText('2 of 23 sets')).toBeVisible()
   expect(header.textContent).not.toMatch(/Volume|at this point/)
   expect(header.querySelector('.bullet')).toBeNull()
 })

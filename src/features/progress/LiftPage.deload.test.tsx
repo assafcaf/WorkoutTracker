@@ -47,7 +47,7 @@ const before = [1, 2, 3].map((day) => ({ ...squat(55, 1, day), entries: squat(55
 it('O22 a stalled loaded lift reads the deload suggestion under its stall bracket', () => {
   // v6 (V6-04): with no deload inside the stall, DB bench press is offered one deload.
   view('db-bench-press', (sessionsJson as unknown as Session[]).filter((s) => !s.deload))
-  expect(screen.getByText('= Stalled')).toBeVisible()
+  expect(screen.getByText('= Flat')).toBeVisible()
   expect(screen.getByText('Deload once: 12 kg × 10, then back to 13 kg.')).toBeVisible()
 })
 
