@@ -144,8 +144,8 @@
 }
 
 /* An equipment type reads with a capital ("Bands"); the data stays as stored. DX-20: no
- * uppercase anywhere, so the first letter is capitalised, not the label upper-cased. */
-.settings-action .switch-label {
+ * uppercase anywhere -- only its first letter is capitalised, so "Track effort" stays as written. */
+.settings-action .switch-label::first-letter {
   text-transform: capitalize;
 }
 

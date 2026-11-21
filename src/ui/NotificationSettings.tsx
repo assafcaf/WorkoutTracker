@@ -94,7 +94,8 @@ export function NotificationSettings(props: NotificationSettingsProps): JSX.Elem
   return (
     // V2-09: Notifications and Reminders are one group, as one card: turn push on, then when.
     <section className="settings-group" aria-label="Reminders">
-      <h2 className="settings-legend">Reminders</h2>
+      {/* DX-23: while unavailable, the one Reminders row names the group itself. */}
+      {reason ? null : <h2 className="settings-legend">Reminders</h2>}
       <div className="settings-card">
         {reason ? (
           <button
