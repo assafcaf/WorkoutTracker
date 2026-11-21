@@ -2038,9 +2038,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {restPanel}
             <section className="rest-next" aria-label="Next set">
               <div className="rest-next-main">
-                <p className="rest-next-caption">
-                  Next · {onWarmup ? `Warm-up ${warmupName}` : `Set ${position}`}
-                </p>
+                {/* DX-20: no "Next · Set 2" caption; the outlined cell and the values say it. */}
                 <p className="rest-next-set">
                   <SetFigure
                     set={{ weightKg: open.weightKg, loadKg: open.loadKg, reps: open.reps }}

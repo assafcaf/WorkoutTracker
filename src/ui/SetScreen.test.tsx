@@ -1863,7 +1863,9 @@ test('O9 while resting before a planned Set the screen shows Next: set 2 · 60 k
   // Log set beside Skip rest logs it with one tap (V1-03).
   const next = screen.getByRole('button', { name: NEXT_LINE })
   expect(next).toHaveAttribute('aria-expanded', 'false')
-  expect(getReadyText()).toMatch(/^Next · Set 2 60 kg×\d+$/)
+  expect(getReadyText()).toMatch(/^60 kg×\d+$/)
+  // DX-20: no "Next · Set 2" caption on the card.
+  expect(screen.getByRole('region', { name: 'Next set' })).not.toHaveTextContent(/Next ·/)
   expect(screen.queryByRole('button', { name: /^Weight, / })).toBeNull()
   expect(logButton()).toHaveClass('log-set')
   expect(cellReading(currentCell())).toBe(`2 60×${readoutValue(repsReadout())}`)
@@ -1880,7 +1882,7 @@ test('O9 a Bodyweight Exercise reads Next: set 2 · BW × 10–15', () => {
     restFrom: { entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 },
   })
 
-  expect(getReadyText()).toMatch(/^Next · Set 2 BW×\d+$/)
+  expect(getReadyText()).toMatch(/^BW×\d+$/)
   expect(logButton()).toHaveClass('log-set')
   expect(cellReading(currentCell())).toMatch(/^2 BW×\d+$/)
 })
@@ -1927,7 +1929,7 @@ test('S4 the folded Next row adds last time’s Set at that position: · last 60
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(getReadyText()).toMatch(/^Next · Set 2 60 kg×\d+ Last time 60 × 8/)
+  expect(getReadyText()).toMatch(/^60 kg×\d+ Last time 60 × 8/)
   // Folded, the dated Last time line and the PR target line go with the steppers.
   expect(screen.queryByText(/^Last time .* · /)).toBeNull()
 })
@@ -5291,4 +5293,25 @@ test('V6-17 a lift with no history reads First time · start light', () => {
   renderSetScreen()
   expect(textOf(document.querySelector('.set-projection'))).toBe('First time · start light')
   expect(screen.queryByText(/Last time/)).toBeNull()
+})
+
+/** The declarations of `selector` inside the tall-screen `@media (min-height: 780px)` block. */
+function tallScreenDecls(selector: string): Map<string, string> {
+  const found = new Map<string, string>()
+  postcss.parse(restCss()).walkAtRules('media', (media) => {
+    if (!media.params.includes('min-height: 780px')) return
+    media.walkRules((rule: Rule) => {
+      if (rule.selectors.includes(selector)) rule.walkDecls((decl: Declaration) => void found.set(decl.prop, decl.value))
+    })
+  })
+  return found
+}
+
+test('DX-24 on a tall screen the instrument takes the height down to the Log bar, shared evenly', () => {
+  // No dead band between "Last time" and Log set: the instrument grows, the Dials spread evenly,
+  // and the steppers become taller pads; the spacer under it takes nothing.
+  expect(tallScreenDecls('.set-instrument').get('flex')).toBe('1 1 auto')
+  expect(tallScreenDecls('.set-instrument .set-dials').get('justify-content')).toBe('space-evenly')
+  expect(tallScreenDecls('.set-instrument .dial--scrub .dial-step').get('height')).toBe('120px')
+  expect(tallScreenDecls('.set-instrument ~ .set-spacer--after').get('flex')).toBe('0 0 0')
 })
