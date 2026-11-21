@@ -30,21 +30,29 @@ async function mount(log: BodyLog = []) {
       <BodyPage page={{ kind: 'body' }} push={() => undefined} onBack={() => undefined} now={() => NOW} />
     </ServicesProvider>,
   )
-  await screen.findByLabelText('Bodyweight (kg)', undefined, SETTLE)
+  await screen.findByRole('button', { name: 'Log bodyweight' }, SETTLE)
   return user
 }
 
-const save = () => screen.getByRole('button', { name: 'Save' })
+/** DX-10: the one filled action opens the entry sheet. */
+async function openSheet(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Log bodyweight' }))
+  return screen.getByRole('dialog', { name: 'Log bodyweight' })
+}
+
+const save = () => within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' })
 const stored = () => getBodyLog()
 
 describe('E22-T7 O17 logging a bodyweight', () => {
   test('O17 Save is disabled with no value', async () => {
-    await mount()
+    const user = await mount()
+    await openSheet(user)
     expect(save()).toBeDisabled()
   })
 
   test('O17 a bodyweight for today is stored, listed and charted', async () => {
     const user = await mount()
+    await openSheet(user)
     expect(screen.getByLabelText('Date')).toHaveValue('2026-10-15')
     await user.type(screen.getByLabelText('Bodyweight (kg)'), '80')
     await user.click(save())
@@ -58,9 +66,12 @@ describe('E22-T7 O17 logging a bodyweight', () => {
   test('O17 saving again for the same date replaces it; another date adds one', async () => {
     const user = await mount([{ day: '2026-10-15', weightKg: 80 }])
     await screen.findByRole('list', { name: 'Entries' }, SETTLE)
+    await openSheet(user)
     await user.type(screen.getByLabelText('Bodyweight (kg)'), '79.5')
     await user.click(save())
     await waitFor(async () => expect(await stored()).toEqual([{ day: '2026-10-15', weightKg: 79.5 }]), SETTLE)
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await openSheet(user)
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-10-10' } })
     await user.type(screen.getByLabelText('Bodyweight (kg)'), '81')
     await user.click(save())
@@ -75,12 +86,14 @@ describe('E22-T7 O17 logging a bodyweight', () => {
   })
 
   test('O17 the date field allows no day after today', async () => {
-    await mount()
+    const user = await mount()
+    await openSheet(user)
     expect(screen.getByLabelText('Date')).toHaveAttribute('max', '2026-10-15')
   })
 
   test('O17 a value out of range shows an inline error and stores nothing', async () => {
     const user = await mount()
+    await openSheet(user)
     await user.type(screen.getByLabelText('Bodyweight (kg)'), '500')
     await user.click(save())
     expect(await screen.findByRole('alert')).toHaveTextContent(/20.*400/)
@@ -91,7 +104,8 @@ describe('E22-T7 O17 logging a bodyweight', () => {
 describe('E22-T7 O18 measurements and the chart metric', () => {
   test('O18 a waist alone is stored with only what was entered', async () => {
     const user = await mount()
-    await user.click(screen.getByRole('button', { name: 'Add measurements' }))
+    await openSheet(user)
+    await user.click(screen.getByRole('button', { name: 'Add waist' }))
     await user.type(screen.getByLabelText('Waist (cm)'), '82')
     await user.click(save())
     await waitFor(async () => expect(await stored()).toEqual([{ day: '2026-10-15', waistCm: 82 }]), SETTLE)
@@ -99,8 +113,9 @@ describe('E22-T7 O18 measurements and the chart metric', () => {
 
   test('O18 a waist with a bodyweight keeps both and nothing else', async () => {
     const user = await mount()
+    await openSheet(user)
     await user.type(screen.getByLabelText('Bodyweight (kg)'), '80')
-    await user.click(screen.getByRole('button', { name: 'Add measurements' }))
+    await user.click(screen.getByRole('button', { name: 'Add waist' }))
     await user.type(screen.getByLabelText('Waist (cm)'), '82')
     await user.click(save())
     await waitFor(async () => expect(await stored()).toEqual([{ day: '2026-10-15', weightKg: 80, waistCm: 82 }]), SETTLE)
@@ -128,7 +143,7 @@ describe('E22-T7 O19 reading and deleting entries', () => {
   test('O19 tapping a chart point shows its date and value', async () => {
     const user = await mount(log)
     await screen.findByRole('img', { name: 'Bodyweight chart' }, SETTLE)
-    await user.click(screen.getByRole('button', { name: /1 Oct.*80 kg/ }))
+    await user.click(within(screen.getByRole('region', { name: 'Chart' })).getByRole('button', { name: /1 Oct.*80 kg/ }))
     const readout = screen.getByRole('region', { name: 'Chart readout' })
     expect(readout).toHaveTextContent(/80 kg/)
   })
@@ -141,10 +156,34 @@ describe('E22-T7 O19 reading and deleting entries', () => {
     expect(rows[1]).toHaveTextContent('1 Oct')
   })
 
-  test('O19 Delete removes the entry at once with an Undo snackbar, and Undo puts it back', async () => {
+  test('DX-10 a History row opens its entry in the sheet, and editing it saves in place', async () => {
+    const user = await mount(log)
+    const list = await screen.findByRole('list', { name: 'Entries' }, SETTLE)
+    expect(within(list).queryByRole('button', { name: /^Delete/ })).toBeNull()
+    await user.click(within(list).getByRole('button', { name: /^15 Oct/ }))
+    const sheet = screen.getByRole('dialog', { name: 'Edit 15 Oct' })
+    expect(within(sheet).getByLabelText('Bodyweight (kg)')).toHaveValue(78.5)
+    await user.clear(within(sheet).getByLabelText('Bodyweight (kg)'))
+    await user.type(within(sheet).getByLabelText('Bodyweight (kg)'), '78')
+    await user.click(save())
+    await waitFor(async () => expect(await stored()).toEqual([log[0], { day: '2026-10-15', weightKg: 78 }]), SETTLE)
+  })
+
+  test('DX-10 Cancel closes the sheet and stores nothing', async () => {
     const user = await mount(log)
     await screen.findByRole('list', { name: 'Entries' }, SETTLE)
-    await user.click(screen.getByRole('button', { name: 'Delete 15 Oct' }))
+    await openSheet(user)
+    await user.type(screen.getByLabelText('Bodyweight (kg)'), '77')
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(await stored()).toEqual(log)
+  })
+
+  test('O19 Delete entry removes the entry at once with an Undo snackbar, and Undo puts it back', async () => {
+    const user = await mount(log)
+    await screen.findByRole('list', { name: 'Entries' }, SETTLE)
+    await user.click(screen.getByRole('button', { name: /^15 Oct/ }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete entry' }))
     await waitFor(async () => expect(await stored()).toEqual([log[0]]), SETTLE)
     const bar = await screen.findByRole('status')
     expect(bar).toHaveTextContent('Entry deleted')
@@ -169,7 +208,7 @@ describe('E22-T7 the page is registered', () => {
       </ServicesProvider>,
     )
     await user.click(screen.getByRole('button', { name: 'Open body' }))
-    expect(await screen.findByLabelText('Bodyweight (kg)', undefined, SETTLE)).toBeVisible()
+    expect(await screen.findByRole('button', { name: 'Log bodyweight' }, SETTLE)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.getByRole('button', { name: 'Open body' })).toBeVisible()
   })
@@ -183,7 +222,9 @@ describe('E26-T5 O13 the new measurement fields', () => {
     ['Calves (cm)', 'calvesCm', '37'],
   ])('O13 %s is stored under %s', async (label, metric, value) => {
     const user = await mount()
-    await user.click(screen.getByRole('button', { name: 'Add measurements' }))
+    await openSheet(user)
+    await user.click(screen.getByRole('button', { name: 'Add waist' }))
+    await user.click(screen.getByRole('button', { name: 'More measurements' }))
     await user.type(screen.getByLabelText(label), value)
     await user.click(save())
     await waitFor(async () => expect(await stored()).toEqual([{ day: '2026-10-15', [metric]: Number(value) }]), SETTLE)
@@ -198,7 +239,9 @@ describe('E26-T5 O13 the new measurement fields', () => {
 
   test('O13 a new measurement out of range shows an inline error and stores nothing', async () => {
     const user = await mount()
-    await user.click(screen.getByRole('button', { name: 'Add measurements' }))
+    await openSheet(user)
+    await user.click(screen.getByRole('button', { name: 'Add waist' }))
+    await user.click(screen.getByRole('button', { name: 'More measurements' }))
     await user.type(screen.getByLabelText('Neck (cm)'), '400')
     await user.click(save())
     expect(await screen.findByRole('alert')).toHaveTextContent(/10.*300/)
@@ -235,20 +278,11 @@ describe('E26-T5 O14 waist-to-height', () => {
     expect(screen.queryByText(/Waist-to-height/)).toBeNull()
   })
 
-  test('O14 the height field shows the stored height', async () => {
+  test('DX-10 Height is not edited here (it moved to Settings)', async () => {
     await setHeightCm(176.5, NOW)
     await mount()
-    await waitFor(() => expect(screen.getByLabelText('Height (cm)')).toHaveValue(176.5), SETTLE)
-  })
-
-  test('O14 saving a height persists it and the ratio appears', async () => {
-    const user = await mount([{ day: '2026-10-15', waistCm: 90 }])
-    await screen.findByRole('list', { name: 'Entries' }, SETTLE)
-    expect(screen.queryByText(/Waist-to-height/)).toBeNull()
-    await user.type(screen.getByLabelText('Height (cm)'), '180')
-    await user.click(screen.getByRole('button', { name: 'Save height' }))
-    await waitFor(async () => expect(await getHeightCm()).toBe(180), SETTLE)
-    expect(await screen.findByText('Waist-to-height 0.50', undefined, SETTLE)).toBeVisible()
+    expect(screen.queryByLabelText('Height (cm)')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Save height' })).toBeNull()
   })
 
   test('O14 the preferences service refuses a height outside 100..250 and stores nothing', async () => {
@@ -260,5 +294,31 @@ describe('E26-T5 O14 waist-to-height', () => {
     expect(await services.preferences.heightCm()).toBe(175)
     await services.preferences.setHeightCm(null)
     expect(await services.preferences.heightCm()).toBeNull()
+  })
+})
+
+describe('DX-10 the Body page leads with the trend', () => {
+  test('DX-10 the headline is the latest weight and its change, the chart follows, one filled button', async () => {
+    await mount([
+      { day: '2026-08-25', weightKg: 86.4 },
+      { day: '2026-10-15', weightKg: 84.1 },
+    ])
+    const value = await waitFor(() => document.querySelector('.body-headline') as HTMLElement, SETTLE)
+    expect(value).toHaveTextContent('84.1 kg−2.3 kg since 25 Aug')
+    const chart = screen.getByRole('img', { name: 'Bodyweight chart' })
+    expect(value.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(document.querySelectorAll('.btn-primary')).toHaveLength(1)
+    // One metric logged: no metric chips.
+    expect(screen.queryByRole('radiogroup', { name: 'Metric' })).toBeNull()
+  })
+
+  test('DX-10 Photos is a section with New check-in; History follows it', async () => {
+    await mount([{ day: '2026-10-15', weightKg: 80 }])
+    const photos = screen.getByRole('heading', { name: 'Photos' })
+    const history = screen.getByRole('heading', { name: 'History' })
+    expect(photos.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'New check-in' })).toBeVisible()
+    // No photos yet: no See all.
+    expect(screen.queryByRole('button', { name: 'See all ›' })).toBeNull()
   })
 })

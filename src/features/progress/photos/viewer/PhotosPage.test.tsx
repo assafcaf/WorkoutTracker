@@ -123,7 +123,13 @@ describe('photos page: the Compare page opens on the chosen dates', () => {
 })
 
 describe('photos page: the ways in', () => {
-  test('Body offers View photos, which opens the Photos page', async () => {
+  test('DX-10 Body shows each angle\'s latest photo and See all, which opens the Photos page', async () => {
+    await db.photos.bulkPut([
+      photo('f1', '2026-10-12'),
+      photo('f2', '2026-11-17'),
+      photo('s2', '2026-11-17', 'side'),
+      photo('b2', '2026-11-17', 'back'),
+    ])
     const push = vi.fn<(page: ProgressPage) => void>()
     const user = userEvent.setup()
     render(
@@ -131,8 +137,13 @@ describe('photos page: the ways in', () => {
         <BodyPage page={{ kind: 'body' }} push={push} onBack={() => undefined} now={() => NOW} />
       </ServicesProvider>,
     )
-    await user.click(await screen.findByRole('button', { name: 'View photos' }, SETTLE))
+    await screen.findByRole('button', { name: 'See all ›' }, SETTLE)
+    const thumbs = ['Front photo', 'Side photo', 'Back photo'].map((name) => screen.getByRole('button', { name }))
+    expect(thumbs).toHaveLength(3)
+    await user.click(screen.getByRole('button', { name: 'See all ›' }))
     expect(push).toHaveBeenCalledWith({ kind: 'photos' })
+    await user.click(thumbs[1])
+    expect(push).toHaveBeenCalledTimes(2)
   })
 
   test('DX-10 Progress has no Photos row: Photos is reached from Body only', async () => {
