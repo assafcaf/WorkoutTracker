@@ -6,16 +6,16 @@ import { db } from '../../storage/db'
 import { createServices, type Services } from '../../services'
 import type { Session } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
-import { startFromDashboard } from '../../test/dashboard'
+import { makeWorkoutBDue, startFromDashboard } from '../../test/dashboard'
 import { showAll } from '../../test/live'
 import { WorkoutFeature } from './WorkoutFeature'
 
 // UX iteration 6 (docs/ux-expert/iterations/v5/report.md), the live Session over the real
 // services on fake-indexeddb, as WorkoutFeature.test.tsx drives it:
-// - V5-01: Discard lands on Train with "Workout discarded · Undo", and Undo brings the Session
+// - V5-01: Discard lands on Train with "Session discarded · Undo", and Undo brings the Session
 //   back as it was.
 // - V5-02: a swapped-in Exercise opens on one Preset wherever it is shown (Now, All, Now again),
-//   and Now keeps a quiet "for <planned> · Undo swap" line while the swap stands.
+//   and Now keeps a quiet "for <planned>" line while the swap stands; Undo is the swap snackbar's (N4).
 
 const NOW = 1_700_000_000_000
 const SETTLE = { timeout: 3000 }
@@ -32,6 +32,12 @@ afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
+
+/** The A/B Split with Workout B due: Workout A done two days before NOW (DX-01: Train offers only the Workout due). */
+async function servicesOnWorkoutBDue(): Promise<Services> {
+  await makeWorkoutBDue(NOW)
+  return servicesOnAssafAB()
+}
 
 async function servicesOnAssafAB(): Promise<Services> {
   const services = createServices({ now: () => NOW, storageAvailable: true, fetch: signedOutFetch })
@@ -59,13 +65,12 @@ async function logButton(): Promise<HTMLElement> {
   return screen.findByRole('button', { name: /^Log set / }, SETTLE)
 }
 
-/** From the open Set screen: the tools sheet, Swap exercise, then "Do <name> instead". */
+/** From the open Set screen: Swap under the name (DX-07), then the chosen row (DX-08). */
 async function swapTo(user: UserEvent, plannedName: string, chosenName: string): Promise<void> {
-  await user.click(await screen.findByRole('button', { name: 'Exercise tools' }, SETTLE))
-  await user.click(screen.getByRole('button', { name: /^Swap exercise/ }))
-  const dialog = await screen.findByRole('dialog', { name: `Alternatives to ${plannedName}` }, SETTLE)
+  await user.click(await screen.findByRole('button', { name: 'Swap' }, SETTLE))
+  const dialog = await screen.findByRole('dialog', { name: `Swap ${plannedName}` }, SETTLE)
   await user.type(within(dialog).getByRole('searchbox'), chosenName)
-  await user.click(await within(dialog).findByRole('button', { name: `Do ${chosenName} instead` }, SETTLE))
+  await user.click((await within(dialog).findAllByRole('button', { name: chosenName }, SETTLE))[0])
   await screen.findByRole('heading', { level: 1, name: chosenName }, SETTLE)
 }
 
@@ -80,7 +85,7 @@ async function openSeatedCurls(user: UserEvent): Promise<void> {
 // --- V5-02: one Preset for a swapped-in Exercise ---------------------------------------------
 
 test('V6 V5-02 a swapped-in Exercise opens on the planned load on Now, on All, and on Now again', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await openSeatedCurls(user)
   expect(await logButton()).toHaveTextContent('Log set 1 · 8 × 10')
 
@@ -98,26 +103,33 @@ test('V6 V5-02 a swapped-in Exercise opens on the planned load on Now, on All, a
   expect(await logButton()).toHaveTextContent('Log set 1 · 8 × 10')
 })
 
-test('V6 V5-02 Now keeps a quiet "for <planned> · Undo swap" line while the swap stands', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+test('V6 V5-02 N4 a swap shows "Swapped to <new> · Undo" at the bottom; Now keeps a quiet "for <planned>" line', async () => {
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await openSeatedCurls(user)
   await swapTo(user, 'Seated biceps curls', 'Hammer Curls')
 
-  // Reopened from All, long after the snackbar: the line is still there.
+  // Reopened from All, long after the snackbar: the line is still there, with no Undo of its own.
   await showAll(user)
   await user.click(await screen.findByRole('button', { name: /^Hammer Curls/ }, SETTLE))
   await screen.findByRole('heading', { level: 1, name: 'Hammer Curls' }, SETTLE)
   const line = await screen.findByText('for Seated biceps curls', undefined, SETTLE)
   expect(line.closest('.set-swapped')).not.toBeNull()
+  expect(within(line.closest('.set-swapped') as HTMLElement).queryByRole('button')).toBeNull()
+})
 
-  await user.click(within(line.closest('.set-swapped') as HTMLElement).getByRole('button', { name: 'Undo swap' }))
+test('N4 Undo on the "Swapped to" snackbar takes the swap back', async () => {
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
+  await openSeatedCurls(user)
+  await swapTo(user, 'Seated biceps curls', 'Hammer Curls')
+
+  const bar = (await screen.findByText('Swapped to Hammer Curls', undefined, SETTLE)).closest('.snackbar') as HTMLElement
+  await user.click(within(bar).getByRole('button', { name: 'Undo' }))
   expect(await screen.findByRole('heading', { level: 1, name: 'Seated biceps curls' }, SETTLE)).toBeVisible()
   await waitFor(async () => expect((await storedActiveSession())?.swaps?.['seated-biceps-curls']).toBeUndefined())
-  expect(screen.queryByText('for Seated biceps curls')).toBeNull()
 })
 
 test('V6 V5-02 a swap onto other equipment with no history asks "Set a starting weight"', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await openSeatedCurls(user)
 
   await swapTo(user, 'Seated biceps curls', 'Cable Hammer Curls - Rope Attachment')
@@ -127,7 +139,7 @@ test('V6 V5-02 a swap onto other equipment with no history asks "Set a starting 
 })
 
 test('V6 V5-02 All draws a swapped-in Exercise’s Sets as Now does, its ramp included', async () => {
-  const services = await servicesOnAssafAB()
+  const services = await servicesOnWorkoutBDue()
   // Last Workout B: Deadlift ramped 60 x 10, 70 x 7, 70 x 7.
   const earlier = await services.sessions.start('assaf-ab-2026', 'workout-b')
   for (const [setIndex, weightKg, reps] of [[1, 60, 10], [2, 70, 7], [3, 70, 7]]) {
@@ -140,7 +152,7 @@ test('V6 V5-02 All draws a swapped-in Exercise’s Sets as Now does, its ramp in
 
   await swapTo(user, 'Deadlift', 'Deadlift with Bands')
   const now = [...document.querySelectorAll('.set-cells .set-cell')].map((cell) =>
-    (cell.querySelector('.set-cell-value, span:last-child')?.textContent ?? '').replace(/\s+/g, ''),
+    (cell.querySelector('.set-cell-value')?.textContent ?? '').replace(/\s+/g, ''),
   )
   expect(now).toEqual(['60×10', '70×7', '70×7'])
 
@@ -169,17 +181,22 @@ async function startWorkoutAWithSets(count: number): Promise<{ user: UserEvent; 
   return { user, session }
 }
 
-async function discardFromFinish(user: UserEvent, confirm: string | null): Promise<void> {
-  await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
-  const sheet = await screen.findByRole('dialog', { name: 'Finish workout?' }, SETTLE)
-  await user.click(within(sheet).getByRole('button', { name: 'Discard workout' }))
-  if (confirm !== null) await user.click(within(sheet).getByRole('button', { name: confirm }))
+/** DX-14: Discard lives once, at the foot of All, and asks nothing (Undo follows instead). */
+async function discardFromAll(user: UserEvent): Promise<void> {
+  await showAll(user)
+  await user.click(await screen.findByRole('button', { name: 'Discard Session' }, SETTLE))
 }
 
-test('V6 V5-01 after Discard 2 logged sets, Train shows "Workout discarded" with Undo', async () => {
+/** Undo on the snackbar, then back on the Set the Session is on. */
+async function undoToSet(user: UserEvent, snackbar: HTMLElement): Promise<void> {
+  await user.click(within(snackbar).getByRole('button', { name: 'Undo' }))
+  await user.click(await screen.findByRole('radio', { name: 'Set' }, SETTLE))
+}
+
+test('V6 V5-01 DX-14 after Discard Session, Train shows "Session discarded" with Undo', async () => {
   const { user } = await startWorkoutAWithSets(2)
 
-  await discardFromFinish(user, 'Discard 2 logged sets')
+  await discardFromAll(user)
 
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   const snackbar = await waitFor(() => {
@@ -187,21 +204,21 @@ test('V6 V5-01 after Discard 2 logged sets, Train shows "Workout discarded" with
     expect(found).not.toBeNull()
     return found as HTMLElement
   }, SETTLE)
-  expect(snackbar).toHaveTextContent('Workout discarded')
+  expect(snackbar).toHaveTextContent('Session discarded')
   expect(within(snackbar).getByRole('button', { name: 'Undo' })).toBeVisible()
   expect(await storedActiveSession()).toBeNull()
 })
 
-test('V6 V5-01 Undo on "Workout discarded" brings the Session back with its Sets, on the Exercise it was on', async () => {
+test('V6 V5-01 Undo on "Session discarded" brings the Session back with its Sets, on the Exercise it was on', async () => {
   const { user, session } = await startWorkoutAWithSets(2)
-  await discardFromFinish(user, 'Discard 2 logged sets')
+  await discardFromAll(user)
   const snackbar = await waitFor(() => {
     const found = document.querySelector('.snackbar') as HTMLElement | null
     expect(found).not.toBeNull()
     return found as HTMLElement
   }, SETTLE)
 
-  await user.click(within(snackbar).getByRole('button', { name: 'Undo' }))
+  await undoToSet(user, snackbar)
 
   expect(await screen.findByRole('heading', { level: 1, name: 'Back squat' }, SETTLE)).toBeVisible()
   expect(screen.getByText('Set 3 of 4')).toBeVisible()
@@ -211,12 +228,12 @@ test('V6 V5-01 Undo on "Workout discarded" brings the Session back with its Sets
   expect(document.querySelector('.snackbar')).toBeNull()
 })
 
-test('V6 V5-01 the "Workout discarded" snackbar leaves after 8 s', async () => {
+test('V6 V5-01 the "Session discarded" snackbar leaves after 8 s', async () => {
   // The clock is faked from the start (advancing with real time), so the snackbar's timer is a
   // fake one that the test can jump.
   vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
   const { user } = await startWorkoutAWithSets(1)
-  await discardFromFinish(user, 'Discard 1 logged set')
+  await discardFromAll(user)
   await waitFor(() => expect(document.querySelector('.snackbar')).not.toBeNull(), SETTLE)
 
   await act(async () => {
@@ -229,24 +246,24 @@ test('V6 V5-01 the "Workout discarded" snackbar leaves after 8 s', async () => {
   expect(document.querySelector('.snackbar')).toBeNull()
 })
 
-test('V6 V5-01 with nothing logged, Discard is the Finish sheet primary and Undo restores the empty Session', async () => {
+test('V6 V5-01 DX-14 with nothing logged, the Finish sheet has no Discard; Discard Session on All and Undo restore the empty Session', async () => {
   const services = await servicesOnAssafAB()
   const { user } = renderFeature(services)
   await startFromDashboard(user, 'Workout A')
   await screen.findByRole('heading', { level: 1, name: 'Back squat' }, SETTLE)
 
   await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
-  const sheet = await screen.findByRole('dialog', { name: 'Finish workout?' }, SETTLE)
-  expect(within(sheet).getByRole('button', { name: 'Discard workout' })).toHaveClass('btn-primary')
-  expect(within(sheet).getByRole('button', { name: 'Finish workout' })).not.toHaveClass('btn-primary')
-  await user.click(within(sheet).getByRole('button', { name: 'Discard workout' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Finish Session?' }, SETTLE)
+  expect(within(sheet).queryByRole('button', { name: /Discard/ })).toBeNull()
+  await user.click(within(sheet).getByRole('button', { name: 'Keep going' }))
+  await discardFromAll(user)
 
   const snackbar = await waitFor(() => {
     const found = document.querySelector('.snackbar') as HTMLElement | null
     expect(found).not.toBeNull()
     return found as HTMLElement
   }, SETTLE)
-  await user.click(within(snackbar).getByRole('button', { name: 'Undo' }))
+  await undoToSet(user, snackbar)
   expect(await screen.findByRole('heading', { level: 1, name: 'Back squat' }, SETTLE)).toBeVisible()
   expect(await storedActiveSession()).not.toBeNull()
 })
@@ -254,7 +271,7 @@ test('V6 V5-01 with nothing logged, Discard is the Finish sheet primary and Undo
 // --- V6-16: the first barbell lift offers its warm-ups on Now ----------------------------------
 
 test('V6-16 starting Workout B, the Deadlift shows its warm-up line on Now until its first working Set', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await startFromDashboard(user, 'Workout B')
   await screen.findByRole('heading', { level: 1, name: 'Deadlift' }, SETTLE)
 
@@ -264,8 +281,8 @@ test('V6-16 starting Workout B, the Deadlift shows its warm-up line on Now until
     expect(found).not.toBeNull()
     return found as HTMLElement
   }, SETTLE)
-  expect(cell.textContent).toMatch(/^W/)
-  expect(cell).toHaveAccessibleName(/^Add warm-ups: /)
+  expect(cell.textContent).toMatch(/^Warm-up/)
+  expect(cell).toHaveAccessibleName(/^Warm-up: /)
   expect(cell).toBeVisible()
 
   // One working Deadlift Set logged: the offer goes.
@@ -300,13 +317,13 @@ test('V6R-01 log a Set on Now, Discard, Undo: the same Sets once, the same Set n
   const storedBefore = await storedActiveSession()
   expect(storedBefore?.entries).toHaveLength(1)
 
-  await discardFromFinish(user, 'Discard 1 logged set')
+  await discardFromAll(user)
   const snackbar = await waitFor(() => {
     const found = document.querySelector('.snackbar') as HTMLElement | null
     expect(found).not.toBeNull()
     return found as HTMLElement
   }, SETTLE)
-  await user.click(within(snackbar).getByRole('button', { name: 'Undo' }))
+  await undoToSet(user, snackbar)
 
   expect(await screen.findByRole('heading', { level: 1, name: 'Deadlift' }, SETTLE)).toBeVisible()
   await waitFor(async () => expect((await logButton()).textContent).toContain('Log set 2 · 70 × 7'), SETTLE)

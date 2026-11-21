@@ -20,10 +20,10 @@ export type LiveStripProps = {
 }
 
 /**
- * The 48 px live strip pinned to the top of every tab while a workout is minimised
- * (t_strip.png): the workout's name, its elapsed time, then the rest countdown while one runs or
- * the set due next, and Return. A tap anywhere on it returns to the session; the Return button
- * is the same way back for the keyboard and a screen reader.
+ * The live strip (DX-09), the one Resume control while a workout is minimised: 56 px, just above
+ * the tab bar on every tab. The workout's name, its elapsed time, then the rest countdown while
+ * one runs or the set due next, and Resume. A tap anywhere on it returns to the session; the
+ * Resume button is the same way back for the keyboard and a screen reader.
  */
 export function LiveStrip({ status, onReturn }: LiveStripProps): JSX.Element {
   const [now, setNow] = useState(() => Date.now())
@@ -46,13 +46,13 @@ export function LiveStrip({ status, onReturn }: LiveStripProps): JSX.Element {
       <button
         type="button"
         className="live-strip-return btn-quiet"
-        aria-label={`Return to ${status.workoutName}`}
+        aria-label={`Resume ${status.workoutName}`}
         onClick={(event) => {
           event.stopPropagation()
           onReturn()
         }}
       >
-        Return
+        Resume
       </button>
     </div>
   )

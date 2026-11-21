@@ -114,9 +114,9 @@ test('O12 the lock is released when the rest is skipped', async () => {
   const { user } = await startWorkoutA({ sets: 1, ageMs: 1000 })
   await waitFor(() => expect(held()).toBe(1), SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Now' }))
+  await user.click(screen.getByRole('radio', { name: 'Set' }))
   await user.click(await screen.findByRole('button', { name: 'Skip rest' }, SETTLE))
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   await waitFor(() => expect(held()).toBe(0), SETTLE)

@@ -4,18 +4,18 @@ import type { Exercise, ExercisePlan, LibraryExercise, Program, Workout } from '
 import { workoutEstimate } from '../domain/dashboard'
 import { newPlan, validateProgram } from '../domain/programs'
 import type { ProgramFault } from '../domain/programs'
-import { matchesExercise } from '../domain/search'
+import { swapAlternatives } from '../domain/alternatives'
 import { exerciseFamily, familyImpact, type FamilyImpact } from '../domain/programVolume'
 import { bodyweightOf } from '../domain/bodyweight'
 import { WEIGHT_STEPS } from '../domain/dial'
 import { loadText } from '../domain/setText'
-import { LibraryList } from './LibraryList'
+import { ExercisePicker } from './ExercisePicker'
 import { Sheet } from './Sheet'
 import { Select, Switch } from './controls'
 import { Icon } from './icons'
+import { Stepper } from './Stepper'
 import { moveTo } from './program/listMoves'
-import { FAMILY_LABELS, wholeCount } from './program/planText'
-import './program/ProgramFamily.css'
+import { FAMILY_LABELS, planRowText, setsRepsText, wholeCount, workoutSizeText } from './program/planText'
 import './ProgramEditor.css'
 
 /**
@@ -54,6 +54,13 @@ export type ProgramEditorProps = {
    * Starting weight field in its options.
    */
   nowLoad?(exerciseId: string, plan: ExercisePlan): string | null
+  /**
+   * N2: a Plan's load cell exactly as the Program tab writes it ("47.5 → 62.5", "BW+5", "–").
+   * Given, every Plan row shows the same figure the Program tab shows; omitted, the starting weight.
+   */
+  loadOf?(plan: ExercisePlan): string
+  /** N2: a Workout's minutes from the one estimate Train and the Program tab use; omitted, the plan estimate. */
+  minutesOf?(workout: Workout): number
   /**
    * The bar's title. Defaults to `New program` for a new Program and `Edit <name>` otherwise
    * (Progress Dashboard S7b: "Edit A/B Split").
@@ -208,6 +215,36 @@ function typed(text: string): number {
   return Number.isFinite(value) ? value : 0
 }
 
+/** DX-17: Rest steps by 15 s; a Plan's rest shows on its row only when it is not 1:30. */
+const REST_STEP = 15
+const DEFAULT_REST = 90
+
+/** A weight rounded off float noise (2.5 + 0.1 steps). */
+function roundTo(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+/**
+ * DX-16/17: a Plan row's lifter shorthand: "4 × 8–10 · 47.5 kg", "3 × 8–12 · BW"; the weight is
+ * the Plan's own starting weight, else the Exercise's.
+ */
+function planLine(
+  plan: DraftPlan,
+  exercise: Exercise | undefined,
+  bodyweight: boolean,
+  loadOf?: (plan: ExercisePlan) => string,
+): string {
+  // N2: the Program tab's own figure, so the two screens never disagree.
+  if (loadOf && exercise !== undefined) {
+    const draft = toPlan(plan)
+    return planRowText({ sets: typed(plan.sets), repRange: [typed(plan.minReps), typed(plan.maxReps)] }, loadOf(draft))
+  }
+  const reps = setsRepsText({ sets: typed(plan.sets), repRange: [typed(plan.minReps), typed(plan.maxReps)] })
+  if (bodyweight) return `${reps} · ${loadText({ weightKg: null, loadKg: exercise?.startLoadKg })}`
+  const weight = plan.startWeight !== '' ? plan.startWeight : exercise?.startWeight
+  return weight === null || weight === undefined ? reps : `${reps} · ${weight} kg`
+}
+
 /** The top of the impact chart's axis: 10, or the next ten past the larger bar. */
 function axisTop(impact: FamilyImpact): number {
   return Math.max(10, Math.ceil(Math.max(impact.before, impact.after) / 10) * 10)
@@ -238,6 +275,8 @@ export function ProgramEditor({
   title,
   exerciseSettings,
   nowLoad,
+  loadOf,
+  minutesOf,
 }: ProgramEditorProps): JSX.Element {
   const [name, setName] = useState(initial.name)
   const [workouts, setWorkouts] = useState<DraftWorkout[]>(() =>
@@ -258,8 +297,14 @@ export function ProgramEditor({
     !isNew && initial.sessionsPerWeek !== initialVisible ? String(initial.sessionsPerWeek) : null,
   )
   const [picking, setPicking] = useState<Picking | null>(null)
-  const [search, setSearch] = useState('')
-  const [openMenus, setOpenMenus] = useState<Set<string>>(() => new Set())
+  /** DX-17: the Plan whose editor page is pushed over the list. */
+  const [editingPlan, setEditingPlan] = useState<{ workoutId: string; uid: string } | null>(null)
+  /** DX-17: the Workouts showing ↑/↓ on every row ("Reorder"), and those being renamed. */
+  const [reordering, setReordering] = useState<Set<string>>(() => new Set())
+  // A Workout with no name yet opens with its name field, and keeps it while it is typed into.
+  const [renaming, setRenaming] = useState<Set<string>>(
+    () => new Set(initial.workouts.filter((w) => w.name === '').map((w) => w.id)),
+  )
   const [lastEdited, setLastEdited] = useState<string | null>(null)
   const [drag, setDrag] = useState<{ workoutId: string; from: number; to: number } | null>(null)
   const [focusUid, setFocusUid] = useState<string | null>(null)
@@ -307,8 +352,8 @@ export function ProgramEditor({
   const workoutsFault = faultMessage(faults, 'workouts')
   const impacts = familyImpact(initial, draftProgram, resolve, libraryById)
 
-  const toggleMenu = (key: string) =>
-    setOpenMenus((open) => {
+  const toggle = (set: (change: (open: Set<string>) => Set<string>) => void, key: string) =>
+    set((open) => {
       const next = new Set(open)
       if (next.has(key)) next.delete(key)
       else next.add(key)
@@ -344,13 +389,13 @@ export function ProgramEditor({
         : all.filter((w) => w.id !== id),
     )
 
-  const addWorkout = () =>
-    setWorkouts((all) => [...all, { id: newWorkoutId(), name: '', hidden: false, plans: [] }])
-
-  const closePicker = () => {
-    setPicking(null)
-    setSearch('')
+  const addWorkout = () => {
+    const id = newWorkoutId()
+    setWorkouts((all) => [...all, { id, name: '', hidden: false, plans: [] }])
+    setRenaming((open) => new Set(open).add(id))
   }
+
+  const closePicker = () => setPicking(null)
 
   const pick = (exerciseId: string) => {
     if (picking !== null) {
@@ -432,8 +477,24 @@ export function ProgramEditor({
       setFocusUid(uid)
     }
 
-  const matches = library.filter((e) => matchesExercise(e, search))
-  const pickerTitle = picking?.swapUid ? 'Swap exercise' : 'Add exercise'
+  const matchingTitle = (): string => {
+    if (picking === null) return ''
+    const workout = workouts.find((w) => w.id === picking.workoutId)
+    if (picking.swapUid !== null) {
+      const plan = workout?.plans.find((p) => p.uid === picking.swapUid)
+      return `Swap ${plan ? resolve(plan.exerciseId)?.name ?? plan.exerciseId : 'exercise'}`
+    }
+    const shown = visible.findIndex((w) => w.id === picking.workoutId)
+    return `Add to ${workout && workout.name !== '' ? workout.name : `Workout ${shown + 1}`}`
+  }
+
+  /** DX-08: a swap leads with the planned Exercise's ranked stand-ins under "Similar". */
+  const similarFor = (): LibraryExercise[] | undefined => {
+    if (picking === null || picking.swapUid === null) return undefined
+    const plan = workouts.find((w) => w.id === picking.workoutId)?.plans.find((p) => p.uid === picking.swapUid)
+    const target = plan ? libraryById.get(resolve(plan.exerciseId)?.libraryId ?? plan.exerciseId) : undefined
+    return target ? swapAlternatives(target, libraryById, null).slice(0, 6) : undefined
+  }
 
   const impact =
     impacts.length === 0
@@ -449,6 +510,206 @@ export function ProgramEditor({
               : null
           return { headline, caption }
         })()
+
+  const picker =
+    picking === null ? null : (
+      <ExercisePicker
+        title={matchingTitle()}
+        library={library}
+        taken={workouts.find((w) => w.id === picking.workoutId)?.plans.map((p) => p.exerciseId) ?? []}
+        similar={similarFor()}
+        gymEquipment={gymEquipment}
+        onPick={pick}
+        onClose={closePicker}
+      />
+    )
+
+  // DX-17: a tapped Plan row pushes its Plan editor in place of the list.
+  const planOpen = (() => {
+    if (editingPlan === null) return null
+    const workout = workouts.find((w) => w.id === editingPlan.workoutId)
+    const index = workout?.plans.findIndex((p) => p.uid === editingPlan.uid) ?? -1
+    if (!workout || index < 0) return null
+    const fullIndex = workouts.indexOf(workout)
+    return { workout, index, plan: workout.plans[index], path: `workouts.${fullIndex}.exercises.${index}` }
+  })()
+
+  if (planOpen !== null) {
+    const { workout, index, plan, path } = planOpen
+    const exercise = resolve(plan.exerciseId)
+    const exerciseName = exercise?.name ?? plan.exerciseId
+    const bodyweight = bodyweightFor(exercise)
+    const step = exercise ? stepFor(exercise) : 2.5
+    const nowText =
+      nowLoad === undefined || plan.startWeight !== '' || exercise === undefined || bodyweight
+        ? null
+        : nowLoad(plan.exerciseId, toPlan(plan))
+    const set = (change: Partial<DraftPlan>) => {
+      updatePlan(workout.id, index, change)
+      setLastEdited(plan.uid)
+    }
+    const sets = typed(plan.sets)
+    const min = typed(plan.minReps)
+    const max = typed(plan.maxReps)
+    const rest = restSecondsOf(plan.rest)
+    const restNow = Number.isNaN(rest) ? 90 : rest
+    const start = plan.startWeight === '' ? null : typed(plan.startWeight)
+    const startShown = start ?? exercise?.startWeight ?? 0
+    const fault = (field: string) => faultMessage(faults, `${path}.${field}`)
+    const faultLine = (field: string) =>
+      fault(field) ? (
+        <p id={faultId(`${path}.${field}`)} className="program-editor-fault">
+          {fault(field)}
+        </p>
+      ) : null
+    return (
+      <div className="program-editor plan-editor">
+        <div className="program-editor-bar">
+          {/* N7: the bare ‹ every pushed page wears. */}
+          <button
+            type="button"
+            className="program-editor-back icon-btn"
+            aria-label="Back"
+            onClick={() => setEditingPlan(null)}
+          >
+            <Icon name="ChevronLeft" size={24} />
+          </button>
+          <h1 className="program-editor-title">{exerciseName}</h1>
+          <span aria-hidden="true" />
+        </div>
+
+        <div className="plan-editor-rows">
+          <div className="plan-editor-row">
+            <span className="plan-editor-label">Sets</span>
+            <Stepper
+              label="Sets"
+              value={String(sets)}
+              canDecrease={sets > 1}
+              canIncrease={sets < 20}
+              describedBy={fault('sets') ? faultId(`${path}.sets`) : undefined}
+              onDecrease={() => set({ sets: String(sets - 1) })}
+              onIncrease={() => set({ sets: String(sets + 1) })}
+            />
+          </div>
+          {faultLine('sets')}
+          <div className="plan-editor-row">
+            <span className="plan-editor-label">Min reps</span>
+            <Stepper
+              label="Min reps"
+              value={String(min)}
+              canDecrease={min > 1}
+              canIncrease={min < max}
+              describedBy={fault('repRange') ? faultId(`${path}.repRange`) : undefined}
+              onDecrease={() => set({ minReps: String(min - 1) })}
+              onIncrease={() => set({ minReps: String(min + 1) })}
+            />
+          </div>
+          <div className="plan-editor-row">
+            <span className="plan-editor-label">Max reps</span>
+            <Stepper
+              label="Max reps"
+              value={String(max)}
+              canDecrease={max > min}
+              canIncrease={max < 100}
+              describedBy={fault('repRange') ? faultId(`${path}.repRange`) : undefined}
+              onDecrease={() => set({ maxReps: String(max - 1) })}
+              onIncrease={() => set({ maxReps: String(max + 1) })}
+            />
+          </div>
+          {faultLine('repRange')}
+          <div className="plan-editor-row">
+            <span className="plan-editor-label">Rest</span>
+            <Stepper
+              label="Rest"
+              value={restText(restNow)}
+              canDecrease={restNow > 0}
+              canIncrease={restNow < 600}
+              describedBy={fault('restSeconds') ? faultId(`${path}.restSeconds`) : undefined}
+              onDecrease={() => set({ rest: restText(Math.max(0, restNow - REST_STEP)) })}
+              onIncrease={() => set({ rest: restText(restNow + REST_STEP) })}
+            />
+          </div>
+          {faultLine('restSeconds')}
+          {exerciseSettings === undefined || exercise === undefined || bodyweight ? null : (
+            // V1-16: how this Exercise's weight counts, wherever it is planned or logged.
+            <label className="plan-editor-row">
+              <span className="plan-editor-label">Weight step</span>
+              <Select
+                aria-label={`${exerciseName} weight step`}
+                value={stepFor(exercise)}
+                onChange={(event) => editStep(exercise, Number(event.target.value))}
+              >
+                {WEIGHT_STEPS.map((option) => (
+                  <option key={option} value={option}>
+                    {`${option} kg`}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
+          {bodyweight ? (
+            <div className="plan-editor-row">
+              <span className="plan-editor-label">Load</span>
+              <span className="plan-editor-value">{loadText({ weightKg: null, loadKg: exercise?.startLoadKg })}</span>
+            </div>
+          ) : (
+            <div className="plan-editor-row">
+              <span className="plan-editor-label">
+                Starting weight
+                {nowText !== null ? <span className="plan-editor-hint">{`Now ${nowText} kg`}</span> : null}
+                {start === null && nowText === null ? <span className="plan-editor-hint">Exercise default</span> : null}
+              </span>
+              <Stepper
+                label="Starting weight"
+                value={`${startShown} kg`}
+                canDecrease={startShown - step >= 0}
+                describedBy={fault('startWeightKg') ? faultId(`${path}.startWeightKg`) : undefined}
+                onDecrease={() => set({ startWeight: String(roundTo(startShown - step)) })}
+                onIncrease={() => set({ startWeight: String(roundTo(startShown + step)) })}
+              />
+            </div>
+          )}
+          {faultLine('startWeightKg')}
+          <div className="plan-editor-row plan-editor-switch">
+            <Switch checked={plan.amrapLast} onChange={(next) => set({ amrapLast: next })} label="Last set AMRAP" />
+          </div>
+          {exerciseSettings === undefined || exercise === undefined ? null : (
+            <div className="plan-editor-row plan-editor-switch">
+              <Switch
+                checked={bodyweight}
+                onChange={(next) => editBodyweight(exercise, next)}
+                label="Bodyweight exercise"
+              />
+            </div>
+          )}
+          {exerciseSettings === undefined || exercise === undefined ? null : (
+            <p className="plan-editor-note">{`Weight step and Bodyweight apply to ${exerciseName} in every workout.`}</p>
+          )}
+          <button
+            type="button"
+            className="plan-editor-row plan-editor-swap cell"
+            onClick={() => setPicking({ workoutId: workout.id, swapUid: plan.uid })}
+          >
+            <span className="plan-editor-label">Swap exercise</span>
+            <Icon name="ChevronRight" size={18} />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          className="plan-editor-remove btn-danger"
+          onClick={() => {
+            updateWorkout(workout.id, (w) => ({ ...w, plans: w.plans.filter((p) => p.uid !== plan.uid) }))
+            setLastEdited(null)
+            setEditingPlan(null)
+          }}
+        >
+          Remove from Workout
+        </button>
+        {picker}
+      </div>
+    )
+  }
 
   return (
     <div className={impact ? 'program-editor program-editor-with-impact' : 'program-editor'}>
@@ -500,19 +761,18 @@ export function ProgramEditor({
             {faultMessage(faults, 'name')}
           </p>
         )}
-        <label className="program-editor-field">
+        <div className="program-editor-field program-editor-field-row">
           <span className="program-editor-label">Sessions per week</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            className="program-editor-input program-editor-input-short"
+          <Stepper
+            label="Sessions per week"
             value={sessionsShown}
-            aria-describedby={
-              faultMessage(faults, 'sessionsPerWeek') ? faultId('sessionsPerWeek') : undefined
-            }
-            onChange={(event) => setSessionsText(event.target.value)}
+            canDecrease={typed(sessionsShown) > 1}
+            canIncrease={typed(sessionsShown) < 7}
+            describedBy={faultMessage(faults, 'sessionsPerWeek') ? faultId('sessionsPerWeek') : undefined}
+            onDecrease={() => setSessionsText(String(Math.max(1, typed(sessionsShown) - 1)))}
+            onIncrease={() => setSessionsText(String(Math.min(7, typed(sessionsShown) + 1)))}
           />
-        </label>
+        </div>
         {faultMessage(faults, 'sessionsPerWeek') && (
           <p id={faultId('sessionsPerWeek')} className="program-editor-fault">
             {faultMessage(faults, 'sessionsPerWeek')}
@@ -527,7 +787,7 @@ export function ProgramEditor({
         const workoutPath = `workouts.${fullIndex}`
         const nameFault = faultMessage(faults, `${workoutPath}.name`)
         const exercisesFault = faultMessage(faults, `${workoutPath}.exercises`)
-        const estimate = workoutEstimate({
+        const asWorkout: Workout = {
           id: workout.id,
           name: workout.name,
           exercises: workout.plans.map((p) => ({
@@ -536,34 +796,78 @@ export function ProgramEditor({
             repRange: [typed(p.minReps), typed(p.maxReps)],
             restSeconds: typed(String(restSecondsOf(p.rest))),
           })),
-        })
+        }
+        const estimate = workoutEstimate(asWorkout)
+        const minutes = minutesOf?.(asWorkout) ?? estimate.minutes
         const label = workout.name === '' ? `Workout ${displayIndex + 1}` : workout.name
-        const workoutMenu = `workout:${workout.id}`
-        const workoutMenuOpen = openMenus.has(workoutMenu)
+        const naming = renaming.has(workout.id) || nameFault !== undefined
+        const ordering = reordering.has(workout.id)
         return (
-        <fieldset key={workout.id} className="program-editor-workout">
-          <legend className="program-editor-legend">Workout {displayIndex + 1}</legend>
+        <section key={workout.id} className="program-editor-workout" aria-label={label}>
           <div className="program-editor-workout-head">
-            <input
-              type="text"
-              className="program-editor-workout-name"
-              aria-label="Workout name"
-              placeholder={`Workout ${displayIndex + 1}`}
-              value={workout.name}
-              aria-describedby={nameFault ? faultId(`${workoutPath}.name`) : undefined}
-              onChange={(event) =>
-                updateWorkout(workout.id, (w) => ({ ...w, name: event.target.value }))
-              }
-            />
-            <span className="program-editor-workout-size">{`${estimate.sets} sets · ~${estimate.minutes} min`}</span>
+            {naming ? (
+              <input
+                type="text"
+                className="program-editor-workout-name"
+                aria-label="Workout name"
+                placeholder={`Workout ${displayIndex + 1}`}
+                value={workout.name}
+                aria-describedby={nameFault ? faultId(`${workoutPath}.name`) : undefined}
+                onChange={(event) =>
+                  updateWorkout(workout.id, (w) => ({ ...w, name: event.target.value }))
+                }
+              />
+            ) : (
+              <h3 className="program-editor-workout-title">{label}</h3>
+            )}
+            <span className="program-editor-workout-size">{workoutSizeText(estimate.sets, minutes)}</span>
+          </div>
+          <div className="program-editor-workout-actions" role="group" aria-label={`${label} actions`}>
             <button
               type="button"
-              className="program-editor-more icon-btn"
-              aria-label={`Options for ${label}`}
-              aria-expanded={workoutMenuOpen}
-              onClick={() => toggleMenu(workoutMenu)}
+              className="program-editor-text btn-quiet"
+              aria-pressed={ordering}
+              onClick={() => toggle(setReordering, workout.id)}
             >
-              <Icon name="Ellipsis" size={18} />
+              {ordering ? 'Done' : 'Reorder'}
+            </button>
+            <button
+              type="button"
+              className="program-editor-text btn-quiet"
+              aria-pressed={naming}
+              onClick={() => toggle(setRenaming, workout.id)}
+            >
+              Rename
+            </button>
+            {ordering && visible.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  className="program-editor-text btn-quiet"
+                  aria-label={`Move ${label} up`}
+                  disabled={displayIndex === 0}
+                  onClick={() => moveWorkout(workout.id, -1)}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="program-editor-text btn-quiet"
+                  aria-label={`Move ${label} down`}
+                  disabled={displayIndex === visible.length - 1}
+                  onClick={() => moveWorkout(workout.id, 1)}
+                >
+                  ↓
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              className="program-editor-text program-editor-remove-workout btn-danger"
+              aria-label={`Remove ${label}`}
+              onClick={() => removeWorkout(workout.id)}
+            >
+              Remove
             </button>
           </div>
           {nameFault && (
@@ -571,50 +875,16 @@ export function ProgramEditor({
               {nameFault}
             </p>
           )}
-          {workoutMenuOpen && (
-            <div className="program-editor-menu" role="group" aria-label={`Options for ${label}`}>
-              <button
-                type="button"
-                className="program-editor-action btn-quiet"
-                disabled={displayIndex === 0}
-                onClick={() => moveWorkout(workout.id, -1)}
-              >
-                Move up
-              </button>
-              <button
-                type="button"
-                className="program-editor-action btn-quiet"
-                disabled={displayIndex === visible.length - 1}
-                onClick={() => moveWorkout(workout.id, 1)}
-              >
-                Move down
-              </button>
-              <button
-                type="button"
-                className="program-editor-action btn-danger"
-                onClick={() => removeWorkout(workout.id)}
-              >
-                Remove workout
-              </button>
-            </div>
-          )}
 
           <ol className="program-editor-plans">
             {workout.plans.map((plan, j) => {
               const exercise = resolve(plan.exerciseId)
               const exerciseName = exercise?.name ?? plan.exerciseId
-              // V5-10: the load this Plan is on now, shown read-only while it has no starting weight.
-              const nowText =
-                nowLoad === undefined || plan.startWeight !== '' || exercise === undefined || bodyweightFor(exercise)
-                  ? null
-                  : nowLoad(plan.exerciseId, toPlan(plan))
-              const planPath = `${workoutPath}.exercises.${j}`
-              const planMenu = `plan:${plan.uid}`
-              const planMenuOpen = openMenus.has(planMenu)
-              const describedBy = (path: string) =>
-                faultMessage(faults, path) ? faultId(path) : undefined
-              const repRangeMessage = faultMessage(faults, `${planPath}.repRange`)
               const isDropTarget = drag !== null && drag.workoutId === workout.id && drag.to === j && drag.from !== j
+              const planPath = `${workoutPath}.exercises.${j}`
+              const planFault = faults.find((f) => f.path.startsWith(`${planPath}.`))
+              const line = planLine(plan, exercise, bodyweightFor(exercise), loadOf)
+              const restNote = restSecondsOf(plan.rest) !== DEFAULT_REST ? ` · ${plan.rest} rest` : ''
               return (
                 <li
                   key={plan.uid}
@@ -622,287 +892,65 @@ export function ProgramEditor({
                   data-dragging={drag !== null && drag.workoutId === workout.id && drag.from === j ? 'true' : undefined}
                   data-drop-target={isDropTarget ? 'true' : undefined}
                 >
-                  <div className="program-editor-plan-row">
-                    <button
-                      type="button"
-                      className="program-editor-handle icon-btn"
-                      aria-label={`Reorder ${exerciseName}`}
-                      aria-describedby="program-editor-handle-hint"
-                      data-handle={plan.uid}
-                      onKeyDown={handleKey(workout.id, j, workout.plans.length, plan.uid)}
-                      onPointerDown={(event) => {
-                        event.currentTarget.setPointerCapture?.(event.pointerId)
-                        setDrag({ workoutId: workout.id, from: j, to: j })
-                      }}
-                      onPointerMove={(event) => {
-                        if (drag === null || drag.workoutId !== workout.id) return
-                        const to = dropIndex(event)
-                        if (to !== null && to !== drag.to) setDrag({ ...drag, to })
-                      }}
-                      onPointerUp={() => {
-                        if (drag !== null && drag.workoutId === workout.id) movePlan(workout.id, drag.from, drag.to)
-                        setDrag(null)
-                      }}
-                      onPointerCancel={() => setDrag(null)}
-                    >
-                      <Icon name="Grip" size={16} />
-                    </button>
-                    <span
-                      className="muscle-dot program-family"
-                      data-family={exerciseFamily(exercise, libraryById) ?? undefined}
-                      aria-hidden="true"
-                    />
-                    <p className="program-editor-plan-name" id={`${plan.uid}-name`}>
-                      {exerciseName}
-                    </p>
-                    <button
-                      type="button"
-                      className="program-editor-more icon-btn"
-                      aria-label={`Options for ${exerciseName}`}
-                      aria-expanded={planMenuOpen}
-                      onClick={() => toggleMenu(planMenu)}
-                    >
-                      <Icon name="Ellipsis" size={18} />
-                    </button>
-                  </div>
-                  {/* V1-28: the numbers on a line of their own under the name, each tile at
-                      least 44 x 44 with its caption inside, each input named after its row
-                      ("Back squat Sets"). */}
-                  <div className="program-editor-plan-cells">
-                    <label className="program-editor-cell program-editor-cell-sets">
-                      <span className="program-editor-sr" id={`${plan.uid}-sets`}>
-                        Sets
-                      </span>
-                      <span className="program-editor-cell-caption" aria-hidden="true">
-                        Sets
-                      </span>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        className="program-editor-cell-input"
-                        value={plan.sets}
-                        aria-labelledby={`${plan.uid}-name ${plan.uid}-sets`}
-                        aria-describedby={describedBy(`${planPath}.sets`)}
-                        onChange={(event) => {
-                          updatePlan(workout.id, j, { sets: event.target.value })
-                          setLastEdited(plan.uid)
-                        }}
-                      />
-                    </label>
-                    <div className="program-editor-cell program-editor-cell-reps">
-                      <span className="program-editor-cell-caption" aria-hidden="true">
-                        Reps
-                      </span>
-                      <label className="program-editor-rep">
-                        <span className="program-editor-sr" id={`${plan.uid}-min`}>
-                          Min reps
-                        </span>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          className="program-editor-cell-input"
-                          value={plan.minReps}
-                          aria-labelledby={`${plan.uid}-name ${plan.uid}-min`}
-                          aria-describedby={describedBy(`${planPath}.repRange`)}
-                          onChange={(event) => updatePlan(workout.id, j, { minReps: event.target.value })}
-                        />
-                      </label>
-                      <span className="program-editor-rep-dash" aria-hidden="true">
-                        –
-                      </span>
-                      <label className="program-editor-rep">
-                        <span className="program-editor-sr" id={`${plan.uid}-max`}>
-                          Max reps
-                        </span>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          className="program-editor-cell-input"
-                          value={plan.maxReps}
-                          aria-labelledby={`${plan.uid}-name ${plan.uid}-max`}
-                          aria-describedby={describedBy(`${planPath}.repRange`)}
-                          onChange={(event) => updatePlan(workout.id, j, { maxReps: event.target.value })}
-                        />
-                      </label>
-                    </div>
-                    <label className="program-editor-cell program-editor-cell-rest">
-                      <span className="program-editor-sr" id={`${plan.uid}-rest`}>
-                        Rest (m:ss)
-                      </span>
-                      <span className="program-editor-cell-caption" aria-hidden="true">
-                        Rest
-                      </span>
-                      <input
-                        type="text"
-                        className="program-editor-cell-input"
-                        value={plan.rest}
-                        aria-labelledby={`${plan.uid}-name ${plan.uid}-rest`}
-                        aria-describedby={describedBy(`${planPath}.restSeconds`)}
-                        onChange={(event) => updatePlan(workout.id, j, { rest: event.target.value })}
-                      />
-                    </label>
-                    {nowText !== null ? (
-                      <span className="program-editor-cell program-editor-cell-kg program-editor-cell-static">
-                        <span className="program-editor-sr">{`Now ${nowText} kg`}</span>
-                        <span className="program-editor-cell-caption" aria-hidden="true">
-                          Now
-                        </span>
-                        <span className="program-editor-cell-value" aria-hidden="true">
-                          {nowText}
-                        </span>
-                      </span>
-                    ) : bodyweightFor(exercise) ? (
-                      <span className="program-editor-cell program-editor-cell-kg program-editor-cell-static">
-                        <span className="program-editor-cell-caption" aria-hidden="true">
-                          Load
-                        </span>
-                        <span className="program-editor-cell-value">
-                          {loadText({ weightKg: null, loadKg: exercise?.startLoadKg })}
-                        </span>
-                      </span>
-                    ) : (
-                      <label className="program-editor-cell program-editor-cell-kg">
-                        <span className="program-editor-sr" id={`${plan.uid}-kg`}>
-                          Starting weight (kg)
-                        </span>
-                        <span className="program-editor-cell-caption" aria-hidden="true">
-                          kg
-                        </span>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          className="program-editor-cell-input"
-                          value={plan.startWeight}
-                          placeholder={
-                            exercise?.startWeight == null ? undefined : String(exercise.startWeight)
-                          }
-                          aria-labelledby={`${plan.uid}-name ${plan.uid}-kg`}
-                          aria-describedby={describedBy(`${planPath}.startWeightKg`)}
-                          onChange={(event) =>
-                            updatePlan(workout.id, j, { startWeight: event.target.value })
-                          }
-                        />
-                      </label>
-                    )}
-                  </div>
-                  {repRangeMessage && (
-                    <p id={faultId(`${planPath}.repRange`)} className="program-editor-fault">
-                      {repRangeMessage}
-                    </p>
-                  )}
-                  {faultMessage(faults, `${planPath}.sets`) && (
-                    <p id={faultId(`${planPath}.sets`)} className="program-editor-fault">
-                      {faultMessage(faults, `${planPath}.sets`)}
-                    </p>
-                  )}
-                  {faultMessage(faults, `${planPath}.restSeconds`) && (
-                    <p id={faultId(`${planPath}.restSeconds`)} className="program-editor-fault">
-                      {faultMessage(faults, `${planPath}.restSeconds`)}
-                    </p>
-                  )}
-                  {faultMessage(faults, `${planPath}.startWeightKg`) && (
-                    <p
-                      id={faultId(`${planPath}.startWeightKg`)}
-                      className="program-editor-fault"
-                    >
-                      {faultMessage(faults, `${planPath}.startWeightKg`)}
-                    </p>
-                  )}
-                  {planMenuOpen && (
-                    <div className="program-editor-menu" role="group" aria-label={`Options for ${exerciseName}`}>
-                      <div className="program-editor-menu-switch">
-                        <Switch
-                          checked={plan.amrapLast}
-                          onChange={(next) => updatePlan(workout.id, j, { amrapLast: next })}
-                          label="Last set AMRAP"
-                        />
-                      </div>
-                      {exerciseSettings === undefined || exercise === undefined ? null : (
-                        // V1-16: how this Exercise's weight counts, wherever it is planned or logged.
-                        <div className="program-editor-menu-weight">
-                          <div className="program-editor-menu-switch">
-                            <Switch
-                              checked={bodyweightFor(exercise)}
-                              onChange={(next) => editBodyweight(exercise, next)}
-                              label="Bodyweight exercise"
-                            />
-                          </div>
-                          {bodyweightFor(exercise) ? null : (
-                            <label className="program-editor-menu-step">
-                              <span className="program-editor-menu-step-label">Weight step</span>
-                              <Select
-                                aria-label={`${exerciseName} weight step`}
-                                value={stepFor(exercise)}
-                                onChange={(event) => editStep(exercise, Number(event.target.value))}
-                              >
-                                {WEIGHT_STEPS.map((step) => (
-                                  <option key={step} value={step}>
-                                    {`${step} kg`}
-                                  </option>
-                                ))}
-                              </Select>
-                            </label>
-                          )}
-                          <p className="program-editor-menu-note">{`For ${exerciseName} in every workout.`}</p>
-                        </div>
-                      )}
-                      {nowText === null ? null : (
-                        // V5-10: the starting weight, for when the Plan's history is gone.
-                        <label className="program-editor-menu-step">
-                          <span className="program-editor-menu-step-label" id={`${plan.uid}-kg`}>
-                            Starting weight (kg)
-                          </span>
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            className="program-editor-cell-input"
-                            value={plan.startWeight}
-                            aria-labelledby={`${plan.uid}-kg`}
-                            aria-describedby={describedBy(`${planPath}.startWeightKg`)}
-                            onChange={(event) => updatePlan(workout.id, j, { startWeight: event.target.value })}
-                          />
-                        </label>
-                      )}
-                      <div className="program-editor-menu-actions">
-                        <button
-                          type="button"
-                          className="program-editor-action btn-quiet"
-                          disabled={j === 0}
-                          onClick={() => movePlan(workout.id, j, j - 1)}
-                        >
-                          Move up
-                        </button>
-                        <button
-                          type="button"
-                          className="program-editor-action btn-quiet"
-                          disabled={j === workout.plans.length - 1}
-                          onClick={() => movePlan(workout.id, j, j + 1)}
-                        >
-                          Move down
-                        </button>
-                        <button
-                          type="button"
-                          className="program-editor-action btn-quiet"
-                          onClick={() => setPicking({ workoutId: workout.id, swapUid: plan.uid })}
-                        >
-                          Swap exercise
-                        </button>
-                        <button
-                          type="button"
-                          className="program-editor-action btn-danger"
-                          onClick={() => {
-                            updateWorkout(workout.id, (w) => ({
-                              ...w,
-                              plans: w.plans.filter((_, k) => k !== j),
-                            }))
-                            setLastEdited(null)
-                          }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    className="program-editor-handle icon-btn"
+                    aria-label={`Reorder ${exerciseName}`}
+                    aria-describedby="program-editor-handle-hint"
+                    data-handle={plan.uid}
+                    onKeyDown={handleKey(workout.id, j, workout.plans.length, plan.uid)}
+                    onPointerDown={(event) => {
+                      event.currentTarget.setPointerCapture?.(event.pointerId)
+                      setDrag({ workoutId: workout.id, from: j, to: j })
+                    }}
+                    onPointerMove={(event) => {
+                      if (drag === null || drag.workoutId !== workout.id) return
+                      const to = dropIndex(event)
+                      if (to !== null && to !== drag.to) setDrag({ ...drag, to })
+                    }}
+                    onPointerUp={() => {
+                      if (drag !== null && drag.workoutId === workout.id) movePlan(workout.id, drag.from, drag.to)
+                      setDrag(null)
+                    }}
+                    onPointerCancel={() => setDrag(null)}
+                  >
+                    <Icon name="Grip" size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="program-editor-plan-row cell"
+                    aria-label={`${exerciseName}, ${line}${restNote}`}
+                    onClick={() => setEditingPlan({ workoutId: workout.id, uid: plan.uid })}
+                  >
+                    <span className="program-editor-plan-name">{exerciseName}</span>
+                    <span className="program-editor-plan-line">
+                      {line}
+                      {restNote === '' ? null : <span className="program-editor-plan-rest">{restNote}</span>}
+                    </span>
+                    {planFault ? <span className="program-editor-plan-fault">{planFault.message}</span> : null}
+                  </button>
+                  {ordering ? (
+                    <span className="program-editor-arrows">
+                      <button
+                        type="button"
+                        className="program-editor-arrow btn-quiet"
+                        aria-label={`Move ${exerciseName} up`}
+                        disabled={j === 0}
+                        onClick={() => movePlan(workout.id, j, j - 1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="program-editor-arrow btn-quiet"
+                        aria-label={`Move ${exerciseName} down`}
+                        disabled={j === workout.plans.length - 1}
+                        onClick={() => movePlan(workout.id, j, j + 1)}
+                      >
+                        ↓
+                      </button>
+                    </span>
+                  ) : null}
                 </li>
               )
             })}
@@ -918,7 +966,7 @@ export function ProgramEditor({
             <Icon name="Plus" size={20} />
             Add exercise
           </button>
-        </fieldset>
+        </section>
         )
       })}
 
@@ -937,44 +985,13 @@ export function ProgramEditor({
             {impact.caption ? <span className="program-editor-impact-caption">{impact.caption}</span> : null}
           </div>
           <p className="program-editor-impact-headline">
-            <span
-              className="muscle-dot program-family"
-              data-family={impact.headline.family}
-              aria-hidden="true"
-            />
             {`${FAMILY_LABELS[impact.headline.family]} ${wholeCount(impact.headline.before)} → ${wholeCount(impact.headline.after)} sets/week`}
           </p>
           <ImpactBars impact={impact.headline} />
         </aside>
       )}
 
-      {picking === null ? null : (
-        <div
-          className="program-editor-picker overlay-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-label={pickerTitle}
-        >
-          <h2 className="program-editor-picker-heading">{pickerTitle}</h2>
-          <button type="button" className="program-editor-cancel btn-quiet" onClick={closePicker}>
-            Close
-          </button>
-          <input
-            type="search"
-            aria-label="Search exercises"
-            placeholder="Search exercises"
-            className="library-search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <LibraryList
-            library={matches}
-            onOpen={pick}
-            onPick={pick}
-            gymEquipment={gymEquipment}
-          />
-        </div>
-      )}
+      {picker}
     </div>
   )
 }
@@ -983,8 +1000,8 @@ export function ProgramEditor({
 function ImpactBars({ impact }: { impact: FamilyImpact }): JSX.Element {
   const top = axisTop(impact)
   const bars = [
-    { label: 'Before', value: impact.before, family: undefined },
-    { label: 'After', value: impact.after, family: impact.family },
+    { label: 'Before', value: impact.before, after: false },
+    { label: 'After', value: impact.after, after: true },
   ]
   return (
     <div className="program-editor-impact-chart">
@@ -993,8 +1010,7 @@ function ImpactBars({ impact }: { impact: FamilyImpact }): JSX.Element {
           <span className="program-editor-impact-bar-label">{bar.label}</span>
           <span className="program-editor-impact-track">
             <span
-              className={bar.family ? 'program-editor-impact-bar program-family' : 'program-editor-impact-bar'}
-              data-family={bar.family}
+              className={bar.after ? 'program-editor-impact-bar program-editor-impact-bar-after' : 'program-editor-impact-bar'}
               style={{ width: `${(Math.min(bar.value, top) / top) * 100}%` }}
             />
             <span className="program-editor-impact-value">{wholeCount(bar.value)}</span>

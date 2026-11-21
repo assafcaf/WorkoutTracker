@@ -80,11 +80,11 @@ test('E22-T6 O15 tapping a day with one Session opens its summary', async () => 
 
   // Title kept (weakened-tests gate); V5: the calendar day opens it, as its row does.
   await userEvent.click(screen.getByRole('button', { name: 'Workout B, Mon 12 Oct' }))
-  const dialog = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  const dialog = await screen.findByRole('region', { name: 'Session summary' }, SETTLE)
   expect(within(dialog).getByRole('heading', { name: 'Workout B' })).toBeVisible()
-  await userEvent.click(within(dialog).getByRole('button', { name: 'Done' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Back' }))
   await userEvent.click(sessionRows()[0])
-  expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('region', { name: 'Session summary' }, SETTLE)).toBeVisible()
 })
 
 test('E22-T6 O15 a day with two Sessions lists both inline, each opening its summary', async () => {
@@ -104,7 +104,7 @@ test('E22-T6 O15 a day with two Sessions lists both inline, each opening its sum
     'Workout B · 17:00',
   ])
   await userEvent.click(within(chooser).getByRole('button', { name: 'Workout B · 17:00' }))
-  const dialog = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  const dialog = await screen.findByRole('region', { name: 'Session summary' }, SETTLE)
   expect(within(dialog).getByRole('heading', { name: 'Workout B' })).toBeVisible()
   expect(screen.queryByRole('dialog', { name: 'Mon 12 Oct' })).toBeNull()
 })
@@ -141,18 +141,18 @@ test('V1-29 calendar day cells are at least 32 by 32', () => {
 
 })
 
-test('V6 V5-12 a calendar day button is a 44 by 44 tap target, its coloured cell drawn as before', () => {
+test('DX-18 a calendar day button\'s hit area fills its 48 px tall cell, its coloured cell drawn as before', () => {
   const here = dirname(fileURLToPath(import.meta.url))
   const css = readFileSync(join(here, 'SessionsScreen.css'), 'utf-8')
-  // The coloured cell keeps its 2rem; the button's hit area reaches 44 px around it: 6 px over
-  // and under (2rem + 12 px), and 2 px into each 4 px gap of a column at least 40 px wide.
+  // The coloured cell keeps its 2rem; the button's hit area reaches 48 px tall around it: 8 px over
+  // and under (2rem + 16 px), and 2 px into each 4 px gap of a column at least 40 px wide.
   expect(declarationsFor(css, '.sessions-calendar .calendar-day').get('height')).toBe('2rem')
   const hit = declarationsFor(css, '.sessions-calendar button.calendar-day::before')
   expect(hit.get('content')).toBe("''")
   expect(hit.get('position')).toBe('absolute')
-  expect(hit.get('inset')).toBe('calc((2rem - var(--tap-min)) / 2) -2px')
-  // Rows are 44 px apart at least, so the hit areas of two weeks never overlap.
-  expect(declarationsFor(css, '.sessions-calendar-row').get('min-height')).toBe('var(--tap-min)')
+  expect(hit.get('inset')).toBe('calc((2rem - 48px) / 2) -2px')
+  // Rows are 48 px apart at least, so the hit areas of two weeks never overlap.
+  expect(declarationsFor(css, '.sessions-calendar-row').get('min-height')).toBe('48px')
   // The day columns get the width: the week label narrows, the calendar's side padding thins.
   expect(declarationsFor(css, '.sessions-calendar-row').get('grid-template-columns')).toBe('2.5rem minmax(0, 1fr)')
   expect(declarationsFor(css, '.sessions-calendar').get('padding')).toBe('var(--space-3) var(--space-1)')

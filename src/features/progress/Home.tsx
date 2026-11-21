@@ -3,7 +3,7 @@ import { bodyweightOn } from '../../domain/bodyLog'
 import { applyBodyweight } from '../../domain/bodyweight'
 import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
-import { homeCopy, humanDate } from '../../domain/stats/copy'
+import { homeCopy } from '../../domain/stats/copy'
 import type { HomeCopy } from '../../domain/stats/copy'
 import { buildLiftHistories } from '../../domain/stats/liftHistory'
 import type { LiftHistory } from '../../domain/stats/liftHistory'
@@ -12,13 +12,12 @@ import type { Measure } from '../../domain/stats/liftStory'
 import { daysOff, liftStatuses } from '../../domain/stats/status'
 import type { LiftStatus } from '../../domain/stats/status'
 import { dayMonth, leverText, plural } from '../../domain/stats/words'
-import { STATS_MUSCLES, plannedPerWeek, windowAverage } from '../../domain/stats/muscles'
+import { STATS_MUSCLES, windowAverage } from '../../domain/stats/muscles'
 import { muscleLabel } from '../../domain/muscleLabels'
-import { WEEKLY_SET_RANGE } from '../../domain/setRange'
-import { weeksOf } from '../../domain/stats/weeks'
+import { WEEKLY_SET_RANGE, weeklyStanding } from '../../domain/setRange'
 import type { Weekday } from '../../domain/stats/weeks'
 import type { Services } from '../../services'
-import type { BodyLog, Exercise, ExercisePlan, LibraryExercise, Program, Session } from '../../types'
+import type { BodyLog, Exercise, ExercisePlan, LibraryExercise, Muscle, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { Sparkline } from '../../ui/charts/Sparkline'
 import { StatusMark, statusTone } from '../../ui/figures'
@@ -108,8 +107,6 @@ const DAY = 24 * 3600_000
 /** The ledger's window (study §1.7): est. strength and its change over 12 weeks. */
 const LEDGER_WEEKS = 12
 const LEDGER_SPAN = LEDGER_WEEKS * 7 * DAY
-/** The weeks strip's columns. */
-const STRIP_WEEKS = 6
 
 /** A lift name that never breaks at its hyphens (`Hyper-/extension`): non-breaking hyphens. */
 export const unbroken = (name: string): string => name.replace(/-/g, '‑')
@@ -170,11 +167,12 @@ export function rowFacts(model: ProgressModel, id: string): LedgerFacts | null {
 }
 
 /**
- * A status as a ledger row says it (study §1.7): `Up to 15 kg` on a Ready lift with a load to go
- * to, `Flat since 7 Aug` on a Stalled one, else the status word (`Moving`, `Lowered`).
+ * A status as a ledger row says it (study §1.7), always leading with the one status word (DX-03):
+ * `Ready · 15 kg` on a Ready lift with a load to go to, `Flat since 7 Aug` on a Flat one, else the
+ * word (`Moving`, `Lowered`).
  */
 export function statusWords(status: LiftStatus, bodyweight: boolean): string {
-  if (status.kind === 'ready' && !status.swap && status.next) return `Up to ${leverText(status.next.lever, bodyweight)}`
+  if (status.kind === 'ready' && !status.swap && status.next) return `Ready · ${leverText(status.next.lever, bodyweight)}`
   if (status.kind === 'stalled' && status.since !== undefined) return `Flat since ${dayMonth(status.since)}`
   return status.label
 }
@@ -235,7 +233,9 @@ export function LiftRow({ model, id, onOpen }: { model: ProgressModel; id: strin
   const prescription = plan ? `${plan.sets} × ${plan.repRange[0]}–${plan.repRange[1]}` : ''
   const what = facts?.measure === 'est' ? 'est. strength' : facts?.measure === 'load' ? 'top load' : 'best set'
   const label = [
-    `${name}: ${status ? status.label : 'not logged yet'}${words && words !== status?.label ? `, ${words.toLowerCase()}` : ''}`,
+    status && words?.startsWith(status.label)
+      ? `${name}: ${words}`
+      : `${name}: ${status ? status.label : 'not logged yet'}${words && words !== status?.label ? `, ${words.toLowerCase()}` : ''}`,
     facts
       ? `${what} ${facts.value}${facts.unit ? ` ${facts.unit}` : ''}${facts.changeWords ? `, ${facts.changeWords} in ${LEDGER_WEEKS} weeks` : ''}`
       : prescription,
@@ -270,11 +270,23 @@ export function LiftRow({ model, id, onOpen }: { model: ProgressModel; id: strin
   )
 }
 
+/** The statuses that ask the trainee for a decision on Progress (DX-03): Flat first, then Ready. */
+const DECISION_ORDER: LiftStatus['kind'][] = ['stalled', 'ready']
+
 /**
- * Every lift as one ledger row (study §1.7), in Plan order -- a lift in two Workouts once -- then
- * the lifts not in the Program, under a column head (`Est. strength` · `Change`).
+ * Every lift once, in Plan order -- a lift in two Workouts once -- then the lifts not in the
+ * Program. With `group`, the lifts whose status calls for a decision (Flat, then Ready) come
+ * first under "Needs a decision (N)", and the rest under "Other lifts" (DX-03).
  */
-export function LiftsList({ model, onOpen }: { model: ProgressModel; onOpen(id: string): void }): JSX.Element {
+export function LiftsList({
+  model,
+  onOpen,
+  group = false,
+}: {
+  model: ProgressModel
+  onOpen(id: string): void
+  group?: boolean
+}): JSX.Element {
   const seen = new Set<string>()
   const ids: string[] = []
   for (const w of model.data.program.workouts) {
@@ -287,115 +299,71 @@ export function LiftsList({ model, onOpen }: { model: ProgressModel; onOpen(id: 
     }
   }
   for (const id of model.order) if (!seen.has(id)) ids.push(id)
+  const rank = (id: string): number => DECISION_ORDER.indexOf(model.statuses.get(id)?.kind ?? 'moving')
+  const decide = group ? ids.filter((id) => rank(id) >= 0).sort((a, b) => rank(a) - rank(b)) : []
+  const rest = ids.filter((id) => !decide.includes(id))
+  const list = (shown: string[], label: string): JSX.Element => (
+    <ul className="progress-rows" aria-label={label}>
+      {shown.map((id) => (
+        <li key={id}>
+          <LiftRow model={model} id={id} onOpen={onOpen} />
+        </li>
+      ))}
+    </ul>
+  )
+  if (decide.length === 0) return list(rest, 'Lifts')
   return (
     <>
-      <p className="progress-ledger-head" aria-hidden="true">
-        <span>Est. strength</span>
-        <span>Change</span>
-      </p>
-      <ul className="progress-rows" aria-label="Lifts">
-        {ids.map((id) => (
-          <li key={id}>
-            <LiftRow model={model} id={id} onOpen={onOpen} />
-          </li>
-        ))}
-      </ul>
+      <h3 className="progress-subhead">{`Needs a decision (${decide.length})`}</h3>
+      {list(decide, 'Needs a decision')}
+      {rest.length > 0 ? (
+        <>
+          <h3 className="progress-subhead">Other lifts</h3>
+          {list(rest, 'Other lifts')}
+        </>
+      ) : null}
     </>
   )
 }
 
-type StripSlot = 'a' | 'b' | 'other' | 'empty' | 'next-a' | 'next-b' | 'next-other'
-
-/**
- * The weeks strip (study §1.7): the last 6 weeks as columns of Session marks in the Workouts' own
- * colours (the first Workout A, the second B), an empty slot for each planned Session not done,
- * and this week's planned Sessions still to come as hollow marks in the next Workout's colour.
- */
-function WeeksStrip({ model }: { model: ProgressModel }): JSX.Element | null {
-  const { data, now } = model
-  const live = data.sessions.filter((s) => s.deletedAt === undefined && s.finishedAt !== null)
-  const weeks = weeksOf(live, now, data.weekStart).slice(-STRIP_WEEKS)
-  if (weeks.length === 0) return null
-  const workouts = data.program.workouts.filter((w) => !w.hidden)
-  const toneOf = (workoutId: string): 'a' | 'b' | 'other' => {
-    const at = workouts.findIndex((w) => w.id === workoutId)
-    return at === 0 ? 'a' : at === 1 ? 'b' : 'other'
-  }
-  const latest = [...live].sort((a, b) => b.startedAt - a.startedAt)[0]
-  let nextAt = latest ? workouts.findIndex((w) => w.id === latest.workoutId) + 1 : 0
-  const nextSlot = (): StripSlot => {
-    const at = nextAt % workouts.length
-    nextAt += 1
-    return at === 0 ? 'next-a' : at === 1 ? 'next-b' : 'next-other'
-  }
-  const per = Math.max(1, data.program.sessionsPerWeek)
-  const total = weeks.reduce((sum, w) => sum + w.sessions.length, 0)
-  const columns = weeks.map((week) => {
-    const slots: StripSlot[] = week.sessions.map((s) => toneOf(s.workoutId))
-    while (slots.length < per) slots.push(week.inProgress && workouts.length > 0 ? nextSlot() : 'empty')
-    return { start: week.start, slots, done: week.sessions.length }
-  })
-  const label = `${plural(total, 'session')} in ${plural(weeks.length, 'week')}. ${columns
-    .map((c) => `Week of ${dayMonth(c.start)}: ${c.done}`)
-    .join('; ')}.`
-  return (
-    <section className="progress-weeks" aria-label="Weeks">
-      <div className="progress-weeks-strip" role="img" aria-label={label}>
-        {columns.map((c) => (
-          <span key={c.start} className="progress-week">
-            {c.slots.map((slot, i) => (
-              <span key={i} className="progress-week-mark" data-slot={slot} />
-            ))}
-            <span className="progress-week-day">{new Date(c.start).getDate()}</span>
-          </span>
-        ))}
-      </div>
-      <p className="progress-weeks-count" aria-hidden="true">
-        <span className="progress-weeks-total">{plural(total, 'session')}</span>
-        <span className="progress-weeks-span">{`in ${plural(weeks.length, 'week')}`}</span>
-      </p>
-    </section>
-  )
+/** `Shoulders`, `Abs and Calves`, `3 muscles`: the muscles one side of the range names. */
+function muscleNames(muscles: Muscle[]): string {
+  if (muscles.length > 2) return `${muscles.length} muscles`
+  return muscles.map(muscleLabel).join(' and ')
 }
 
 /**
- * The Muscles row's subline (§6.2, V6-06), always drawn: the one muscle furthest from the typical
- * weekly range on the Muscles page's 2-week average, with its unit, or that all are within it, or
- * that there were no Sets.
+ * The Muscles row's verdict (DX-03, DX-12): the muscles whose 2-week average sits outside the
+ * Weekly set range, judged as the Muscles page judges each row (`weeklyStanding`), so both say
+ * the same thing: `Shoulders above range`, `Shoulders above · Abs and Calves below range`, or
+ * `All within 10–20 sets a week`. The plan does not excuse a low count: one range, one verdict.
  */
 export function musclesLine(model: ProgressModel): string {
   const { data, now } = model
   const avg = windowAverage(data.sessions, now, data.resolve, data.library, undefined, data.weekStart)
-  const planned = plannedPerWeek(data.program, data.resolve, data.library)
-  const rows = STATS_MUSCLES.map((muscle) => ({
-    muscle,
-    sets: Math.round(avg.get(muscle) ?? 0),
-    plan: Math.round(planned.get(muscle) ?? 0),
-  }))
-  if (avg.size === 0 || rows.every((r) => r.sets === 0)) return 'No sets in the last 2 weeks'
-  // V6-19: a low the plan itself sets, met, is "as planned" on the Muscles page: never the one named.
-  const off = ({ sets, plan }: { sets: number; plan: number }) =>
-    sets > WEEKLY_SET_RANGE.max
-      ? sets - WEEKLY_SET_RANGE.max
-      : sets < WEEKLY_SET_RANGE.min && sets !== plan
-        ? WEEKLY_SET_RANGE.min - sets
-        : 0
-  const worst = rows.reduce((a, b) => (off(b) > off(a) ? b : a))
-  if (off(worst) === 0) {
-    const low = rows.some((r) => r.sets > 0 && r.sets < WEEKLY_SET_RANGE.min)
-    return `All within ${WEEKLY_SET_RANGE.min}–${WEEKLY_SET_RANGE.max} sets a week${low ? ', or as planned' : ''}`
-  }
-  const side = worst.sets > WEEKLY_SET_RANGE.max ? 'above' : 'below'
-  return `${muscleLabel(worst.muscle)} ${side} the typical range (${worst.sets} sets/week)`
+  if (avg.size === 0 || STATS_MUSCLES.every((m) => Math.round(avg.get(m) ?? 0) === 0)) return 'No sets in the last 2 weeks'
+  const above = STATS_MUSCLES.filter((m) => weeklyStanding(avg.get(m) ?? 0) === 'above')
+  const below = STATS_MUSCLES.filter((m) => weeklyStanding(avg.get(m) ?? 0) === 'below')
+  if (above.length === 0 && below.length === 0) return `All within ${WEEKLY_SET_RANGE.min}–${WEEKLY_SET_RANGE.max} sets a week`
+  const parts = [
+    above.length > 0 ? `${muscleNames(above)} above` : null,
+    below.length > 0 ? `${muscleNames(below)} below` : null,
+  ].filter((p): p is string => p !== null)
+  return `${parts.join(' · ')} range`
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-/** `15 Oct` for a `YYYY-MM-DD` day. */
-function dayText(day: string): string {
-  const [, m, d] = day.split('-').map(Number)
-  return `${d} ${MONTHS[m - 1]}`
+/** `84.1 kg, −2.3 kg`: the latest bodyweight and its change since the first one logged. */
+export function bodyLine(log: BodyLog, at: number): string | null {
+  const latest = bodyweightOn(log, at)
+  if (!latest) return null
+  const first = log.find((e) => e.weightKg !== undefined)
+  const delta = first?.weightKg === undefined ? 0 : Math.round((latest.kg - first.weightKg) * 10) / 10
+  if (!first || first.day === latest.day || delta === 0) return `${latest.kg} kg`
+  return `${latest.kg} kg, ${delta > 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)} kg`
 }
+
+/** `30 Sessions`, `1 Session`: the Session count in CONTEXT.md's word. */
+const sessionsText = (n: number): string => `${n} ${n === 1 ? 'Session' : 'Sessions'}`
 
 type HomeProps = ProgressPageProps<'home'> & {
   navigate?: (to: AppRoute) => void
@@ -404,43 +372,92 @@ type HomeProps = ProgressPageProps<'home'> & {
 }
 
 /**
- * The Progress tab's own screen (study §1.7, v7): a phase for reading, not deciding. The headline
- * count of moving lifts and one sentence on the exceptions, the weeks strip in the Workouts'
- * colours, every lift as one ledger row, then Muscles, Body and Photos as quiet rows. Decisions (Swap,
- * add load) live on Program and Train; there are no cards and no Last week table here.
+ * The Progress tab's own screen (DX-02, DX-03, DX-12): am I getting stronger? The headline count
+ * of moving lifts, one sentence on the exceptions and a grey meta line (`Since 23 Jul · 30
+ * Sessions`); then Muscles and Body as two rows; then every lift as one ledger row, the ones that
+ * need a decision first. No calendar (Sessions owns it), no date, no Photos row (Photos is a
+ * section of Body).
  */
 export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element {
   const loaded = useServiceData(loadProgress, ['programs', 'sessions', 'preferences'])
   const at = now()
   const model = loaded.status === 'ready' && loaded.data ? progressModel(loaded.data, at) : null
   const open = (exerciseId: string) => push({ kind: 'lift', exerciseId })
-  const start = () => navigate?.({ tab: 'workout' })
+  const goTrain = () => navigate?.({ tab: 'workout' })
 
   if (!model) return <AppShell title="Progress">{null}</AppShell>
   const { copy, data } = model
-  const latestWeight = bodyweightOn(data.bodyLog, at)
+
+  if (copy.stage === 'empty') {
+    // DX-21: one line and one action.
+    return (
+      <AppShell title="Progress">
+        <div className="progress-home progress-empty">
+          <p className="progress-empty-line">Your lifts appear here after your first Session.</p>
+          <button type="button" className="btn-secondary progress-start" onClick={goTrain}>
+            Go to Train
+          </button>
+        </div>
+      </AppShell>
+    )
+  }
+
   const headline = copy.stage === 'full' ? headlineOf(model) : null
+  const since = at - LEDGER_SPAN
+  const inWindow = data.sessions.filter((s) => s.deletedAt === undefined && s.finishedAt !== null && s.startedAt >= since).length
+  const body = bodyLine(data.bodyLog, at)
+  const links = (
+    <nav className="progress-links" aria-label="More">
+      <button
+        type="button"
+        className="btn-quiet progress-link"
+        aria-label={`Muscles · ${musclesLine(model)}`}
+        onClick={() => push({ kind: 'muscles' })}
+      >
+        <span className="progress-link-title">Muscles</span>
+        <span className="progress-link-sub">{musclesLine(model)}</span>
+        <Icon name="ChevronRight" size={20} />
+      </button>
+      <button
+        type="button"
+        className="btn-quiet progress-link"
+        aria-label={`Body · ${body ?? 'Log your bodyweight'}`}
+        onClick={() => push({ kind: 'body' })}
+      >
+        <span className="progress-link-title">Body</span>
+        <span className="progress-link-sub">{body ?? 'Log your bodyweight'}</span>
+        <Icon name="ChevronRight" size={20} />
+      </button>
+    </nav>
+  )
 
+  // N6: with a verdict, the headline is the page title ("12 of 14 lifts are moving"), its
+  // exceptions and the meta line under it; the tab bar already says "Progress".
   return (
-    <AppShell title="Progress" actions={<span className="progress-date">{humanDate(at)}</span>}>
-      <div className="progress-home">
-        {copy.stage === 'empty' ? (
+    <AppShell
+      title={headline ? headline.title : 'Progress'}
+      subtitle={
+        headline ? (
           <>
-            <ul className="progress-expect">
-              {copy.expectations.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-            <button type="button" className="btn-primary progress-start" onClick={start}>
-              Start workout
-            </button>
+            {headline.exceptions ? <p className="progress-exceptions">{headline.exceptions}</p> : null}
+            <p className="progress-meta">{`Since ${dayMonth(since)} · ${sessionsText(inWindow)}`}</p>
           </>
-        ) : null}
-
-        {copy.stage === 'starting' || copy.stage === 'early' ? (
+        ) : undefined
+      }
+    >
+      <div className="progress-home">
+        {headline ? (
+          <>
+            {links}
+            <section className="progress-lifts" aria-label="Lifts">
+              <LiftsList model={model} onOpen={open} group />
+            </section>
+          </>
+        ) : (
           <>
             {copy.sentence ? <p className="progress-sentence">{copy.sentence}</p> : null}
-            <ul className="progress-rows">
+            {links}
+            <ul className="progress-rows" aria-label="Lifts">
               {copy.startingPoints.map((p) => (
                 <li key={p.exerciseId}>
                   <button type="button" className="btn-quiet progress-row" onClick={() => open(p.exerciseId)}>
@@ -453,54 +470,7 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
                 </li>
               ))}
             </ul>
-            <button type="button" className="btn-primary progress-start" onClick={start}>
-              Start workout
-            </button>
           </>
-        ) : null}
-
-        {headline ? (
-          <>
-            <header className="progress-headline">
-              <p className="progress-eyebrow">{`Since ${dayMonth(at - LEDGER_SPAN)} · ${LEDGER_WEEKS} weeks`}</p>
-              <h2 className="progress-title">{headline.title}</h2>
-              {headline.exceptions ? <p className="progress-exceptions">{headline.exceptions}</p> : null}
-            </header>
-
-            <WeeksStrip model={model} />
-
-            <section className="progress-lifts" aria-label="Lifts">
-              <LiftsList model={model} onOpen={open} />
-            </section>
-          </>
-        ) : null}
-
-        {copy.stage === 'empty' ? null : (
-          <nav className="progress-links" aria-label="More">
-            <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'muscles' })}>
-              <span className="progress-link-main">
-                <span className="progress-link-title">Muscles</span>
-                <span className="progress-link-sub">{musclesLine(model)}</span>
-              </span>
-              <Icon name="ChevronRight" size={20} />
-            </button>
-            <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'body' })}>
-              <span className="progress-link-main">
-                <span className="progress-link-title">Body</span>
-                <span className="progress-link-sub">
-                  {latestWeight ? `${latestWeight.kg} kg · ${dayText(latestWeight.day)}` : 'Log your bodyweight'}
-                </span>
-              </span>
-              <Icon name="ChevronRight" size={20} />
-            </button>
-            <button type="button" className="btn-quiet progress-link" onClick={() => push({ kind: 'photos' })}>
-              <span className="progress-link-main">
-                <span className="progress-link-title">Photos</span>
-                <span className="progress-link-sub">Front, side and back over time</span>
-              </span>
-              <Icon name="ChevronRight" size={20} />
-            </button>
-          </nav>
         )}
       </div>
     </AppShell>

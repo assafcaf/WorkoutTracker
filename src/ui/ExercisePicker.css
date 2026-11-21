@@ -1,22 +1,24 @@
-/* The Session's "Add exercise" picker (E19-T13): heading and close, a search box, one row per
- * Exercise. Every colour comes through a `var(--...)` from src/styles/tokens.css.
+/* The one Exercise picker (DX-08): live Swap, Program Replace, Add exercise (Program editor,
+ * Session editor, live), Import, and the Exercises library draw the same list. A sheet adds a
+ * 56 px header (title centred, X at the right); then a search well, the "My gym only" chip, a lead
+ * section ("Similar", "My lifts") and "All" in one continuous scroll. Each row is one button:
+ * the name over the muscle in grey and the last Set. No per-row buttons, no pager, no dots.
+ *
+ * Every colour comes through a `var(--...)` from src/styles/tokens.css.
  */
 
 .exercise-picker {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   overflow-y: auto;
 }
 
-/* v7: the compact bar every pushed page wears (`.app-header-bar`): 56 px on the surface over a
- * hairline, the title centred, Close at the right. */
 .exercise-picker-header {
   position: sticky;
   top: 0;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(var(--tap-min), 1fr) auto minmax(var(--tap-min), 1fr);
+  grid-template-columns: var(--tap-min) minmax(0, 1fr) var(--tap-min);
   align-items: center;
   gap: var(--space-1);
   min-height: 56px;
@@ -33,51 +35,146 @@
   font-weight: var(--weight-semibold);
   line-height: 1.375rem;
   text-align: center;
+  overflow-wrap: break-word;
 }
 
 .exercise-picker-close {
   grid-column: 3;
-  justify-self: end;
+  min-width: var(--tap-min);
   min-height: var(--tap-min);
-  padding: 0 var(--space-2);
-  border: none;
-  border-radius: var(--radius-sm);
   color: var(--color-text);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
 }
 
-/* The search well, as the Exercises tab's: raised, no border. */
-.exercise-picker-search {
-  min-height: var(--tap-min);
-  margin: var(--space-2) var(--space-4) 0;
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-raised);
+.exercise-picker .picker-list {
+  padding: var(--space-3) var(--space-4) var(--space-4);
 }
 
-/* v7 (study §3, Ledger): rows on paper between hairlines, not cards. */
-.exercise-picker-rows {
+/* ---- The list itself, in a sheet or on the Exercises page ---- */
+
+.picker-list {
   display: flex;
   flex-direction: column;
-  margin: 0 var(--space-4) var(--space-4);
+  gap: var(--space-3);
+}
+
+.picker-search-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-muted);
+}
+
+.picker-search-field:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.picker-search {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-md);
+}
+
+.picker-search::placeholder {
+  color: var(--color-muted);
+}
+
+.picker-search:focus-visible {
+  outline: none;
+}
+
+.picker-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* "My gym only": a 44 px tall chip, at the tap floor itself (DX-18). */
+.chip.picker-gym-chip {
+  height: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.picker-empty {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.picker-section-heading {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1.25rem;
+}
+
+.picker-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
   padding: 0;
   border-top: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline);
   list-style: none;
 }
 
-.exercise-picker-row {
-  border-bottom: 1px solid var(--color-hairline);
+.picker-row + .picker-row {
+  border-top: 1px solid var(--color-hairline);
 }
 
-.exercise-picker-pick {
+.picker-row-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
   width: 100%;
-  min-height: 52px;
-  padding: 0;
+  min-height: 56px;
+  padding: var(--space-2) 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker-row-name {
+  color: var(--color-text);
   font-size: var(--text-md);
   font-weight: var(--weight-medium);
-  text-align: left;
+  line-height: 1.375rem;
+}
+
+.picker-row-meta {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.picker-row-meta::first-letter {
+  text-transform: capitalize;
+}
+
+.picker-more {
+  height: 1px;
 }
 
 /* The Add exercise row at the end of the Session's list (ExerciseList). */

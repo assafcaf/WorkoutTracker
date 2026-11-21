@@ -7,7 +7,7 @@ export type StatusTone = 'up' | 'flat' | 'down'
 
 /**
  * A lift status's tone: Moving and Ready are `up` (green: Ready is the best news the app gives,
- * never a warning); Lowered and Slipping are `down` (rust); Stalled, Hold, Break and Too new are
+ * never a warning); Lowered and Slipping are `down` (rust); Flat, Hold, Break and Too new are
  * `flat` (ink-3).
  */
 export function statusTone(kind: LiftStatusKind): StatusTone {
@@ -18,7 +18,7 @@ export function statusTone(kind: LiftStatusKind): StatusTone {
 
 /**
  * StatusMark -- a status as a glyph and a word in the status colour, with no box and no border
- * (study §3, Status): `↑ Moving`, `↑ Ready`, `= Stalled`, `↓ Lowered`. On a row it sits under the
+ * (study §3, Status): `↑ Moving`, `↑ Ready`, `= Flat`, `↓ Lowered`. On a row it sits under the
  * name; on a lift page it is the first line. Advice is a separate ink sentence, never inside it.
  *
  * Props:

@@ -469,13 +469,9 @@ test('O1 every var(--…) under src names a token tokens.css declares', () => {
 // stylesheet and the selector that paints each action today.
 const PRIMARY_ACTIONS: ReadonlyArray<readonly [string, string]> = [
   ['src/ui/AppShell.css', '.action-bar-slot > button'], // Log set
-  ['src/ui/WorkoutStartButtons.css', '.start-workout'], // Start
-  ['src/ui/ResumeCard.css', '.resume-workout'], // Resume
   ['src/ui/SessionSummary.css', '.session-summary-done'], // Done
   ['src/ui/ImportConfirm.css', '.import-confirm-confirm'],
   ['src/ui/UpdatePill.css', '.update-pill'],
-  ['src/ui/AlternativesList.css', '.alternatives-row-choose'],
-  ['src/ui/NoProgram.css', '.no-program-choose'],
 ]
 
 test('O1 every primary action paints --color-primary with a --color-on-primary label', () => {

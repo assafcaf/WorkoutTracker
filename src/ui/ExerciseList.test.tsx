@@ -562,6 +562,7 @@ function rolesOf(button: HTMLElement): string[] {
 
 function renderDiscardable() {
   const user = userEvent.setup()
+  const onDiscard = vi.fn()
   render(
     <ExerciseList
       program={assaf}
@@ -570,7 +571,7 @@ function renderDiscardable() {
       session={sessionWith([entry(workoutA.exercises[0].exerciseId, 1)])}
       onOpenSet={vi.fn()}
       onFinish={vi.fn()}
-      onDiscard={vi.fn()}
+      onDiscard={onDiscard}
       lastSwaps={{}}
       onUndoSwap={vi.fn()}
       onApplySwap={vi.fn()}
@@ -579,21 +580,24 @@ function renderDiscardable() {
       volumeBaseline={{ period: 'last' }}
     />,
   )
-  return { user }
+  return { user, onDiscard }
 }
 
-test('E17 O11 Discard workout wears btn-danger and no other role', () => {
+test('E17 O11 DX-14 Discard Session wears btn-danger and no other role', () => {
   renderDiscardable()
 
-  expect(rolesOf(screen.getByRole('button', { name: 'Discard workout' }))).toEqual(['btn-danger'])
+  expect(rolesOf(screen.getByRole('button', { name: 'Discard Session' }))).toEqual(['btn-danger'])
 })
 
-test('E17 O11 the Discard that confirms Discard workout wears btn-danger and no other role', async () => {
-  const { user } = renderDiscardable()
+test('DX-14 Discard Session discards at once, with no confirm (the caller offers Undo), and is the last control', async () => {
+  const { user, onDiscard } = renderDiscardable()
 
-  await user.click(screen.getByRole('button', { name: 'Discard workout' }))
-
-  expect(rolesOf(screen.getByRole('button', { name: 'Discard' }))).toEqual(['btn-danger'])
+  const discard = screen.getByRole('button', { name: 'Discard Session' })
+  const buttons = screen.getAllByRole('button')
+  expect(buttons[buttons.length - 1]).toBe(discard)
+  await user.click(discard)
+  expect(onDiscard).toHaveBeenCalledTimes(1)
+  expect(screen.queryByRole('button', { name: 'Discard' })).toBeNull()
 })
 
 // --- Progress Dashboard S2: the Live session's All view ----------------------------------------

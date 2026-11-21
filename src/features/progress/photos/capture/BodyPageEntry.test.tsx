@@ -17,7 +17,7 @@ beforeEach(async () => {
 })
 
 describe('E26-T7 O4 the entry point on Progress > Body', () => {
-  test('O4 Add photo opens the capture screen; Close returns to the Body page', async () => {
+  test('DX-10 New check-in opens the capture screen; Close returns to the Body page', async () => {
     const services = createServices({ now: () => NOW, storageAvailable: true })
     const user = userEvent.setup()
     render(
@@ -25,10 +25,10 @@ describe('E26-T7 O4 the entry point on Progress > Body', () => {
         <BodyPage page={{ kind: 'body' }} push={() => undefined} onBack={() => undefined} now={() => NOW} />
       </ServicesProvider>,
     )
-    await user.click(await screen.findByRole('button', { name: 'Add photo' }, { timeout: 5000 }))
+    await user.click(await screen.findByRole('button', { name: 'New check-in' }, { timeout: 5000 }))
     // Capture opens straight onto the camera view (Front, Mirror the first time).
     expect(await screen.findByRole('heading', { name: 'Front, mirror' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Close' }))
-    expect(await screen.findByLabelText('Bodyweight (kg)')).toBeVisible()
+    expect(await screen.findByRole('button', { name: 'Log bodyweight' })).toBeVisible()
   })
 })

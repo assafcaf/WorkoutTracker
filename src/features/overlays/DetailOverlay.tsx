@@ -41,7 +41,7 @@ export function DetailOverlay({
   if (!entry) {
     const title = heading ?? catalog.get(libraryId)?.name ?? 'Exercise info'
     return (
-      <article className="exercise-detail overlay-panel" role="dialog" aria-modal="true" aria-label={title}>
+      <article className="exercise-detail overlay-panel overlay-panel--pushed" role="dialog" aria-label={title}>
         <header className="exercise-detail-bar">
           <button type="button" className="exercise-detail-back btn-quiet" aria-label="Back" onClick={onBack}>
             <Icon name="ChevronLeft" size={24} />

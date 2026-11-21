@@ -64,6 +64,13 @@ More reps at a known weight is a **rep best**, never a PR. Only a PR wears the g
 The estimated 1RM is shown as "Est. strength".
 _Avoid_: Best, high score
 
+**Lift status**:
+A lift's one verdict (`liftStatus`, `src/domain/stats/status.ts`), the same word on every screen:
+**Moving** (going up), **Ready** (time to add load), **Flat** (no new best in 4 Sessions; written
+"Flat since 7 Aug") and **Lowered** (lighter on purpose). Rarer: Too new, Break, Hold, Slipping.
+Flat and Ready **need a decision**: Progress lists them first. The code kind for Flat is `stalled`.
+_Avoid_: Stalled, stuck, plateau
+
 **Ladder**:
 The ordered weights an Exercise can take, built from its start weight by its step.
 _Avoid_: Scale, range, increments
@@ -100,6 +107,8 @@ Push, pull, legs or core: the group every muscle and Region belongs to, and its 
 
 **Weekly set range**:
 The 10-20 Sets a week a muscle is planned to get; below it is `below`, above it `above`, both ends `within`. Set in `src/domain/setRange.ts`.
+One verdict per muscle on every screen ("Calves · 8 sets/week · below 10–20"): a Program that plans
+a low count does not make it "as planned".
 
 **Shell**:
 The frame around the screen showing: header, tab bar and Action bar. Not the **precache**.

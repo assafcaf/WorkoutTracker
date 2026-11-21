@@ -17,6 +17,11 @@
   font-size: var(--text-sm);
 }
 
+/* N4: just over an action bar with no tab bar under it (the Set screen's 88 px Log bar). */
+.snackbar.snackbar--over-bar {
+  bottom: calc(96px + var(--safe-bottom));
+}
+
 /* V5-04: on the Set screen it rides in an anchor above the Dials (or the Just done block while
  * rest runs), so nothing it covers is one the trainee is about to touch. */
 .snackbar.snackbar--inline {

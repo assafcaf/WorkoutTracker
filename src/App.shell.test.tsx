@@ -1,7 +1,7 @@
-// The Progress Dashboard's app shell, end to end through App: four tabs, Settings as a page off
-// the Dashboard's gear, the Program tab's Program | Exercises switch, and the Live session --
-// full screen with no tabs, minimised to a live strip pinned over every tab, and back again
-// exactly where it was.
+// The app shell, end to end through App (DX-01, DX-04, DX-06, DX-09): four tabs -- Train,
+// Sessions, Progress, Program -- with Train the launch screen; Settings and Exercises as pages
+// pushed over Program that keep the tab bar; and the Live session -- full screen with no tabs,
+// minimised to one strip above the tab bar on every tab, and back again exactly where it was.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
@@ -45,9 +45,9 @@ async function pressTab(user: User, name: string): Promise<void> {
   await user.click(within(mainNav()).getByRole('button', { name }))
 }
 
-/** v7: Home has loaded -- its Today panel, the door to the workout page, is on screen. */
-async function homeReady(): Promise<HTMLElement> {
-  return screen.findByRole('button', { name: /Open the workout\.$/ }, SETTLE)
+/** DX-01: Train has loaded -- today's Workout and its Start are on screen. */
+async function trainReady(): Promise<HTMLElement> {
+  return screen.findByRole('button', { name: /^Start Workout / }, SETTLE)
 }
 
 function liveStrip(): HTMLElement | null {
@@ -62,49 +62,67 @@ async function logFirstBackSquatSet(user: User): Promise<void> {
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 }
 
-test('the Dashboard header carries a Settings gear that opens Settings as a full-screen page with a back chevron', async () => {
+test('DX-04 Settings opens from the Program tab\'s Settings row as a pushed page that keeps the tab bar', async () => {
   const user = userEvent.setup()
   await renderApp()
-  // v7: the app opens on Home.
-  await homeReady()
+  await trainReady()
+  // No gear anywhere but the Program tab's row.
+  expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull()
 
-  await user.click(screen.getByRole('button', { name: 'Settings' }))
+  await pressTab(user, 'Program')
+  await user.click(await screen.findByRole('button', { name: /^Settings/ }, SETTLE))
 
   expect(await screen.findByRole('heading', { level: 1, name: 'Settings' }, SETTLE)).toBeVisible()
-  expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
+  expect(within(mainNav()).getByRole('button', { name: 'Program' })).toHaveAttribute('aria-current', 'page')
+  expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Back' }))
-  expect(await homeReady()).toBeVisible()
-  expect(mainNav()).toBeVisible()
+  expect(await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)).toBeVisible()
 })
 
-test('each of the four tabs is titled for itself in a large page header', async () => {
+test('each of the four tabs is titled in a large page header, Train by today\'s Workout', async () => {
   const user = userEvent.setup()
   await renderApp()
-  // v7: the app opens on Home.
-  await homeReady()
+  await trainReady()
+  expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toHaveClass('page-header-title')
 
-  for (const name of ['Progress', 'Sessions', 'Program']) {
+  for (const [name, title] of [['Sessions', 'Sessions'], ['Progress', 'Progress'], ['Program', 'A/B Split']]) {
     await pressTab(user, name)
-    const title = await screen.findByRole('heading', { level: 1, name }, SETTLE)
-    expect(title).toHaveClass('page-header-title')
+    const heading = await screen.findByRole('heading', { level: 1, name: title }, SETTLE)
+    expect(heading).toHaveClass('page-header-title')
     expect(within(mainNav()).getByRole('button', { name })).toHaveAttribute('aria-current', 'page')
   }
 })
 
-test('the Program tab switches between the program and the exercise library', async () => {
+test('DX-04 the Program tab opens the exercise library from its Exercises row, a pushed page with the tab bar', async () => {
   const user = userEvent.setup()
   await renderApp()
-  // v7: the app opens on Home.
-  await homeReady()
+  await trainReady()
 
   await pressTab(user, 'Program')
-  const side = await screen.findByRole('radiogroup', { name: 'Program view' }, SETTLE)
-  expect(within(side).getByRole('radio', { name: 'Program' })).toBeChecked()
-
-  await user.click(within(side).getByRole('radio', { name: 'Exercises' }))
+  expect(screen.queryByRole('radiogroup', { name: 'Program view' })).toBeNull()
+  await user.click(await screen.findByRole('button', { name: 'Exercises' }, SETTLE))
 
   expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toBeVisible()
   expect(within(mainNav()).getByRole('button', { name: 'Program' })).toHaveAttribute('aria-current', 'page')
+  // DX-08: the picker's look -- the page titled "Exercises", "New exercise" its header's text
+  // button, then search and "My gym only".
+  const header = screen.getByRole('heading', { level: 1, name: 'Exercises' }).closest('header') as HTMLElement
+  expect(within(header).getByRole('button', { name: 'New exercise' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'My gym only' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  expect(await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)).toBeVisible()
+})
+
+test('DX-06 a lift page pushed over Train keeps the tab bar and goes back with its chevron', async () => {
+  const user = userEvent.setup()
+  await renderApp()
+  await trainReady()
+
+  await user.click(screen.getByRole('button', { name: 'Back squat' }))
+  expect(await screen.findByRole('heading', { level: 1, name: 'Back squat' }, SETTLE)).toBeVisible()
+  expect(within(mainNav()).getByRole('button', { name: 'Train' })).toHaveAttribute('aria-current', 'page')
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  expect(await trainReady()).toBeVisible()
 })
 
 test('a workout in progress is a full-screen Live session: no tab bar, a minimise chevron, the workout and Finish in its header', async () => {
@@ -113,7 +131,7 @@ test('a workout in progress is a full-screen Live session: no tab bar, a minimis
 
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
   await screen.findByText('Set 1 of 4', undefined, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
@@ -122,41 +140,43 @@ test('a workout in progress is a full-screen Live session: no tab bar, a minimis
   expect(within(header).getByRole('heading', { level: 1, name: 'Workout A' })).toBeVisible()
   expect(within(header).getByRole('timer', { name: 'Workout time' })).toBeVisible()
   expect(within(header).getByRole('button', { name: 'Finish' })).toHaveClass('btn-secondary')
-  expect(within(header).getByRole('button', { name: 'Now' })).toBeVisible()
+  expect(within(header).getByRole('radio', { name: 'Set' })).toBeVisible()
 })
 
 test('Now on the exercise list opens the set the session is on', async () => {
   const user = userEvent.setup()
   await renderApp()
   await logFirstBackSquatSet(user)
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Now' }))
+  await user.click(screen.getByRole('radio', { name: 'Set' }))
 
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('heading', { level: 1, name: 'Back squat' })).toBeVisible()
 })
 
-test('minimising the Live session pins a live strip naming the workout over every tab and the Settings page', async () => {
+test('DX-09 minimising the Live session leaves one strip above the tab bar on every tab and Settings, and no other Resume', async () => {
   const user = userEvent.setup()
   await renderApp()
   await logFirstBackSquatSet(user)
 
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
 
-  await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
-  for (const name of ['Progress', 'Sessions', 'Program', 'Home']) {
+  // Train under the strip: the live Workout's Plans, and no Start.
+  await screen.findByRole('list', { name: 'Workout A lifts' }, SETTLE)
+  expect(screen.queryByRole('button', { name: /^Start / })).toBeNull()
+  for (const [name, title] of [['Sessions', 'Sessions'], ['Progress', 'Progress'], ['Program', 'A/B Split'], ['Train', 'Workout A']]) {
     await pressTab(user, name)
-    // v7: Home offers the Workout in progress back; every other tab is titled for itself.
-    if (name === 'Home') await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
-    else await screen.findByRole('heading', { level: 1, name }, SETTLE)
+    await screen.findByRole('heading', { level: 1, name: title }, SETTLE)
     const strip = liveStrip()
     expect(strip, `no live strip on ${name}`).not.toBeNull()
     expect(strip).toHaveTextContent(/Workout A/)
     expect(within(strip as HTMLElement).getByRole('timer', { name: 'Workout time' })).toBeVisible()
+    expect(screen.getAllByRole('button', { name: /^Resume/ }), `one Resume on ${name}`).toHaveLength(1)
   }
-  await user.click(screen.getByRole('button', { name: 'Settings' }))
+  await pressTab(user, 'Program')
+  await user.click(await screen.findByRole('button', { name: /^Settings/ }, SETTLE))
   await screen.findByRole('heading', { level: 1, name: 'Settings' }, SETTLE)
   expect(liveStrip()).not.toBeNull()
   // Minimised is not ended.
@@ -174,16 +194,15 @@ test('the live strip shows the rest countdown after a logged set', async () => {
   await waitFor(() => expect(liveStrip()).toHaveTextContent(/Rest [23]:\d\d/), SETTLE)
 })
 
-test('Return on the live strip brings the Live session back on the same set', async () => {
+test('Resume on the live strip brings the Live session back on the same set', async () => {
   const user = userEvent.setup()
   await renderApp()
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
-  // v7: Home under the live strip offers the session in progress back.
   await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
   await pressTab(user, 'Sessions')
 
-  await user.click(screen.getByRole('button', { name: 'Return to Workout A' }))
+  await user.click(screen.getByRole('button', { name: 'Resume Workout A' }))
 
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('heading', { level: 1, name: 'Back squat' })).toBeVisible()
@@ -196,7 +215,7 @@ test('a tap anywhere on the live strip returns to the Live session', async () =>
   await renderApp()
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
-  // v7: Home under the live strip offers the session in progress back.
+  // DX-09: the strip is the way back.
   await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
 
   await user.click(liveStrip()?.querySelector('.live-strip-text') as HTMLElement)
@@ -204,26 +223,26 @@ test('a tap anywhere on the live strip returns to the Live session', async () =>
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
 })
 
-test('finishing a session returned to from another tab lands on the Dashboard under its summary', async () => {
+test('finishing a session returned to from another tab lands on Train under its summary', async () => {
   const user = userEvent.setup()
   await renderApp()
   await logFirstBackSquatSet(user)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
-  // v7: Home under the live strip offers the session in progress back.
+  // DX-09: the strip is the way back.
   await screen.findByRole('button', { name: 'Resume Workout A' }, SETTLE)
   await pressTab(user, 'Progress')
-  await user.click(screen.getByRole('button', { name: 'Return to Workout A' }))
+  await user.click(screen.getByRole('button', { name: 'Resume Workout A' }))
   await screen.findByText('Set 2 of 4', undefined, SETTLE)
 
   await finishWorkout(user)
 
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
-  expect(within(mainNav()).getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
+  expect(within(mainNav()).getByRole('button', { name: 'Train' })).toHaveAttribute('aria-current', 'page')
   expect(liveStrip()).toBeNull()
   expect(await getActiveSession()).toBeNull()
 })
 
-test('Resume on the Dashboard while minimised returns to the same set', async () => {
+test('DX-09 the strip\'s Resume while minimised returns to the same set', async () => {
   const user = userEvent.setup()
   await renderApp()
   await logFirstBackSquatSet(user)
@@ -234,7 +253,7 @@ test('Resume on the Dashboard while minimised returns to the same set', async ()
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
 })
 
-test('the tab bar reads Train, Progress, Sessions, Program, and Progress opens its own home page', async () => {
+test('the tab bar reads Train, Sessions, Progress, Program, and Progress opens its own home page', async () => {
   const user = userEvent.setup()
   await renderApp()
   await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
@@ -242,7 +261,7 @@ test('the tab bar reads Train, Progress, Sessions, Program, and Progress opens i
   const names = within(mainNav())
     .getAllByRole('button')
     .map((button) => button.getAttribute('aria-label'))
-  expect(names).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
+  expect(names).toEqual(['Train', 'Sessions', 'Progress', 'Program'])
 
   await pressTab(user, 'Progress')
   expect(await screen.findByRole('heading', { level: 1, name: 'Progress' }, SETTLE)).toBeVisible()
@@ -259,8 +278,8 @@ test('Progress to a lift to a Session is two taps, and Back returns each step', 
   try {
     const user = userEvent.setup()
     await renderApp()
-    // v7: the app opens on Home, whose Today panel names the Workout due.
-    await screen.findByRole('button', { name: /Workout [AB].*Open the workout\.$/ }, SETTLE)
+    // DX-01: the app opens on Train, today's Workout.
+    await screen.findByRole('button', { name: /^Start Workout [AB]/ }, SETTLE)
 
     await pressTab(user, 'Progress')
     const rows = await screen.findAllByRole('button', { name: /Push-ups/ }, SETTLE)
@@ -270,11 +289,41 @@ test('Progress to a lift to a Session is two taps, and Back returns each step', 
     const lastMoved = within(log).getAllByRole('button')[0]
 
     await user.click(lastMoved)
-    const done = await screen.findByRole('button', { name: 'Done' }, SETTLE)
-    expect(done).toBeVisible()
-    await user.click(done)
+    // DX-14: Session detail has a header Back, no bottom Done bar.
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
+    const back = await screen.findByRole('button', { name: 'Back' }, SETTLE)
+    expect(back).toBeVisible()
+    await user.click(back)
     expect(await screen.findByRole('heading', { level: 1, name: 'Sessions' }, SETTLE)).toBeVisible()
   } finally {
     vi.useRealTimers()
   }
+})
+
+test('DX-06 Session detail is a pushed page with the tab bar and a bare ‹; its editor is full screen with Cancel and Save', async () => {
+  const at = Date.now() - 2 * 24 * 3600_000
+  const done: Session = {
+    id: 'past-a',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt: at,
+    finishedAt: at + 60 * 60_000,
+    entries: [{ exerciseId: 'back-squat', setIndex: 1, weightKg: 60, reps: 8, loggedAt: at + 60_000 }],
+  }
+  await db.sessions.put(done)
+  const user = userEvent.setup()
+  await renderApp()
+  await trainReady()
+
+  await pressTab(user, 'Sessions')
+  const rows = await screen.findAllByRole('button', { name: /Workout A/ }, SETTLE)
+  await user.click(rows.find((row) => row.classList.contains('session-row')) as HTMLElement)
+  expect(await screen.findByRole('heading', { level: 1, name: 'Session' }, SETTLE)).toBeVisible()
+  expect(within(mainNav()).getByRole('button', { name: 'Sessions' })).toHaveAttribute('aria-current', 'page')
+  expect(screen.getByRole('button', { name: 'Back' }).textContent).toBe('')
+
+  await user.click(screen.getByRole('button', { name: 'Edit session' }))
+  expect(await screen.findByRole('button', { name: 'Save' }, SETTLE)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+  expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
 })

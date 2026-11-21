@@ -134,20 +134,34 @@
   appearance: none;
   position: relative;
   flex: none;
+  /* DX-18: the input is the full 44 x 44 px target; the 44 x 26 px track is drawn inside it. */
   width: 44px;
-  height: 26px;
+  height: var(--tap-min);
   margin: 0;
   border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* The track. */
+.switch::after {
+  content: '';
+  position: absolute;
+  top: calc((var(--tap-min) - 26px) / 2);
+  left: 0;
+  width: 44px;
+  height: 26px;
   border-radius: var(--radius-pill);
   background: var(--color-control);
-  cursor: pointer;
   transition: background-color var(--motion-fast);
 }
 
+/* The knob, over the track. */
 .switch::before {
   content: '';
   position: absolute;
-  top: 3px;
+  z-index: 1;
+  top: calc((var(--tap-min) - 26px) / 2 + 3px);
   left: 3px;
   width: 20px;
   height: 20px;
@@ -157,7 +171,7 @@
   transition: transform var(--motion-fast);
 }
 
-.switch:checked {
+.switch:checked::after {
   background: var(--color-primary);
   color: var(--color-on-primary);
 }

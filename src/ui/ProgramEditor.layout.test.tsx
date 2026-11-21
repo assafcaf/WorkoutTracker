@@ -1,5 +1,6 @@
-// Progress Dashboard S7b: the Program editor's bar, its Workouts' live size, a Plan row's drag
-// handle and options menu (Swap exercise), and the sticky "Impact on weekly volume" card.
+// Progress Dashboard S7b / DX-17: the Program editor's bar, its Workouts' live size, a Plan row's
+// drag handle, the Plan editor page (Swap exercise, Exercise settings), and the sticky "Impact on
+// weekly volume" card.
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
@@ -87,13 +88,24 @@ function renderEditor(overrides: Partial<ProgramEditorProps> = {}) {
 }
 
 function planRow(name: string): HTMLElement {
-  const row = screen.getByText(name).closest('li')
+  const row = screen.getByText(name, { selector: '.program-editor-plan-name' }).closest('li')
   if (row === null) throw new Error(`no Plan row for ${name}`)
   return row
 }
 
 function planNames(): string[] {
   return [...document.querySelectorAll('.program-editor-plan-name')].map((p) => p.textContent ?? '')
+}
+
+type User = ReturnType<typeof userEvent.setup>
+
+/** DX-17: a tap on a Plan's row pushes its Plan editor. */
+async function openPlan(user: User, name: string): Promise<void> {
+  await user.click(screen.getByRole('button', { name: new RegExp(`^${name}, `) }))
+}
+
+async function back(user: User): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'Back' }))
 }
 
 test('S7b the bar reads Cancel, Edit <program name> and Save', () => {
@@ -129,21 +141,21 @@ test("S7b a Workout's head shows its live sets and minutes, following an edit to
   // workoutEstimate: 10 sets x 40 s + 4x180 + 3x90 + 3x90 rest, less the last 90 s = 1560 s.
   expect(screen.getByText('10 sets · ~26 min')).toBeVisible()
 
-  const sets = within(planRow('Back Squat')).getByLabelText('Sets')
-  await user.clear(sets)
-  await user.type(sets, '5')
+  await openPlan(user, 'Back Squat')
+  await user.click(screen.getByRole('button', { name: 'Increase Sets' }))
+  await back(user)
 
   // One more Set: 40 s of work and 180 s more rest.
   expect(screen.getByText('11 sets · ~30 min')).toBeVisible()
 })
 
-test('S7b a row reads its family dot, and a Bodyweight row its start Load instead of a kg field', () => {
+test('S7b DX-15 a row has no muscle dot, and a Bodyweight row reads its start Load', () => {
   renderEditor()
 
-  expect(planRow('Back Squat').querySelector('.muscle-dot')).toHaveAttribute('data-family', 'legs')
-  expect(planRow('Flat Bench').querySelector('.muscle-dot')).toHaveAttribute('data-family', 'push')
-  expect(within(planRow('Assisted Pullup')).queryByLabelText('Starting weight (kg)')).toBeNull()
-  expect(within(planRow('Assisted Pullup')).getByText('BW−20')).toBeVisible()
+  expect(document.querySelector('.muscle-dot')).toBeNull()
+  expect(screen.getByRole('button', { name: /^Assisted Pullup, / })).toHaveAccessibleName(
+    'Assisted Pullup, 3 × 5–8 · BW−20',
+  )
 })
 
 test('S7b the drag handle moves its row with the arrow keys and keeps the handle focused', async () => {
@@ -166,16 +178,18 @@ test('S7b the drag handle moves its row with the arrow keys and keeps the handle
   ])
 })
 
-test("S7b Swap exercise in a row's menu replaces its Exercise, keeping its numbers but not its starting weight", async () => {
+test('S7b DX-17 Swap exercise on the Plan editor replaces its Exercise, keeping its numbers but not its starting weight', async () => {
   const { user, onSave } = renderEditor()
 
-  await user.click(within(planRow('Back Squat')).getByRole('button', { name: 'Options for Back Squat' }))
-  await user.click(within(planRow('Back Squat')).getByRole('button', { name: 'Swap exercise' }))
-  const dialog = screen.getByRole('dialog', { name: 'Swap exercise' })
+  await openPlan(user, 'Back Squat')
+  await user.click(screen.getByRole('button', { name: 'Swap exercise' }))
+  const dialog = screen.getByRole('dialog', { name: 'Swap Back Squat' })
   await user.type(within(dialog).getByLabelText('Search exercises'), 'press')
-  await user.click(within(dialog).getByRole('button', { name: 'Pick' }))
+  await user.click(within(dialog).getAllByRole('button', { name: 'Leg Press' })[0])
 
   expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByRole('heading', { level: 1, name: 'Leg Press' })).toBeVisible()
+  await back(user)
   expect(planNames()).toEqual(['Leg Press', 'Flat Bench', 'Assisted Pullup'])
 
   await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -187,6 +201,16 @@ test("S7b Swap exercise in a row's menu replaces its Exercise, keeping its numbe
   })
 })
 
+test('DX-08 Swap leads with Similar exercises for the planned one', async () => {
+  const { user } = renderEditor()
+
+  await openPlan(user, 'Back Squat')
+  await user.click(screen.getByRole('button', { name: 'Swap exercise' }))
+
+  const similar = within(screen.getByRole('dialog')).getByRole('region', { name: 'Similar' })
+  expect(within(similar).getByRole('button', { name: 'Leg Press' })).toBeInTheDocument()
+})
+
 test('S7b no impact card shows until an edit changes the planned week', () => {
   renderEditor()
 
@@ -196,9 +220,9 @@ test('S7b no impact card shows until an edit changes the planned week', () => {
 test("S7b raising a row's Sets shows its family's planned week before and after, and the change", async () => {
   const { user } = renderEditor()
 
-  const sets = within(planRow('Back Squat')).getByLabelText('Sets')
-  await user.clear(sets)
-  await user.type(sets, '5')
+  await openPlan(user, 'Back Squat')
+  await user.click(screen.getByRole('button', { name: 'Increase Sets' }))
+  await back(user)
 
   // Legs: 4 sets x 2 sessions a week = 8, now 5 x 2 = 10.
   const card = screen.getByRole('complementary', { name: 'Impact on weekly volume' })
@@ -206,19 +230,22 @@ test("S7b raising a row's Sets shows its family's planned week before and after,
   expect(within(card).getByText('Legs 8 → 10 sets/week')).toBeVisible()
   expect(within(card).getByText('Before')).toBeVisible()
   expect(within(card).getByText('After')).toBeVisible()
-  expect(card.querySelector('.program-editor-impact-bar[data-family="legs"]')).not.toBeNull()
+  // DX-15: the After bar is ink, not a muscle family colour.
+  expect(card.querySelector('.program-editor-impact-bar-after')).not.toBeNull()
+  expect(card.querySelector('[data-family]')).toBeNull()
 })
 
 test('S7b putting a row back as it was takes the impact card away', async () => {
   const { user } = renderEditor()
 
-  const sets = within(planRow('Flat Bench')).getByLabelText('Sets')
-  await user.clear(sets)
-  await user.type(sets, '4')
+  await openPlan(user, 'Flat Bench')
+  await user.click(screen.getByRole('button', { name: 'Increase Sets' }))
+  await back(user)
   expect(screen.getByRole('complementary', { name: 'Impact on weekly volume' })).toBeVisible()
 
-  await user.clear(sets)
-  await user.type(sets, '3')
+  await openPlan(user, 'Flat Bench')
+  await user.click(screen.getByRole('button', { name: 'Decrease Sets' }))
+  await back(user)
   expect(screen.queryByRole('complementary', { name: 'Impact on weekly volume' })).toBeNull()
 })
 
@@ -228,85 +255,61 @@ test('moveTo takes an item out and puts it back at the given place', () => {
   expect(moveTo(['a', 'b'], 1, 1)).toEqual(['a', 'b'])
 })
 
-test('V1-28 each number field is named after its row: "Back Squat Sets", "Back Squat Min reps" and on', () => {
-  renderEditor()
-
-  const row = planRow('Back Squat')
-  for (const name of [
-    'Back Squat Sets',
-    'Back Squat Min reps',
-    'Back Squat Max reps',
-    'Back Squat Rest (m:ss)',
-    'Back Squat Starting weight (kg)',
-  ]) {
-    // V6 (V5-10): Rest is an m:ss text field now, so it is a textbox, not a spinbutton.
-    expect(within(row).getByRole(name.endsWith('(m:ss)') ? 'textbox' : 'spinbutton', { name })).toBeInTheDocument()
-  }
-  // The Bodyweight row has no kg field, so four names (three numbers and the m:ss Rest).
-  expect(within(planRow('Assisted Pullup')).getAllByRole('spinbutton')).toHaveLength(3)
-  expect(within(planRow('Assisted Pullup')).getAllByRole('textbox')).toHaveLength(1)
-})
-
-test('V1-28 a row puts its numbers on a second line under the name, each with its own caption', () => {
-  renderEditor()
-
-  const row = planRow('Back Squat')
-  const cells = row.querySelector('.program-editor-plan-cells')
-  expect(cells).not.toBeNull()
-  expect(row.querySelector('.program-editor-plan-row')?.contains(cells)).toBe(false)
-  expect([...(cells as HTMLElement).querySelectorAll('.program-editor-cell-caption')].map((c) => c.textContent)).toEqual([
-    'Sets',
-    'Reps',
-    // V6 (V5-10): Rest is m:ss, so its caption needs no unit.
-    'Rest',
-    'kg',
-  ])
-  expect(document.querySelector('.program-editor-columns')).toBeNull()
-})
-
-test("V1-16 without stored Exercise settings, a row's options offer no Bodyweight or Weight step", async () => {
+test('DX-17 a Bodyweight Plan editor has steppers for Sets, reps and Rest, and no Starting weight', async () => {
   const { user } = renderEditor()
 
-  await user.click(within(planRow('Back Squat')).getByRole('button', { name: 'Options for Back Squat' }))
+  await openPlan(user, 'Assisted Pullup')
 
-  expect(within(planRow('Back Squat')).queryByRole('switch', { name: 'Bodyweight exercise' })).toBeNull()
-  expect(within(planRow('Back Squat')).queryByRole('combobox', { name: 'Back Squat weight step' })).toBeNull()
+  for (const name of ['Sets', 'Min reps', 'Max reps', 'Rest']) {
+    expect(screen.getByRole('group', { name })).toBeInTheDocument()
+  }
+  expect(screen.queryByRole('group', { name: 'Starting weight' })).toBeNull()
+  expect(screen.getByText('BW−20')).toBeVisible()
 })
 
-test("V1-16 a row's options show its Exercise's stored step and Bodyweight, and Save hands back only what changed", async () => {
+test('V1-16 without stored Exercise settings, a Plan editor offers no Bodyweight or Weight step', async () => {
+  const { user } = renderEditor()
+
+  await openPlan(user, 'Back Squat')
+
+  expect(screen.queryByRole('switch', { name: 'Bodyweight exercise' })).toBeNull()
+  expect(screen.queryByRole('combobox', { name: 'Back Squat weight step' })).toBeNull()
+})
+
+test("V1-16 a Plan editor shows its Exercise's stored step and Bodyweight, and Save hands back only what changed", async () => {
   const { user, onSave } = renderEditor({
     exerciseSettings: { weightSteps: { squat: 5 }, bodyweight: {} },
   })
 
-  await user.click(within(planRow('Back Squat')).getByRole('button', { name: 'Options for Back Squat' }))
-  const row = planRow('Back Squat')
-  const bodyweight = within(row).getByRole('switch', { name: 'Bodyweight exercise' })
-  const step = within(row).getByRole('combobox', { name: 'Back Squat weight step' })
+  await openPlan(user, 'Back Squat')
+  const bodyweight = screen.getByRole('switch', { name: 'Bodyweight exercise' })
+  const step = screen.getByRole('combobox', { name: 'Back Squat weight step' })
   expect(bodyweight).not.toBeChecked()
   expect(step).toHaveValue('5')
-  expect(within(row).getByText('For Back Squat in every workout.')).toBeVisible()
+  expect(screen.getByText('Weight step and Bodyweight apply to Back Squat in every workout.')).toBeVisible()
 
   await user.selectOptions(step, '2.5')
+  await back(user)
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   expect(onSave).toHaveBeenCalledTimes(1)
   expect(onSave.mock.calls[0][1]).toEqual({ weightSteps: { squat: 2.5 }, bodyweight: {} })
 })
 
-test('V1-16 turning Bodyweight on hides the step, swaps the kg field for the Load, and counts as a change', async () => {
+test('V1-16 turning Bodyweight on hides the step, swaps the kg stepper for the Load, and counts as a change', async () => {
   const onCancel = vi.fn()
   const { user, onSave } = renderEditor({
     exerciseSettings: { weightSteps: {}, bodyweight: {} },
     onCancel,
   })
 
-  await user.click(within(planRow('Flat Bench')).getByRole('button', { name: 'Options for Flat Bench' }))
-  await user.click(within(planRow('Flat Bench')).getByRole('switch', { name: 'Bodyweight exercise' }))
+  await openPlan(user, 'Flat Bench')
+  await user.click(screen.getByRole('switch', { name: 'Bodyweight exercise' }))
 
-  const row = planRow('Flat Bench')
-  expect(within(row).queryByRole('combobox', { name: 'Flat Bench weight step' })).toBeNull()
-  expect(within(row).queryByLabelText('Starting weight (kg)')).toBeNull()
+  expect(screen.queryByRole('combobox', { name: 'Flat Bench weight step' })).toBeNull()
+  expect(screen.queryByRole('group', { name: 'Starting weight' })).toBeNull()
 
+  await back(user)
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
   expect(onCancel).not.toHaveBeenCalled()
   expect(screen.getByRole('heading', { name: 'Discard 1 change?' })).toBeVisible()
@@ -321,13 +324,13 @@ test('V1-16 a stored Bodyweight override shows on the row, and turning it back o
     exerciseSettings: { weightSteps: {}, bodyweight: { squat: true } },
   })
 
-  expect(within(planRow('Back Squat')).queryByLabelText('Starting weight (kg)')).toBeNull()
-  await user.click(within(planRow('Back Squat')).getByRole('button', { name: 'Options for Back Squat' }))
-  const bodyweight = within(planRow('Back Squat')).getByRole('switch', { name: 'Bodyweight exercise' })
-  expect(bodyweight).toBeChecked()
+  expect(screen.getByRole('button', { name: /^Back Squat, / })).toHaveAccessibleName(/· BW/)
+  await openPlan(user, 'Back Squat')
+  expect(screen.getByRole('switch', { name: 'Bodyweight exercise' })).toBeChecked()
 
-  await user.click(bodyweight)
-  await user.click(bodyweight)
+  await user.click(screen.getByRole('switch', { name: 'Bodyweight exercise' }))
+  await user.click(screen.getByRole('switch', { name: 'Bodyweight exercise' }))
+  await back(user)
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   expect(onSave.mock.calls[0]).toHaveLength(1)

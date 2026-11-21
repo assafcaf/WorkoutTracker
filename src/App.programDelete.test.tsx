@@ -2,7 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
-import { workoutsOffered } from './test/dashboard'
+import { workoutOffered } from './test/dashboard'
 import abSplitJson from './data/programs/assaf-ab-2026.json'
 import { db } from './storage/db'
 import { USER_PROGRAMS_KEY } from './storage/settingsStore'
@@ -160,24 +160,21 @@ async function storedProgram(id: string): Promise<UserProgram | undefined> {
 
 // --- helpers ------------------------------------------------------------------------------------
 
+/** DX-04: the Program tab, then its Programs row: the Programs page, where Delete and Reset live. */
 async function openProgramTab(user: User): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
-  await openProgramsPanel(user)
+  await openProgramsPage(user)
 }
 
-/**
- * Opens the Programs panel behind the Program tab's overflow (S7a), where the program list and
- * New program live; with no active Program, New program is on the page itself.
- */
-async function openProgramsPanel(user: User): Promise<void> {
-  await waitFor(() => {
-    const more = screen.queryByRole('button', { name: 'Programs' })
-    const newProgram = screen.queryByRole('button', { name: 'New program' })
-    expect(more ?? newProgram).not.toBeNull()
-  }, SETTLE)
-  const more = screen.queryByRole('button', { name: 'Programs' })
-  if (more !== null && more.getAttribute('aria-expanded') !== 'true') await user.click(more)
+async function openProgramsPage(user: User): Promise<void> {
+  await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
   await screen.findByRole('button', { name: 'New program' }, SETTLE)
+}
+
+/** From the Programs page back to the Program tab's own page. */
+async function backToProgram(user: User): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await screen.findByRole('button', { name: 'Programs' }, SETTLE)
 }
 
 /** From the exercise list of the Session in progress, minimised to the live strip, then the Program tab. */
@@ -186,75 +183,79 @@ async function openProgramTabFromSession(user: User): Promise<void> {
   await openProgramTab(user)
 }
 
-/** The Program tab's action row for the Program named exactly `name`, or null when it has none. */
+/** The Programs page's row for the Program named exactly `name`, or null when it has none. */
 function queryActionsRow(name: string): HTMLElement | null {
   return (
-    screen
-      .queryAllByRole('button', { name: 'Copy' })
-      .map((button) => button.parentElement as HTMLElement)
-      .find((candidate) => within(candidate).queryByText(name) !== null) ?? null
+    [...document.querySelectorAll<HTMLElement>('[data-program-id]')].find(
+      (row) => row.querySelector('.programs-list-name')?.textContent === name,
+    ) ?? null
   )
 }
 
 function actionsRow(name: string): HTMLElement {
   const row = queryActionsRow(name)
-  if (row === null) throw new Error(`no Program tab row for ${name}`)
+  if (row === null) throw new Error(`no Programs page row for ${name}`)
   return row
 }
 
+/** The Programs page's row button that makes `name` active (aria-pressed when it is), or null. */
+function queryProgram(name: string): HTMLElement | null {
+  return queryActionsRow(name)?.querySelector<HTMLElement>('.programs-list-choose') ?? null
+}
+
+function programButton(name: string): HTMLElement {
+  const button = queryProgram(name)
+  if (button === null) throw new Error(`no Programs page row for ${name}`)
+  return button
+}
+
 async function deleteAndConfirm(user: User, name: string): Promise<void> {
-  await user.click(within(actionsRow(name)).getByRole('button', { name: 'Delete' }))
+  await user.click(within(actionsRow(name)).getByRole('button', { name: `Delete ${name}` }))
   await user.click(within(actionsRow(name)).getByRole('button', { name: 'Confirm' }))
 }
 
 async function resetAndConfirm(user: User, name: string): Promise<void> {
-  await user.click(within(actionsRow(name)).getByRole('button', { name: 'Reset to original' }))
+  await user.click(within(actionsRow(name)).getByRole('button', { name: `Reset ${name} to original` }))
   await user.click(within(actionsRow(name)).getByRole('button', { name: 'Confirm' }))
 }
 
-/** The editor's visible Workouts, top to bottom: each `Workout name` input's `<fieldset>`. */
+/** The editor's visible Workouts, top to bottom: each a `<section>` named after it (DX-17). */
 function editorWorkouts(): HTMLElement[] {
-  return (screen.queryAllByLabelText('Workout name') as HTMLInputElement[]).map((input) => {
-    const group = input.closest('fieldset')
-    if (group === null) throw new Error('a Workout name input is not inside a <fieldset>')
-    return group
-  })
+  return Array.from(document.querySelectorAll<HTMLElement>('section.program-editor-workout'))
 }
 
 /**
- * The Program tab's exercise row for `exercise` (S7a's workout table), as
- * `Exercise | Sets × reps | Rest`, or null when no row names it.
+ * The Program tab's Plan row for `exercise` (DX-16), as `Exercise | Sets × reps`, then `| Rest`
+ * when the rest is written out (anything but the usual 1:30); null when no row names it. The
+ * load (V6-15) is left out.
  */
 function planRowText(exercise: string): string | null {
-  const row = [...document.querySelectorAll<HTMLTableRowElement>('.workout-card tbody tr')].find(
-    (candidate) => (candidate.cells[0]?.textContent ?? '').trim() === exercise,
+  const row = [...document.querySelectorAll<HTMLElement>('.program-plan-row')].find(
+    (candidate) => (candidate.querySelector('.program-plan-name')?.textContent ?? '').trim() === exercise,
   )
   if (row === undefined) return null
-  // V6-15: the kg column (the load the next Session opens on) is left out of the Plan's text.
-  return [...row.cells]
-    .filter((cell) => !cell.classList.contains('program-page-kg'))
-    .map((cell) => (cell.textContent ?? '').trim())
-    .join(' | ')
+  const figure = row.querySelector('.program-plan-figure')?.firstChild?.textContent ?? ''
+  const rest = (row.querySelector('.program-plan-rest')?.textContent ?? '').replace(/^ · /, '').replace(/ rest$/, '')
+  return [exercise, figure.split(' · ')[0].trim(), rest].filter((part) => part !== '').join(' | ')
 }
 
-/** The editor's visible Workout whose name input holds exactly `name`. */
+/** The editor's visible Workout named exactly `name`. */
 function editorWorkout(name: string): HTMLElement {
-  const found = editorWorkouts().find(
-    (group) => (within(group).getByLabelText('Workout name') as HTMLInputElement).value === name,
-  )
+  const found = editorWorkouts().find((section) => section.getAttribute('aria-label') === name)
   if (found === undefined) throw new Error(`no editor Workout named ${name}`)
   return found
 }
 
+/** DX-04: Edit is the Program tab's one header action, on the active Program. */
 async function editProgram(user: User, name: string): Promise<void> {
-  await user.click(within(actionsRow(name)).getByRole('button', { name: 'Edit' }))
+  if (screen.queryByRole('button', { name: 'New program' })) await backToProgram(user)
+  await user.click(await screen.findByRole('button', { name: `Edit ${name}` }, SETTLE))
   await screen.findByLabelText('Program name', undefined, SETTLE)
 }
 
 async function removeWorkout(user: User, name: string): Promise<void> {
-  // Remove workout sits in the Workout's options menu (S7b).
-  await user.click(within(editorWorkout(name)).getByRole('button', { name: `Options for ${name}` }))
-  await user.click(within(editorWorkout(name)).getByRole('button', { name: 'Remove workout' }))
+  // DX-17: "Remove" is a text button beside the Workout's name.
+  await user.click(within(editorWorkout(name)).getByRole('button', { name: `Remove ${name}` }))
 }
 
 async function setField(user: User, scope: HTMLElement, label: string, value: string): Promise<void> {
@@ -272,7 +273,7 @@ async function cancel(user: User): Promise<void> {
   // V1-09: Cancel on an edited draft asks first.
   const ask = screen.queryByRole('dialog', { name: /^Discard \d+ changes?\?$/ })
   if (ask !== null) await user.click(within(ask).getByRole('button', { name: 'Discard' }))
-  await screen.findByRole('button', { name: 'New program' }, SETTLE)
+  await editorClosed()
 }
 
 async function editorClosed(): Promise<void> {
@@ -300,9 +301,9 @@ test('O10 Delete then Confirm on a user Program removes it from the Program tab'
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
 
-  await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
+  await waitFor(() => expect(queryProgram('Push Pull Legs')).toBeNull(), SETTLE)
   expect(queryActionsRow('Push Pull Legs')).toBeNull()
-  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeChecked()
+  expect(programButton('A/B Split')).toHaveAttribute('aria-pressed', 'true')
 }, LONG)
 
 test('O10 a deleted user Program stays gone from the Program tab after a restart', async () => {
@@ -314,14 +315,14 @@ test('O10 a deleted user Program stays gone from the Program tab after a restart
 
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
-  await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
+  await waitFor(() => expect(queryProgram('Push Pull Legs')).toBeNull(), SETTLE)
   first.unmount()
   cleanup()
   await renderApp()
   await openProgramTab(user)
 
-  expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull()
-  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeInTheDocument()
+  expect(queryProgram('Push Pull Legs')).toBeNull()
+  expect(programButton('A/B Split')).toBeInTheDocument()
 }, LONG)
 
 test('O10 deleting a user Program keeps its finished Sessions, listed in History under their Workout names', async () => {
@@ -333,7 +334,7 @@ test('O10 deleting a user Program keeps its finished Sessions, listed in History
 
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
-  await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
+  await waitFor(() => expect(queryProgram('Push Pull Legs')).toBeNull(), SETTLE)
   await user.click(screen.getByRole('button', { name: 'Sessions' }))
 
   await waitFor(() => expect(document.body.querySelectorAll('.session-row')).toHaveLength(2), SETTLE)
@@ -350,11 +351,12 @@ test('O10 deleting the active user Program falls back to the first visible Progr
   await renderApp()
 
   await openProgramTab(user)
-  expect(screen.getByRole('radio', { name: 'Push Pull Legs' })).toBeChecked()
+  expect(programButton('Push Pull Legs')).toHaveAttribute('aria-pressed', 'true')
   await deleteAndConfirm(user, 'Push Pull Legs')
 
-  await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
-  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeChecked()
+  await waitFor(() => expect(queryProgram('Push Pull Legs')).toBeNull(), SETTLE)
+  expect(programButton('A/B Split')).toHaveAttribute('aria-pressed', 'true')
+  await backToProgram(user)
   expect(screen.getByRole('heading', { level: 1, name: 'A/B Split' })).toBeVisible()
 }, LONG)
 
@@ -365,15 +367,15 @@ test('O10 deleting the active user Program leaves the workout picker offering th
   for (const session of finishedPplSessions()) await db.sessions.put(session)
   await renderApp()
 
-  // The Dashboard's dock offers Push Pull Legs' Workouts, stepping through them with Change.
-  expect(await workoutsOffered(user)).toContain('Push')
+  // Train offers Push Pull Legs' Workout due: Pull again, after a short Pull (V6-11).
+  expect(await workoutOffered()).toBe('Pull')
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
-  await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Home' }))
+  await waitFor(() => expect(queryProgram('Push Pull Legs')).toBeNull(), SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Train' }))
 
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
-  expect(screen.queryByRole('button', { name: 'Start Push' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Start Pull' })).toBeNull()
 }, LONG)
 
 test('O10 after deleting the active user Program a restart still offers the first visible Program’s Workouts', async () => {
@@ -385,7 +387,7 @@ test('O10 after deleting the active user Program a restart still offers the firs
 
   await openProgramTab(user)
   await deleteAndConfirm(user, 'Push Pull Legs')
-  await waitFor(() => expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull(), SETTLE)
+  await waitFor(() => expect(queryProgram('Push Pull Legs')).toBeNull(), SETTLE)
   first.unmount()
   cleanup()
   await renderApp()
@@ -421,7 +423,7 @@ test('O11 Delete then Confirm on the Program of the Session in progress deletes 
   await guardShown()
 
   expect(await storedUserPrograms()).toEqual([pushPullLegs()])
-  expect(screen.getByRole('radio', { name: 'Push Pull Legs' })).toBeChecked()
+  expect(programButton('Push Pull Legs')).toHaveAttribute('aria-pressed', 'true')
   expect(actionsRow('Push Pull Legs')).toBeVisible()
 }, LONG)
 
@@ -439,7 +441,7 @@ test('O11 with a Session in progress, Delete on another user Program still delet
   // ...and not for a Program it does not run on.
   await deleteAndConfirm(user, 'Upper Lower')
 
-  await waitFor(() => expect(screen.queryByRole('radio', { name: 'Upper Lower' })).toBeNull(), SETTLE)
+  await waitFor(() => expect(queryProgram('Upper Lower')).toBeNull(), SETTLE)
   expect((await storedProgram('user-stored-ul'))?.hidden).toBe(true)
   expect((await storedProgram('user-stored-ppl'))?.hidden).toBeUndefined()
 }, LONG)
@@ -545,10 +547,12 @@ test('O11 with a Session in progress, editing its Workout’s Plans and saving i
   await cancel(user)
   // ...and not for changing its numbers.
   await editProgram(user, 'Push Pull Legs')
-  const push = editorWorkout('Push')
-  await setField(user, push, 'Max reps', '12')
-  await setField(user, push, 'Min reps', '10')
-  await setField(user, push, 'Starting weight (kg)', '70')
+  // DX-17: the numbers are steppers on the Plan's editor, pushed by a tap on its row.
+  await user.click(within(editorWorkout('Push')).getAllByRole('button', { name: /, \d+ × / })[0])
+  for (let i = 0; i < 4; i += 1) await user.click(screen.getByRole('button', { name: 'Increase Max reps' }))
+  for (let i = 0; i < 4; i += 1) await user.click(screen.getByRole('button', { name: 'Increase Min reps' }))
+  for (let i = 0; i < 4; i += 1) await user.click(screen.getByRole('button', { name: 'Increase Starting weight' }))
+  await user.click(screen.getByRole('button', { name: 'Back' }))
   await save(user)
   await editorClosed()
 
@@ -563,9 +567,8 @@ test('O11 with a Session in progress, editing its Workout’s Plans and saving i
     })
   }, SETTLE)
 
-  await user.click(await screen.findByRole('button', { name: 'Home' }, SETTLE))
-  await waitFor(() => expect(document.body.querySelector('button.resume-workout')).not.toBeNull(), SETTLE)
-  await user.click(document.body.querySelector('button.resume-workout') as HTMLElement)
+  // DX-09: the one way back is the strip's Resume.
+  await user.click(await screen.findByRole('button', { name: 'Resume Push' }, SETTLE))
   // The Session opens on its first Exercise's next Set, on Now (V1-01).
 
   const weight = await screen.findByRole('button', { name: /^Weight, / }, SETTLE)
@@ -600,9 +603,11 @@ test('O12 Reset to original then Confirm on an edited A/B Split shows the bundle
   await storeActive('assaf-ab-2026')
   await renderApp()
 
-  await openProgramTab(user)
-  expect(planRowText('Back squat')).toMatch(/^Back squat \| 5 × 3–5 \| 4:00$/)
+  await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
+  await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 5 × 3–5 \| 4:00$/), SETTLE)
+  await openProgramsPage(user)
   await resetAndConfirm(user, 'A/B Split')
+  await backToProgram(user)
 
   await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00$/), SETTLE)
   expect(planRowText('Back squat')).not.toContain('5 × 3–5')
@@ -621,9 +626,9 @@ test('O12 Reset to original then Confirm removes the stored copy and the Reset t
     expect((await storedUserPrograms()).map((p) => p.id)).toEqual(['user-stored-ppl'])
   }, SETTLE)
   await waitFor(() => {
-    expect(within(actionsRow('A/B Split')).queryByRole('button', { name: 'Reset to original' })).toBeNull()
+    expect(within(actionsRow('A/B Split')).queryByRole('button', { name: /^Reset / })).toBeNull()
   }, SETTLE)
-  expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeChecked()
+  expect(programButton('A/B Split')).toHaveAttribute('aria-pressed', 'true')
 }, LONG)
 
 test('O12 after Reset to original a set screen on Workout A uses the bundled numbers', async () => {
@@ -634,8 +639,9 @@ test('O12 after Reset to original a set screen on Workout A uses the bundled num
 
   await openProgramTab(user)
   await resetAndConfirm(user, 'A/B Split')
+  await backToProgram(user)
   await waitFor(() => expect(planRowText('Back squat')).toMatch(/^Back squat \| 4 × 8–10 \| 3:00$/), SETTLE)
-  await user.click(screen.getByRole('button', { name: 'Home' }))
+  await user.click(screen.getByRole('button', { name: 'Train' }))
   // Start opens the first Exercise's next Set on Now (V1-01).
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
 

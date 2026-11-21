@@ -147,26 +147,23 @@ test('O4 declarationsFor returns a selector rule declarations, merged across rul
 //
 // [O13] E6-T12 widens this list with the new and newly styled controls from E6: the Alternatives
 // overlay's Close button, the exercise info link and its "Swap" trigger, and the library's search
-// input, filter control and "Show more" pager button.
+// input, filter control and "Show more" pager button. DX-08: one Exercise picker; its X and its
+// search field stand in, and the pager and the filter selects are gone.
 const TAP_TARGET_SELECTORS = [
   '.tab-bar-tab',
   '.app-header-back',
   '.action-bar > button',
   '.exercise-row',
-  '.start-workout',
-  '.resume-workout',
   '.dial-step',
   '.dial-readout',
   '.keypad-keys button',
   '.keypad-actions button',
   '.update-pill',
   '.settings-action',
-  '.alternatives-overlay-close',
+  '.exercise-picker-close',
   '.exercise-info',
   '.open-alternatives',
-  '.library-search',
-  '.library-filter',
-  '.library-pager-button',
+  '.picker-search',
 ]
 
 /** `selector`'s declarations, merged across every stylesheet under src that mentions it. */

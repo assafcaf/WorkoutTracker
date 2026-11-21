@@ -90,25 +90,23 @@
   font-variant-numeric: tabular-nums;
 }
 
-.lift-chart-hits {
+/* DX-18: the whole plot is one scrub area; a vertical drag still scrolls the page. */
+.lift-chart-scrub {
   position: absolute;
   inset: 0;
+  cursor: crosshair;
+  touch-action: pan-y;
 }
 
-.lift-chart .lift-chart-hit {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.lift-chart-hit:focus-visible {
+.lift-chart-scrub:focus-visible {
   outline: 2px solid var(--color-live);
-  outline-offset: -2px;
+  outline-offset: 2px;
+}
+
+/* The scrub's cursor: a hairline at the chosen Session. */
+.lift-chart-cursor {
+  stroke: var(--color-muted);
+  stroke-width: 1px;
 }
 
 .lift-chart-under {
@@ -148,7 +146,7 @@
   font-size: var(--text-xs);
 }
 
-/* The readout of a tapped point: a quiet line over the plot, no box. */
+/* The readout of the scrubbed point (the latest when untouched): a quiet line over the plot, no box. */
 .lift-chart .chart-readout {
   margin-bottom: var(--space-2);
   padding: var(--space-1) 0;

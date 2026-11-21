@@ -36,13 +36,14 @@ test('O20 All lifts lists the 14 lifts with their verdicts, Back, and a lift ope
   )
   await waitFor(() => expect(screen.getByRole('button', { name: /^DB bench press:/ })).toBeTruthy(), { timeout: 5000 })
   expect(rows()).toHaveLength(14)
-  // v7: a ledger row says its status in words -- Ready with a load to go to reads "Up to 15 kg",
-  // Stalled reads since when.
+  // v7: a ledger row says its status in words -- DX-03: Ready with a load to go to reads
+  // "Ready · 15 kg" (the status word first, never a fifth phrase), Flat reads since when.
   expect(screen.getAllByText('↑ Moving')).toHaveLength(10)
   expect(screen.getAllByText('= Flat since 7 Aug')).toHaveLength(1)
   expect(screen.getAllByText('↓ Lowered')).toHaveLength(1)
   expect(screen.getAllByText('↑ Ready')).toHaveLength(1)
-  expect(screen.getAllByText('↑ Up to 15 kg')).toHaveLength(1)
+  expect(screen.getAllByText('↑ Ready · 15 kg')).toHaveLength(1)
+  expect(screen.queryByText(/Up to/)).toBeNull()
   expect(screen.queryByText(/Slipping/)).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: /^DB bench press:/ }))
   expect(push).toHaveBeenCalledWith({ kind: 'lift', exerciseId: 'db-bench-press' })
@@ -70,7 +71,7 @@ test('V2-08 a status filter narrows All lifts to the moving, stalled, slipping o
   expect(ledger).toHaveLength(14)
   expect(new Set(names).size).toBe(14)
   expect(ledger[0].getAttribute('aria-label')).toMatch(/^Back squat: Moving/)
-  const curls = ledger.findIndex((b) => /^Seated biceps curls: Ready, up to 15 kg\./.test(b.getAttribute('aria-label') ?? ''))
+  const curls = ledger.findIndex((b) => /^Seated biceps curls: Ready · 15 kg\./.test(b.getAttribute('aria-label') ?? ''))
   expect(curls).toBeGreaterThan(names.indexOf('Back squat'))
   expect(curls).toBeGreaterThan(names.indexOf('DB bench press'))
 })

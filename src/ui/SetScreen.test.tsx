@@ -165,16 +165,40 @@ async function storedEntries(): Promise<SetEntry[]> {
 }
 
 /**
- * Opens the exercise tools sheet (S3b) from the ⋯ button by the exercise's name, on `segment`
- * when given ("Plates", "Warm-up", "Notes"). Everything but the steppers lives there now.
+ * DX-07: the tools sheet is gone. What it held is reached by labelled controls: "Warm-up" opens
+ * the W cell's ramp rows inline (answered as their group); otherwise Notes opens the note's short
+ * sheet (answered as the sheet) when notes are kept, else the tools row is answered.
  */
 async function openTools(user: UserEvent, segment?: string): Promise<HTMLElement> {
-  await user.click(screen.getByRole('button', { name: 'Exercise tools' }))
-  const sheet = screen.getByRole('dialog', { name: /tools$/ })
-  // One segment shows with no switch (the Plates segment went, V1-07).
-  const radio = segment === undefined ? null : within(sheet).queryByRole('radio', { name: segment })
-  if (radio !== null) await user.click(radio)
-  return sheet
+  if (segment === 'Warm-up') return openWarmups(user)
+  const notes = screen.queryByRole('button', { name: 'Notes' })
+  if (notes !== null) {
+    await user.click(notes)
+    return screen.getByRole('dialog', { name: /notes$/ })
+  }
+  return screen.queryByRole('group', { name: 'Exercise tools' }) ?? document.body
+}
+
+/** DX-07: taps the W cell (the offer, or the logged Warm-ups') to open its rows inline. */
+async function openWarmups(user: UserEvent): Promise<HTMLElement> {
+  const open = screen.queryByRole('group', { name: 'Warm-ups' })
+  if (open !== null) return open
+  const w =
+    screen.queryByRole('button', { name: /^Warm-up: / }) ??
+    screen.queryByRole('button', { name: /^Warm-ups (done|\d+ of \d+ done)$/ })
+  if (w !== null) await user.click(w)
+  return screen.queryByRole('group', { name: 'Warm-ups' }) ?? document.body
+}
+
+/** The current Set's kind control (N3): the labelled "Working ▾" button, "Set 1 type: Working". */
+function kindControl(): HTMLElement {
+  return screen.getByRole('button', { name: /type: / })
+}
+
+/** The short name (as these tests write it) of the kind the current Set's cell names. */
+function currentKind(): string {
+  const named = /type: ([\w-]+)/.exec(kindControl().getAttribute('aria-label') ?? '')?.[1] ?? ''
+  return Object.entries(KIND_NAMES).find(([, name]) => name === named)?.[0] ?? named
 }
 
 /** Closes whichever sheet is open, as Escape or a tap on the scrim does. */
@@ -191,12 +215,13 @@ const KIND_NAMES: Record<string, string> = {
   AMRAP: 'AMRAP',
 }
 
-/** Chooses the kind of the Set on the steppers from the tools sheet's Set type row. */
+/** N3: picks the current Set's kind from the list the "Working ▾" button opens. */
 async function chooseKindInTools(user: UserEvent, label: string): Promise<void> {
-  await openTools(user)
-  await user.click(screen.getByRole('button', { name: /^Set type/ }))
-  await user.click(screen.getByRole('button', { name: KIND_NAMES[label] ?? label }))
-  await closeSheet(user)
+  if (currentKind() !== label) {
+    await user.click(kindControl())
+    await user.click(within(screen.getByRole('dialog')).getByRole('radio', { name: KIND_NAMES[label] ?? label }))
+  }
+  expect(currentKind()).toBe(label)
 }
 
 /** A set cell's reading, its number then its value: "2 60×8". */
@@ -409,23 +434,19 @@ test('O12 an entry outside the accepted reps range writes nothing', async () => 
   expect(screen.getByText('Set 2 of 4')).toBeVisible()
 })
 
-test('L14 tapping Exercise info tells the caller to open the on-screen exercise id', async () => {
-  const { user, onOpenInfo } = renderSetScreen()
+test('L14 DX-07 Exercise info is not on the Set screen: it is "How to do it" on the lift page', () => {
+  const { onOpenInfo } = renderSetScreen()
 
-  await openTools(user)
-  await user.click(screen.getByRole('button', { name: 'Exercise info' }))
-
-  expect(onOpenInfo).toHaveBeenCalledTimes(1)
-  expect(onOpenInfo).toHaveBeenCalledWith('back-squat')
+  expect(screen.queryByRole('button', { name: /Exercise info|How to do it/ })).toBeNull()
+  expect(onOpenInfo).not.toHaveBeenCalled()
 })
 
 test('S6 tapping Alternatives tells the caller to open alternatives for the on-screen exercise id', async () => {
   const onOpenAlternatives = vi.fn()
   const { user } = renderSetScreen({ onOpenAlternatives })
 
-  // The tools sheet's "Swap exercise" row is where alternatives open from (S3b).
-  await openTools(user)
-  await user.click(screen.getByRole('button', { name: 'Swap exercise' }))
+  // DX-07: "Swap" under the Exercise's name is where alternatives open from.
+  await user.click(screen.getByRole('button', { name: 'Swap' }))
 
   expect(onOpenAlternatives).toHaveBeenCalledTimes(1)
   expect(onOpenAlternatives).toHaveBeenCalledWith('back-squat')
@@ -860,21 +881,28 @@ test('O1 a weightStep prop of 5 opens the control already reading Step 5 kg', as
   expect(stepControls()).toEqual([])
 })
 
-test('V1-16 the tools sheet has no Step and no Bodyweight exercise row', async () => {
+test('V1-16 DX-07 no "..." and no Step or Bodyweight control: Swap, Notes and History are labelled buttons under the name', async () => {
+  const onOpenHistory = vi.fn()
   const { user } = renderSetScreen({
     lastEntries: [historyEntry(1, 60, 10)],
     onBodyweightChange: vi.fn(async (_value: boolean) => {}),
     onWeightStepChange: vi.fn(),
+    onOpenAlternatives: vi.fn(),
+    onOpenHistory,
+    onSaveExerciseNote: vi.fn(async () => undefined),
   })
 
-  const sheet = await openTools(user)
-  expect(within(sheet).queryByText('Bodyweight exercise')).toBeNull()
-  expect(within(sheet).queryByRole('switch')).toBeNull()
-  expect(within(sheet).queryByRole('combobox')).toBeNull()
-  // The rows that stay: Set type, Rest time, Swap exercise, Exercise info, Lift history.
-  for (const name of [/^Set type/, /^Rest time/, /^Swap exercise/, /^Exercise info/, /^Lift history/]) {
-    expect(within(sheet).getByRole('button', { name })).toBeInTheDocument()
-  }
+  expect(screen.queryByRole('button', { name: 'Exercise tools' })).toBeNull()
+  expect(screen.queryByText('Bodyweight exercise')).toBeNull()
+  expect(screen.queryByRole('switch')).toBeNull()
+  expect(screen.queryByRole('combobox')).toBeNull()
+  expect(screen.queryByRole('button', { name: /What can I lift/ })).toBeNull()
+  const row = screen.getByRole('group', { name: 'Exercise tools' })
+  expect(within(row).getAllByRole('button').map((button) => button.textContent)).toEqual(['Swap', 'Notes', 'History', 'Working ▾'])
+  const name = screen.getByRole('heading', { name: 'Back squat' })
+  expect(name.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  await user.click(within(row).getByRole('button', { name: 'History' }))
+  expect(onOpenHistory).toHaveBeenCalledWith('back-squat')
 })
 
 // --- O19: the logged confirmation carries the family it glows in (E10-T8) -------------------
@@ -1835,7 +1863,9 @@ test('O9 while resting before a planned Set the screen shows Next: set 2 · 60 k
   // Log set beside Skip rest logs it with one tap (V1-03).
   const next = screen.getByRole('button', { name: NEXT_LINE })
   expect(next).toHaveAttribute('aria-expanded', 'false')
-  expect(getReadyText()).toMatch(/^Next · Set 2 60 kg×\d+$/)
+  expect(getReadyText()).toMatch(/^60 kg×\d+$/)
+  // DX-20: no "Next · Set 2" caption on the card.
+  expect(screen.getByRole('region', { name: 'Next set' })).not.toHaveTextContent(/Next ·/)
   expect(screen.queryByRole('button', { name: /^Weight, / })).toBeNull()
   expect(logButton()).toHaveClass('log-set')
   expect(cellReading(currentCell())).toBe(`2 60×${readoutValue(repsReadout())}`)
@@ -1852,7 +1882,7 @@ test('O9 a Bodyweight Exercise reads Next: set 2 · BW × 10–15', () => {
     restFrom: { entry: pushUpEntry(1, 12, BASE), planRestSeconds: 90 },
   })
 
-  expect(getReadyText()).toMatch(/^Next · Set 2 BW×\d+$/)
+  expect(getReadyText()).toMatch(/^BW×\d+$/)
   expect(logButton()).toHaveClass('log-set')
   expect(cellReading(currentCell())).toMatch(/^2 BW×\d+$/)
 })
@@ -1899,7 +1929,7 @@ test('S4 the folded Next row adds last time’s Set at that position: · last 60
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  expect(getReadyText()).toMatch(/^Next · Set 2 60 kg×\d+ Last time 60 × 8/)
+  expect(getReadyText()).toMatch(/^60 kg×\d+ Last time 60 × 8/)
   // Folded, the dated Last time line and the PR target line go with the steppers.
   expect(screen.queryByText(/^Last time .* · /)).toBeNull()
 })
@@ -2064,17 +2094,13 @@ function renderWithSessionRestLogging() {
 // squatPlan's 180 s; the clock is frozen 100 s later (1:20 left) unless a test says otherwise.
 
 /**
- * Taps the running countdown -- or, with no rest running, the tools sheet's Rest time row --
- * and answers the rest Dial's Rung column.
+ * Taps the rest's length -- the ring's "of 3:00" on Rest (DX-07), or the dock row's countdown
+ * while the Dials are out -- and answers the rest Dial's Rung column.
  */
 async function openRestDial(user: UserEvent): Promise<HTMLElement> {
+  const length = screen.queryByRole('button', { name: /^Rest time / })
   const countdown = screen.queryByRole('timer', { name: 'Rest remaining' })?.closest('button')
-  if (countdown) {
-    await user.click(countdown)
-  } else {
-    await openTools(user)
-    await user.click(screen.getByRole('button', { name: /^Rest time/ }))
-  }
+  await user.click((length ?? countdown) as HTMLElement)
   return screen.findByRole('listbox', { name: 'Rest ladder' })
 }
 
@@ -2133,18 +2159,6 @@ test('O5 the rest Dial offers Set rest and Cancel', async () => {
   expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
 })
 
-test('O5 tapping a rest readout that is over opens the rest Dial too', async () => {
-  vi.spyOn(Date, 'now').mockReturnValue(BASE + 200_000)
-  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
-  // Over before the screen opened, the rest shows no clock: the Dial opens from Rest time.
-  expect(screen.queryByRole('timer', { name: 'Rest remaining' })).toBeNull()
-
-  const ladder = await openRestDial(user)
-
-  const selected = within(ladder).getAllByRole('option', { selected: true })
-  expect(selected.map((option) => option.textContent)).toEqual(['3:00'])
-})
-
 test('O5 Set rest 2:30 with 100 s gone restarts the rest from loggedAt: the readout reads 0:50', async () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 100_000)
   const { user } = renderWithSessionRest([squatEntry(1, BASE)])
@@ -2174,15 +2188,6 @@ test('O5 Set rest 1:30 with 100 s gone reads as over: +0:10 over', async () => {
   await setRestOnDial(user, '1:30')
 
   await waitFor(() => expect(readoutValue(restReadout())).toBe('+0:10'))
-})
-
-test('O5 Set rest 4:00 on a rest over by 0:20 runs it again: the readout reads 0:40', async () => {
-  vi.spyOn(Date, 'now').mockReturnValue(BASE + 200_000)
-  const { user } = renderWithSessionRest([squatEntry(1, BASE)])
-
-  await setRestOnDial(user, '4:00')
-
-  await waitFor(() => expect(readoutValue(restReadout())).toBe('0:40'))
 })
 
 test('O5 Set rest closes the rest Dial', async () => {
@@ -2316,7 +2321,7 @@ test('F1 the rest panel is the first element of the set screen, before the links
   renderWithSessionRest([squatEntry(1, BASE)])
 
   // v7 (study §1.4): Rest is its own screen -- the ring is in the body, under the head and the
-  // track, and the dock holds Skip rest; the body still opens on the exercise's head.
+  // track; DX-05: the ring is Skip and the dock holds only Log set.
   const screenEl = document.querySelector('.set-screen')
   const panel = document.querySelector('.set-screen .rest-panel')
   expect(panel).not.toBeNull()
@@ -2325,7 +2330,9 @@ test('F1 the rest panel is the first element of the set screen, before the links
   expect(screenEl?.firstElementChild).toHaveClass('set-head')
   expect(panel?.textContent).toContain('1:20')
   expect(panel?.querySelector('.rest-controls')).not.toBeNull()
-  expect(document.querySelector('.set-dock')?.querySelector('.skip-rest')?.textContent).toBe('Skip rest')
+  expect(document.querySelector('.set-dock .skip-rest')).toBeNull()
+  expect(document.querySelector('.rest-ring')?.querySelector('[aria-label="Skip rest"]')).not.toBeNull()
+  expect(panel?.textContent).toContain('Tap to skip')
 })
 
 test('F1 the stylesheet keeps .rest-timer in the flow of the page, so it covers nothing', () => {
@@ -2528,13 +2535,12 @@ function kindButton(label: string): HTMLElement {
   return screen.getByRole('button', { name: KIND_NAMES[label] ?? label })
 }
 
-/** Opens the tools sheet on its Set type row's chips, for the Set on the steppers. */
-async function openKinds(user: UserEvent): Promise<void> {
-  await openTools(user)
-  await user.click(screen.getByRole('button', { name: /^Set type/ }))
-}
+/** DX-07: the kind shows on the current Set's cell itself; nothing to open. */
+async function openKinds(_user: UserEvent): Promise<void> {}
 
+/** The chosen kind: the edit sheet's pressed chip, else the current Set's cell. */
 function chosenKinds(): string[] {
+  if (screen.queryByRole('group', { name: 'Set kind' }) === null) return [currentKind()]
   return ['W-up', 'Working', 'Drop', 'Fail', 'AMRAP'].filter(
     (label) => kindButton(label).getAttribute('aria-pressed') === 'true',
   )
@@ -3490,22 +3496,19 @@ function addWarmupsOffer(): HTMLElement | null {
   return document.querySelector<HTMLElement>('button.add-warmups')
 }
 
-/** Whether the tools sheet's Warm-up segment offers Add warm-ups (S3b); the sheet closes after. */
+/** Whether the W cell's rows (DX-07) offer Add warm-ups; they are folded away again after. */
 async function warmupsOffered(user: UserEvent): Promise<boolean> {
-  const sheet = await openTools(user)
-  const segment = within(sheet).queryByRole('radio', { name: 'Warm-up' })
-  if (segment !== null) await user.click(segment)
+  const wasOpen = screen.queryByRole('group', { name: 'Warm-ups' }) !== null
+  await openWarmups(user)
   const offered = addWarmupsOffer() !== null
-  await closeSheet(user)
+  const w = screen.queryByRole('button', { name: /^Warm-up: |^Warm-ups (done|\d+ of \d+ done)$/ })
+  if (!wasOpen && w !== null && screen.queryByRole('group', { name: 'Warm-ups' }) !== null) await user.click(w)
   return offered
 }
 
-/** The kind chosen for the Set on the steppers, read off the tools sheet's Set type chips. */
-async function kindsInTools(user: UserEvent): Promise<string[]> {
-  await openKinds(user)
-  const kinds = chosenKinds()
-  await closeSheet(user)
-  return kinds
+/** The kind chosen for the Set on the steppers, read off its cell (DX-07). */
+async function kindsInTools(_user: UserEvent): Promise<string[]> {
+  return chosenKinds()
 }
 
 /**
@@ -3524,9 +3527,9 @@ function rampLineText(): string | null {
   return `${step[0]} · ${bar[1]} kg × ${bar[2]}`
 }
 
-/** Taps Add warm-ups in the tools sheet's Warm-up segment, which must be on offer. */
+/** Taps Add warm-ups in the W cell's rows (DX-07), which must be on offer. */
 async function startRamp(user: UserEvent): Promise<void> {
-  await openTools(user, 'Warm-up')
+  await openWarmups(user)
   const offer = addWarmupsOffer()
   expect(offer).not.toBeNull()
   await user.click(offer as HTMLElement)
@@ -3907,14 +3910,18 @@ test('O10 the clock sits above the set counter', () => {
   expect(clock.compareDocumentPosition(counter as Element) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
 })
 
-test('O10 with the rest running, −15 s, +15 s and Skip are offered under the clock', () => {
+test('O10 DX-05 with the rest running, −15 s and +15 s are under the clock, and the ring around it is Skip', () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
   renderWithSessionRest([squatEntry(1, BASE)])
 
   const clock = screen.getByRole('timer', { name: 'Rest remaining' })
-  for (const control of [minus15(), plus15(), skip()]) {
+  for (const control of [minus15(), plus15()]) {
     expect(clock.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   }
+  const ring = clock.closest('.rest-ring') as HTMLElement
+  expect(ring).toContainElement(skip())
+  expect(ring.textContent).toContain('Tap to skip')
+  expect(skip()).not.toHaveTextContent('Skip rest')
 })
 
 test('O10 once the rest is over the clock counts up +00:42 with no adjustments', () => {
@@ -3928,13 +3935,27 @@ test('O10 once the rest is over the clock counts up +00:42 with no adjustments',
   expect(screen.queryByRole('button', { name: 'Skip rest' })).toBeNull()
 })
 
-test('O10 tapping the clock opens the rest Dial', async () => {
+test('O10 DX-07 tapping "of 3:00" under the clock opens the rest Dial', async () => {
   vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
   const { user } = renderWithSessionRest([squatEntry(1, BASE)])
 
-  await user.click(restReadout())
+  await user.click(screen.getByRole('button', { name: 'Rest time 3:00, change' }))
 
   expect(await screen.findByRole('listbox', { name: 'Rest ladder' })).toBeVisible()
+  expect(screen.getAllByRole('dialog')).toHaveLength(1)
+})
+
+test('DX-05 a tap on the ring ends the rest: the Dials come back and Log set is the one filled button', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(BASE + 93_000)
+  const { user, onSetRest } = renderWithSessionRest([squatEntry(1, BASE)])
+
+  expect(document.querySelectorAll('.btn-primary')).toHaveLength(1)
+  expect(logButton()).toHaveClass('btn-primary')
+  await user.click(screen.getByRole('button', { name: 'Skip rest' }))
+
+  await waitFor(() => expect(screen.queryByRole('timer', { name: 'Rest remaining' })).toBeNull())
+  expect(onSetRest).toHaveBeenCalledTimes(1)
+  expect(weightReadout()).toBeVisible()
 })
 
 test('O10 the Action bar button reads Log set while the clock reads 01:27: one clock on screen', () => {
@@ -4058,16 +4079,14 @@ test('O9 the Weight and Reps Dials are the two children of one .set-dials row, W
   expect(groups).toEqual(['Weight (kg)', 'Reps'])
 })
 
-test('O9 the step control and the Plate line sit in one .set-dial-controls row after the Dial pair', async () => {
-  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
+test('O9 the step control and the Plate line sit in one .set-dial-controls row after the Dial pair', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], plates: RACK })
 
-  // V1-16: no controls row anywhere; the Plate line stays on the screen in the Dial pair (V1-07).
+  // V1-16: no controls row anywhere, no step control; the Plate line stays in the Dial pair (V1-07).
   expect(controlsRow()).toBeNull()
   expect(dialPair().contains(plateLine())).toBe(true)
-  const sheet = await openTools(user)
-  expect(controlsRow()).toBeNull()
-  expect(within(sheet).queryByRole('combobox', { name: /^Step/ })).toBeNull()
-  expect(sheet.querySelector('.plate-line')).toBeNull()
+  expect(screen.queryByRole('combobox', { name: /^Step/ })).toBeNull()
+  expect(document.querySelectorAll('.plate-line')).toHaveLength(1)
 })
 
 test('O9 without a Plate inventory the controls row still holds the step control', async () => {
@@ -4324,16 +4343,14 @@ test('Live S3 a Set heavier than every record reads e1RM, the record and PR if l
   expect(tag).toHaveClass('tag', 'tag-pr')
 })
 
-test('Live S3 the rest of the Workout is shown under the projection, above the tools', () => {
-  renderSetScreen({ upcoming: <p>Lunges row</p>, onOpenInfo: vi.fn() })
+test('Live S3 the rest of the Workout is shown under the projection, below the tools', () => {
+  renderSetScreen({ upcoming: <p>Lunges row</p>, onOpenAlternatives: vi.fn() })
 
   const rows = screen.getByText('Lunges row')
   expect(weightReadout().compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  // The tools are no longer under the rows: they open from the ⋯ button by the name (S3b).
-  expect(screen.queryByRole('button', { name: 'Swap exercise' })).toBeNull()
+  // DX-07: the tools are the row under the name, above the cells and the rows.
   expect(
-    screen.getByRole('button', { name: 'Exercise tools' }).compareDocumentPosition(rows) &
-      Node.DOCUMENT_POSITION_FOLLOWING,
+    screen.getByRole('button', { name: 'Swap' }).compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy()
 })
 
@@ -4375,16 +4392,11 @@ test('S4 the rest panel counts down against the rest length, and offers the usua
   const panel = document.querySelector('.rest-panel') as HTMLElement
   expect(readoutValue(restReadout())).toBe('2:48')
   expect(panel.textContent).toContain('of 3:00')
-  // V1-11: no "you usually rest" line. V3-03: the usual rest is offered in ⋯ › Rest time, not
-  // in the middle of the rest.
+  // V1-11: no "you usually rest" line. V3-03: the usual rest is offered in the rest Dial's sheet,
+  // not in the middle of the rest; DX-07: "of 3:00" opens it.
   expect(panel.textContent).not.toContain('you usually rest')
   expect(screen.queryByRole('button', { name: 'Use 2:40 for Back squat' })).toBeNull()
-  expect(screen.getByRole('button', { name: 'Skip rest' })).toHaveClass('btn-secondary')
-  const sheet = await openTools(user)
-  expect(within(sheet).getByText(/usually 2:40/)).toBeVisible()
-  // V1-16: the Use offer is not a row of the tools sheet; it sits in Rest time's own sheet.
-  expect(within(sheet).queryByRole('button', { name: 'Use 2:40 for Back squat' })).toBeNull()
-  await user.click(within(sheet).getByRole('button', { name: /^Rest time/ }))
+  await user.click(screen.getByRole('button', { name: 'Rest time 3:00, change' }))
   const restSheet = await screen.findByRole('dialog', { name: 'Rest' })
   expect(within(restSheet).getByRole('button', { name: 'Use 2:40 for Back squat' })).toBeVisible()
 })
@@ -4401,8 +4413,8 @@ test('S4 Use 2:40 for Back squat saves the usual rest as the Plan rest', async (
   })
 
   // V3-03, V1-16: offered in ⋯ › Rest time's own sheet.
-  const sheet = await openTools(user)
-  await user.click(within(sheet).getByRole('button', { name: /^Rest time/ }))
+  await openTools(user)
+  await user.click(screen.getByRole('button', { name: /^Rest time/ }))
   await user.click(await screen.findByRole('button', { name: 'Use 2:40 for Back squat' }))
 
   expect(onUseRestForExercise).toHaveBeenCalledWith(160)
@@ -4433,10 +4445,10 @@ test('S4 while rest runs the effort chips name the Set just logged', async () =>
 
   const group = await screen.findByRole('group', { name: 'Reps in reserve' })
   const row = group.closest('.effort-row') as HTMLElement
-  // v7 (study §1.4, §3): one row names the Set just logged as a statement, "Set 2: reps left";
-  // no block restates the Set. No "RIR" anywhere in the row (V1-14).
+  // DX-22: one row asks "Reps left in the tank?" over the chips; no block restates the Set. No
+  // "RIR" anywhere in the row (V1-14).
   expect(group.closest('.just-done')).toBeNull()
-  expect(row.textContent).toMatch(/^Set 2: reps left/)
+  expect(row.textContent).toMatch(/^Reps left in the tank\?/)
   expect(row.textContent).not.toMatch(/RIR/)
 })
 
@@ -4456,41 +4468,65 @@ test('S5a a record shows a toast pinned at the top with the PR tag, and goes in 
   expect(recordLine()).toBeNull()
 })
 
-test('S3b the ⋯ button opens the tools sheet: name, Close, and every tool as a row', async () => {
-  const onOpenHistory = vi.fn()
-  const { user } = renderSetScreen({
-    plates: RACK,
-    onOpenHistory,
-    onSaveExerciseNote: vi.fn(async () => undefined),
-  })
+test('DX-07 Notes opens one short sheet with the note, its Close and Escape put it away', async () => {
+  const { user } = renderSetScreen({ exerciseNote: 'belt on', onSaveExerciseNote: vi.fn(async () => undefined) })
 
-  const sheet = await openTools(user)
+  await user.click(screen.getByRole('button', { name: 'Notes' }))
+  const sheet = screen.getByRole('dialog', { name: 'Back squat notes' })
+  expect(within(sheet).getByText('belt on')).toBeVisible()
+  expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  await user.click(within(sheet).getByRole('button', { name: 'Close' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
 
-  expect(within(sheet).getByRole('heading', { name: 'Back squat' })).toBeVisible()
-  // No Plates segment: the Plate line is under the weight Dial (V1-07).
-  expect(within(sheet).getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual([
-    'warmup',
-    'notes',
-  ])
-  for (const row of ['Set type', 'Rest time', 'Swap exercise', 'Exercise info', 'Lift history']) {
-    expect(within(sheet).getByRole('button', { name: new RegExp(`^${row}`) })).toBeVisible()
-  }
-  expect(within(sheet).getByRole('button', { name: /^Rest time\s*3:00/ })).toBeVisible()
-  await user.click(within(sheet).getByRole('button', { name: 'Lift history' }))
-  expect(onOpenHistory).toHaveBeenCalledWith('back-squat')
+  await user.click(screen.getByRole('button', { name: 'Notes' }))
+  await closeSheet(user)
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 
-test('S3b Close and Escape put the tools sheet away', async () => {
+test('N3 a tap on the current Set cell never changes its kind', async () => {
   const { user } = renderSetScreen()
 
-  await openTools(user)
-  await user.click(screen.getByRole('button', { name: 'Close' }))
+  for (let tap = 0; tap < 3; tap += 1) await user.click(currentCell())
+  expect(currentKind()).toBe('Working')
   expect(screen.queryByRole('dialog')).toBeNull()
+})
 
-  await openTools(user)
-  await closeSheet(user)
+test('N3 the labelled "Working ▾" button opens one short list of kinds; a pick sets it and closes', async () => {
+  const { user } = renderSetScreen()
+
+  const button = screen.getByRole('button', { name: 'Set 1 type: Working' })
+  expect(button).toHaveTextContent('Working ▾')
+  expect(within(screen.getByRole('group', { name: 'Exercise tools' })).getByRole('button', { name: /type: / })).toBe(button)
+  await user.click(button)
+  const sheet = screen.getByRole('dialog', { name: 'Set 1 type' })
+  expect(within(sheet).getAllByRole('radio').map((radio) => radio.textContent)).toEqual([
+    'Working',
+    'Warm-up',
+    'Drop',
+    'Failure',
+    'AMRAP',
+  ])
+  expect(within(sheet).getByRole('radio', { name: 'Working' })).toHaveAttribute('aria-checked', 'true')
+  await user.click(within(sheet).getByRole('radio', { name: 'Failure' }))
   expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Set 1 type: Failure' })).toHaveTextContent('Failure ▾')
+})
+
+test('DX-07 the current cell\'s corner shows the kind letter, as a logged Set\'s does', async () => {
+  const { user } = renderSetScreen()
+
+  await chooseKindInTools(user, 'Drop')
+  expect(currentCell().querySelector('.set-kind-marker')?.textContent).toBe('D')
+  expect(logButton().textContent).toMatch(/· drop$/)
+})
+
+test('DX-24 the Sets to come are plain text, not buttons; the cells that are bordered are buttons', () => {
+  renderSetScreen()
+
+  const future = [...document.querySelectorAll('.set-cells .set-cell--future')]
+  expect(future.length).toBeGreaterThan(0)
+  for (const cell of future) expect(cell.tagName).not.toBe('BUTTON')
+  expect(currentCell().tagName).toBe('BUTTON')
 })
 
 test('S2b the edit sheet stores a changed effort with Save set', async () => {
@@ -4593,9 +4629,9 @@ test('V2-02 the Use offer joins the countdown row, named in full for a screen re
   // V3-03: the usual rest's offer left the rest dock for ⋯ › Rest time, still named in full.
   expect(document.querySelector('.rest-panel')?.textContent).not.toMatch(/Use/)
   const user = userEvent.setup()
-  const sheet = await openTools(user)
+  await openTools(user)
   // V1-16: one level down, in Rest time's own sheet.
-  await user.click(within(sheet).getByRole('button', { name: /^Rest time/ }))
+  await user.click(screen.getByRole('button', { name: /^Rest time/ }))
   const offer = within(await screen.findByRole('dialog', { name: 'Rest' })).getByRole('button', {
     name: 'Use 2:40 for Back squat',
   })
@@ -4667,8 +4703,8 @@ test('V3-03 the rest dock is one row: countdown, −15 s, +15 s and Skip, with n
     restFrom: { entry: historyEntry(1, 60, 10), planRestSeconds: 180 },
   })
 
-  // v7 (study §1.4): the countdown in its ring with −15 s and +15 s under it; Skip rest is the
-  // dock's bar, outlined, beside a quiet Log set; still no Use offer.
+  // v7 (study §1.4): the countdown in its ring with −15 s and +15 s under it; DX-05: the ring is
+  // Skip and the dock holds the one filled Log set; still no Use offer.
   const panel = document.querySelector('.rest-panel--ring') as HTMLElement
   expect(panel.querySelector('.rest-ring [role="timer"]')).not.toBeNull()
   const controls = panel.querySelector('.rest-ring-controls') as HTMLElement
@@ -4676,10 +4712,9 @@ test('V3-03 the rest dock is one row: countdown, −15 s, +15 s and Skip, with n
     expect(controls.contains(screen.getByRole('button', { name }))).toBe(true)
   }
   const skip = screen.getByRole('button', { name: 'Skip rest' })
-  expect(skip.textContent).toBe('Skip rest')
-  expect(skip).toHaveClass('btn-secondary')
-  expect(skip.closest('.set-dock')).not.toBeNull()
-  expect(logButton()).not.toHaveClass('btn-primary')
+  expect(skip.closest('.rest-ring')).not.toBeNull()
+  expect(skip.closest('.set-dock')).toBeNull()
+  expect(logButton()).toHaveClass('btn-primary')
   expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
 })
 
@@ -4799,8 +4834,8 @@ test('V4-01 a hand-over is headed <Exercise> done · 1 PR with Add set, its chip
   const block = screen.getByRole('region', { name: 'Exercise done' })
   expect(textOf(block.querySelector('.just-done-head'))).toBe('Deadlift done · 1 PR')
   expect(within(block).getByRole('button', { name: 'Add set' })).toBeVisible()
-  // v7 (study §3): a statement, not a question-label.
-  expect(textOf(block.querySelector('.effort-label'))).toBe('Set 3: reps left')
+  // DX-22: the trainee's words, over the chips.
+  expect(textOf(block.querySelector('.effort-label'))).toBe('Reps left in the tank?')
   expect(block.textContent).not.toMatch(/\d+ vs \d+/)
   fireEvent.click(within(block).getByRole('button', { name: '2' }))
   expect(onPick).toHaveBeenCalledWith(2)
@@ -4938,7 +4973,7 @@ test('V4-06 an unanswered reps-left question stays on Now after rest, until answ
   // Rest is over: Now with its Dials, and the question for set 1 above them.
   expect(screen.queryByRole('button', { name: 'Skip rest' })).toBeNull()
   const row = (screen.getByRole('group', { name: 'Reps in reserve' }).closest('.effort-row') as HTMLElement)
-  expect(textOf(row.querySelector('.effort-label'))).toBe('Set 1: reps left')
+  expect(textOf(row.querySelector('.effort-label'))).toBe('Set 1 · reps left in the tank?')
   expect(row.compareDocumentPosition(document.querySelector('.set-dials') as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(textOf(document.querySelector('.rest-over'))).toMatch(/^Rested 3:00 · \+0:0\d$/)
 
@@ -4956,11 +4991,11 @@ test('V4-06 the unanswered question goes once the next Set is logged', async () 
 
   await tapWithFakeTimers(logButton())
   await vi.advanceTimersByTimeAsync(181_000)
-  expect(screen.getByText('Set 1: reps left')).toBeVisible()
+  expect(screen.getByText('Set 1 · reps left in the tank?')).toBeVisible()
 
   await tapWithFakeTimers(logButton())
 
-  expect(screen.queryByText('Set 1: reps left')).toBeNull()
+  expect(screen.queryByText('Set 1 · reps left in the tank?')).toBeNull()
 })
 
 test('V4-05 on a Warm-up the line under the Dials and the Get ready card read Then set 1, never Last time', async () => {
@@ -5005,7 +5040,7 @@ function snackbar(): HTMLElement | null {
   return document.querySelector<HTMLElement>('.snackbar')
 }
 
-test('V1-17 a screen opened on a swap shows the Swapped from <planned> · Undo snackbar', () => {
+test('N4 a screen opened on a swap shows the one bottom snackbar Swapped to <new> · Undo', () => {
   renderSetScreen({
     swappedFrom: { name: 'Deadlift', onUndo: vi.fn() },
     swapFor: { name: 'Deadlift', onUndo: vi.fn() },
@@ -5013,20 +5048,22 @@ test('V1-17 a screen opened on a swap shows the Swapped from <planned> · Undo s
 
   const bar = snackbar() as HTMLElement
   expect(bar).not.toBeNull()
-  expect(bar).toHaveTextContent('Swapped from Deadlift')
-  // Title kept (weakened-tests gate); V6: Undo is said once, by the lasting "Undo swap" line,
-  // so the snackbar carries no Undo of its own.
-  expect(within(bar).queryByRole('button')).toBeNull()
+  expect(bar).toHaveTextContent('Swapped to Back squat')
+  // N4: drawn over the bottom of the screen, not in the anchor above the Dials.
+  expect(bar).not.toHaveClass('snackbar--inline')
+  expect(bar).toHaveClass('snackbar--over-bar')
+  expect(bar.parentElement).toBe(document.body)
+  // The one Undo on the screen is the snackbar's; the "for Deadlift" line carries none.
   expect(screen.getAllByRole('button', { name: /Undo/ })).toHaveLength(1)
-  expect(screen.getByRole('button', { name: 'Undo swap' })).toBeVisible()
+  expect(within(bar).getByRole('button', { name: 'Undo' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Undo swap' })).toBeNull()
 })
 
 test('V1-17 Undo on the swap snackbar calls onUndo once and the snackbar goes', async () => {
   const onUndo = vi.fn()
   const { user } = renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo }, swapFor: { name: 'Deadlift', onUndo } })
 
-  // Title kept (weakened-tests gate); V6: the one Undo is the swap line's "Undo swap".
-  await user.click(screen.getByRole('button', { name: 'Undo swap' }))
+  await user.click(within(snackbar() as HTMLElement).getByRole('button', { name: 'Undo' }))
 
   expect(onUndo).toHaveBeenCalledTimes(1)
   expect(snackbar()).toBeNull()
@@ -5052,7 +5089,7 @@ test('V1-17 logging a Set of the swapped-in Exercise takes the swap snackbar awa
 
   await user.click(logButton())
 
-  await waitFor(() => expect(screen.queryByText(/Swapped from/)).toBeNull())
+  await waitFor(() => expect(screen.queryByText(/Swapped to/)).toBeNull())
 })
 
 test('V1-17 a screen opened without a swap shows no snackbar, and a later swappedFrom is ignored', () => {
@@ -5175,20 +5212,18 @@ test('V6 V5-04 the snackbars on the Set screen sit above the Dials, never over t
   expect(anchor.compareDocumentPosition(dials) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
-test('V6 V5-04 the swap snackbar reads Swapped from Deadlift with no separator after it', () => {
+test('V6 V5-04 N4 the swap snackbar reads Swapped to <new> with no separator after it', () => {
   renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo: vi.fn() } })
 
-  expect((document.querySelector('.snackbar-message') as HTMLElement).textContent).toBe('Swapped from Deadlift')
+  expect((document.querySelector('.snackbar-message') as HTMLElement).textContent).toBe('Swapped to Back squat')
 })
 
-test('V6 V5-02 a swapped-in Exercise says "for <planned>" under its counter, with Undo swap while given', async () => {
-  const onUndo = vi.fn()
-  const { user } = renderSetScreen({ swapFor: { name: 'Deadlift', onUndo } })
+test('V6 V5-02 a swapped-in Exercise says "for <planned>" under its counter, with no Undo of its own (N4)', () => {
+  renderSetScreen({ swapFor: { name: 'Deadlift', onUndo: vi.fn() } })
 
   const line = document.querySelector('.set-swapped') as HTMLElement
   expect(line).toHaveTextContent('for Deadlift')
-  await user.click(within(line).getByRole('button', { name: 'Undo swap' }))
-  expect(onUndo).toHaveBeenCalledTimes(1)
+  expect(within(line).queryByRole('button')).toBeNull()
 })
 
 test('V6 V5-02 with askStartWeight the Plate line asks Set a starting weight until the weight moves', async () => {
@@ -5206,41 +5241,45 @@ function warmupLine(): HTMLElement | null {
   return document.querySelector<HTMLElement>('.set-cells .warmup-offer')
 }
 
-test('V6-16 the first barbell lift shows its warm-up ramp above the cells, with Add', () => {
-  renderBarbell([], { warmupLine: true })
+test('V6-16 DX-22 a barbell lift offers its warm-up ramp as a cell reading "Warm-up" over its range, no "+"', () => {
+  renderBarbell()
 
-  // v7: no sentence above the track; the ramp is the track's first cell, W, dashed like a Set to
-  // come, named in full for a screen reader, and one tap adds it.
+  // The ramp is the track's first cell, dashed like a Set to come, named in full for a screen
+  // reader; DX-22: "Warm-up" with the range under it, in kg, and no "+".
   const cell = warmupLine() as HTMLElement
   expect(cell).not.toBeNull()
   expect(cell.tagName).toBe('BUTTON')
   expect(cell).toHaveAttribute('data-state', 'planned')
-  expect(cell).toHaveAccessibleName('Add warm-ups: 50×5 · 70×3 · 85×2')
-  expect(textOf(cell.querySelector('.set-cell-index'))).toBe('W')
-  expect(textOf(cell.querySelector('.set-cell-value'))).toBe('50–85')
+  expect(cell).toHaveAccessibleName('Warm-up: 50×5 · 70×3 · 85×2')
+  expect(textOf(cell.querySelector('.set-cell-index'))).toBe('Warm-up')
+  expect(textOf(cell.querySelector('.set-cell-value'))).toBe('50–85 kg')
+  expect(cell.textContent).not.toContain('+')
   expect(document.querySelector('.set-cells')?.firstElementChild).toBe(cell)
-  expect(document.querySelector('.set-warmup-line')).toBeNull()
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'SetScreen.css'), 'utf-8')
   const decls = declarationsFor(css, '.warmup-offer')
   expect(decls.get('min-height')).toBe('64px')
 })
 
-test('V6-16 Add on the warm-up line starts the ramp, and the line goes', async () => {
-  const { user } = renderBarbell([], { warmupLine: true })
+test('V6-16 DX-07 the Warm-up cell opens its rows inline under the cells, and Add warm-ups starts the ramp', async () => {
+  const { user } = renderBarbell()
 
-  await user.click(screen.getByRole('button', { name: /^Add warm-ups: / }))
+  await user.click(screen.getByRole('button', { name: /^Warm-up: / }))
+  const rows = screen.getByRole('group', { name: 'Warm-ups' })
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(rows.querySelectorAll('.tools-warmup-row')).toHaveLength(3)
+  expect(document.querySelector('.set-cells')?.nextElementSibling).toBe(rows)
+  await user.click(within(rows).getByRole('button', { name: 'Add warm-ups' }))
 
   await waitFor(() => expect(rampLineText()).toBe('Warm-up 1 of 3 · 50 kg × 5'))
   expect(warmupLine()).toBeNull()
+  expect(screen.queryByRole('group', { name: 'Warm-ups' })).toBeNull()
 })
 
-test('V6-16 no warm-up line unless asked for, and none once a working Set is logged', () => {
-  const first = renderBarbell()
+test('V6-16 no warm-up offer without plates, and none once a working Set is logged', () => {
+  const first = renderBarbell([], { plates: null })
   expect(warmupLine()).toBeNull()
   first.unmount()
-  renderBarbell([{ exerciseId: 'back-squat', setIndex: 1, weightKg: 100, reps: 8, loggedAt: BASE + 1 }], {
-    warmupLine: true,
-  })
+  renderBarbell([{ exerciseId: 'back-squat', setIndex: 1, weightKg: 100, reps: 8, loggedAt: BASE + 1 }])
   expect(warmupLine()).toBeNull()
 })
 
@@ -5255,4 +5294,25 @@ test('V6-17 a lift with no history reads First time · start light', () => {
   renderSetScreen()
   expect(textOf(document.querySelector('.set-projection'))).toBe('First time · start light')
   expect(screen.queryByText(/Last time/)).toBeNull()
+})
+
+/** The declarations of `selector` inside the tall-screen `@media (min-height: 780px)` block. */
+function tallScreenDecls(selector: string): Map<string, string> {
+  const found = new Map<string, string>()
+  postcss.parse(restCss()).walkAtRules('media', (media) => {
+    if (!media.params.includes('min-height: 780px')) return
+    media.walkRules((rule: Rule) => {
+      if (rule.selectors.includes(selector)) rule.walkDecls((decl: Declaration) => void found.set(decl.prop, decl.value))
+    })
+  })
+  return found
+}
+
+test('DX-24 on a tall screen the instrument takes the height down to the Log bar, shared evenly', () => {
+  // No dead band between "Last time" and Log set: the instrument grows, the Dials spread evenly,
+  // and the steppers become taller pads; the spacer under it takes nothing.
+  expect(tallScreenDecls('.set-instrument').get('flex')).toBe('1 1 auto')
+  expect(tallScreenDecls('.set-instrument .set-dials').get('justify-content')).toBe('space-evenly')
+  expect(tallScreenDecls('.set-instrument .dial--scrub .dial-step').get('height')).toBe('120px')
+  expect(tallScreenDecls('.set-instrument ~ .set-spacer--after').get('flex')).toBe('0 0 0')
 })

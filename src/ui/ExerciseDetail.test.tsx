@@ -44,33 +44,29 @@ test('L11 ExerciseDetail shows the exercise name as its heading', () => {
   expect(screen.getByRole('heading', { name: 'Barbell Squat' })).toBeVisible()
 })
 
-// E10-T4 rewrote these two fields as `MuscleChip`s (O8), so the muscle names no longer sit in
-// the paragraph's own text node -- `textContent` still carries the same string, so these match
-// on that instead of `getByText`'s single-text-node default.
+// DX-22: the muscles are one plain line, the primary by its display name, then "also" the rest.
 
-test('L11 ExerciseDetail shows the primary muscle quadriceps', () => {
+test('L11 DX-22 ExerciseDetail names its muscles as one plain line: "Quads · also calves, …"', () => {
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
-  const field = screen.getByText('Primary muscle:', { exact: false })
-  expect(field).toBeVisible()
-  expect(field.textContent).toBe('Primary muscle: quadriceps')
+  expect(screen.getByText('Quads · also calves, glutes, hamstrings, lower back')).toBeVisible()
+  expect(screen.queryByText(/Primary muscle:|Secondary muscles:/)).toBeNull()
 })
 
-test('L11 ExerciseDetail shows the secondary muscles in dataset order', () => {
+test('DX-22 the steps come before the body map', () => {
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
-  const field = screen.getByText('Secondary muscles:', { exact: false })
-  expect(field).toBeVisible()
-  expect(field.textContent).toBe('Secondary muscles: calves, glutes, hamstrings, lower back')
+  const steps = document.querySelector('.exercise-detail-instructions') as HTMLElement
+  const map = document.querySelector('.exercise-detail .body-map') as Element
+  expect(map).not.toBeNull()
+  expect(steps.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
-test('L11 ExerciseDetail shows equipment, mechanic, force and level', () => {
+test('L11 DX-22 ExerciseDetail shows equipment, mechanic and level as one plain line', () => {
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
-  expect(screen.getByText('Equipment: barbell')).toBeVisible()
-  expect(screen.getByText('Mechanic: compound')).toBeVisible()
-  expect(screen.getByText('Force: push')).toBeVisible()
-  expect(screen.getByText('Level: beginner')).toBeVisible()
+  expect(screen.getByText('Barbell · compound · beginner')).toBeVisible()
+  expect(screen.queryByText(/^Force:/)).toBeNull()
 })
 
 test('L11 ExerciseDetail shows the instructions as a numbered list in dataset order', () => {
@@ -80,29 +76,6 @@ test('L11 ExerciseDetail shows the instructions as a numbered list in dataset or
   expect(steps).toEqual(BARBELL_SQUAT.instructions)
 })
 
-// --- O8: primary/secondary muscles wear their family chip (E10-T4) -------------------------
-
-test('O8 ExerciseDetail renders the primary muscle as a muscle-chip with its family', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
-
-  const field = screen.getByText('Primary muscle:', { exact: false })
-  const chip = within(field).getByText('quadriceps')
-  expect(chip).toHaveClass('muscle-chip')
-  expect(chip).toHaveAttribute('data-family', 'legs')
-})
-
-test('O8 ExerciseDetail renders each secondary muscle as its own muscle-chip with its family', () => {
-  render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
-
-  const field = screen.getByText('Secondary muscles:', { exact: false })
-  const calves = within(field).getByText('calves')
-  expect(calves).toHaveClass('muscle-chip')
-  expect(calves).toHaveAttribute('data-family', 'legs')
-  const lowerBack = within(field).getByText('lower back')
-  expect(lowerBack).toHaveClass('muscle-chip')
-  expect(lowerBack).toHaveAttribute('data-family', 'core')
-})
-
 // --- F1: the detail screen renders as a modal popup (fix-popups) ---------------------------
 //
 // The overlay used to land in normal document flow, below whatever view was showing (an
@@ -110,11 +83,12 @@ test('O8 ExerciseDetail renders each secondary muscle as its own muscle-chip wit
 // `role="dialog"` / `aria-modal="true"` element named by its own heading, with the existing
 // "Back" control inside it.
 
-test('F1 ExerciseDetail is a modal dialog named by the exercise heading', () => {
+test('F1 DX-06 ExerciseDetail is a pushed page named by the exercise heading, the tab bar left reachable', () => {
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   const dialog = screen.getByRole('dialog', { name: 'Barbell Squat' })
-  expect(dialog).toHaveAttribute('aria-modal', 'true')
+  expect(dialog).toHaveClass('overlay-panel--pushed')
+  expect(dialog).not.toHaveAttribute('aria-modal')
 })
 
 test('F1 ExerciseDetail\'s dialog is named by the heading override rather than the entry\'s own name', () => {
@@ -411,8 +385,9 @@ test('S13 no "Similar exercises" row offers "Do this instead" when ExerciseDetai
   expect(screen.queryByRole('button', { name: /^Do .+ instead$/ })).not.toBeInTheDocument()
 })
 
-test('S13 every "Similar exercises" row offers "Do this instead" when ExerciseDetail is opened from a live set, and tapping it calls onChoose with that row\'s id', async () => {
+test('S13 DX-08 opened from a live set, a "Similar exercises" row is still one target that opens its detail; no "Do this instead"', async () => {
   const onChoose = vi.fn()
+  const onOpenDetailSpy = vi.fn()
   const user = userEvent.setup()
 
   render(
@@ -422,16 +397,18 @@ test('S13 every "Similar exercises" row offers "Do this instead" when ExerciseDe
       onBack={onBack}
       library={SIMILAR_LIBRARY}
       gymEquipment={null}
-      onOpenDetail={onOpenDetail}
+      onOpenDetail={onOpenDetailSpy}
       onChoose={onChoose}
     />,
   )
 
   for (const name of TOP_FIVE_NAMES) {
-    expect(within(rowFor(name)).getByRole('button', { name: `Do ${name} instead` })).toBeVisible()
+    expect(within(rowFor(name)).getAllByRole('button')).toHaveLength(1)
   }
+  expect(screen.queryByRole('button', { name: /^Do .+ instead$/ })).not.toBeInTheDocument()
 
-  await user.click(within(rowFor('Beta Curl')).getByRole('button', { name: 'Do Beta Curl instead' }))
+  await user.click(openControlFor('Beta Curl'))
 
-  expect(onChoose).toHaveBeenCalledWith('Beta_Curl')
+  expect(onOpenDetailSpy).toHaveBeenCalledWith('Beta_Curl')
+  expect(onChoose).not.toHaveBeenCalled()
 })

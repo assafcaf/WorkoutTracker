@@ -2,7 +2,6 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
-import { openWorkoutPage } from './test/dashboard'
 import { db } from './storage/db'
 import { FakeSyncServer } from './test/fakeSyncServer'
 import type { Session } from './types'
@@ -70,8 +69,7 @@ test(
   async () => {
     const user = userEvent.setup()
     await renderApp()
-    // v7: Train's rows are the workout page's, which Home's Today panel opens.
-    await openWorkoutPage(user)
+    // DX-01: Train is the workout page, its rows on screen at launch.
     const lifts = await screen.findByRole('list', { name: /lifts$/ }, SETTLE)
     await user.click(within(lifts).getAllByRole('button')[0])
     const name = (await screen.findByRole('heading', { level: 1 }, SETTLE)).textContent ?? ''
@@ -105,11 +103,12 @@ test(
     const user = userEvent.setup()
     await renderApp()
     await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
-    const squat = await screen.findAllByRole('button', { name: 'Back squat' }, SETTLE)
+    // DX-16: a Plan row is the lift's name and its sets, reps and load.
+    const squat = await screen.findAllByRole('button', { name: /^Back squat/ }, SETTLE)
     await user.click(squat[0])
     await expectLiftPage('Back squat')
     await back(user)
-    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Back squat' }).length).toBeGreaterThan(0), SETTLE)
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Back squat/ }).length).toBeGreaterThan(0), SETTLE)
   },
   LONG,
 )
@@ -120,8 +119,9 @@ test(
     const user = userEvent.setup()
     await renderApp()
     await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
-    await user.click(await screen.findByRole('radio', { name: 'Exercises' }, SETTLE))
-    const mine = await screen.findByRole('list', { name: 'My lifts' }, SETTLE)
+    // DX-04: the Exercises row, not a segmented control.
+    await user.click(await screen.findByRole('button', { name: 'Exercises' }, SETTLE))
+    const mine = await screen.findByRole('region', { name: 'My lifts' }, SETTLE)
     await user.click(within(mine).getByRole('button', { name: /^Back squat/ }))
     await expectLiftPage('Back squat')
     expect(screen.queryByRole('dialog')).toBeNull()

@@ -133,13 +133,14 @@ test('O21 the overlay is read-only: Close is its only button, and it calls onClo
   const onClose = vi.fn()
   const dialog = open([older, newer], onClose)
 
-  // v6: "Done" closes it; the other controls only read (Why?, the chart's points, its tabs).
+  // DX-06 / N7: a bare ‹ ("Back") closes it; the other controls only read.
   const names = within(dialog)
     .getAllByRole('button')
     .map((b) => b.getAttribute('aria-label') ?? b.textContent)
-  expect(names[0]).toBe('Done')
+  expect(names[0]).toBe('Back')
+  expect(within(dialog).queryByRole('button', { name: 'Done' })).toBeNull()
   expect(names.join(' ')).not.toMatch(/Edit|Delete|Remove/)
-  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Done' }))
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Back' }))
   expect(onClose).toHaveBeenCalledTimes(1)
 })
 
@@ -172,14 +173,18 @@ test('v5 the chart is named by where the lift went, and marks new bests', async 
   expect(within(dialog).getByRole('img', { name: 'Top-set weight, 60 on 28 Sep to 80 on 6 Oct' })).toBeVisible()
 })
 
-test('v5 tapping a point reads its date, value and best set', async () => {
+test('DX-18 the readout reads the latest point, and scrubbing moves it to another', async () => {
   const dialog = open([older, newer])
-
-  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Mon 28 Sep · 76 kg est. strength · 60 kg × 8, 8' }))
-
-  const readout = within(dialog).getByRole('region', { name: 'Chart readout' })
-  expect(readout.textContent).toContain('Mon 28 Sep')
-  expect(readout.textContent).toContain('76 kg est. strength · 60 kg × 8, 8')
+  const readout = () => within(dialog).getByRole('region', { name: 'Chart readout' })
+  expect(readout().textContent).toContain('Tue 6 Oct')
+  // No per-point tap targets: one scrub area over the plot.
+  expect(within(dialog).queryByRole('button', { name: /^Mon 28 Sep/ })).toBeNull()
+  const scrub = within(dialog).getByRole('slider', { name: 'Sessions on the chart' })
+  scrub.focus()
+  await userEvent.setup().keyboard('{ArrowLeft}')
+  expect(scrub).toHaveAttribute('aria-valuetext', 'Mon 28 Sep · 76 kg est. strength · 60 kg × 8, 8')
+  expect(readout().textContent).toContain('Mon 28 Sep')
+  expect(readout().textContent).toContain('76 kg est. strength · 60 kg × 8, 8')
 })
 
 test('v5 one Session shows its value but no chart yet', () => {
@@ -202,4 +207,30 @@ test('v5 the log under the chart shows the latest 4 Sessions and Show all opens 
   await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Show all 6 sessions' }))
   expect(list.querySelectorAll('li')).toHaveLength(6)
   expect(within(dialog).queryByRole('button', { name: /Show all/ })).toBeNull()
+})
+
+test('DX-07 "How to do it ›" puts the info in the lift page\'s place, one overlay at a time; its ‹ comes back', async () => {
+  const user = userEvent.setup()
+  render(
+    <ExerciseHistoryOverlay
+      exercise={squat}
+      sessions={[older, newer]}
+      plan={plan}
+      onClose={() => {}}
+      now={NOW}
+      renderInfo={(libraryId, nav) => (
+        <div role="dialog" aria-label={`Info ${libraryId}`}>
+          <button type="button" onClick={nav.back}>
+            Back
+          </button>
+        </div>
+      )}
+    />,
+  )
+
+  await user.click(screen.getByRole('button', { name: 'How to do it ›' }))
+  expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  expect(screen.getByRole('dialog', { name: `Info ${squat.libraryId}` })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  expect(screen.getByRole('dialog', { name: 'Back squat' })).toBeVisible()
 })

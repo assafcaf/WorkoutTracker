@@ -119,7 +119,7 @@ test('O7 the Session summary shows the same volume and body map with warm-up Set
   render(<SessionSummary session={finished(WARMED)} resolve={resolve} library={LIBRARY} onClose={vi.fn()} />)
 
   const dialog = screen.getByRole('dialog', { name: 'Session summary' })
-  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toBe('300 kg')
+  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toBe('300 kg lifted')
   // Title kept (weakened-tests gate); v7: the summary draws no body map (Progress › Muscles has
   // the muscles); the warm-ups count in neither the Sets nor the volume, and are said once.
   expect(dialog.querySelectorAll('[data-muscle]')).toHaveLength(0)

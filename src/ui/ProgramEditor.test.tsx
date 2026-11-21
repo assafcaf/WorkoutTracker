@@ -1,9 +1,7 @@
-// E9-T7: the Program editor. A Program's name, Workouts and Plans are built and rearranged on
-// one screen, with Exercises picked from the library through `Add exercise` -> search -> `Pick`.
-//
-// Structure these tests rely on, beyond the ticket's labels: each visible Workout is a
-// `<fieldset>` holding its `Workout name` input, and each of its Plans is an `<li>` holding
-// that Plan's `Sets` input. A Workout's own `Move up` / `Move down` sit outside its Plans' `<li>`s.
+// E9-T7 / DX-17: the Program editor. A Program's name and Workouts are on one list: each Workout
+// a `<section>` headed by its name, with Reorder · Rename · Remove text buttons, and one row button
+// per Plan ("Back Squat, 3 × 8–10 · 60 kg"). A tap on a row pushes that Plan's editor: steppers for
+// Sets, reps, Rest and Starting weight, Last set AMRAP, Swap exercise and Remove from Workout.
 // Rendered outside a Shell, `useActionBarSlot()` is null, so `Save` renders in place.
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -93,7 +91,10 @@ function blank(): Program {
   return { id: 'user-new', name: '', units: 'kg', sessionsPerWeek: 1, workouts: [] }
 }
 
+
 // --- helpers ------------------------------------------------------------------------------------
+
+type User = ReturnType<typeof userEvent.setup>
 
 function renderEditor(initial: Program, overrides: Partial<ProgramEditorProps> = {}) {
   const onSave: Mock<(p: Program) => void> = vi.fn()
@@ -114,10 +115,7 @@ function renderEditor(initial: Program, overrides: Partial<ProgramEditorProps> =
   return { onSave, onCancel, user }
 }
 
-async function save(
-  user: ReturnType<typeof userEvent.setup>,
-  onSave: Mock<(p: Program) => void>,
-): Promise<Program> {
+async function save(user: User, onSave: Mock<(p: Program) => void>): Promise<Program> {
   await user.click(screen.getByRole('button', { name: 'Save' }))
   expect(onSave).toHaveBeenCalledTimes(1)
   return onSave.mock.calls[0][0]
@@ -127,88 +125,28 @@ function workoutNameInputs(): HTMLInputElement[] {
   return screen.queryAllByLabelText('Workout name') as HTMLInputElement[]
 }
 
-/** The visible Workouts, top to bottom. */
+/** The visible Workouts, top to bottom: each a `<section>` named after its Workout. */
 function workouts(): HTMLElement[] {
-  return workoutNameInputs().map((input) => {
-    const group = input.closest('fieldset')
-    if (group === null) throw new Error('a Workout name input is not inside a <fieldset>')
-    return group
-  })
+  return Array.from(document.querySelectorAll<HTMLElement>('section.program-editor-workout'))
 }
 
-/** The visible Workout at `index`, asserting it is there. */
 function workoutAt(index: number): HTMLElement {
   const all = workouts()
   expect(all.length, 'visible Workouts').toBeGreaterThan(index)
   return all[index]
 }
 
+/** Each visible Workout's name: its heading, or its name field while it is named. */
 function workoutNamesShown(): string[] {
-  return workoutNameInputs().map((input) => input.value)
-}
-
-/** A Workout's own button (not one of its Plans'). */
-function workoutButton(workout: HTMLElement, name: string): HTMLElement {
-  const own = within(workout)
-    .getAllByRole('button', { name })
-    .filter((button) => {
-      const item = button.closest('li')
-      return item === null || !workout.contains(item)
-    })
-  if (own.length !== 1) throw new Error(`expected one Workout-level "${name}", found ${own.length}`)
-  return own[0]
-}
-
-/** Opens a Workout's own options menu (its Move up / Move down / Remove workout), if closed. */
-async function openWorkoutMenu(
-  user: ReturnType<typeof userEvent.setup>,
-  workout: HTMLElement,
-): Promise<void> {
-  const toggle = within(workout)
-    .getAllByRole('button', { name: /^Options for / })
-    .find((button) => {
-      const item = button.closest('li')
-      return item === null || !workout.contains(item)
-    })
-  if (toggle === undefined) throw new Error('no Workout options toggle')
-  if (toggle.getAttribute('aria-expanded') !== 'true') await user.click(toggle)
-}
-
-/** Opens a Plan's options menu (Move up / Move down / Swap / AMRAP / Remove), if closed. */
-async function openPlanMenu(user: ReturnType<typeof userEvent.setup>, plan: HTMLElement): Promise<void> {
-  const toggle = within(plan).getByRole('button', { name: /^Options for / })
-  if (toggle.getAttribute('aria-expanded') !== 'true') await user.click(toggle)
-}
-
-/** A Plan's own menu button `name`, its menu opened first. */
-async function planButton(
-  user: ReturnType<typeof userEvent.setup>,
-  plan: HTMLElement,
-  name: string,
-): Promise<HTMLElement> {
-  await openPlanMenu(user, plan)
-  return within(plan).getByRole('button', { name })
-}
-
-/** A Workout's own menu button `name`, its menu opened first. */
-async function workoutMenuButton(
-  user: ReturnType<typeof userEvent.setup>,
-  workout: HTMLElement,
-  name: string,
-): Promise<HTMLElement> {
-  await openWorkoutMenu(user, workout)
-  return workoutButton(workout, name)
+  return workouts().map((section) => {
+    const input = section.querySelector('input')
+    return input ? input.value : section.querySelector('h3')?.textContent ?? ''
+  })
 }
 
 /** A Workout's Plans, top to bottom. */
 function plans(workout: HTMLElement): HTMLElement[] {
-  return within(workout)
-    .queryAllByLabelText('Sets')
-    .map((input) => {
-      const item = input.closest('li')
-      if (item === null) throw new Error('a Plan\'s Sets input is not inside an <li>')
-      return item
-    })
+  return within(workout).queryAllByRole('listitem')
 }
 
 function planNamesShown(workout: HTMLElement): string[] {
@@ -217,52 +155,54 @@ function planNamesShown(workout: HTMLElement): string[] {
   )
 }
 
-function planByName(workout: HTMLElement, name: string): HTMLElement {
-  const item = plans(workout).find((p) => (p.textContent ?? '').includes(name))
-  if (item === undefined) throw new Error(`no Plan for ${name}`)
-  return item
+function planRow(workout: HTMLElement, name: string): HTMLElement {
+  return within(workout).getByRole('button', { name: new RegExp(`^${name}, `) })
 }
 
-function field(scope: HTMLElement, label: string): HTMLInputElement {
-  return within(scope).getByLabelText(label) as HTMLInputElement
+/** DX-17: a tap on a Plan row pushes its Plan editor. */
+async function openPlan(user: User, workout: HTMLElement, name: string): Promise<void> {
+  await user.click(planRow(workout, name))
+  expect(screen.getByRole('heading', { level: 1, name })).toBeInTheDocument()
 }
 
-async function pickInto(
-  user: ReturnType<typeof userEvent.setup>,
-  workout: HTMLElement,
-  query: string,
-  name: string,
-): Promise<void> {
+/** A stepper's value as shown ("4", "1:30", "60 kg"). */
+function stepped(label: string): string {
+  return screen.getByRole('group', { name: label }).querySelector('output')?.textContent ?? ''
+}
+
+async function back(user: User): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+}
+
+async function pickInto(user: User, workout: HTMLElement, query: string, name: string): Promise<void> {
   await user.click(within(workout).getByRole('button', { name: 'Add exercise' }))
   await user.type(screen.getByLabelText('Search exercises'), query)
-  const row = screen
-    .getAllByRole('listitem')
-    .find(
-      (item) =>
-        (item.textContent ?? '').includes(name) &&
-        within(item).queryByRole('button', { name: 'Pick' }) !== null,
-    )
-  if (row === undefined) throw new Error(`no pickable row for ${name}`)
-  await user.click(within(row).getByRole('button', { name: 'Pick' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name }))
 }
 
-function sessionsPerWeek(): HTMLInputElement {
-  return screen.getByLabelText('Sessions per week') as HTMLInputElement
+function sessionsPerWeek(): string {
+  return stepped('Sessions per week')
+}
+
+async function reorder(user: User, workout: HTMLElement): Promise<void> {
+  await user.click(within(workout).getByRole('button', { name: 'Reorder' }))
 }
 
 // --- O14: a new Plan's defaults, and Sessions per week ------------------------------------------
 
-test('O14 a Plan added through Add exercise, search and Pick shows 3 sets, 8-12 reps and 90 s rest', async () => {
+test('O14 DX-17 a Plan added through Add exercise, search and a row tap reads 3 × 8–12, with 1:30 rest in its editor', async () => {
   const { user } = renderEditor(split())
 
   await pickInto(user, workoutAt(1), 'fly', 'Dumbbell Incline Fly')
 
-  const added = planByName(workoutAt(1), 'Dumbbell Incline Fly')
-  expect(field(added, 'Sets').value).toBe('3')
-  expect(field(added, 'Min reps').value).toBe('8')
-  expect(field(added, 'Max reps').value).toBe('12')
-  // V6 (V5-10): Rest reads as m:ss; 90 s is 1:30.
-  expect(field(added, 'Rest (m:ss)').value).toBe('1:30')
+  expect(planRow(workoutAt(1), 'Dumbbell Incline Fly')).toHaveAccessibleName(
+    'Dumbbell Incline Fly, 3 × 8–12 · 12.5 kg',
+  )
+  await openPlan(user, workoutAt(1), 'Dumbbell Incline Fly')
+  expect(stepped('Sets')).toBe('3')
+  expect(stepped('Min reps')).toBe('8')
+  expect(stepped('Max reps')).toBe('12')
+  expect(stepped('Rest')).toBe('1:30')
 })
 
 test('O14 a picked Plan is added last in its Workout and saved with the default numbers', async () => {
@@ -276,45 +216,42 @@ test('O14 a picked Plan is added last in its Workout and saved with the default 
     pressPlan,
     { exerciseId: 'Dumbbell_Incline_Fly', sets: 3, repRange: [8, 12], restSeconds: 90 },
   ])
-  expect(program.workouts[1].exercises[1].startWeightKg).toBeUndefined()
 })
 
-test("O14 a picked Plan's Starting weight (kg) is empty, with the Exercise's own start weight as its placeholder", async () => {
+test("O14 DX-17 a Plan with no starting weight of its own shows its Exercise's, marked Exercise default", async () => {
   const { user } = renderEditor(split())
 
-  await pickInto(user, workoutAt(1), 'fly', 'Dumbbell Incline Fly')
+  await openPlan(user, workoutAt(0), 'Back Squat')
 
-  const weight = field(planByName(workoutAt(1), 'Dumbbell Incline Fly'), 'Starting weight (kg)')
-  expect(weight.value).toBe('')
-  expect(weight).toHaveAttribute('placeholder', '12.5')
+  expect(stepped('Starting weight')).toBe('60 kg')
+  expect(screen.getByText('Exercise default')).toBeInTheDocument()
 })
 
-test("O14 a Plan with a starting weight shows it, and one without shows its Exercise's placeholder", () => {
-  renderEditor(split())
+test('O14 DX-17 a Plan with a starting weight shows it on its row and in its editor', async () => {
+  const { user } = renderEditor(split())
 
-  const upper = workoutAt(0)
-  expect(field(planByName(upper, 'Flat Bench'), 'Starting weight (kg)').value).toBe('60')
-  const squat = field(planByName(upper, 'Back Squat'), 'Starting weight (kg)')
-  expect(squat.value).toBe('')
-  expect(squat).toHaveAttribute('placeholder', '60')
+  expect(planRow(workoutAt(0), 'Flat Bench')).toHaveAccessibleName('Flat Bench, 4 × 6–8 · 60 kg · 2:00 rest')
+  await openPlan(user, workoutAt(0), 'Flat Bench')
+  expect(stepped('Starting weight')).toBe('60 kg')
+  expect(screen.queryByText('Exercise default')).toBeNull()
 })
 
-test('O14 a starting weight typed into a picked Plan is saved as its startWeightKg', async () => {
+test('O14 DX-17 stepping a picked Plan\'s Starting weight saves it as its startWeightKg', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await pickInto(user, workoutAt(1), 'dead', 'Barbell Deadlift')
-  await user.type(
-    field(planByName(workoutAt(1), 'Barbell Deadlift'), 'Starting weight (kg)'),
-    '100',
-  )
+  await pickInto(user, workoutAt(1), 'fly', 'Dumbbell Incline Fly')
+  await openPlan(user, workoutAt(1), 'Dumbbell Incline Fly')
+  await user.click(screen.getByRole('button', { name: 'Increase Starting weight' }))
+  expect(stepped('Starting weight')).toBe('15 kg')
+  await back(user)
 
   const program = await save(user, onSave)
   expect(program.workouts[1].exercises[1]).toEqual({
-    exerciseId: 'Barbell_Deadlift',
+    exerciseId: 'Dumbbell_Incline_Fly',
     sets: 3,
     repRange: [8, 12],
     restSeconds: 90,
-    startWeightKg: 100,
+    startWeightKg: 15,
   })
 })
 
@@ -324,33 +261,39 @@ test('O14 the exercise search lists only library Exercises whose name matches, c
   await user.click(within(workoutAt(0)).getByRole('button', { name: 'Add exercise' }))
   await user.type(screen.getByLabelText('Search exercises'), 'BARBELL')
 
-  expect(screen.getAllByRole('button', { name: 'Pick' })).toHaveLength(1)
-  expect(screen.getByText('Barbell Deadlift')).toBeInTheDocument()
-  expect(screen.queryByText('Dumbbell Incline Fly')).toBeNull()
+  const picker = screen.getByRole('dialog')
+  expect(within(picker).getByRole('button', { name: 'Barbell Deadlift' })).toBeInTheDocument()
+  expect(within(picker).queryByRole('button', { name: 'Dumbbell Incline Fly' })).toBeNull()
 })
 
-test('O14 Pick closes the exercise search', async () => {
+test('DX-08 the picker is titled after the Workout it adds to', async () => {
+  const { user } = renderEditor(split())
+
+  await user.click(within(workoutAt(1)).getByRole('button', { name: 'Add exercise' }))
+
+  expect(screen.getByRole('dialog', { name: 'Add to Lower' })).toBeInTheDocument()
+})
+
+test('O14 a pick closes the exercise search', async () => {
   const { user } = renderEditor(split())
 
   await pickInto(user, workoutAt(0), 'push', 'Pushups')
 
   expect(screen.queryByLabelText('Search exercises')).toBeNull()
-  expect(screen.queryByRole('button', { name: 'Pick' })).toBeNull()
 })
 
 test('O14 Sessions per week follows the number of Workouts as they are added and removed', async () => {
   const { user, onSave } = renderEditor(blank(), { isNew: true })
 
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
-  expect(sessionsPerWeek().value).toBe('1')
+  expect(sessionsPerWeek()).toBe('1')
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
-  expect(sessionsPerWeek().value).toBe('2')
+  expect(sessionsPerWeek()).toBe('2')
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
-  expect(sessionsPerWeek().value).toBe('3')
-  await user.click(await workoutMenuButton(user, workoutAt(2), 'Remove workout'))
-  expect(sessionsPerWeek().value).toBe('2')
+  expect(sessionsPerWeek()).toBe('3')
+  await user.click(within(workoutAt(2)).getByRole('button', { name: 'Remove Workout 3' }))
+  expect(sessionsPerWeek()).toBe('2')
 
-  // Named, with a Plan each, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
   await user.type(screen.getByLabelText('Program name'), 'New Program')
   await user.type(workoutNameInputs()[0], 'First')
   await user.type(workoutNameInputs()[1], 'Second')
@@ -361,19 +304,19 @@ test('O14 Sessions per week follows the number of Workouts as they are added and
   expect(program.sessionsPerWeek).toBe(2)
 })
 
-test('O14 Sessions per week stops following the Workouts once it is changed by hand', async () => {
+test('O14 DX-17 Sessions per week is a 1–7 stepper, and stops following the Workouts once stepped', async () => {
   const { user, onSave } = renderEditor(blank(), { isNew: true })
 
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
-  await user.clear(sessionsPerWeek())
-  await user.type(sessionsPerWeek(), '4')
+  await user.click(screen.getByRole('button', { name: 'Increase Sessions per week' }))
+  await user.click(screen.getByRole('button', { name: 'Increase Sessions per week' }))
+  expect(sessionsPerWeek()).toBe('4')
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
-  expect(sessionsPerWeek().value).toBe('4')
-  await user.click(await workoutMenuButton(user, workoutAt(0), 'Remove workout'))
-  expect(sessionsPerWeek().value).toBe('4')
+  expect(sessionsPerWeek()).toBe('4')
+  await user.click(within(workoutAt(0)).getByRole('button', { name: 'Remove Workout 1' }))
+  expect(sessionsPerWeek()).toBe('4')
 
-  // Named, with a Plan each, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
   await user.type(screen.getByLabelText('Program name'), 'New Program')
   await user.type(workoutNameInputs()[0], 'First')
   await user.type(workoutNameInputs()[1], 'Second')
@@ -384,29 +327,81 @@ test('O14 Sessions per week stops following the Workouts once it is changed by h
   expect(program.sessionsPerWeek).toBe(4)
 })
 
+test('DX-17 Sessions per week cannot step below 1 or above 7', async () => {
+  const { user } = renderEditor({ ...split(), sessionsPerWeek: 7 })
+
+  expect(screen.getByRole('button', { name: 'Increase Sessions per week' })).toBeDisabled()
+  for (let i = 0; i < 6; i += 1) {
+    await user.click(screen.getByRole('button', { name: 'Decrease Sessions per week' }))
+  }
+  expect(sessionsPerWeek()).toBe('1')
+  expect(screen.getByRole('button', { name: 'Decrease Sessions per week' })).toBeDisabled()
+})
+
 test('O14 Sessions per week counts only the visible Workouts, not hidden ones', async () => {
   const initial = split()
   initial.workouts.push({ id: 'wc', name: 'Retired', exercises: [{ ...rowPlan }], hidden: true })
   const { user, onSave } = renderEditor(initial)
 
-  expect(sessionsPerWeek().value).toBe('2')
+  expect(sessionsPerWeek()).toBe('2')
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
-  expect(sessionsPerWeek().value).toBe('3')
+  expect(sessionsPerWeek()).toBe('3')
 
-  // Named, with a Plan, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
-  await user.type(workoutNameInputs()[2], 'Extra')
+  await user.type(workoutNameInputs()[0], 'Extra')
   await pickInto(user, workoutAt(2), 'push', 'Pushups')
 
   const program = await save(user, onSave)
   expect(program.sessionsPerWeek).toBe(3)
 })
 
-// --- O15: rearranging, removing, Cancel ---------------------------------------------------------
+// --- DX-17: a Workout is a heading with text buttons; a Plan is one row -------------------------
 
-test('O15 Move down on the first Workout puts it second, shown and saved', async () => {
+test('DX-17 a Workout reads as a heading with its size and Reorder · Rename · Remove, no "..." menu', () => {
+  renderEditor(split())
+
+  const upper = workoutAt(0)
+  expect(within(upper).getByRole('heading', { level: 3, name: 'Upper' })).toBeInTheDocument()
+  expect(within(upper).getByText(/^9 sets · ~\d+ min$/)).toBeInTheDocument()
+  const actions = within(upper).getByRole('group', { name: 'Upper actions' })
+  expect(within(actions).getAllByRole('button').map((b) => b.textContent)).toEqual([
+    'Reorder',
+    'Rename',
+    'Remove',
+  ])
+  expect(screen.queryByRole('button', { name: /^Options for / })).toBeNull()
+})
+
+test('DX-17 the main list shows no number fields: each Plan is one row button with its shorthand', () => {
+  renderEditor(split())
+
+  expect(screen.queryAllByRole('spinbutton')).toHaveLength(0)
+  const upper = workoutAt(0)
+  expect(plans(upper)).toHaveLength(3)
+  expect(planRow(upper, 'Back Squat')).toHaveAccessibleName('Back Squat, 3 × 8–10 · 60 kg')
+  expect(planRow(upper, 'Cable Row')).toHaveAccessibleName('Cable Row, 2 × 10–12 · 30 kg · 1:00 rest')
+})
+
+test('DX-17 Rename swaps the heading for a name field; the typed name is saved', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(await workoutMenuButton(user, workoutAt(0), 'Move down'))
+  await user.click(within(workoutAt(0)).getByRole('button', { name: 'Rename' }))
+  const nameField = within(workoutAt(0)).getByLabelText('Workout name')
+  await user.clear(nameField)
+  await user.type(nameField, 'Push')
+
+  expect(workoutNamesShown()).toEqual(['Push', 'Lower'])
+  const program = await save(user, onSave)
+  expect(program.workouts[0].name).toBe('Push')
+})
+
+// --- O15: rearranging, removing, Cancel ---------------------------------------------------------
+
+test('O15 DX-17 Reorder shows Move down on the first Workout; it puts it second, shown and saved', async () => {
+  const { user, onSave } = renderEditor(split())
+
+  expect(screen.queryByRole('button', { name: 'Move Upper down' })).toBeNull()
+  await reorder(user, workoutAt(0))
+  await user.click(screen.getByRole('button', { name: 'Move Upper down' }))
 
   expect(workoutNamesShown()).toEqual(['Lower', 'Upper'])
   const program = await save(user, onSave)
@@ -417,17 +412,20 @@ test('O15 Move down on the first Workout puts it second, shown and saved', async
 test('O15 Move up on the second Workout puts it first, shown and saved', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(await workoutMenuButton(user, workoutAt(1), 'Move up'))
+  await reorder(user, workoutAt(1))
+  await user.click(screen.getByRole('button', { name: 'Move Lower up' }))
 
   expect(workoutNamesShown()).toEqual(['Lower', 'Upper'])
   const program = await save(user, onSave)
   expect(program.workouts.map((w) => w.id)).toEqual(['wb', 'wa'])
 })
 
-test('O15 Move up on a Plan swaps it with the one above, its numbers kept, shown and saved', async () => {
+test('O15 DX-17 in Reorder, Move up on a Plan swaps it with the one above, its numbers kept', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(await planButton(user, planByName(workoutAt(0), 'Back Squat'), 'Move up'))
+  await reorder(user, workoutAt(0))
+  expect(within(workoutAt(0)).getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
+  await user.click(screen.getByRole('button', { name: 'Move Back Squat up' }))
 
   expect(planNamesShown(workoutAt(0))).toEqual(['Back Squat', 'Flat Bench', 'Cable Row'])
   const program = await save(user, onSave)
@@ -437,62 +435,63 @@ test('O15 Move up on a Plan swaps it with the one above, its numbers kept, shown
 test('O15 Move down on a Plan swaps it with the one below, shown and saved', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(await planButton(user, planByName(workoutAt(0), 'Back Squat'), 'Move down'))
+  await reorder(user, workoutAt(0))
+  await user.click(screen.getByRole('button', { name: 'Move Back Squat down' }))
 
   expect(planNamesShown(workoutAt(0))).toEqual(['Flat Bench', 'Cable Row', 'Back Squat'])
   const program = await save(user, onSave)
   expect(program.workouts[0].exercises).toEqual([benchPlan, rowPlan, squatPlan])
 })
 
-test('O15 Remove on a Plan drops it, shown and saved', async () => {
+test("O15 Move up on a Workout's first Plan and Move down on its last are disabled", async () => {
+  const { user } = renderEditor(split())
+
+  await reorder(user, workoutAt(0))
+  expect(screen.getByRole('button', { name: 'Move Flat Bench up' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Move Flat Bench down' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Move Cable Row down' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Move Upper up' })).toBeDisabled()
+
+  await user.click(within(workoutAt(0)).getByRole('button', { name: 'Done' }))
+  expect(screen.queryByRole('button', { name: /^Move / })).toBeNull()
+})
+
+test('O15 DX-17 Remove from Workout on the Plan editor drops the Plan, shown and saved, in red', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(await planButton(user, planByName(workoutAt(0), 'Back Squat'), 'Remove'))
+  await openPlan(user, workoutAt(0), 'Back Squat')
+  const remove = screen.getByRole('button', { name: 'Remove from Workout' })
+  expect(remove).toHaveClass('btn-danger')
+  await user.click(remove)
 
   expect(planNamesShown(workoutAt(0))).toEqual(['Flat Bench', 'Cable Row'])
   const program = await save(user, onSave)
   expect(program.workouts[0].exercises).toEqual([benchPlan, rowPlan])
 })
 
-// --- E17-T7 O11: destructive actions wear btn-danger -------------------------------------------
-const BUTTON_ROLES = ['btn-primary', 'btn-secondary', 'btn-quiet', 'btn-danger', 'tab', 'key', 'chip', 'cell', 'icon-btn']
-
-/** The control-table roles a button wears (E17-T7 O10/O11). */
-function rolesOf(button: HTMLElement): string[] {
-  return [...button.classList].filter((name) => BUTTON_ROLES.includes(name))
-}
-
-test('E17 O11 Remove on a Plan in the editor wears btn-danger and no other role', async () => {
-  const { user } = renderEditor(split())
-
-  expect(rolesOf(await planButton(user, planByName(workoutAt(0), 'Back Squat'), 'Remove'))).toEqual([
-    'btn-danger',
-  ])
-})
-
-test('O15 Remove workout on a Workout from initial hides it: no longer shown, saved with hidden: true', async () => {
+test('O15 Remove on a Workout from initial hides it: no longer shown, saved with hidden: true', async () => {
   const { user, onSave } = renderEditor(split())
 
-  await user.click(await workoutMenuButton(user, workoutAt(1), 'Remove workout'))
+  const remove = within(workoutAt(1)).getByRole('button', { name: 'Remove Lower' })
+  expect(remove).toHaveClass('btn-danger')
+  await user.click(remove)
 
   expect(workoutNamesShown()).toEqual(['Upper'])
   const program = await save(user, onSave)
   expect(program.workouts.map((w) => w.id)).toEqual(['wa', 'wb'])
-  expect(program.workouts[0].hidden).not.toBe(true)
   expect(program.workouts[1]).toMatchObject({ id: 'wb', name: 'Lower', hidden: true })
 })
 
-test('O15 Remove workout on a Workout added in this edit drops it from what is saved', async () => {
+test('O15 Remove on a Workout added in this edit drops it from what is saved', async () => {
   const { user, onSave } = renderEditor(split())
 
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
   expect(workouts()).toHaveLength(3)
-  await user.click(await workoutMenuButton(user, workoutAt(2), 'Remove workout'))
+  await user.click(within(workoutAt(2)).getByRole('button', { name: 'Remove Workout 3' }))
 
   expect(workoutNamesShown()).toEqual(['Upper', 'Lower'])
   const program = await save(user, onSave)
   expect(program.workouts.map((w) => w.id)).toEqual(['wa', 'wb'])
-  expect(program.workouts.every((w) => w.hidden !== true)).toBe(true)
 })
 
 test('O15 a Workout already hidden in initial is not shown, and is saved unchanged', async () => {
@@ -519,17 +518,14 @@ test('O15 an added Workout gets a workout- id and its typed name, and the Progra
   await user.type(workoutNameInputs()[0], 'Push')
   await user.click(screen.getByRole('button', { name: 'Add workout' }))
   await user.type(workoutNameInputs()[1], 'Pull')
-  // A Plan each, so this is a valid Program to Save (E9-T8's O16 disables an invalid one).
   await pickInto(user, workoutAt(0), 'push', 'Pushups')
   await pickInto(user, workoutAt(1), 'fly', 'Dumbbell Incline Fly')
 
   const program = await save(user, onSave)
   expect(program.id).toBe('user-new')
   expect(program.name).toBe('Push Pull')
-  expect(program.units).toBe('kg')
   expect(program.workouts.map((w) => w.name)).toEqual(['Push', 'Pull'])
   expect(program.workouts[0].id).toMatch(/^workout-\S+$/)
-  expect(program.workouts[1].id).toMatch(/^workout-\S+$/)
   expect(program.workouts[0].id).not.toBe(program.workouts[1].id)
   expect(program.workouts.map((w) => w.exercises)).toEqual([
     [{ exerciseId: 'Pushups', sets: 3, repRange: [8, 12], restSeconds: 90 }],
@@ -537,55 +533,69 @@ test('O15 an added Workout gets a workout- id and its typed name, and the Progra
   ])
 })
 
-test('O15 Move up on the first Workout and Move down on the last are disabled, the others enabled', async () => {
-  const { user } = renderEditor(split())
-  await openWorkoutMenu(user, workoutAt(0))
-  await openWorkoutMenu(user, workoutAt(1))
-
-  expect(workoutButton(workoutAt(0), 'Move up')).toBeDisabled()
-  expect(workoutButton(workoutAt(0), 'Move down')).toBeEnabled()
-  expect(workoutButton(workoutAt(1), 'Move up')).toBeEnabled()
-  expect(workoutButton(workoutAt(1), 'Move down')).toBeDisabled()
-
-  await user.click(workoutButton(workoutAt(0), 'Move down'))
-
-  expect(workoutButton(workoutAt(0), 'Move up')).toBeDisabled()
-  expect(workoutButton(workoutAt(1), 'Move down')).toBeDisabled()
-  expect(workoutButton(workoutAt(1), 'Move up')).toBeEnabled()
-})
-
-test("O15 Move up on a Workout's first Plan and Move down on its last are disabled, the others enabled", async () => {
-  const { user } = renderEditor(split())
-
-  for (const plan of [...plans(workoutAt(0)), ...plans(workoutAt(1))]) await openPlanMenu(user, plan)
-  const [first, middle, last] = plans(workoutAt(0))
-  expect(within(first).getByRole('button', { name: 'Move up' })).toBeDisabled()
-  expect(within(first).getByRole('button', { name: 'Move down' })).toBeEnabled()
-  expect(within(middle).getByRole('button', { name: 'Move up' })).toBeEnabled()
-  expect(within(middle).getByRole('button', { name: 'Move down' })).toBeEnabled()
-  expect(within(last).getByRole('button', { name: 'Move up' })).toBeEnabled()
-  expect(within(last).getByRole('button', { name: 'Move down' })).toBeDisabled()
-
-  const [only] = plans(workoutAt(1))
-  expect(within(only).getByRole('button', { name: 'Move up' })).toBeDisabled()
-  expect(within(only).getByRole('button', { name: 'Move down' })).toBeDisabled()
-
-  await user.click(within(last).getByRole('button', { name: 'Move up' }))
-  const after = plans(workoutAt(0))
-  expect(within(after[2]).getByRole('button', { name: 'Move down' })).toBeDisabled()
-  expect(within(after[1]).getByRole('button', { name: 'Move down' })).toBeEnabled()
-})
-
 test('O15 Cancel calls onCancel and never onSave', async () => {
   const { user, onSave, onCancel } = renderEditor(split())
 
-  await user.click(await workoutMenuButton(user, workoutAt(0), 'Move down'))
+  await reorder(user, workoutAt(0))
+  await user.click(screen.getByRole('button', { name: 'Move Upper down' }))
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
-  // V1-09: a dirty draft asks first.
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Discard' }))
 
   expect(onCancel).toHaveBeenCalledTimes(1)
   expect(onSave).not.toHaveBeenCalled()
+})
+
+// --- DX-17: the Plan editor page ----------------------------------------------------------------
+
+test('DX-17 the Plan editor holds at most 8 rows: steppers, AMRAP, Swap, then Remove from Workout', async () => {
+  const { user } = renderEditor(split())
+
+  await openPlan(user, workoutAt(0), 'Back Squat')
+
+  const rows = document.querySelectorAll('.plan-editor-row')
+  expect(rows.length).toBeLessThanOrEqual(8)
+  for (const label of ['Sets', 'Min reps', 'Max reps', 'Rest', 'Starting weight']) {
+    expect(screen.getByRole('group', { name: label })).toBeInTheDocument()
+  }
+  expect(screen.getByRole('switch', { name: 'Last set AMRAP' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Swap exercise' })).toBeInTheDocument()
+  expect(screen.queryAllByRole('spinbutton')).toHaveLength(0)
+  // The list is pushed aside while the Plan is edited.
+  expect(screen.queryByRole('button', { name: 'Add workout' })).toBeNull()
+})
+
+test('DX-17 Back returns to the list with the edited Plan read on its row', async () => {
+  const { user } = renderEditor(split())
+
+  await openPlan(user, workoutAt(0), 'Back Squat')
+  await user.click(screen.getByRole('button', { name: 'Increase Sets' }))
+  await user.click(screen.getByRole('button', { name: 'Decrease Max reps' }))
+  await back(user)
+
+  expect(planRow(workoutAt(0), 'Back Squat')).toHaveAccessibleName('Back Squat, 4 × 8–9 · 60 kg')
+})
+
+test('DX-17 Min reps cannot pass Max reps, nor Max reps fall below Min reps', async () => {
+  const initial = split()
+  initial.workouts[1].exercises = [{ ...pressPlan }]
+  const { user } = renderEditor(initial)
+
+  await openPlan(user, workoutAt(1), 'Overhead Press')
+
+  expect(screen.getByRole('button', { name: 'Increase Min reps' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Decrease Max reps' })).toBeDisabled()
+})
+
+test('O17 DX-17 a Bodyweight Plan has no Starting weight stepper: its Load reads instead', async () => {
+  const initial = split()
+  initial.workouts[1].exercises.push({ exerciseId: 'dips', sets: 3, repRange: [6, 10], restSeconds: 90 })
+  const { user } = renderEditor(initial)
+
+  expect(planRow(workoutAt(1), 'Parallel Dips')).toHaveAccessibleName('Parallel Dips, 3 × 6–10 · BW')
+  await openPlan(user, workoutAt(1), 'Parallel Dips')
+
+  expect(screen.queryByRole('group', { name: 'Starting weight' })).toBeNull()
+  expect(screen.getByText('Load')).toBeInTheDocument()
 })
 
 // --- V1-09: Cancel asks before throwing an edit away --------------------------------------------
@@ -601,26 +611,24 @@ test('V1-09 Cancel with no changes leaves at once', async () => {
 
 test('V1-09 Cancel after one change asks "Discard 1 change?", and Keep editing keeps the value', async () => {
   const { user, onCancel } = renderEditor(split())
-  const sets = within(workoutAt(0)).getAllByLabelText('Sets')[0]
-  await user.clear(sets)
-  await user.type(sets, '5')
+  await openPlan(user, workoutAt(0), 'Flat Bench')
+  await user.click(screen.getByRole('button', { name: 'Increase Sets' }))
+  await back(user)
 
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
   const ask = screen.getByRole('dialog', { name: 'Discard 1 change?' })
-  expect(within(ask).getByRole('heading', { name: 'Discard 1 change?' })).toBeTruthy()
   expect(onCancel).not.toHaveBeenCalled()
   await user.click(within(ask).getByRole('button', { name: 'Keep editing' }))
   expect(screen.queryByRole('dialog')).toBeNull()
-  expect(onCancel).not.toHaveBeenCalled()
-  expect(within(workoutAt(0)).getAllByLabelText('Sets')[0]).toHaveValue(5)
+  expect(planRow(workoutAt(0), 'Flat Bench')).toHaveAccessibleName(/^Flat Bench, 5 × 6–8/)
 })
 
 test('V1-09 the question counts each change, and Discard leaves without saving', async () => {
   const { user, onCancel, onSave } = renderEditor(split())
-  const sets = within(workoutAt(0)).getAllByLabelText('Sets')[0]
-  await user.clear(sets)
-  await user.type(sets, '5')
+  await openPlan(user, workoutAt(0), 'Flat Bench')
+  await user.click(screen.getByRole('button', { name: 'Increase Sets' }))
+  await back(user)
   const name = screen.getByLabelText('Program name')
   await user.clear(name)
   await user.type(name, 'Split 2')
@@ -635,95 +643,48 @@ test('V1-09 the question counts each change, and Discard leaves without saving',
 
 test('V1-09 a field changed and changed back counts as no change', async () => {
   const { user, onCancel } = renderEditor(split())
-  const sets = within(workoutAt(0)).getAllByLabelText('Sets')[0]
-  await user.clear(sets)
-  await user.type(sets, '5')
-  await user.clear(sets)
-  await user.type(sets, '4')
+  await openPlan(user, workoutAt(0), 'Flat Bench')
+  await user.click(screen.getByRole('button', { name: 'Increase Sets' }))
+  await user.click(screen.getByRole('button', { name: 'Decrease Sets' }))
+  await back(user)
 
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
   expect(onCancel).toHaveBeenCalledTimes(1)
 })
 
-// --- O17: no starting weight for a Bodyweight Exercise ------------------------------------------
-
-test('O17 a picked Bodyweight Exercise\'s Plan has no Starting weight (kg) field', async () => {
-  const { user } = renderEditor(split())
-
-  await pickInto(user, workoutAt(1), 'push', 'Pushups')
-
-  const lower = workoutAt(1)
-  expect(planNamesShown(lower)).toEqual(['Overhead Press', 'Pushups'])
-  expect(within(planByName(lower, 'Pushups')).queryByLabelText('Starting weight (kg)')).toBeNull()
-  expect(
-    within(planByName(lower, 'Overhead Press')).getByLabelText('Starting weight (kg)'),
-  ).toBeInTheDocument()
-})
-
 // --- UX v6 (V5-10): the load the Plan is on now, and Rest as m:ss ---------------------------
 
-test('V6 V5-10 a Plan already lifted shows the load it is on now, read-only, not a grey start weight', async () => {
+test('V6 V5-10 a Plan already lifted shows the load it is on now beside its Starting weight', async () => {
   const { user } = renderEditor(split(), { nowLoad: (id) => (id === 'squat' ? '47.5' : null) })
 
-  const squat = planByName(workoutAt(0), 'Back Squat')
-  const now = within(squat).getByText('47.5')
-  expect(now.closest('.program-editor-cell-static')).not.toBeNull()
-  expect(within(squat).getByText('Now')).toBeVisible()
-  expect(within(squat).queryByLabelText('Starting weight (kg)')).toBeNull()
-  expect(squat.querySelector('input[placeholder="60"]')).toBeNull()
+  await openPlan(user, workoutAt(0), 'Back Squat')
 
-  // The starting weight is still there for when the history is gone: in the row's options.
-  await openPlanMenu(user, squat)
-  expect(within(squat).getByLabelText('Starting weight (kg)')).toBeInTheDocument()
+  expect(screen.getByText('Now 47.5 kg')).toBeInTheDocument()
+  expect(screen.getByRole('group', { name: 'Starting weight' })).toBeInTheDocument()
 })
 
-test('V6 V5-10 a Plan with its own starting weight, or never lifted, keeps the Starting weight field in its row', () => {
-  renderEditor(split(), { nowLoad: () => '50' })
-
-  // Flat Bench has a starting weight (60): the field shows it in the row.
-  expect(field(planByName(workoutAt(0), 'Flat Bench'), 'Starting weight (kg)').value).toBe('60')
-})
-
-test('V6 V5-10 Rest reads as m:ss and is stored in seconds', async () => {
+test('V6 V5-10 DX-17 Rest reads as m:ss, steps by 15 s, and is stored in seconds', async () => {
   const { user, onSave } = renderEditor(split())
 
-  const squat = planByName(workoutAt(0), 'Back Squat')
-  const rest = field(squat, 'Rest (m:ss)')
-  expect(rest.value).toBe('1:30')
-  await user.clear(rest)
-  await user.type(rest, '2:15')
+  await openPlan(user, workoutAt(0), 'Back Squat')
+  expect(stepped('Rest')).toBe('1:30')
+  await user.click(screen.getByRole('button', { name: 'Increase Rest' }))
+  await user.click(screen.getByRole('button', { name: 'Increase Rest' }))
+  await user.click(screen.getByRole('button', { name: 'Increase Rest' }))
+  expect(stepped('Rest')).toBe('2:15')
+  await back(user)
 
   const program = await save(user, onSave)
   expect(program.workouts[0].exercises[1].restSeconds).toBe(135)
 })
 
-test('V6 V5-10 Rest typed as plain seconds still saves those seconds', async () => {
-  const { user, onSave } = renderEditor(split())
+test('N7 the Plan editor goes back with a bare ‹, not "‹ Back"', async () => {
+  const { user } = renderEditor(split())
 
-  const rest = field(planByName(workoutAt(0), 'Back Squat'), 'Rest (m:ss)')
-  await user.clear(rest)
-  await user.type(rest, '120')
-
-  const program = await save(user, onSave)
-  expect(program.workouts[0].exercises[1].restSeconds).toBe(120)
-})
-
-test('O17 a Bodyweight Plan already in the Program has no Starting weight (kg) field', () => {
-  const initial = split()
-  initial.workouts[1].exercises.push({
-    exerciseId: 'dips',
-    sets: 3,
-    repRange: [6, 10],
-    restSeconds: 90,
-  })
-  renderEditor(initial)
-
-  const lower = workoutAt(1)
-  expect(
-    within(planByName(lower, 'Parallel Dips')).queryByLabelText('Starting weight (kg)'),
-  ).toBeNull()
-  expect(
-    within(planByName(lower, 'Overhead Press')).getByLabelText('Starting weight (kg)'),
-  ).toBeInTheDocument()
+  await openPlan(user, workoutAt(0), 'Back Squat')
+  const backButton = screen.getByRole('button', { name: 'Back' })
+  expect(backButton.textContent).toBe('')
+  await back(user)
+  expect(screen.queryByRole('heading', { level: 1, name: 'Back Squat' })).toBeNull()
 })

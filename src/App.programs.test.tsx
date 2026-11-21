@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
-import { workoutsOffered } from './test/dashboard'
+import { workoutOffered } from './test/dashboard'
 import abSplitJson from './data/programs/assaf-ab-2026.json'
 import { db } from './storage/db'
 import { USER_PROGRAMS_KEY } from './storage/settingsStore'
@@ -55,47 +55,74 @@ async function storedUserPrograms(): Promise<UserProgram[]> {
   return Array.isArray(row?.value) ? (row.value as UserProgram[]) : []
 }
 
+/**
+ * DX-04: the Program tab, then its Programs row: the Programs page, where the program list,
+ * Copy and New program live. Already on it (back from an editor it opened), stays.
+ */
 async function openProgramTab(user: User): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
-  await openProgramsPanel(user)
-}
-
-/**
- * Opens the Programs panel behind the Program tab's overflow (S7a), where the program list and
- * New program live; with no active Program, New program is on the page itself.
- */
-async function openProgramsPanel(user: User): Promise<void> {
-  await waitFor(() => {
-    const more = screen.queryByRole('button', { name: 'Programs' })
-    const newProgram = screen.queryByRole('button', { name: 'New program' })
-    expect(more ?? newProgram).not.toBeNull()
-  }, SETTLE)
-  const more = screen.queryByRole('button', { name: 'Programs' })
-  if (more !== null && more.getAttribute('aria-expanded') !== 'true') await user.click(more)
+  if (screen.queryByRole('button', { name: 'New program' })) return
+  await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
   await screen.findByRole('button', { name: 'New program' }, SETTLE)
 }
 
-/** The Program tab's action row for the Program named exactly `name`. */
+/** DX-04: Edit is the Program tab's one header action, on the active Program. */
+async function editActive(user: User, name: string): Promise<void> {
+  if (screen.queryByRole('button', { name: 'New program' })) await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(await screen.findByRole('button', { name: `Edit ${name}` }, SETTLE))
+}
+
+/** The Programs page's row for the Program named exactly `name`. */
 function actionsRow(name: string): HTMLElement {
-  const row = screen
-    .getAllByRole('button', { name: 'Copy' })
-    .map((button) => button.parentElement as HTMLElement)
-    .find((candidate) => within(candidate).queryByText(name) !== null)
-  if (row === undefined) throw new Error(`no Program tab row for ${name}`)
+  const row = [...document.querySelectorAll<HTMLElement>('[data-program-id]')].find(
+    (candidate) => candidate.querySelector('.programs-list-name')?.textContent === name,
+  )
+  if (row === undefined) throw new Error(`no Programs page row for ${name}`)
   return row
 }
 
-/** The editor's visible Workouts, top to bottom: each `Workout name` input's `<fieldset>`. */
+/** The row button that makes `name` active, or null. */
+function queryProgram(name: string): HTMLElement | null {
+  const row = [...document.querySelectorAll<HTMLElement>('[data-program-id]')].find(
+    (candidate) => candidate.querySelector('.programs-list-name')?.textContent === name,
+  )
+  return row?.querySelector<HTMLElement>('.programs-list-choose') ?? null
+}
+
+/** The editor's visible Workouts, top to bottom: each a `<section>` (DX-17). */
 function editorWorkouts(): HTMLElement[] {
-  return (screen.queryAllByLabelText('Workout name') as HTMLInputElement[]).map((input) => {
-    const group = input.closest('fieldset')
-    if (group === null) throw new Error('a Workout name input is not inside a <fieldset>')
-    return group
+  return Array.from(document.querySelectorAll<HTMLElement>('section.program-editor-workout'))
+}
+
+/** Each visible Workout's name: its heading, or its name field while it is named. */
+function editorWorkoutNames(): string[] {
+  return editorWorkouts().map((section) => {
+    const input = section.querySelector('input')
+    return input ? input.value : section.querySelector('h3')?.textContent ?? ''
   })
 }
 
-function valuesOf(scope: HTMLElement, label: string): string[] {
-  return (within(scope).queryAllByLabelText(label) as HTMLInputElement[]).map((i) => i.value)
+/**
+ * DX-17: each Plan row's numbers, read from its shorthand ("Back squat, 4 × 8–10 · 60 kg · 3:00
+ * rest"; Rest shows only when it is not 1:30).
+ */
+function plansOf(scope: HTMLElement): { sets: string; min: string; max: string; rest: string }[] {
+  return Array.from(scope.querySelectorAll('.program-editor-plan-row')).map((row) => {
+    const label = row.getAttribute('aria-label') ?? ''
+    const reps = / (\d+) × (\d+)(?:–(\d+))?/.exec(label)
+    const rest = / · (\d+:\d\d) rest$/.exec(label)
+    return {
+      sets: reps?.[1] ?? '',
+      min: reps?.[2] ?? '',
+      max: reps?.[3] ?? reps?.[2] ?? '',
+      rest: rest?.[1] ?? '1:30',
+    }
+  })
+}
+
+function valuesOf(scope: HTMLElement, label: 'Sets' | 'Min reps' | 'Max reps' | 'Rest'): string[] {
+  const key = ({ Sets: 'sets', 'Min reps': 'min', 'Max reps': 'max', Rest: 'rest' } as const)[label]
+  return plansOf(scope).map((plan) => plan[key])
 }
 
 async function addWorkout(user: User, name: string): Promise<HTMLElement> {
@@ -106,25 +133,29 @@ async function addWorkout(user: User, name: string): Promise<HTMLElement> {
   return added
 }
 
-/** `Add exercise` on `workout`, search `query`, then `Pick` on the row named exactly `name`. */
+/** `Add exercise` on `workout`, search `query`, then tap the row named exactly `name` (DX-08). */
 async function pickInto(user: User, workout: HTMLElement, query: string, name: string): Promise<void> {
   await user.click(within(workout).getByRole('button', { name: 'Add exercise' }))
-  const dialog = await screen.findByRole('dialog', { name: 'Add exercise' }, SETTLE)
+  const dialog = await screen.findByRole('dialog', { name: /^Add to / }, SETTLE)
   await user.type(within(dialog).getByLabelText('Search exercises'), query)
-  const row = await waitFor(() => {
-    const found = within(dialog)
-      .getAllByRole('listitem')
-      .find((item) => within(item).queryByText(name) !== null)
-    if (found === undefined) throw new Error(`no pickable row for ${name}`)
-    return found
-  }, SETTLE)
-  await user.click(within(row).getByRole('button', { name: 'Pick' }))
+  const row = await waitFor(() => within(dialog).getByRole('button', { name }), SETTLE)
+  await user.click(row)
 }
 
-async function setField(user: User, scope: HTMLElement, label: string, value: string): Promise<void> {
-  const input = within(scope).getByLabelText(label)
-  await user.clear(input)
-  await user.type(input, value)
+/** The number a stepper shows: "4", "1:30" as seconds, "60 kg". */
+function steppedNumber(label: string): number {
+  const text = screen.getByRole('group', { name: label }).querySelector('output')?.textContent ?? ''
+  const clock = /^(\d+):(\d\d)$/.exec(text)
+  return clock ? Number(clock[1]) * 60 + Number(clock[2]) : Number.parseFloat(text)
+}
+
+/** DX-17: steps the Plan editor's `label` stepper until it shows `target`. */
+async function stepTo(user: User, label: string, target: number): Promise<void> {
+  for (let guard = 0; guard < 200 && steppedNumber(label) !== target; guard += 1) {
+    const direction = steppedNumber(label) < target ? 'Increase' : 'Decrease'
+    await user.click(screen.getByRole('button', { name: `${direction} ${label}` }))
+  }
+  expect(steppedNumber(label)).toBe(target)
 }
 
 async function save(user: User): Promise<void> {
@@ -147,19 +178,22 @@ async function buildPushPullLegs(user: User): Promise<void> {
   await user.type(await screen.findByLabelText('Program name', undefined, SETTLE), 'Push Pull Legs')
 
   const push = await addWorkout(user, 'Push')
-  const pull = await addWorkout(user, 'Pull')
-  const legs = await addWorkout(user, 'Legs')
+  await addWorkout(user, 'Pull')
+  await addWorkout(user, 'Legs')
 
   await pickInto(user, push, 'bench press', BENCH)
-  await setField(user, push, 'Sets', '4')
-  await setField(user, push, 'Min reps', '6')
-  await setField(user, push, 'Max reps', '8')
-  // V6 (V5-10): Rest reads m:ss; plain seconds typed in still save as seconds.
-  await setField(user, push, 'Rest (m:ss)', '120')
-  await setField(user, push, 'Starting weight (kg)', '60')
+  // DX-17: the Plan's numbers are steppers on its Plan editor.
+  await user.click(within(push).getByRole('button', { name: new RegExp(`^${BENCH.replace(/[-]/g, '\\-')}, `) }))
+  await stepTo(user, 'Sets', 4)
+  await stepTo(user, 'Min reps', 6)
+  await stepTo(user, 'Max reps', 8)
+  await stepTo(user, 'Rest', 120)
+  await stepTo(user, 'Starting weight', 60)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
 
-  await pickInto(user, pull, 'barbell deadlift', 'Barbell Deadlift')
-  await pickInto(user, legs, 'barbell squat', 'Barbell Squat')
+  // The Plan editor replaced the list, so its Workouts are read again.
+  await pickInto(user, editorWorkouts()[1], 'barbell deadlift', 'Barbell Deadlift')
+  await pickInto(user, editorWorkouts()[2], 'barbell squat', 'Barbell Squat')
 
   await save(user)
   await editorClosed()
@@ -232,7 +266,7 @@ test(
     await buildPushPullLegs(user)
     await openProgramTab(user)
 
-    expect(screen.getByRole('radio', { name: 'Push Pull Legs' })).toBeInTheDocument()
+    expect(queryProgram('Push Pull Legs')).not.toBeNull()
     expect(actionsRow('Push Pull Legs')).toBeVisible()
   },
   LONG,
@@ -247,16 +281,16 @@ test(
 
     await buildPushPullLegs(user)
     await openProgramTab(user)
-    await user.click(screen.getByRole('radio', { name: 'Push Pull Legs' }))
+    await user.click(queryProgram('Push Pull Legs') as HTMLElement)
 
     const [stored] = await storedUserPrograms()
     await waitFor(async () => {
       expect((await db.settings.get('activeProgramId'))?.value).toBe(stored.id)
     }, SETTLE)
-    await user.click(screen.getByRole('button', { name: 'Home' }))
-    // The Dashboard's dock offers Push, due first, and "Change" steps through Pull and Legs.
+    await user.click(screen.getByRole('button', { name: 'Train' }))
+    // DX-01: Train offers Push, due first, and only it.
     expect(await screen.findByRole('button', { name: 'Start Push' }, SETTLE)).toBeVisible()
-    expect(await workoutsOffered(user)).toEqual(['Push', 'Pull', 'Legs'])
+    expect(await workoutOffered()).toBe('Push')
   },
   LONG,
 )
@@ -270,8 +304,8 @@ test(
 
     await buildPushPullLegs(user)
     await openProgramTab(user)
-    await user.click(screen.getByRole('radio', { name: 'Push Pull Legs' }))
-    await user.click(screen.getByRole('button', { name: 'Home' }))
+    await user.click(queryProgram('Push Pull Legs') as HTMLElement)
+    await user.click(screen.getByRole('button', { name: 'Train' }))
     await user.click(await screen.findByRole('button', { name: 'Start Push' }, SETTLE))
     // The Session opens on its first Exercise's next Set, on Now (V1-01).
 
@@ -291,7 +325,7 @@ test('O13 a stored User Program is listed on the Program tab at launch', async (
 
   await openProgramTab(user)
 
-  expect(screen.getByRole('radio', { name: 'Push Pull Legs' })).toBeInTheDocument()
+  expect(queryProgram('Push Pull Legs')).not.toBeNull()
 }, LONG)
 
 test('O13 a stored active User Program’s Workouts are offered on the Workout tab at launch', async () => {
@@ -317,11 +351,11 @@ test('O13 a User Program pulled by a sync is listed on the Program tab without a
   await renderApp()
 
   await openProgramTab(user)
-  expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull()
+  expect(queryProgram('Push Pull Legs')).toBeNull()
 
   release()
 
-  expect(await screen.findByRole('radio', { name: 'Push Pull Legs' }, SETTLE)).toBeInTheDocument()
+  await waitFor(() => expect(queryProgram('Push Pull Legs')).not.toBeNull(), SETTLE)
 }, LONG)
 
 // --- O9: Copy and Edit, and a save that fails ---------------------------------------------------
@@ -334,13 +368,11 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
 
     const name = (await screen.findByLabelText('Program name', undefined, SETTLE)) as HTMLInputElement
     expect(name.value).toBe('A/B Split (copy)')
-    expect(
-      (screen.getAllByLabelText('Workout name') as HTMLInputElement[]).map((i) => i.value),
-    ).toEqual(['Workout A', 'Workout B'])
+    expect(editorWorkoutNames()).toEqual(['Workout A', 'Workout B'])
   },
   LONG,
 )
@@ -353,7 +385,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     await screen.findByLabelText('Program name', undefined, SETTLE)
 
     const [a, b] = editorWorkouts()
@@ -361,11 +393,11 @@ test(
     expect(valuesOf(a, 'Min reps')).toEqual(['8', '10', '8', '10', '8', '10', '10'])
     expect(valuesOf(a, 'Max reps')).toEqual(['10', '12', '10', '15', '10', '15', '12'])
     // V6 (V5-10): Rest reads as m:ss, as everywhere else in the app.
-    expect(valuesOf(a, 'Rest (m:ss)')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
+    expect(valuesOf(a, 'Rest')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
     expect(valuesOf(b, 'Sets')).toEqual(['3', '4', '3', '4', '3', '3', '3'])
     expect(valuesOf(b, 'Min reps')).toEqual(['8', '5', '10', '8', '10', '10', '10'])
     expect(valuesOf(b, 'Max reps')).toEqual(['10', '8', '12', '10', '15', '15', '12'])
-    expect(valuesOf(b, 'Rest (m:ss)')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
+    expect(valuesOf(b, 'Rest')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
   },
   LONG,
 )
@@ -378,7 +410,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     await screen.findByLabelText('Program name', undefined, SETTLE)
     await save(user)
     await editorClosed()
@@ -403,16 +435,16 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     await screen.findByLabelText('Program name', undefined, SETTLE)
     await save(user)
     await editorClosed()
     await openProgramTab(user)
 
-    expect(await screen.findByRole('radio', { name: 'A/B Split (copy)' }, SETTLE)).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeInTheDocument()
+    await waitFor(() => expect(queryProgram('A/B Split (copy)')).not.toBeNull(), SETTLE)
+    expect(queryProgram('A/B Split')).not.toBeNull()
     expect((await storedUserPrograms()).map((p) => p.id)).not.toContain('assaf-ab-2026')
-    expect(within(actionsRow('A/B Split')).queryByRole('button', { name: 'Reset to original' })).toBeNull()
+    expect(within(actionsRow('A/B Split')).queryByRole('button', { name: 'Reset A/B Split to original' })).toBeNull()
   },
   LONG,
 )
@@ -426,7 +458,7 @@ test(
     const before = Date.now()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
+    await editActive(user, 'A/B Split')
     const name = (await screen.findByLabelText('Program name', undefined, SETTLE)) as HTMLInputElement
     expect(name.value).toBe('A/B Split')
     await save(user)
@@ -450,14 +482,14 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
+    await editActive(user, 'A/B Split')
     await screen.findByLabelText('Program name', undefined, SETTLE)
     await save(user)
     await editorClosed()
     await openProgramTab(user)
 
     expect(
-      await within(actionsRow('A/B Split')).findByRole('button', { name: 'Reset to original' }, SETTLE),
+      await within(actionsRow('A/B Split')).findByRole('button', { name: 'Reset A/B Split to original' }, SETTLE),
     ).toBeVisible()
   },
   LONG,
@@ -476,9 +508,11 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
+    await editActive(user, 'A/B Split')
     await screen.findByLabelText('Program name', undefined, SETTLE)
-    await setField(user, document.body, 'Program name', 'A/B Split v2')
+    const programName = screen.getByLabelText('Program name')
+    await user.clear(programName)
+    await user.type(programName, 'A/B Split v2')
     await save(user)
     await editorClosed()
 
@@ -510,7 +544,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     await screen.findByLabelText('Program name', undefined, SETTLE)
     rejectUserProgramsWrite()
     await save(user)
@@ -529,7 +563,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     const name = await screen.findByLabelText('Program name', undefined, SETTLE)
     await user.clear(name)
     await user.type(name, 'My split')
@@ -538,9 +572,7 @@ test(
     await screen.findByText('Couldn’t save — try again', undefined, SETTLE)
 
     expect((screen.getByLabelText('Program name') as HTMLInputElement).value).toBe('My split')
-    expect(
-      (screen.getAllByLabelText('Workout name') as HTMLInputElement[]).map((i) => i.value),
-    ).toEqual(['Workout A', 'Workout B'])
+    expect(editorWorkoutNames()).toEqual(['Workout A', 'Workout B'])
     vi.restoreAllMocks()
     expect(await storedUserPrograms()).toEqual([])
   },

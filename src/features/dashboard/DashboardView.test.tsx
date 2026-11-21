@@ -1,26 +1,13 @@
+// DX-01: the Train tab is today's Workout inside the Shell -- its name as the title, one meta line,
+// the change note, the Plan list and one Start -- and nothing that copies another tab.
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import { declarationsFor } from '../../test/cssAudit'
 import { ShellChromeContext } from '../../ui/AppShell'
 import { DashboardView, type DashboardData, type DashboardViewProps } from './DashboardView'
-import type { WeekStrip } from './trainCard'
-
-const WEEK: WeekStrip = {
-  done: 1,
-  planned: 3,
-  days: [
-    { key: 'Mon', initial: 'M', name: 'Mon', workout: 'B', tone: 'pull', workoutName: 'Workout B', today: false },
-    { key: 'Tue', initial: 'T', name: 'Tue', workout: null, today: true },
-    { key: 'Wed', initial: 'W', name: 'Wed', workout: null, today: false },
-    { key: 'Thu', initial: 'T', name: 'Thu', workout: null, today: false },
-    { key: 'Fri', initial: 'F', name: 'Fri', workout: null, today: false },
-    { key: 'Sat', initial: 'S', name: 'Sat', workout: null, today: false },
-    { key: 'Sun', initial: 'S', name: 'Sun', workout: null, today: false },
-  ],
-}
 
 const READY: DashboardData = {
   kind: 'ready',
@@ -29,14 +16,7 @@ const READY: DashboardData = {
     minutes: 48,
     estimate: 'logged',
     lifts: [
-      {
-        exerciseId: 'deadlift',
-        name: 'Deadlift',
-        sets: 3,
-        load: '70 kg',
-        reps: '8–10',
-        advice: null,
-      },
+      { exerciseId: 'deadlift', name: 'Deadlift', sets: 3, load: '70 kg', reps: '8–10', advice: null },
       {
         exerciseId: 'seated-biceps-curl',
         name: 'Seated biceps curls',
@@ -48,563 +28,200 @@ const READY: DashboardData = {
       { exerciseId: 'face-pull', name: 'Face pulls', sets: 3, load: null, reps: '12–15', advice: null },
     ],
   },
-  due: { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', minutes: 53 },
+  due: { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', sameAs: 'Friday', minutes: 53 },
+  meta: 'Tuesday · 1 of 3 this week',
+  rest: false,
 }
 
+const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'DashboardScreen.css'), 'utf-8')
+
 function renderView(overrides: Partial<DashboardViewProps> = {}) {
-  const props: DashboardViewProps = {
-    today: 'Tue 13 Oct',
-    sync: { kind: 'synced', ago: '2 min ago' },
-    data: READY,
-    onSync: vi.fn(),
-    onOpenSettings: vi.fn(),
-    onStartWorkout: vi.fn(),
-    ...overrides,
-  }
-  render(<DashboardView {...props} />)
+  const props: DashboardViewProps = { data: READY, onStartWorkout: vi.fn(), ...overrides }
+  render(
+    <ShellChromeContext.Provider value={{ tab: 'train', onTabChange: vi.fn() }}>
+      <DashboardView {...props} />
+    </ShellChromeContext.Provider>,
+  )
   return props
 }
 
-describe('DashboardView S1', () => {
-  test('the header reads the day and the sync, with cloud and settings buttons', () => {
+describe('DX-01 the Train tab', () => {
+  test('the title is the Workout due, with one quiet meta line under it, inside the Shell', () => {
+    renderView()
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
+    expect(screen.getByText('Tuesday · 1 of 3 this week')).toHaveClass('page-header-subtitle')
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    expect(within(nav).getByRole('button', { name: 'Train' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  test('the change note, then one row per Plan, then the size and one filled Start', () => {
     const props = renderView()
-    // v7 (study §1.1): the title is the Workout due over the day as a label, and the headline says
-    // when it was last done. The sync shows only when it failed: synced, there is no cloud.
-    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
-    expect(screen.getByText('Tue 13 Oct')).toBeTruthy()
-    expect(screen.getByText(/^Same as Fri 9 Oct, except/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
-    expect(props.onOpenSettings).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: /^Sync now/ })).toBeNull()
-    cleanup()
-    const failed = renderView({ sync: { kind: 'failed' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Sync now · Not synced · saved on this phone' }))
-    expect(failed.onSync).toHaveBeenCalledTimes(1)
-  })
 
-  test('offline, the header says the work is saved on this phone and drops the cloud button', () => {
-    renderView({ sync: { kind: 'offline' } })
-    // v7 (study §1.1): offline is not a failure -- the work is on the phone -- so nothing shows.
-    expect(screen.queryByRole('img', { name: /Offline/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /^Sync now/ })).toBeNull()
-  })
-
-  test('this week reads three KPI cards against last week', () => {
-    renderView()
-    // Train no longer shows the KPI tiles (O24).
-    expect(screen.queryByText('This week')).toBeNull()
-    expect(screen.queryByText('Sessions')).toBeNull()
-    expect(screen.queryByText('Volume, kg')).toBeNull()
-  })
-
-  test('the muscle week shows sets done of planned in heat bands, the legend and the gaps', () => {
-    const { container } = render(
-      <DashboardView
-        today="Tue 13 Oct"
-        sync={{ kind: 'local' }}
-        data={READY}
-        onSync={vi.fn()}
-        onOpenSettings={vi.fn()}
-        onStartWorkout={vi.fn()}
-      />,
-    )
-    // Train no longer shows the Muscle week (O24).
-    expect(screen.queryByText('Muscle week')).toBeNull()
-    expect(container.querySelector('[data-muscle]')).toBeNull()
-    expect(screen.queryByText('sets / week')).toBeNull()
-    expect(screen.queryByText(/No direct/)).toBeNull()
-  })
-
-  test('more than two gaps read as one list', () => {
-    const { container } = render(
-      <DashboardView
-        today="Tue 13 Oct"
-        sync={{ kind: 'local' }}
-        data={READY}
-        onSync={vi.fn()}
-        onOpenSettings={vi.fn()}
-        onStartWorkout={vi.fn()}
-      />,
-    )
-    expect(container.querySelector('.dashboard-gaps')).toBeNull()
-  })
-
-  test('a gap muscle the program still plans sets for gets no note', () => {
-    renderView()
-    expect(screen.queryByText(/No direct/)).toBeNull()
-  })
-
-  test('the lifts card hints the next weight and lists each lift with its trend and change', () => {
-    renderView()
-    // V2-05: each row is today's Set 1 Preset over the planned Sets and the rep range, and a lift
-    // ready to step up says so in one line; the progression bars are gone.
-    expect(screen.queryByRole('img', { name: /e1RM/ })).toBeNull()
-    expect(screen.queryByRole('progressbar')).toBeNull()
-    const list = screen.getByRole('list', { name: 'Workout A lifts' })
-    const rows = within(list).getAllByRole('listitem')
-    expect(rows).toHaveLength(3)
-    // v7 (study step 4): `sets × kg`, no rep ranges; the row that changes shows its new load in
-    // the up colour and "↑ was 12.5 kg" under the name.
-    const preset = (row: HTMLElement) => row.querySelector('.dashboard-step-preset')?.textContent
-    expect(within(rows[0]).getByText('Deadlift')).toBeTruthy()
-    expect(preset(rows[0])).toBe('3×70 kg')
-    expect(rows[0].textContent).not.toMatch(/8–10/)
-    expect(within(rows[0]).queryByText(/was /)).toBeNull()
-    expect(within(rows[0]).queryByText('14 of 20')).toBeNull()
-    expect(preset(rows[1])).toBe('3×15 kg')
-    expect(rows[1].querySelector('.dashboard-step-preset')?.getAttribute('data-up')).toBe('true')
-    // V6-01: the change is the lift's status's next load, the one Progress and Now show.
-    expect(within(rows[1]).getByText('was 12.5 kg')).toBeTruthy()
-    expect(within(rows[2]).getByText('Face pulls')).toBeTruthy()
-    expect(preset(rows[2])).toBe('3 sets')
-    // V6 (V5-07): a lift whose Sets ramp says so, Set 1's load to the top one.
-    cleanup()
-    renderView({
-      data: {
-        ...READY,
-        card: { ...READY.card!, lifts: [{ ...READY.card!.lifts[0], load: '47.5 kg', topLoad: '62.5 kg', sets: 4 }] },
-      },
-    })
-    expect(document.querySelector('.dashboard-step-preset')?.textContent).toBe('4×47.5 → 62.5 kg')
-    expect(within(rows[2]).queryByText('No sets yet')).toBeNull()
-  })
-
-  test('with no lifts yet the card says they come after the first workout', () => {
-    renderView({ data: { ...READY, card: { ...READY.card!, lifts: [] } } })
-    expect(screen.queryByText('Your lifts show here after your first workout.')).toBeNull()
-    expect(screen.queryByRole('list', { name: 'Workout A lifts' })).toBeNull()
-  })
-
-  test('V1-33 Train is titled "Train", not "Dashboard"', () => {
-    // V3-08: with no Workout to offer yet the title is "Train"; once one is due, its name.
-    const { unmount } = render(
-      <DashboardView
-        today="Tue 13 Oct"
-        sync={{ kind: 'local' }}
-        data={{ kind: 'loading' }}
-        onSync={vi.fn()}
-        onOpenSettings={vi.fn()}
-        onStartWorkout={vi.fn()}
-      />,
-    )
-    expect(screen.getByRole('heading', { level: 1, name: 'Train' })).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: 'Dashboard' })).toBeNull()
-    unmount()
-    renderView()
-    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
-  })
-
-  test('V1-33 the legend stays hidden while no lift has sets yet', () => {
-    const fresh = READY.card!.lifts.map((lift) => ({ ...lift, advice: null }))
-    renderView({ data: { ...READY, card: { ...READY.card!, lifts: fresh } } })
-    expect(screen.getByRole('list', { name: 'Workout A lifts' })).toBeTruthy()
-    expect(screen.queryByText('Reps at the current weight against the next step')).toBeNull()
-  })
-
-  test('V1-33 the legend shows once any lift has sets', () => {
-    // V2-05: the rows read Presets, not bars, so no legend is drawn even once lifts have sets.
-    renderView()
-    expect(screen.queryByText('Reps at the current weight against the next step')).toBeNull()
-    expect(screen.queryByText('= next step')).toBeNull()
-  })
-
-  test('the card names the workout and its duration estimate, logged or planned', () => {
-    // V2-05: the dock names the workout and its estimate; the card above it repeats neither.
-    const { container } = render(
-      <DashboardView
-        today="Tue 13 Oct"
-        sync={{ kind: 'local' }}
-        data={READY}
-        onSync={vi.fn()}
-        onOpenSettings={vi.fn()}
-        onStartWorkout={vi.fn()}
-      />,
-    )
-    expect(screen.queryByRole('heading', { level: 2, name: 'Workout A' })).toBeNull()
-    expect(screen.queryByText('~48 min · from your logged workouts')).toBeNull()
-    // v7: the dock reads the sets and the time; the header and the Start button name the workout.
+    expect(screen.getByText(/^Same as Friday, except/)).toHaveTextContent('Same as Friday, except curls move up to 15 kg.')
+    const rows = within(screen.getByRole('list', { name: 'Workout A lifts' })).getAllByRole('listitem')
+    expect(rows.map((row) => row.querySelector('.dashboard-step-name')?.textContent)).toEqual([
+      'Deadlift',
+      'Seated biceps curls',
+      'Face pulls',
+    ])
     expect(screen.getByText('9 sets · about 53 min')).toBeTruthy()
-    expect(container.textContent?.match(/Workout A/g)).toHaveLength(2)
-  })
-
-  test('the heading says how many more workouts the week still plans', () => {
-    // V2-05: the week strip at the top says it as done of planned; the card has no heading.
-    renderView({ data: { ...READY, week: WEEK, card: { ...READY.card!, more: 2 } }, onOpenSessions: vi.fn() })
-    expect(screen.queryByText('next · 2 more this week')).toBeNull()
-    const week = screen.getByRole('button', { name: /^This week, 1 of 3/ })
-    expect(within(week).getByText('1 of 3')).toBeTruthy()
-  })
-
-  test('a planned estimate says so', () => {
-    // V2-05: the estimate rides in the dock's summary only, whichever way it was worked out.
-    renderView({ data: { ...READY, card: { ...READY.card!, estimate: 'plan' } } })
-    expect(screen.queryByText('~48 min · planned')).toBeNull()
-    expect(screen.getByText('9 sets · about 53 min')).toBeTruthy()
-  })
-
-  test('V2-05 the week strip sits above the lifts with a cell per day, today marked and the done day named', () => {
-    renderView({ data: { ...READY, week: WEEK }, onOpenSessions: vi.fn() })
-    // V3-09: the strip is one button whose name says the week; its cells are the Sessions
-    // calendar's (the letter in the workout's tone, today outlined).
-    const week = screen.getByRole('button', { name: 'This week, 1 of 3: Workout B Mon. Open Sessions' })
-    const days = [...week.querySelectorAll('.calendar-day')]
-    expect(days).toHaveLength(7)
-    expect(days[0].textContent).toBe('B')
-    expect(days[0].getAttribute('data-workout')).toBe('pull')
-    expect(days[1].hasAttribute('data-today')).toBe(true)
-    expect(days.filter((d) => d.hasAttribute('data-today'))).toHaveLength(1)
-    const lifts = screen.getByRole('list', { name: 'Workout A lifts' })
-    expect(week.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  })
-
-  test('V2-05 with no week worked out Train draws no strip', () => {
-    renderView({ onOpenSessions: vi.fn() })
-    expect(screen.queryByRole('button', { name: /^This week/ })).toBeNull()
-    expect(document.querySelector('.dashboard-week')).toBeNull()
-  })
-
-  test('the dock names the workout due and starts it', () => {
-    const props = renderView()
-    // V3-08: the header names the workout due and when it was last done; the dock its time.
-    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
-    expect(screen.getByText('Tue 13 Oct')).toBeTruthy()
-    expect(screen.getByText('9 sets · about 53 min')).toBeTruthy()
+    const filled = document.querySelectorAll('.btn-primary')
+    expect([...filled].map((button) => button.textContent)).toEqual(['Start Workout A'])
     fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
     expect(props.onStartWorkout).toHaveBeenCalledWith('workout-a')
   })
-})
 
-describe('DashboardView S8', () => {
-  const options = [
-    {
-      id: 'ab',
-      name: 'A/B Split',
-      summary: '3× per week · 2 workouts · 14 exercises',
-      workouts: [
-        { name: 'Workout A', summary: '7 exercises · 23 sets · ~53 min' },
-        { name: 'Workout B', summary: '7 exercises · 23 sets · ~48 min' },
-      ],
-    },
-    { id: 'fb', name: 'Full body', summary: '3× per week · 1 workout · 6 exercises', workouts: [] },
-  ]
+  test('nothing copies another tab: no ring, sparkline, heatmap, last Session, week strip, gear, arrows or sync line', () => {
+    renderView()
 
-  test('with no program it offers the programs, the picked one pressed, and uses it', () => {
-    const onSelect = vi.fn()
-    const onUse = vi.fn()
-    renderView({
-      sync: { kind: 'offline' },
-      data: { kind: 'no-program', options, selectedId: 'ab', canUse: true, onSelect, onUse },
-    })
-    expect(screen.getByRole('heading', { name: 'No program yet' })).toBeTruthy()
-    expect(screen.getByText('Pick a program to get a plan for every session.')).toBeTruthy()
-    const ab = screen.getByRole('button', { name: /^A\/B Split 3/ })
-    expect(ab.getAttribute('aria-pressed')).toBe('true')
-    expect(within(ab).getByText('7 exercises · 23 sets · ~48 min')).toBeTruthy()
-    expect(screen.queryByText(/fill this page/)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /^Full body/ }))
-    expect(onSelect).toHaveBeenCalledWith('fb')
-    fireEvent.click(screen.getByRole('button', { name: 'Use A/B Split' }))
-    expect(onUse).toHaveBeenCalledWith('ab')
+    expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^This week/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /workout:/i })).toBeNull()
+    expect(screen.queryByText(/Not synced/)).toBeNull()
+    expect(document.querySelector('.home-ring, .home-lifts, .home-grid, .home-last, .dashboard-week')).toBeNull()
   })
 
-  test('V2-15 the first-run Train promises nothing it never shows', () => {
-    renderView({
-      data: { kind: 'no-program', options, selectedId: 'ab', canUse: true, onSelect: vi.fn(), onUse: vi.fn() },
-    })
-    expect(document.body.textContent).not.toContain('fill this page')
-    expect(screen.getByRole('button', { name: 'Use A/B Split' })).toBeTruthy()
+  test('a lift name opens its Lift page', () => {
+    const onOpenLift = vi.fn()
+    renderView({ onOpenLift })
+    fireEvent.click(screen.getByRole('button', { name: 'Deadlift' }))
+    expect(onOpenLift).toHaveBeenCalledWith('deadlift')
   })
 
-  test('when nothing can be stored the program cannot be taken up', () => {
-    renderView({
-      data: { kind: 'no-program', options, selectedId: 'ab', canUse: false, onSelect: vi.fn(), onUse: vi.fn() },
-    })
-    expect((screen.getByRole('button', { name: 'Use A/B Split' }) as HTMLButtonElement).disabled).toBe(true)
-  })
-})
+  test('a rest day keeps the layout; Start reads "anyway" in outline, and no filled button is left', () => {
+    renderView({ data: { ...READY, meta: 'Rest day · next: Workout A, Friday', rest: true } as DashboardData })
 
-describe('DashboardView in the app shell', () => {
-  const WORKOUTS = [
-    { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', minutes: 53 },
-    { workoutId: 'workout-b', name: 'Workout B', last: null, minutes: 48 },
-  ]
-
-  test('Change steps the dock through the program’s workouts, and Start starts the one offered', () => {
-    const props = renderView({ data: { ...READY, workouts: WORKOUTS } })
-    expect(screen.getByRole('button', { name: 'Start Workout A' })).toBeTruthy()
-
-    // 2026-11-17: the title's › arrow ("Next workout: Workout B") replaced "Do Workout B instead".
-    fireEvent.click(screen.getByRole('button', { name: 'Next workout: Workout B' }))
-
-    // V3-08: the header follows the workout offered, and the dock its time.
-    expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy()
-    expect(screen.getByText('about 48 min')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Start Workout B' }))
-    expect(props.onStartWorkout).toHaveBeenCalledWith('workout-b')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Previous workout: Workout A' }))
-    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
-  })
-
-  test('V1-21 after Change the Workout card shows the chosen Workout, matching the Start button', () => {
-    const cardB = {
-      name: 'Workout B',
-      minutes: 50,
-      estimate: 'plan' as const,
-      lifts: [{ exerciseId: 'deadlift', name: 'Deadlift', advice: null }],
-    }
-    const cardA = {
-      ...READY.card!,
-      lifts: [{ exerciseId: 'back-squat', name: 'Back squat', advice: null }, ...READY.card!.lifts],
-    }
-    renderView({
-      data: { ...READY, card: cardA, workouts: WORKOUTS, cards: { 'workout-a': cardA, 'workout-b': cardB } },
-    })
-    expect(screen.getByRole('region', { name: 'Workout A' })).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Next workout: Workout B' }))
-    expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Workout B' })).toBeTruthy()
-    expect(screen.queryByRole('region', { name: 'Workout A' })).toBeNull()
-    const rows = within(screen.getByRole('list', { name: 'Workout B lifts' })).getAllByRole('listitem')
-    expect(within(rows[0]).getByText('Deadlift')).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Next workout: Workout A' }))
-    expect(screen.getByRole('region', { name: 'Workout A' })).toBeTruthy()
-    const back = within(screen.getByRole('list', { name: 'Workout A lifts' })).getAllByRole('listitem')
-    expect(within(back[0]).getByText('Back squat')).toBeTruthy()
-  })
-
-  test('a program of one workout offers no Change', () => {
-    renderView({ data: { ...READY, workouts: [WORKOUTS[0]] } })
-    expect(screen.queryByRole('button', { name: /^(Next|Previous) workout: / })).toBeNull()
-  })
-
-  test('a Session in progress turns the dock into Resume, even before the week is worked out', () => {
-    const onResume = vi.fn()
-    const resume = { workoutName: 'Workout A', programName: 'A/B Split', onResume }
-    const base = {
-      today: 'Tue 13 Oct',
-      sync: { kind: 'local' } as const,
-      onSync: vi.fn(),
-      onOpenSettings: vi.fn(),
-      onStartWorkout: vi.fn(),
-      resume,
-    }
-    const { rerender } = render(<DashboardView {...base} data={{ kind: 'loading' }} />)
-    const button = screen.getByRole('button', { name: 'Resume Workout A' })
-
-    rerender(<DashboardView {...base} data={READY} />)
-
-    // The same button, kept in place as the data arrives, and no Start beside it.
-    expect(screen.getByRole('button', { name: 'Resume Workout A' })).toBe(button)
-    // V3-08: the header names the Session in progress; the dock is its Resume button only.
-    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
-    expect(screen.getByText('Tue 13 Oct · in progress')).toBeTruthy()
-
-    expect(screen.queryByRole('button', { name: /^Start / })).toBeNull()
-    fireEvent.click(button)
-    expect(onResume).toHaveBeenCalledTimes(1)
-  })
-
-  test('the gear carries the shell’s backup-due marker and the header the shell’s trailing slot', () => {
-    render(
-      <ShellChromeContext.Provider value={{ settingsBadge: true, trailing: <button type="button">Update ready</button> }}>
-        <DashboardView
-          today="Tue 13 Oct"
-          sync={{ kind: 'local' }}
-          data={READY}
-          onSync={vi.fn()}
-          onOpenSettings={vi.fn()}
-          onStartWorkout={vi.fn()}
-        />
-      </ShellChromeContext.Provider>,
-    )
-    const header = screen.getByRole('banner')
-    const gear = within(header).getByRole('button', { name: 'Settings' })
-    expect(within(gear).getByRole('status', { name: 'A backup is due' })).toBeTruthy()
-    expect(within(header).getByRole('button', { name: 'Update ready' })).toBeTruthy()
+    expect(screen.getByText('Rest day · next: Workout A, Friday')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Start Workout A anyway' })).toHaveClass('btn-secondary')
+    expect(document.querySelector('.btn-primary')).toBeNull()
   })
 
   test('notices are drawn under the header', () => {
-    renderView({ notices: <p>Nothing can be saved on this phone.</p> })
-    expect(screen.getByText('Nothing can be saved on this phone.').closest('.dashboard-notices')).not.toBeNull()
-  })
-})
-
-describe('DashboardView V3', () => {
-  test('V3-08 no visible line says "Not synced"; the cloud button carries it as its name', () => {
-    const { container } = render(
-      <DashboardView
-        today="Thu 15 Oct"
-        sync={{ kind: 'failed' }}
-        data={READY}
-        onSync={vi.fn()}
-        onOpenSettings={vi.fn()}
-        onStartWorkout={vi.fn()}
-      />,
-    )
-    // v7 (study §1.1): a failed sync is the one time the sync shows, and then as words that
-    // press to try again -- no cloud, no red dot.
-    expect(container.querySelector('.dashboard-sync-dot')).toBeNull()
-    const cloud = screen.getByRole('button', { name: /^Sync now/ })
-    expect(cloud.textContent).toBe('Not synced · Retry')
-    expect(cloud.getAttribute('aria-label')).toContain('saved on this phone')
-    expect(cloud.getAttribute('data-sync')).toBe('failed')
+    renderView({ notices: <p>Storage is unavailable</p> })
+    expect(screen.getByText('Storage is unavailable').closest('.dashboard-notices')).not.toBeNull()
   })
 
-  test('V3-08 the dock is the time and Start, the switch is the title\'s arrows: no "due" line and no exercise or set count', () => {
-    const { container } = render(
-      <DashboardView
-        today="Thu 15 Oct"
-        sync={{ kind: 'local' }}
-        data={{
-          ...READY,
-          workouts: [READY.due!, { workoutId: 'workout-b', name: 'Workout B', last: null, minutes: 48 }],
-        }}
-        onSync={vi.fn()}
-        onOpenSettings={vi.fn()}
-        onStartWorkout={vi.fn()}
-      />,
-    )
-    const dock = container.querySelector('.dashboard-dock') as HTMLElement
-    // The dock is the size and time and Start; switching moved to the title's ‹ › (2026-11-17).
-    expect(within(dock).getByText('9 sets · about 53 min')).toBeTruthy()
-    expect(within(dock).queryByRole('button', { name: /instead$/ })).toBeNull()
-    const header = container.querySelector('.dashboard-header') as HTMLElement
-    expect(within(header).getByRole('button', { name: 'Next workout: Workout B' })).toBeTruthy()
-    expect(within(header).getByRole('button', { name: 'Previous workout: Workout B' })).toBeTruthy()
-    expect(within(dock).getByRole('button', { name: 'Start Workout A' })).toBeTruthy()
-    expect(dock.textContent).not.toMatch(/due|exercises/)
-    expect(screen.getByText('Thu 15 Oct')).toBeTruthy()
-  })
-
-  test('V3-08 a workout never done reads the day alone under its name', () => {
-    renderView({ data: { ...READY, due: { ...READY.due!, last: null } } })
-    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
-    expect(screen.getByText('Tue 13 Oct')).toBeTruthy()
-  })
-
-  test('V6 V5-14 with onOpenSession each done day is its own button, opening that workout', () => {
-    const onOpenSession = vi.fn()
-    const onOpenSessions = vi.fn()
-    const week: WeekStrip = {
-      ...WEEK,
-      days: WEEK.days.map((day, at) =>
-        at === 0 ? { ...day, sessionId: 'mon-session', label: 'Workout B, Mon 12 Oct' } : day,
-      ),
-    }
-    renderView({ data: { ...READY, week }, onOpenSessions, onOpenSession })
-
-    const day = screen.getByRole('button', { name: 'Workout B, Mon 12 Oct' })
-    expect(day).toHaveClass('calendar-day')
-    fireEvent.click(day)
-    expect(onOpenSession).toHaveBeenCalledWith('mon-session')
-    expect(onOpenSessions).not.toHaveBeenCalled()
-    // Days with nothing done are no buttons; Sessions is still one tap away, on the count.
-    expect(document.querySelectorAll('.dashboard-week button.calendar-day')).toHaveLength(1)
-    fireEvent.click(screen.getByRole('button', { name: /^This week, 1 of 3.*Open Sessions$/ }))
-    expect(onOpenSessions).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: /^This week/ }).querySelector('button')).toBeNull()
-  })
-
-  test('V3-09 the week strip is one button that opens Sessions', () => {
-    const onOpenSessions = vi.fn()
-    renderView({ data: { ...READY, week: WEEK }, onOpenSessions })
-    const strip = screen.getByRole('button', { name: /^This week/ })
-    expect(strip.querySelectorAll('.calendar-week')).toHaveLength(1)
-    expect(strip.querySelectorAll('button')).toHaveLength(0)
-    fireEvent.click(strip)
-    expect(onOpenSessions).toHaveBeenCalledTimes(1)
-  })
-
-  test('V3-10 a lift row wraps its name and Preset rather than cutting the name; header icons are sized in rem', () => {
-    const here = dirname(fileURLToPath(import.meta.url))
-    const css = readFileSync(join(here, 'DashboardScreen.css'), 'utf-8')
+  test('a row wraps its name and Preset rather than cutting the name', () => {
     const name = declarationsFor(css, '.dashboard-step-name')
     expect(name.get('text-overflow')).toBeUndefined()
     expect(name.get('white-space')).toBeUndefined()
     expect(declarationsFor(css, '.dashboard-step-line').get('flex-wrap')).toBe('wrap')
-    expect(declarationsFor(css, '.dashboard-header-actions svg').get('width')).toMatch(/rem$/)
   })
 })
 
+describe('DX-09 a Session in progress', () => {
+  test('Train shows the live Workout’s Plans and no Start and no Resume: the strip is the one way back', () => {
+    renderView({ resume: { workoutName: 'Workout A', programName: 'A/B Split', workoutId: 'workout-a' } })
 
-describe('DashboardView V6 flow', () => {
-  const due = READY.kind === 'ready' ? READY.due! : null!
-
-  test('V6-11 after a short Session the header says what is left of the Workout, and Start starts it', () => {
-    const props = renderView({
-      data: { ...READY, due: { ...due, finish: 'Workout A again · last one was cut short on Mon 12 Oct' } } as DashboardData,
-    })
     expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
-    // v7: folded into the headline sentence.
-    expect(screen.getByText(/^Workout A again · last one was cut short on Mon 12 Oct\./)).toBeTruthy()
-    expect(screen.queryByText(/last done/)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Start Workout A' }))
-    expect(props.onStartWorkout).toHaveBeenCalledWith('workout-a')
+    expect(screen.getByText('In progress')).toBeTruthy()
+    expect(screen.getByRole('list', { name: 'Workout A lifts' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Start/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Resume/ })).toBeNull()
   })
 
-  test('V6-08 the Workout\'s last Session note shows under the date as one quiet line', () => {
+  test('with no strip to resume from (no app root), the dock is one Resume', () => {
+    const onResume = vi.fn()
+    renderView({ resume: { workoutName: 'Workout A', programName: 'A/B Split', workoutId: 'workout-a', onResume } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume Workout A' }))
+    expect(onResume).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: /^Start/ })).toBeNull()
+  })
+})
+
+describe('DX-04 first run', () => {
+  const NO_PROGRAM = (onChoose = vi.fn(), canUse = true): DashboardData => ({
+    kind: 'no-program',
+    canUse,
+    onChoose,
+    options: [
+      { id: 'ab', name: 'A/B Split', summary: '3× a week · 2 workouts' },
+      { id: 'ul', name: 'Upper/Lower', summary: '4× a week · 2 workouts' },
+    ],
+  })
+
+  test('"Choose a Program" as two plain rows; a row makes that Program active', () => {
+    const onChoose = vi.fn()
+    renderView({ data: NO_PROGRAM(onChoose) })
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Choose a Program' })).toBeTruthy()
+    const rows = within(screen.getByRole('list', { name: 'Programs' })).getAllByRole('button')
+    expect(rows.map((row) => row.textContent)).toEqual(['A/B Split3× a week · 2 workouts', 'Upper/Lower4× a week · 2 workouts'])
+    expect(document.querySelector('.btn-primary, .card')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/plan/i)
+    fireEvent.click(rows[1])
+    expect(onChoose).toHaveBeenCalledWith('ul')
+  })
+
+  test('when nothing can be stored no Program can be taken up', () => {
+    renderView({ data: NO_PROGRAM(vi.fn(), false) })
+    expect(screen.getByRole('button', { name: /^A\/B Split/ })).toBeDisabled()
+  })
+})
+
+describe('the change note', () => {
+  const due = READY.kind === 'ready' ? READY.due! : null!
+
+  test('V6-11 after a short Session it says what is left of the Workout', () => {
     renderView({
-      data: {
-        ...READY,
-        due: { ...due, note: 'Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight.' },
-      } as DashboardData,
+      data: { ...READY, due: { ...due, finish: 'Workout A again · last one was cut short on Mon 12 Oct' } } as DashboardData,
     })
-    // v7 (study §1.1): the note folds into the headline sentence, read whole -- never cut.
+    expect(screen.getByText(/^Workout A again · last one was cut short on Mon 12 Oct\./)).toBeTruthy()
+  })
+
+  test('V6-08 the Workout’s last Session note folds into it, read whole', () => {
+    renderView({
+      data: { ...READY, due: { ...due, note: 'Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight.' } } as DashboardData,
+    })
     const note = screen.getByText(/Note from Wed 7 Oct: Right elbow sore on pull-downs, dropped the weight\.$/)
-    expect(note).toHaveClass('dashboard-headline-note')
     expect(note.closest('.dashboard-headline')).not.toBeNull()
-    expect(note.closest('header')).not.toBeNull()
-    const here = dirname(fileURLToPath(import.meta.url))
-    const css = readFileSync(join(here, 'DashboardScreen.css'), 'utf-8')
-    expect(declarationsFor(css, '.dashboard-headline').get('white-space')).toBeUndefined()
     expect(declarationsFor(css, '.dashboard-headline').get('-webkit-line-clamp')).toBeUndefined()
   })
 
-  test('V6-08 a Workout with no note shows no note line', () => {
-    renderView()
-    expect(document.querySelector('.dashboard-note')).toBeNull()
-  })
-
-  test('V6 each done day of the week strip is at least 44 px wide to the touch', () => {
-    const here = dirname(fileURLToPath(import.meta.url))
-    const css = readFileSync(join(here, 'DashboardScreen.css'), 'utf-8')
-    const inset = declarationsFor(css, '.dashboard-week button.calendar-day::before').get('inset') ?? ''
-    // Top and bottom reach 44 px tall; left and right reach out to 44 px wide whatever the column.
-    expect(inset.startsWith('calc((1.75rem - var(--tap-min)) / 2) ')).toBe(true)
-    expect(inset.endsWith(' min(-2px, calc((100% - var(--tap-min)) / 2))')).toBe(true)
-  })
-})
-
-describe('DashboardView V6 wave 3', () => {
-  test('V6-05 after a break the card says once that loads are eased, not on every row', () => {
+  test('V6-05 after a break it says once that loads are eased, not on every row', () => {
     const eased = { kind: 'eased' as const, lever: 13, text: 'Eased after 34 days off', use: null }
     const lifts = READY.card!.lifts.map((lift) => ({ ...lift, advice: eased }))
-    renderView({ data: { ...READY, card: { ...READY.card!, lifts, eased: true } } })
-    // v7: said once, in the headline sentence.
+    renderView({ data: { ...READY, card: { ...READY.card!, lifts, eased: true } } as DashboardData })
     expect(screen.getByText('Back after 34 days off: loads eased 10 % for today.')).toBeTruthy()
     expect(screen.queryByText('Eased after 34 days off')).toBeNull()
   })
 })
 
-describe('DashboardView: opened on the workout Home’s arrows picked (2026-11-17)', () => {
-  const WORKOUTS = [
-    { workoutId: 'workout-a', name: 'Workout A', last: 'Fri 9 Oct', minutes: 53 },
-    { workoutId: 'workout-b', name: 'Workout B', last: null, minutes: 48 },
-  ]
+describe('Train: doing a workout other than the one due', () => {
+  const B_CARD = { ...(READY as Extract<DashboardData, { kind: 'ready' }>).card!, name: 'Workout B' }
+  const WITH_B: DashboardData = {
+    ...(READY as Extract<DashboardData, { kind: 'ready' }>),
+    others: [{ workoutId: 'workout-b', name: 'Workout B', last: 'Mon 12 Oct', minutes: 60 }],
+    cards: { 'workout-b': B_CARD },
+  }
 
-  test('initialWorkoutId opens the page on that workout, title and Start alike', () => {
-    renderView({ data: { ...READY, workouts: WORKOUTS }, initialWorkoutId: 'workout-b' })
+  test('a labelled "Change" opens the workouts; choosing one makes it the title and the Start', () => {
+    const props = renderView({ data: WITH_B })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+    const sheet = screen.getByRole('dialog', { name: 'Choose a workout' })
+    expect(within(sheet).getByText('Due next')).toBeTruthy()
+    fireEvent.click(within(sheet).getByRole('button', { name: /Workout B/ }))
 
     expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Start Workout B' })).toBeTruthy()
+    expect(screen.getByText('Instead of Workout A')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Start Workout B' }))
+    expect(props.onStartWorkout).toHaveBeenCalledWith('workout-b')
   })
 
-  test('with no initialWorkoutId the page opens on the workout due', () => {
-    renderView({ data: { ...READY, workouts: WORKOUTS } })
+  test('N1 the "Choose a workout" sheet closes with its X', () => {
+    renderView({ data: WITH_B })
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Workout A' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+    const sheet = screen.getByRole('dialog', { name: 'Choose a workout' })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog', { name: 'Choose a workout' })).toBeNull()
+  })
+
+  test('a Program with one workout offers no Change', () => {
+    renderView()
+    expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()
   })
 })

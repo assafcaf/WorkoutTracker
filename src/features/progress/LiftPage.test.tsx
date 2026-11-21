@@ -1,5 +1,5 @@
 // E18-T11 [O21], v6 §6.3: the one Lift page over the stats fixture (Thu 15 Oct 2026, 18:05).
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import sessionsJson from '../../test/fixtures/stats/sessions.json'
@@ -106,7 +106,7 @@ describe('E18-T11 O21 lift page', () => {
     const user = userEvent.setup()
     const onOpen = vi.fn()
     open('db-bench-press', onOpen)
-    expect(screen.getByText('= Stalled')).toBeVisible()
+    expect(screen.getByText('= Flat')).toBeVisible()
     expect(screen.getByText('Try a variation for 4 weeks.')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Why?' })).toBeNull()
     const reason = screen.getByText(/No new best at 13 kg since Fri 7 Aug/)
@@ -179,5 +179,60 @@ describe('E19-T4 O6 lift page gap weeks', () => {
     expect(container.querySelectorAll('.ladder-gap')).toHaveLength(0)
     expect(container.querySelectorAll('.lift-chart-gap')).toHaveLength(0)
     expect(container.querySelector('.lift-chart-line')).not.toBeNull()
+  })
+})
+
+describe('DX-12 DX-18 DX-20 the lift page sections', () => {
+  it('DX-12 Rep maxes is a plain section after Records, from the latest top set, with no sheet', () => {
+    open('back-squat')
+    expect(screen.queryByRole('button', { name: /What can I lift/ })).toBeNull()
+    const records = screen.getByRole('region', { name: 'Records' })
+    const maxes = screen.getByRole('region', { name: 'Rep maxes' })
+    expect(records.compareDocumentPosition(maxes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(maxes).getByText('From 62.5 kg × 8 on 14 Oct')).toBeVisible()
+    const terms = within(maxes).getAllByRole('term').map((t) => t.textContent)
+    expect(terms).toEqual(['1 rep', ...Array.from({ length: 9 }, (_, i) => `${i + 2} reps`)])
+    // 62.5 × 8 predicts 79.2 kg: 1 rep 77.5 kg (down to the 2.5 kg step), 8 reps 62.5 kg.
+    const loads = within(maxes).getAllByRole('definition').map((d) => d.textContent)
+    expect(loads[0]).toBe('77.5 kg')
+    expect(loads[7]).toBe('62.5 kg')
+    expect(within(maxes).queryAllByRole('button')).toHaveLength(0)
+    expect(within(maxes).queryAllByRole('textbox')).toHaveLength(0)
+  })
+
+  it('DX-20 section headers are sentence case words, not upper-case labels', () => {
+    open('back-squat')
+    for (const name of ['Records', 'Rep maxes', 'Sessions']) expect(screen.getByRole('heading', { name })).toBeVisible()
+  })
+
+  it('DX-12 "How to do it ›" sits at the top and opens the exercise info', async () => {
+    const onHowTo = vi.fn()
+    render(
+      <LiftPageView exerciseId="back-squat" sessions={sessions} program={program} resolve={resolve} now={NOW} onHowTo={onHowTo} />,
+    )
+    const link = screen.getByRole('button', { name: 'How to do it ›' })
+    expect(link.compareDocumentPosition(screen.getByRole('region', { name: 'Status' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await userEvent.setup().click(link)
+    expect(onHowTo).toHaveBeenCalledTimes(1)
+  })
+
+  it('DX-03 a Flat lift whose action is a variation keeps "Swap for a variation ›"', async () => {
+    const onSwap = vi.fn()
+    render(
+      <LiftPageView exerciseId="db-bench-press" sessions={sessions} program={program} resolve={resolve} now={NOW} onSwap={onSwap} />,
+    )
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Swap for a variation ›' }))
+    expect(onSwap).toHaveBeenCalledTimes(1)
+  })
+
+  it('DX-18 the chart has no per-point buttons: one scrub area drives the readout', () => {
+    const { container } = open('back-squat')
+    expect(container.querySelectorAll('.lift-chart-hit')).toHaveLength(0)
+    const scrub = screen.getByRole('slider', { name: 'Sessions on the chart' })
+    expect(screen.getByRole('region', { name: 'Chart readout' })).toHaveTextContent('Wed 14 Oct')
+    // A press at the far left picks the first Session in the range.
+    fireEvent.pointerDown(scrub, { clientX: 0, pointerId: 1 })
+    expect(scrub.getAttribute('aria-valuenow')).toBe('1')
+    expect(screen.getByRole('region', { name: 'Chart readout' })).not.toHaveTextContent('Wed 14 Oct')
   })
 })

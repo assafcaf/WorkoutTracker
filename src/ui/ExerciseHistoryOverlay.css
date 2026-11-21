@@ -1,7 +1,7 @@
-/* The Exercise History overlay (E16-T7; v6 6.3): the Lift page under a bar with the lift name and Done. */
+/* The Exercise History overlay (E16-T7; v6 6.3): the Lift page under a bar with ‹ and the lift name. */
 
 /* v7: the compact bar every pushed page wears (`.app-header-bar`): 56 px on the surface over a
- * hairline, the lift's name centred, Done at the right. */
+ * hairline, a bare ‹ at the left (DX-06, N7), the lift's name centred. */
 .exercise-history-header {
   position: sticky;
   z-index: 1;
@@ -28,14 +28,15 @@
   text-align: center;
 }
 
-.exercise-history-close {
-  grid-column: 3;
-  justify-self: end;
-  min-height: var(--tap-min);
-  padding: 0 var(--space-2);
+.exercise-history-back {
+  grid-column: 1;
+  justify-self: start;
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
   border: none;
-  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--color-text);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
 }

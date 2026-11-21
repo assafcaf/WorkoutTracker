@@ -12,6 +12,11 @@ export type SnackbarProps = {
    * places it in an anchor above its Dials, so it never covers the reps Dial or the rest timer.
    */
   inline?: boolean
+  /**
+   * N4: drawn just over a screen's action bar with no tab bar under it (the Set screen's Log
+   * bar), so it clears the Dials above it.
+   */
+  overBar?: boolean
 }
 
 /**
@@ -20,9 +25,12 @@ export type SnackbarProps = {
  * first. The caller owns how long it stays. The message and its action are apart by layout
  * alone: no separator trails the message (V5-04).
  */
-export function Snackbar({ message, actionLabel, onAction, inline = false }: SnackbarProps): JSX.Element {
+export function Snackbar({ message, actionLabel, onAction, inline = false, overBar = false }: SnackbarProps): JSX.Element {
+  const className = ['snackbar', inline ? 'snackbar--inline' : '', overBar ? 'snackbar--over-bar' : '']
+    .filter(Boolean)
+    .join(' ')
   const bar = (
-    <div role="status" className={inline ? 'snackbar snackbar--inline' : 'snackbar'}>
+    <div role="status" className={className}>
       <span className="snackbar-message">{message}</span>
       {actionLabel === undefined ? null : (
         <button type="button" className="snackbar-action btn-quiet" onClick={onAction}>

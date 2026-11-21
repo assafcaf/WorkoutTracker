@@ -37,7 +37,7 @@ async function createSledPush(user: ReturnType<typeof userEvent.setup>) {
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New exercise' })).toBeNull(), SETTLE)
 }
 
-test('O19 a new custom Exercise is listed, found by search and filters, and its detail has no photo or video', async () => {
+test('O19 a new custom Exercise is listed, found by search, and its detail has no photo or video', async () => {
   const { user } = renderFeature()
   await createSledPush(user)
 
@@ -46,8 +46,6 @@ test('O19 a new custom Exercise is listed, found by search and filters, and its 
   expect(await screen.findByRole('button', { name: /Zercher Sled Push/ }, SETTLE)).toBeVisible()
 
   await user.clear(search)
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Muscle' }), 'quadriceps')
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Equipment' }), 'dumbbell')
   await user.type(search, 'zercher')
   await user.click(await screen.findByRole('button', { name: /Zercher Sled Push/ }, SETTLE))
 

@@ -26,45 +26,16 @@
   padding-bottom: calc(var(--tap-min) + var(--space-1) + var(--safe-bottom));
 }
 
-.live-strip + .app-shell-tabbed {
-  padding-top: 0;
+/* DX-09: while a Session is minimised its strip (src/ui/LiveStrip.css) rides just above the tab
+ * bar on every tab, so a tabbed shell reserves the strip's height as well. */
+.live-strip ~ .app-shell-tabbed,
+.live-strip ~ * .app-shell-tabbed {
+  padding-bottom: calc(var(--tap-min) + var(--space-1) + var(--safe-bottom) + 56px);
 }
 
 /* A full-screen mode (the Live session) is drawn on the surface, as in S2/S3. */
 .app-shell-full {
   background: var(--color-surface);
-}
-
-/* Above a tab's large title: the Program tab's Program | Exercises switch (S7a), a 220 x 36
- * segmented control, with the screen's own actions (Edit, the overflow) at the row's end. */
-.app-lead {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 56px;
-  padding: 0 var(--space-4);
-}
-
-.app-lead .segmented {
-  width: 220px;
-  height: 36px;
-}
-
-/* A 30 px segment, tapped across the 44 px floor. */
-.app-lead .segmented .segmented-input {
-  inset: -7px 0;
-}
-
-.app-lead-actions {
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-  margin-right: -10px;
-}
-
-/* The lead row stands where the title's top padding would; the title sits 4 px under it. */
-.app-lead + .page-header {
-  padding-top: var(--space-1);
 }
 
 /* A tab's content starts 8 px under its large title (S6a, S6b). */
@@ -144,29 +115,6 @@
   padding: 0;
 }
 
-/* The Settings gear (S1) and its backup-due marker. */
-.settings-open {
-  position: relative;
-  display: inline-flex;
-  min-width: var(--tap-min);
-  min-height: var(--tap-min);
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-pill);
-}
-
-.settings-open-badge {
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
-  width: var(--space-2);
-  height: var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--color-warn);
-}
-
 /* The action bar rides the bottom of the viewport above the home indicator, so the screen's
  * one commitment -- logging a set, saving an edit -- is always in reach of a thumb. */
 .action-bar {
@@ -178,6 +126,18 @@
   padding-bottom: calc(var(--space-3) + var(--safe-bottom));
   border-top: 1px solid var(--color-hairline);
   background: var(--color-surface);
+}
+
+/* DX-06: a pushed page keeps the tab bar, so its action bar rides just above it (and above the
+ * live strip while a Session is minimised); the bar pads only itself. */
+.app-shell-tabbed > .action-bar {
+  bottom: calc(var(--tap-min) + var(--space-1) + 1px + var(--safe-bottom));
+  padding-bottom: var(--space-3);
+}
+
+.live-strip ~ .app-shell-tabbed > .action-bar,
+.live-strip ~ * .app-shell-tabbed > .action-bar {
+  bottom: calc(var(--tap-min) + var(--space-1) + 1px + var(--safe-bottom) + 56px);
 }
 
 /* The slot a screen fills the bar through: out of the layout altogether, so the controls it

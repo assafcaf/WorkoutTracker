@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { formatDay } from '../../domain/dates'
@@ -19,16 +19,18 @@ import { sessionVolume } from '../../domain/volume'
 import type { BodyLog, ExercisePlan, Muscle, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { CalendarWeekCells } from '../../ui/CalendarWeek'
-import { Icon } from '../../ui/icons'
+import { lastSetTexts } from '../../ui/ExercisePicker'
 import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
 import { SessionEditor } from '../../ui/SessionEditor'
 import { Sheet } from '../../ui/Sheet'
+import { Icon } from '../../ui/icons'
 import { Snackbar } from '../../ui/Snackbar'
 import { SessionSummary } from '../../ui/SessionSummary'
 import { dayOf } from '../../domain/bodyLog'
 import { SessionPhotos } from '../progress/photos/session/SessionPhotos'
 import type { AppRoute } from '../routes'
-import { useServices } from '../ServicesProvider'
+import { useServices, useSyncControls } from '../ServicesProvider'
+import { SyncLine } from './SyncLine'
 import { useServiceData } from '../useServiceData'
 import './SessionsScreen.css'
 
@@ -44,8 +46,8 @@ export type SessionsScreenProps = {
 /** The weeks the calendar draws (V3-09): six rows of seven days above the list. */
 const CALENDAR_WEEKS = 6
 
-/** How long "Workout deleted · Undo" stays (V5), as long as Body's "Entry deleted · Undo". */
-const UNDO_MS = 6000
+/** How long "Session deleted · Undo" stays (DX-11). */
+const UNDO_MS = 8000
 
 const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -171,13 +173,20 @@ export function SessionsScreen({
   const [editingId, setEditingId] = useState<string | null>(null)
   /** V5: a calendar day with two or more Sessions, open as a chooser of them. */
   const [chooser, setChooser] = useState<{ day: number; sessions: Session[] } | null>(null)
-  /** V5: the Session just deleted, as it was, while "Workout deleted · Undo" shows. */
+  /** V5: the Session just deleted, as it was, while "Session deleted · Undo" shows. */
   const [deleted, setDeleted] = useState<Session | null>(null)
-  /** V6-13: the "Log a past workout" sheet, open on the day it will log (`YYYY-MM-DD`). */
+  /** V6-13: the "Log a past Session" sheet, open on the day it will log (`YYYY-MM-DD`). */
   const [loggingDay, setLoggingDay] = useState<string | null>(null)
   /** V6-13: a missed Session's draft, open in the editor until it is saved or cancelled. */
   const [pastDraft, setPastDraft] = useState<Session | null>(null)
+  /**
+   * DX-11: where the list was scrolled when a Session was opened, so ‹ comes back to it; any other
+   * way back to the list (a save, a delete, a cancelled editor) opens it at the top.
+   */
+  const listScroll = useRef<number | null>(null)
   const services = useServices()
+  const { sync } = useSyncControls()
+  const onOpenSettings = (): void => navigate({ tab: 'settings' })
 
   useEffect(() => {
     if (!deleted) return
@@ -204,6 +213,29 @@ export function SessionsScreen({
     onInSession(false)
   }, [onInSession])
 
+  // DX-06 / DX-11: each page change starts at its top -- Session detail, an editor, and the list
+  // after a delete -- except ‹ from Session detail, which returns to where the list was.
+  const onList = summarySessionId === null && editingId === null && pastDraft === null
+  useEffect(() => {
+    const to = onList ? listScroll.current ?? 0 : 0
+    if (onList) listScroll.current = null
+    try {
+      window.scrollTo(0, to)
+    } catch {
+      // A test DOM without scrolling: nothing to restore.
+    }
+  }, [summarySessionId, editingId, pastDraft, onList])
+
+  /** Opens Session detail, remembering the list's scroll for ‹. */
+  const openDetail = (id: string): void => {
+    listScroll.current = window.scrollY
+    setSummarySessionId(id)
+  }
+  /** ‹ from Session detail: back to the list where it was. */
+  const closeDetail = (): void => {
+    setSummarySessionId(null)
+  }
+
   const sessionsData = useServiceData((services) => services.sessions.list(), ['sessions'])
   const programsData = useServiceData(
     (services) =>
@@ -220,6 +252,12 @@ export function SessionsScreen({
   )
   const bodyweightOverridesData = useServiceData(
     (services) => services.preferences.bodyweightOverrides().catch((): Record<string, boolean> => ({})),
+    ['preferences'],
+  )
+
+  // DX-08: the Session editor's picker offers "My gym only" like every picker.
+  const gymEquipmentData = useServiceData(
+    (services) => services.preferences.gymEquipment().catch((): string[] | null => null),
     ['preferences'],
   )
 
@@ -271,11 +309,14 @@ export function SessionsScreen({
     return [...(workout?.exercises.map((plan) => plan.exerciseId) ?? []), ...Object.values(session.swaps ?? {})]
   }
 
-  // V6-14: the editor draws the one header ("Edit · Workout B · Mon 12 Oct"), so the shell draws none.
+  const lastSets = lastSetTexts(sessions, resolve, new Date(today))
+
+  // V6-14: the editor draws the one header (Cancel · "Edit · Workout B · Mon 12 Oct" · Save), so
+  // the shell draws none; DX-06: an editor is full screen, with no tab bar to drop an edit by.
   const editSession = editingId ? sessions.find((session) => session.id === editingId) ?? null : null
   if (editSession) {
     return (
-      <AppShell title="Sessions" ownHeader>
+      <AppShell title="Sessions" ownHeader fullScreen>
         <div className="sessions-editor-page">
           <SessionEditor
             key={editSession.id}
@@ -285,7 +326,8 @@ export function SessionsScreen({
             now={today}
             addable={addable}
             plannedIds={plannedIdsOf(editSession)}
-            renderPhotos={(day) => <SessionPhotos day={day} variant="editor" />}
+            lastSets={lastSets}
+            gymEquipment={gymEquipmentData.status === 'ready' ? gymEquipmentData.data : null}
             onSave={async (draft) => {
               await services.sessions.save(draft)
               setEditingId(null)
@@ -299,7 +341,7 @@ export function SessionsScreen({
   }
   if (pastDraft) {
     return (
-      <AppShell title="Sessions" ownHeader>
+      <AppShell title="Sessions" ownHeader fullScreen>
         <div className="sessions-editor-page">
           <SessionEditor
             key={pastDraft.id}
@@ -310,7 +352,8 @@ export function SessionsScreen({
             now={today}
             addable={addable}
             plannedIds={plannedIdsOf(pastDraft)}
-            renderPhotos={(day) => <SessionPhotos day={day} variant="editor" />}
+            lastSets={lastSets}
+            gymEquipment={gymEquipmentData.status === 'ready' ? gymEquipmentData.data : null}
             onSave={async (draft) => {
               await services.sessions.logPast(draft)
               setPastDraft(null)
@@ -339,39 +382,114 @@ export function SessionsScreen({
       }),
     )
   }
-  // V6-13: the one entry point, beside the title, so the list still comes first (V2-07).
+  // V6-13: the one entry point, beside the title, so the list still comes first (V2-07). DX-11:
+  // a text button that says what it does, "Log past", in place of a bare "+".
+  const openLogPast = (): void => setLoggingDay(isoDay(today - DAY_MS))
   const logPastButton = activeProgram ? (
     <button
       type="button"
-      className="sessions-log-past icon-btn"
-      aria-label="Log a past workout"
+      className="sessions-log-past btn-quiet"
       aria-haspopup="dialog"
-      onClick={() => setLoggingDay(isoDay(today - DAY_MS))}
+      onClick={openLogPast}
     >
-      <Icon name="Plus" size={24} />
+      Log past
     </button>
   ) : null
+  const calendar = (
+    <SessionsCalendar
+      sessions={sessions}
+      programs={programs}
+      now={today}
+      weekStartsOn={weekStartsOn}
+      onOpenDay={(day, onDay) => {
+        if (onDay.length === 1) openDetail(onDay[0].id)
+        else setChooser({ day, sessions: onDay })
+      }}
+    />
+  )
 
   const summarySession = summarySessionId
     ? sessions.find((session) => session.id === summarySessionId) ?? null
     : null
 
+  // DX-06: Session detail is a pushed page in the Shell -- the tab bar stays, a bare ‹ goes back
+  // and "Edit" sits in its header.
+  if (summarySession) {
+    return (
+      <AppShell
+        title="Session"
+        onBack={closeDetail}
+        actions={
+          <button
+            type="button"
+            className="sessions-detail-edit btn-quiet"
+            aria-label="Edit session"
+            onClick={() => {
+              listScroll.current = null
+              setSummarySessionId(null)
+              setEditingId(summarySession.id)
+            }}
+          >
+            Edit
+          </button>
+        }
+      >
+        <SessionSummary
+          embedded
+          session={summarySession}
+          resolve={resolve}
+          library={libraryMap}
+          workoutName={workoutNameOf(summarySession, programs)}
+          earlierSessions={earlierThan(summarySession)}
+          planFor={planFor(summarySession)}
+          workout={programs
+            .find((program) => program.id === summarySession.programId)
+            ?.workouts.find((workout) => workout.id === summarySession.workoutId)}
+          program={programs.find((program) => program.id === summarySession.programId)}
+          weekStartsOn={weekStartsOn}
+          bodyLog={bodyLog}
+          photos={<SessionPhotos day={dayOf(summarySession.startedAt)} variant="past" />}
+          onClose={closeDetail}
+          onEdit={() => {
+            listScroll.current = null
+            setSummarySessionId(null)
+            setEditingId(summarySession.id)
+          }}
+          onBrowse={(muscles: Muscle[]) => {
+            setSummarySessionId(null)
+            navigate({ tab: 'exercises', muscles })
+          }}
+          // V6-03: a lift's name opens the one Lift page over the summary; Back returns here.
+          onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
+        />
+      </AppShell>
+    )
+  }
+
   return (
-    <AppShell title="Sessions" actions={logPastButton ?? undefined}>
+    <AppShell
+      title="Sessions"
+      subtitle={<SyncLine sync={sync} now={today} onOpen={onOpenSettings} />}
+      // DX-21: with no Session yet the empty state's one action is the way in; no second one here.
+      actions={sessions.length === 0 ? undefined : logPastButton ?? undefined}
+    >
       {sessions.length === 0 ? (
-        <p className="sessions-empty">No finished workouts yet. Finish one and it appears here.</p>
+        // DX-21: the calendar still draws, today outlined, so its frame is learned; one line and
+        // one way to the first Session.
+        <div className="sessions-screen">
+          {calendar}
+          <div className="sessions-empty">
+            <p className="sessions-empty-line">Your Sessions appear here.</p>
+            {activeProgram ? (
+              <button type="button" className="sessions-empty-action btn-quiet" onClick={openLogPast}>
+                Log a past Session
+              </button>
+            ) : null}
+          </div>
+        </div>
       ) : (
         <div className="sessions-screen">
-          <SessionsCalendar
-            sessions={sessions}
-            programs={programs}
-            now={today}
-            weekStartsOn={weekStartsOn}
-            onOpenDay={(day, onDay) => {
-              if (onDay.length === 1) setSummarySessionId(onDay[0].id)
-              else setChooser({ day, sessions: onDay })
-            }}
-          />
+          {calendar}
           {sessionsByWeek(sessions, today, weekStartsOn).map((week) => (
             <section key={week.start} className="sessions-week" aria-label={week.label}>
               <h2 className="sessions-caption">{week.label}</h2>
@@ -388,7 +506,7 @@ export function SessionsScreen({
                       <button
                         type="button"
                         className="session-row cell"
-                        onClick={() => setSummarySessionId(session.id)}
+                        onClick={() => openDetail(session.id)}
                       >
                         <span className="session-row-main">
                           <span className="session-row-date">{formatDay(new Date(session.startedAt), new Date(today))}</span>
@@ -412,35 +530,6 @@ export function SessionsScreen({
           ))}
         </div>
       )}
-      {summarySession ? (
-        <SessionSummary
-          session={summarySession}
-          resolve={resolve}
-          library={libraryMap}
-          workoutName={workoutNameOf(summarySession, programs)}
-          earlierSessions={earlierThan(summarySession)}
-          planFor={planFor(summarySession)}
-          workout={programs
-            .find((program) => program.id === summarySession.programId)
-            ?.workouts.find((workout) => workout.id === summarySession.workoutId)}
-          program={programs.find((program) => program.id === summarySession.programId)}
-          weekStartsOn={weekStartsOn}
-          bodyLog={bodyLog}
-          photos={<SessionPhotos day={dayOf(summarySession.startedAt)} variant="past" />}
-          onClose={() => setSummarySessionId(null)}
-          onEdit={() => {
-            setSummarySessionId(null)
-            setEditingId(summarySession.id)
-          }}
-          onDelete={() => deleteSession(summarySession)}
-          onBrowse={(muscles: Muscle[]) => {
-            setSummarySessionId(null)
-            navigate({ tab: 'exercises', muscles })
-          }}
-          // V6-03: a lift's name opens the one Lift page over the summary; Back returns here.
-          onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
-        />
-      ) : null}
       {chooser ? (
         <Sheet label={formatDay(new Date(chooser.day), new Date(today))} onClose={() => setChooser(null)}>
           <div className="sessions-chooser">
@@ -452,7 +541,7 @@ export function SessionsScreen({
                 className="sessions-chooser-option btn-secondary"
                 onClick={() => {
                   setChooser(null)
-                  setSummarySessionId(session.id)
+                  openDetail(session.id)
                 }}
               >
                 {`${workoutNameOf(session, programs)} · ${clockTime(session.startedAt)}`}
@@ -462,9 +551,15 @@ export function SessionsScreen({
         </Sheet>
       ) : null}
       {loggingDay !== null && activeProgram ? (
-        <Sheet label="Log a past workout" onClose={() => setLoggingDay(null)}>
+        <Sheet label="Log a past Session" onClose={() => setLoggingDay(null)}>
+          {/* N1: a visible way out, the X top-right; Escape and the scrim close it too. */}
+          <div className="sheet-head">
+            <h2 className="sheet-title">Log a past Session</h2>
+            <button type="button" className="sheet-close icon-btn" aria-label="Close" onClick={() => setLoggingDay(null)}>
+              <Icon name="X" size={24} />
+            </button>
+          </div>
           <div className="sessions-chooser">
-            <h3 className="sessions-chooser-heading">Log a past workout</h3>
             <label className="sessions-log-date">
               <span>Date</span>
               <input
@@ -484,20 +579,14 @@ export function SessionsScreen({
                 className="sessions-chooser-option btn-secondary"
                 onClick={() => logPast(workout.id)}
               >
-                {workout.name}
+                {`Log ${workout.name}`}
               </button>
             ))}
           </div>
         </Sheet>
       ) : null}
-      {/* V5-04: it names the workout it took away, "Workout B deleted · Mon 12 Oct". */}
-      {deleted ? (
-        <Snackbar
-          message={`${workoutNameOf(deleted, programs)} deleted · ${formatDay(new Date(deleted.startedAt), new Date(today))}`}
-          actionLabel="Undo"
-          onAction={undoDelete}
-        />
-      ) : null}
+      {/* DX-11: "Session deleted · Undo", for 8 s. */}
+      {deleted ? <Snackbar message="Session deleted" actionLabel="Undo" onAction={undoDelete} /> : null}
     </AppShell>
   )
 }

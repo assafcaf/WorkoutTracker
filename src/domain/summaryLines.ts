@@ -12,6 +12,7 @@ import type { Resolve } from './muscles'
 import { bodyweightOn } from './bodyLog'
 import { formatDay } from './dates'
 import { nextWorkout } from './shortSession'
+import { LONG_DAYS, nextDayOf, usualDays } from './usualDays'
 import { exerciseComparison } from './exerciseVerdict'
 import { workingSets } from './setKind'
 import { formatSetCompact } from './setText'
@@ -258,11 +259,19 @@ export function sessionLifts(
   }))
 }
 
-/** v7: what comes next, `Next: Workout A`; null with nothing due. */
-export function nextLine(session: Session, sessions: Session[], program: Program): string | null {
+/** v7: what comes next, `Next: Workout A · Friday` (the day when the usual days say it); null with nothing due. */
+export function nextLine(
+  session: Session,
+  sessions: Session[],
+  program: Program,
+  weekStartsOn: Weekday = 1,
+): string | null {
   const upTo = sessions.filter((other) => other.deletedAt === undefined && other.startedAt <= session.startedAt)
   const next = nextWorkout(program, upTo)
-  return next ? `Next: ${next.workout.name}` : null
+  if (!next) return null
+  // DX-14: the day it falls on, the next of the trainee's usual days; none known, no day.
+  const day = nextDayOf(usualDays(upTo, session.startedAt, weekStartsOn), session.startedAt)
+  return day === null ? `Next: ${next.workout.name}` : `Next: ${next.workout.name} · ${LONG_DAYS[new Date(day).getDay()]}`
 }
 
 /** A LiftLine as one plain sentence: `60×10 · 70×8 PR · 70×7 · 1 rep more than Mon 12 Oct`. */

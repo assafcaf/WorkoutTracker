@@ -52,17 +52,17 @@ const BAND = { from: WEEKLY_SET_RANGE.min, to: WEEKLY_SET_RANGE.max } as const
 /** Where a weekly count sits against the typical range, on the whole number the row prints. */
 const standingOf = (n: number): Standing => weeklyStanding(n)
 
-/** A row's standing in words, as the Program tab says it (V1-26): ` · below 10`, ` · above 20`. */
+/**
+ * A row's standing against the Weekly set range, in words (V1-26, DX-03): ` · below 10–20`,
+ * ` · above 10–20`, nothing within. One range, one verdict: a plan that sets a low count does not
+ * excuse it, so this page, the Progress row and the Program tab say the same thing.
+ */
 const standingText = (n: number): string => {
   const standing = standingOf(n)
-  return standing === 'below' ? ` · below ${BAND.from}` : standing === 'above' ? ` · above ${BAND.to}` : ''
+  return standing === 'within' ? '' : ` · ${standing} ${BAND.from}–${BAND.to}`
 }
-/**
- * V6-19: a low the plan itself sets, met: the row reads "3 sets/week · as planned" instead of
- * warning "below 10" about a number the trainee chose.
- */
-const asPlanned = (row: Row): boolean =>
-  row.plan > 0 && whole(row.done + row.still) === whole(row.plan) && standingOf(row.plan) === 'below'
+/** DX-03: the plan is news only where it differs from what was done (this week: done and still planned). */
+const planDiffers = (row: Row): boolean => row.plan > 0 && whole(row.plan) !== whole(row.done + row.still)
 const WEEK_MS_DAYS = 7
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const dayMonth = (ms: number): string => `${new Date(ms).getDate()} ${MONTHS[new Date(ms).getMonth()]}`
@@ -136,15 +136,18 @@ function build(data: MusclesData, now: number, span: Span): Model {
   const under = rows.filter((r) => r.plan > 0 && r.done < r.plan - 0.5)
   // Near the top of the range, and over it, said apart (V1-26): 21 is above 10–20, not at its top.
   const named = (list: Row[]): string => list.map((r) => `${r.label} ${whole(r.done)}`).join(' and ')
-  const top = rows.filter((r) => r.done >= 18 && standingOf(r.done) === 'within')
   const above = rows.filter((r) => standingOf(r.done) === 'above')
+  // DX-03: the rows below the range are named too, so the sentence never reads "on plan" alone
+  // over rows that say "below 10–20".
+  const below = rows.filter((r) => standingOf(r.done) === 'below')
+  const belowNames = below.length > 2 ? `${below.length} muscles` : named(below)
   const topText =
     (above.length === 0
       ? ''
       : ` ${named(above)} ${above.length === 1 ? 'is' : 'are'} above the typical ${BAND.from}–${BAND.to}.`) +
-    (top.length === 0
+    (below.length === 0
       ? ''
-      : ` ${named(top)} ${top.length === 1 ? 'sits' : 'sit'} at the top of the typical ${BAND.from}–${BAND.to}.`)
+      : ` ${belowNames} ${below.length === 1 ? 'is' : 'are'} below ${above.length === 0 ? `the typical ${BAND.from}–${BAND.to}` : 'it'}.`)
   const sentence =
     (under.length === 0
       ? `On plan for ${complete.length === 1 ? '1 week' : `${complete.length} weeks`}.`
@@ -251,7 +254,7 @@ function Bullet({ row, max }: { row: Row; max: number }): JSX.Element {
           style={{ left: pct(row.done), width: `${(row.still / max) * 100}%` }}
         />
       ) : null}
-      {row.plan > 0 ? <span className="muscles-bullet-plan" data-part="plan" style={{ left: pct(row.plan) }} /> : null}
+      {planDiffers(row) ? <span className="muscles-bullet-plan" data-part="plan" style={{ left: pct(row.plan) }} /> : null}
     </span>
   )
 }
@@ -344,7 +347,7 @@ export function MusclesView({ data, now, onBack }: MusclesViewProps): JSX.Elemen
         {fourWeeks ? null : (
           <>
             <p className="muscles-legend">
-              done · {span === 'this-week' ? 'still planned · ' : ''}tick is the plan · shaded band is the typical 10–20 · tap a muscle for its lifts
+              Band: {BAND.from}–{BAND.to} sets a week · tick: the plan, where it differs
             </p>
             <ul className="muscles-rows">
               {rows.map((row) => (
@@ -367,18 +370,14 @@ export function MusclesView({ data, now, onBack }: MusclesViewProps): JSX.Elemen
                       <span className="muscles-row-value">
                         {/* V6-19: the count has its unit: this week's sets, else a weekly average. */}
                         {`${whole(row.done)} ${span === 'this-week' ? 'sets' : 'sets/week'}`}
-                        {asPlanned(row) ? (
-                          ' · as planned'
-                        ) : (
-                          <>
-                            {/* This week counts what is still planned too: 2 done of 12 is not "below". */}
-                            {standingText(row.done + row.still)}
-                            <span className="muscles-row-plan">
-                              {` · plan ${whole(row.plan)}`}
-                              {row.still > 0 ? ` · ${whole(row.still)} still planned` : ''}
-                            </span>
-                          </>
-                        )}
+                        {/* This week counts what is still planned too: 2 done of 12 is not "below". */}
+                        {standingText(row.done + row.still)}
+                        {row.still > 0 || planDiffers(row) ? (
+                          <span className="muscles-row-plan">
+                            {row.still > 0 ? ` · ${whole(row.still)} still planned` : ''}
+                            {planDiffers(row) ? ` · plan ${whole(row.plan)}` : ''}
+                          </span>
+                        ) : null}
                       </span>
                     </span>
                     <Bullet row={row} max={max} />

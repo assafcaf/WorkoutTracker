@@ -11,12 +11,20 @@
   padding: var(--space-4);
 }
 
+/* The shared overlay shape sets its own top padding (the safe area); the page's 16 px, which the
+ * bar's negative margin bleeds through, must win, or the first line slides up under the bar. */
+.exercise-detail.overlay-panel {
+  padding-top: calc(var(--space-4) + var(--safe-top));
+}
+
 /* v7: the compact bar every pushed page wears (`.app-header-bar`, src/ui/AppShell.css): 56 px on
  * the surface over a hairline, the back chevron at the left and the title centred, sticky while
  * the page scrolls under it. It bleeds through the page's own padding. */
 .exercise-detail-bar {
   position: sticky;
-  top: 0;
+  /* A sticky bar sticks inside its scroller's padding: -16 px takes it back to the very top, so
+   * the page's first line never slides up under it. */
+  top: calc(var(--space-4) * -1);
   z-index: 1;
   display: grid;
   grid-template-columns: minmax(var(--tap-min), 1fr) auto minmax(var(--tap-min), 1fr);
@@ -112,14 +120,12 @@
   text-align: center;
 }
 
-/* The "Similar exercises" section heading (E17-T5); v7: the 12 px upper-case section label. */
+/* The "Similar exercises" section heading (E17-T5); DX-20: 14 px semibold ink, sentence case. */
 .exercise-detail-similar-heading {
   margin: var(--space-2) 0 0;
-  color: var(--color-muted);
-  font-size: var(--text-xs);
+  color: var(--color-text);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 /* The overlay for an exercise the library has no entry for: it says so instead of failing. */

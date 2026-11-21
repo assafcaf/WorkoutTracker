@@ -123,7 +123,13 @@ describe('photos page: the Compare page opens on the chosen dates', () => {
 })
 
 describe('photos page: the ways in', () => {
-  test('Body offers View photos, which opens the Photos page', async () => {
+  test('DX-10 Body shows each angle\'s latest photo and See all, which opens the Photos page', async () => {
+    await db.photos.bulkPut([
+      photo('f1', '2026-10-12'),
+      photo('f2', '2026-11-17'),
+      photo('s2', '2026-11-17', 'side'),
+      photo('b2', '2026-11-17', 'back'),
+    ])
     const push = vi.fn<(page: ProgressPage) => void>()
     const user = userEvent.setup()
     render(
@@ -131,11 +137,16 @@ describe('photos page: the ways in', () => {
         <BodyPage page={{ kind: 'body' }} push={push} onBack={() => undefined} now={() => NOW} />
       </ServicesProvider>,
     )
-    await user.click(await screen.findByRole('button', { name: 'View photos' }, SETTLE))
+    await screen.findByRole('button', { name: 'See all ›' }, SETTLE)
+    const thumbs = ['Front photo', 'Side photo', 'Back photo'].map((name) => screen.getByRole('button', { name }))
+    expect(thumbs).toHaveLength(3)
+    await user.click(screen.getByRole('button', { name: 'See all ›' }))
     expect(push).toHaveBeenCalledWith({ kind: 'photos' })
+    await user.click(thumbs[1])
+    expect(push).toHaveBeenCalledTimes(2)
   })
 
-  test('Progress has a Photos row, which opens the Photos page', async () => {
+  test('DX-10 Progress has no Photos row: Photos is reached from Body only', async () => {
     const at = new Date(2026, 9, 15, 18, 5).getTime()
     await db.sessions.bulkPut(sessionsJson as unknown as Session[])
     await setActiveProgramId('assaf-ab-2026', at)
@@ -147,7 +158,9 @@ describe('photos page: the ways in', () => {
       </ServicesProvider>,
     )
     const more = await screen.findByRole('navigation', { name: 'More' }, SETTLE)
-    await user.click(within(more).getByRole('button', { name: /^Photos/ }))
-    expect(push).toHaveBeenCalledWith({ kind: 'photos' })
+    expect(within(more).queryByRole('button', { name: /^Photos/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Photos/ })).toBeNull()
+    await user.click(within(more).getByRole('button', { name: /^Body/ }))
+    expect(push).toHaveBeenCalledWith({ kind: 'body' })
   })
 })

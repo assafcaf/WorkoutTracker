@@ -367,7 +367,7 @@ test('O16 SessionSummary shows a 65-minute Session’s duration as 1 h 05 min', 
 test('O16 SessionSummary shows the volume as 4,250 kg, and no bodyweight reps when there are none', () => {
   const dialog = renderWithStats(benchSession('vol', BASE, 52, 10, 85, 5))
 
-  expect(kpiValue(dialog, 'volume')).toBe('4,250 kg')
+  expect(kpiValue(dialog, 'volume')).toBe('4,250 kg lifted')
   expect(dialog.textContent).not.toContain('bodyweight reps')
 })
 
@@ -385,7 +385,7 @@ test('O16 SessionSummary adds · 36 bodyweight reps to the volume when the Sessi
   const dialog = renderWithStats(session)
 
   const volume = dialog.querySelector('[data-kpi="volume"]') as HTMLElement
-  expect(kpiValue(dialog, 'volume')).toBe('4,250 kg')
+  expect(kpiValue(dialog, 'volume')).toBe('4,250 kg lifted')
   expect(within(volume).getByText('· 36 bodyweight reps')).toBeVisible()
 })
 
@@ -495,11 +495,11 @@ test('S5b the KPI strip reads duration, volume against the last same Workout, wo
   // warm-ups; the records are said by the verdict sentence and the PR rows, never a PR count.
   expect(dialog.querySelector('.session-summary-label')?.textContent).toMatch(/^\w{3} \d{1,2} \w{3} · 52 min$|^\d{1,2} \w{3} \d{4} · 52 min$/)
   expect(kpiValue(dialog, 'duration')).toBe('52 min')
-  expect(kpiValue(dialog, 'volume')).toBe('1,275 kg')
+  expect(kpiValue(dialog, 'volume')).toBe('1,275 kg lifted')
   expect(kpiValue(dialog, 'sets')).toBe('3')
   expect(dialog.querySelector('[data-kpi="prs"]')).toBeNull()
   expect(dialog.querySelector('[data-kpi="comparison"]')).toBeNull()
-  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('3 sets · 1,275 kg · 1 warm-up not counted')
+  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('3 sets · 1,275 kg lifted · 1 warm-up not counted')
   expect(dialog.textContent).not.toMatch(/%/)
 })
 
@@ -567,7 +567,7 @@ test('S5b the dock offers Share as the secondary action beside Done', () => {
   expect(within(dialog).queryByRole('button', { name: 'Send to Apple Health' })).toBeNull()
 })
 
-test('S5b Edit session shows only when onEdit is given, and calls it', async () => {
+test('S5b DX-14 Edit shows only when onEdit is given, as text, and calls it', async () => {
   const onEdit = vi.fn()
   const dialog = renderS5b(benchSession('e', BASE, 52, 1, 40, 5), [], { onEdit })
 
@@ -663,6 +663,13 @@ test('O26 a 71-minute Session reads 1 h 11 min on its own line, apart from the w
   expect(duration.textContent).not.toContain('sessions')
 })
 
+test('DX-14 a Session shorter than a minute reads "1 min", never "0 min"', () => {
+  const quick = { ...benchSession('quick', BASE, 0, 1, 40, 5), finishedAt: BASE + 20_000 }
+  const dialog = renderBench(quick, [])
+
+  expect(kpiValue(dialog, 'duration')).toBe('1 min')
+})
+
 test('O26 each lift reads its move in words beside its top set', () => {
   const dialog = renderWeek()
 
@@ -724,9 +731,9 @@ test('O26 volume is the last quiet line of the summary body, after the muscles a
   // Title kept (weakened-tests gate); v7: the volume is one small number in the totals line,
   // after Lift by lift; only "Next" and Share follow it.
   const volume = dialog.querySelector('[data-kpi="volume"]') as HTMLElement
-  expect(volume.textContent).toBe('1,275 kg')
+  expect(volume.textContent).toBe('1,275 kg lifted')
   const totals = volume.closest('.session-summary-totals') as HTMLElement
-  expect(totals.textContent).toBe('3 sets · 1,275 kg · 2 warm-ups not counted')
+  expect(totals.textContent).toBe('3 sets · 1,275 kg lifted · 2 warm-ups not counted')
   const lifts = within(dialog).getByRole('region', { name: 'Lift by lift' })
   expect(lifts.compareDocumentPosition(totals) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   const body = dialog.querySelector('.session-summary-body') as HTMLElement
@@ -794,7 +801,7 @@ test('V2-10 a Session that logged fewer Sets than planned shows its volume witho
   )
 
   const dialog = summaryDialog()
-  expect(kpiValue(dialog, 'volume')).toBe('425 kg')
+  expect(kpiValue(dialog, 'volume')).toBe('425 kg lifted')
   expect(dialog.textContent).not.toMatch(/down \d+ %/)
 })
 
@@ -812,7 +819,7 @@ test('V2-10 the finish summary reads the planned Sets from its Workout: 3 of 6 l
     />,
   )
 
-  expect(kpiValue(summaryDialog(), 'volume')).toBe('1,200 kg')
+  expect(kpiValue(summaryDialog(), 'volume')).toBe('1,200 kg lifted')
 })
 
 // --- E19-T15 O26: Save changes to program ----------------------------------------------------
@@ -945,18 +952,23 @@ test('V4-03 a partial Session reads "1 of 3 sets" in the figures, with no % comp
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
 
-  // Title kept (weakened-tests gate); V6-11, v7: the totals line says it was short, 1 of 3 sets.
-  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('Short session · 1 of 3 sets · 400 kg')
+  // DX-14: the lead line says it was short, "1 of 3 sets"; the totals line keeps the kilos.
+  expect(dialog.querySelector('[data-kpi="short"]')?.textContent).toBe('Short Session: 1 of 3 sets')
+  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('400 kg lifted')
   expect(dialog.textContent).not.toMatch(/%/)
 })
 
-test('V6-11 under half the planned Sets reads "Short session · n of N sets"; half or more does not', () => {
+test('V6-11 DX-14 under half the planned Sets the Summary leads with "Short Session: n of N sets"; half or more does not', () => {
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const short = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
-  expect(short.querySelector('[data-kpi="short"]')?.textContent).toBe('Short session')
+  expect(short.querySelector('[data-kpi="short"]')?.textContent).toBe('Short Session: 1 of 3 sets')
+  const sentence = short.querySelector('.session-summary-sentence') as HTMLElement
+  const heading = short.querySelector('.session-summary-heading') as HTMLElement
+  expect(heading.compareDocumentPosition(sentence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(sentence.compareDocumentPosition(short.querySelector('.session-summary-section') as HTMLElement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   cleanup()
   const most = renderBench(benchSession('wed-14', WED, 40, 2, 80, 5), [before])
-  expect(most.querySelector('.session-summary-totals')?.textContent).toBe('2 of 3 sets · 800 kg')
+  expect(most.querySelector('.session-summary-totals')?.textContent).toBe('2 of 3 sets · 800 kg lifted')
   expect(most.querySelector('[data-kpi="short"]')).toBeNull()
 })
 
@@ -983,4 +995,22 @@ test('V4-03 the summary never shows a zero muscle, a legend or Best today, and S
   const dock = dialog.querySelector('.session-summary-dock') as HTMLElement
   expect(within(dock).getAllByRole('button').map((b) => b.textContent)).toEqual(['Done'])
   expect(within(dialog).getByRole('button', { name: 'Share' }).closest('.session-summary-foot')).not.toBeNull()
+})
+
+test('DX-14 a partial Session lists the Plans it never logged, "0 of N sets", under its lifts', () => {
+  render(
+    <SessionSummary
+      session={benchSession('half', BASE, 30, 3, 80, 5)}
+      earlierSessions={[]}
+      planFor={planFor}
+      workout={{ id: 'workout-a', name: 'Workout A', exercises: [PLANS.bench, PLANS.pushup] }}
+      resolve={resolve}
+      library={LIBRARY}
+      onClose={vi.fn()}
+    />,
+  )
+
+  const skipped = [...summaryDialog().querySelectorAll('.session-summary-move--skipped')]
+  expect(skipped).toHaveLength(1)
+  expect(skipped[0].textContent).toBe(`${resolve(PLANS.pushup.exerciseId)?.name}0 of ${PLANS.pushup.sets} sets`)
 })

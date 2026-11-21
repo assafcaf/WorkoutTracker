@@ -15,8 +15,8 @@ export type RestPanelProps = {
   onSkip(): void
   /**
    * v7 (study §1.4): `ring` is Rest as its own screen -- the countdown as the hero inside a ring
-   * that empties in the live colour, −15 s and +15 s under it; Skip rest is the screen's bar, so
-   * this variant draws no Skip of its own. `row` (the default) is the compact dock row, the
+   * that empties in the live colour, −15 s and +15 s under it. DX-05: the ring itself is Skip
+   * ("Tap to skip"), its "of 3:00" opens the rest Dial, and the bar holds only Log set. `row` (the default) is the compact dock row, the
    * countdown beside −15 s, +15 s and Skip, for a rest that runs while the Dials are out (an extra
    * Set, the next Set unfolded, the done state).
    */
@@ -74,9 +74,24 @@ export function RestPanel(props: RestPanelProps): JSX.Element {
               background: `conic-gradient(var(--color-live) ${(left * 100).toFixed(2)}%, var(--color-hairline) 0)`,
             }}
           />
+          {/* DX-05: the ring is the skip control; Log set is the bar's one primary. */}
+          <button type="button" className="rest-ring-skip btn-quiet" aria-label="Skip rest" onClick={props.onSkip} />
           <div className="rest-ring-centre">
-            {readout}
-            <p className="rest-panel-of">of {formatRest(totalSeconds)}</p>
+            <span role="timer" aria-label="Rest remaining" className="rest-clock">
+              {formatRest(remainingSeconds)}
+            </span>
+            {/* DX-07: the rest's length opens the rest Dial. */}
+            <button
+              type="button"
+              className="rest-panel-of btn-quiet"
+              aria-label={`Rest time ${formatRest(totalSeconds)}, change`}
+              onClick={props.onOpenDial}
+            >
+              of {formatRest(totalSeconds)}
+            </button>
+            <span className="rest-ring-hint" aria-hidden="true">
+              Tap to skip
+            </span>
           </div>
         </div>
         <div className="rest-controls rest-ring-controls">

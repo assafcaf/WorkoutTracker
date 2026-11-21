@@ -1,26 +1,17 @@
-import { useContext, useState, type ReactNode } from 'react'
-import { WorkoutArrows, type WorkoutRef, type WorkoutStep } from '../../ui/WorkoutArrows'
-import { SettingsButton, ShellChromeContext } from '../../ui/AppShell'
-import { CalendarWeekCells } from '../../ui/CalendarWeek'
+import { useState } from 'react'
+import type { ReactNode } from 'react'
+import { AppShell } from '../../ui/AppShell'
 import { SetFigure } from '../../ui/figures'
 import { Icon } from '../../ui/icons'
+import { Sheet } from '../../ui/Sheet'
 import './DashboardScreen.css'
-import type { TrainCard, TrainLiftRow, WeekStrip } from './trainCard'
+import type { TrainCard, TrainLiftRow } from './trainCard'
 
-/** How the header's second line reads the phone's cloud copy. */
-export type DashboardSync =
-  | { kind: 'offline' }
-  | { kind: 'syncing' }
-  | { kind: 'synced'; ago: string }
-  | { kind: 'local' }
-  | { kind: 'failed' }
-
-/** One Program the new trainee can pick, with each of its workouts' size. */
+/** One Program a new trainee can choose (DX-04): its name and `3× a week · 2 workouts`. */
 export type ProgramOption = {
   id: string
   name: string
   summary: string
-  workouts: { name: string; summary: string }[]
 }
 
 export type DashboardData =
@@ -28,28 +19,24 @@ export type DashboardData =
   | {
       kind: 'no-program'
       options: ProgramOption[]
-      selectedId: string | null
+      /** Nothing can be stored: a Program cannot be taken up. */
       canUse: boolean
-      onSelect(id: string): void
-      onUse(id: string): void
+      /** Makes `id` the active Program; Train then shows its first Workout. */
+      onChoose(id: string): void
     }
   | {
       kind: 'ready'
       /** The workout due with each lift's next step; `null` when the Program has no workout. */
       card: TrainCard | null
       due: DockWorkout | null
-      /**
-       * Every workout of the Program the dock can offer in place of the one due, in Program
-       * order (the due one among them). Omitted or one long: the dock offers the due one only.
-       */
-      workouts?: DockWorkout[]
-      /**
-       * The card of each workout the dock can offer, by workout id, so "Change" redraws the card
-       * for the one chosen (V1-21). The due one falls back to `card`.
-       */
+      /** The card of every other workout, by workout id: a Session in progress may be one of them. */
       cards?: Record<string, TrainCard>
-      /** This week's strip, drawn at the top of Train (V2-05); omitted, none is drawn. */
-      week?: WeekStrip
+      /** The Program's other workouts, which "Change" offers to do instead of the one due. */
+      others?: DockWorkout[]
+      /** DX-01: the one meta line, `Thursday · 2 of 3 this week` or `Rest day · next: …`. */
+      meta?: string
+      /** DX-01: a rest day: Start reads "Start … anyway", in outline. */
+      rest?: boolean
     }
 
 /** A workout the dock offers to start: its name, when it was last done and its minutes (estimate). */
@@ -66,175 +53,26 @@ export type DockWorkout = {
   sameAs?: string | null
 }
 
-/** The Session in progress the dock offers to resume in place of a start. */
-export type DashboardResume = { workoutName: string; programName: string; onResume(): void }
+/**
+ * A Session in progress (DX-09): Train shows its Workout's Plans and no Start. `onResume` is set
+ * only where no live strip offers the way back (no app root); then the dock is Resume.
+ */
+export type DashboardResume = {
+  workoutName: string
+  programName: string
+  workoutId?: string
+  onResume?(): void
+}
 
 export type DashboardViewProps = {
-  /** Today, as `formatDay` reads it: `Tue 13 Oct`. */
-  today: string
-  sync: DashboardSync
   data: DashboardData
-  onSync(): void
-  onOpenSettings(): void
   onStartWorkout(workoutId: string): void
-  /** The workout to open on instead of the one due: the one Home's arrows had switched to. */
-  initialWorkoutId?: string
-  /** Notes drawn under the header (storage unavailable, a backup due). */
+  /** Notes drawn under the header (storage unavailable, a stale active Program). */
   notices?: ReactNode
-  /** A Session in progress: the dock resumes it rather than starting another. */
+  /** A Session in progress. */
   resume?: DashboardResume | null
-  /** Opens the Sessions tab: the week strip is a button to it (V3-09). */
-  onOpenSessions?(): void
-  /** V5-14: opens one past Session's summary: each done day of the week strip is a button to it. */
-  onOpenSession?(sessionId: string): void
-  /** V6-03: opens the one Lift page: each lift's name on the card is a button to it. */
+  /** V6-03: opens the one Lift page: each lift's name is a button to it. */
   onOpenLift?(exerciseId: string): void
-  /** v7: the workout page is pushed over Home; Back returns there. Unset, no Back is drawn. */
-  onBack?(): void
-}
-
-/**
- * v7 (study §1.1): the sync state is shown only when a sync actually failed, and then as words
- * that press to try again. Synced, syncing, local or offline, the header says nothing about it.
- */
-function SyncFailure({ sync, onSync }: { sync: DashboardSync; onSync(): void }): JSX.Element | null {
-  if (sync.kind !== 'failed') return null
-  return (
-    <button
-      type="button"
-      className="btn-quiet dashboard-sync-failed"
-      aria-label="Sync now · Not synced · saved on this phone"
-      data-sync={sync.kind}
-      onClick={onSync}
-    >
-      Not synced · Retry
-    </button>
-  )
-}
-
-/**
- * "This week" at the top of Train (V2-05, V3-09): the Sessions calendar's current week, drawn
- * with the same cells (the workout's letter in its colour, today outlined), then done of
- * planned. The whole strip is one button to Sessions; its name says the week in words.
- */
-function WeekStripRow({
-  week,
-  onOpen,
-  onOpenSession,
-}: {
-  week: WeekStrip
-  onOpen?: () => void
-  onOpenSession?: (sessionId: string) => void
-}): JSX.Element {
-  const done = week.days
-    .filter((day) => day.workout)
-    .map((day) => `${day.workoutName ?? day.workout} ${day.name}`)
-  const label = `This week, ${week.done} of ${week.planned}: ${done.length > 0 ? done.join(', ') : 'no sessions yet'}`
-  if (onOpenSession) return <WeekStripDays week={week} label={label} onOpen={onOpen} onOpenSession={onOpenSession} />
-  const content = (
-    <>
-      <span className="dashboard-week-grid" aria-hidden="true">
-        <span className="dashboard-week-initials">
-          {week.days.map((day) => (
-            <span key={day.key} className="dashboard-week-initial" data-today={day.today || undefined}>
-              {day.initial}
-            </span>
-          ))}
-        </span>
-        <CalendarWeekCells
-          cells={week.days.map((day) => ({
-            key: day.key,
-            letter: day.workout,
-            tone: day.tone ?? null,
-            today: day.today,
-            future: day.future ?? false,
-          }))}
-        />
-      </span>
-      <span className="dashboard-week-count" aria-hidden="true">
-        {`${week.done} of ${week.planned}`}
-      </span>
-    </>
-  )
-  if (!onOpen) {
-    return (
-      <div className="dashboard-week" role="img" aria-label={label}>
-        {content}
-      </div>
-    )
-  }
-  return (
-    <button type="button" className="dashboard-week cell" aria-label={`${label}. Open Sessions`} onClick={onOpen}>
-      {content}
-      <span className="dashboard-week-chevron" aria-hidden="true">
-        <Icon name="ChevronRight" size={16} />
-      </span>
-    </button>
-  )
-}
-
-/**
- * V5-14: the week strip as the Sessions calendar draws it, each done day its own button into
- * that workout's summary (named "Workout B, Mon 12 Oct"); the count and chevron are the button
- * to Sessions, named for the week as the whole strip was.
- */
-function WeekStripDays({
-  week,
-  label,
-  onOpen,
-  onOpenSession,
-}: {
-  week: WeekStrip
-  label: string
-  onOpen?: () => void
-  onOpenSession: (sessionId: string) => void
-}): JSX.Element {
-  const count = (
-    <>
-      <span className="dashboard-week-count" aria-hidden="true">
-        {`${week.done} of ${week.planned}`}
-      </span>
-      {onOpen ? (
-        <span className="dashboard-week-chevron" aria-hidden="true">
-          <Icon name="ChevronRight" size={16} />
-        </span>
-      ) : null}
-    </>
-  )
-  return (
-    <div className="dashboard-week dashboard-week--days" role="group" aria-label={label}>
-      <span className="dashboard-week-grid">
-        <span className="dashboard-week-initials" aria-hidden="true">
-          {week.days.map((day) => (
-            <span key={day.key} className="dashboard-week-initial" data-today={day.today || undefined}>
-              {day.initial}
-            </span>
-          ))}
-        </span>
-        <CalendarWeekCells
-          cells={week.days.map((day) => {
-            const sessionId = day.sessionId
-            return {
-              key: day.key,
-              letter: day.workout,
-              tone: day.tone ?? null,
-              today: day.today,
-              future: day.future ?? false,
-              onOpen: sessionId === undefined ? undefined : () => onOpenSession(sessionId),
-              label: day.label,
-            }
-          })}
-        />
-      </span>
-      {onOpen ? (
-        <button type="button" className="dashboard-week-open cell" aria-label={`${label}. Open Sessions`} onClick={onOpen}>
-          {count}
-        </button>
-      ) : (
-        count
-      )}
-    </div>
-  )
 }
 
 /** `70 kg` -> 70 kg; `BW`, `BW+5`, `BW−19` -> the signed Load; a ramp's or an unknown text as is. */
@@ -398,74 +236,11 @@ function DueCard({ card, onOpenLift }: { card: TrainCard; onOpenLift?(exerciseId
   )
 }
 
-/**
- * The workout page's header (v7): Back to Home, the day as a label, the sync only when it failed,
- * the gear; then the Workout on offer as the 40 px title and the headline sentence under it. With
- * no Workout to offer it reads "Train".
- */
-/** The workouts either side of `offered` in Program order, wrapping; null with fewer than two. */
-function stepOf(
-  workouts: WorkoutRef[],
-  offeredId: string,
-  onStep: (workoutId: string) => void,
-): WorkoutStep | null {
-  if (workouts.length < 2) return null
-  const index = Math.max(0, workouts.findIndex((workout) => workout.workoutId === offeredId))
-  return {
-    prev: workouts[(index - 1 + workouts.length) % workouts.length],
-    next: workouts[(index + 1) % workouts.length],
-    onStep,
-  }
-}
-
-function Header({
-  title,
-  subtitle,
-  headline,
-  step = null,
-  sync,
-  onSync,
-  onOpenSettings,
-  onBack,
-}: {
-  title: string
-  subtitle: string
-  headline?: ReactNode
-  step?: WorkoutStep | null
-} & Pick<DashboardViewProps, 'sync' | 'onSync' | 'onOpenSettings' | 'onBack'>): JSX.Element {
-  // The app root's header slot ("Update ready") rides beside the page's own buttons.
-  const { trailing } = useContext(ShellChromeContext)
-  return (
-    // The page's one header: the shell around it draws none of its own (`ownHeader`), so this
-    // one carries the shell header's classes too.
-    <header className="dashboard-header app-header">
-      <div className="dashboard-topline">
-        {onBack ? (
-          <button type="button" className="icon-btn dashboard-back" aria-label="Back" onClick={onBack}>
-            <Icon name="ChevronLeft" size={24} />
-          </button>
-        ) : null}
-        <p className="dashboard-status">{subtitle}</p>
-        {trailing ? <div className="dashboard-header-trailing app-header-trailing">{trailing}</div> : null}
-        <div className="dashboard-header-actions">
-          <SyncFailure sync={sync} onSync={onSync} />
-          {/* The shell's gear, which carries the backup-due marker when a backup is due. */}
-          <SettingsButton onOpen={onOpenSettings} />
-        </div>
-      </div>
-      <WorkoutArrows step={step} className="dashboard-title-row">
-        <h1 className="dashboard-title">{title}</h1>
-      </WorkoutArrows>
-      {headline}
-    </header>
-  )
-}
-
-/** The dock while a Session is in progress: the way back into it (the header names it). */
+/** The dock with no live strip to resume from (no app root): the way back into the Session. */
 function ResumeDock({ resume }: { resume: DashboardResume }): JSX.Element {
   return (
     <div className="dashboard-dock">
-      <button type="button" className="btn-primary dashboard-start resume-workout" onClick={resume.onResume}>
+      <button type="button" className="btn-primary dashboard-start" onClick={resume.onResume}>
         {`Resume ${resume.workoutName}`}
       </button>
     </div>
@@ -473,148 +248,176 @@ function ResumeDock({ resume }: { resume: DashboardResume }): JSX.Element {
 }
 
 /**
- * The dock (v7): the workout's size and time over its Start bar. Switching workout is the
- * title's ‹ › arrows (2026-11-17), not a button down here.
+ * The dock (DX-01): the workout's size and time over its one Start. On a rest day Start stays,
+ * in outline, as "Start … anyway".
  */
 function StartDock({
   offered,
   sets,
+  rest,
   onStart,
 }: {
   offered: DockWorkout
   sets: number | null
+  rest: boolean
   onStart(workoutId: string): void
 }): JSX.Element {
   return (
     <div className="dashboard-dock">
-      <div className="dashboard-due-row">
-        <p className="dashboard-due-size">{sets ? `${sets} sets · about ${offered.minutes} min` : `about ${offered.minutes} min`}</p>
-      </div>
-      <button type="button" className="btn-primary dashboard-start" onClick={() => onStart(offered.workoutId)}>
-        {`Start ${offered.name}`}
-      </button>
+      <p className="dashboard-due-size">{sets ? `${sets} sets · about ${offered.minutes} min` : `about ${offered.minutes} min`}</p>
+      {rest ? (
+        <button type="button" className="btn-secondary dashboard-start" onClick={() => onStart(offered.workoutId)}>
+          {`Start ${offered.name} anyway`}
+        </button>
+      ) : (
+        <button type="button" className="btn-primary dashboard-start" onClick={() => onStart(offered.workoutId)}>
+          {`Start ${offered.name}`}
+        </button>
+      )}
     </div>
   )
 }
 
 /**
- * The workout page (v7, once the Train tab; E18 O24, V2-05): today's Workout under a headline of
- * what changes, this week's strip, each lift as Set 1 opens it, and Start docked at the bottom.
- * Home's Today panel opens it. With no Program yet it offers the Programs to pick from instead.
+ * DX-04 first run: "Choose a Program" as one plain row per Program (name, `3× a week · 2
+ * workouts`). A row makes it the active Program; Train then shows its first Workout.
+ */
+export function ProgramChoices({
+  options,
+  canUse,
+  onChoose,
+}: {
+  options: ProgramOption[]
+  canUse: boolean
+  onChoose(id: string): void
+}): JSX.Element {
+  return (
+    <ul className="program-choices" aria-label="Programs">
+      {options.map((option) => (
+        <li key={option.id}>
+          <button
+            type="button"
+            className="program-choice cell"
+            disabled={!canUse}
+            onClick={() => onChoose(option.id)}
+          >
+            <span className="program-choice-text">
+              <span className="program-choice-name">{option.name}</span>
+              <span className="program-choice-summary">{option.summary}</span>
+            </span>
+            <Icon name="ChevronRight" size={18} />
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * The Train tab (DX-01): today's Workout inside the Shell. Its name is the tab's title and one
+ * quiet meta line sits under it; then the change note ("Same as Monday, except curls move up to
+ * 15 kg."), the Plan list, and one Start over the tab bar with the workout's size above it.
+ *
+ * A Session in progress (DX-09) shows its own Workout's Plans and no Start: the live strip is the
+ * one way back. A new trainee (DX-04) chooses a Program here first.
  */
 export function DashboardView(props: DashboardViewProps): JSX.Element {
-  const { data } = props
-  // The workout "Change" picked, held here so the card and the dock show the same one (V1-21).
-  // It is forgotten when the workout due changes.
-  const dueId = data.kind === 'ready' ? (data.due?.workoutId ?? null) : null
-  const [chosen, setChosen] = useState<{ dueId: string | null; workoutId: string | null }>({
-    dueId,
-    workoutId: props.initialWorkoutId ?? null,
-  })
-  if (chosen.dueId !== dueId) setChosen({ dueId, workoutId: props.initialWorkoutId ?? null })
-  let body: JSX.Element | null = null
-  // A Session in progress is resumable whatever else the Dashboard is still working out. The
-  // dock keeps its place in the tree as the data arrives, so a press on it is never lost.
-  let dock: JSX.Element | null = props.resume ? <ResumeDock resume={props.resume} /> : null
-  // The title is the Workout on offer (V3-08); a Session in progress names its own, and with no
-  // Workout to offer (no Program yet, still loading) the tab's name stands in.
-  let title = props.resume ? props.resume.workoutName : 'Train'
-  const subtitle = props.resume ? `${props.today} · in progress` : props.today
-  let headline: ReactNode = null
-  let step: WorkoutStep | null = null
+  const { data, resume = null } = props
+  let title = 'Train'
+  let meta: string | undefined
+  let body: ReactNode = null
+  // A workout other than the one due, chosen from "Change" (the < > arrows' labelled successor).
+  const [pickedId, setPickedId] = useState<string | null>(null)
+  const [choosing, setChoosing] = useState(false)
+  let actions: ReactNode = null
+  let sheet: ReactNode = null
+  let dock: ReactNode = resume?.onResume ? <ResumeDock resume={resume} /> : null
 
   if (data.kind === 'no-program') {
-    const selected = data.options.find((option) => option.id === data.selectedId) ?? null
-    body = (
-      <>
-        <section className="card dashboard-pick" aria-labelledby="dashboard-pick-title">
-          <h2 className="dashboard-pick-title" id="dashboard-pick-title">
-            No program yet
-          </h2>
-          <p className="dashboard-pick-lead">Pick a program to get a plan for every session.</p>
-          {data.options.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              className="btn-secondary dashboard-program"
-              aria-pressed={option.id === data.selectedId}
-              onClick={() => data.onSelect(option.id)}
-            >
-              <span className="dashboard-program-head">
-                <span className="dashboard-program-text">
-                  <span className="dashboard-program-name">{option.name}</span>
-                  <span className="dashboard-program-summary">{option.summary}</span>
-                </span>
-                {option.id === data.selectedId ? (
-                  <span className="dashboard-program-check">
-                    <Icon name="Check" size={14} />
-                  </span>
-                ) : null}
-              </span>
-              {option.workouts.map((workout) => (
-                <span key={workout.name} className="dashboard-program-workout">
-                  <span className="dashboard-program-workout-name">{workout.name}</span>
-                  <span className="dashboard-program-workout-size">{workout.summary}</span>
-                </span>
-              ))}
-            </button>
-          ))}
-        </section>
-      </>
-    )
-    dock = (
-      <div className="dashboard-dock">
-        <button
-          type="button"
-          className="btn-primary dashboard-start"
-          disabled={!selected || !data.canUse}
-          onClick={() => selected && data.onUse(selected.id)}
-        >
-          {selected ? `Use ${selected.name}` : 'Pick a program'}
-        </button>
-      </div>
-    )
+    title = 'Choose a Program'
+    body = <ProgramChoices options={data.options} canUse={data.canUse} onChoose={data.onChoose} />
   } else if (data.kind === 'ready') {
     const { due } = data
-    const workouts = data.workouts ?? (due ? [due] : [])
-    const offered =
-      (due && chosen.dueId === dueId && workouts.find((workout) => workout.workoutId === chosen.workoutId)) || due
-    const card =
-      offered && due && offered.workoutId !== due.workoutId ? (data.cards?.[offered.workoutId] ?? null) : data.card
-    body = (
-      <>
-        {data.week ? <WeekStripRow week={data.week} onOpen={props.onOpenSessions} onOpenSession={props.onOpenSession} /> : null}
-        {card ? <DueCard card={card} onOpenLift={props.onOpenLift} /> : null}
-      </>
-    )
-    if (!props.resume && offered) {
+    if (resume) {
+      title = resume.workoutName
+      meta = 'In progress'
+      const card =
+        resume.workoutId === undefined
+          ? null
+          : resume.workoutId === due?.workoutId
+            ? data.card
+            : (data.cards?.[resume.workoutId] ?? null)
+      body = card ? <DueCard card={card} onOpenLift={props.onOpenLift} /> : null
+    } else if (due) {
+      const others = data.others ?? []
+      const picked = pickedId === null ? undefined : others.find((other) => other.workoutId === pickedId)
+      const offered = picked ?? due
       title = offered.name
-      step = stepOf(workouts, offered.workoutId, (workoutId) => setChosen({ dueId, workoutId }))
-      headline = card ? <Headline card={card} offered={offered} /> : null
-    }
-    if (!dock && due && offered) {
-      const sets = card?.lifts.reduce((sum, lift) => sum + (lift.sets ?? 0), 0) ?? 0
-      dock = (
-        <StartDock offered={offered} sets={sets > 0 ? sets : null} onStart={props.onStartWorkout} />
+      meta = picked ? `Instead of ${due.name}` : data.meta
+      const card = picked ? (data.cards?.[picked.workoutId] ?? null) : data.card
+      if (others.length > 0) {
+        actions = (
+          <button type="button" className="btn-quiet dashboard-change" onClick={() => setChoosing(true)}>
+            Change
+          </button>
+        )
+      }
+      if (choosing) {
+        const choose = (workoutId: string | null): void => {
+          setPickedId(workoutId)
+          setChoosing(false)
+        }
+        sheet = (
+          <Sheet label="Choose a workout" onClose={() => setChoosing(false)}>
+            {/* N1: a visible way out, the X top-right; Escape and the scrim close it too. */}
+            <div className="sheet-head">
+              <h2 className="sheet-title">Choose a workout</h2>
+              <button type="button" className="sheet-close icon-btn" aria-label="Close" onClick={() => setChoosing(false)}>
+                <Icon name="X" size={24} />
+              </button>
+            </div>
+            <ul className="program-choices" aria-label="Workouts">
+              {[due, ...others].map((workout) => (
+                <li key={workout.workoutId}>
+                  <button
+                    type="button"
+                    className="program-choice cell"
+                    aria-current={workout.workoutId === offered.workoutId ? 'true' : undefined}
+                    onClick={() => choose(workout.workoutId === due.workoutId ? null : workout.workoutId)}
+                  >
+                    <span className="program-choice-text">
+                      <span className="program-choice-name">{workout.name}</span>
+                      <span className="program-choice-summary">
+                        {workout.workoutId === due.workoutId ? 'Due next' : workout.last ? `Last done ${workout.last}` : 'Not done yet'}
+                      </span>
+                    </span>
+                    {workout.workoutId === offered.workoutId ? <Icon name="Check" size={18} /> : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Sheet>
+        )
+      }
+      body = (
+        <>
+          {card ? <Headline card={card} offered={offered} /> : null}
+          {card ? <DueCard card={card} onOpenLift={props.onOpenLift} /> : null}
+        </>
       )
+      const sets = card?.lifts.reduce((sum, lift) => sum + (lift.sets ?? 0), 0) ?? 0
+      dock = <StartDock offered={offered} sets={sets > 0 ? sets : null} rest={!picked && (data.rest ?? false)} onStart={props.onStartWorkout} />
     }
   }
 
   return (
-    <div className="dashboard" data-page={props.onBack ? 'pushed' : undefined}>
-      <Header
-        title={title}
-        subtitle={subtitle}
-        headline={headline}
-        step={step}
-        sync={props.sync}
-        onSync={props.onSync}
-        onOpenSettings={props.onOpenSettings}
-        onBack={props.onBack}
-      />
-      {props.notices ? <div className="dashboard-notices">{props.notices}</div> : null}
-      {body}
-      {dock}
-    </div>
+    <AppShell title={title} subtitle={meta} actions={actions}>
+      <div className="dashboard">
+        {props.notices ? <div className="dashboard-notices">{props.notices}</div> : null}
+        {body}
+        {dock}
+      </div>
+      {sheet}
+    </AppShell>
   )
 }

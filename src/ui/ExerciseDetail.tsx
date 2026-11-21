@@ -1,8 +1,8 @@
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import { AlternativesList } from './AlternativesList'
 import { BodyMap } from './body/BodyMap'
 import { Icon } from './icons'
-import { MuscleChip } from './MuscleChip'
+import { muscleLabel } from '../domain/muscleLabels'
 import { toRegionCounts, type Region } from '../domain/muscles'
 import type { LibraryExercise, Muscle, Video } from '../types'
 import './ExerciseDetail.css'
@@ -41,18 +41,15 @@ function exerciseRegionCounts(entry: LibraryExercise): Map<Region, number> {
   return toRegionCounts(muscleCounts)
 }
 
-/** `muscles`, each as its family-tinted `MuscleChip` (E10-T4), comma-separated. */
-function muscleChips(muscles: Muscle[]): JSX.Element {
-  return (
-    <>
-      {muscles.map((muscle, index) => (
-        <Fragment key={muscle}>
-          {index > 0 && ', '}
-          <MuscleChip muscle={muscle} />
-        </Fragment>
-      ))}
-    </>
-  )
+/**
+ * DX-22: what the Exercise trains as one plain line, "Quads · also calves, glutes, hamstrings":
+ * the primary muscles by their display names, then the secondary ones after "also".
+ */
+export function musclesLine(entry: Pick<LibraryExercise, 'primaryMuscles' | 'secondaryMuscles'>): string {
+  const primary = entry.primaryMuscles.map(muscleLabel).join(', ')
+  const secondary = entry.secondaryMuscles.map((muscle) => muscleLabel(muscle).toLowerCase()).join(', ')
+  if (primary === '') return secondary === '' ? '' : `Also ${secondary}`
+  return secondary === '' ? primary : `${primary} · also ${secondary}`
 }
 
 /**
@@ -86,9 +83,9 @@ export function ExerciseDetail({
 
   return (
     <article
-      className="exercise-detail overlay-panel"
+      // DX-06: a pushed page -- the tab bar stays reachable under it, so it is not modal.
+      className="exercise-detail overlay-panel overlay-panel--pushed"
       role="dialog"
-      aria-modal="true"
       aria-label={heading ?? entry.name}
     >
       {/* v7: every pushed page's compact bar -- the back chevron, the title centred. */}
@@ -105,15 +102,15 @@ export function ExerciseDetail({
       )}
 
       <div className="exercise-detail-profile">
-        <p className="exercise-detail-field">Primary muscle: {muscleChips(entry.primaryMuscles)}</p>
-        <p className="exercise-detail-field">Secondary muscles: {muscleChips(entry.secondaryMuscles)}</p>
-        <p className="exercise-detail-field">Equipment: {entry.equipment}</p>
-        <p className="exercise-detail-field">Mechanic: {entry.mechanic}</p>
-        <p className="exercise-detail-field">Force: {entry.force}</p>
-        <p className="exercise-detail-field">Level: {entry.level}</p>
+        {/* DX-22: the muscles and the kit as two plain lines, no "Label: value" rows. */}
+        <p className="exercise-detail-field exercise-detail-muscles">{musclesLine(entry)}</p>
+        <p className="exercise-detail-field exercise-detail-meta">
+          {[entry.equipment, entry.mechanic, entry.level]
+            .filter((part): part is string => typeof part === 'string' && part.length > 0)
+            .map((part, i) => (i === 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+            .join(' · ')}
+        </p>
       </div>
-
-      <BodyMap counts={exerciseRegionCounts(entry)} scale="exercise" />
 
       {video && (
         <p className="exercise-detail-video">
@@ -140,6 +137,9 @@ export function ExerciseDetail({
           <li key={index}>{step}</li>
         ))}
       </ol>
+
+      {/* DX-22: the steps come first; the body map follows them. */}
+      <BodyMap counts={exerciseRegionCounts(entry)} scale="exercise" />
 
       <div className="exercise-detail-photos">
         {photos.map((url, index) =>

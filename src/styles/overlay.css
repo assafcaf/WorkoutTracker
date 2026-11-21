@@ -19,3 +19,11 @@
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
 }
+
+/* DX-06: a pushed page drawn as an overlay (Exercise info, a Settings page such as Bar and
+ * plates) keeps the tab bar: it sits under the bar (whose z-index is 15) and leaves the bar's
+ * height clear at its end, so its last row never hides behind the bar. */
+.overlay-panel.overlay-panel--pushed {
+  z-index: 12;
+  padding-bottom: calc(var(--tap-min) + var(--space-1) + 1px + var(--safe-bottom) + var(--space-4));
+}

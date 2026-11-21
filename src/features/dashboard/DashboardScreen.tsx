@@ -1,7 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
-import { timeAgo, workoutEstimate } from '../../domain/dashboard'
 import { formatDay } from '../../domain/dates'
 import type { Resolve } from '../../domain/muscles'
 import { visiblePrograms } from '../../domain/programs'
@@ -10,40 +9,25 @@ import { nextWorkout, workoutNote } from '../../domain/shortSession'
 import { dueWorkoutCard, workoutCard, workoutMinutes } from '../../domain/stats/train'
 import { isDeloadWeek } from '../../domain/deload'
 import { thisWeek, type Weekday } from '../../domain/stats/weeks'
-import { ServiceError, type Services, type SyncView } from '../../services'
+import { ServiceError, type Services } from '../../services'
 import type { Exercise, ExercisePlan, Program, Session, Workout } from '../../types'
-import { useServices, useSyncControls } from '../ServicesProvider'
+import { useServices } from '../ServicesProvider'
 import { useServiceData } from '../useServiceData'
-import {
-  DashboardView,
-  type DashboardData,
-  type DashboardResume,
-  type DashboardSync,
-  type DockWorkout,
-  type ProgramOption,
-} from './DashboardView'
-import { finishText, noteText, trainCardOf, weekStripOf, type TrainCard } from './trainCard'
+import { DashboardView, type DashboardData, type DashboardResume, type DockWorkout, type ProgramOption } from './DashboardView'
+import { finishText, noteText, trainCardOf, type TrainCard } from './trainCard'
+import { trainDayOf } from './trainDay'
 
 export type DashboardScreenProps = {
-  /** Starts (or resumes) `workoutId` of the active Program. */
+  /** Starts `workoutId` of the active Program. */
   onStartWorkout(workoutId: string): void
-  onOpenSettings(): void
-  /** The workout to open on instead of the one due (Home's arrows picked it). */
-  initialWorkoutId?: string
   /** The clock; `Date.now` unless a test fixes it. */
   now?: () => number
-  /** Notes drawn under the header (storage unavailable, a backup due). */
+  /** Notes drawn under the header (storage unavailable, a stale active Program). */
   notices?: ReactNode
-  /** A Session in progress: the dock resumes it rather than starting another. */
+  /** A Session in progress: Train shows its Plans and no Start (DX-09). */
   resume?: DashboardResume | null
-  /** Opens the Sessions tab, from the week strip (V3-09). */
-  onOpenSessions?(): void
-  /** V5-14: opens a past Session's summary, from its day on the week strip. */
-  onOpenSession?(sessionId: string): void
   /** V6-03: opens the one Lift page from a lift's name. */
   onOpenLift?(exerciseId: string): void
-  /** v7: the workout page's Back, to Home. */
-  onBack?(): void
 }
 
 type Loaded = {
@@ -52,6 +36,7 @@ type Loaded = {
   storageAvailable: boolean
   sessions: Session[]
   resolve: Resolve
+  reminders: number[] | null
 }
 
 async function load(s: Services): Promise<Loaded> {
@@ -63,6 +48,10 @@ async function load(s: Services): Promise<Loaded> {
     return exercise && applyBodyweight(exercise, overrides)
   }
   const sessions = await s.sessions.list().catch((): Session[] => [])
+  const reminders = await Promise.resolve()
+    .then(() => s.push.reminders())
+    .then((r) => r?.days ?? null)
+    .catch((): null => null)
   try {
     const loaded = await s.programs.load()
     return {
@@ -71,25 +60,19 @@ async function load(s: Services): Promise<Loaded> {
       storageAvailable: true,
       sessions,
       resolve,
+      reminders,
     }
   } catch (error) {
     if (!(error instanceof ServiceError) || error.code !== 'storage-unavailable') throw error
     // Nothing can be stored: the bundled Programs are offered, and none can be taken up.
-    return { programs: bundledPrograms, activeProgramId: null, storageAvailable: false, sessions, resolve }
+    return { programs: bundledPrograms, activeProgramId: null, storageAvailable: false, sessions, resolve, reminders }
   }
 }
 
-/** `3× per week · 2 workouts · 14 exercises`. */
-function programSummary(program: Program): string {
-  const exercises = new Set(program.workouts.flatMap((w) => w.exercises.map((plan) => plan.exerciseId)))
-  const workouts = program.workouts.length
-  return `${program.sessionsPerWeek}× per week · ${workouts} workout${workouts === 1 ? '' : 's'} · ${exercises.size} exercises`
-}
-
-/** `7 exercises · 23 sets · ~53 min`. */
-function workoutSummary(workout: Workout, loggedMinutes?: number): string {
-  const { exercises, sets, minutes } = workoutEstimate(workout)
-  return `${exercises} exercises · ${sets} sets · ~${loggedMinutes ?? minutes} min`
+/** DX-04: a Program as the first-run rows say it, `3× a week · 2 workouts`. */
+export function programChoiceSummary(program: Program): string {
+  const workouts = program.workouts.filter((workout) => !workout.hidden).length
+  return `${program.sessionsPerWeek}× a week · ${workouts} workout${workouts === 1 ? '' : 's'}`
 }
 
 const LONG_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -104,36 +87,15 @@ function sameAsText(last: number, now: number): string {
   return days >= 1 && days < 7 ? LONG_DAYS[new Date(last).getDay()] : formatDay(new Date(last), new Date(now))
 }
 
-function syncOf(view: SyncView, now: number): DashboardSync {
-  const offline = view.status === 'offline' || (typeof navigator !== 'undefined' && navigator.onLine === false)
-  if (offline) return { kind: 'offline' }
-  if (view.status === 'syncing') return { kind: 'syncing' }
-  if (view.status === 'update-required') return { kind: 'failed' }
-  if (view.status === 'error' || view.status === 'account-mismatch') return { kind: 'failed' }
-  if (view.lastSyncedAt !== null) return { kind: 'synced', ago: timeAgo(view.lastSyncedAt, now) }
-  return { kind: 'local' }
-}
-
 /**
- * The Train tab's container (E18 O24): reads the Programs, the finished Sessions, the catalog and
- * the sync state through the services, works the due workout's next steps out with the pure
- * functions in `src/domain/stats/`, and renders `DashboardView`. Picking a Program
- * here (a new trainee) makes it the active one through `programs.setActive`.
+ * The Train tab's container (E18 O24, DX-01): reads the Programs, the finished Sessions, the
+ * catalog and the Reminders through the services, works the due workout's next steps and the
+ * day's meta line out with the pure functions in `src/domain/stats/` and `trainDay`, and renders
+ * `DashboardView`. Choosing a Program here (a new trainee) makes it the active one through
+ * `programs.setActive`.
  */
-export function DashboardScreen({
-  onStartWorkout,
-  onOpenSettings,
-  now = Date.now,
-  notices,
-  resume,
-  onOpenSessions,
-  onOpenSession,
-  onOpenLift,
-  onBack,
-  initialWorkoutId,
-}: DashboardScreenProps): JSX.Element {
+export function DashboardScreen({ onStartWorkout, now = Date.now, notices, resume, onOpenLift }: DashboardScreenProps): JSX.Element {
   const services = useServices()
-  const { sync, syncNow } = useSyncControls()
   const loaded = useServiceData(load, ['programs', 'sessions', 'preferences'])
   const weekStartData = useServiceData(
     (s) => s.preferences.weekStart().then((day): Weekday => day as Weekday).catch((): Weekday => 1),
@@ -141,38 +103,25 @@ export function DashboardScreen({
   )
   const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
   const deloadData = useServiceData((s) => s.preferences.deloadWeek().catch((): null => null), ['preferences'])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [, setTick] = useState(0)
-
-  // "Synced 2 min ago" keeps counting while the screen stays up.
-  useEffect(() => {
-    const timer = window.setInterval(() => setTick((tick) => tick + 1), 60_000)
-    return () => window.clearInterval(timer)
-  }, [])
 
   const at = now()
-  const today = formatDay(new Date(at), new Date(at))
   const deloadOn = deloadData.status === 'ready' && isDeloadWeek(deloadData.data, at, weekStartsOn)
   let data: DashboardData = { kind: 'loading' }
 
   if (loaded.status === 'ready') {
-    const { programs, activeProgramId, storageAvailable, sessions, resolve } = loaded.data
+    const { programs, activeProgramId, storageAvailable, sessions, resolve, reminders } = loaded.data
     const active = programs.find((program) => program.id === activeProgramId)
     if (!active) {
-      const offered = visiblePrograms(programs)
-      const options: ProgramOption[] = offered.map((program) => ({
+      const options: ProgramOption[] = visiblePrograms(programs).map((program) => ({
         id: program.id,
         name: program.name,
-        summary: programSummary(program),
-        workouts: program.workouts.map((workout) => ({ name: workout.name, summary: workoutSummary(workout) })),
+        summary: programChoiceSummary(program),
       }))
       data = {
         kind: 'no-program',
         options,
-        selectedId: selectedId ?? options[0]?.id ?? null,
         canUse: storageAvailable,
-        onSelect: setSelectedId,
-        onUse: (id) => {
+        onChoose: (id) => {
           void services.programs.setActive(id).catch(() => undefined)
         },
       }
@@ -211,7 +160,7 @@ export function DashboardScreen({
           ...(workout.id === due?.workout.id && due.short ? { finish: finishText(due.short, at) } : {}),
         }
       }
-      // Each other workout's card, so "Change" redraws the card for the one picked (V1-21).
+      // Each other workout's card: a Session in progress may be on one of them (DX-09).
       const cards: Record<string, TrainCard> = {}
       for (const workout of visible) {
         if (workout.id === due?.workout.id) continue
@@ -221,32 +170,27 @@ export function DashboardScreen({
         const card = workoutCard(program, workout, done.length > 0 ? Math.max(...done) : null, sessions, resolve, histories)
         cards[workout.id] = trainCardOf(card, histories, more, deloadOn, sessions, resolve, at)
       }
+      const day = trainDayOf({
+        sessions,
+        now: at,
+        sessionsPerWeek: program.sessionsPerWeek,
+        weekStartsOn,
+        reminders,
+        dueName: due?.workout.name ?? null,
+      })
       data = {
         kind: 'ready',
         card: dueCard ? trainCardOf(dueCard, histories, more, deloadOn, sessions, resolve, at) : null,
-        week: weekStripOf(sessions, program, at, weekStartsOn),
         cards,
         due: due ? { ...dockWorkout(due.workout), last: due.lastDoneAt === null ? null : formatDay(new Date(due.lastDoneAt), new Date(at)) } : null,
-        workouts: visible.map(dockWorkout),
+        others: visible.filter((workout) => workout.id !== due?.workout.id).map(dockWorkout),
+        meta: day.meta,
+        rest: day.rest,
       }
     }
   }
 
   return (
-    <DashboardView
-      today={today}
-      sync={syncOf(sync, at)}
-      data={data}
-      onSync={() => void syncNow()}
-      onOpenSettings={onOpenSettings}
-      onStartWorkout={onStartWorkout}
-      notices={notices}
-      resume={resume}
-      onOpenSessions={onOpenSessions}
-      onOpenSession={onOpenSession}
-      onOpenLift={onOpenLift}
-      onBack={onBack}
-      initialWorkoutId={initialWorkoutId}
-    />
+    <DashboardView data={data} onStartWorkout={onStartWorkout} notices={notices} resume={resume} onOpenLift={onOpenLift} />
   )
 }

@@ -1,570 +1,166 @@
-import { useState } from 'react'
-import type { Exercise, ExercisePlan, LibraryExercise, Muscle, Program, Session, Workout } from '../types'
+import type { Exercise, ExercisePlan, LibraryExercise, Program, Workout } from '../types'
 import { assertPlansAreInCatalog } from '../data/catalog'
 import { workoutEstimate } from '../domain/dashboard'
-import { toRegionCounts, type MuscleFamily, type Region } from '../domain/muscles'
-import { muscleLabel } from '../domain/muscleLabels'
-import type { Weekday } from '../domain/stats/weeks'
-import type { LiftStatus } from '../domain/stats/status'
-import { visiblePrograms } from '../domain/programs'
-import {
-  exerciseFamily,
-  FAMILIES,
-  familyWeekly,
-  plannedContributors,
-  prescribedWeekly,
-  programGaps,
-} from '../domain/programVolume'
+import { familyWeekly } from '../domain/programVolume'
 import { formatRest } from '../domain/rest'
-import { plannedAgainstRange, WEEKLY_SET_RANGE } from '../domain/setRange'
-import { BodyMap } from './body/BodyMap'
-import { BodyMapLegend } from './body/BodyMapLegend'
-import { Segmented } from './controls'
-import { RegionPanel } from './RegionPanel'
-import { musclesForRegion } from './regionMuscles'
-import { ProgramHeadActions } from './program/ProgramHead'
-import { StatusMark, statusTone } from './figures'
-import {
-  CHOOSE_LINE,
-  CHOOSE_TITLE,
-  FAMILY_LABELS,
-  plural,
-  programSizeLine,
-  setsRepsText,
-  wholeCount,
-  wholeCounts,
-} from './program/planText'
-import './Settings.css'
+import { Icon } from './icons'
+import { planRowText, wholeCount, workoutSizeText } from './program/planText'
 import './ProgramPage.css'
 
+/** The rest a Plan's row leaves unsaid (DX-16): only a different one is written out. */
+const USUAL_REST_SECONDS = 90
+
 export type ProgramPageProps = {
-  programs: Program[]
-  /** Null when no Program is active yet (E9-T2); E9-T6 owns what this page shows then. */
-  activeProgramId: string | null
+  /** The active Program. */
+  program: Program
   catalog: Map<string, Exercise>
   library: Map<string, LibraryExercise>
-  onChooseProgram(id: string): void
-  /**
-   * Unused since V2-06: the "This week" planned-vs-done card moved to Progress › Muscles (its
-   * This week segment), so the Program tab shows the plan only. Kept so callers still type-check.
-   */
-  sessions?: Session[]
-  /** Unused since V2-06 (see `sessions`). */
-  now?: number
-  /** Unused since V2-06 (see `sessions`). */
-  weekStartsOn?: Weekday
-  /** Unused since V2-06 (see `sessions`). */
-  resolve?: (id: string) => Exercise | undefined
-  /** Program tab actions (E9-T3). Optional here -- E9-T9 wires all of these from `App.tsx`. */
-  onNewProgram?(): void
-  onEditProgram?(id: string): void
-  onCopyProgram?(id: string): void
-  onDeleteProgram?(id: string): void
-  onResetProgram?(id: string): void
-  /** A Program's id is in this set when the trainee can Edit/Copy/Delete/Reset it (E9-T3). */
-  userProgramIds?: Set<string>
-  /** A Program's id is in this set when it ships with the app (E9-T3). */
-  bundledProgramIds?: Set<string>
-  /** An error line shown on the Program tab when set (E9-T3; E9-T10 wires it from `App.tsx`). */
-  programMessage?: string | null
-  /**
-   * Whether the Programs panel (the header's overflow: switch, New, Edit, Copy, Delete, Reset)
-   * is open. Given, the caller holds it -- so the panel is still open on returning from the
-   * editor it opened; omitted, the page holds its own, closed at first.
-   */
-  programsOpen?: boolean
-  onProgramsOpenChange?(open: boolean): void
-  /**
-   * More of the overflow's actions, drawn at the foot of the Programs panel -- the Program tab
-   * puts "Start a deload week" here (V4-08).
-   */
-  programsActions?: JSX.Element | null
-  /**
-   * Where the head (the title, its size line, Edit and the overflow) goes: `inline` draws it at
-   * the top of the page; `none` leaves it to the caller -- the Program tab hands it to the
-   * shell's large page title (`ProgramHeadActions`, `programSizeLine`). Defaults to `inline`.
-   */
-  head?: 'inline' | 'none'
-  /** "Browse exercises" on a tapped region's panel: the region's muscles (E22-T10). */
-  onBrowse?(muscles: Muscle[]): void
   /**
    * V6-15: the load a Plan's next Session opens on, as Train says it ("47.5 → 62.5", "70",
-   * "BW+5"). Given, the table gains a kg column between Sets × reps and Rest.
+   * "BW+5", "–" with none). Omitted, the row says sets × reps only.
    */
   loadOf?(plan: ExercisePlan): string
   /** V6-15: a Workout's minutes as Train estimates them; omitted, the plan estimate. */
   minutesOf?(workout: Workout): number
-  /** V6-03: opens the one Lift page: each Exercise's name in a Workout's table is a button to it. */
+  /** DX-16: a Plan's row opens that lift's page. */
   onOpenLift?(exerciseId: string): void
-  /**
-   * v7 (study §1.8, build-plan step 11): the lifts whose status needs a decision, most pressing
-   * first (`programDecisions`). Given and not empty, a "Needs a decision" section heads the page:
-   * one row per lift, its status and its one action sentence, and Swap when the action is a
-   * change of exercise.
-   */
-  decisions?: LiftStatus[]
-  /** Swap on a decision row: replaces the lift in the Program (`useProgramSwap`). */
-  onSwap?(exerciseId: string): void
-  /** Whether a lift can be swapped; omitted, every swap decision offers Swap when `onSwap` is given. */
-  canSwap?(exerciseId: string): boolean
+  /** DX-03: the muscles row opens Progress › Muscles. */
+  onOpenMuscles?(): void
+  /** DX-03: the Muscles verdict, the same line Progress › Muscles gives; omitted, the row gives the count only. */
+  muscleVerdict?: string
+  /** The list group under the Workouts (DX-04). */
+  links: ProgramLinksProps
+  /** A line the page shows when set (a refused change). */
+  programMessage?: string | null
 }
 
 /**
- * The Program tab (Progress Dashboard S7a; v7 study §1.8): "Needs a decision" on top (the lifts
- * whose status asks for a change, with Swap), the active program's planned weekly sets by muscle
- * family (labels, no family colour), and a card per workout with a table of its exercises --
- * sets × reps, rest and the load the next session opens on. `Edit` opens the editor on the
- * active program; the overflow opens the Programs panel, the always-visible radio list of every
- * loaded program with each one's own actions (operator ruling, E5-T18: no "Other programs"
- * disclosure inside it). Below the workouts sit the planned muscle map with its gaps (M14); what
- * was done lives on Progress › Muscles (V2-06).
+ * The Program tab's body (DX-04, DX-16, DX-03): each Workout as a plain list -- a section header
+ * ("Workout A · 23 sets · ~70 min") and one row per Plan, its name on the left and `4 × 8–10 ·
+ * 47.5 → 62.5 kg` on the right, the rest only where it is not the usual 1:30; a row opens the
+ * lift's page. Then one muscles row ("69 sets a week · Shoulders above range ›") into
+ * Progress › Muscles, and the list group: Programs, Deload week, Exercises, Settings.
+ *
+ * The title ("A/B Split"), its meta line and Edit are the shell's large header (`ProgramFeature`).
  */
-/** V6-15: a ramp's kg cell, "47.5 →" kept together so a narrow card breaks it after the arrow. */
-function kgCell(text: string): JSX.Element | string {
-  const [from, to] = text.split(' → ')
-  if (to === undefined) return text
-  return (
-    <>
-      <span className="program-page-kg-from">{`${from} →`}</span> {to}
-    </>
-  )
-}
-
 export function ProgramPage(props: ProgramPageProps): JSX.Element {
-  const {
-    programs,
-    activeProgramId,
-    catalog,
-    library,
-    onChooseProgram,
-    onNewProgram,
-    onEditProgram,
-    onCopyProgram,
-    onDeleteProgram,
-    onResetProgram,
-    userProgramIds = new Set<string>(),
-    bundledProgramIds = new Set<string>(),
-    programMessage = null,
-    head = 'inline',
-    onBrowse,
-  } = props
-  // The tapped region on the planned map (E22-T10, O24).
-  const [tapped, setTapped] = useState<Region | null>(null)
-  const [confirmingId, setConfirmingId] = useState<string | null>(null)
-  const [ownProgramsOpen, setOwnProgramsOpen] = useState(false)
-  const programsOpen = props.programsOpen ?? ownProgramsOpen
-  function setProgramsOpen(open: boolean): void {
-    setOwnProgramsOpen(open)
-    props.onProgramsOpenChange?.(open)
-  }
-
+  const { program, catalog, library, links, programMessage = null } = props
   // Fail before anything renders, so a program referencing an id the catalog lacks leaves no
-  // half-built page behind -- the same rule `ProgramPicker` enforced.
-  for (const program of programs) assertPlansAreInCatalog(program, catalog)
+  // half-built page behind.
+  assertPlansAreInCatalog(program, catalog)
+  const lookup = (id: string): Exercise | undefined => catalog.get(id)
+  const workouts = program.workouts.filter((workout) => !workout.hidden)
 
-  // No active Program (a new user, E9-T2) skips the active Program's own sections below.
-  const active =
-    activeProgramId === null ? null : programs.find((program) => program.id === activeProgramId)
-  if (active === undefined) {
-    throw new Error(`no program ${activeProgramId} among the loaded programs`)
-  }
-
-  const lookup = (id: string) => catalog.get(id)
-  const workouts = active ? active.workouts.filter((workout) => !workout.hidden) : []
-
-  // The whole active program's prescribed weekly volume (M14/M15's prescribed side).
-  const prescribedMuscleCounts = active
-    ? prescribedWeekly(active, catalog, library)
-    : new Map<Muscle, number>()
-  const prescribedRegionCounts = toRegionCounts(prescribedMuscleCounts)
-  const gaps = programGaps(prescribedMuscleCounts)
-  const planRange = active ? plannedAgainstRange(active, lookup, library) : []
-
-  /** The panel for the tapped region: its planned Sets and Exercises. */
-  function renderRegionPanel(): JSX.Element | null {
-    if (tapped === null || !active) return null
-    const region = tapped
-    const muscles = musclesForRegion(region)
-    const tenth = (value: number) => Math.round(value * 10) / 10
-    const count = prescribedRegionCounts.get(region) ?? 0
-    const rows = plannedContributors(active, muscles, catalog, library).map(({ exerciseId, sets }) => ({
-      exerciseId,
-      name: catalog.get(exerciseId)?.name ?? exerciseId,
-      sets,
-    }))
+  function renderPlan(plan: ExercisePlan, index: number): JSX.Element {
+    const name = catalog.get(plan.exerciseId)?.name ?? plan.exerciseId
+    const prescription = planRowText(plan, props.loadOf ? props.loadOf(plan) : null)
+    const rest = plan.restSeconds !== USUAL_REST_SECONDS ? `${formatRest(plan.restSeconds)} rest` : null
+    const content = (
+      <>
+        <span className="program-plan-name">{name}</span>
+        <span className="program-plan-figure">
+          {prescription}
+          {rest ? <span className="program-plan-rest">{` · ${rest}`}</span> : null}
+        </span>
+      </>
+    )
     return (
-      <RegionPanel
-        region={region}
-        count={tenth(count)}
-        contributors={rows.map((row) => ({ ...row, sets: tenth(row.sets) }))}
-        onBrowse={(browse) => onBrowse?.(browse)}
-        onClose={() => setTapped(null)}
-      />
+      <li key={`${plan.exerciseId}-${index}`} className="program-plan" data-exercise-id={plan.exerciseId}>
+        {props.onOpenLift ? (
+          <button type="button" className="program-plan-row cell" onClick={() => props.onOpenLift?.(plan.exerciseId)}>
+            {content}
+          </button>
+        ) : (
+          <div className="program-plan-row">{content}</div>
+        )}
+      </li>
     )
   }
 
-  function renderWeeklySets(program: Program): JSX.Element {
-    const { total, families } = familyWeekly(program, lookup, library)
-    const counts = wholeCounts(FAMILIES.map((family) => families[family]))
-    const countOf = (family: MuscleFamily) => counts[FAMILIES.indexOf(family)]
-    const described = FAMILIES.map((family) => `${FAMILY_LABELS[family]} ${countOf(family)}`)
-    return (
-      <section className="program-page-volume card" aria-labelledby="program-page-volume-title">
-        <div className="program-page-card-head">
-          <h3 className="program-page-card-title" id="program-page-volume-title">
-            Weekly sets, planned
-          </h3>
-          <span className="program-page-card-total">{`${wholeCount(total)} sets`}</span>
-        </div>
-        <div
-          className="program-page-volume-bar"
-          role="img"
-          aria-label={`${described.join(', ')} sets a week`}
-        >
-          {FAMILIES.filter((family) => families[family] > 0).map((family) => (
-            <span
-              key={family}
-              className="program-page-volume-segment"
-              data-family={family}
-              style={{ flexGrow: families[family] }}
-            />
-          ))}
-        </div>
-        <ul className="program-page-legend">
-          {FAMILIES.map((family) => (
-            <li key={family} className="program-page-legend-item" data-family={family}>
-              {FAMILY_LABELS[family]}
-              <b className="program-page-legend-count">{countOf(family)}</b>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )
-  }
-
-  /** v7: "Needs a decision": one row per lift, its name (a door to its Lift page), its status and action. */
-  function renderDecisions(decisions: LiftStatus[]): JSX.Element {
-    return (
-      <section className="program-page-decisions" aria-labelledby="program-page-decisions-title">
-        <h3 className="program-page-caption" id="program-page-decisions-title">
-          Needs a decision
-        </h3>
-        <ul className="program-page-decision-list">
-          {decisions.map((status) => {
-            const name = catalog.get(status.exerciseId)?.name ?? status.exerciseId
-            const swappable = status.swap && props.onSwap !== undefined && (props.canSwap?.(status.exerciseId) ?? true)
-            return (
-              <li key={status.exerciseId} className="program-page-decision" data-kind={status.kind}>
-                <div className="program-page-decision-main">
-                  {props.onOpenLift ? (
-                    <button
-                      type="button"
-                      className="program-page-decision-name lift-door btn-quiet"
-                      onClick={() => props.onOpenLift?.(status.exerciseId)}
-                    >
-                      {name}
-                    </button>
-                  ) : (
-                    <span className="program-page-decision-name">{name}</span>
-                  )}
-                  <p className="program-page-decision-line">
-                    <StatusMark tone={statusTone(status.kind)} glyph={status.glyph}>
-                      {status.label}
-                    </StatusMark>
-                    <span className="program-page-decision-action">{` · ${status.action}`}</span>
-                  </p>
-                </div>
-                {swappable ? (
-                  <button
-                    type="button"
-                    className="program-page-decision-swap btn-secondary"
-                    aria-label={`Swap ${name}`}
-                    onClick={() => props.onSwap?.(status.exerciseId)}
-                  >
-                    Swap
-                  </button>
-                ) : null}
-              </li>
-            )
-          })}
-        </ul>
-      </section>
-    )
-  }
-
-  function renderWorkout(program: Program, workout: Workout): JSX.Element {
+  function renderWorkout(workout: Workout): JSX.Element {
     const { sets, minutes: planned } = workoutEstimate(workout)
     const minutes = props.minutesOf?.(workout) ?? planned
-    const loadOf = props.loadOf
+    const headingId = `program-workout-${workout.id}`
     return (
-      <section key={`${program.id}/${workout.id}`} className="workout-card card">
-        <div className="program-page-card-head">
-          <h3 className="program-page-workout-title">{workout.name}</h3>
-          <span className="program-page-card-note">{`${sets} sets · ~${minutes} min`}</span>
-        </div>
-        <table className="program-page-table" data-kg={loadOf ? 'true' : undefined}>
-          <thead>
-            <tr>
-              <th scope="col" className="program-page-th">
-                Exercise
-              </th>
-              <th scope="col" className="program-page-th program-page-num">
-                Sets × reps
-              </th>
-              {loadOf ? (
-                <th scope="col" className="program-page-th program-page-num program-page-kg">
-                  kg
-                </th>
-              ) : null}
-              <th scope="col" className="program-page-th program-page-num program-page-restcol">
-                Rest
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {workout.exercises.map((plan, index) => {
-              const exercise = catalog.get(plan.exerciseId)
-              const family = exerciseFamily(exercise, library)
-              return (
-                <tr
-                  key={`${plan.exerciseId}-${index}`}
-                  className="program-page-row"
-                  data-exercise-id={plan.exerciseId}
-                  data-family={family ?? undefined}
-                >
-                  <td className="program-page-exercise">
-                    {props.onOpenLift ? (
-                      <button
-                        type="button"
-                        className="program-page-name lift-door btn-quiet"
-                        onClick={() => props.onOpenLift?.(plan.exerciseId)}
-                      >
-                        {exercise?.name ?? plan.exerciseId}
-                      </button>
-                    ) : (
-                      (exercise?.name ?? plan.exerciseId)
-                    )}
-                  </td>
-                  <td className="program-page-num">{setsRepsText(plan)}</td>
-                  {loadOf ? <td className="program-page-num program-page-kg">{kgCell(loadOf(plan))}</td> : null}
-                  <td className="program-page-num program-page-rest program-page-restcol">{formatRest(plan.restSeconds)}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      <section key={workout.id} className="program-workout" aria-labelledby={headingId}>
+        <h2 className="program-workout-title" id={headingId}>
+          {`${workout.name} · ${workoutSizeText(sets, minutes)}`}
+        </h2>
+        <ul className="program-plans" aria-label={workout.name}>
+          {workout.exercises.map(renderPlan)}
+        </ul>
       </section>
     )
   }
 
-  function renderProgramRow(program: Program): JSX.Element {
-    const checked = program.id === activeProgramId
-    const isUser = userProgramIds.has(program.id)
-    const isBundled = bundledProgramIds.has(program.id)
-    const confirming = confirmingId === program.id
-    return (
-      <div key={program.id} data-program-id={program.id} className="program-page-switcher-row">
-        {/* One segment per row, all sharing a name, so the rows still form one native radio
-            group while each keeps its own action buttons beside it. */}
-        <Segmented
-          name="program-page-active-program"
-          label="Active program"
-          value={activeProgramId ?? ''}
-          options={[{ value: program.id, label: program.name }]}
-          onChange={() => {
-            if (!checked) onChooseProgram(program.id)
-          }}
-        />
-        <button
-          type="button"
-          className="program-page-edit btn-secondary"
-          onClick={() => onEditProgram?.(program.id)}
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          className="program-page-copy btn-secondary"
-          onClick={() => onCopyProgram?.(program.id)}
-        >
-          Copy
-        </button>
-        {isUser && !isBundled && !confirming && (
-          <button
-            type="button"
-            className="program-page-delete btn-danger"
-            onClick={() => setConfirmingId(program.id)}
-          >
-            Delete
-          </button>
-        )}
-        {isUser && isBundled && !confirming && (
-          <button
-            type="button"
-            className="program-page-reset btn-danger"
-            onClick={() => setConfirmingId(program.id)}
-          >
-            Reset to original
-          </button>
-        )}
-        {confirming && (
-          <button
-            type="button"
-            className="program-page-confirm btn-danger"
-            onClick={() => {
-              setConfirmingId(null)
-              if (isBundled) onResetProgram?.(program.id)
-              else onDeleteProgram?.(program.id)
-            }}
-          >
-            Confirm
-          </button>
-        )}
-      </div>
-    )
-  }
-
-  const message =
-    programMessage === null || programMessage === '' ? null : (
-      <p className="program-page-message" role="status">
-        {programMessage}
-      </p>
-    )
+  const { total } = familyWeekly(program, lookup, library)
+  const count = `${wholeCount(total)} sets a week`
+  const muscles = props.muscleVerdict ? `${count} · ${props.muscleVerdict}` : count
 
   return (
     <div className="program-page">
-      {active && head === 'inline' && (
-        <div className="program-page-head">
-          <div className="program-page-head-text">
-            <h2 className="program-page-title">{active.name}</h2>
-            <p className="program-page-subtitle">{programSizeLine(active)}</p>
-          </div>
-          <div className="program-page-head-actions">
-            <ProgramHeadActions
-              name={active.name}
-              onEdit={() => onEditProgram?.(active.id)}
-              programsOpen={programsOpen}
-              onOpenPrograms={() => setProgramsOpen(true)}
-            />
-          </div>
-        </div>
-      )}
-
-      {activeProgramId !== null && programsOpen && (
-        <div
-          className="program-page-programs overlay-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="program-page-programs-title"
-        >
-          <div className="program-page-programs-head">
-            <h2 className="program-page-programs-title" id="program-page-programs-title">
-              Programs
-            </h2>
-            <button
-              type="button"
-              className="program-page-programs-done btn-quiet"
-              onClick={() => setProgramsOpen(false)}
-            >
-              Done
-            </button>
-          </div>
-          <fieldset className="settings-group program-page-switcher">
-            <legend className="settings-legend">Active program</legend>
-            {programs.map((program) => renderProgramRow(program))}
-          </fieldset>
-          {message}
-          <button type="button" className="program-page-new btn-secondary" onClick={() => onNewProgram?.()}>
-            New program
-          </button>
-          {props.programsActions ?? null}
-        </div>
-      )}
-
-      {activeProgramId !== null && !programsOpen && message}
-
-      {active && (
-        <>
-          {props.decisions !== undefined && props.decisions.length > 0 ? renderDecisions(props.decisions) : null}
-          {renderWeeklySets(active)}
-          {workouts.map((workout) => renderWorkout(active, workout))}
-
-          <section className="program-page-weekly card">
-            <h3 className="program-page-section-heading">Muscles, planned per week</h3>
-            <div className="program-page-map">
-              <BodyMap
-                counts={prescribedRegionCounts}
-                scale="week"
-                onRegionTap={setTapped}
-              />
-            </div>
-            <BodyMapLegend scale="week" />
-            <p className="program-page-range-note">
-              Sets per week, against {WEEKLY_SET_RANGE.min}–{WEEKLY_SET_RANGE.max}
-            </p>
-            <ul className="program-page-range">
-              {planRange.map(({ muscle, planned, standing }) => (
-                <li key={muscle} className="program-page-range-row" data-standing={standing}>
-                  <span>{muscleLabel(muscle)}</span>
-                  <span>
-                    {planned}
-                    {standing === 'below' && ` · below ${WEEKLY_SET_RANGE.min}`}
-                    {standing === 'above' && ` · above ${WEEKLY_SET_RANGE.max}`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {gaps.length > 0 && (
-              <ul className="program-page-gaps">
-                {gaps.map((muscle) => (
-                  <li key={muscle} className="program-page-gap">{`No direct ${muscleLabel(muscle).toLowerCase()} work`}</li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </>
-      )}
-
-      {renderRegionPanel()}
-
-      {activeProgramId === null && (
-        <section className="program-page-newuser">
-          {head === 'inline' && (
-            <>
-              <h2 className="program-page-title">{CHOOSE_TITLE}</h2>
-              <p className="program-page-subtitle">{CHOOSE_LINE}</p>
-            </>
-          )}
-          <div className="program-page-newuser-list">
-            {visiblePrograms(programs).map((program) => (
-              <div key={program.id} className="program-page-newuser-card card">
-                <span className="program-page-newuser-name">{program.name}</span>
-                <span className="program-page-newuser-size">{newUserSize(program)}</span>
-                <button
-                  type="button"
-                  className="program-page-use program-page-use-primary btn-primary"
-                  onClick={() => onChooseProgram(program.id)}
-                >
-                  {`Use this ${program.name}`}
-                </button>
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            className="program-page-new program-page-new-secondary btn-secondary"
-            onClick={() => onNewProgram?.()}
-          >
-            New program
-          </button>
-        </section>
-      )}
+      {programMessage ? (
+        <p className="program-page-message" role="status">
+          {programMessage}
+        </p>
+      ) : null}
+      {workouts.map(renderWorkout)}
+      <ul className="program-rows">
+        <li>
+          <RowButton label={muscles} onClick={props.onOpenMuscles} />
+        </li>
+      </ul>
+      <ProgramLinks {...links} />
     </div>
   )
 }
 
-/** A program's size on the new-user chooser: `3× per week · 2 workouts`. */
-function newUserSize(program: Program): string {
-  const workouts = program.workouts.filter((workout) => !workout.hidden).length
-  return `${program.sessionsPerWeek}× per week · ${plural(workouts, 'workout', 'workouts')}`
+export type ProgramLinksProps = {
+  /** Omitted (first run, where the Programs are the page's own rows), no Programs row is drawn. */
+  onOpenPrograms?(): void
+  /** Omitted (no Program yet), the Deload week row is not drawn. */
+  onOpenDeload?(): void
+  /** The Deload week is on this week. */
+  deloadOn?: boolean
+  onOpenExercises(): void
+  onOpenSettings(): void
+  /** A backup is due: the Settings row says so. */
+  backupDue?: boolean
+}
+
+/**
+ * DX-04: the Program tab's list group, plain rows with chevrons: Programs (switch, copy, new),
+ * Deload week, Exercises (the library) and Settings -- the one way into Settings.
+ */
+export function ProgramLinks(props: ProgramLinksProps): JSX.Element {
+  return (
+    <ul className="program-rows program-links" aria-label="More">
+      {props.onOpenPrograms ? (
+        <li>
+          <RowButton label="Programs" onClick={props.onOpenPrograms} />
+        </li>
+      ) : null}
+      {props.onOpenDeload ? (
+        <li>
+          <RowButton label="Deload week" detail={props.deloadOn ? 'On this week' : undefined} onClick={props.onOpenDeload} />
+        </li>
+      ) : null}
+      <li>
+        <RowButton label="Exercises" onClick={props.onOpenExercises} />
+      </li>
+      <li>
+        <RowButton label="Settings" detail={props.backupDue ? 'A backup is due' : undefined} onClick={props.onOpenSettings} />
+      </li>
+    </ul>
+  )
+}
+
+function RowButton({ label, detail, onClick }: { label: string; detail?: string; onClick?: () => void }): JSX.Element {
+  return (
+    <button type="button" className="program-row cell" onClick={onClick}>
+      <span className="program-row-label">{label}</span>
+      {detail ? <span className="program-row-detail">{detail}</span> : null}
+      <Icon name="ChevronRight" size={18} />
+    </button>
+  )
 }

@@ -1,4 +1,5 @@
-// Photos2 O1: the summary right after Finish offers "Add progress photos" for the Session's day.
+// Photos2 O1, DX-14: the summary right after Finish no longer offers "Add progress photos"; photos
+// live on the Body page.
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test, vi } from 'vitest'
@@ -18,7 +19,7 @@ beforeEach(async () => {
   await db.photos.clear()
 })
 
-test('Photos2 O1 the finish summary has one Add progress photos action that opens the capture screen', async () => {
+test('Photos2 O1 DX-14 the finish summary has no Add progress photos action', async () => {
   const services = createServices({ now: () => Date.now(), storageAvailable: true, fetch: signedOutFetch })
   await services.programs.setActive('assaf-ab-2026')
   const started = await services.sessions.start('assaf-ab-2026', 'workout-a')
@@ -35,11 +36,9 @@ test('Photos2 O1 the finish summary has one Add progress photos action that open
       <WorkoutFeature navigate={vi.fn()} onInSession={vi.fn()} />
     </ServicesProvider>,
   )
-  await screen.findByRole('button', { name: 'All exercises' }, SETTLE)
+  await screen.findByRole('radio', { name: 'All' }, SETTLE)
   await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
-  const add = await within(summary).findByRole('button', { name: 'Add progress photos' }, SETTLE)
-  expect(within(summary).getAllByRole('button', { name: /photo/i })).toHaveLength(1)
-  await user.click(add)
-  expect(await screen.findByRole('heading', { name: /^(Front|Side|Back)(, mirror)?$/ })).toBeVisible()
+  expect(within(summary).getByRole('button', { name: 'Done' })).toBeVisible()
+  expect(within(summary).queryByRole('button', { name: /photo/i })).toBeNull()
 })

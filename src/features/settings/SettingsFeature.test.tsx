@@ -162,7 +162,7 @@ test('O13 SettingsFeature switches the active Program when another one is chosen
 // --- O13: saves gym equipment ----------------------------------------------------------------
 
 test('O13 SettingsFeature saves the next gym equipment list when a type is unticked', async () => {
-  // V2-09: the switches moved to Program › Exercises, beside the "My gym only" chip they feed;
+  // V2-09: the switches moved to Program › Exercises, behind the "My gym only" chip they feed;
   // they save through the same preference as before.
   const user = userEvent.setup()
   const services = buildServices(fakeSync())
@@ -171,6 +171,8 @@ test('O13 SettingsFeature saves the next gym equipment list when a type is untic
       <ExercisesFeature initialMuscles={null} navigate={vi.fn()} />
     </ServicesProvider>,
   )
+  // DX-08: the switches sit on the gym's own page, behind the quiet "Edit" beside the chip.
+  await user.click(await screen.findByRole('button', { name: "Edit my gym's equipment" }, SETTLE))
   await waitFor(() => {
     expect(within(gymEquipmentGroup()).getAllByRole('switch').length).toBeGreaterThan(0)
   }, SETTLE)
@@ -398,26 +400,35 @@ function barAndPlatesGroup(): HTMLElement {
   return screen.getByRole('group', { name: 'Bar and plates' })
 }
 
+function stepped(label: string): string {
+  return within(barAndPlatesGroup()).getByRole('group', { name: label }).querySelector('output')?.textContent ?? ''
+}
+
+/** DX-23: Bar and plates is a row that pushes its page. */
+async function openPlates(): Promise<void> {
+  await userEvent.click(await screen.findByRole('button', { name: /^Bar and plates/ }, SETTLE))
+}
+
 test('O7 SettingsFeature shows the stored bar and a pair count per plate', async () => {
   await db.settings.put({ key: 'plateInventory', value: STORED_RACK, updatedAt: NOW })
   renderFeature(buildServices(fakeSync()))
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Bar and plates/ })).toHaveTextContent('20 kg bar'), SETTLE)
 
-  await waitFor(() => {
-    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(4)
-  }, SETTLE)
-  expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Bar weight (kg)' })).toHaveValue(20)
+  await openPlates()
+
+  expect(stepped('Pairs of 25 kg')).toBe('4')
+  expect(stepped('Bar weight')).toBe('20 kg')
 })
 
-test('O7 changing the bar weight in Settings stores the inventory at once', async () => {
+test('O7 stepping the bar weight in Settings stores the inventory at once', async () => {
   await db.settings.put({ key: 'plateInventory', value: STORED_RACK, updatedAt: NOW })
   renderFeature(buildServices(fakeSync()))
-  await waitFor(() => {
-    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Bar weight (kg)' })).toHaveValue(20)
-  }, SETTLE)
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Bar and plates/ })).toHaveTextContent('20 kg bar'), SETTLE)
+  await openPlates()
 
-  fireEvent.change(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Bar weight (kg)' }), {
-    target: { value: '15' },
-  })
+  await userEvent.click(screen.getByRole('button', { name: 'Decrease Bar weight' }))
+  await waitFor(() => expect(stepped('Bar weight')).toBe('17.5 kg'), SETTLE)
+  await userEvent.click(screen.getByRole('button', { name: 'Decrease Bar weight' }))
 
   await waitFor(async () => {
     expect((await db.settings.get('plateInventory'))?.value).toEqual({ ...STORED_RACK, barKg: 15 })
@@ -428,6 +439,7 @@ test('O7 Reset to defaults in Settings stores DEFAULT_PLATE_INVENTORY', async ()
   const user = userEvent.setup()
   await db.settings.put({ key: 'plateInventory', value: STORED_RACK, updatedAt: NOW })
   renderFeature(buildServices(fakeSync()))
+  await openPlates()
 
   await user.click(await screen.findByRole('button', { name: 'Reset to defaults' }, SETTLE))
 
@@ -447,29 +459,27 @@ test('O7 Reset to defaults in Settings stores DEFAULT_PLATE_INVENTORY', async ()
   }, SETTLE)
 })
 
-test('O7 a refused pair count shows the service message inline and leaves the stored inventory as it was', async () => {
+test('O7 a refused plate shows the service message inline and leaves the stored inventory as it was', async () => {
   await db.settings.put({ key: 'plateInventory', value: STORED_RACK, updatedAt: NOW })
   renderFeature(buildServices(fakeSync()))
-  await waitFor(() => {
-    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(4)
-  }, SETTLE)
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Bar and plates/ })).toHaveTextContent('20 kg bar'), SETTLE)
+  await openPlates()
 
-  fireEvent.change(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' }), {
-    target: { value: '99' },
-  })
+  // A second 25 kg plate is refused by the service.
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'New plate weight (kg)' }), { target: { value: '25' } })
+  await userEvent.click(screen.getByRole('button', { name: 'Add plate' }))
 
   const alert = await screen.findByRole('alert', {}, SETTLE)
-  expect(alert).toHaveTextContent('Each plate size needs a whole number of pairs from 0 to 20.')
+  expect(alert).toHaveTextContent('Two plates cannot weigh the same.')
   expect((await db.settings.get('plateInventory'))?.value).toEqual(STORED_RACK)
-  expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(4)
+  expect(stepped('Pairs of 25 kg')).toBe('4')
 })
 
 test('O7 a plate inventory synced in from another device shows without leaving the tab', async () => {
   const services = buildServices(fakeSync())
   renderFeature(services)
-  await waitFor(() => {
-    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(10)
-  }, SETTLE)
+  await openPlates()
+  await waitFor(() => expect(stepped('Pairs of 25 kg')).toBe('10'), SETTLE)
 
   await db.settings.put({
     key: 'plateInventory',
@@ -478,10 +488,54 @@ test('O7 a plate inventory synced in from another device shows without leaving t
   })
   services.bus.emit('preferences')
 
-  await waitFor(() => {
-    expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(3)
-  }, SETTLE)
-  expect(within(barAndPlatesGroup()).getByRole('spinbutton', { name: 'Bar weight (kg)' })).toHaveValue(15)
+  await waitFor(() => expect(stepped('Pairs of 25 kg')).toBe('3'), SETTLE)
+  expect(stepped('Bar weight')).toBe('15 kg')
+})
+
+// --- Body (coordinator): Height (cm) moved here from the Body page ----------------------------
+
+test('Body Settings shows a Body group with Height (cm), empty when nothing is stored', async () => {
+  renderFeature(buildServices(fakeSync()))
+
+  const body = await screen.findByRole('region', { name: 'Body' }, SETTLE)
+  expect(within(body).getByRole('spinbutton', { name: 'Height (cm)' })).toHaveValue(null)
+})
+
+test('Body a height typed in Settings is stored through setHeightCm when the field is left', async () => {
+  const services = buildServices(fakeSync())
+  renderFeature(services)
+  const field = await screen.findByRole('spinbutton', { name: 'Height (cm)' }, SETTLE)
+
+  await userEvent.type(field, '178')
+  await userEvent.tab()
+
+  await waitFor(async () => expect(await services.preferences.heightCm()).toBe(178), SETTLE)
+})
+
+test('Body a height outside 100 to 250 says so and stores nothing', async () => {
+  const services = buildServices(fakeSync())
+  renderFeature(services)
+  const field = await screen.findByRole('spinbutton', { name: 'Height (cm)' }, SETTLE)
+
+  await userEvent.type(field, '90')
+  await userEvent.tab()
+
+  expect(await screen.findByText('Height is a whole number from 100 to 250 cm.')).toBeVisible()
+  expect(field).toHaveAttribute('aria-invalid', 'true')
+  expect(await services.preferences.heightCm()).toBeNull()
+})
+
+test('Body a stored height shows, and clearing the field clears it', async () => {
+  const services = buildServices(fakeSync())
+  await services.preferences.setHeightCm(181)
+  renderFeature(services)
+  const field = await screen.findByRole('spinbutton', { name: 'Height (cm)' }, SETTLE)
+  await waitFor(() => expect(field).toHaveValue(181), SETTLE)
+
+  await userEvent.clear(field)
+  await userEvent.tab()
+
+  await waitFor(async () => expect(await services.preferences.heightCm()).toBeNull(), SETTLE)
 })
 
 test('O9 unticking Track effort stores false under effortTracking', async () => {

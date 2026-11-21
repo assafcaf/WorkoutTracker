@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
-import { dayOf } from '../domain/bodyLog'
 import { formatDay } from '../domain/dates'
 import { newPlan } from '../domain/programs'
 import { formatSet } from '../domain/setText'
@@ -9,7 +7,10 @@ import { END_BEFORE_START, NO_SETS_LEFT, insertSet, removeSet } from '../domain/
 import type { Exercise, LibraryExercise, Session, SetEntry, SetKind } from '../types'
 import { Switch } from './controls'
 import { ExercisePicker } from './ExercisePicker'
+import { Icon } from './icons'
 import { RepsDial } from './RepsDial'
+import { Sheet } from './Sheet'
+import { Snackbar } from './Snackbar'
 import { WeightDial } from './WeightDial'
 import './SessionEditor.css'
 
@@ -18,11 +19,14 @@ export type SessionEditorProps = {
   /** The name of the Workout the Session was performed from, shown as the editor's heading. */
   workoutName: string
   resolve: (id: string) => Exercise | undefined
-  /** Opens that Exercise's first Set on the Dials (E12-T9). */
+  /** Opens that Exercise's first Set in the Set sheet (E12-T9). */
   focusExerciseId?: string
   onSave(draft: Session): Promise<void>
   onCancel(): void
-  /** Delete workout, called after an inline confirm; the button is absent without it. */
+  /**
+   * Delete Session (DX-11): called at once, no confirm; the caller deletes and offers Undo. The
+   * button is absent without it.
+   */
   onDelete?(): void
   /**
    * `edit` a stored Session (the default), or `log` a missed one (V6-13): the heading reads
@@ -32,21 +36,23 @@ export type SessionEditorProps = {
   /** The clock the heading's day reads against; the device's by default. */
   now?: number
   /**
-   * What "Add exercise" offers (V6-13), the same picker as a live Session's; no Add exercise
+   * What "Add exercise" offers (V6-13), in the one Exercise picker (DX-08); no Add exercise
    * without it.
    */
   addable?: LibraryExercise[]
   /** The Workout's planned Exercise ids: one added that is not among them is saved in `added`. */
   plannedIds?: string[]
-  /**
-   * Photos2: the Photos row for the draft's day (YYYY-MM-DD), drawn under the note; the caller
-   * owns it (the day's thumbnails, Delete with Undo, Add photos). No row without it.
-   */
-  renderPhotos?(day: string): ReactNode
+  /** DX-08: each Exercise's last Set as the picker's rows show it (`lastSetTexts`). */
+  lastSets?: Map<string, string>
+  /** DX-08: the gym's equipment, for the picker's "My gym only" chip (`null`: nothing saved). */
+  gymEquipment?: string[] | null
 }
 
-/** The Set whose values the Dials are editing. */
-type OpenSet = { exerciseId: string; setIndex: number }
+/** The Set open in the Set sheet, and the values it holds until Save. */
+type OpenSet = { exerciseId: string; setIndex: number; values: Pick<SetEntry, 'weightKg' | 'reps' | 'loadKg'> }
+
+/** How long "Set deleted · Undo" stays (DX-11). */
+const UNDO_MS = 8000
 
 /** Two digits, for the `datetime-local` value's fields. */
 function pad(value: number): string {
@@ -69,20 +75,15 @@ function fromLocalInput(value: string): number | null {
   return Number.isNaN(time) ? null : time
 }
 
-/** What a Set row reads: `60 × 8`, or `BW × 10` for a Set carrying no weight. */
-function setText(entry: SetEntry): string {
-  return formatSet(entry)
-}
-
 /** A Set kind's mark before its values (V6-14), as the History overlay marks it. */
 const KIND_MARKERS: Record<SetKind, string> = { warmup: 'W', drop: 'D', failure: 'F', amrap: 'A' }
-/** A Set kind as a screen reader hears it in the row's control names. */
+/** A Set kind as a screen reader hears it in the row's name. */
 const KIND_NAMES: Record<SetKind, string> = { warmup: 'warm-up', drop: 'drop', failure: 'failure', amrap: 'AMRAP' }
 
-/** The name a Set's controls end on (V6-14): `Back squat set 1, warm-up 40 × 5`. */
+/** The name a Set's row ends on (V6-14): `Back squat set 1, warm-up 40 × 5`. */
 function setName(exerciseName: string, entry: SetEntry): string {
   const kind = entry.kind ? `${KIND_NAMES[entry.kind]} ` : ''
-  return `${exerciseName} set ${entry.setIndex}, ${kind}${setText(entry)}`
+  return `${exerciseName} set ${entry.setIndex}, ${kind}${formatSet(entry)}`
 }
 
 /** The draft's Sets grouped by Exercise, in first-appearance order, each group by `setIndex`. */
@@ -112,31 +113,52 @@ function fallbackExercise(exerciseId: string, entries: SetEntry[]): Exercise {
   }
 }
 
-/** The first Set of `exerciseId` in `session`, or null when it has none. */
-function firstSetOf(session: Session, exerciseId: string | undefined): OpenSet | null {
-  if (exerciseId === undefined) return null
-  const indexes = session.entries
-    .filter((entry) => entry.exerciseId === exerciseId)
-    .map((entry) => entry.setIndex)
-  return indexes.length === 0 ? null : { exerciseId, setIndex: Math.min(...indexes) }
+/** `entry` open in the Set sheet with its own values. */
+function openOf(entry: SetEntry): OpenSet {
+  return {
+    exerciseId: entry.exerciseId,
+    setIndex: entry.setIndex,
+    values: { weightKg: entry.weightKg, reps: entry.reps, loadKg: entry.loadKg },
+  }
 }
 
-/** The History editor (E12-T6): edits a draft of a finished Session, saved in one write. */
+/** The first Set of `exerciseId` in `session`, open, or null when it has none. */
+function firstSetOf(session: Session, exerciseId: string | undefined): OpenSet | null {
+  if (exerciseId === undefined) return null
+  const sets = session.entries
+    .filter((entry) => entry.exerciseId === exerciseId)
+    .sort((one, other) => one.setIndex - other.setIndex)
+  return sets.length === 0 ? null : openOf(sets[0])
+}
+
+/**
+ * The Session editor (E12-T6, DX-11): edits a draft of a finished Session, saved in one write.
+ * Cancel and Save sit in its header. Each Set is one row that opens the Set sheet -- the live Set
+ * screen's Dials, Cancel and Save in its header, "Delete set" at its foot. A deleted Set goes at
+ * once, with "Set deleted · Undo". "Delete Session" is alone at the very bottom.
+ */
 export function SessionEditor(props: SessionEditorProps): JSX.Element {
   const { session, workoutName, resolve, focusExerciseId, onSave, onCancel, onDelete } = props
-  const { mode = 'edit', now, addable, plannedIds = [], renderPhotos } = props
+  const { mode = 'edit', now, addable, plannedIds = [], lastSets } = props
   const [picking, setPicking] = useState(false)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [draft, setDraft] = useState<Session>(session)
   const [open, setOpen] = useState<OpenSet | null>(() => firstSetOf(session, focusExerciseId))
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  /** DX-11: the Sets as they were before a delete, while "Set deleted · Undo" shows. */
+  const [undo, setUndo] = useState<SetEntry[] | null>(null)
 
   // V1-24: the Sessions list that opened the editor may be scrolled far down; open on the
   // Workout's name and its first Exercise, not mid-page.
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [])
+
+  useEffect(() => {
+    if (undo === null) return
+    const timer = setTimeout(() => setUndo(null), UNDO_MS)
+    return () => clearTimeout(timer)
+  }, [undo])
 
   const endBeforeStart = draft.finishedAt !== null && draft.finishedAt < draft.startedAt
   const noSets = draft.entries.length === 0
@@ -160,23 +182,32 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
     setDraft(on ? { ...rest, deload: true } : rest)
   }
 
-  function changeSet(
-    target: OpenSet,
-    values: Partial<Pick<SetEntry, 'weightKg' | 'reps' | 'loadKg'>>,
-  ): void {
+  /** The Set sheet's Save: its values into the draft. */
+  function saveOpenSet(): void {
+    if (open === null) return
     setDraft({
       ...draft,
       entries: draft.entries.map((entry) =>
-        entry.exerciseId === target.exerciseId && entry.setIndex === target.setIndex
-          ? { ...entry, ...values }
+        entry.exerciseId === open.exerciseId && entry.setIndex === open.setIndex
+          ? { ...entry, ...open.values }
           : entry,
       ),
     })
+    setOpen(null)
   }
 
-  function deleteSet(exerciseId: string, setIndex: number): void {
-    setDraft({ ...draft, entries: removeSet(draft.entries, exerciseId, setIndex).entries })
+  /** The Set sheet's Delete set: gone at once, with Undo (DX-11). */
+  function deleteOpenSet(): void {
+    if (open === null) return
+    setUndo(draft.entries)
+    setDraft({ ...draft, entries: removeSet(draft.entries, open.exerciseId, open.setIndex).entries })
     setOpen(null)
+  }
+
+  function undoDelete(): void {
+    if (undo === null) return
+    setDraft({ ...draft, entries: undo })
+    setUndo(null)
   }
 
   function addSet(exerciseId: string, group: SetEntry[]): void {
@@ -193,7 +224,7 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
 
   /**
    * V6-13: one Set of `exerciseId` at its start weight (no weight on a Bodyweight one) and a new
-   * Plan's bottom rep count, open on the Dials; an Exercise off the Workout is saved as added.
+   * Plan's bottom rep count, open in the Set sheet; an Exercise off the Workout is saved as added.
    */
   function addExercise(exerciseId: string): void {
     setPicking(false)
@@ -214,7 +245,7 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
       entries: insertSet(draft.entries, added),
       ...(addedPlans === undefined ? {} : { added: addedPlans }),
     })
-    setOpen({ exerciseId, setIndex: 1 })
+    setOpen(openOf(added))
   }
 
   async function save(): Promise<void> {
@@ -230,14 +261,43 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
     }
   }
 
+  const heading = `${mode === 'log' ? 'Log' : 'Edit'} · ${workoutName} · ${formatDay(
+    new Date(draft.startedAt),
+    new Date(now ?? Date.now()),
+  )}`
+
+  const openEntries = open === null ? [] : draft.entries.filter((entry) => entry.exerciseId === open.exerciseId)
+  const openExercise = open === null ? undefined : resolve(open.exerciseId) ?? fallbackExercise(open.exerciseId, openEntries)
+  const openTitle = open === null || openExercise === undefined ? '' : `${openExercise.name} · Set ${open.setIndex}`
+  const setOpenValues = (values: Partial<OpenSet['values']>): void => {
+    if (open !== null) setOpen({ ...open, values: { ...open.values, ...values } })
+  }
+
+  // While the Set sheet is up, the page under it is hidden from a screen reader and the keyboard.
+  const covered = open !== null ? { 'aria-hidden': true as const, inert: '' } : {}
   return (
     <div className="session-editor">
-      <h1 className="session-editor-heading">
-        {`${mode === 'log' ? 'Log' : 'Edit'} · ${workoutName} · ${formatDay(
-          new Date(draft.startedAt),
-          new Date(now ?? Date.now()),
-        )}`}
-      </h1>
+      <div className="session-editor-page" {...covered}>
+      <div className="session-editor-bar">
+        <button type="button" className="session-editor-cancel btn-quiet" onClick={onCancel}>
+          Cancel
+        </button>
+        <h1 className="session-editor-heading">{heading}</h1>
+        <button
+          type="button"
+          className="session-editor-save btn-quiet"
+          disabled={!canSave}
+          onClick={() => void save()}
+        >
+          Save
+        </button>
+      </div>
+
+      {error === null ? null : (
+        <p className="session-editor-error" role="alert">
+          {error}
+        </p>
+      )}
 
       <div className="session-editor-times">
         <label className="session-editor-time">
@@ -266,9 +326,7 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
       </div>
 
       {groupByExercise(draft.entries).map(({ exerciseId, entries }) => {
-        const exercise = resolve(exerciseId)
-        const name = exercise?.name ?? exerciseId
-        const dialExercise = exercise ?? fallbackExercise(exerciseId, entries)
+        const name = resolve(exerciseId)?.name ?? exerciseId
         const headingId = `session-editor-${exerciseId}`
         return (
           <section
@@ -281,11 +339,14 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
               {name}
             </h3>
             <ul className="session-editor-sets">
-              {entries.map((entry) => {
-                const isOpen =
-                  open?.exerciseId === exerciseId && open.setIndex === entry.setIndex
-                return (
-                  <li key={entry.setIndex} className="session-editor-set">
+              {entries.map((entry) => (
+                <li key={entry.setIndex} className="session-editor-set">
+                  <button
+                    type="button"
+                    className="session-editor-set-row cell"
+                    aria-label={`Edit ${setName(name, entry)}`}
+                    onClick={() => setOpen(openOf(entry))}
+                  >
                     <span className="session-editor-set-values">
                       {entry.kind ? (
                         <span className="session-editor-set-kind" aria-hidden="true">
@@ -294,63 +355,14 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
                       ) : null}
                       <SetFigure set={entry} />
                     </span>
-                    <button
-                      type="button"
-                      className="session-editor-set-action btn-quiet"
-                      aria-label={`Edit ${setName(name, entry)}`}
-                      aria-pressed={isOpen}
-                      onClick={() =>
-                        setOpen(isOpen ? null : { exerciseId, setIndex: entry.setIndex })
-                      }
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="session-editor-set-action btn-danger"
-                      aria-label={`Delete ${setName(name, entry)}`}
-                      onClick={() => deleteSet(exerciseId, entry.setIndex)}
-                    >
-                      Delete
-                    </button>
-                    {isOpen ? (
-                      <div className="session-editor-dials">
-                        {dialExercise.bodyweight ? (
-                          // E16-T4: a Bodyweight Exercise's Weight Dial carries the signed Load.
-                          <WeightDial
-                            exercise={dialExercise}
-                            value={entry.loadKg ?? 0}
-                            onChange={(loadKg) =>
-                              changeSet(
-                                { exerciseId, setIndex: entry.setIndex },
-                                { loadKg: loadKg ? loadKg : undefined },
-                              )
-                            }
-                          />
-                        ) : (
-                          <WeightDial
-                            exercise={dialExercise}
-                            value={entry.weightKg}
-                            onChange={(weightKg) =>
-                              changeSet({ exerciseId, setIndex: entry.setIndex }, { weightKg })
-                            }
-                          />
-                        )}
-                        <RepsDial
-                          value={entry.reps}
-                          onChange={(reps) =>
-                            changeSet({ exerciseId, setIndex: entry.setIndex }, { reps })
-                          }
-                        />
-                      </div>
-                    ) : null}
-                  </li>
-                )
-              })}
+                    <Icon name="ChevronRight" size={18} />
+                  </button>
+                </li>
+              ))}
             </ul>
             <button
               type="button"
-              className="session-editor-add btn-secondary"
+              className="session-editor-add btn-quiet"
               onClick={() => addSet(exerciseId, entries)}
             >
               Add set
@@ -379,51 +391,64 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
         />
       </label>
 
-      {renderPhotos ? renderPhotos(dayOf(draft.startedAt)) : null}
 
-      {noSets ?<p className="session-editor-invalid">{NO_SETS_LEFT}</p> : null}
+      {noSets ? <p className="session-editor-invalid">{NO_SETS_LEFT}</p> : null}
 
-      {error === null ? null : (
-        <p className="session-editor-error" role="alert">
-          {error}
-        </p>
-      )}
-
-      <div className="session-editor-actions">
-        {onDelete === undefined ? null : confirmingDelete ? (
-          <>
-            <button type="button" className="session-editor-cancel btn-quiet" onClick={() => setConfirmingDelete(false)}>
-              Keep
-            </button>
-            <button type="button" className="session-editor-delete btn-danger" onClick={onDelete}>
-              Confirm
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="session-editor-delete btn-danger"
-            onClick={() => setConfirmingDelete(true)}
-          >
-            Delete workout
+      {onDelete === undefined ? null : (
+        <div className="session-editor-delete-row">
+          <button type="button" className="session-editor-delete btn-danger" onClick={onDelete}>
+            Delete Session
           </button>
-        )}
-        <button type="button" className="session-editor-cancel btn-quiet" onClick={onCancel}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="session-editor-save btn-primary"
-          disabled={!canSave}
-          onClick={() => void save()}
-        >
-          Save
-        </button>
+        </div>
+      )}
       </div>
+
+      {open !== null && openExercise !== undefined ? (
+        <Sheet label={openTitle} onClose={() => setOpen(null)}>
+          <div className="session-set-sheet-head">
+            <button type="button" className="session-set-cancel btn-quiet" onClick={() => setOpen(null)}>
+              Cancel
+            </button>
+            <h2 className="session-set-title">{openTitle}</h2>
+            <button type="button" className="session-set-save btn-quiet" onClick={saveOpenSet}>
+              Save
+            </button>
+          </div>
+          <div className="session-set-dials">
+            {openExercise.bodyweight ? (
+              // E16-T4: a Bodyweight Exercise's Weight Dial carries the signed Load.
+              <WeightDial
+                variant="scrub"
+                exercise={openExercise}
+                value={open.values.loadKg ?? 0}
+                onChange={(loadKg) => setOpenValues({ loadKg: loadKg ? loadKg : undefined })}
+              />
+            ) : (
+              <WeightDial
+                variant="scrub"
+                exercise={openExercise}
+                value={open.values.weightKg}
+                onChange={(weightKg) => setOpenValues({ weightKg })}
+              />
+            )}
+            <RepsDial variant="scrub" value={open.values.reps} onChange={(reps) => setOpenValues({ reps })} />
+          </div>
+          <button type="button" className="session-set-delete btn-danger" onClick={deleteOpenSet}>
+            Delete set
+          </button>
+        </Sheet>
+      ) : null}
+
+      {undo === null ? null : <Snackbar message="Set deleted" actionLabel="Undo" onAction={undoDelete} />}
+
       {picking && addable !== undefined ? (
         <ExercisePicker
+          // DX-22: what is being added to is this Session, not the Workout it ran.
+          title="Add to this Session"
+          gymEquipment={props.gymEquipment ?? null}
           library={addable}
           taken={[...new Set(draft.entries.map((entry) => entry.exerciseId))]}
+          lastSets={lastSets}
           onPick={addExercise}
           onClose={() => setPicking(false)}
         />

@@ -19,6 +19,27 @@ export function setsRepsText(plan: Pick<ExercisePlan, 'sets' | 'repRange'>): str
   return `${plan.sets} × ${repRangeText(plan.repRange)}`
 }
 
+/**
+ * N2: a load cell as a Plan row writes it, the one string the Program tab and the Program editor
+ * share: `47.5 → 62.5` -> `47.5 → 62.5 kg`; `BW+5` and `14 ↑15` as said; `–` (no load) -> null.
+ */
+export function planLoadText(cell: string): string | null {
+  if (cell === '–' || cell === '') return null
+  if (cell.startsWith('BW')) return cell
+  return /\d$/.test(cell) ? `${cell} kg` : cell
+}
+
+/** N2: a Plan row's figure, `4 × 8–10 · 47.5 → 62.5 kg`, or the sets and reps alone with no load. */
+export function planRowText(plan: Pick<ExercisePlan, 'sets' | 'repRange'>, cell: string | null): string {
+  const load = cell === null ? null : planLoadText(cell)
+  return load ? `${setsRepsText(plan)} · ${load}` : setsRepsText(plan)
+}
+
+/** N2: a Workout's size line, `23 sets · ~70 min`, the same on the Program tab and in its editor. */
+export function workoutSizeText(sets: number, minutes: number): string {
+  return `${sets} sets · ~${minutes} min`
+}
+
 /** A count for display: whole numbers as they are, anything else rounded to the nearest one. */
 export function wholeCount(value: number): number {
   return Math.round(value)

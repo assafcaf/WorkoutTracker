@@ -4,7 +4,6 @@
 // per lift, one totals line; no muscles, no week line and no "Next". The finish summary (no Edit,
 // no Delete) is covered by SessionSummary.test.tsx.
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeAll, expect, test, vi } from 'vitest'
 import sessionsJson from '../test/fixtures/stats/sessions.json'
 import { loadCatalog, loadPrograms } from '../data/catalog'
@@ -86,7 +85,7 @@ test('V6 past summary drops the week line and labels the volume line', () => {
   expect(dialog.textContent).not.toContain('This week')
   expect(dialog.textContent).not.toContain('next up')
   expect(dialog.textContent).not.toContain('Next:')
-  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toMatch(/^[\d,]+ kg$/)
+  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toMatch(/^[\d,]+ kg lifted$/)
 })
 
 test('V6 past summary names the muscles "Muscles worked", in whole Sets', () => {
@@ -99,9 +98,37 @@ test('V6 past summary names the muscles "Muscles worked", in whole Sets', () => 
   expect(dialog.querySelectorAll('[data-muscle]')).toHaveLength(0)
 })
 
-test('V6 past summary keeps Delete workout, which calls onDelete', async () => {
+test('DX-14 Session detail has Edit as text in its header and a Back, and no Done bar or Delete link', async () => {
   const onDelete = vi.fn()
   const dialog = renderPast(onDelete)
-  await userEvent.click(within(dialog).getByRole('button', { name: 'Delete workout' }))
-  expect(onDelete).toHaveBeenCalledTimes(1)
+  expect(within(dialog).queryByRole('button', { name: /Delete/ })).toBeNull()
+  expect(within(dialog).queryByRole('button', { name: 'Done' })).toBeNull()
+  expect(dialog.querySelector('.session-summary-dock')).toBeNull()
+  const edit = within(dialog).getByRole('button', { name: 'Edit session' })
+  expect(edit.closest('.session-summary-bar')).not.toBeNull()
+  expect(within(dialog).getByRole('button', { name: 'Back' }).closest('.session-summary-bar')).not.toBeNull()
+})
+
+test('DX-06 Session detail embedded in a page has no panel and no bar of its own: the page carries ‹ and Edit', async () => {
+  const onEdit = vi.fn()
+  render(
+    <SessionSummary
+      session={mon12}
+      resolve={(id) => catalog.get(id)}
+      library={library}
+      workoutName={workout.name}
+      earlierSessions={sessions.filter((s) => s.startedAt < mon12.startedAt)}
+      planFor={(id) => workout.exercises.find((plan) => plan.exerciseId === id)}
+      workout={workout}
+      program={program}
+      onClose={vi.fn()}
+      onEdit={onEdit}
+      embedded
+    />,
+  )
+  expect(screen.queryByRole('dialog')).toBeNull()
+  const region = screen.getByRole('region', { name: 'Session summary' })
+  expect(within(region).queryByRole('button', { name: 'Back' })).toBeNull()
+  expect(within(region).queryByRole('button', { name: 'Edit session' })).toBeNull()
+  expect(region.querySelector('.session-summary-bar')).toBeNull()
 })

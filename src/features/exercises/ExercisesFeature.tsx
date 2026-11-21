@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import type { Muscle } from '../../types'
-import { MUSCLES } from '../../data/library'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { myLifts } from '../../domain/myLifts'
 import { newPlan, uuid } from '../../domain/programs'
-import { matchesExercise, matchesQuery } from '../../domain/search'
 import { CustomExerciseForm, type CustomExerciseValues } from '../../ui/CustomExerciseForm'
 import { GymEquipmentSwitches } from '../../ui/GymEquipmentSwitches'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
-import { LibraryList, MyLiftsList } from '../../ui/LibraryList'
-import { Select } from '../../ui/controls'
-import { Icon } from '../../ui/icons'
+import { LibraryList, myLiftRow } from '../../ui/LibraryList'
+import { lastSetTexts } from '../../ui/ExercisePicker'
+import { AppShell } from '../../ui/AppShell'
+import { SettingsPage } from '../../ui/SettingsPage'
 import type { AppRoute } from '../routes'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import { useServices } from '../ServicesProvider'
@@ -42,6 +41,11 @@ export type ExercisesFeatureProps = {
   onOpenLift?(exerciseId: string): void
   /** The clock My lifts reads its dates against; the device's by default. */
   now?: () => number
+  /**
+   * DX-08: the page's ‹. Given, the library draws its own pushed page in the Shell -- the title
+   * "Exercises" and "New exercise" as its header's text button.
+   */
+  onBack?(): void
 }
 
 /**
@@ -55,6 +59,7 @@ export function ExercisesFeature({
   onFiltersChange,
   onOpenLift,
   now = Date.now,
+  onBack,
 }: ExercisesFeatureProps): JSX.Element | null {
   const [ownFilters, setOwnFilters] = useState<LibraryFilters>(NO_LIBRARY_FILTERS)
   const filters = heldFilters ?? ownFilters
@@ -65,6 +70,8 @@ export function ExercisesFeature({
     onFiltersChange?.(next)
   }
   const [openLibraryId, setOpenLibraryId] = useState<string | null>(null)
+  /** DX-08: "My gym's equipment", pushed from the Edit beside the "My gym only" chip (V2-09). */
+  const [gymOpen, setGymOpen] = useState(false)
   /** The lift whose History overlay is open, when no `onOpenLift` is given. */
   const [historyLiftId, setHistoryLiftId] = useState<string | null>(null)
 
@@ -82,7 +89,29 @@ export function ExercisesFeature({
     ['preferences'],
   )
 
-  if (catalogData.status !== 'ready' || gymEquipment.status !== 'ready') return null
+  // DX-08: equipment page, pushed from the "Edit" beside the "My gym only" chip it feeds.
+  const page = (body: JSX.Element | null): JSX.Element | null =>
+    onBack === undefined ? body : (
+      <AppShell
+        title="Exercises"
+        onBack={onBack}
+        actions={
+          <button
+            type="button"
+            className="library-new btn-quiet"
+            onClick={() => {
+              setFormError(null)
+              setForm({ editing: null })
+            }}
+          >
+            New exercise
+          </button>
+        }
+      >
+        {body}
+      </AppShell>
+    )
+  if (catalogData.status !== 'ready' || gymEquipment.status !== 'ready') return page(null)
 
   const { catalog, library, videos } = catalogData.data
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
@@ -111,7 +140,24 @@ export function ExercisesFeature({
         activePlans.map((plan) => plan.exerciseId),
         sessions,
         resolve,
-      ).filter((lift) => matchesQuery(lift.name, search))
+      )
+  // DX-08: My lifts lead the one Exercise list, each with its last Set; under "All" they are not
+  // repeated, and every other row shows its own last Set when it has one.
+  const today = new Date(now())
+  const liftLibraryIds = new Set(
+    shownLifts.map((lift) => resolve(lift.exerciseId)?.libraryId).filter((id): id is string => id !== undefined),
+  )
+  const lead =
+    shownLifts.length === 0
+      ? undefined
+      : {
+          title: 'My lifts',
+          rows: shownLifts.map((lift) => {
+            const libraryId = resolve(lift.exerciseId)?.libraryId
+            return myLiftRow(lift, today, libraryId === undefined ? undefined : libraryMap.get(libraryId))
+          }),
+        }
+  const lastSets = lastSetTexts(sessions, resolve, today)
   const openLift = onOpenLift ?? setHistoryLiftId
   const historyExercise = historyLiftId === null ? undefined : resolve(historyLiftId)
 
@@ -165,7 +211,6 @@ export function ExercisesFeature({
   }
 
   const filteredLibrary = library.filter((exercise) => {
-    const matchesSearch = matchesExercise(exercise, search)
     const matchesMuscle = muscle === '' || exercise.primaryMuscles.includes(muscle as Muscle)
     const matchesEquipment =
       equipment === ''
@@ -173,78 +218,42 @@ export function ExercisesFeature({
         : equipment === 'none'
           ? exercise.equipment === null
           : exercise.equipment === equipment
-
-    return matchesSearch && matchesMuscle && matchesEquipment
+    return matchesMuscle && matchesEquipment && !liftLibraryIds.has(exercise.id)
   })
 
-  return (
+  // DX-08: the library is the one Exercise list -- search, "My gym only", My lifts, then All, in
+  // one scroll; the muscle and equipment selects are gone (a Region's muscles still narrow it).
+  return page(
     <>
-      <label className="library-search-field">
-        <Icon name="Search" size={18} />
-        <input
-          type="search"
-          aria-label="Search exercises"
-          placeholder="Search exercises"
-          className="library-search"
-          value={search}
-          onChange={(event) => setFilter({ search: event.target.value })}
-        />
-      </label>
-      {shownLifts.length === 0 ? null : (
-        <>
-          <h2 className="library-section-heading">My lifts</h2>
-          <MyLiftsList lifts={shownLifts} now={new Date(now())} onOpenLift={openLift} />
-          <h2 className="library-section-heading">{`All exercises (${library.length})`}</h2>
-        </>
-      )}
-      <div className="library-filters">
-        <Select
-          aria-label="Muscle"
-          className="library-filter"
-          value={muscle}
-          onChange={(event) => setFilter({ muscle: event.target.value })}
-        >
-          <option value="">All muscles</option>
-          {MUSCLES.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </Select>
-        <Select
-          aria-label="Equipment"
-          className="library-filter"
-          value={equipment}
-          onChange={(event) => setFilter({ equipment: event.target.value })}
-        >
-          <option value="">All equipment</option>
-          {equipmentOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <details className="library-gym">
-        <summary className="library-gym-summary">
-          <span>My gym&apos;s equipment</span>
-          <Icon name="ChevronRight" size={18} />
-        </summary>
-        <GymEquipmentSwitches
-          equipmentTypes={gymTypes}
-          gymEquipment={gymEquipment.data}
-          onChange={handleGymEquipmentChange}
-        />
-      </details>
+      {gymOpen ? (
+        <SettingsPage title="My gym's equipment" onBack={() => setGymOpen(false)}>
+          <GymEquipmentSwitches
+            equipmentTypes={gymTypes}
+            gymEquipment={gymEquipment.data}
+            onChange={handleGymEquipmentChange}
+          />
+        </SettingsPage>
+      ) : null}
       <LibraryList
         library={filteredLibrary}
         onOpen={setOpenLibraryId}
         gymEquipment={gymEquipment.data}
         initialMuscles={initialMuscles ?? undefined}
-        onNew={() => {
-          setFormError(null)
-          setForm({ editing: null })
-        }}
+        lead={lead}
+        onOpenLead={openLift}
+        lastSets={lastSets}
+        query={search}
+        onQueryChange={(next) => setFilter({ search: next })}
+        // DX-08: with its own page, New exercise is the header's text button instead.
+        onNew={
+          onBack !== undefined
+            ? undefined
+            : () => {
+                setFormError(null)
+                setForm({ editing: null })
+              }
+        }
+        onEditGym={() => setGymOpen(true)}
       />
       {openLibraryId === null ? null : (
         <DetailOverlay
@@ -273,6 +282,17 @@ export function ExercisesFeature({
             activePlans.find((plan) => plan.exerciseId === historyExercise.id) ?? newPlan(historyExercise.id)
           }
           onClose={() => setHistoryLiftId(null)}
+          renderInfo={(libraryId, nav) => (
+            <DetailOverlay
+              libraryId={libraryId}
+              catalog={catalog}
+              library={library}
+              videos={videos}
+              gymEquipment={gymEquipment.data}
+              onBack={nav.back}
+              onOpenDetail={nav.open}
+            />
+          )}
         />
       )}
       {form === null ? null : (

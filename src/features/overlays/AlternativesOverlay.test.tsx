@@ -1,18 +1,14 @@
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import { loadCatalog } from '../../data/catalog'
 import { loadLibrary } from '../../data/library'
-import { declarationsFor } from '../../test/cssAudit'
 import { AlternativesOverlay, type AlternativesOverlayProps } from './AlternativesOverlay'
 
-// D7: the overlay renders what App.tsx's alternatives branch renders today. Real bundled data:
-// the catalog's seated-biceps-curls ("Seated biceps curls") is library entry
-// Seated_Dumbbell_Curl ("Seated Dumbbell Curl"), and Hammer_Curls ("Hammer Curls") is one of
-// its ranked alternatives (hand-checked in src/ui/AlternativesList.test.tsx).
+// D7, DX-08: the swap overlay is the one Exercise picker: "Swap <Plan's name>" and an X in the
+// header, search, "My gym only", the ranked stand-ins under "Similar", then "All" in one scroll.
+// Real bundled data: the catalog's seated-biceps-curls ("Seated biceps curls") is library entry
+// Seated_Dumbbell_Curl, and Hammer_Curls ("Hammer Curls") is one of its ranked alternatives.
 
 async function props(over: Partial<AlternativesOverlayProps> = {}): Promise<AlternativesOverlayProps> {
   return {
@@ -27,164 +23,93 @@ async function props(over: Partial<AlternativesOverlayProps> = {}): Promise<Alte
   }
 }
 
-/** The ranked row named `name` exactly, read from `.alternatives-row-name`. */
-function rowNamed(name: string): HTMLElement {
-  const rows = screen.getAllByRole('listitem')
-  const found = rows.find(
-    (row) => (row.querySelector('.alternatives-row-name')?.textContent ?? '').trim() === name,
-  )
-  if (!found) throw new Error(`no row named "${name}" was rendered`)
-  return found
+/** The row names of the section headed `title`. */
+function sectionNames(title: string): string[] {
+  const section = screen.getByRole('region', { name: title })
+  return [...section.querySelectorAll('.picker-row-name')].map((name) => (name.textContent ?? '').trim())
 }
 
-test("D7 AlternativesOverlay is a modal dialog headed with the plan's own exercise name", async () => {
+test("D7 DX-08 the overlay is a modal dialog titled Swap and the plan's own exercise name", async () => {
   render(<AlternativesOverlay {...await props()} />)
 
-  const dialog = screen.getByRole('dialog', { name: 'Alternatives to Seated biceps curls' })
+  const dialog = screen.getByRole('dialog', { name: 'Swap Seated biceps curls' })
   expect(dialog).toHaveAttribute('aria-modal', 'true')
 })
 
-test('D7 AlternativesOverlay heads a swapped-in library exercise with its library name', async () => {
-  render(<AlternativesOverlay {...await props({ plannedId: 'Hammer_Curls' })} />)
+test('D7 a swapped-in library exercise is titled with its library name; a heading prop replaces it', async () => {
+  const { unmount } = render(<AlternativesOverlay {...await props({ plannedId: 'Hammer_Curls' })} />)
+  expect(screen.getByRole('dialog', { name: 'Swap Hammer Curls' })).toBeVisible()
+  unmount()
 
-  expect(screen.getByRole('dialog', { name: 'Alternatives to Hammer Curls' })).toBeVisible()
+  render(<AlternativesOverlay {...await props({ heading: 'Replace Seated biceps curls in Workout A' })} />)
+  expect(screen.getByRole('dialog', { name: 'Replace Seated biceps curls in Workout A' })).toBeVisible()
 })
 
-test('D7 AlternativesOverlay Close calls onClose', async () => {
-  const user = userEvent.setup()
+test('D7 the X calls onClose', async () => {
   const onClose = vi.fn()
-
   render(<AlternativesOverlay {...await props({ onClose })} />)
-  await user.click(screen.getByRole('button', { name: 'Close' }))
+
+  const close = screen.getByRole('button', { name: 'Close' })
+  expect(close).toHaveClass('icon-btn')
+  expect(close.querySelector('svg')).not.toBeNull()
+  await userEvent.click(close)
 
   expect(onClose).toHaveBeenCalledTimes(1)
 })
 
-test('D7 AlternativesOverlay "Do this instead" calls onPick with that alternative\'s id', async () => {
+test('DX-08 the whole row is the target: tapping it picks that alternative, no "Do this instead"', async () => {
   const user = userEvent.setup()
   const onPick = vi.fn()
-
   render(<AlternativesOverlay {...await props({ onPick })} />)
-  // V6-10: the list opens on its first 6 rows; Hammer Curls is found by a search.
-  await user.type(screen.getByRole('searchbox'), 'Hammer Curls')
-  await user.click(within(rowNamed('Hammer Curls')).getByRole('button', { name: 'Do Hammer Curls instead' }))
 
-  expect(onPick).toHaveBeenCalledTimes(1)
+  expect(screen.queryByRole('button', { name: /instead/ })).toBeNull()
+  await user.type(screen.getByRole('searchbox', { name: 'Search exercises' }), 'Hammer Curls')
+  await user.click(screen.getAllByRole('button', { name: 'Hammer Curls' })[0])
+
   expect(onPick).toHaveBeenCalledWith('Hammer_Curls')
 })
 
-test('D7 AlternativesOverlay renders nothing for a plannedId neither catalog nor library has', async () => {
+test('D7 the overlay renders nothing for a plannedId neither catalog nor library has', async () => {
   const { container } = render(<AlternativesOverlay {...await props({ plannedId: 'no-such-exercise' })} />)
 
   expect(container).toBeEmptyDOMElement()
 })
 
-// O24: heading + Close in one fixed top row, rows inset by --space-4.
-const uiDir = resolve(fileURLToPath(import.meta.url), '..', '..', '..', 'ui')
-const css = (name: string) => readFileSync(join(uiDir, name), 'utf-8')
-
-test('O24 heading and Close share one header row, heading first, Close last', async () => {
-  render(<AlternativesOverlay {...await props()} />)
-
-  const heading = screen.getByRole('heading', { name: /Alternatives to/ })
-  const close = screen.getByRole('button', { name: 'Close' })
-  const row = heading.parentElement as HTMLElement
-  expect(row).toBe(close.parentElement)
-  expect(row).not.toBe(screen.getByRole('dialog'))
-  expect(row.firstElementChild).toBe(heading)
-  expect(row.lastElementChild).toBe(close)
-})
-
-test('O24 the header row stays at the top while the list scrolls, Close on the right', async () => {
-  render(<AlternativesOverlay {...await props()} />)
-  const row = screen.getByRole('button', { name: 'Close' }).parentElement as HTMLElement
-
-  const declared = declarationsFor(css('AlternativesOverlay.css'), `.${row.className.split(' ')[0]}`)
-  expect(declared.get('position')).toBe('sticky')
-  expect(declared.get('top')).toBe('0')
-  expect(declared.get('display')).toBe('flex')
-  expect(declared.get('justify-content')).toBe('space-between')
-})
-
-test('O24 the search box and rows are inset by --space-4 on both sides', () => {
-  const declared = declarationsFor(css('AlternativesList.css'), '.alternatives-list')
-  const inline = declared.get('padding-inline') ?? declared.get('padding') ?? ''
-  const left = declared.get('padding-left') ?? ''
-  const right = declared.get('padding-right') ?? ''
-  const both =
-    inline === 'var(--space-4)' ||
-    /^0 var\(--space-4\)/.test(inline) ||
-    (left === 'var(--space-4)' && right === 'var(--space-4)')
-  expect(both).toBe(true)
-})
-
-// UX v6 (V5-11): the search box says what it searches, with a magnifier, and Close is an X
-// icon button at least 44 px, still named Close.
-test('V6 V5-11 the search box reads Search exercises beside a magnifier', async () => {
-  render(<AlternativesOverlay {...await props()} />)
-
-  const search = screen.getByRole('searchbox')
-  expect(search).toHaveAttribute('placeholder', 'Search exercises')
-  expect(search.closest('.alternatives-search-field')?.querySelector('svg')).not.toBeNull()
-})
-
-test('V6 V5-11 Close is an X icon button named Close, at least 44 px', async () => {
-  render(<AlternativesOverlay {...await props()} />)
-
-  const close = screen.getByRole('button', { name: 'Close' })
-  expect(close).toHaveClass('icon-btn')
-  expect(close.textContent).toBe('')
-  expect(close.querySelector('svg')).not.toBeNull()
-  const declared = declarationsFor(css('AlternativesOverlay.css'), '.alternatives-overlay-close')
-  expect(declared.get('min-width')).toBe('var(--tap-min)')
-  expect(declared.get('min-height')).toBe('var(--tap-min)')
-})
-
-// UX v6 (V6-10): the swap list is short and sensible: My gym's equipment, lifts with history
-// first under the lifter's own names, at most 6 rows, then "Show all".
-const rowNames = (): string[] =>
-  screen.getAllByRole('listitem').map((row) => (row.querySelector('.alternatives-row-name')?.textContent ?? '').trim())
-
-test('V6-10 Deadlift lists at most 6, the logged Hyper-extension first, with no band or chain variant', async () => {
+test('DX-08 Similar lists at most 6, the logged Hyper-extension first, then All carries the rest, no pager', async () => {
   render(<AlternativesOverlay {...await props({ plannedId: 'deadlift', loggedIds: ['deadlift', 'hyper-extension'] })} />)
 
-  const names = rowNames()
-  expect(names.length).toBeLessThanOrEqual(6)
-  expect(names[0]).toBe('Hyper-extension')
-  expect(names.join(' ')).not.toMatch(/band|chain/i)
-  // With the exercises-dataset extras the top 6 shift; a plain deadlift variant still ranks.
-  expect(names).toContain('Deficit Deadlift')
-  expect(screen.getByRole('button', { name: 'Do Hyper-extension instead' })).toBeVisible()
+  const similar = sectionNames('Similar')
+  expect(similar.length).toBeLessThanOrEqual(6)
+  expect(similar[0]).toBe('Hyper-extension')
+  expect(similar.join(' ')).not.toMatch(/band|chain/i)
+  expect(similar).toContain('Deficit Deadlift')
+  // Every other Exercise, in one continuous list after it; nothing repeats.
+  const all = sectionNames('All')
+  expect(all.length).toBeGreaterThan(500)
+  expect(all).toContain('Deadlift with Chains')
+  expect(all.filter((name) => similar.includes(name))).toEqual([])
+  expect(screen.queryByText(/Page \d+ of \d+/)).toBeNull()
+  expect(screen.queryByRole('button', { name: /^Show all|Next|Previous/ })).toBeNull()
 })
 
-test('V6-10 Show all lists the rest; a search looks through all of them', async () => {
+test("DX-08 My gym only is on by default and filters by the gym's equipment; off, it shows all", async () => {
   const user = userEvent.setup()
-  render(<AlternativesOverlay {...await props({ plannedId: 'deadlift' })} />)
-
-  await user.type(screen.getByRole('searchbox'), 'chains')
-  expect(rowNames()).toContain('Deadlift with Chains')
-  await user.clear(screen.getByRole('searchbox'))
-
-  const showAll = screen.getByRole('button', { name: /^Show all/ })
-  expect(showAll).toHaveClass('alternatives-show-all')
-  await user.click(showAll)
-  expect(rowNames().length).toBeGreaterThan(6)
-  expect(rowNames()).toContain('Deadlift with Bands')
-  expect(screen.queryByRole('button', { name: /^Show all/ })).toBeNull()
-})
-
-test("V6-10 My gym's equipment filters the swap list", async () => {
   render(<AlternativesOverlay {...await props({ plannedId: 'deadlift', gymEquipment: ['barbell'] })} />)
-  expect(rowNames()).not.toContain('Hyperextensions (Back Extensions)')
-  expect(rowNames()).not.toContain('Hyper-extension')
+
+  const chip = screen.getByRole('button', { name: 'My gym only' })
+  expect(chip).toHaveAttribute('aria-pressed', 'true')
+  expect(sectionNames('Similar')).not.toContain('Hyperextensions (Back Extensions)')
+  expect(sectionNames('All')).not.toContain('Dumbbell Bench Press')
+  await user.click(chip)
+  expect(sectionNames('All')).toContain('Dumbbell Bench Press')
 })
 
 test('V6-10 choosing a logged lift swaps to the lifter’s own Exercise, the one with the history', async () => {
-  const user = userEvent.setup()
   const onPick = vi.fn()
   render(<AlternativesOverlay {...await props({ plannedId: 'deadlift', loggedIds: ['hyper-extension'], onPick })} />)
 
-  await user.click(screen.getByRole('button', { name: 'Do Hyper-extension instead' }))
+  const similar = screen.getByRole('region', { name: 'Similar' })
+  await userEvent.click(within(similar).getByRole('button', { name: 'Hyper-extension' }))
 
   expect(onPick).toHaveBeenCalledWith('hyper-extension')
 })
@@ -196,7 +121,21 @@ test('V6-10 a lift already in today’s Workout is not offered as a swap', async
     />,
   )
 
-  expect(rowNames()).not.toContain('Hyper-extension')
-  expect(rowNames()).not.toContain('Hyperextensions (Back Extensions)')
-  expect(rowNames()).toContain('Deficit Deadlift')
+  const names = [...sectionNames('Similar'), ...sectionNames('All')]
+  expect(names).not.toContain('Hyper-extension')
+  expect(names).not.toContain('Hyperextensions (Back Extensions)')
+  expect(names).toContain('Deficit Deadlift')
+})
+
+test('DX-08 a row shows its muscle in grey and its last Set inline, with no coloured dot', async () => {
+  render(
+    <AlternativesOverlay
+      {...await props({ plannedId: 'deadlift', loggedIds: ['hyper-extension'], lastSets: new Map([['hyper-extension', '20 × 12 · 14 Oct']]) })}
+    />,
+  )
+
+  const row = within(screen.getByRole('region', { name: 'Similar' })).getByRole('button', { name: 'Hyper-extension' })
+  expect(row).toHaveAccessibleDescription(/20 × 12 · 14 Oct/)
+  expect(row.querySelector('.muscle-dot')).toBeNull()
+  expect(row.querySelector('.picker-row-meta')?.textContent).toMatch(/^lower back · 20 × 12 · 14 Oct$/)
 })
