@@ -54,9 +54,9 @@ test(
     const user = userEvent.setup()
     await renderApp()
     await openProgramTab(user)
-    await openProgramsPage(user)
 
-    await user.click(screen.getByRole('button', { name: 'New program' }))
+    // DX-04: a new user's Program tab is the choice list, with "New program" under it.
+    await user.click(await screen.findByRole('button', { name: 'New program' }, SETTLE))
 
     await screen.findByRole('heading', { name: 'New program' }, SETTLE)
   },

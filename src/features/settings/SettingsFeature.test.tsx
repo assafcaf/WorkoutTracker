@@ -162,7 +162,7 @@ test('O13 SettingsFeature switches the active Program when another one is chosen
 // --- O13: saves gym equipment ----------------------------------------------------------------
 
 test('O13 SettingsFeature saves the next gym equipment list when a type is unticked', async () => {
-  // V2-09: the switches moved to Program › Exercises, beside the "My gym only" chip they feed;
+  // V2-09: the switches moved to Program › Exercises, behind the "My gym only" chip they feed;
   // they save through the same preference as before.
   const user = userEvent.setup()
   const services = buildServices(fakeSync())
@@ -171,6 +171,8 @@ test('O13 SettingsFeature saves the next gym equipment list when a type is untic
       <ExercisesFeature initialMuscles={null} navigate={vi.fn()} />
     </ServicesProvider>,
   )
+  // DX-08: the switches sit on the gym's own page, behind the quiet "Edit" beside the chip.
+  await user.click(await screen.findByRole('button', { name: "Edit my gym's equipment" }, SETTLE))
   await waitFor(() => {
     expect(within(gymEquipmentGroup()).getAllByRole('switch').length).toBeGreaterThan(0)
   }, SETTLE)

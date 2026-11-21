@@ -5,6 +5,7 @@ import { resolveExercise } from '../../data/resolve'
 import { ServiceError, type ProgramsLoad } from '../../services'
 import { IN_PROGRESS_MESSAGE } from '../../services/programs'
 import { AppShell } from '../../ui/AppShell'
+import { Icon } from '../../ui/icons'
 import { ProgramEditor, type ExerciseSettings } from '../../ui/ProgramEditor'
 import { weekStart, type Weekday } from '../../domain/stats/weeks'
 import { isDeloadWeek } from '../../domain/deload'
@@ -330,7 +331,16 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
             canUse
             onChoose={handleActiveProgramChange}
           />
-          {/* DX-04: the choices above are the Programs; no second "Programs ›" row here. */}
+          {/* DX-04: the choices above are the Programs; no second "Programs ›" row here, so the
+              list's own "New program" sits under them. */}
+          <ul className="program-rows">
+            <li>
+              <button type="button" className="program-row cell" onClick={handleNewProgram}>
+                <span className="program-row-label">New program</span>
+                <Icon name="Plus" size={18} />
+              </button>
+            </li>
+          </ul>
           <ProgramLinks {...links} onOpenPrograms={undefined} />
         </div>
       </AppShell>

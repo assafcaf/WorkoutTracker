@@ -49,7 +49,9 @@ test('O21 a new user’s Program tab lists A/B Split with a Choose a Program row
   ).toBeVisible()
   // DX-04: the empty Program tab is "Choose a Program": the same rows as Train, then its list group.
   expect(screen.getByRole('heading', { level: 1, name: 'Choose a Program' })).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Programs' })).toBeVisible()
+  // DX-04: no duplicate "Programs" row; the list's "New program" sits under the choices.
+  expect(screen.queryByRole('button', { name: 'Programs' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'New program' })).toBeVisible()
 })
 
 test('O21 a new user’s Program tab does not list Full body starter', async () => {
