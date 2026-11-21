@@ -137,12 +137,10 @@
 
 .program-editor-heading {
   margin: var(--space-4) 0 0;
-  color: var(--color-muted);
-  font-size: var(--text-xs);
+  color: var(--color-text);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.06em;
-  line-height: 1rem;
-  text-transform: uppercase;
+  line-height: 1.25rem;
 }
 
 .program-editor-fault {
@@ -509,12 +507,10 @@
 }
 
 .program-editor-impact-label {
-  color: var(--color-muted);
-  font-size: var(--text-xs);
+  color: var(--color-text);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.06em;
-  line-height: 1rem;
-  text-transform: uppercase;
+  line-height: 1.25rem;
 }
 
 .program-editor-impact-caption {

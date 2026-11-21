@@ -34,7 +34,6 @@
 .compare-card-label {
   color: var(--color-muted);
   font-size: var(--text-xs);
-  text-transform: uppercase;
 }
 
 .compare-delete {

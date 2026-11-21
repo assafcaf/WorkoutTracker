@@ -28,11 +28,9 @@
 .home-date {
   flex: 1;
   margin: 0;
-  color: var(--color-muted);
-  font-size: var(--text-xs);
+  color: var(--color-text);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .home-trailing {
@@ -51,12 +49,10 @@
 /* The 12 px upper-case label every block opens with. */
 .home-label {
   margin: 0;
-  color: var(--color-muted);
-  font-size: var(--text-xs);
+  color: var(--color-text);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.06em;
-  line-height: 1rem;
-  text-transform: uppercase;
+  line-height: 1.25rem;
 }
 
 .home-chevron {
