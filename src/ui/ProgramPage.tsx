@@ -4,7 +4,7 @@ import { workoutEstimate } from '../domain/dashboard'
 import { familyWeekly } from '../domain/programVolume'
 import { formatRest } from '../domain/rest'
 import { Icon } from './icons'
-import { setsRepsText, wholeCount } from './program/planText'
+import { planRowText, wholeCount, workoutSizeText } from './program/planText'
 import './ProgramPage.css'
 
 /** The rest a Plan's row leaves unsaid (DX-16): only a different one is written out. */
@@ -53,8 +53,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 
   function renderPlan(plan: ExercisePlan, index: number): JSX.Element {
     const name = catalog.get(plan.exerciseId)?.name ?? plan.exerciseId
-    const load = props.loadOf ? loadText(props.loadOf(plan)) : null
-    const prescription = load ? `${setsRepsText(plan)} · ${load}` : setsRepsText(plan)
+    const prescription = planRowText(plan, props.loadOf ? props.loadOf(plan) : null)
     const rest = plan.restSeconds !== USUAL_REST_SECONDS ? `${formatRest(plan.restSeconds)} rest` : null
     const content = (
       <>
@@ -85,7 +84,7 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     return (
       <section key={workout.id} className="program-workout" aria-labelledby={headingId}>
         <h2 className="program-workout-title" id={headingId}>
-          {`${workout.name} · ${sets} sets · ~${minutes} min`}
+          {`${workout.name} · ${workoutSizeText(sets, minutes)}`}
         </h2>
         <ul className="program-plans" aria-label={workout.name}>
           {workout.exercises.map(renderPlan)}
@@ -114,13 +113,6 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
       <ProgramLinks {...links} />
     </div>
   )
-}
-
-/** `47.5 → 62.5` -> `47.5 → 62.5 kg`; `BW+5` and `14 ↑15` as said; `–` (no load) -> null. */
-function loadText(cell: string): string | null {
-  if (cell === '–' || cell === '') return null
-  if (cell.startsWith('BW')) return cell
-  return /\d$/.test(cell) ? `${cell} kg` : cell
 }
 
 export type ProgramLinksProps = {

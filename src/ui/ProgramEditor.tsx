@@ -15,7 +15,7 @@ import { Select, Switch } from './controls'
 import { Icon } from './icons'
 import { Stepper } from './Stepper'
 import { moveTo } from './program/listMoves'
-import { FAMILY_LABELS, setsRepsText, wholeCount } from './program/planText'
+import { FAMILY_LABELS, planRowText, setsRepsText, wholeCount, workoutSizeText } from './program/planText'
 import './ProgramEditor.css'
 
 /**
@@ -54,6 +54,13 @@ export type ProgramEditorProps = {
    * Starting weight field in its options.
    */
   nowLoad?(exerciseId: string, plan: ExercisePlan): string | null
+  /**
+   * N2: a Plan's load cell exactly as the Program tab writes it ("47.5 → 62.5", "BW+5", "–").
+   * Given, every Plan row shows the same figure the Program tab shows; omitted, the starting weight.
+   */
+  loadOf?(plan: ExercisePlan): string
+  /** N2: a Workout's minutes from the one estimate Train and the Program tab use; omitted, the plan estimate. */
+  minutesOf?(workout: Workout): number
   /**
    * The bar's title. Defaults to `New program` for a new Program and `Edit <name>` otherwise
    * (Progress Dashboard S7b: "Edit A/B Split").
@@ -221,7 +228,17 @@ function roundTo(value: number): number {
  * DX-16/17: a Plan row's lifter shorthand: "4 × 8–10 · 47.5 kg", "3 × 8–12 · BW"; the weight is
  * the Plan's own starting weight, else the Exercise's.
  */
-function planLine(plan: DraftPlan, exercise: Exercise | undefined, bodyweight: boolean): string {
+function planLine(
+  plan: DraftPlan,
+  exercise: Exercise | undefined,
+  bodyweight: boolean,
+  loadOf?: (plan: ExercisePlan) => string,
+): string {
+  // N2: the Program tab's own figure, so the two screens never disagree.
+  if (loadOf && exercise !== undefined) {
+    const draft = toPlan(plan)
+    return planRowText({ sets: typed(plan.sets), repRange: [typed(plan.minReps), typed(plan.maxReps)] }, loadOf(draft))
+  }
   const reps = setsRepsText({ sets: typed(plan.sets), repRange: [typed(plan.minReps), typed(plan.maxReps)] })
   if (bodyweight) return `${reps} · ${loadText({ weightKg: null, loadKg: exercise?.startLoadKg })}`
   const weight = plan.startWeight !== '' ? plan.startWeight : exercise?.startWeight
@@ -258,6 +275,8 @@ export function ProgramEditor({
   title,
   exerciseSettings,
   nowLoad,
+  loadOf,
+  minutesOf,
 }: ProgramEditorProps): JSX.Element {
   const [name, setName] = useState(initial.name)
   const [workouts, setWorkouts] = useState<DraftWorkout[]>(() =>
@@ -763,7 +782,7 @@ export function ProgramEditor({
         const workoutPath = `workouts.${fullIndex}`
         const nameFault = faultMessage(faults, `${workoutPath}.name`)
         const exercisesFault = faultMessage(faults, `${workoutPath}.exercises`)
-        const estimate = workoutEstimate({
+        const asWorkout: Workout = {
           id: workout.id,
           name: workout.name,
           exercises: workout.plans.map((p) => ({
@@ -772,7 +791,9 @@ export function ProgramEditor({
             repRange: [typed(p.minReps), typed(p.maxReps)],
             restSeconds: typed(String(restSecondsOf(p.rest))),
           })),
-        })
+        }
+        const estimate = workoutEstimate(asWorkout)
+        const minutes = minutesOf?.(asWorkout) ?? estimate.minutes
         const label = workout.name === '' ? `Workout ${displayIndex + 1}` : workout.name
         const naming = renaming.has(workout.id) || nameFault !== undefined
         const ordering = reordering.has(workout.id)
@@ -794,7 +815,7 @@ export function ProgramEditor({
             ) : (
               <h3 className="program-editor-workout-title">{label}</h3>
             )}
-            <span className="program-editor-workout-size">{`${estimate.sets} sets · ~${estimate.minutes} min`}</span>
+            <span className="program-editor-workout-size">{workoutSizeText(estimate.sets, minutes)}</span>
           </div>
           <div className="program-editor-workout-actions" role="group" aria-label={`${label} actions`}>
             <button
@@ -857,7 +878,7 @@ export function ProgramEditor({
               const isDropTarget = drag !== null && drag.workoutId === workout.id && drag.to === j && drag.from !== j
               const planPath = `${workoutPath}.exercises.${j}`
               const planFault = faults.find((f) => f.path.startsWith(`${planPath}.`))
-              const line = planLine(plan, exercise, bodyweightFor(exercise))
+              const line = planLine(plan, exercise, bodyweightFor(exercise), loadOf)
               const restNote = restSecondsOf(plan.rest) !== DEFAULT_REST ? ` · ${plan.rest} rest` : ''
               return (
                 <li

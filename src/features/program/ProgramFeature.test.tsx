@@ -438,3 +438,36 @@ test('V6-15 Program read mode shows the Back squat row opening 47.5 → 62.5, an
   // The median of the last three logged durations, as Train's dock says it.
   expect(screen.getByRole('heading', { level: 2, name: 'Workout A · 23 sets · ~70 min' })).toBeVisible()
 })
+
+test('N2 the Program editor shows the same Plan figures and minutes as the Program tab', async () => {
+  const day = 24 * 60 * 60 * 1000
+  // Three logged 70-minute Workout A Sessions: the minutes come from them, the squat load too.
+  const logged: Session[] = [3, 2, 1].map((back, i) => ({
+    id: `s-${i}`,
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt: NOW - back * 7 * day,
+    finishedAt: NOW - back * 7 * day + 70 * 60 * 1000,
+    entries: [0, 1, 2, 3].map((setIndex) => ({
+      exerciseId: 'back-squat',
+      setIndex,
+      weightKg: 60,
+      reps: 10,
+      loggedAt: NOW - back * 7 * day + setIndex * 60_000,
+    })),
+  }))
+  await putSessions(logged)
+  const user = userEvent.setup()
+  renderFeature()
+
+  const tabHeading = await screen.findByRole('heading', { name: /^Workout A · \d+ sets · ~70 min$/ }, SETTLE)
+  const tabSquat = within(screen.getByRole('list', { name: 'Workout A' })).getAllByRole('button')[0]
+  const tabFigure = tabSquat.querySelector('.program-plan-figure')?.textContent ?? ''
+  expect(tabFigure).toMatch(/kg/)
+
+  await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
+  const editorA = await screen.findByRole('region', { name: 'Workout A' }, SETTLE)
+  expect(within(editorA).getByText(tabHeading.textContent!.replace('Workout A · ', ''))).toBeVisible()
+  const editorSquat = within(editorA).getByRole('button', { name: /^Back squat, / })
+  expect(editorSquat.querySelector('.program-editor-plan-line')?.textContent).toBe(tabFigure)
+})

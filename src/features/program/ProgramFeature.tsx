@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Exercise, LibraryExercise, Program, Session, UserProgram } from '../../types'
+import type { Exercise, ExercisePlan, LibraryExercise, Program, Session, UserProgram, Workout } from '../../types'
 import { copyProgram, uuid, visiblePrograms } from '../../domain/programs'
 import { resolveExercise } from '../../data/resolve'
 import { ServiceError, type ProgramsLoad } from '../../services'
@@ -227,6 +227,28 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
     return resolveExercise(id, catalog, libraryMap)
   }
 
+  const active = offeredPrograms.find((program) => program.id === activeProgramId) ?? null
+  const at = now()
+  const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
+  // V4-08: the Deload week; Train's Presets follow the same stored week.
+  const deloadOn = deloadData.status === 'ready' && isDeloadWeek(deloadData.data, at, weekStartsOn)
+  // V6-15: the loads and minutes read finished Sessions, as Train does.
+  const finished = sessions.filter((session) => session.finishedAt != null)
+  // V6-15 / N2: the kg each lift opens on and the minutes, as Train says them -- the one pair of
+  // functions the Program tab and the Program editor both read.
+  function planLoadOf(plan: ExercisePlan): string {
+    const listed = resolveListExercise(plan.exerciseId)
+    if (listed === undefined) return '–'
+    const exercise = applyBodyweight(
+      listed,
+      exerciseSettingsData.status === 'ready' ? exerciseSettingsData.data.bodyweight : {},
+    )
+    return kgCellText(liftPlan(exercise, plan, finished, at, deloadOn))
+  }
+  function minutesIn(program: Program) {
+    return (workout: Workout): number => workoutMinutes(program, workout, finished).minutes
+  }
+
   if (editor) {
     // Full screen, no shell and no tab bar (S7b): the editor carries its own Cancel / title /
     // Save bar, and the way out of it is its own Cancel or Save.
@@ -249,17 +271,12 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
           if (exercise === undefined || lastEntriesOf(sessions, exerciseId).length === 0) return null
           return nextLoadText(exercise, plan, sessions)
         }}
+        loadOf={planLoadOf}
+        minutesOf={minutesIn(editor.initial)}
       />
     )
   }
 
-  const active = offeredPrograms.find((program) => program.id === activeProgramId) ?? null
-  const at = now()
-  const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
-  // V4-08: the Deload week; Train's Presets follow the same stored week.
-  const deloadOn = deloadData.status === 'ready' && isDeloadWeek(deloadData.data, at, weekStartsOn)
-  // V6-15: the loads and minutes read finished Sessions, as Train does.
-  const finished = sessions.filter((session) => session.finishedAt != null)
   const backupDue =
     lastExportedData.status === 'ready' && sessionsData.status === 'ready'
       ? isBackupDue(lastExportedData.data, at, finished.length > 0)
@@ -354,16 +371,8 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
           ),
         )}
         // V6-15: the kg each lift opens on and the minutes, as Train says them.
-        loadOf={(plan) => {
-          const listed = resolveListExercise(plan.exerciseId)
-          if (listed === undefined) return '–'
-          const exercise = applyBodyweight(
-            listed,
-            exerciseSettingsData.status === 'ready' ? exerciseSettingsData.data.bodyweight : {},
-          )
-          return kgCellText(liftPlan(exercise, plan, finished, at, deloadOn))
-        }}
-        minutesOf={(workout) => workoutMinutes(active, workout, finished).minutes}
+        loadOf={planLoadOf}
+        minutesOf={minutesIn(active)}
         links={links}
       />
     </AppShell>
