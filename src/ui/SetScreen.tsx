@@ -359,16 +359,8 @@ type Ramp = { steps: WarmupStep[]; index: number; workingKg: number; workingReps
 /** A logged Set's values in the edit sheet (S2b), its RIR among them. */
 type Draft = OpenSet & { rir: 0 | 1 | 2 | 3 | null }
 
-/**
- * DX-07: a tap on the current Set's cell steps its kind on: Working -> Warm-up -> Drop -> Failure
- * -> AMRAP -> Working. The cell's corner shows the kind's letter, as a logged Set's does.
- */
-const KIND_CYCLE: (SetKind | null)[] = [null, 'warmup', 'drop', 'failure', 'amrap']
-
-/** The kind after `kind` in the cycle. */
-function nextKind(kind: SetKind | null): SetKind | null {
-  return KIND_CYCLE[(KIND_CYCLE.indexOf(kind) + 1) % KIND_CYCLE.length]
-}
+/** N3: the kinds the "Working ▾" button lists, in the order a trainee meets them. */
+const KIND_LIST: (SetKind | null)[] = [null, 'warmup', 'drop', 'failure', 'amrap']
 
 /**
  * The log-confirmation message for `setIndex`, once it has been logged with `weightKg` and
@@ -596,6 +588,8 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // DX-07: the Notes sheet (the one overlay Notes opens), and the W cell's ramp rows, inline
   // under the cells rather than in a sheet.
   const [notesOpen, setNotesOpen] = useState(false)
+  // N3: the short list of Set kinds, opened only by the labelled "Working ▾" button.
+  const [kindsOpen, setKindsOpen] = useState(false)
   const [warmupsOpen, setWarmupsOpen] = useState(false)
 
   // V1-17: the swap's Undo, shown from the screen's opening until it times out or a Set is logged.
@@ -1633,6 +1627,38 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       </Sheet>
     )
 
+  // N3: the Set kind's short list, one row per kind, the chosen one checked; a tap picks and closes.
+  const kindTitle = `${onWarmup ? 'Warm-up' : `Set ${position}`} type`
+  const kindSheet = !kindsOpen ? null : (
+    <Sheet label={kindTitle} onClose={() => setKindsOpen(false)}>
+      <div className="sheet-head">
+        <h2 className="sheet-title">{kindTitle}</h2>
+        <button type="button" className="sheet-close icon-btn" aria-label="Close" onClick={() => setKindsOpen(false)}>
+          <Icon name="X" size={24} />
+        </button>
+      </div>
+      <ul className="set-kind-list" role="radiogroup" aria-label={kindTitle}>
+        {KIND_LIST.map((kind) => (
+          <li key={kind ?? 'working'}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={open.kind === kind}
+              className="set-kind-option cell"
+              onClick={() => {
+                chooseKind(kind)
+                setKindsOpen(false)
+              }}
+            >
+              <span>{setKindLabel(kind)}</span>
+              {open.kind === kind ? <Icon name="Check" size={18} /> : null}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Sheet>
+  )
+
   const editedEntry = editing === null ? undefined : loggedSets.find((entry) => entry.setIndex === editing)
   const editTitle =
     editing === null
@@ -1828,7 +1854,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
         {/* DX-07: the Exercise's tools as three labelled text buttons under its name, no "...":
             Swap opens the alternatives, Notes the note's short sheet, History the lift page. */}
-        {onOpenAlternatives === undefined && noteTools === null && onOpenHistory === undefined ? null : (
+        {onOpenAlternatives === undefined && noteTools === null && onOpenHistory === undefined && done ? null : (
           <div className="set-tools-row" role="group" aria-label="Exercise tools">
             {onOpenAlternatives === undefined ? null : (
               <button type="button" className="set-tool btn-quiet" onClick={() => onOpenAlternatives(exercise.id)}>
@@ -1850,6 +1876,18 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {onOpenHistory === undefined ? null : (
               <button type="button" className="set-tool btn-quiet" onClick={() => onOpenHistory(exercise.id)}>
                 History
+              </button>
+            )}
+            {/* N3: the Set kind is its own labelled control, never a side effect of a chip tap. */}
+            {done ? null : (
+              <button
+                type="button"
+                className="set-tool set-tool-kind btn-quiet"
+                aria-haspopup="dialog"
+                aria-label={`${onWarmup ? 'Warm-up' : `Set ${position}`} type: ${setKindLabel(open.kind)}`}
+                onClick={() => setKindsOpen(true)}
+              >
+                {`${setKindLabel(open.kind)} ▾`}
               </button>
             )}
           </div>
@@ -1898,16 +1936,13 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               data-current={warmupCell.current ? 'true' : undefined}
               data-kind="warmup"
               aria-label={
-                warmupCell.current
-                  ? `Set type: Warm-up, ${warmupCell.done} of ${warmupCell.total} done. Tap for the next type`
-                  : warmupCell.complete
-                    ? 'Warm-ups done'
-                    : `Warm-ups ${warmupCell.done} of ${warmupCell.total} done`
+                warmupCell.complete
+                  ? 'Warm-ups done'
+                  : `Warm-ups ${warmupCell.done} of ${warmupCell.total} done`
               }
-              aria-expanded={warmupCell.current ? undefined : warmupsOpen}
-              // DX-07: on the Warm-up being lifted the cell is the current Set's, so a tap steps
-              // its kind on; otherwise it opens the ramp's rows inline.
-              onClick={() => (warmupCell.current ? chooseKind(nextKind('warmup')) : setWarmupsOpen(!warmupsOpen))}
+              aria-expanded={warmupsOpen}
+              // DX-07 / N3: the W cell only opens the ramp's rows inline; the kind has its own button.
+              onClick={() => setWarmupsOpen(!warmupsOpen)}
             >
               <span className="set-cell-value">
                 {warmupCell.complete ? '✓' : `${warmupCell.done}/${warmupCell.total}`}
@@ -1964,16 +1999,19 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           )}
           {cells.map((cell) =>
             cell.current ? (
-              // DX-07: the current Set's cell is its kind control: a tap steps the kind on, and
-              // its corner shows the kind's letter, as a logged Set's does.
+              // N3: a tap on the current Set's cell only selects that Set (during Rest it brings
+              // its Dials back); it never changes the kind. Its corner shows the kind's letter.
               <SetCell
                 key={cell.position}
                 state="current"
                 className="set-cell set-cell--current cell"
                 headClassName="set-cell-index"
-                aria-label={`Set ${cell.position} type: ${setKindLabel(open.kind)}. Tap for the next type`}
+                aria-label={`Set ${cell.position}, ${setKindLabel(open.kind).toLowerCase()}: on the Dials`}
+                aria-current="step"
                 data-kind={open.kind ?? undefined}
-                onClick={() => chooseKind(nextKind(open.kind))}
+                onClick={() => {
+                  if (collapsed) setNextExpanded(true)
+                }}
                 index={
                   <>
                     {cell.position}
@@ -2209,6 +2247,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {actionBar === null ? dock : createPortal(dock, actionBar)}
 
       {notesSheet}
+      {kindSheet}
       {editSheet}
       {restDialSheet}
 

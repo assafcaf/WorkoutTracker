@@ -52,6 +52,7 @@
 }
 
 .set-tool {
+  min-width: var(--tap-min);
   min-height: var(--tap-min);
   padding: 0;
   border: 0;
@@ -1332,4 +1333,26 @@
   }
 
 
+}
+
+/* N3: the Set kind's short list -- full-width 48 px rows, the chosen one checked. */
+.set-kind-list {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-4);
+  list-style: none;
+}
+
+.set-kind-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-hairline);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  text-align: left;
 }

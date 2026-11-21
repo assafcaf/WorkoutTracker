@@ -190,7 +190,7 @@ async function openWarmups(user: UserEvent): Promise<HTMLElement> {
   return screen.queryByRole('group', { name: 'Warm-ups' }) ?? document.body
 }
 
-/** The current Set's kind control (DX-07): its cell, "Set 1 type: Working. Tap for the next type". */
+/** The current Set's kind control (N3): the labelled "Working ▾" button, "Set 1 type: Working". */
 function kindControl(): HTMLElement {
   return screen.getByRole('button', { name: /type: / })
 }
@@ -215,9 +215,12 @@ const KIND_NAMES: Record<string, string> = {
   AMRAP: 'AMRAP',
 }
 
-/** DX-07: steps the current Set's kind on, a tap on its cell at a time, until it is `label`. */
+/** N3: picks the current Set's kind from the list the "Working ▾" button opens. */
 async function chooseKindInTools(user: UserEvent, label: string): Promise<void> {
-  for (let tap = 0; tap < 5 && currentKind() !== label; tap += 1) await user.click(kindControl())
+  if (currentKind() !== label) {
+    await user.click(kindControl())
+    await user.click(within(screen.getByRole('dialog')).getByRole('radio', { name: KIND_NAMES[label] ?? label }))
+  }
   expect(currentKind()).toBe(label)
 }
 
@@ -895,7 +898,7 @@ test('V1-16 DX-07 no "..." and no Step or Bodyweight control: Swap, Notes and Hi
   expect(screen.queryByRole('combobox')).toBeNull()
   expect(screen.queryByRole('button', { name: /What can I lift/ })).toBeNull()
   const row = screen.getByRole('group', { name: 'Exercise tools' })
-  expect(within(row).getAllByRole('button').map((button) => button.textContent)).toEqual(['Swap', 'Notes', 'History'])
+  expect(within(row).getAllByRole('button').map((button) => button.textContent)).toEqual(['Swap', 'Notes', 'History', 'Working ▾'])
   const name = screen.getByRole('heading', { name: 'Back squat' })
   expect(name.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   await user.click(within(row).getByRole('button', { name: 'History' }))
@@ -4408,8 +4411,8 @@ test('S4 Use 2:40 for Back squat saves the usual rest as the Plan rest', async (
   })
 
   // V3-03, V1-16: offered in ⋯ › Rest time's own sheet.
-  const sheet = await openTools(user)
-  await user.click(within(sheet).getByRole('button', { name: /^Rest time/ }))
+  await openTools(user)
+  await user.click(screen.getByRole('button', { name: /^Rest time/ }))
   await user.click(await screen.findByRole('button', { name: 'Use 2:40 for Back squat' }))
 
   expect(onUseRestForExercise).toHaveBeenCalledWith(160)
@@ -4478,15 +4481,33 @@ test('DX-07 Notes opens one short sheet with the note, its Close and Escape put 
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 
-test('DX-07 a tap on the current Set cell steps its kind Working, Warm-up, Drop, Failure, AMRAP and back', async () => {
+test('N3 a tap on the current Set cell never changes its kind', async () => {
   const { user } = renderSetScreen()
 
-  const seen: string[] = [currentKind()]
-  for (let tap = 0; tap < 5; tap += 1) {
-    await user.click(kindControl())
-    seen.push(currentKind())
-  }
-  expect(seen).toEqual(['Working', 'W-up', 'Drop', 'Fail', 'AMRAP', 'Working'])
+  for (let tap = 0; tap < 3; tap += 1) await user.click(currentCell())
+  expect(currentKind()).toBe('Working')
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+test('N3 the labelled "Working ▾" button opens one short list of kinds; a pick sets it and closes', async () => {
+  const { user } = renderSetScreen()
+
+  const button = screen.getByRole('button', { name: 'Set 1 type: Working' })
+  expect(button).toHaveTextContent('Working ▾')
+  expect(within(screen.getByRole('group', { name: 'Exercise tools' })).getByRole('button', { name: /type: / })).toBe(button)
+  await user.click(button)
+  const sheet = screen.getByRole('dialog', { name: 'Set 1 type' })
+  expect(within(sheet).getAllByRole('radio').map((radio) => radio.textContent)).toEqual([
+    'Working',
+    'Warm-up',
+    'Drop',
+    'Failure',
+    'AMRAP',
+  ])
+  expect(within(sheet).getByRole('radio', { name: 'Working' })).toHaveAttribute('aria-checked', 'true')
+  await user.click(within(sheet).getByRole('radio', { name: 'Failure' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Set 1 type: Failure' })).toHaveTextContent('Failure ▾')
 })
 
 test('DX-07 the current cell\'s corner shows the kind letter, as a logged Set\'s does', async () => {
@@ -4606,9 +4627,9 @@ test('V2-02 the Use offer joins the countdown row, named in full for a screen re
   // V3-03: the usual rest's offer left the rest dock for ⋯ › Rest time, still named in full.
   expect(document.querySelector('.rest-panel')?.textContent).not.toMatch(/Use/)
   const user = userEvent.setup()
-  const sheet = await openTools(user)
+  await openTools(user)
   // V1-16: one level down, in Rest time's own sheet.
-  await user.click(within(sheet).getByRole('button', { name: /^Rest time/ }))
+  await user.click(screen.getByRole('button', { name: /^Rest time/ }))
   const offer = within(await screen.findByRole('dialog', { name: 'Rest' })).getByRole('button', {
     name: 'Use 2:40 for Back squat',
   })
