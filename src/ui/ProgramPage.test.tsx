@@ -8,15 +8,13 @@ import { expect, test, vi } from 'vitest'
 import assafJson from '../data/programs/assaf-ab-2026.json'
 import exercisesJson from '../data/exercises.json'
 import libraryJson from '../data/library/exercises.json'
-import { plannedAgainstRange } from '../domain/setRange'
 import { declarationsFor } from '../test/cssAudit'
 import type { Exercise, LibraryExercise, Program } from '../types'
-import { muscleVerdict, ProgramPage, type ProgramPageProps } from './ProgramPage'
+import { ProgramPage, type ProgramPageProps } from './ProgramPage'
 
 const assaf = assafJson as unknown as Program
 const catalog = new Map((exercisesJson as Exercise[]).map((e) => [e.id, e] as const))
 const library = new Map((libraryJson as LibraryExercise[]).map((e) => [e.id, e] as const))
-const lookup = (id: string): Exercise | undefined => catalog.get(id)
 
 function renderPage(overrides: Partial<ProgramPageProps> = {}) {
   const links = { onOpenPrograms: vi.fn(), onOpenDeload: vi.fn(), onOpenExercises: vi.fn(), onOpenSettings: vi.fn() }
@@ -58,27 +56,20 @@ test('DX-16 a Plan row opens its lift page', async () => {
   expect(onOpenLift).toHaveBeenCalledWith('deadlift')
 })
 
-test('DX-03 one muscles row, "69 sets a week · …", opens Progress › Muscles', async () => {
+test('DX-03 one muscles row, "69 sets a week · <the Muscles verdict>", opens Progress › Muscles', async () => {
   const user = userEvent.setup()
   const onOpenMuscles = vi.fn()
-  renderPage({ onOpenMuscles })
-  const row = screen.getByRole('button', { name: `69 sets a week · ${muscleVerdict(assaf, lookup, library)}` })
+  renderPage({ onOpenMuscles, muscleVerdict: 'Shoulders above the typical range (24 sets/week)' })
+  const row = screen.getByRole('button', { name: '69 sets a week · Shoulders above the typical range (24 sets/week)' })
   await user.click(row)
   expect(onOpenMuscles).toHaveBeenCalledTimes(1)
   expect(screen.queryByText('Needs a decision')).toBeNull()
   expect(document.querySelector('.body-map')).toBeNull()
 })
 
-test('DX-03 the muscle verdict names one or two muscles out of range, counts more, or says all are in it', () => {
-  const range = plannedAgainstRange(assaf, lookup, library)
-  const out = range.filter((row) => row.standing !== 'within')
-  const verdict = muscleVerdict(assaf, lookup, library)
-  if (out.length === 0) expect(verdict).toBe('every muscle in range')
-  else if (out.length > 2) expect(verdict).toBe(`${out.length} muscles out of range`)
-  else expect(verdict).toMatch(/(above|below) range/)
-
-  const one: Program = { ...assaf, workouts: [{ id: 'w', name: 'W', exercises: [{ ...assaf.workouts[0].exercises[0], sets: 2 }] }], sessionsPerWeek: 1 }
-  expect(muscleVerdict(one, lookup, library)).toMatch(/muscles out of range$/)
+test('DX-03 with no verdict to give, the muscles row gives the count alone', () => {
+  renderPage({ onOpenMuscles: vi.fn() })
+  expect(screen.getByRole('button', { name: '69 sets a week' })).toBeTruthy()
 })
 
 test('DX-04 the list group: Programs, Deload week, Exercises, Settings, each a row that opens its page', async () => {

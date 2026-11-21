@@ -1,76 +1,70 @@
-// Test helpers for starting a workout. v7: the app opens on Home, whose dock starts the workout
-// due; Home's Today panel (or its "Next" row) opens the workout page, whose dock offers the due
-// workout with one "Start" button and steps through the Program's others with the › arrow beside
-// its title ("Next workout: <name>").
-import { screen, within } from '@testing-library/react'
+// Test helpers for starting a workout. DX-01: the app opens on Train, which offers the one
+// Workout due ("Start Workout A", or "Start Workout B anyway" on a rest day) and nothing else:
+// there are no arrows to step to another. A test that needs a Workout other than the first makes
+// it due before rendering, with `makeDue`, the way a trainee gets there: by having done the one
+// before it.
+import { screen } from '@testing-library/react'
 import type userEvent from '@testing-library/user-event'
+import { db } from '../storage/db'
+import type { Session, SetEntry } from '../types'
 
 type User = ReturnType<typeof userEvent.setup>
 
 const SETTLE = { timeout: 3000 }
+const DAY = 86_400_000
 
-/** The workout page, if it is on screen. */
-function workoutPage(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('.dashboard')
-}
-
-/** The workout page's › arrow ("Next workout: Workout B"), if it is on screen. */
-function changeButton(): HTMLElement | null {
-  const page = workoutPage()
-  return page ? within(page).queryByRole('button', { name: /^Next workout: / }) : null
-}
-
-/** The dock's start button, once Home or the workout page has loaded its Program. */
+/** The dock's start button, once Train has loaded its Program. */
 export async function findStartButton(): Promise<HTMLElement> {
   return screen.findByRole('button', { name: /^Start / }, SETTLE)
 }
 
-/**
- * On Home, opens the workout page from the Today panel (or, just after a Session, from the
- * "Next" row); on the workout page already, does nothing.
- */
-export async function openWorkoutPage(user: User): Promise<boolean> {
-  if (workoutPage()) return false
-  const door = await screen.findByRole('button', { name: /Open the workout\.$/ }, SETTLE).catch(() => null)
-  if (!door || workoutPage()) return false
-  await user.click(door)
-  return true
-}
-
-/** Steps the workout page to `workoutName` with its › arrow and returns its start button. */
-export async function offerWorkout(user: User, workoutName: string): Promise<HTMLElement> {
-  const name = `Start ${workoutName}`
-  if (!screen.queryByRole('button', { name })) await openWorkoutPage(user)
-  await findStartButton()
-  for (let step = 0; step < 10 && !screen.queryByRole('button', { name }); step += 1) {
-    const change = changeButton()
-    if (!change) break
-    await user.click(change)
+/** Train's start button for `workoutName` (filled, or "… anyway" on a rest day). */
+export async function offerWorkout(_user: User, workoutName: string): Promise<HTMLElement> {
+  const name = new RegExp(`^Start ${workoutName.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}( anyway)?$`)
+  const offered = await findStartButton()
+  if (!name.test(offered.textContent ?? '')) {
+    throw new Error(`Train offers "${offered.textContent}", not ${workoutName}: make it due first (makeDue)`)
   }
-  return screen.findByRole('button', { name }, SETTLE)
+  return screen.getByRole('button', { name })
 }
 
-/** Starts `workoutName` from the dock (Home's, or the workout page's). */
+/** Starts `workoutName` from Train's dock. */
 export async function startFromDashboard(user: User, workoutName: string): Promise<void> {
   await user.click(await offerWorkout(user, workoutName))
 }
 
-/** Every workout the workout page can start, in the order its › arrow steps through them. */
-export async function workoutsOffered(user: User): Promise<string[]> {
-  const opened = await openWorkoutPage(user)
-  // The workout page loads its own data: wait for its dock, not Home's.
-  if (opened) await screen.findByRole('button', { name: 'Back' }, SETTLE)
-  const first = (await findStartButton()).textContent ?? ''
-  const names = [first.replace(/^Start /, '')]
-  for (let step = 0; step < 10; step += 1) {
-    const change = changeButton()
-    if (!change) break
-    await user.click(change)
-    const next = ((await findStartButton()).textContent ?? '').replace(/^Start /, '')
-    if (next === names[0]) break
-    names.push(next)
+/** The one Workout Train offers to start. */
+export async function workoutOffered(): Promise<string> {
+  return ((await findStartButton()).textContent ?? '').replace(/^Start /, '').replace(/ anyway$/, '')
+}
+
+/**
+ * Stores a finished Session of `previousWorkoutId` on `programId`, two days before `now`, with
+ * enough working Sets that it is not a short Session (V6-11) -- so the Workout after it in the
+ * rotation is the one due. Its Sets are on an id no Program plans, so no lift's Preset moves.
+ */
+export async function makeDue(programId: string, previousWorkoutId: string, now = Date.now()): Promise<void> {
+  const startedAt = now - 2 * DAY
+  const entries: SetEntry[] = Array.from({ length: 40 }, (_, setIndex) => ({
+    exerciseId: 'test-filler',
+    setIndex,
+    weightKg: null,
+    reps: 1,
+    loggedAt: startedAt + setIndex * 1000,
+  }))
+  const session: Session = {
+    id: `seed-${programId}-${previousWorkoutId}`,
+    programId,
+    workoutId: previousWorkoutId,
+    startedAt,
+    finishedAt: startedAt + 3_600_000,
+    entries,
+    updatedAt: startedAt + 3_600_000,
   }
-  // Back where it started, as the trainee found it: on Home if it opened the workout page.
-  if (opened) await user.click(screen.getByRole('button', { name: 'Back' }))
-  return names
+  await db.sessions.put(session)
+}
+
+/** Makes Workout B of the A/B Split due (Workout A done two days ago). */
+export function makeWorkoutBDue(now = Date.now()): Promise<void> {
+  return makeDue('assaf-ab-2026', 'workout-a', now)
 }

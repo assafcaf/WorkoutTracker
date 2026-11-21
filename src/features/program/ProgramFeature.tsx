@@ -21,6 +21,7 @@ import { wholeCount } from '../../ui/program/planText'
 import { ProgramChoices } from '../dashboard/DashboardView'
 import { programChoiceSummary } from '../dashboard/DashboardScreen'
 import { useServiceData } from '../useServiceData'
+import { musclesLine, progressModel } from '../progress/Home'
 import { useServices } from '../ServicesProvider'
 import type { AppRoute } from '../routes'
 
@@ -345,6 +346,13 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         onOpenLift={(exerciseId) => props.navigate({ tab: 'lift', exerciseId })}
         // DX-03: one row into Progress › Muscles.
         onOpenMuscles={() => props.navigate({ tab: 'muscles' })}
+        // DX-03: the verdict Progress › Muscles gives, over the same Sessions.
+        muscleVerdict={musclesLine(
+          progressModel(
+            { program: active, sessions: finished, resolve: resolveListExercise, library: libraryMap, weekStart: weekStartsOn, bodyLog: [] },
+            at,
+          ),
+        )}
         // V6-15: the kg each lift opens on and the minutes, as Train says them.
         loadOf={(plan) => {
           const listed = resolveListExercise(plan.exerciseId)

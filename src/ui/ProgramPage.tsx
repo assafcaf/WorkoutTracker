@@ -3,8 +3,6 @@ import { assertPlansAreInCatalog } from '../data/catalog'
 import { workoutEstimate } from '../domain/dashboard'
 import { familyWeekly } from '../domain/programVolume'
 import { formatRest } from '../domain/rest'
-import { plannedAgainstRange } from '../domain/setRange'
-import { muscleLabel } from '../domain/muscleLabels'
 import { Icon } from './icons'
 import { setsRepsText, wholeCount } from './program/planText'
 import './ProgramPage.css'
@@ -28,6 +26,8 @@ export type ProgramPageProps = {
   onOpenLift?(exerciseId: string): void
   /** DX-03: the muscles row opens Progress › Muscles. */
   onOpenMuscles?(): void
+  /** DX-03: the Muscles verdict, the same line Progress › Muscles gives; omitted, the row gives the count only. */
+  muscleVerdict?: string
   /** The list group under the Workouts (DX-04). */
   links: ProgramLinksProps
   /** A line the page shows when set (a refused change). */
@@ -95,7 +95,8 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   }
 
   const { total } = familyWeekly(program, lookup, library)
-  const muscles = `${wholeCount(total)} sets a week · ${muscleVerdict(program, lookup, library)}`
+  const count = `${wholeCount(total)} sets a week`
+  const muscles = props.muscleVerdict ? `${count} · ${props.muscleVerdict}` : count
 
   return (
     <div className="program-page">
@@ -120,28 +121,6 @@ function loadText(cell: string): string | null {
   if (cell === '–' || cell === '') return null
   if (cell.startsWith('BW')) return cell
   return /\d$/.test(cell) ? `${cell} kg` : cell
-}
-
-/**
- * DX-03: the planned muscles in one phrase: the muscles outside the weekly set range, or that
- * every one is in it. One or two are named ("Shoulders above range"); more are counted.
- */
-export function muscleVerdict(
-  program: Program,
-  lookup: (id: string) => Exercise | undefined,
-  library: Map<string, LibraryExercise>,
-): string {
-  const range = plannedAgainstRange(program, lookup, library)
-  const above = range.filter((row) => row.standing === 'above')
-  const below = range.filter((row) => row.standing === 'below')
-  const out = above.length + below.length
-  if (out === 0) return 'every muscle in range'
-  if (out > 2) return `${out} muscles out of range`
-  const names = (rows: typeof range): string => rows.map((row) => muscleLabel(row.muscle)).join(' and ')
-  const parts: string[] = []
-  if (above.length > 0) parts.push(`${names(above)} above range`)
-  if (below.length > 0) parts.push(`${names(below)} below range`)
-  return parts.join(', ')
 }
 
 export type ProgramLinksProps = {

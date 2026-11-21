@@ -108,7 +108,8 @@ test('DX-04 Programs, Deload week, Exercises and Settings are each a labelled ro
   expect(rows.map((row) => row.textContent)).toEqual(['Programs', 'Deload week', 'Exercises', 'Settings'])
   await user.click(screen.getByRole('button', { name: 'Exercises' }))
   await user.click(screen.getByRole('button', { name: /^Settings/ }))
-  expect(navigate.mock.calls).toEqual([[{ tab: 'exercises' }], [{ tab: 'settings' }]])
+  expect(navigate).toHaveBeenNthCalledWith(1, { tab: 'exercises' })
+  expect(navigate).toHaveBeenNthCalledWith(2, { tab: 'settings' })
 })
 
 test('DX-03 the Program tab has no decision list and no muscle chart: one muscles row opens Progress › Muscles', async () => {

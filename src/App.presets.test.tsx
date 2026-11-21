@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
-import { workoutsOffered } from './test/dashboard'
+import { workoutOffered } from './test/dashboard'
 import { db } from './storage/db'
 import { FakeSyncServer } from './test/fakeSyncServer'
 
@@ -38,16 +38,18 @@ async function openProgramTab(user: ReturnType<typeof userEvent.setup>): Promise
 
 // --- O21: a new user's Program tab offers only A/B Split -------------------------------------
 
-test('O21 a new user’s Program tab lists A/B Split with a Use this button', async () => {
+test('O21 a new user’s Program tab lists A/B Split with a Choose a Program row', async () => {
   const user = userEvent.setup()
   await renderApp()
 
   await openProgramTab(user)
 
   expect(
-    await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE),
+    await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE),
   ).toBeVisible()
-  expect(screen.getByRole('button', { name: 'New program' })).toBeVisible()
+  // DX-04: the empty Program tab is "Choose a Program": the same rows as Train, then its list group.
+  expect(screen.getByRole('heading', { level: 1, name: 'Choose a Program' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Programs' })).toBeVisible()
 })
 
 test('O21 a new user’s Program tab does not list Full body starter', async () => {
@@ -55,31 +57,31 @@ test('O21 a new user’s Program tab does not list Full body starter', async () 
   await renderApp()
 
   await openProgramTab(user)
-  await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE)
+  await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE)
 
   expect(screen.queryByText('Full body starter')).toBeNull()
 })
 
-test('O21 pressing Use this on A/B Split makes it active and the Workout tab offers Workout A and B', async () => {
+test('O21 choosing A/B Split makes it active and the Workout tab offers Workout A and B', async () => {
   const user = userEvent.setup()
   await renderApp()
 
   await openProgramTab(user)
-  await user.click(await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE))
 
-  await user.click(await screen.findByRole('button', { name: 'Home' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: 'Train' }, SETTLE))
 
-  // The Dashboard's dock offers Workout A, due first, and "Change" steps to Workout B.
+  // DX-01: Train offers Workout A, due first, and only it.
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
-  expect(await workoutsOffered(user)).toEqual(['Workout A', 'Workout B'])
+  expect(await workoutOffered()).toBe('Workout A')
 })
 
-test('O21 pressing Use this on A/B Split stores it as the active program', async () => {
+test('O21 choosing A/B Split stores it as the active program', async () => {
   const user = userEvent.setup()
   await renderApp()
 
   await openProgramTab(user)
-  await user.click(await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE))
 
   await waitFor(async () => {
     expect((await db.settings.get('activeProgramId'))?.value).toBe('assaf-ab-2026')
@@ -95,9 +97,9 @@ test('O21 with an active program the Program tab still does not list Full body s
 
   await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
   await openProgramTab(user)
-  // The program list is the Programs panel behind the head's overflow (S7a).
+  // DX-04: the program list is the Programs page, behind its row.
   await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
-  await screen.findByRole('radio', { name: 'A/B Split' }, SETTLE)
+  await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE)
 
   expect(screen.queryByText('Full body starter')).toBeNull()
 })
@@ -110,22 +112,22 @@ test('O37 a new user Program tab offers Upper/Lower next to A/B Split', async ()
 
   await openProgramTab(user)
 
-  expect(await screen.findByRole('button', { name: 'Use this A/B Split' }, SETTLE)).toBeVisible()
-  expect(await screen.findByRole('button', { name: 'Use this Upper/Lower' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('button', { name: /^Upper\/Lower/ }, SETTLE)).toBeVisible()
 })
 
-test('O37 pressing Use this on Upper/Lower stores it and the Workout tab offers Upper and Lower', async () => {
+test('O37 choosing Upper/Lower stores it and the Workout tab offers Upper and Lower', async () => {
   const user = userEvent.setup()
   await renderApp()
 
   await openProgramTab(user)
-  await user.click(await screen.findByRole('button', { name: 'Use this Upper/Lower' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Upper\/Lower/ }, SETTLE))
 
   await waitFor(async () => {
     expect((await db.settings.get('activeProgramId'))?.value).toBe('upper-lower')
   }, SETTLE)
-  await user.click(await screen.findByRole('button', { name: 'Home' }, SETTLE))
-  expect(await workoutsOffered(user)).toEqual(['Upper', 'Lower'])
+  await user.click(await screen.findByRole('button', { name: 'Train' }, SETTLE))
+  expect(await workoutOffered()).toBe('Upper')
 })
 
 test('O37 nothing is active for a new user, so A/B Split stays the default', async () => {
@@ -141,7 +143,9 @@ test('O21 with an active program Settings still does not list Full body starter'
   await renderApp()
 
   await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)
-  await user.click(await screen.findByRole('button', { name: 'Settings' }, SETTLE))
+  // DX-04: Settings is the Program tab's Settings row.
+  await openProgramTab(user)
+  await user.click(await screen.findByRole('button', { name: /^Settings/ }, SETTLE))
   // V2-09: Settings lists no Programs at all now; the Program tab is where they are chosen.
   await screen.findByRole('group', { name: 'Workout' }, SETTLE)
 
