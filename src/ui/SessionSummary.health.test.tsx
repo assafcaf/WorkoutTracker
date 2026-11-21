@@ -47,8 +47,14 @@ test('O31 Send to Apple Health opens the Shortcut URL through openUrl', () => {
   expect(openUrl).toHaveBeenCalledWith(healthShortcutUrl(SESSION, 'Workout A'))
 })
 
-test('O31 a How to set it up link points at the setup doc', () => {
+/** DX-23: Settings' Apple Health is one row that pushes its page. */
+function openHealthPage(): void {
   render(<AppleHealthSettings />)
+  fireEvent.click(screen.getByRole('button', { name: /^Apple Health/ }))
+}
+
+test('O31 a How to set it up link points at the setup doc', () => {
+  openHealthPage()
   expect(screen.getByRole('link', { name: 'How to set it up' }).getAttribute('href')).toBe(
     'https://github.com/assafcaf/WorkoutTracker/blob/main/docs/apple-health-shortcut.md',
   )
@@ -74,7 +80,7 @@ test('O2 the first Send to Apple Health opens the guide and still opens the Shor
 })
 
 test('O2 after Done, it is set up the guide stays closed on Send and is remembered', () => {
-  render(<AppleHealthSettings />)
+  openHealthPage()
   fireEvent.click(screen.getByRole('button', { name: 'Set up Apple Health' }))
   expect(screen.getByRole('list', { name: 'Apple Health setup steps' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: "Done, it's set up" }))
@@ -96,8 +102,9 @@ test('O3 the summary shows the hint until the setup is confirmed', () => {
   expect(screen.getByText("If iOS says it can't find the shortcut, set it up first in Settings › Apple Health.")).toBeTruthy()
 })
 
-test('V2-10 Settings carries the Apple Health setup block and its hint until confirmed', () => {
-  render(<AppleHealthSettings />)
+test('V2-10 DX-23 Settings carries an Apple Health row whose page holds the setup block and its hint', () => {
+  openHealthPage()
   expect(screen.getByRole('region', { name: 'Apple Health' })).toBeTruthy()
+  expect(screen.getByRole('dialog', { name: 'Apple Health' })).toBeTruthy()
   expect(screen.getByText("If iOS says it can't find the shortcut, set it up first.")).toBeTruthy()
 })

@@ -59,12 +59,12 @@ async function logButton(): Promise<HTMLElement> {
   return screen.findByRole('button', { name: /^Log set / }, SETTLE)
 }
 
-/** From the open Set screen: Swap under the name (DX-07), then "Do <name> instead". */
+/** From the open Set screen: Swap under the name (DX-07), then the chosen row (DX-08). */
 async function swapTo(user: UserEvent, plannedName: string, chosenName: string): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Swap' }, SETTLE))
-  const dialog = await screen.findByRole('dialog', { name: `Alternatives to ${plannedName}` }, SETTLE)
+  const dialog = await screen.findByRole('dialog', { name: `Swap ${plannedName}` }, SETTLE)
   await user.type(within(dialog).getByRole('searchbox'), chosenName)
-  await user.click(await within(dialog).findByRole('button', { name: `Do ${chosenName} instead` }, SETTLE))
+  await user.click((await within(dialog).findAllByRole('button', { name: chosenName }, SETTLE))[0])
   await screen.findByRole('heading', { level: 1, name: chosenName }, SETTLE)
 }
 

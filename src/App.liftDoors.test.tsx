@@ -121,7 +121,7 @@ test(
     await renderApp()
     await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
     await user.click(await screen.findByRole('radio', { name: 'Exercises' }, SETTLE))
-    const mine = await screen.findByRole('list', { name: 'My lifts' }, SETTLE)
+    const mine = await screen.findByRole('region', { name: 'My lifts' }, SETTLE)
     await user.click(within(mine).getByRole('button', { name: /^Back squat/ }))
     await expectLiftPage('Back squat')
     expect(screen.queryByRole('dialog')).toBeNull()

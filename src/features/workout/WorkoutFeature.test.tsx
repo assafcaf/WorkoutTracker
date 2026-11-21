@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
@@ -109,17 +109,9 @@ async function storedActiveSession(): Promise<Session | null> {
 /** From Workout B's seated biceps curls set screen: swaps it for Hammer Curls. */
 async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLElement> {
   await toolsRow(user, 'Swap')
-  await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
-  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
-  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
-  const hammerRowName = await screen.findByText(
-    'Hammer Curls',
-    { selector: '.alternatives-row-name' },
-    SETTLE,
-  )
-  const hammerRow = hammerRowName.closest('li')
-  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  await user.click(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' }))
+  await screen.findByRole('dialog', { name: 'Swap Seated biceps curls' }, SETTLE)
+  // DX-08: the one Exercise picker; a row swaps to its Exercise in one tap.
+  await user.click(await hammerCurlsRow())
   // The swap now stays on the Set screen (E16-T12); the list row is one All away.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await screen.findByRole('button', { name: /^Log set / }, SETTLE)
@@ -304,7 +296,7 @@ test('O9 Do this instead on Hammer Curls in the alternatives overlay swaps the e
   const swappedRow = await swapSeatedCurlsForHammerCurls(user)
 
   expect(swappedRow).toBeVisible()
-  expect(screen.queryByRole('dialog', { name: 'Alternatives to Seated biceps curls' })).toBeNull()
+  expect(screen.queryByRole('dialog', { name: 'Swap Seated biceps curls' })).toBeNull()
   const stored = await storedActiveSession()
   expect(stored?.swaps).toEqual({ 'seated-biceps-curls': 'Hammer_Curls' })
 })
@@ -335,16 +327,10 @@ async function openSeatedCurlsAtSet2(user: UserEvent): Promise<void> {
   await screen.findByText('Set 2 of 3', undefined, SETTLE)
 }
 
-/** The Hammer Curls row of whichever overlay is open, found as `swapSeatedCurlsForHammerCurls` does. */
+/** The Hammer Curls row of the open Swap picker (DX-08): one button, named after its Exercise. */
 async function hammerCurlsRow(rowName = 'Hammer Curls'): Promise<HTMLElement> {
-  // V6-10: the swap list opens on its first 6 rows; the rest are under Show all (the detail
-  // overlay's Similar exercises has none).
-  const showAll = screen.queryByRole('button', { name: /^Show all/ })
-  if (showAll) fireEvent.click(showAll)
-  const name = await screen.findByText(rowName, { selector: '.alternatives-row-name' }, SETTLE)
-  const row = name.closest('li')
-  if (!row) throw new Error('the Hammer Curls row is not inside a list item')
-  return row
+  const dialog = await screen.findByRole('dialog', { name: 'Swap Seated biceps curls' }, SETTLE)
+  return (await within(dialog).findAllByRole('button', { name: rowName }, SETTLE))[0]
 }
 
 async function expectHammerCurlsOnSet2(
@@ -369,8 +355,7 @@ test('O22 choosing an Alternative from the list at Set 2 opens the chosen Exerci
   await openSeatedCurlsAtSet2(user)
 
   await toolsRow(user, 'Swap')
-  await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
-  await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do Hammer Curls instead' }))
+  await user.click(await hammerCurlsRow())
 
   await expectHammerCurlsOnSet2(user)
 })
@@ -379,8 +364,7 @@ test('O22 after choosing an Alternative the Workout’s list row names it with "
   const { user } = renderFeature(await servicesOnAssafAB())
   await openSeatedCurlsAtSet2(user)
   await toolsRow(user, 'Swap')
-  await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
-  await user.click(within(await hammerCurlsRow()).getByRole('button', { name: 'Do Hammer Curls instead' }))
+  await user.click(await hammerCurlsRow())
   await screen.findByRole('heading', { level: 1, name: 'Hammer Curls' }, SETTLE)
 
   await user.click(screen.getByRole('radio', { name: 'All' }))
