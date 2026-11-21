@@ -9,7 +9,8 @@ import { GymEquipmentSwitches } from '../../ui/GymEquipmentSwitches'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
 import { LibraryList, myLiftRow } from '../../ui/LibraryList'
 import { lastSetTexts } from '../../ui/ExercisePicker'
-import { Icon } from '../../ui/icons'
+import { AppShell } from '../../ui/AppShell'
+import { SettingsPage } from '../../ui/SettingsPage'
 import type { AppRoute } from '../routes'
 import { DetailOverlay } from '../overlays/DetailOverlay'
 import { useServices } from '../ServicesProvider'
@@ -40,6 +41,11 @@ export type ExercisesFeatureProps = {
   onOpenLift?(exerciseId: string): void
   /** The clock My lifts reads its dates against; the device's by default. */
   now?: () => number
+  /**
+   * DX-08: the page's ‹. Given, the library draws its own pushed page in the Shell -- the title
+   * "Exercises" and "New exercise" as its header's text button.
+   */
+  onBack?(): void
 }
 
 /**
@@ -53,6 +59,7 @@ export function ExercisesFeature({
   onFiltersChange,
   onOpenLift,
   now = Date.now,
+  onBack,
 }: ExercisesFeatureProps): JSX.Element | null {
   const [ownFilters, setOwnFilters] = useState<LibraryFilters>(NO_LIBRARY_FILTERS)
   const filters = heldFilters ?? ownFilters
@@ -63,6 +70,8 @@ export function ExercisesFeature({
     onFiltersChange?.(next)
   }
   const [openLibraryId, setOpenLibraryId] = useState<string | null>(null)
+  /** DX-08: "My gym's equipment", pushed from the Edit beside the "My gym only" chip (V2-09). */
+  const [gymOpen, setGymOpen] = useState(false)
   /** The lift whose History overlay is open, when no `onOpenLift` is given. */
   const [historyLiftId, setHistoryLiftId] = useState<string | null>(null)
 
@@ -80,7 +89,29 @@ export function ExercisesFeature({
     ['preferences'],
   )
 
-  if (catalogData.status !== 'ready' || gymEquipment.status !== 'ready') return null
+  // DX-08: equipment page, pushed from the "Edit" beside the "My gym only" chip it feeds.
+  const page = (body: JSX.Element | null): JSX.Element | null =>
+    onBack === undefined ? body : (
+      <AppShell
+        title="Exercises"
+        onBack={onBack}
+        actions={
+          <button
+            type="button"
+            className="library-new btn-quiet"
+            onClick={() => {
+              setFormError(null)
+              setForm({ editing: null })
+            }}
+          >
+            New exercise
+          </button>
+        }
+      >
+        {body}
+      </AppShell>
+    )
+  if (catalogData.status !== 'ready' || gymEquipment.status !== 'ready') return page(null)
 
   const { catalog, library, videos } = catalogData.data
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
@@ -192,19 +223,17 @@ export function ExercisesFeature({
 
   // DX-08: the library is the one Exercise list -- search, "My gym only", My lifts, then All, in
   // one scroll; the muscle and equipment selects are gone (a Region's muscles still narrow it).
-  return (
+  return page(
     <>
-      <details className="library-gym">
-        <summary className="library-gym-summary">
-          <span>My gym&apos;s equipment</span>
-          <Icon name="ChevronRight" size={18} />
-        </summary>
-        <GymEquipmentSwitches
-          equipmentTypes={gymTypes}
-          gymEquipment={gymEquipment.data}
-          onChange={handleGymEquipmentChange}
-        />
-      </details>
+      {gymOpen ? (
+        <SettingsPage title="My gym's equipment" onBack={() => setGymOpen(false)}>
+          <GymEquipmentSwitches
+            equipmentTypes={gymTypes}
+            gymEquipment={gymEquipment.data}
+            onChange={handleGymEquipmentChange}
+          />
+        </SettingsPage>
+      ) : null}
       <LibraryList
         library={filteredLibrary}
         onOpen={setOpenLibraryId}
@@ -215,10 +244,16 @@ export function ExercisesFeature({
         lastSets={lastSets}
         query={search}
         onQueryChange={(next) => setFilter({ search: next })}
-        onNew={() => {
-          setFormError(null)
-          setForm({ editing: null })
-        }}
+        // DX-08: with its own page, New exercise is the header's text button instead.
+        onNew={
+          onBack !== undefined
+            ? undefined
+            : () => {
+                setFormError(null)
+                setForm({ editing: null })
+              }
+        }
+        onEditGym={() => setGymOpen(true)}
       />
       {openLibraryId === null ? null : (
         <DetailOverlay

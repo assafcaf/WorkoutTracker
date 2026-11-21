@@ -1,6 +1,6 @@
 /* The Exercise library (Program › Exercises). Its search, chip and rows are the one Exercise list
- * (DX-08, ExercisePicker.css); this sheet holds only what the library adds: "New exercise" and
- * the folded "My gym's equipment" row.
+ * (DX-08, ExercisePicker.css); this sheet holds only what the library adds: "New exercise" (its
+ * header's text button) and the "Edit" of the gym's equipment beside the chip.
  *
  * Every colour comes through a `var(--…)` from src/styles/tokens.css. `.library-new` carries
  * `min-height: var(--tap-min)` on its bare selector, as the tap-target audit reads it.
@@ -12,37 +12,13 @@
   gap: 10px;
 }
 
-/* "My gym's equipment" (V2-09, moved here from Settings): a folded row that opens the switches
- * the "My gym only" chip reads. */
-.library-gym {
-  margin-bottom: 10px;
-}
-
-.library-gym-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* "Edit" beside the "My gym only" chip (V2-09, DX-08): opens the gym's equipment page. */
+.library-edit-gym {
+  min-width: var(--tap-min);
   min-height: var(--tap-min);
-  padding: 0 var(--space-1);
-  color: var(--color-secondary);
+  padding: 0 var(--space-2);
   font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  list-style: none;
-  cursor: pointer;
-}
-
-.library-gym-summary::-webkit-details-marker {
-  display: none;
-}
-
-.library-gym-summary > svg {
-  flex: none;
-  color: var(--color-muted);
-  transition: transform 120ms ease;
-}
-
-.library-gym[open] > .library-gym-summary > svg {
-  transform: rotate(90deg);
+  font-weight: var(--weight-semibold);
 }
 
 /* The picker's own fieldset (App.tsx), around the workout start buttons: a fieldset renders
@@ -54,9 +30,10 @@
   margin: 0;
 }
 
-/* "New exercise" (custom exercises): a text button at the tap floor, at the start of the row. */
+/* "New exercise" (custom exercises): a text button at the tap floor, in the page's header. */
 .library-new {
   align-self: flex-start;
+  min-width: var(--tap-min);
   min-height: var(--tap-min);
   padding: 0 var(--space-1);
   font-size: var(--text-md);

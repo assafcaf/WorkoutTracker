@@ -67,6 +67,8 @@ export type LibraryListProps = {
   onPick?(id: string): void
   /** When given, a `New exercise` button calls it (E19-T11). */
   onNew?(): void
+  /** DX-08: when given, a quiet "Edit" beside the "My gym only" chip opens the gym's equipment. */
+  onEditGym?(): void
   /** A section before "All" (the library's "My lifts"); a tap on one of its rows goes to `onOpenLead`. */
   lead?: PickerSection
   onOpenLead?(key: string): void
@@ -89,6 +91,7 @@ export function LibraryList({
   initialMuscles,
   onPick,
   onNew,
+  onEditGym,
   lead,
   onOpenLead,
   lastSets,
@@ -114,6 +117,13 @@ export function LibraryList({
           if (leadKeys.has(key) && onOpenLead) onOpenLead(key)
           else open(key)
         }}
+        chipAction={
+          onEditGym === undefined ? undefined : (
+            <button type="button" className="library-edit-gym btn-quiet" aria-label="Edit my gym's equipment" onClick={onEditGym}>
+              Edit
+            </button>
+          )
+        }
         tools={
           onNew === undefined ? undefined : (
             <button type="button" className="library-new btn-quiet" onClick={onNew}>

@@ -255,6 +255,12 @@ export function SessionsScreen({
     ['preferences'],
   )
 
+  // DX-08: the Session editor's picker offers "My gym only" like every picker.
+  const gymEquipmentData = useServiceData(
+    (services) => services.preferences.gymEquipment().catch((): string[] | null => null),
+    ['preferences'],
+  )
+
   const bodyLogData = useServiceData(
     (services) => services.preferences.bodyLog().catch((): BodyLog => []),
     ['preferences'],
@@ -321,6 +327,7 @@ export function SessionsScreen({
             addable={addable}
             plannedIds={plannedIdsOf(editSession)}
             lastSets={lastSets}
+            gymEquipment={gymEquipmentData.status === 'ready' ? gymEquipmentData.data : null}
             onSave={async (draft) => {
               await services.sessions.save(draft)
               setEditingId(null)
@@ -346,6 +353,7 @@ export function SessionsScreen({
             addable={addable}
             plannedIds={plannedIdsOf(pastDraft)}
             lastSets={lastSets}
+            gymEquipment={gymEquipmentData.status === 'ready' ? gymEquipmentData.data : null}
             onSave={async (draft) => {
               await services.sessions.logPast(draft)
               setPastDraft(null)

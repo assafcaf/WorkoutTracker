@@ -1503,6 +1503,8 @@ export function WorkoutFeature({
             ...located.workout.exercises.map((plan) => plan.exerciseId),
             ...Object.values(session.swaps ?? {}),
           ]}
+          // DX-08: "My gym only", as on every picker.
+          gymEquipment={gymEquipment}
           onPick={(id) => void handleAddExercise(id)}
           onClose={() => setAdding(false)}
         />

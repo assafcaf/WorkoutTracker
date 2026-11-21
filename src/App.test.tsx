@@ -1877,7 +1877,7 @@ const EQUIPMENT_TYPES = Array.from(new Set(LIBRARY.map((exercise) => exercise.eq
 const MACHINE_EXERCISE_NAME = 'Ab Crunch Machine'
 
 test('S14 opening Settings with no saved gym equipment lists every library equipment type except body only, all ticked', async () => {
-  // V2-09: the switches live on Program › Exercises now, folded under "My gym's equipment".
+  // V2-09: the switches live on Program › Exercises, behind the Edit beside "My gym only" (DX-08).
   const user = userEvent.setup()
   await renderApp()
   await findStartButton()
@@ -1919,10 +1919,10 @@ test('S14 unticking machine in Settings persists across a reload', async () => {
   expect(screen.getByRole('switch', { name: 'barbell' })).toBeChecked()
 })
 
-/** Opens Program › Exercises and unfolds "My gym's equipment" (V2-09). */
+/** Opens Program › Exercises and, from the Edit beside "My gym only", "My gym's equipment" (V2-09, DX-08). */
 async function openGymEquipment(user: UserEvent): Promise<void> {
   await pressTab(user, 'Exercises')
-  await user.click(await screen.findByText("My gym's equipment", {}, SETTLE))
+  await user.click(await screen.findByRole('button', { name: "Edit my gym's equipment" }, SETTLE))
 }
 
 test('S15 with machine unticked, the Exercises tab opens with the My gym only chip on and no machine exercises listed', async () => {

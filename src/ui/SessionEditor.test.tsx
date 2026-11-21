@@ -554,12 +554,12 @@ test('V6-13 Add exercise picks an Exercise and adds it with one Set, open on the
   const user = userEvent.setup()
 
   await user.click(screen.getByRole('button', { name: 'Add exercise' }))
-  const picker = screen.getByRole('dialog', { name: 'Add to Upper A' })
+  const picker = screen.getByRole('dialog', { name: 'Add to this Session' })
   // Already in the Session: not offered again.
   expect(within(picker).queryByRole('button', { name: 'Back squat' })).toBeNull()
   await user.click(within(picker).getByRole('button', { name: 'Dips' }))
 
-  expect(screen.queryByRole('dialog', { name: 'Add to Upper A' })).toBeNull()
+  expect(screen.queryByRole('dialog', { name: 'Add to this Session' })).toBeNull()
   // The new Set opens in its sheet.
   const sheet = screen.getByRole('dialog', { name: 'Dips · Set 1' })
   await user.click(within(sheet).getByRole('button', { name: 'Save' }))

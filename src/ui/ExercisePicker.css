@@ -94,23 +94,17 @@
 
 .picker-chips {
   display: flex;
+  align-items: center;
   gap: var(--space-2);
 }
 
-/* "My gym only": drawn 36 px, tapped across the 44 px floor. */
+/* "My gym only": a 44 px tall chip, at the tap floor itself (DX-18). */
 .chip.picker-gym-chip {
-  position: relative;
-  height: 36px;
-  min-height: 36px;
+  height: var(--tap-min);
+  min-height: var(--tap-min);
   padding: 0 var(--space-3);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-}
-
-.picker-gym-chip::after {
-  content: '';
-  position: absolute;
-  inset: -4px 0;
 }
 
 .picker-empty {

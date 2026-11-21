@@ -227,15 +227,15 @@ function Tabs({ trailing }: { trailing: JSX.Element | null }): JSX.Element {
               <MusclesPage page={{ kind: 'muscles' }} push={() => {}} navigate={navigate} onBack={() => setProgramPushed(null)} />
             ) : null}
             {shown.tab === 'program' && programPushed?.kind === 'exercises' ? (
-              <AppShell title="Exercises" onBack={() => setProgramPushed(null)}>
-                <ExercisesFeature
-                  initialMuscles={programPushed.muscles}
-                  navigate={navigate}
-                  onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
-                  filters={libraryFilters}
-                  onFiltersChange={setLibraryFilters}
-                />
-              </AppShell>
+              // DX-08: the library draws its own pushed page, "New exercise" in its header.
+              <ExercisesFeature
+                initialMuscles={programPushed.muscles}
+                navigate={navigate}
+                onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
+                filters={libraryFilters}
+                onFiltersChange={setLibraryFilters}
+                onBack={() => setProgramPushed(null)}
+              />
             ) : null}
             {/* Program stays mounted under a pushed page, so Back finds it as it was. */}
             {shown.tab === 'program' ? (

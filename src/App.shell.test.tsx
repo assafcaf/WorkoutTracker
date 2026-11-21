@@ -104,6 +104,11 @@ test('DX-04 the Program tab opens the exercise library from its Exercises row, a
 
   expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toBeVisible()
   expect(within(mainNav()).getByRole('button', { name: 'Program' })).toHaveAttribute('aria-current', 'page')
+  // DX-08: the picker's look -- the page titled "Exercises", "New exercise" its header's text
+  // button, then search and "My gym only".
+  const header = screen.getByRole('heading', { level: 1, name: 'Exercises' }).closest('header') as HTMLElement
+  expect(within(header).getByRole('button', { name: 'New exercise' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'My gym only' })).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Back' }))
   expect(await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)).toBeVisible()
 })

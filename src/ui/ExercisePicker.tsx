@@ -89,6 +89,8 @@ export type ExercisePickerListProps = {
   onQueryChange?(query: string): void
   /** Controls drawn between the chip and the list (the library's New exercise). */
   tools?: ReactNode
+  /** A control on the chip's row, after the chip (the library's Edit of the gym's equipment). */
+  chipAction?: ReactNode
   /** Caps the rows shown while nothing is searched (Exercise info's five similar lifts). */
   limit?: number
   /** `false` drops the search field (a short, fixed list such as Exercise info's). */
@@ -110,6 +112,7 @@ export function ExercisePickerList({
   query: heldQuery,
   onQueryChange,
   tools,
+  chipAction,
   limit: cap,
   searchable = true,
 }: ExercisePickerListProps): JSX.Element {
@@ -207,6 +210,7 @@ export function ExercisePickerList({
           >
             My gym only
           </button>
+          {chipAction}
         </div>
       )}
       {tools}

@@ -44,6 +44,8 @@ export type SessionEditorProps = {
   plannedIds?: string[]
   /** DX-08: each Exercise's last Set as the picker's rows show it (`lastSetTexts`). */
   lastSets?: Map<string, string>
+  /** DX-08: the gym's equipment, for the picker's "My gym only" chip (`null`: nothing saved). */
+  gymEquipment?: string[] | null
 }
 
 /** The Set open in the Set sheet, and the values it holds until Save. */
@@ -441,7 +443,9 @@ export function SessionEditor(props: SessionEditorProps): JSX.Element {
 
       {picking && addable !== undefined ? (
         <ExercisePicker
-          title={`Add to ${workoutName}`}
+          // DX-22: what is being added to is this Session, not the Workout it ran.
+          title="Add to this Session"
+          gymEquipment={props.gymEquipment ?? null}
           library={addable}
           taken={[...new Set(draft.entries.map((entry) => entry.exerciseId))]}
           lastSets={lastSets}

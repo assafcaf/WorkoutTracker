@@ -113,7 +113,9 @@ test('V6-13 an Exercise added to a past Session in the editor is saved with it',
   await user.click(await screen.findByRole('button', { name: /Mon 12 Oct.*Workout A/ }, SETTLE))
   await user.click(screen.getByRole('button', { name: 'Edit session' }))
   await user.click(await screen.findByRole('button', { name: 'Add exercise' }, SETTLE))
-  const picker = screen.getByRole('dialog', { name: 'Add to Workout A' })
+  // DX-22: the picker adds to this Session; DX-08: with "My gym only" like every picker.
+  const picker = screen.getByRole('dialog', { name: 'Add to this Session' })
+  expect(within(picker).getByRole('button', { name: 'My gym only' })).toBeVisible()
   await user.type(within(picker).getByRole('searchbox', { name: 'Search exercises' }), 'deadlift')
   await user.click(within(picker).getByRole('button', { name: 'Deadlift' }))
   // The added Set opens in the Set sheet; its Save keeps it, then the editor's Save stores it.
