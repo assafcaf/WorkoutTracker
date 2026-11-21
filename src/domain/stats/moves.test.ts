@@ -46,7 +46,7 @@ describe('E18-T7 O18 moves of Wed 14 Oct (Workout A) in words', () => {
   })
 
   it('O18 a stalled lift at the same weight reads "Held <lever> · <reps of target> · stalled <n> sessions"', () => {
-    expect(by['db-bench-press']).toBe('Held 13 kg · 33 of 40 · stalled 10 sessions')
+    expect(by['db-bench-press']).toBe('Held 13 kg · 33 of 40 · flat 10 sessions')
   })
 
   it('O18 fewer total reps at the same lever reads "Fewer reps · <now> vs <before>", even when stalled', () => {

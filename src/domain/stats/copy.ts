@@ -2,7 +2,7 @@
 // values only. Pure; imports only src/domain/** and src/types.ts.
 //
 //   leverText / topText / humanDate / numberText -> re-exported from words.ts
-//   verdictLabel(kind)                -> '▲ Moving' | '■ Stalled' | '▼ Slipping' | '○ Too new' (the
+//   verdictLabel(kind)                -> '▲ Moving' | '■ Flat' | '▼ Slipping' | '○ Too new' (the
 //                                        engine's verdict; the screens show status.ts labels)
 //   nextStepText(step, bodyweight)    -> '15 of 20 reps at 62.5 kg'
 //   suggestionText(step, bodyweight)  -> 'Try 15 kg next' | 'Try one more set next' | null
@@ -88,7 +88,7 @@ export const MAX_CARDS = 4
 
 const VERDICT_LABELS: Record<VerdictKind, string> = {
   moving: '▲ Moving',
-  stalled: '■ Stalled',
+  stalled: '■ Flat',
   slipping: '▼ Slipping',
   'too new': '○ Too new',
 }

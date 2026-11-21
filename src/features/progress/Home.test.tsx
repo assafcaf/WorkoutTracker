@@ -24,10 +24,10 @@ const LEAD = '12 of 14 lifts are moving'
 const EXCEPTIONS =
   'DB bench press has been flat since 7 Aug. Narrow-grip pull-down is lower on purpose since 7 Oct; that is a choice, not a slide.'
 /**
- * The v6 Muscles row on the fixture: the one muscle furthest from 10–20 sets a week, with its unit.
- * V6-19: Abs (3 of a planned 3) and Calves (8 of 8) are as planned, so Shoulders is named (§6.2).
+ * DX-03: the Muscles row names every muscle outside 10–20 sets a week, as the Muscles page judges
+ * each row; a plan that sets a low count does not excuse it (Abs 3, Calves 8 are below).
  */
-const ROW = 'MusclesShoulders above the typical range (21 sets/week)'
+const ROW = 'MusclesShoulders above · Calves and Abs below range'
 const fixture = sessionsJson as unknown as Session[]
 
 beforeEach(async () => {
@@ -50,13 +50,19 @@ async function mount(sessions: Session[]) {
 }
 
 describe('E18-T10 O20 Progress home with 45 Sessions', () => {
-  test('O20 opens on the verdict sentence, the count row and the climbed clause', async () => {
-    // v7 (study §1.7): the headline is the count of moving lifts and one sentence on the
-    // exceptions, under "Since 23 Jul · 12 weeks"; no count row, no "stepped up" clause, and the
-    // ledger follows -- no decision cards between them.
+  test('DX-02 opens on the headline, its sentence and a grey meta line; no date, no calendar', async () => {
+    // DX-02: the headline block is the count of moving lifts, one sentence on the exceptions and
+    // the meta line "Since 23 Jul · 31 Sessions"; the 6-week dot grid and the date are gone.
     await mount(fixture)
     const lead = await waitFor(() => screen.getByRole('heading', { name: LEAD }), SETTLE)
-    expect(screen.getByText('Since 23 Jul · 12 weeks')).toBeVisible()
+    const meta = screen.getByText('Since 23 Jul · 31 Sessions')
+    expect(meta).toBeVisible()
+    expect(meta.compareDocumentPosition(screen.getByText(EXCEPTIONS)) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    expect(screen.queryByText(/Thu 15 Oct/)).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Weeks' })).toBeNull()
+    expect(screen.queryByText(/sessions in 6 weeks/i)).toBeNull()
+    expect(screen.queryByText('Est. strength')).toBeNull()
+    expect(screen.queryByText('Change')).toBeNull()
     expect(screen.getByText(EXCEPTIONS)).toBeVisible()
     expect(screen.queryByText(/stepped up/)).toBeNull()
     expect(screen.queryByText(/lifts moving/)).toBeNull()
@@ -73,7 +79,6 @@ describe('E18-T10 O20 Progress home with 45 Sessions', () => {
     const { push } = await mount(fixture)
     await waitFor(() => screen.getByRole('heading', { name: LEAD }), SETTLE)
     expect(screen.queryByRole('region', { name: 'Narrow-grip pull-down' })).toBeNull()
-    expect(screen.queryByRole('region', { name: 'Needs a decision' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Why?' })).toBeNull()
     expect(document.querySelector('.progress-visually-hidden')).toBeNull()
     expect(screen.queryByText('Stay at 46.25 kg until all 3 sets reach 12.')).toBeNull()
@@ -85,12 +90,12 @@ describe('E18-T10 O20 Progress home with 45 Sessions', () => {
     expect(push).toHaveBeenCalledWith({ kind: 'lift', exerciseId: 'narrow-grip-pull-down' })
   })
 
-  test('V2-08 a stalled card compares its top set with the day of its last record', async () => {
-    // v7: the stalled lift is a ledger row that says since when ("Flat since 7 Aug"), with its
-    // est. strength and 12-week change; Swap lives on Program and at the bar, not here.
+  test('DX-03 a Flat lift says since when, and no screen string says Stalled', async () => {
+    // DX-03: one vocabulary; the code kind `stalled` reads "Flat", "Flat since 7 Aug".
     const { push, navigate } = await mount(fixture)
     const lifts = await waitFor(() => screen.getByRole('region', { name: 'Lifts' }), SETTLE)
-    const row = within(lifts).getByRole('button', { name: /^DB bench press: Stalled, flat since 7 aug\. est\. strength 16\.9 kg, / })
+    expect(document.body.textContent).not.toMatch(/stalled/i)
+    const row = within(lifts).getByRole('button', { name: /^DB bench press: Flat since 7 Aug\. est\. strength 16\.9 kg, / })
     expect(within(row).getByText('= Flat since 7 Aug')).toBeVisible()
     expect(within(row).getByText('16.9')).toBeVisible()
     expect(screen.queryByRole('button', { name: /^Swap/ })).toBeNull()
@@ -100,24 +105,31 @@ describe('E18-T10 O20 Progress home with 45 Sessions', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
-  test('O20 the adherence tile reads 2 of 3 this week and its done days open their Session', async () => {
-    // V2-05: the week moved to the top of Train. Progress Home draws no This week tile, and
-    // Train's strip over the same Sessions reads 2 of 3 with the two done days named. v7: Progress
-    // has the weeks strip -- 6 weeks of Sessions in the Workouts' colours, 15 in all.
+  test('DX-03 the lifts needing a decision (Flat, Ready) come first under their own heading', async () => {
     await mount(fixture)
-    await waitFor(() => expect(screen.getByText(LEAD)).toBeTruthy(), SETTLE)
-    expect(screen.queryByRole('region', { name: 'This week' })).toBeNull()
-    expect(screen.queryByText('2 of 3 this week')).toBeNull()
-    const weeks = screen.getByRole('region', { name: 'Weeks' })
-    const strip = within(weeks).getByRole('img', { name: /^15 sessions in 6 weeks\. Week of 7 Sep: 3;/ })
-    expect(strip.getAttribute('aria-label')).toMatch(/Week of 12 Oct: 2\.$/)
-    const marks = [...strip.querySelectorAll('.progress-week-mark')].map((m) => m.getAttribute('data-slot'))
-    expect(marks.filter((m) => m === 'a' || m === 'b')).toHaveLength(15)
-    expect(marks.filter((m) => m?.startsWith('next-'))).toHaveLength(1)
-    const train = weekStripOf(fixture, programJson as unknown as Program, NOW, 1)
-    expect(`${train.done} of ${train.planned}`).toBe('2 of 3')
-    expect(train.days).toHaveLength(7)
-    expect(train.days.filter((d) => d.workout !== null)).toHaveLength(2)
+    const lifts = await waitFor(() => screen.getByRole('region', { name: 'Lifts' }), SETTLE)
+    expect(within(lifts).getByRole('heading', { name: 'Needs a decision (3)' })).toBeVisible()
+    const decide = within(lifts).getByRole('list', { name: 'Needs a decision' })
+    const names = within(decide)
+      .getAllByRole('button')
+      .map((b) => (b.getAttribute('aria-label') ?? '').split(':')[0])
+    // Flat first, then Ready, each in Plan order.
+    expect(names).toEqual(['DB bench press', 'Push-ups', 'Seated biceps curls'])
+    const others = within(lifts).getByRole('list', { name: 'Other lifts' })
+    expect(within(others).getAllByRole('button')).toHaveLength(11)
+    expect(within(others).getByRole('button', { name: /^Narrow-grip pull-down: Lowered/ })).toBeVisible()
+  })
+
+  test('DX-12 Muscles and Body are a two-row group right under the headline, with no Photos row', async () => {
+    await mount(fixture)
+    const lead = await waitFor(() => screen.getByRole('heading', { name: LEAD }), SETTLE)
+    const more = screen.getByRole('navigation', { name: 'More' })
+    const rows = within(more).getAllByRole('button')
+    expect(rows.map((r) => r.textContent)).toEqual([ROW, 'BodyLog your bodyweight'])
+    expect(lead.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const lifts = screen.getByRole('region', { name: 'Lifts' })
+    expect(more.compareDocumentPosition(lifts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Photos/ })).toBeNull()
   })
 
   test('O20 the muscles finding opens Muscles, the moving list is collapsed and All 14 lifts opens the list', async () => {
@@ -143,10 +155,12 @@ describe('E18-T10 O20 Progress home with 45 Sessions', () => {
 })
 
 describe('E18-T10 O20 the sparse states', () => {
-  test('O20 with 0 Sessions the page is the expectation list and one Start button', async () => {
+  test('DX-21 with 0 Sessions the page is one line and one outline Go to Train', async () => {
     const { navigate } = await mount([])
-    const start = await waitFor(() => screen.getByRole('button', { name: 'Start workout' }), SETTLE)
-    expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(3)
+    const start = await waitFor(() => screen.getByRole('button', { name: 'Go to Train' }), SETTLE)
+    expect(screen.getByText('Your lifts appear here after your first Session.')).toBeVisible()
+    expect(start).toHaveClass('btn-secondary')
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
     expect(screen.getAllByRole('button')).toHaveLength(1)
     fireEvent.click(start)
     expect(navigate).toHaveBeenCalledWith({ tab: 'workout' })
