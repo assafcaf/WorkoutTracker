@@ -1,41 +1,55 @@
-/* The Bar and plates editor (E15-T5), as rows of the Settings card it sits in: a 52 px row per
- * plate split by hairlines, the count in a raised well like the Program editor's cells (S7b),
- * and Remove as a trash icon at the row's end. Design tokens only. */
+/* The Bar and plates page (E15-T5, DX-23): a 56 px row per plate split by hairlines, each with a
+ * pairs stepper at its end; no trash icons. The new plate's field, then "Reset to defaults" as
+ * text at the bottom. Design tokens only. */
 .plate-editor {
   display: flex;
   flex-direction: column;
 }
 
+.plate-editor-rows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
 .plate-editor-row {
   display: flex;
-  min-height: 52px;
+  min-height: 56px;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
   color: var(--color-text);
   font-size: var(--text-md);
 }
 
-.plate-editor > * + * {
+.plate-editor-rows > * + * {
   border-top: 1px solid var(--color-hairline);
 }
 
 .plate-editor-label {
-  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.plate-editor-hint {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
 }
 
 .plate-editor-input {
-  width: 72px;
+  flex: 1;
+  min-width: 0;
   min-height: var(--tap-min);
   padding: 0 var(--space-2);
-  border: 0;
+  border: 1px solid var(--color-control);
   border-radius: var(--radius-sm);
-  background: var(--color-raised);
+  background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  text-align: center;
+  font-size: var(--text-md);
 }
 
 .plate-editor-input:focus-visible {
@@ -43,46 +57,22 @@
   outline-offset: -2px;
 }
 
-/* The new plate's weight leads its row, where a plate's label would stand. */
-.plate-editor-row > .plate-editor-input:first-child {
-  flex: 1;
-  text-align: left;
-}
-
-.plate-editor-button {
-  display: inline-flex;
-  min-width: var(--tap-min);
+.plate-editor-add,
+.plate-editor-reset {
   min-height: var(--tap-min);
-  align-items: center;
-  justify-content: center;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
 }
 
-.plate-editor-button.btn-danger,
-.plate-editor-button.btn-quiet {
-  border: 0;
-}
-
-.plate-editor-button.btn-danger {
-  padding: 0;
-}
-
-.plate-editor > .plate-editor-button {
-  border-top: 1px solid var(--color-hairline);
-  justify-content: flex-start;
-  padding: 0 var(--space-3);
-  min-height: 52px;
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  font-size: var(--text-md);
+.plate-editor-reset {
+  align-self: flex-start;
+  margin: var(--space-4) 0 0 calc(var(--space-2) * -1);
   font-weight: var(--weight-regular);
 }
 
 .plate-editor-error {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0 0;
   color: var(--color-danger);
   font-size: var(--text-sm);
 }

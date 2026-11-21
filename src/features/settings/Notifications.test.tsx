@@ -81,7 +81,7 @@ test('O25 an off status shows Turn on notifications and the tap calls enable, th
   const push = build('off')
   await userEvent.click(await screen.findByRole('button', { name: 'Turn on notifications' }))
   expect(push.enable).toHaveBeenCalledTimes(1)
-  await userEvent.click(await screen.findByRole('button', { name: 'Turn off' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Turn off notifications' }))
   expect(push.disable).toHaveBeenCalledTimes(1)
 })
 
@@ -97,7 +97,7 @@ test('O25 not-installed explains and shows no button; the rest of Settings stays
 test('O25 an enable that finds the server unconfigured explains it', async () => {
   build('off', 'unconfigured')
   await userEvent.click(await screen.findByRole('button', { name: 'Turn on notifications' }))
-  expect(await screen.findByText(/aren.t set up/i)).toBeTruthy()
+  expect(await screen.findByRole('button', { name: 'Reminders Not set up yet' })).toBeTruthy()
 })
 
 test('O26 Sunday plus Wednesday at 18:00 is stored through the push service', async () => {

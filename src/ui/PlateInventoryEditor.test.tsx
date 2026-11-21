@@ -21,58 +21,64 @@ function renderEditor(inventory: PlateInventory = RACK, error?: string | null) {
   return onChange
 }
 
-test('O7 the editor shows the bar weight and one pair count per plate', () => {
+function stepped(label: string): string {
+  return screen.getByRole('group', { name: label }).querySelector('output')?.textContent ?? ''
+}
+
+test('O7 DX-23 the editor shows the bar weight and one pairs stepper per plate, with no trash icons', () => {
   renderEditor()
 
-  expect(screen.getByRole('spinbutton', { name: 'Bar weight (kg)' })).toHaveValue(20)
-  expect(screen.getByRole('spinbutton', { name: 'Pairs of 25 kg' })).toHaveValue(4)
-  expect(screen.getByRole('spinbutton', { name: 'Pairs of 2.5 kg' })).toHaveValue(2)
-  expect(screen.getByRole('spinbutton', { name: 'Pairs of 1.25 kg' })).toHaveValue(1)
+  expect(stepped('Bar weight')).toBe('20 kg')
+  expect(stepped('Pairs of 25 kg')).toBe('4')
+  expect(stepped('Pairs of 2.5 kg')).toBe('2')
+  expect(stepped('Pairs of 1.25 kg')).toBe('1')
+  expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull()
+  expect(document.querySelector('.btn-danger')).toBeNull()
 })
 
-test('O7 changing the bar weight reports the inventory with that bar and the same plates', () => {
+test('O7 stepping the bar weight down reports the inventory with that bar and the same plates', async () => {
   const onChange = renderEditor()
 
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'Bar weight (kg)' }), {
-    target: { value: '15' },
-  })
+  await userEvent.click(screen.getByRole('button', { name: 'Decrease Bar weight' }))
 
   expect(onChange).toHaveBeenCalledTimes(1)
-  expect(onChange).toHaveBeenCalledWith({ barKg: 15, plates: RACK.plates })
+  expect(onChange).toHaveBeenCalledWith({ barKg: 17.5, plates: RACK.plates })
 })
 
-test('O7 changing one pair count reports that plate with the new count and leaves the others', () => {
+test('O7 stepping one pair count reports that plate with the new count and leaves the others', async () => {
   const onChange = renderEditor()
 
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'Pairs of 2.5 kg' }), {
-    target: { value: '6' },
-  })
+  await userEvent.click(screen.getByRole('button', { name: 'Increase Pairs of 2.5 kg' }))
 
   expect(onChange).toHaveBeenCalledTimes(1)
   expect(onChange).toHaveBeenCalledWith({
     barKg: 20,
     plates: [
       { kg: 25, pairs: 4 },
-      { kg: 2.5, pairs: 6 },
+      { kg: 2.5, pairs: 3 },
       { kg: 1.25, pairs: 1 },
     ],
   })
 })
 
-test('O7 Remove on a row reports the inventory without that plate', async () => {
-  const user = userEvent.setup()
+test('O7 DX-23 stepping a plate to 0 pairs removes it', async () => {
   const onChange = renderEditor()
 
-  await user.click(screen.getByRole('button', { name: 'Remove 2.5 kg' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Decrease Pairs of 1.25 kg' }))
 
-  expect(onChange).toHaveBeenCalledTimes(1)
   expect(onChange).toHaveBeenCalledWith({
     barKg: 20,
     plates: [
       { kg: 25, pairs: 4 },
-      { kg: 1.25, pairs: 1 },
+      { kg: 2.5, pairs: 2 },
     ],
   })
+})
+
+test('O7 a plate at 20 pairs cannot step higher', () => {
+  renderEditor({ barKg: 20, plates: [{ kg: 25, pairs: 20 }] })
+
+  expect(screen.getByRole('button', { name: 'Increase Pairs of 25 kg' })).toBeDisabled()
 })
 
 test('O7 Add plate with a new weight reports the inventory with a plate of that weight added', async () => {
@@ -124,16 +130,24 @@ function renderSettings(extra: Partial<React.ComponentProps<typeof Settings>>) {
   )
 }
 
-test('O7 Settings shows a Bar and plates group after My gym\'s equipment when it has an inventory', () => {
+test('O7 DX-23 Settings shows a Bar and plates row after Week starts on that pushes its page', async () => {
   renderSettings({ plateInventory: RACK, onPlateInventoryChange: vi.fn() })
 
-  // V2-09: the gym's equipment moved to Program › Exercises; Bar and plates is the last row of
-  // the Workout group, after Week starts on.
-  const barAndPlates = screen.getByRole('group', { name: 'Bar and plates' })
+  // V2-09: Bar and plates is the last row of the Workout group, after Week starts on.
+  const row = within(screen.getByRole('group', { name: 'Workout' })).getByRole('button', { name: /^Bar and plates/ })
   const week = screen.getByRole('combobox', { name: 'Week starts on' })
-  expect(within(screen.getByRole('group', { name: 'Workout' })).getByRole('group', { name: 'Bar and plates' })).toBe(barAndPlates)
-  expect(week.compareDocumentPosition(barAndPlates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(within(barAndPlates).getByRole('spinbutton', { name: 'Bar weight (kg)' })).toHaveValue(20)
+  expect(week.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByRole('group', { name: 'Bar and plates' })).toBeNull()
+
+  await userEvent.click(row)
+
+  const page = screen.getByRole('dialog', { name: 'Bar and plates' })
+  expect(within(page).getByRole('group', { name: 'Bar weight' })).toHaveTextContent('20 kg')
+  // "Reset to defaults" is text at the bottom of the page.
+  const reset = within(page).getByRole('button', { name: 'Reset to defaults' })
+  expect(reset).toHaveClass('btn-quiet')
+  await userEvent.click(within(page).getByRole('button', { name: 'Back' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
 })
 
 test('O7 Settings without an inventory does not render Bar and plates', () => {
@@ -142,7 +156,7 @@ test('O7 Settings without an inventory does not render Bar and plates', () => {
   expect(screen.queryByRole('group', { name: 'Bar and plates' })).toBeNull()
 })
 
-test('O7 Settings hands a changed pair count to onPlateInventoryChange and shows plateInventoryError', () => {
+test('O7 Settings hands a changed pair count to onPlateInventoryChange and shows plateInventoryError', async () => {
   const onPlateInventoryChange = vi.fn()
   renderSettings({
     plateInventory: RACK,
@@ -150,14 +164,13 @@ test('O7 Settings hands a changed pair count to onPlateInventoryChange and shows
     plateInventoryError: 'Each plate size needs a whole number of pairs from 0 to 20.',
   })
 
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'Pairs of 25 kg' }), {
-    target: { value: '9' },
-  })
+  await userEvent.click(screen.getByRole('button', { name: /^Bar and plates/ }))
+  await userEvent.click(screen.getByRole('button', { name: 'Increase Pairs of 25 kg' }))
 
   expect(onPlateInventoryChange).toHaveBeenCalledWith({
     barKg: 20,
     plates: [
-      { kg: 25, pairs: 9 },
+      { kg: 25, pairs: 5 },
       { kg: 2.5, pairs: 2 },
       { kg: 1.25, pairs: 1 },
     ],

@@ -59,6 +59,8 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     setChosenKeepScreenOn((chosen) => (chosen === keepScreenOnData.data ? null : chosen))
   }, [keepScreenOnData])
   const plateInventoryData = useServiceData((s) => s.preferences.plateInventory(), ['preferences'])
+  // The Body group's height (Body's own page no longer edits it).
+  const heightData = useServiceData((s) => s.preferences.heightCm().catch(() => null), ['preferences'])
   const [plateError, setPlateError] = useState<string | null>(null)
   const [pushStatus, setPushStatus] = useState<NotificationStatus | null>(null)
   const [pushFailed, setPushFailed] = useState(false)
@@ -118,6 +120,12 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
     services.preferences.setPlateInventory(inventory).catch((error: unknown) => {
       // Refused: the stored inventory stays, and shows again.
       setPlateError(error instanceof Error ? error.message : 'the plates could not be saved')
+    })
+  }
+
+  function handleHeightChange(cm: number | null): void {
+    services.preferences.setHeightCm(cm).catch(() => {
+      // Refused (outside 100..250): the stored height stays and shows again.
     })
   }
 
@@ -222,6 +230,8 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
           chosenKeepScreenOn ?? (keepScreenOnData.status === 'ready' ? keepScreenOnData.data : undefined)
         }
         onKeepScreenOnDuringRestChange={handleKeepScreenOnChange}
+        heightCm={heightData.status === 'ready' ? heightData.data : undefined}
+        onHeightCmChange={handleHeightChange}
         notifications={
           pushStatus
             ? {
