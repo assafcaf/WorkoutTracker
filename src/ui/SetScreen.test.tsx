@@ -5051,6 +5051,7 @@ test('N4 a screen opened on a swap shows the one bottom snackbar Swapped to <new
   expect(bar).toHaveTextContent('Swapped to Back squat')
   // N4: drawn over the bottom of the screen, not in the anchor above the Dials.
   expect(bar).not.toHaveClass('snackbar--inline')
+  expect(bar).toHaveClass('snackbar--over-bar')
   expect(bar.parentElement).toBe(document.body)
   // The one Undo on the screen is the snackbar's; the "for Deadlift" line carries none.
   expect(screen.getAllByRole('button', { name: /Undo/ })).toHaveLength(1)

@@ -2137,6 +2137,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             times out or a Set is logged. */}
         {undo !== null || !swapUndoShown || swappedFrom === null ? null : (
           <Snackbar
+            overBar
             message={`Swapped to ${exercise.name}`}
             actionLabel="Undo"
             onAction={() => {
