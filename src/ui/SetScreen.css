@@ -235,7 +235,7 @@
 .effort-chip {
   flex: 1;
   min-width: var(--tap-min);
-  min-height: 56px;
+  min-height: 48px;
   font-size: var(--text-md);
   font-weight: var(--weight-medium);
 }
@@ -1059,7 +1059,7 @@
 
 .rest-ring {
   position: relative;
-  width: 236px;
+  width: 208px;
   max-width: 100%;
   aspect-ratio: 1;
 }

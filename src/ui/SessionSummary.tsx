@@ -323,7 +323,8 @@ export function SessionSummary({
             </button>
           )}
           {onEdit ? (
-            <button type="button" className="session-summary-edit btn-quiet" onClick={onEdit}>
+            <button type="button" className="session-summary-edit btn-quiet"
+              aria-label="Edit session" onClick={onEdit}>
               Edit
             </button>
           ) : null}
@@ -420,12 +421,17 @@ export function SessionSummary({
       ) : null}
 
       <p className="session-summary-totals">
-        {/* V6-11: under half the planned Sets the lead line says so; Train keeps this Workout next. */}
-        <span data-kpi="sets">
-          <span className="session-summary-kpi-value">{working}</span>
-          {partial ? ` of ${plannedSets} sets` : working === 1 ? ' set' : ' sets'}
-        </span>
-        {' · '}
+        {/* V6-11, DX-14: under half the planned Sets the lead line says so, with its Sets; Train
+            keeps this Workout next. */}
+        {short ? null : (
+          <>
+            <span data-kpi="sets">
+              <span className="session-summary-kpi-value">{working}</span>
+              {partial ? ` of ${plannedSets} sets` : working === 1 ? ' set' : ' sets'}
+            </span>
+            {' · '}
+          </>
+        )}
         <span data-kpi="volume">
           <span className="session-summary-kpi-value">{volumeText}</span>
           {bodyweightReps > 0 ? (

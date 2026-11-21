@@ -13,13 +13,14 @@ const SETTLE = { timeout: 3000 }
  * is shown), once the header is up.
  */
 export async function showAll(user: User): Promise<void> {
-  const button = await screen.findByRole('button', { name: /^(All exercises|Now)$/ }, SETTLE)
-  if (button.getAttribute('aria-label') === 'All exercises') await user.click(button)
+  // DX-19: the header's Set | All control.
+  const all = await screen.findByRole('radio', { name: 'All' }, SETTLE)
+  if (!(all as HTMLInputElement).checked) await user.click(all)
 }
 
-/** Taps Finish in the live header and, if it asks about Sets not logged, Finish workout. */
+/** Taps Finish in the live header and, if it asks about Sets not logged, Finish Session (DX-14). */
 export async function finishWorkout(user: User): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Finish' }, SETTLE))
-  const sheet = screen.queryByRole('dialog', { name: 'Finish workout?' })
-  if (sheet !== null) await user.click(within(sheet).getByRole('button', { name: 'Finish workout' }))
+  const sheet = screen.queryByRole('dialog', { name: 'Finish Session?' })
+  if (sheet !== null) await user.click(within(sheet).getByRole('button', { name: 'Finish Session' }))
 }

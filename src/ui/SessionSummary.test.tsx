@@ -571,14 +571,14 @@ test('S5b DX-14 Edit shows only when onEdit is given, as text, and calls it', as
   const onEdit = vi.fn()
   const dialog = renderS5b(benchSession('e', BASE, 52, 1, 40, 5), [], { onEdit })
 
-  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Edit' }))
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Edit session' }))
   expect(onEdit).toHaveBeenCalledTimes(1)
 })
 
 test('S5b the finish summary, given no onEdit, has no Edit session', () => {
   const dialog = renderS5b(benchSession('e', BASE, 52, 1, 40, 5))
 
-  expect(within(dialog).queryByRole('button', { name: 'Edit' })).toBeNull()
+  expect(within(dialog).queryByRole('button', { name: 'Edit session' })).toBeNull()
 })
 
 
@@ -952,8 +952,9 @@ test('V4-03 a partial Session reads "1 of 3 sets" in the figures, with no % comp
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
 
-  // DX-14: the lead line says it was short; the totals line keeps the figures.
-  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('1 of 3 sets · 400 kg')
+  // DX-14: the lead line says it was short, "1 of 3 sets"; the totals line keeps the kilos.
+  expect(dialog.querySelector('[data-kpi="short"]')?.textContent).toBe('Short Session: 1 of 3 sets')
+  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('400 kg')
   expect(dialog.textContent).not.toMatch(/%/)
 })
 

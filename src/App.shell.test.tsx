@@ -113,7 +113,7 @@ test('a workout in progress is a full-screen Live session: no tab bar, a minimis
 
   await user.click(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE))
   await screen.findByText('Set 1 of 4', undefined, SETTLE)
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
 
   expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
@@ -122,17 +122,17 @@ test('a workout in progress is a full-screen Live session: no tab bar, a minimis
   expect(within(header).getByRole('heading', { level: 1, name: 'Workout A' })).toBeVisible()
   expect(within(header).getByRole('timer', { name: 'Workout time' })).toBeVisible()
   expect(within(header).getByRole('button', { name: 'Finish' })).toHaveClass('btn-secondary')
-  expect(within(header).getByRole('button', { name: 'Now' })).toBeVisible()
+  expect(within(header).getByRole('radio', { name: 'Set' })).toBeVisible()
 })
 
 test('Now on the exercise list opens the set the session is on', async () => {
   const user = userEvent.setup()
   await renderApp()
   await logFirstBackSquatSet(user)
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Lunges/ }, SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Now' }))
+  await user.click(screen.getByRole('radio', { name: 'Set' }))
 
   expect(await screen.findByText('Set 2 of 4', undefined, SETTLE)).toBeVisible()
   expect(screen.getByRole('heading', { level: 1, name: 'Back squat' })).toBeVisible()
@@ -270,9 +270,11 @@ test('Progress to a lift to a Session is two taps, and Back returns each step', 
     const lastMoved = within(log).getAllByRole('button')[0]
 
     await user.click(lastMoved)
-    const done = await screen.findByRole('button', { name: 'Done' }, SETTLE)
-    expect(done).toBeVisible()
-    await user.click(done)
+    // DX-14: Session detail has a header Back, no bottom Done bar.
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
+    const back = await screen.findByRole('button', { name: 'Back' }, SETTLE)
+    expect(back).toBeVisible()
+    await user.click(back)
     expect(await screen.findByRole('heading', { level: 1, name: 'Sessions' }, SETTLE)).toBeVisible()
   } finally {
     vi.useRealTimers()
