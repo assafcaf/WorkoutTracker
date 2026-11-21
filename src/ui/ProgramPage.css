@@ -1,572 +1,217 @@
-/* The Program tab (Progress Dashboard S7a): the active program's name and size, its weekly sets
- * by muscle family, a card per workout with its exercise table, then the planned muscle map
- * and "This week". The Programs panel (the header's overflow) holds the program switcher,
- * styled like Settings' "Active program" radio group (`.settings-group`, from Settings.css).
- *
- * Every colour comes through a var(--…) from src/styles/tokens.css.
- */
+/* The Program tab (DX-04, DX-16): no cards and no tables. Each Workout is a 16 px section header
+ * over a plain list, one line per Plan; then plain rows with chevrons (the muscles row, Programs,
+ * Deload week, Exercises, Settings). The Programs and Deload week pages pushed over the tab use
+ * the same rows. Every colour, size and radius is a token; no text is under 14 px. */
 
 .program-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-5);
 }
 
-/* ---- Head: title, size line, Edit and the overflow ---- */
-
-.program-page-head {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.program-page-head-text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.program-page-title {
-  margin: 0;
-  font-size: var(--text-xl);
+/* "Edit": the tab's one header action, a text button on the title's baseline. */
+.program-page-head-edit {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: 0;
+  color: var(--color-text);
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-  line-height: 2.125rem;
-  letter-spacing: -0.01em;
 }
 
-.program-page-subtitle {
+.program-page-message {
   margin: 0;
-  color: var(--color-muted);
+  color: var(--color-warn);
   font-size: var(--text-sm);
   line-height: 1.25rem;
 }
 
-.program-page-head-actions {
-  display: flex;
-  align-items: center;
-  margin-right: calc(var(--space-3) * -1);
-}
+/* ---- a Workout: its header, then one row per Plan ---- */
 
-.program-page-head-edit {
-  min-height: var(--tap-min);
-  padding: 0 var(--space-1);
-  border: 0;
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-}
-
-.program-page-more {
-  display: grid;
-  width: var(--tap-min);
-  min-height: var(--tap-min);
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-/* ---- Cards ---- */
-
-.program-page .card {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-3);
-}
-
-.program-page-card-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
-}
-
-.program-page-volume .program-page-card-head {
-  margin-bottom: 10px;
-}
-
-.program-page-card-title,
-.program-page-workout-title,
-.program-page-section-heading {
-  margin: 0;
+.program-workout-title {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   line-height: 1.375rem;
 }
 
-.program-page-card-total {
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
-}
-
-.program-page-card-note {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-/* ---- Needs a decision (v7, study §1.8): rows on paper, status and action, Swap on the right ---- */
-
-.program-page-decisions {
-  display: flex;
-  flex-direction: column;
-  margin: var(--space-2) 0;
-}
-
-.program-page-caption {
-  margin: 0;
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-hairline);
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.program-page-decision-list {
+.program-plans {
   margin: 0;
   padding: 0;
+  border-top: 1px solid var(--color-hairline);
   list-style: none;
 }
 
-.program-page-decision {
+.program-plan-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
-  min-height: 56px;
+  width: 100%;
+  min-height: var(--tap-min);
   padding: var(--space-2) 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-hairline);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-md);
+  line-height: 1.375rem;
+  text-align: left;
+}
+
+.program-plan-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.program-plan-figure {
+  flex: none;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.program-plan-rest {
+  color: var(--color-muted);
+}
+
+/* ---- plain rows with chevrons ---- */
+
+.program-rows {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-hairline);
+  list-style: none;
+}
+
+.program-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-2) 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-hairline);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-md);
+  text-align: left;
+}
+
+.program-row-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.program-row-detail {
+  flex: none;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.program-row > svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
+/* ---- the Programs page ---- */
+
+.programs-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.programs-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   border-bottom: 1px solid var(--color-hairline);
 }
 
-.program-page-decision-main {
+.programs-list-choose {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 64px;
+  padding: var(--space-2) 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+}
+
+.programs-list-choose > svg {
+  flex: none;
+  color: var(--color-text);
+}
+
+.programs-list-text {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-width: 0;
 }
 
-.program-page-decision-name {
+.programs-list-name {
   font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-}
-
-/* The lift's name is the door to its Lift page, a 44 px tall target. */
-.program-page-decision-name.lift-door {
-  display: flex;
-  align-items: center;
-  align-self: flex-start;
-  max-width: 100%;
-  min-height: var(--tap-min);
-  margin: calc(-1 * var(--space-2)) 0 calc(-1 * var(--space-1));
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  text-align: start;
-}
-
-.program-page-decision-line {
-  margin: 0;
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
-}
-
-.program-page-decision-line .status-mark {
   font-weight: var(--weight-semibold);
+  line-height: 1.375rem;
 }
 
-.program-page-decision-swap {
+.programs-list-size {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+}
+
+.programs-list-actions {
+  display: flex;
   flex: none;
-  min-height: var(--tap-min);
-  padding: 0 var(--space-4);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-}
-
-/* ---- Weekly sets, planned: a stacked bar by family and its legend ---- */
-
-/* v7 (study §1.8): families are labels, not colours -- colour belongs to the workouts on the
- * calendar and to meaning -- so every segment is the same ink-3, told apart by the gaps and the
- * labelled counts underneath, in the same order. */
-.program-page-volume-bar {
-  display: flex;
-  gap: 2px;
-  height: 12px;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: var(--color-raised);
-}
-
-.program-page-volume-segment {
-  flex-basis: 0;
-  min-width: 2px;
-  background: var(--color-muted);
-}
-
-.program-page-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) 14px;
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  line-height: 1rem;
-}
-
-.program-page-legend-item {
-  display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
 }
 
-.program-page-legend-count {
-  color: var(--color-text);
-  font-weight: var(--weight-semibold);
-}
-
-/* ---- A workout's exercise table ---- */
-
-.program-page .workout-card {
-  padding-bottom: var(--space-1);
-  /* V6-15: the table reads its own width to fit the kg column on a narrow card. */
-  container-type: inline-size;
-}
-
-.program-page-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.program-page-th {
-  height: 24px;
-  border-bottom: 1px solid var(--color-hairline);
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.program-page-row td {
-  height: 36px;
-  border-bottom: 1px solid var(--color-hairline);
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-
-/* V6-03: an Exercise's name opens its Lift page. Its padding makes the target 44 px tall and its
- * negative margins give the height back, so the row stays as it was; a long name still ends in an
- * ellipsis (or wraps, on a narrow card). */
-.program-page-name.lift-door {
-  display: inline-block;
-  max-width: calc(100% - 1rem);
-  min-height: var(--tap-min);
-  margin-block: calc((1lh - var(--tap-min)) / 2);
-  padding: calc((var(--tap-min) - 1lh) / 2) 0;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--radius-sm);
-  color: inherit;
-  font: inherit;
-  text-align: start;
-  text-overflow: ellipsis;
-  white-space: inherit;
-  vertical-align: middle;
-}
-
-.program-page-row:last-child td {
-  border-bottom: 0;
-}
-
-.program-page-exercise {
-  overflow: hidden;
-  letter-spacing: -0.01em;
-  max-width: 0;
-  width: 100%;
-  text-overflow: ellipsis;
-}
-
-/* V7R-10: a long name wraps to a second line at any width ("Narrow-grip pull-down", "Machine
- * shoulder press"), never "Machine should…"; the numbers keep their columns. */
-.program-page-row td.program-page-exercise {
-  padding-block: 4px;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.program-page-num {
-  padding-left: 10px;
-  text-align: right;
-}
-
-.program-page-rest {
-  color: var(--color-secondary);
-}
-
-/* V6-15: the load the next Session opens on, as Train says it. */
-.program-page-kg {
-  font-variant-numeric: tabular-nums;
-}
-
-.program-page-kg-from {
-  white-space: nowrap;
-}
-
-/* V6-15: on a narrow card (320 px, or large text) the kg column keeps its place: a ramp breaks
-   after its arrow, and Rest (on the Set screen and in Edit) steps aside so names stay readable. */
-@container (max-width: 19em) {
-  .program-page-table[data-kg] .program-page-restcol {
-    display: none;
-  }
-
-  .program-page-table[data-kg] .program-page-row td.program-page-kg,
-  .program-page-table[data-kg] .program-page-row td.program-page-exercise {
-    white-space: normal;
-  }
-}
-
-/* ---- Planned muscle map (M14), below the workouts; "This week" moved to Progress (V2-06) ---- */
-
-.program-page-weekly {
-  gap: var(--space-2);
-}
-
-.program-page-map {
-  max-width: calc(var(--space-6) * 6);
-  margin: 0;
-}
-
-.program-page-gaps {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.program-page-gap {
-  line-height: 1.25rem;
-}
-
-/* ---- The Programs panel (the head's overflow) ---- */
-
-.program-page-programs {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding-right: var(--space-4);
-  padding-left: var(--space-4);
-}
-
-.program-page-programs-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 56px;
-}
-
-.program-page-programs-title {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-}
-
-.program-page-programs-done,
-.program-page-programs-head .program-page-programs-done {
-  min-height: var(--tap-min);
-  padding: 0 var(--space-1);
-  border: 0;
-  color: var(--color-primary);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-}
-
-.program-page-switcher {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* A Program's card: its radio across the top, its actions in a row under it. */
-.program-page-switcher-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-}
-
-.program-page-switcher-row .segmented {
-  flex: 1 1 100%;
-}
-
-.program-page-message {
-  margin: 0;
-  color: var(--color-danger);
-  font-size: var(--text-sm);
-}
-
-.program-page-new,
-.program-page-edit,
-.program-page-copy,
-.program-page-delete,
-.program-page-reset,
-.program-page-confirm {
-  min-height: var(--tap-min);
-  padding: 0 var(--space-3);
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
-.program-page-edit,
-.program-page-copy {
-  border-radius: var(--radius-md);
-}
-
-.program-page-delete,
-.program-page-reset,
-.program-page-confirm {
-  margin-left: auto;
-  border: 0;
-}
-
-/* ---- New user: choose a program ---- */
-
-.program-page-newuser {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.program-page-newuser-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.program-page-newuser-card {
-  gap: var(--space-1);
-}
-
-.program-page-newuser-name {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-}
-
-.program-page-newuser-size {
-  margin-bottom: var(--space-2);
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.program-page-use,
-.program-page-use-primary,
-.program-page-new-secondary {
-  display: flex;
-  width: 100%;
-  min-height: var(--tap-min);
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-}
-
-.program-page-use-primary {
-  border: 0;
-}
-
-.program-page-range-note {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.program-page-range {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  font-size: var(--text-sm);
-}
-
-.program-page-range-row {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  line-height: 1.25rem;
-}
-
-.program-page-range-row[data-standing='below'],
-.program-page-range-row[data-standing='above'] {
-  font-weight: var(--weight-semibold);
-}
-
-/* While a deload is on, one line under the Program's title, its End a quiet text button
- * (V4-08); "Start a deload week" sits in the head's overflow, the Programs panel. */
-.program-deload-line {
-  display: flex;
-  align-items: center;
-  min-height: var(--tap-min);
-  margin: 0 0 var(--space-2);
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
-}
-
-/* The selector under the title: switch the active Program in one choice. */
-.program-switcher {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--tap-min);
-  margin: 0 0 var(--space-2);
-  color: var(--color-secondary);
-  font-size: var(--text-sm);
-}
-
-.program-switcher .program-switcher-select {
-  flex: 1;
-}
-
-.program-switcher .program-switcher-select .select {
-  background: var(--color-surface);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-}
-
-.program-deload-line .program-deload-end {
+.programs-list-action {
+  min-width: var(--tap-min);
   min-height: var(--tap-min);
   padding: 0 var(--space-2);
   border: 0;
-  color: var(--color-primary);
+  color: var(--color-text);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
 }
 
-.program-deload-start {
+.programs-list-danger {
+  color: var(--color-danger);
+}
+
+/* ---- the Deload week page ---- */
+
+.deload-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.deload-panel-line {
+  margin: 0;
+  color: var(--color-secondary);
+  font-size: var(--text-md);
+  line-height: 1.45;
+}
+
+.deload-panel-action {
   min-height: var(--tap-min);
-  padding: 0 var(--space-3);
-  font-size: var(--text-sm);
-  cursor: pointer;
 }

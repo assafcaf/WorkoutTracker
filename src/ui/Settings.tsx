@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactNode } from 'react'
+import { useState, type ChangeEvent, type ReactNode } from 'react'
 import type { PlateInventory } from '../types'
 import type { SyncView } from '../services/syncView'
 import { formatDay } from '../domain/dates'
@@ -27,8 +27,11 @@ export type SettingsProps = {
   dataExtras?: ReactNode
   /** The phone's cloud sync state (E7-T7). Omitted, the account rows do not render. */
   sync?: SyncView
-  /** Called when the trainee taps "Sync now". */
-  onSyncNow?(): void
+  /**
+   * Called when the trainee taps "Sync now". Returning the sync's promise lets the row show
+   * "Syncing…" until it settles, then its result (DX-13).
+   */
+  onSyncNow?(): void | Promise<void>
   /** Called when the trainee taps "Use <signedInEmail>'s data on this phone". */
   onAdoptAccount?(): void
   /** Whether Track effort is on (E14-T10); omitted reads as off. */
@@ -91,6 +94,30 @@ export function Settings(props: SettingsProps): JSX.Element {
     onKeepScreenOnDuringRestChange,
     notifications,
   } = props
+
+  // DX-13: "Sync now" answers under itself: "Syncing…", then the result the sync settled on.
+  const [asked, setAsked] = useState(false)
+  const [pending, setPending] = useState(false)
+  const signedIn = sync !== undefined && (sync.accountEmail !== null || sync.status === 'account-mismatch')
+  const syncing = pending || sync?.status === 'syncing'
+
+  function handleSyncNow(): void {
+    setAsked(true)
+    setPending(true)
+    Promise.resolve()
+      .then(() => onSyncNow?.())
+      .catch(() => undefined)
+      .finally(() => setPending(false))
+  }
+
+  let syncLine: string | null = null
+  if (asked && sync) {
+    if (syncing) syncLine = 'Syncing…'
+    else if (sync.status === 'ok') syncLine = 'Synced just now'
+    else if (sync.status === 'signed-out') syncLine = 'Not signed in. Your Sessions are safe on this phone.'
+    else if (sync.status === 'offline' || sync.status === 'error')
+      syncLine = 'Can’t reach the server. Your Sessions are safe on this phone.'
+  }
 
   /** Reads the chosen backup file, if one was chosen, and hands its text over. */
   function handleFileChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -159,24 +186,34 @@ export function Settings(props: SettingsProps): JSX.Element {
         <div className="settings-card">
           {sync ? (
             <>
-              <p className="settings-account-email">{sync.accountEmail ?? 'Not signed in'}</p>
-              <p className="settings-account-synced">
-                {sync.lastSyncedAt === null
-                  ? 'Never synced'
-                  : formatDay(new Date(sync.lastSyncedAt), new Date())}
-              </p>
+              {/* DX-13: signed out, the first row is the action, not a statement of the problem. */}
+              {signedIn ? (
+                <>
+                  <p className="settings-account-email">{sync.accountEmail}</p>
+                  <p className="settings-account-synced">
+                    {sync.lastSyncedAt === null
+                      ? 'Never synced'
+                      : `Last synced ${formatDay(new Date(sync.lastSyncedAt), new Date())}`}
+                  </p>
+                </>
+              ) : (
+                <a className="settings-action settings-sign-in" href="/api/login">
+                  <span className="settings-action-label">Sign in to sync</span>
+                  <Icon name="ChevronRight" size={18} />
+                </a>
+              )}
               <button
                 type="button"
                 className="settings-action btn-quiet"
-                onClick={() => onSyncNow?.()}
-                disabled={sync.status === 'syncing'}
+                onClick={handleSyncNow}
+                disabled={syncing}
               >
                 <span className="settings-action-label">Sync now</span>
               </button>
-              {sync.status === 'signed-out' ? (
-                <a className="settings-action" href="/api/login">
-                  <span className="settings-action-label">Sign in</span>
-                </a>
+              {syncLine ? (
+                <p className="settings-account-synced settings-sync-result" role="status">
+                  {syncLine}
+                </p>
               ) : null}
               {sync.status === 'account-mismatch' ? (
                 <>
@@ -203,7 +240,7 @@ export function Settings(props: SettingsProps): JSX.Element {
                   </p>
                 </>
               ) : null}
-              {sync.status === 'offline' ? (
+              {sync.status === 'offline' && !asked ? (
                 <p className="settings-account-offline">This phone is offline; it will sync later.</p>
               ) : null}
             </>

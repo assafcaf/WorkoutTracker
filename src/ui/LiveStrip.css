@@ -1,16 +1,23 @@
-/* The live strip (t_strip.png): 48 px on the surface with a hairline under it, sticky at the
- * top of every tab while a workout is minimised, and clearing the notch itself. */
+/* The live strip (DX-09): the one way back into a minimised Session. 56 px on the surface with a
+ * hairline above it, fixed just above the tab bar (src/ui/TabBar.css) on every tab, in the thumb
+ * zone. A tabbed shell reserves its height (src/ui/AppShell.css). */
+
+:root {
+  --live-strip-height: 56px;
+}
 
 .live-strip {
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  position: fixed;
+  right: 0;
+  bottom: calc(var(--tap-min) + var(--space-1) + 1px + var(--safe-bottom));
+  left: 0;
+  z-index: 9;
   display: flex;
   align-items: center;
   gap: 10px;
-  height: calc(48px + var(--safe-top));
-  padding: var(--safe-top) var(--space-1) 0 var(--space-4);
-  border-bottom: 1px solid var(--color-hairline);
+  height: var(--live-strip-height);
+  padding: 0 var(--space-1) 0 var(--space-4);
+  border-top: 1px solid var(--color-hairline);
   background: var(--color-surface);
   cursor: pointer;
 }
@@ -20,8 +27,7 @@
   width: var(--space-2);
   height: var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: var(--color-live);
 }
 
 .live-strip-text {

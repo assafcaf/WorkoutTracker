@@ -1,6 +1,6 @@
 import type { Weekday } from '../../domain/stats/weeks'
 import { swapSeed } from '../../domain/swapPreset'
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { assertPlansAreInCatalog } from '../../data/catalog'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
@@ -31,7 +31,7 @@ import type {
   VolumeBaseline,
   Workout,
 } from '../../types'
-import { ActionBarSlot, AppShell, ShellChromeContext } from '../../ui/AppShell'
+import { ActionBarSlot, AppShell } from '../../ui/AppShell'
 import { LiveHeader } from '../../ui/LiveHeader'
 import type { LiveStatus } from '../../ui/LiveStrip'
 import { ExerciseList } from '../../ui/ExerciseList'
@@ -46,7 +46,6 @@ import type { LiveView } from '../../ui/live/LiveSessionBar'
 import { AlternativesOverlay } from '../overlays/AlternativesOverlay'
 import { ExercisePicker } from '../../ui/ExercisePicker'
 import { DashboardScreen } from '../dashboard/DashboardScreen'
-import { HomeScreen } from '../home/HomeScreen'
 import { liftPlan } from '../dashboard/trainCard'
 import { appliedStep } from '../../domain/stats/status'
 import { DetailOverlay } from '../overlays/DetailOverlay'
@@ -86,18 +85,6 @@ export type WorkoutFeatureProps = {
   onRestore?(): void
   /** Told what the live strip shows while a session is in progress, and `null` once none is. */
   onLive?(status: LiveStatus | null): void
-  /**
-   * v7: which screen the Home tab shows while no Live session is on screen -- `home`, the landing
-   * dashboard, or `today`, the workout page pushed over it. Default `today`: on its own (no app
-   * root around it) the feature opens on the workout page, as the Train tab did.
-   */
-  page?: 'home' | 'today'
-  /** v7: Home's Today panel opens the workout page, on `workoutId` when Home's arrows picked one. */
-  onOpenToday?(workoutId?: string): void
-  /** The workout the workout page opens on instead of the one due. */
-  todayWorkoutId?: string
-  /** v7: the workout page's Back, to Home. */
-  onCloseToday?(): void
 }
 
 type View = 'picker' | 'list' | 'set'
@@ -295,15 +282,9 @@ export function WorkoutFeature({
   onMinimise,
   onRestore,
   onLive,
-  page = 'today',
-  todayWorkoutId,
-  onOpenToday,
-  onCloseToday,
 }: WorkoutFeatureProps): JSX.Element | null {
   const services = useServices()
   const { syncNow } = useSyncControls()
-  // The app root's way into Settings, which the Dashboard's gear opens.
-  const chrome = useContext(ShellChromeContext)
 
   const catalogData = useServiceData((s) => s.catalog.load(), [])
   const programsData = useServiceData<ProgramsView>(async (s) => {
@@ -1405,69 +1386,34 @@ export function WorkoutFeature({
           ) : null}
         </>
       ) : null
+    // DX-09: a Session in progress (minimised) is resumed from the app root's strip only; Train
+    // shows its Workout's Plans with no Start. Without an app root (no strip), Train resumes it.
     const resume =
       session && located
         ? {
             programName: located.program.name,
             workoutName: located.workout.name,
-            onResume: () =>
-              minimised && onRestore ? onRestore() : handleChoose(session.programId, session.workoutId),
+            workoutId: located.workout.id,
+            onResume: minimised && onRestore ? undefined : () => handleChoose(session.programId, session.workoutId),
           }
         : null
     const discardedSnackbar =
       discarded === null ? null : <Snackbar message="Workout discarded" actionLabel="Undo" onAction={handleUndoDiscard} />
 
-    // v7: the Home tab opens on the landing dashboard; its Today panel pushes the workout page.
-    content =
-      page === 'home' ? (
-        <AppShell title="Home" ownHeader>
-          <HomeScreen
-            resume={resume}
-            notices={notices}
-            canStart={storageAvailable}
-            onStartWorkout={(workoutId) => {
-              if (activeProgram !== null && storageAvailable) handleChoose(activeProgram.id, workoutId)
-            }}
-            onPickPlan={(programId, workoutId) => {
-              if (!storageAvailable) return
-              services.programs
-                .setActive(programId)
-                .then(() => handleChoose(programId, workoutId))
-                .catch(() => undefined)
-            }}
-            onOpenToday={(workoutId) => onOpenToday?.(workoutId)}
-            onOpenSession={(sessionId) => navigate({ tab: 'history', sessionId })}
-            onOpenSessions={() => navigate({ tab: 'history' })}
-            onOpenProgress={() => navigate({ tab: 'progress' })}
-            onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
-            onOpenSettings={() => chrome.onOpenSettings?.()}
-          />
-          {discardedSnackbar}
-        </AppShell>
-      ) : null
-
-    // The workout page (once the Train tab) draws its own large title, so the shell draws none.
-    content = content ?? (
-      <AppShell title="Dashboard" ownHeader onBack={onCloseToday}>
+    // DX-01: the Train tab is today's Workout, inside the Shell.
+    content = (
+      <>
         <DashboardScreen
-          onBack={onCloseToday}
-          initialWorkoutId={todayWorkoutId}
           onStartWorkout={(workoutId) => {
             if (activeProgram !== null && storageAvailable) handleChoose(activeProgram.id, workoutId)
           }}
-          onOpenSettings={() => chrome.onOpenSettings?.()}
-          // The week strip opens Sessions (V3-09).
-          onOpenSessions={() => navigate({ tab: 'history' })}
-          // V5-14: a done day opens that workout's summary, as the Sessions calendar does.
-          onOpenSession={(sessionId) => navigate({ tab: 'history', sessionId })}
           // V6-03: a lift's name opens the one Lift page.
           onOpenLift={(exerciseId) => navigate({ tab: 'lift', exerciseId })}
-          // A backup due is the gear's marker here (S1); Settings spells it out in full.
           notices={notices}
           resume={resume}
         />
         {discardedSnackbar}
-      </AppShell>
+      </>
     )
   }
 
