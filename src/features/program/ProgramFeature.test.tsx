@@ -329,17 +329,18 @@ test('V1-16 ProgramFeature stores a weight step and Bodyweight chosen in the edi
   await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
   await screen.findByLabelText('Program name', undefined, SETTLE)
 
-  const squat = screen.getByText('Back squat').closest('li') as HTMLElement
-  await user.click(within(squat).getByRole('button', { name: 'Options for Back squat' }))
-  const step = await within(squat).findByRole('combobox', { name: 'Back squat weight step' }, SETTLE)
+  // DX-17: a tap on a Plan's row pushes its Plan editor, which holds the Exercise's settings.
+  await user.click(screen.getAllByRole('button', { name: /^Back squat, / })[0])
+  const step = await screen.findByRole('combobox', { name: 'Back squat weight step' }, SETTLE)
   expect(step).toHaveValue('2.5')
   await user.selectOptions(step, '5')
+  await user.click(screen.getByRole('button', { name: 'Back' }))
 
-  const pushUps = screen.getByText('Push-ups').closest('li') as HTMLElement
-  await user.click(within(pushUps).getByRole('button', { name: 'Options for Push-ups' }))
-  const bodyweight = within(pushUps).getByRole('switch', { name: 'Bodyweight exercise' })
+  await user.click(screen.getAllByRole('button', { name: /^Push-ups, / })[0])
+  const bodyweight = screen.getByRole('switch', { name: 'Bodyweight exercise' })
   expect(bodyweight).toBeChecked()
   await user.click(bodyweight)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
 
   await user.click(screen.getByRole('button', { name: 'Save' }))
   await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)
@@ -355,9 +356,9 @@ test('V1-16 ProgramFeature Cancel leaves the stored Exercise settings untouched'
   await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
   await screen.findByLabelText('Program name', undefined, SETTLE)
 
-  const squat = screen.getByText('Back squat').closest('li') as HTMLElement
-  await user.click(within(squat).getByRole('button', { name: 'Options for Back squat' }))
-  await user.selectOptions(await within(squat).findByRole('combobox', { name: 'Back squat weight step' }, SETTLE), '5')
+  await user.click(screen.getAllByRole('button', { name: /^Back squat, / })[0])
+  await user.selectOptions(await screen.findByRole('combobox', { name: 'Back squat weight step' }, SETTLE), '5')
+  await user.click(screen.getByRole('button', { name: 'Back' }))
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
   await user.click(screen.getByRole('button', { name: 'Discard' }))
 

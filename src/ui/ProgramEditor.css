@@ -149,26 +149,14 @@
   font-size: var(--text-sm);
 }
 
-/* ---- A Workout ---- */
+/* ---- A Workout (DX-17): a section headed by its name and size, then text buttons ---- */
 
 .program-editor-workout {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--color-hairline);
-}
-
-/* The fieldset's "Workout N" stays its accessible group name; the name field is the heading. */
-.program-editor-legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 .program-editor-workout-head {
@@ -178,13 +166,22 @@
   min-height: var(--tap-min);
 }
 
+.program-editor-workout-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
 .program-editor-workout-name {
   flex: 1;
   min-width: 0;
   min-height: var(--tap-min);
   padding: 0;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 2px solid var(--color-hairline);
   background: transparent;
   color: var(--color-text);
   font-size: var(--text-md);
@@ -202,26 +199,33 @@
   white-space: nowrap;
 }
 
-/* ---- Column header and rows ---- */
+/* "Reorder" · "Rename" · "Remove": text buttons, no "..." menu. */
+.program-editor-workout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-left: calc(var(--space-2) * -1);
+}
 
-/* V1-28: a Plan takes two lines -- the handle, family dot, name and (...) on the first, its
- * Sets / Reps / Rest / kg tiles on the second -- so every target is at least 44 x 44 and the
- * name keeps its room at 320 wide. The handle's and (...)'s 44px boxes reach into the page's
- * side padding, so their icons still line up with the content's edges. */
-.program-editor-plan-row {
-  display: grid;
-  grid-template-columns: 30px 8px minmax(0, 1fr) 30px;
-  align-items: center;
-  column-gap: var(--space-2);
+.program-editor-text {
+  min-width: var(--tap-min);
   min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
 }
 
-.program-editor-plan-cells {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr 1fr;
-  gap: 6px;
-  padding: 0 0 var(--space-3);
+.program-editor-text:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
+
+.program-editor-remove-workout {
+  margin-left: auto;
+}
+
+/* ---- A Plan row (DX-16 format): ⠿ handle, then one button with the name and the shorthand ---- */
 
 .program-editor-plans {
   margin: 0;
@@ -230,7 +234,14 @@
 }
 
 .program-editor-plan {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   border-bottom: 1px solid var(--color-hairline);
+}
+
+.program-editor-plan:last-child {
+  border-bottom: 0;
 }
 
 .program-editor-plan[data-dragging='true'] {
@@ -241,12 +252,9 @@
   box-shadow: var(--shadow-sheet);
 }
 
-.program-editor-plan-row {
-  min-height: 56px;
-}
-
 .program-editor-handle {
   display: grid;
+  flex: none;
   width: var(--tap-min);
   margin-left: -14px;
   min-height: var(--tap-min);
@@ -258,203 +266,145 @@
   touch-action: none;
 }
 
-.program-editor-plan-name {
-  margin: 0;
-  overflow: hidden;
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  letter-spacing: -0.015em;
-  line-height: 1.0625rem;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-/* A cell: a raised 52px tile holding a bare input under its own small caption; the focused one is
- * outlined in primary. The input fills the tile, so the whole tile is its target. */
-.program-editor-cell {
-  position: relative;
+.program-editor-plan-row {
   display: flex;
-  align-items: stretch;
-  justify-content: center;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-3);
   min-width: 0;
-  min-height: 52px;
-  border: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  background: var(--color-raised);
-}
-
-.program-editor-cell:focus-within {
-  border-color: var(--color-primary);
-  background: var(--color-surface);
-}
-
-.program-editor-cell-caption {
-  position: absolute;
-  top: 5px;
-  right: 0;
-  left: 0;
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  line-height: 1;
-  text-align: center;
-  pointer-events: none;
-}
-
-.program-editor-cell-value {
-  align-self: center;
-  padding-top: 12px;
-}
-
-.program-editor-cell-static {
-  color: var(--color-text);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-}
-
-.program-editor-cell-input {
-  width: 100%;
-  min-width: 0;
-  min-height: 48px;
-  padding: 14px 0 0;
+  min-height: 56px;
+  padding: var(--space-2) 0;
   border: 0;
   background: transparent;
   color: var(--color-text);
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  text-align: center;
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-.program-editor-cell-input:focus {
-  outline: none;
-  font-weight: var(--weight-semibold);
-}
-
-.program-editor-cell-input::-webkit-outer-spin-button,
-.program-editor-cell-input::-webkit-inner-spin-button {
-  margin: 0;
-  -webkit-appearance: none;
-}
-
-.program-editor-cell-reps {
-  gap: 0;
-  padding: 0;
-}
-
-.program-editor-rep {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-}
-
-/* A rep range reads as one value: the low end hugs the dash from the left, the high from the right. */
-.program-editor-rep:first-of-type .program-editor-cell-input {
-  text-align: right;
-}
-
-.program-editor-rep:last-of-type .program-editor-cell-input {
   text-align: left;
-}
-
-.program-editor-rep-dash {
-  align-self: center;
-  padding: 14px 4px 0;
-  color: var(--color-text);
-  font-size: var(--text-md);
-}
-
-.program-editor-more {
-  display: grid;
-  flex: none;
-  width: var(--tap-min);
-  margin-right: -14px;
-  min-height: var(--tap-min);
-  place-items: center;
-  padding: 0;
-  border: 0;
-  color: var(--color-muted);
   cursor: pointer;
 }
 
-/* A row's or a Workout's options, opened under it by its (…). */
-.program-editor-menu {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0 0 var(--space-2);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-raised);
+.program-editor-plan-name {
+  min-width: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: 1.375rem;
 }
 
-.program-editor-menu-switch {
+.program-editor-plan-line {
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.program-editor-plan-rest {
+  color: var(--color-muted);
+}
+
+.program-editor-plan-fault {
+  flex-basis: 100%;
+  color: var(--color-danger);
   font-size: var(--text-sm);
 }
 
-/* V1-16: how the row's Exercise counts its weight -- Bodyweight, and the step the Dial moves by. */
-.program-editor-menu-weight {
+.program-editor-arrows {
+  display: flex;
+  flex: none;
+}
+
+.program-editor-arrow {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0;
+  font-size: var(--text-lg);
+}
+
+.program-editor-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.program-editor-field-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ---- The Plan editor page (DX-17): one row per field, a stepper or select at its end ---- */
+
+.program-editor-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2) 0 0;
+  font-size: var(--text-md);
+}
+
+.plan-editor-rows {
   display: flex;
   flex-direction: column;
-  padding: var(--space-1) 0;
   border-top: 1px solid var(--color-hairline);
-  border-bottom: 1px solid var(--color-hairline);
-  font-size: var(--text-sm);
 }
 
-.program-editor-menu-step {
+.plan-editor-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  min-height: var(--tap-min);
+  min-height: 60px;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
-.program-editor-menu-step .select {
-  min-width: 112px;
-  background: var(--color-surface);
-  font-size: var(--text-sm);
-}
-
-/* V5-10: the row's starting weight, in its options while the row shows the load it is on now. */
-.program-editor-menu-step .program-editor-menu-step-label {
-  white-space: nowrap;
-}
-
-.program-editor-menu-step .program-editor-cell-input {
-  width: 112px;
-  min-height: var(--tap-min);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  font-size: var(--text-sm);
-  text-align: center;
-}
-
-.program-editor-menu-note {
-  margin: 0 0 var(--space-1);
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-}
-
-.program-editor-menu-actions {
+.plan-editor-label {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
+  flex-direction: column;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
 }
 
-.program-editor-action {
-  min-height: var(--tap-min);
-  padding: 0 var(--space-2);
-  border: 0;
+.plan-editor-hint {
+  color: var(--color-muted);
   font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+
+.plan-editor-value {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.plan-editor-switch > * {
+  flex: 1;
+}
+
+.plan-editor-note {
+  margin: var(--space-2) 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.plan-editor-swap {
+  width: 100%;
+  padding: 0;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  text-align: left;
   cursor: pointer;
 }
 
-.program-editor-action:disabled {
-  opacity: 0.4;
-  cursor: default;
+.plan-editor-swap > svg {
+  color: var(--color-muted);
+}
+
+.plan-editor-remove {
+  align-self: center;
+  min-height: var(--tap-min);
+  margin-top: var(--space-5);
+  padding: 0 var(--space-3);
+  font-size: var(--text-md);
 }
 
 .program-editor-add {
@@ -560,6 +510,10 @@
   background: var(--color-control);
 }
 
+.program-editor-impact-bar-after {
+  background: var(--color-text);
+}
+
 .program-editor-impact-value {
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
@@ -572,31 +526,6 @@
   margin-right: var(--space-5);
   padding-top: var(--space-1);
   border-top: 1px solid var(--color-hairline);
-}
-
-/* ---- The exercise picker ---- */
-
-.program-editor-picker {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding-left: var(--space-4);
-  padding-right: var(--space-4);
-}
-
-/* `.library-search` (src/ui/LibraryList.css) is `flex: 1`, sized for the Exercises page's row
- * layout. Inside the picker's flex column that same rule grows it to fill the overlay's height
- * instead of staying a single line, so it is overridden here rather than on the shared class --
- * the Exercises page keeps its own layout untouched. */
-.program-editor-picker .library-search {
-  flex: none;
-}
-
-.program-editor-picker-heading {
-  margin: var(--space-4) 0 0;
-  color: var(--color-text);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
 }
 
 /* V1-09: Cancel's "Discard N changes?" sheet, its two answers stacked full width. */
