@@ -42,13 +42,22 @@ export type SessionSummaryProps = {
   onBrowse?(muscles: Muscle[]): void
   /** V6-03: opens the one Lift page: each Lift by lift name is a button to it. */
   onOpenLift?(exerciseId: string): void
-  /** Opens the Session's editor; omitted means no Edit control (the finish summary). */
+  /**
+   * Opens the Session's editor; omitted means no Edit control (the finish summary). Given, the
+   * summary is Session detail (DX-14 / Sessions): "Edit" as text in its header, no Done bar.
+   */
   onEdit?(): void
   /**
-   * V5: deletes the Session straight from its summary, no edit mode first; the caller offers
-   * Undo. Omitted means no Delete control (the finish summary).
+   * No longer drawn (Session detail, DX-14): a Session is deleted from its editor only, with
+   * Undo. Kept so callers still type-check; given, it still marks the summary as Session detail.
    */
   onDelete?(): void
+  /**
+   * Session detail drawn inside the caller's own page (the Shell, with its own ‹ back): no
+   * overlay panel and no back control of its own. Omitted, Session detail is a full-screen panel
+   * with a ‹ Back in its header that calls `onClose`.
+   */
+  embedded?: boolean
   /**
    * The Program the Session ran under: the moves and the finish summary's "Next: <Workout>" read
    * it (E18-T15, V4-03, v7). Omitted means no Next line.
@@ -76,9 +85,12 @@ export type SessionSummaryProps = {
   photos?: ReactNode
 }
 
-/** The duration's value and unit: `52` `min`, or `1 h 05` `min` from an hour up. */
+/**
+ * The duration's value and unit: `52` `min`, or `1 h 05` `min` from an hour up. DX-14: a Session
+ * shorter than a minute reads `1 min`, never `0 min`.
+ */
 function durationParts(ms: number): [string, string] {
-  const minutes = Math.round(ms / 60_000)
+  const minutes = Math.max(1, Math.round(ms / 60_000))
   if (minutes < 60) return [String(minutes), 'min']
   return [`${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`, 'min']
 }
@@ -148,6 +160,7 @@ export function SessionSummary({
   onOpenLift,
   onEdit,
   onDelete,
+  embedded = false,
   program,
   workout,
   onSaveChanges,
@@ -224,6 +237,9 @@ export function SessionSummary({
 
   const setsText = `${short ? 'Short session · ' : ''}${partial ? `${working} of ${plannedSets} sets` : plural(working, 'set', 'sets')}`
   const sentence = [verdict.lead, verdict.rest].filter((part) => part !== '').join(' ')
+  // DX-14: the Summary leads with its comparison line; a short Session says so first, "Short
+  // Session: 2 of 23 sets", since its few lifts make no comparison of their own.
+  const shortLead = short ? `Short Session: ${working} of ${plannedSets} sets` : ''
 
   async function share(): Promise<void> {
     const text = [
@@ -249,6 +265,230 @@ export function SessionSummary({
     }
   }
 
+  const shareSheet = shareOpen ? (
+    <Sheet label="Share session" onClose={() => setShareOpen(false)}>
+      <div className="session-summary-share-sheet">
+        <h3 className="session-summary-caption">Share session</h3>
+        <button
+          type="button"
+          className="session-summary-share-option btn-secondary"
+          onClick={() => {
+            setShareOpen(false)
+            void share()
+          }}
+        >
+          <Icon name="Share" size={20} />
+          Share as text
+        </button>
+        <button
+          type="button"
+          className="session-summary-share-option btn-secondary"
+          onClick={() => {
+            setShareOpen(false)
+            void shareImage()
+          }}
+        >
+          <Icon name="Share" size={20} />
+          Share as image
+        </button>
+        <button
+          type="button"
+          className="session-summary-share-option btn-secondary"
+          onClick={() => {
+            setShareOpen(false)
+            openUrl(healthShortcutUrl(session, workoutName ?? 'Workout'))
+          }}
+        >
+          Send to Apple Health
+        </button>
+        {healthReady ? null : (
+          <p className="session-summary-quiet">
+            If iOS says it can&apos;t find the shortcut, set it up first in Settings › Apple Health.
+          </p>
+        )}
+      </div>
+    </Sheet>
+  ) : null
+
+  const body = (
+    <div className="session-summary-body">
+      {past ? (
+        // Session detail (DX-14): ‹ Back (unless the caller's page has its own) and Edit as text.
+        <div className="session-summary-bar">
+          {embedded ? (
+            <span />
+          ) : (
+            <button type="button" className="session-summary-back icon-btn" aria-label="Back" onClick={onClose}>
+              <Icon name="ChevronLeft" size={24} />
+            </button>
+          )}
+          {onEdit ? (
+            <button type="button" className="session-summary-edit btn-quiet" onClick={onEdit}>
+              Edit
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      <header className="session-summary-head">
+        <div className="session-summary-head-row">
+          <p className="session-summary-label">
+            <span className="session-summary-date">{dayText}</span>
+            {' · '}
+            <span data-kpi="duration">
+              <span className="session-summary-kpi-value">{`${durationValue} ${durationUnit}`}</span>
+            </span>
+          </p>
+        </div>
+        <h2 className="session-summary-heading">{workoutName ?? 'Workout'}</h2>
+      </header>
+
+      {shortLead !== '' || sentence !== '' ? (
+        <p className="session-summary-sentence">
+          {shortLead !== '' ? (
+            <strong className="session-summary-sentence-lead" data-kpi="short">{shortLead}</strong>
+          ) : null}
+          {shortLead !== '' && sentence !== '' ? '. ' : null}
+          {verdict.lead !== '' ? (
+            shortLead === '' ? (
+              <strong className="session-summary-sentence-lead">{verdict.lead}</strong>
+            ) : (
+              <span className="session-summary-sentence-rest">{verdict.lead}</span>
+            )
+          ) : null}
+          {verdict.lead !== '' && verdict.rest !== '' ? ' ' : null}
+          {verdict.rest !== '' ? <span className="session-summary-sentence-rest">{verdict.rest}</span> : null}
+        </p>
+      ) : null}
+
+      {records.length > 0 ? (
+        <section className="session-summary-records" aria-label="Records">
+          <ul className="session-summary-prs">
+            {records.map((record) => {
+              const exercise = resolve(record.exerciseId)
+              return (
+                <li key={`${record.exerciseId}-${record.kind}`} className="session-summary-record">
+                  <PrTag />
+                  <span className="session-summary-record-text">
+                    <span className="session-summary-record-detail">{exercise?.name ?? record.exerciseId}</span>
+                    <span className="session-summary-record-label">{` · ${RECORD_WORDS[record.kind]}`}</span>
+                  </span>
+                  <span className="session-summary-record-figure">
+                    {recordFigure(record, exercise?.bodyweight === true)}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ) : null}
+
+      {lifts.length > 0 ? (
+        <section className="session-summary-section" aria-label="Lift by lift">
+          <div className="session-summary-caption-row">
+            <h3 className="session-summary-caption">Lift by lift</h3>
+            {versus ? <span className="session-summary-caption session-summary-versus">{versus}</span> : null}
+          </div>
+          <div className="session-summary-moves">
+            {lifts.map((lift) => (
+              <div key={lift.exerciseId} className="session-summary-move">
+                <div className="session-summary-move-main">
+                  {onOpenLift ? (
+                    <button
+                      type="button"
+                      className="session-summary-move-name lift-door btn-quiet"
+                      onClick={() => onOpenLift(lift.exerciseId)}
+                    >
+                      {lift.name}
+                    </button>
+                  ) : (
+                    <span className="session-summary-move-name">{lift.name}</span>
+                  )}
+                  <span className="session-summary-move-text">
+                    {lift.line.groups.map((group, index) => (
+                      <span key={index} className="session-summary-move-set">
+                        {index > 0 ? ' · ' : ''}
+                        <SetFigure set={group.set} moreReps={group.moreReps} />
+                      </span>
+                    ))}
+                  </span>
+                </div>
+                <Verdict verdict={lift.line.verdict} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <p className="session-summary-totals">
+        {/* V6-11: under half the planned Sets the lead line says so; Train keeps this Workout next. */}
+        <span data-kpi="sets">
+          <span className="session-summary-kpi-value">{working}</span>
+          {partial ? ` of ${plannedSets} sets` : working === 1 ? ' set' : ' sets'}
+        </span>
+        {' · '}
+        <span data-kpi="volume">
+          <span className="session-summary-kpi-value">{volumeText}</span>
+          {bodyweightReps > 0 ? (
+            <span className="session-summary-kpi-note">{` · ${bodyweightReps} bodyweight reps`}</span>
+          ) : null}
+          {weighed && hasBodyweightSets ? (
+            <span className="session-summary-kpi-note">
+              {` · bodyweight ${numberText(weighed.kg)} kg (${dayMonth(weighed.day)})`}
+            </span>
+          ) : null}
+        </span>
+        {warmups > 0 ? (
+          <>
+            {' · '}
+            <span className="session-summary-warmups">{`${plural(warmups, 'warm-up', 'warm-ups')} not counted`}</span>
+          </>
+        ) : null}
+      </p>
+
+      {photos}
+
+      {offerOpen && changes.length > 0 ? (
+        <section className="session-summary-save card" aria-label="Save changes to program">
+          <h3 className="session-summary-caption">Save changes to program</h3>
+          <ul className="session-summary-save-list">
+            {changes.map((change) => (
+              <li key={changeLine(change)}>{changeLine(change)}</li>
+            ))}
+          </ul>
+          <div className="session-summary-save-actions">
+            <button type="button" className="btn-primary" onClick={() => void saveChanges()}>
+              Save
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setOfferOpen(false)}>
+              Not now
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      <div className="session-summary-foot">
+        {next ? <p className="session-summary-next">{next}</p> : <span />}
+        <button
+          type="button"
+          className="session-summary-share btn-quiet"
+          aria-haspopup="dialog"
+          onClick={() => setShareOpen(true)}
+        >
+          Share
+        </button>
+      </div>
+    </div>
+  )
+
+  if (past && embedded) {
+    return (
+      <section aria-label="Session summary" className="session-summary session-summary--embedded">
+        {body}
+        {shareSheet}
+      </section>
+    )
+  }
+
   return (
     <div
       role="dialog"
@@ -256,215 +496,18 @@ export function SessionSummary({
       aria-label="Session summary"
       className="session-summary overlay-panel"
     >
-      <div className="session-summary-body">
-        <header className="session-summary-head">
-          <div className="session-summary-head-row">
-            <p className="session-summary-label">
-              <span className="session-summary-date">{dayText}</span>
-              {' · '}
-              <span data-kpi="duration">
-                <span className="session-summary-kpi-value">{`${durationValue} ${durationUnit}`}</span>
-              </span>
-            </p>
-            {onEdit ? (
-              <button type="button" className="session-summary-edit icon-btn" aria-label="Edit session" onClick={onEdit}>
-                <Icon name="Pencil" size={20} />
-              </button>
-            ) : null}
-          </div>
-          <h2 className="session-summary-heading">{workoutName ?? 'Workout'}</h2>
-        </header>
+      {body}
 
-        {sentence !== '' ? (
-          <p className="session-summary-sentence">
-            {verdict.lead !== '' ? <strong className="session-summary-sentence-lead">{verdict.lead}</strong> : null}
-            {verdict.lead !== '' && verdict.rest !== '' ? ' ' : null}
-            {verdict.rest !== '' ? <span className="session-summary-sentence-rest">{verdict.rest}</span> : null}
-          </p>
-        ) : null}
-
-        {records.length > 0 ? (
-          <section className="session-summary-records" aria-label="Records">
-            <ul className="session-summary-prs">
-              {records.map((record) => {
-                const exercise = resolve(record.exerciseId)
-                return (
-                  <li key={`${record.exerciseId}-${record.kind}`} className="session-summary-record">
-                    <PrTag />
-                    <span className="session-summary-record-text">
-                      <span className="session-summary-record-detail">{exercise?.name ?? record.exerciseId}</span>
-                      <span className="session-summary-record-label">{` · ${RECORD_WORDS[record.kind]}`}</span>
-                    </span>
-                    <span className="session-summary-record-figure">
-                      {recordFigure(record, exercise?.bodyweight === true)}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        ) : null}
-
-        {lifts.length > 0 ? (
-          <section className="session-summary-section" aria-label="Lift by lift">
-            <div className="session-summary-caption-row">
-              <h3 className="session-summary-caption">Lift by lift</h3>
-              {versus ? <span className="session-summary-caption session-summary-versus">{versus}</span> : null}
-            </div>
-            <div className="session-summary-moves">
-              {lifts.map((lift) => (
-                <div key={lift.exerciseId} className="session-summary-move">
-                  <div className="session-summary-move-main">
-                    {onOpenLift ? (
-                      <button
-                        type="button"
-                        className="session-summary-move-name lift-door btn-quiet"
-                        onClick={() => onOpenLift(lift.exerciseId)}
-                      >
-                        {lift.name}
-                      </button>
-                    ) : (
-                      <span className="session-summary-move-name">{lift.name}</span>
-                    )}
-                    <span className="session-summary-move-text">
-                      {lift.line.groups.map((group, index) => (
-                        <span key={index} className="session-summary-move-set">
-                          {index > 0 ? ' · ' : ''}
-                          <SetFigure set={group.set} moreReps={group.moreReps} />
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-                  <Verdict verdict={lift.line.verdict} />
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <p className="session-summary-totals">
-          {/* V6-11: under half the planned Sets, it says so; Train keeps this Workout next. */}
-          {short ? (
-            <>
-              <span data-kpi="short">Short session</span>
-              {' · '}
-            </>
-          ) : null}
-          <span data-kpi="sets">
-            <span className="session-summary-kpi-value">{working}</span>
-            {partial ? ` of ${plannedSets} sets` : working === 1 ? ' set' : ' sets'}
-          </span>
-          {' · '}
-          <span data-kpi="volume">
-            <span className="session-summary-kpi-value">{volumeText}</span>
-            {bodyweightReps > 0 ? (
-              <span className="session-summary-kpi-note">{` · ${bodyweightReps} bodyweight reps`}</span>
-            ) : null}
-            {weighed && hasBodyweightSets ? (
-              <span className="session-summary-kpi-note">
-                {` · bodyweight ${numberText(weighed.kg)} kg (${dayMonth(weighed.day)})`}
-              </span>
-            ) : null}
-          </span>
-          {warmups > 0 ? (
-            <>
-              {' · '}
-              <span className="session-summary-warmups">{`${plural(warmups, 'warm-up', 'warm-ups')} not counted`}</span>
-            </>
-          ) : null}
-        </p>
-
-        {photos}
-
-        {offerOpen && changes.length > 0 ? (
-          <section className="session-summary-save card" aria-label="Save changes to program">
-            <h3 className="session-summary-caption">Save changes to program</h3>
-            <ul className="session-summary-save-list">
-              {changes.map((change) => (
-                <li key={changeLine(change)}>{changeLine(change)}</li>
-              ))}
-            </ul>
-            <div className="session-summary-save-actions">
-              <button type="button" className="btn-primary" onClick={() => void saveChanges()}>
-                Save
-              </button>
-              <button type="button" className="btn-secondary" onClick={() => setOfferOpen(false)}>
-                Not now
-              </button>
-            </div>
-          </section>
-        ) : null}
-
-        <div className="session-summary-foot">
-          {next ? <p className="session-summary-next">{next}</p> : <span />}
-          <button
-            type="button"
-            className="session-summary-share btn-quiet"
-            aria-haspopup="dialog"
-            onClick={() => setShareOpen(true)}
-          >
-            Share
+      {/* The finish summary's one primary; Session detail has none (DX-14). */}
+      {past ? null : (
+        <div className="session-summary-dock">
+          <button type="button" className="session-summary-done btn-primary" onClick={onClose}>
+            Done
           </button>
         </div>
+      )}
 
-        {onDelete ? (
-          <button type="button" className="session-summary-delete btn-danger" onClick={onDelete}>
-            <Icon name="Trash" size={20} />
-            Delete workout
-          </button>
-        ) : null}
-      </div>
-
-      <div className="session-summary-dock">
-        <button type="button" className="session-summary-done btn-primary" onClick={onClose}>
-          Done
-        </button>
-      </div>
-
-      {shareOpen ? (
-        <Sheet label="Share session" onClose={() => setShareOpen(false)}>
-          <div className="session-summary-share-sheet">
-            <h3 className="session-summary-caption">Share session</h3>
-            <button
-              type="button"
-              className="session-summary-share-option btn-secondary"
-              onClick={() => {
-                setShareOpen(false)
-                void share()
-              }}
-            >
-              <Icon name="Share" size={20} />
-              Share as text
-            </button>
-            <button
-              type="button"
-              className="session-summary-share-option btn-secondary"
-              onClick={() => {
-                setShareOpen(false)
-                void shareImage()
-              }}
-            >
-              <Icon name="Share" size={20} />
-              Share as image
-            </button>
-            <button
-              type="button"
-              className="session-summary-share-option btn-secondary"
-              onClick={() => {
-                setShareOpen(false)
-                openUrl(healthShortcutUrl(session, workoutName ?? 'Workout'))
-              }}
-            >
-              Send to Apple Health
-            </button>
-            {healthReady ? null : (
-              <p className="session-summary-quiet">
-                If iOS says it can&apos;t find the shortcut, set it up first in Settings › Apple Health.
-              </p>
-            )}
-          </div>
-        </Sheet>
-      ) : null}
+      {shareSheet}
     </div>
   )
 }

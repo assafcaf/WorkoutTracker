@@ -9,29 +9,18 @@
   padding-top: var(--space-2);
 }
 
-/* The Now | All switch as one header button (V3-07): a list icon over its short word, 44 px
- * tall, before Finish. */
-.live-view-button {
-  display: inline-flex;
+/* The Set | All control (DX-19): two segments in the header row, 44 px tall, before Finish. */
+.live-view-switch {
   flex: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: var(--tap-min);
-  min-height: var(--tap-min);
   margin-right: var(--space-2);
-  padding: 0 var(--space-2);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-primary);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  line-height: 1;
 }
 
-.live-view-button-text {
-  margin-top: 2px;
+.live-view-switch .segmented {
+  height: var(--tap-min);
+}
+
+.live-view-switch .segmented-option {
+  min-width: 44px;
 }
 
 /* A bullet bar: a thin track, today's amount filled along it, a tick where the compared amount

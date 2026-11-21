@@ -567,18 +567,18 @@ test('S5b the dock offers Share as the secondary action beside Done', () => {
   expect(within(dialog).queryByRole('button', { name: 'Send to Apple Health' })).toBeNull()
 })
 
-test('S5b Edit session shows only when onEdit is given, and calls it', async () => {
+test('S5b DX-14 Edit shows only when onEdit is given, as text, and calls it', async () => {
   const onEdit = vi.fn()
   const dialog = renderS5b(benchSession('e', BASE, 52, 1, 40, 5), [], { onEdit })
 
-  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Edit session' }))
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Edit' }))
   expect(onEdit).toHaveBeenCalledTimes(1)
 })
 
 test('S5b the finish summary, given no onEdit, has no Edit session', () => {
   const dialog = renderS5b(benchSession('e', BASE, 52, 1, 40, 5))
 
-  expect(within(dialog).queryByRole('button', { name: 'Edit session' })).toBeNull()
+  expect(within(dialog).queryByRole('button', { name: 'Edit' })).toBeNull()
 })
 
 
@@ -661,6 +661,13 @@ test('O26 a 71-minute Session reads 1 h 11 min on its own line, apart from the w
   const totals = dialog.querySelector('.session-summary-totals') as HTMLElement
   expect(totals.contains(duration)).toBe(false)
   expect(duration.textContent).not.toContain('sessions')
+})
+
+test('DX-14 a Session shorter than a minute reads "1 min", never "0 min"', () => {
+  const quick = { ...benchSession('quick', BASE, 0, 1, 40, 5), finishedAt: BASE + 20_000 }
+  const dialog = renderBench(quick, [])
+
+  expect(kpiValue(dialog, 'duration')).toBe('1 min')
 })
 
 test('O26 each lift reads its move in words beside its top set', () => {
@@ -945,15 +952,19 @@ test('V4-03 a partial Session reads "1 of 3 sets" in the figures, with no % comp
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const dialog = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
 
-  // Title kept (weakened-tests gate); V6-11, v7: the totals line says it was short, 1 of 3 sets.
-  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('Short session · 1 of 3 sets · 400 kg')
+  // DX-14: the lead line says it was short; the totals line keeps the figures.
+  expect(dialog.querySelector('.session-summary-totals')?.textContent).toBe('1 of 3 sets · 400 kg')
   expect(dialog.textContent).not.toMatch(/%/)
 })
 
-test('V6-11 under half the planned Sets reads "Short session · n of N sets"; half or more does not', () => {
+test('V6-11 DX-14 under half the planned Sets the Summary leads with "Short Session: n of N sets"; half or more does not', () => {
   const before = benchSession('wed-7', WED - 7 * DAY_MS, 50, 3, 80, 5)
   const short = renderBench(benchSession('wed-14', WED, 20, 1, 80, 5), [before])
-  expect(short.querySelector('[data-kpi="short"]')?.textContent).toBe('Short session')
+  expect(short.querySelector('[data-kpi="short"]')?.textContent).toBe('Short Session: 1 of 3 sets')
+  const sentence = short.querySelector('.session-summary-sentence') as HTMLElement
+  const heading = short.querySelector('.session-summary-heading') as HTMLElement
+  expect(heading.compareDocumentPosition(sentence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(sentence.compareDocumentPosition(short.querySelector('.session-summary-section') as HTMLElement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   cleanup()
   const most = renderBench(benchSession('wed-14', WED, 40, 2, 80, 5), [before])
   expect(most.querySelector('.session-summary-totals')?.textContent).toBe('2 of 3 sets · 800 kg')
