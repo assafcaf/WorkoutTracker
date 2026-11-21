@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
-import { workoutsOffered } from './test/dashboard'
+import { workoutOffered } from './test/dashboard'
 import abSplitJson from './data/programs/assaf-ab-2026.json'
 import { db } from './storage/db'
 import { USER_PROGRAMS_KEY } from './storage/settingsStore'
@@ -55,34 +55,38 @@ async function storedUserPrograms(): Promise<UserProgram[]> {
   return Array.isArray(row?.value) ? (row.value as UserProgram[]) : []
 }
 
+/**
+ * DX-04: the Program tab, then its Programs row: the Programs page, where the program list,
+ * Copy and New program live. Already on it (back from an editor it opened), stays.
+ */
 async function openProgramTab(user: User): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
-  await openProgramsPanel(user)
-}
-
-/**
- * Opens the Programs panel behind the Program tab's overflow (S7a), where the program list and
- * New program live; with no active Program, New program is on the page itself.
- */
-async function openProgramsPanel(user: User): Promise<void> {
-  await waitFor(() => {
-    const more = screen.queryByRole('button', { name: 'Programs' })
-    const newProgram = screen.queryByRole('button', { name: 'New program' })
-    expect(more ?? newProgram).not.toBeNull()
-  }, SETTLE)
-  const more = screen.queryByRole('button', { name: 'Programs' })
-  if (more !== null && more.getAttribute('aria-expanded') !== 'true') await user.click(more)
+  if (screen.queryByRole('button', { name: 'New program' })) return
+  await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
   await screen.findByRole('button', { name: 'New program' }, SETTLE)
 }
 
-/** The Program tab's action row for the Program named exactly `name`. */
+/** DX-04: Edit is the Program tab's one header action, on the active Program. */
+async function editActive(user: User, name: string): Promise<void> {
+  if (screen.queryByRole('button', { name: 'New program' })) await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(await screen.findByRole('button', { name: `Edit ${name}` }, SETTLE))
+}
+
+/** The Programs page's row for the Program named exactly `name`. */
 function actionsRow(name: string): HTMLElement {
-  const row = screen
-    .getAllByRole('button', { name: 'Copy' })
-    .map((button) => button.parentElement as HTMLElement)
-    .find((candidate) => within(candidate).queryByText(name) !== null)
-  if (row === undefined) throw new Error(`no Program tab row for ${name}`)
+  const row = [...document.querySelectorAll<HTMLElement>('[data-program-id]')].find(
+    (candidate) => candidate.querySelector('.programs-list-name')?.textContent === name,
+  )
+  if (row === undefined) throw new Error(`no Programs page row for ${name}`)
   return row
+}
+
+/** The row button that makes `name` active, or null. */
+function queryProgram(name: string): HTMLElement | null {
+  const row = [...document.querySelectorAll<HTMLElement>('[data-program-id]')].find(
+    (candidate) => candidate.querySelector('.programs-list-name')?.textContent === name,
+  )
+  return row?.querySelector<HTMLElement>('.programs-list-choose') ?? null
 }
 
 /** The editor's visible Workouts, top to bottom: each `Workout name` input's `<fieldset>`. */
@@ -232,7 +236,7 @@ test(
     await buildPushPullLegs(user)
     await openProgramTab(user)
 
-    expect(screen.getByRole('radio', { name: 'Push Pull Legs' })).toBeInTheDocument()
+    expect(queryProgram('Push Pull Legs')).not.toBeNull()
     expect(actionsRow('Push Pull Legs')).toBeVisible()
   },
   LONG,
@@ -247,16 +251,16 @@ test(
 
     await buildPushPullLegs(user)
     await openProgramTab(user)
-    await user.click(screen.getByRole('radio', { name: 'Push Pull Legs' }))
+    await user.click(queryProgram('Push Pull Legs') as HTMLElement)
 
     const [stored] = await storedUserPrograms()
     await waitFor(async () => {
       expect((await db.settings.get('activeProgramId'))?.value).toBe(stored.id)
     }, SETTLE)
-    await user.click(screen.getByRole('button', { name: 'Home' }))
-    // The Dashboard's dock offers Push, due first, and "Change" steps through Pull and Legs.
+    await user.click(screen.getByRole('button', { name: 'Train' }))
+    // DX-01: Train offers Push, due first, and only it.
     expect(await screen.findByRole('button', { name: 'Start Push' }, SETTLE)).toBeVisible()
-    expect(await workoutsOffered(user)).toEqual(['Push', 'Pull', 'Legs'])
+    expect(await workoutOffered()).toBe('Push')
   },
   LONG,
 )
@@ -270,8 +274,8 @@ test(
 
     await buildPushPullLegs(user)
     await openProgramTab(user)
-    await user.click(screen.getByRole('radio', { name: 'Push Pull Legs' }))
-    await user.click(screen.getByRole('button', { name: 'Home' }))
+    await user.click(queryProgram('Push Pull Legs') as HTMLElement)
+    await user.click(screen.getByRole('button', { name: 'Train' }))
     await user.click(await screen.findByRole('button', { name: 'Start Push' }, SETTLE))
     // The Session opens on its first Exercise's next Set, on Now (V1-01).
 
@@ -291,7 +295,7 @@ test('O13 a stored User Program is listed on the Program tab at launch', async (
 
   await openProgramTab(user)
 
-  expect(screen.getByRole('radio', { name: 'Push Pull Legs' })).toBeInTheDocument()
+  expect(queryProgram('Push Pull Legs')).not.toBeNull()
 }, LONG)
 
 test('O13 a stored active User Program’s Workouts are offered on the Workout tab at launch', async () => {
@@ -317,11 +321,11 @@ test('O13 a User Program pulled by a sync is listed on the Program tab without a
   await renderApp()
 
   await openProgramTab(user)
-  expect(screen.queryByRole('radio', { name: 'Push Pull Legs' })).toBeNull()
+  expect(queryProgram('Push Pull Legs')).toBeNull()
 
   release()
 
-  expect(await screen.findByRole('radio', { name: 'Push Pull Legs' }, SETTLE)).toBeInTheDocument()
+  await waitFor(() => expect(queryProgram('Push Pull Legs')).not.toBeNull(), SETTLE)
 }, LONG)
 
 // --- O9: Copy and Edit, and a save that fails ---------------------------------------------------
@@ -334,7 +338,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
 
     const name = (await screen.findByLabelText('Program name', undefined, SETTLE)) as HTMLInputElement
     expect(name.value).toBe('A/B Split (copy)')
@@ -353,7 +357,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     await screen.findByLabelText('Program name', undefined, SETTLE)
 
     const [a, b] = editorWorkouts()
@@ -378,7 +382,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     await screen.findByLabelText('Program name', undefined, SETTLE)
     await save(user)
     await editorClosed()
@@ -403,16 +407,16 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     await screen.findByLabelText('Program name', undefined, SETTLE)
     await save(user)
     await editorClosed()
     await openProgramTab(user)
 
-    expect(await screen.findByRole('radio', { name: 'A/B Split (copy)' }, SETTLE)).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'A/B Split' })).toBeInTheDocument()
+    await waitFor(() => expect(queryProgram('A/B Split (copy)')).not.toBeNull(), SETTLE)
+    expect(queryProgram('A/B Split')).not.toBeNull()
     expect((await storedUserPrograms()).map((p) => p.id)).not.toContain('assaf-ab-2026')
-    expect(within(actionsRow('A/B Split')).queryByRole('button', { name: 'Reset to original' })).toBeNull()
+    expect(within(actionsRow('A/B Split')).queryByRole('button', { name: 'Reset A/B Split to original' })).toBeNull()
   },
   LONG,
 )
@@ -426,7 +430,7 @@ test(
     const before = Date.now()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
+    await editActive(user, 'A/B Split')
     const name = (await screen.findByLabelText('Program name', undefined, SETTLE)) as HTMLInputElement
     expect(name.value).toBe('A/B Split')
     await save(user)
@@ -450,14 +454,14 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
+    await editActive(user, 'A/B Split')
     await screen.findByLabelText('Program name', undefined, SETTLE)
     await save(user)
     await editorClosed()
     await openProgramTab(user)
 
     expect(
-      await within(actionsRow('A/B Split')).findByRole('button', { name: 'Reset to original' }, SETTLE),
+      await within(actionsRow('A/B Split')).findByRole('button', { name: 'Reset A/B Split to original' }, SETTLE),
     ).toBeVisible()
   },
   LONG,
@@ -476,7 +480,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
+    await editActive(user, 'A/B Split')
     await screen.findByLabelText('Program name', undefined, SETTLE)
     await setField(user, document.body, 'Program name', 'A/B Split v2')
     await save(user)
@@ -510,7 +514,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     await screen.findByLabelText('Program name', undefined, SETTLE)
     rejectUserProgramsWrite()
     await save(user)
@@ -529,7 +533,7 @@ test(
     await renderApp()
 
     await openProgramTab(user)
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
     const name = await screen.findByLabelText('Program name', undefined, SETTLE)
     await user.clear(name)
     await user.type(name, 'My split')

@@ -6,7 +6,7 @@ import { db } from '../../storage/db'
 import { createServices, type Services } from '../../services'
 import type { Session } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
-import { startFromDashboard } from '../../test/dashboard'
+import { makeWorkoutBDue, startFromDashboard } from '../../test/dashboard'
 import { showAll } from '../../test/live'
 import { WorkoutFeature } from './WorkoutFeature'
 
@@ -32,6 +32,12 @@ afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
+
+/** The A/B Split with Workout B due: Workout A done two days before NOW (DX-01: Train offers only the Workout due). */
+async function servicesOnWorkoutBDue(): Promise<Services> {
+  await makeWorkoutBDue(NOW)
+  return servicesOnAssafAB()
+}
 
 async function servicesOnAssafAB(): Promise<Services> {
   const services = createServices({ now: () => NOW, storageAvailable: true, fetch: signedOutFetch })
@@ -79,7 +85,7 @@ async function openSeatedCurls(user: UserEvent): Promise<void> {
 // --- V5-02: one Preset for a swapped-in Exercise ---------------------------------------------
 
 test('V6 V5-02 a swapped-in Exercise opens on the planned load on Now, on All, and on Now again', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await openSeatedCurls(user)
   expect(await logButton()).toHaveTextContent('Log set 1 · 8 × 10')
 
@@ -98,7 +104,7 @@ test('V6 V5-02 a swapped-in Exercise opens on the planned load on Now, on All, a
 })
 
 test('V6 V5-02 Now keeps a quiet "for <planned> · Undo swap" line while the swap stands', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await openSeatedCurls(user)
   await swapTo(user, 'Seated biceps curls', 'Hammer Curls')
 
@@ -116,7 +122,7 @@ test('V6 V5-02 Now keeps a quiet "for <planned> · Undo swap" line while the swa
 })
 
 test('V6 V5-02 a swap onto other equipment with no history asks "Set a starting weight"', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await openSeatedCurls(user)
 
   await swapTo(user, 'Seated biceps curls', 'Cable Hammer Curls - Rope Attachment')
@@ -126,7 +132,7 @@ test('V6 V5-02 a swap onto other equipment with no history asks "Set a starting 
 })
 
 test('V6 V5-02 All draws a swapped-in Exercise’s Sets as Now does, its ramp included', async () => {
-  const services = await servicesOnAssafAB()
+  const services = await servicesOnWorkoutBDue()
   // Last Workout B: Deadlift ramped 60 x 10, 70 x 7, 70 x 7.
   const earlier = await services.sessions.start('assaf-ab-2026', 'workout-b')
   for (const [setIndex, weightKg, reps] of [[1, 60, 10], [2, 70, 7], [3, 70, 7]]) {
@@ -258,7 +264,7 @@ test('V6 V5-01 DX-14 with nothing logged, the Finish sheet has no Discard; Disca
 // --- V6-16: the first barbell lift offers its warm-ups on Now ----------------------------------
 
 test('V6-16 starting Workout B, the Deadlift shows its warm-up line on Now until its first working Set', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await startFromDashboard(user, 'Workout B')
   await screen.findByRole('heading', { level: 1, name: 'Deadlift' }, SETTLE)
 

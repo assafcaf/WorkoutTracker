@@ -153,8 +153,6 @@ const TAP_TARGET_SELECTORS = [
   '.app-header-back',
   '.action-bar > button',
   '.exercise-row',
-  '.start-workout',
-  '.resume-workout',
   '.dial-step',
   '.dial-readout',
   '.keypad-keys button',

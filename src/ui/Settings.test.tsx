@@ -176,10 +176,14 @@ function renderWithSync(sync: SyncView, handlers: Partial<Pick<
   )
 }
 
-test('O12 Settings shows "Not signed in" when sync.accountEmail is null', () => {
+test('DX-13 signed out, the first row of Data & sync is "Sign in to sync", not "Not signed in"', () => {
   renderWithSync({ accountEmail: null, lastSyncedAt: null, status: 'signed-out' })
 
-  expect(screen.getByText('Not signed in')).toBeInTheDocument()
+  expect(screen.queryByText('Not signed in')).toBeNull()
+  const data = screen.getByRole('region', { name: 'Data & sync' })
+  const first = data.querySelector('.settings-card')?.firstElementChild
+  expect(first).toHaveAccessibleName('Sign in to sync')
+  expect(first).toHaveAttribute('href', '/api/login')
 })
 
 test('O12 Settings shows the account email when signed in', () => {
@@ -202,7 +206,7 @@ test('O12 Settings shows the last synced time as a local date and time when last
   try {
     renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt, status: 'ok' })
 
-    expect(screen.getByText('Tue 14 Nov')).toBeInTheDocument()
+    expect(screen.getByText('Last synced Tue 14 Nov')).toBeInTheDocument()
   } finally {
     vi.useRealTimers()
   }
@@ -215,7 +219,7 @@ test('O21 Settings shows a last synced day in another year with its year', () =>
   try {
     renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: 1700000000000, status: 'ok' })
 
-    expect(screen.getByText('14 Nov 2023')).toBeInTheDocument()
+    expect(screen.getByText('Last synced 14 Nov 2023')).toBeInTheDocument()
   } finally {
     vi.useRealTimers()
   }
@@ -246,10 +250,47 @@ test('O12 the "Sync now" button is not disabled when status is not syncing', () 
   expect(screen.getByRole('button', { name: 'Sync now' })).not.toBeDisabled()
 })
 
-test('O12 status signed-out shows a "Sign in" link to /api/login', () => {
+test('O12 status signed-out shows a "Sign in to sync" link to /api/login', () => {
   renderWithSync({ accountEmail: null, lastSyncedAt: null, status: 'signed-out' })
 
-  expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/api/login')
+  expect(screen.getByRole('link', { name: 'Sign in to sync' })).toHaveAttribute('href', '/api/login')
+})
+
+test('DX-13 signed in, there is no Sign in row', () => {
+  renderWithSync({ accountEmail: 'assaf@example.com', lastSyncedAt: null, status: 'ok' })
+
+  expect(screen.queryByRole('link', { name: /Sign in/ })).toBeNull()
+})
+
+test('DX-13 "Sync now" answers under itself: Syncing…, then a failure says the Sessions are safe', async () => {
+  const user = userEvent.setup()
+  let settle: () => void = () => undefined
+  const onSyncNow = vi.fn(() => new Promise<void>((resolve) => (settle = resolve)))
+  const { rerender } = render(
+    <Settings sync={{ accountEmail: null, lastSyncedAt: null, status: 'idle' }} onSyncNow={onSyncNow} />,
+  )
+  expect(screen.queryByRole('status')).toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Sync now' }))
+  expect(screen.getByRole('status')).toHaveTextContent('Syncing…')
+
+  rerender(
+    <Settings sync={{ accountEmail: null, lastSyncedAt: null, status: 'error', message: 'down' }} onSyncNow={onSyncNow} />,
+  )
+  settle()
+  expect(await screen.findByText('Can’t reach the server. Your Sessions are safe on this phone.')).toBeInTheDocument()
+})
+
+test('DX-13 "Sync now" that succeeds says "Synced just now"', async () => {
+  const user = userEvent.setup()
+  const onSyncNow = vi.fn(() => Promise.resolve())
+  render(
+    <Settings sync={{ accountEmail: 'assaf@example.com', lastSyncedAt: 1, status: 'ok' }} onSyncNow={onSyncNow} />,
+  )
+
+  await user.click(screen.getByRole('button', { name: 'Sync now' }))
+
+  expect(await screen.findByText('Synced just now')).toBeInTheDocument()
 })
 
 test('O12 status account-mismatch names both this phone\'s and the signed-in account\'s emails', () => {
@@ -487,7 +528,7 @@ test('E20-T5 O15 status update-required says to update the app, with Sync now an
 
   expect(screen.getByText('Update the app to keep syncing.')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Sync now' })).toBeInTheDocument()
-  expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
+  expect(screen.queryByRole('link', { name: /Sign in/ })).toBeNull()
 })
 
 test('E20-T5 O15 the update line is gone when the status is ok', () => {

@@ -15,7 +15,6 @@ import { putSessions } from '../../storage/sessionStore'
 import type { Session, UserProgram } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
 import { ProgramFeature } from './ProgramFeature'
-import { ProgramSwitcher } from '../../ui/program/ProgramHead'
 
 const NOW = 1_700_000_000_000
 const SETTLE = { timeout: 2000 }
@@ -66,9 +65,10 @@ test('O10 ProgramFeature lists Programs, leading with the active one', async () 
   renderFeature()
 
   expect(await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)).toBeVisible()
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  // DX-04: the program list is the Programs page, behind its own row.
   await user.click(screen.getByRole('button', { name: 'Programs' }))
-  expect(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE)).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: /^Second Program/ }, SETTLE)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /^A\/B Split/ })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('O10 ProgramFeature switches the active Program when another is chosen', async () => {
@@ -76,33 +76,82 @@ test('O10 ProgramFeature switches the active Program when another is chosen', as
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  // DX-04: the program list is the Programs page, behind its own row.
   await user.click(screen.getByRole('button', { name: 'Programs' }))
 
-  await user.click(await screen.findByRole('radio', { name: 'Second Program' }, SETTLE))
+  await user.click(await screen.findByRole('button', { name: /^Second Program/ }, SETTLE))
 
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Second Program/ })).toHaveAttribute('aria-pressed', 'true'), SETTLE)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
   expect(await screen.findByRole('heading', { name: 'Second Program' }, SETTLE)).toBeVisible()
-  expect(screen.getByRole('radio', { name: 'Second Program' })).toBeChecked()
 })
 
-test('P1 ProgramFeature switches the active Program from the selector under the title, without Edit', async () => {
+test('DX-04 the Program tab has one header action, Edit, and no segmented control, "..." or Switch program select', async () => {
   await saveUserProgram(extraVisibleProgram(), NOW)
+  renderFeature()
+  const heading = await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)
+
+  const header = heading.closest('header') as HTMLElement
+  expect(within(header).getAllByRole('button').map((button) => button.textContent)).toEqual(['Edit'])
+  expect(screen.queryByRole('combobox')).toBeNull()
+  expect(screen.queryByRole('radiogroup')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'More' })).toBeNull()
+  expect(document.querySelector('.segmented, .card, table')).toBeNull()
+})
+
+test('DX-04 Programs, Deload week, Exercises and Settings are each a labelled row; Exercises and Settings route there', async () => {
+  const user = userEvent.setup()
+  const { navigate } = renderFeature()
+  await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)
+
+  const rows = within(screen.getByRole('list', { name: 'More' })).getAllByRole('button')
+  expect(rows.map((row) => row.textContent)).toEqual(['Programs', 'Deload week', 'Exercises', 'Settings'])
+  await user.click(screen.getByRole('button', { name: 'Exercises' }))
+  await user.click(screen.getByRole('button', { name: /^Settings/ }))
+  expect(navigate).toHaveBeenNthCalledWith(1, { tab: 'exercises' })
+  expect(navigate).toHaveBeenNthCalledWith(2, { tab: 'settings' })
+})
+
+test('DX-03 the Program tab has no decision list and no muscle chart: one muscles row opens Progress › Muscles', async () => {
+  const user = userEvent.setup()
+  const { navigate } = renderFeature()
+  await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)
+
+  expect(screen.queryByText('Needs a decision')).toBeNull()
+  expect(screen.queryByText('Weekly sets, planned')).toBeNull()
+  expect(screen.queryByText('Muscles, planned per week')).toBeNull()
+  expect(document.querySelector('.body-map')).toBeNull()
+  const row = screen.getByRole('button', { name: /^69 sets a week · / })
+  await user.click(row)
+  expect(navigate).toHaveBeenCalledWith({ tab: 'muscles' })
+})
+
+test('DX-16 each Workout is a plain list, one row per Plan; a row opens its lift page; no Swap', async () => {
+  const user = userEvent.setup()
+  const { navigate } = renderFeature()
+  const plans = await screen.findByRole('list', { name: 'Workout A' }, SETTLE)
+
+  expect(screen.getByRole('heading', { level: 2, name: /^Workout A · 23 sets · ~\d+ min$/ })).toBeVisible()
+  expect(within(plans).getAllByRole('listitem')).toHaveLength(7)
+  expect(screen.queryByRole('button', { name: /Swap/ })).toBeNull()
+  expect(screen.queryByRole('columnheader')).toBeNull()
+  // The usual 1:30 rest goes unsaid; a different one is written out.
+  expect(within(plans).getByRole('button', { name: /^Lunges/ })).not.toHaveTextContent('rest')
+  expect(within(plans).getByRole('button', { name: /^Back squat/ })).toHaveTextContent('· 3:00 rest')
+  await user.click(within(plans).getByRole('button', { name: /^Lunges/ }))
+  expect(navigate).toHaveBeenCalledWith({ tab: 'lift', exerciseId: 'lunges' })
+})
+
+test('DX-04 first run: the Program tab is the same "Choose a Program" rows, with no filled button', async () => {
+  await db.settings.clear()
   const user = userEvent.setup()
   renderFeature()
-  await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
 
-  const selector = screen.getByRole('combobox', { name: 'Switch program' })
-  expect(selector).toHaveValue('assaf-ab-2026')
-  await user.selectOptions(selector, 'Second Program')
-
-  expect(await screen.findByRole('heading', { name: 'Second Program' }, SETTLE)).toBeVisible()
-  expect(screen.getByRole('combobox', { name: 'Switch program' })).toHaveValue('user-second')
-})
-
-test('P1 ProgramSwitcher draws no selector while only one Program is offered', () => {
-  render(<ProgramSwitcher programs={[{ id: 'only', name: 'Only' }]} activeProgramId="only" onChoose={vi.fn()} />)
-
-  expect(screen.queryByRole('combobox', { name: 'Switch program' })).toBeNull()
+  expect(await screen.findByRole('heading', { level: 1, name: 'Choose a Program' }, SETTLE)).toBeVisible()
+  expect(document.querySelector('.btn-primary')).toBeNull()
+  expect(screen.getByRole('button', { name: /^Settings/ })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: /^A\/B Split/ }))
+  expect(await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)).toBeVisible()
 })
 
 test('O10 ProgramFeature opens the editor on New program and reports onInSession(true)', async () => {
@@ -110,7 +159,7 @@ test('O10 ProgramFeature opens the editor on New program and reports onInSession
   const onInSession = vi.fn()
   renderFeature({ onInSession })
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  // DX-04: the program list is the Programs page, behind its own row.
   await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   await user.click(screen.getByRole('button', { name: 'New program' }))
@@ -123,26 +172,22 @@ test('O10 ProgramFeature Cancel from the editor returns to the Program list', as
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  // DX-04: the program list is the Programs page, behind its own row.
   await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   await user.click(screen.getByRole('button', { name: 'New program' }))
   await screen.findByLabelText('Program name', undefined, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
-  expect(await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('heading', { level: 1, name: 'Programs' }, SETTLE)).toBeVisible()
 })
 
 test('O10 ProgramFeature edits a Program, saving it and returning to the Program list', async () => {
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
-  await user.click(screen.getByRole('button', { name: 'Programs' }))
-
-  const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
-  if (!row) throw new Error('expected a row for assaf-ab-2026')
-  await user.click(within(row as HTMLElement).getByRole('button', { name: 'Edit' }))
+  // DX-04: a Program is edited from the tab's Edit only; the Programs page has none per Program.
+  await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
 
   const nameField = await screen.findByLabelText('Program name', undefined, SETTLE)
   expect(nameField).toHaveValue('A/B Split')
@@ -157,18 +202,19 @@ test('O10 ProgramFeature copies a Program into a new, separately listed one', as
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  // DX-04: the program list is the Programs page, behind its own row.
   await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
   if (!row) throw new Error('expected a row for assaf-ab-2026')
-  await user.click(within(row as HTMLElement).getByRole('button', { name: 'Copy' }))
+  await user.click(within(row as HTMLElement).getByRole('button', { name: 'Copy A/B Split' }))
 
   expect(await screen.findByLabelText('Program name', undefined, SETTLE)).toHaveValue('A/B Split (copy)')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
-  expect(await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)).toBeVisible()
-  expect(await screen.findByRole('radio', { name: 'A/B Split (copy)' }, SETTLE)).toBeInTheDocument()
+  // Back on the Programs page it came from, the copy listed beside the original.
+  expect(await screen.findByRole('button', { name: /^A\/B Split \(copy\)/ }, SETTLE)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /^A\/B Split Active/ })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('O10 ProgramFeature resets an edited bundled Program back to its original', async () => {
@@ -176,15 +222,15 @@ test('O10 ProgramFeature resets an edited bundled Program back to its original',
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'My AB' }, SETTLE)
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  // DX-04: the program list is the Programs page, behind its own row.
   await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
   if (!row) throw new Error('expected a row for assaf-ab-2026')
-  await user.click(within(row as HTMLElement).getByRole('button', { name: 'Reset to original' }))
+  await user.click(within(row as HTMLElement).getByRole('button', { name: 'Reset My AB to original' }))
   await user.click(within(row as HTMLElement).getByRole('button', { name: 'Confirm' }))
 
-  expect(await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE)).toBeVisible()
 })
 
 test('O10 ProgramFeature deleting the Program the Session in progress runs on shows the in-progress message', async () => {
@@ -209,12 +255,12 @@ test('O10 ProgramFeature deleting the Program the Session in progress runs on sh
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
+  // DX-04: the program list is the Programs page, behind its own row.
   await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="user-stored-solo"]')
   if (!row) throw new Error('expected a row for user-stored-solo')
-  await user.click(within(row as HTMLElement).getByRole('button', { name: 'Delete' }))
+  await user.click(within(row as HTMLElement).getByRole('button', { name: 'Delete Solo Program' }))
   await user.click(within(row as HTMLElement).getByRole('button', { name: 'Confirm' }))
 
   expect(await screen.findByText('Finish the workout in progress first', undefined, SETTLE)).toBeVisible()
@@ -236,12 +282,8 @@ test('O10 ProgramFeature a save the in-progress guard rejects shows the in-progr
     </ServicesProvider>,
   )
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
-  await user.click(screen.getByRole('button', { name: 'Programs' }))
-
-  const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
-  if (!row) throw new Error('expected a row for assaf-ab-2026')
-  await user.click(within(row as HTMLElement).getByRole('button', { name: 'Edit' }))
+  // DX-04: a Program is edited from the tab's Edit only; the Programs page has none per Program.
+  await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
   await screen.findByLabelText('Program name', undefined, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -262,19 +304,15 @@ test('O10 ProgramFeature a rejected save shows Couldn’t save — try again', a
     </ServicesProvider>,
   )
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
-  // The program list lives in the Programs panel behind the head's overflow (S7a).
-  await user.click(screen.getByRole('button', { name: 'Programs' }))
-
-  const row = document.querySelector('[data-program-id="assaf-ab-2026"]')
-  if (!row) throw new Error('expected a row for assaf-ab-2026')
-  await user.click(within(row as HTMLElement).getByRole('button', { name: 'Edit' }))
+  // DX-04: a Program is edited from the tab's Edit only; the Programs page has none per Program.
+  await user.click(screen.getByRole('button', { name: 'Edit A/B Split' }))
   await screen.findByLabelText('Program name', undefined, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   expect(await screen.findByText(SAVE_ERROR, undefined, SETTLE)).toBeVisible()
 })
 
-test('S7a ProgramFeature keeps the Programs panel open across a visit to the editor it opened', async () => {
+test('DX-04 ProgramFeature keeps the Programs page open across a visit to the editor it opened', async () => {
   const user = userEvent.setup()
   renderFeature()
   await screen.findByRole('heading', { name: 'A/B Split' }, SETTLE)
@@ -284,7 +322,7 @@ test('S7a ProgramFeature keeps the Programs panel open across a visit to the edi
   await screen.findByLabelText('Program name', undefined, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
-  expect(await screen.findByRole('dialog', { name: 'Programs' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('heading', { level: 1, name: 'Programs' }, SETTLE)).toBeVisible()
 })
 
 test('S7b ProgramFeature opens Edit in the head on the active Program, under its own name', async () => {
@@ -306,7 +344,7 @@ test('S7b ProgramFeature titles a copy Copy program', async () => {
   await user.click(screen.getByRole('button', { name: 'Programs' }))
 
   const row = document.querySelector('[data-program-id="assaf-ab-2026"]') as HTMLElement
-  await user.click(within(row).getByRole('button', { name: 'Copy' }))
+  await user.click(within(row).getByRole('button', { name: 'Copy A/B Split' }))
 
   expect(await screen.findByRole('heading', { level: 1, name: 'Copy program' }, SETTLE)).toBeVisible()
 })
@@ -317,9 +355,8 @@ test('S7a ProgramFeature makes the active Program the one large title, its size 
   expect(await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)).toBeVisible()
   expect(screen.getAllByRole('heading', { name: 'A/B Split' })).toHaveLength(1)
   expect(screen.queryByRole('heading', { name: 'Program' })).toBeNull()
-  expect(screen.getByText('3× per week · 2 workouts · 14 exercises')).toBeVisible()
+  expect(screen.getByText('3× a week · 2 workouts · 69 sets')).toBeVisible()
   expect(screen.getByRole('button', { name: 'Edit A/B Split' })).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Programs' })).toBeVisible()
 })
 
 test('V1-16 ProgramFeature stores a weight step and Bodyweight chosen in the editor, the settings the live Session reads', async () => {
@@ -393,13 +430,10 @@ test('V6-15 Program read mode shows the Back squat row opening 47.5 → 62.5, an
   ])
   renderFeature()
 
-  const heading = await screen.findByRole('heading', { name: 'Workout A' }, SETTLE)
-  const card = heading.closest('.workout-card') as HTMLElement
-  const headers = within(card).getAllByRole('columnheader').map((cell) => cell.textContent?.trim())
-  expect(headers).toEqual(['Exercise', 'Sets × reps', 'kg', 'Rest'])
-  const row = within(card).getByText('Back squat').closest('tr') as HTMLElement
-  // The Sessions arrive after the Programs: the cell fills in once they do.
-  await waitFor(() => expect(row.querySelector('.program-page-kg')?.textContent).toBe('47.5 → 62.5'), SETTLE)
+  const plans = await screen.findByRole('list', { name: 'Workout A' }, SETTLE)
+  const row = within(plans).getByRole('button', { name: /^Back squat/ })
+  // The Sessions arrive after the Programs: the row fills in once they do.
+  await waitFor(() => expect(row.querySelector('.program-plan-figure')?.textContent).toBe('4 × 8–10 · 47.5 → 62.5 kg · 3:00 rest'), SETTLE)
   // The median of the last three logged durations, as Train's dock says it.
-  expect(within(card).getByText('23 sets · ~70 min')).toBeVisible()
+  expect(screen.getByRole('heading', { level: 2, name: 'Workout A · 23 sets · ~70 min' })).toBeVisible()
 })

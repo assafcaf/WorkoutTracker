@@ -64,11 +64,12 @@ async function syncSettled(): Promise<void> {
 
 // --- O19: an empty database has no Program --------------------------------------------------
 
-test('O19 with an empty database the Workout tab shows No program yet', async () => {
+test('O19 with an empty database Train is Choose a Program', async () => {
   await renderApp()
 
-  // v7: Home's first block is the plan pick.
-  expect(await screen.findByRole('heading', { name: 'Pick a plan' }, SETTLE)).toBeVisible()
+  // DX-04, DX-22: Train's first run is the Programs to choose from, one row each.
+  expect(await screen.findByRole('heading', { level: 1, name: 'Choose a Program' }, SETTLE)).toBeVisible()
+  expect(screen.queryByText('Pick a plan')).toBeNull()
 })
 
 test('O19 with an empty database the Workout tab shows no Workout start buttons', async () => {
@@ -76,26 +77,23 @@ test('O19 with an empty database the Workout tab shows no Workout start buttons'
   await appReady()
   await syncSettled()
 
-  // v7: no Workout of any Program is offered; the dock's one Start is the plan pick's, and it
-  // names the first Workout of the plan picked.
-  expect(await screen.findByRole('radio', { name: /^A\/B Split/ }, SETTLE)).toHaveAttribute('aria-checked', 'true')
-  expect(screen.queryAllByRole('button', { name: /^Start / }).map((button) => button.textContent)).toEqual([
-    'Start Workout A',
-  ])
-  expect(screen.queryByRole('button', { name: /Open the workout\.$/ })).toBeNull()
+  // DX-04: no Workout of any Program is offered, and no filled button: a row is the choice.
+  expect(await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE)).toBeVisible()
+  expect(screen.queryAllByRole('button', { name: /^Start / })).toEqual([])
+  expect(document.querySelector('.btn-primary')).toBeNull()
 })
 
-test('O19 with an empty database Choose a program opens the Program tab', async () => {
+test('O19 with an empty database the Program tab is the same Choose a Program rows', async () => {
   const user = userEvent.setup()
   await renderApp()
 
-  // v7: Home offers the Programs to pick from in place, with "Start <first workout>" in its dock;
-  // the Program tab, with every Program's plan, is the tab bar's Program tab.
-  expect(await screen.findByRole('radio', { name: /^A\/B Split/ }, SETTLE)).toBeVisible()
+  // DX-04: Train offers the Programs in place; the Program tab's empty state is the same rows.
+  expect(await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE)).toBeVisible()
   await user.click(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('button', { name: 'Program' }))
 
   expect(screen.getByRole('button', { name: 'Program' })).toHaveAttribute('aria-current', 'page')
-  expect(screen.getByRole('heading', { level: 1, name: 'Program' })).toBeVisible()
+  expect(await screen.findByRole('heading', { level: 1, name: 'Choose a Program' }, SETTLE)).toBeVisible()
+  expect(screen.getByRole('list', { name: 'Programs' })).toBeVisible()
 })
 
 // --- O20: the trainee who already logs keeps a Program --------------------------------------
@@ -110,7 +108,7 @@ test('O20 with no stored choice the Workout tab offers the Workouts of the lates
 
   expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
-  expect(screen.queryByRole('heading', { name: 'Pick a plan' })).toBeNull()
+  expect(screen.queryByRole('heading', { name: 'Choose a Program' })).toBeNull()
 })
 
 test('O20 with no stored choice the latest Session’s Program is stored as activeProgramId', async () => {
@@ -147,10 +145,10 @@ test('O22 a sync that pulls activeProgramId makes the Workout tab offer that Pro
   const release = server.hold('/api/sync')
 
   await renderApp()
-  expect(await screen.findByRole('heading', { name: 'Pick a plan' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('heading', { name: 'Choose a Program' }, SETTLE)).toBeVisible()
 
   release()
 
   expect(await screen.findByRole('button', { name: 'Start Full body' }, SETTLE)).toBeVisible()
-  expect(screen.queryByRole('heading', { name: 'Pick a plan' })).toBeNull()
+  expect(screen.queryByRole('heading', { name: 'Choose a Program' })).toBeNull()
 })

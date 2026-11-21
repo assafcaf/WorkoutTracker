@@ -7,18 +7,21 @@ export type TabBarProps = {
   onChange(tab: Tab): void
 }
 
-/** The four destinations, in the order they sit in the bar (Progress Dashboard navigation). */
+/**
+ * The four destinations, one per moment (DX-01), in the order they sit in the bar: Train first,
+ * the launch screen.
+ */
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
-  { id: 'dashboard', label: 'Home', icon: 'Home' },
-  { id: 'lifts', label: 'Progress', icon: 'TrendingUp' },
+  { id: 'train', label: 'Train', icon: 'Dumbbell' },
   { id: 'sessions', label: 'Sessions', icon: 'Calendar' },
+  { id: 'progress', label: 'Progress', icon: 'TrendingUp' },
   { id: 'program', label: 'Program', icon: 'ClipboardList' },
 ]
 
 /**
- * The bottom tab bar: the only way between Dashboard, Sessions, Lifts and Program. Each tab is
- * an icon over its label, the current one in the primary colour. Settings is not a tab: it
- * opens from the Dashboard header's gear.
+ * The bottom tab bar: the only way between Train, Sessions, Progress and Program. Each tab is
+ * an icon over its label, the current one in the live colour. Settings is not a tab: it opens
+ * from the Program tab's "Settings" row (DX-04).
  *
  * Each tab names itself with an `aria-label`, so its accessible name is exactly its label.
  */

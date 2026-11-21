@@ -7,7 +7,7 @@ import { createServices, type Services } from '../../services'
 import { ServiceError } from '../../services/errors'
 import type { Session, SetEntry } from '../../types'
 import { ServicesProvider } from '../ServicesProvider'
-import { startFromDashboard, workoutsOffered } from '../../test/dashboard'
+import { makeWorkoutBDue, startFromDashboard, workoutOffered } from '../../test/dashboard'
 import { findSteppers, unfoldSteppers } from '../../test/steppers'
 import { WorkoutFeature } from './WorkoutFeature'
 import { showAll, finishWorkout } from '../../test/live'
@@ -58,6 +58,12 @@ function buildServices(): Services {
 }
 
 /** Services with assaf-ab-2026 as the active Program, where the trainee is. */
+/** The A/B Split with Workout B due: Workout A done two days before NOW (DX-01: Train offers only the Workout due). */
+async function servicesOnWorkoutBDue(): Promise<Services> {
+  await makeWorkoutBDue(NOW)
+  return servicesOnAssafAB()
+}
+
 async function servicesOnAssafAB(): Promise<Services> {
   const services = buildServices()
   await services.programs.setActive('assaf-ab-2026')
@@ -132,9 +138,11 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
 test('O9 WorkoutFeature shows the Workout picker with the active program’s start buttons', async () => {
   renderFeature(await servicesOnAssafAB())
 
-  // The Dashboard's dock offers the workout due, and "Change" steps to the program's other one.
+  // DX-01: Train offers the one Workout due, with no arrows to step to another.
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
-  expect(await workoutsOffered(userEvent.setup())).toEqual(['Workout A', 'Workout B'])
+  expect(await workoutOffered()).toBe('Workout A')
+  expect(screen.queryByRole('button', { name: /^Next workout/ })).toBeNull()
+  expect(screen.getAllByRole('button', { name: /^Start / })).toHaveLength(1)
 })
 
 test('O9 WorkoutFeature reports onInSession(false) on the picker', async () => {
@@ -149,10 +157,11 @@ test('O9 WorkoutFeature reports onInSession(false) on the picker', async () => {
 test('O9 with no active program the picker offers Choose a program, which navigates to the Program tab', async () => {
   const { user, navigate } = renderFeature(buildServices())
 
-  // The Dashboard (S8) offers the Programs in place: "Use A/B Split" takes it up right there,
+  // DX-04: Train is "Choose a Program", one row per Program; a row takes it up right there,
   // with no trip to the Program tab, and its workout due is then offered.
   expect(screen.queryByRole('button', { name: 'Start Workout A' })).toBeNull()
-  await user.click(await screen.findByRole('button', { name: 'Use A/B Split' }, SETTLE))
+  expect(await screen.findByRole('heading', { level: 1, name: 'Choose a Program' }, SETTLE)).toBeVisible()
+  await user.click(await screen.findByRole('button', { name: /^A\/B Split/ }, SETTLE))
 
   expect(await screen.findByRole('button', { name: 'Start Workout A' }, SETTLE)).toBeVisible()
   expect(navigate).not.toHaveBeenCalled()
@@ -297,7 +306,7 @@ test('O9 Back from the set screen shows the exercise list with the logged Set co
 // --- a swap through the alternatives overlay ------------------------------------------------
 
 test('O9 Do this instead on Hammer Curls in the alternatives overlay swaps the exercise list row', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
 
@@ -310,7 +319,7 @@ test('O9 Do this instead on Hammer Curls in the alternatives overlay swaps the e
 })
 
 test('O9 Undo swap brings back the Seated biceps curls row and clears the stored swap', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Seated biceps curls')
   await swapSeatedCurlsForHammerCurls(user)
@@ -365,7 +374,7 @@ async function expectHammerCurlsOnSet2(
 }
 
 test('O22 choosing an Alternative from the list at Set 2 opens the chosen Exercise’s Set 2 and logs on the planned weight', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await openSeatedCurlsAtSet2(user)
 
   await toolsRow(user, 'Swap')
@@ -376,7 +385,7 @@ test('O22 choosing an Alternative from the list at Set 2 opens the chosen Exerci
 })
 
 test('O22 after choosing an Alternative the Workout’s list row names it with "for <planned name>" under it', async () => {
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await openSeatedCurlsAtSet2(user)
   await toolsRow(user, 'Swap')
   await screen.findByRole('dialog', { name: 'Alternatives to Seated biceps curls' }, SETTLE)
@@ -1629,7 +1638,7 @@ const OCT_6 = Date.UTC(2026, 9, 6, 12)
 
 test('O16 a pre-epic assisted pull-ups Set reads BW−27 × 8 on the Last time line and the next Set opens at BW−27', async () => {
   await seedPreEpicAssisted('pre-epic', 27, true, OCT_6)
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Assisted pull-ups')
 
@@ -1642,7 +1651,7 @@ test('O16 a pre-epic assisted pull-ups Set reads BW−27 × 8 on the Last time l
 
 test('O16 the History overlay lists a pre-epic assisted pull-ups Set as BW−27 × 8', async () => {
   await seedPreEpicAssisted('pre-epic', 27, true, OCT_6)
-  const { user } = renderFeature(await servicesOnAssafAB())
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
   await startWorkout(user, 'Workout B')
   await openExercise(user, 'Assisted pull-ups')
 

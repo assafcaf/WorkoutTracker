@@ -10,15 +10,18 @@ import { weekStart, type Weekday } from '../../domain/stats/weeks'
 import { isDeloadWeek } from '../../domain/deload'
 import { lastEntriesOf, nextLoadText } from '../../domain/planLoad'
 import { applyBodyweight } from '../../domain/bodyweight'
-import { workoutEstimate } from '../../domain/dashboard'
 import { workoutMinutes } from '../../domain/stats/train'
 import { kgCellText, liftPlan } from '../dashboard/trainCard'
-import { ProgramPage } from '../../ui/ProgramPage'
-import { ProgramDeloadLine, ProgramDeloadStart, ProgramHeadActions, ProgramSwitcher } from '../../ui/program/ProgramHead'
-import { CHOOSE_LINE, CHOOSE_TITLE, programSizeLine } from '../../ui/program/planText'
-import { programDecisions } from '../../domain/programDecisions'
-import { useProgramSwap } from '../progress/useProgramSwap'
+import { ProgramLinks, ProgramPage } from '../../ui/ProgramPage'
+import { ProgramsList } from '../../ui/program/ProgramsList'
+import { DeloadWeekPanel } from '../../ui/program/DeloadWeekPanel'
+import { familyWeekly } from '../../domain/programVolume'
+import { isBackupDue } from '../../ui/BackupBadge'
+import { wholeCount } from '../../ui/program/planText'
+import { ProgramChoices } from '../dashboard/DashboardView'
+import { programChoiceSummary } from '../dashboard/DashboardScreen'
 import { useServiceData } from '../useServiceData'
+import { musclesLine, progressModel } from '../progress/Home'
 import { useServices } from '../ServicesProvider'
 import type { AppRoute } from '../routes'
 
@@ -28,6 +31,9 @@ export type ProgramFeatureProps = {
   /** The clock; `Date.now` unless a test fixes it. */
   now?: () => number
 }
+
+/** A page pushed over the Program tab inside this screen group (DX-04): Programs, Deload week. */
+type SubPage = 'programs' | 'deload'
 
 /** What the editor was opened on: the Program it starts from, and whether it is new (E9-T9). */
 type EditorTarget = { initial: Program; isNew: boolean; mode: 'new' | 'edit' | 'copy' }
@@ -98,11 +104,11 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
   const [editor, setEditor] = useState<EditorTarget | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [programMessage, setProgramMessage] = useState<string | null>(null)
-  // Held here, not in the page, so the Programs panel an Edit, Copy or New was opened from is
-  // still open on coming back from the editor.
-  const [programsOpen, setProgramsOpen] = useState(false)
-  // v7 (study §1.8): Swap on a "Needs a decision" row replaces the lift in the Program, with Undo.
-  const { canSwap, openSwap, swapUi } = useProgramSwap()
+  // Held here, not in the page, so the Programs page a Copy or New was opened from is still
+  // open on coming back from the editor.
+  const [subPage, setSubPage] = useState<SubPage | null>(null)
+  // The Settings row says when a backup is due (the marker the gear used to carry).
+  const lastExportedData = useServiceData((s) => s.preferences.lastExportedAt().catch((): null => null), ['preferences'])
 
   // The tab's shell shows at once, so the tab bar and heading do not wait on the Programs.
   if (programsData.status !== 'ready' || catalogData.status !== 'ready') {
@@ -247,76 +253,106 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
     )
   }
 
-  // S7a: the shell's large page title is the active Program itself, with its size line and the
-  // head's Edit and overflow beside it; the page below draws no head of its own.
   const active = offeredPrograms.find((program) => program.id === activeProgramId) ?? null
   const at = now()
   const weekStartsOn: Weekday = weekStartData.status === 'ready' ? weekStartData.data : 1
-  // V4-08: the Deload week is started from the head's overflow and, while on, is one line under
-  // the title with End; Train's Presets follow the same stored week.
+  // V4-08: the Deload week; Train's Presets follow the same stored week.
   const deloadOn = deloadData.status === 'ready' && isDeloadWeek(deloadData.data, at, weekStartsOn)
-  // V6-15: the kg column and minutes read finished Sessions, as Train does.
+  // V6-15: the loads and minutes read finished Sessions, as Train does.
   const finished = sessions.filter((session) => session.finishedAt != null)
+  const backupDue =
+    lastExportedData.status === 'ready' && sessionsData.status === 'ready'
+      ? isBackupDue(lastExportedData.data, at, finished.length > 0)
+      : false
   function setDeload(on: boolean): void {
     void services.preferences.setDeloadWeek(on ? weekStart(at, weekStartsOn) : null).catch(() => undefined)
   }
+  const links = {
+    onOpenPrograms: () => setSubPage('programs'),
+    onOpenDeload: active ? () => setSubPage('deload') : undefined,
+    deloadOn,
+    onOpenExercises: () => props.navigate({ tab: 'exercises' }),
+    onOpenSettings: () => props.navigate({ tab: 'settings' }),
+    backupDue,
+  }
+
+  if (subPage === 'programs') {
+    return (
+      <AppShell title="Programs" onBack={() => setSubPage(null)}>
+        <ProgramsList
+          programs={offeredPrograms}
+          activeProgramId={activeProgramId}
+          onChoose={handleActiveProgramChange}
+          onCopy={handleCopyProgram}
+          onNew={handleNewProgram}
+          onDelete={handleDeleteProgram}
+          onReset={handleResetProgram}
+          userProgramIds={new Set(userPrograms.map((program) => program.id))}
+          bundledProgramIds={new Set(bundledPrograms.map((program) => program.id))}
+          message={programMessage}
+        />
+      </AppShell>
+    )
+  }
+
+  if (subPage === 'deload' && active) {
+    return (
+      <AppShell title="Deload week" onBack={() => setSubPage(null)}>
+        <DeloadWeekPanel on={deloadOn} onStart={() => setDeload(true)} onEnd={() => setDeload(false)} />
+      </AppShell>
+    )
+  }
+
+  // DX-04 first run: the same rows as Train's, then the list group (Settings among it).
+  if (!active) {
+    return (
+      <AppShell title="Choose a Program">
+        <div className="program-page">
+          <ProgramChoices
+            options={offeredPrograms.map((program) => ({ id: program.id, name: program.name, summary: programChoiceSummary(program) }))}
+            canUse
+            onChoose={handleActiveProgramChange}
+          />
+          <ProgramLinks {...links} />
+        </div>
+      </AppShell>
+    )
+  }
+
+  // DX-04: the title is the active Program, its meta line under it and Edit, the one header action.
+  const sets = wholeCount(familyWeekly(active, (id) => programCatalog.get(id), libraryMap).total)
+  const workoutCount = active.workouts.filter((workout) => !workout.hidden).length
   return (
     <AppShell
-      title={active ? active.name : CHOOSE_TITLE}
-      subtitle={active ? programSizeLine(active) : CHOOSE_LINE}
+      title={active.name}
+      subtitle={`${active.sessionsPerWeek}× a week · ${workoutCount} workout${workoutCount === 1 ? '' : 's'} · ${sets} sets${deloadOn ? ' · Deload week' : ''}`}
       actions={
-        active ? (
-          <ProgramHeadActions
-            name={active.name}
-            onEdit={() => handleEditProgram(active.id)}
-            programsOpen={programsOpen}
-            onOpenPrograms={() => setProgramsOpen(true)}
-          />
-        ) : undefined
+        <button
+          type="button"
+          className="program-page-head-edit btn-quiet"
+          aria-label={`Edit ${active.name}`}
+          onClick={() => handleEditProgram(active.id)}
+        >
+          Edit
+        </button>
       }
     >
-      {active ? (
-        <ProgramSwitcher
-          programs={offeredPrograms}
-          activeProgramId={active.id}
-          onChoose={handleActiveProgramChange}
-        />
-      ) : null}
-      {active && deloadOn ? <ProgramDeloadLine onEnd={() => setDeload(false)} /> : null}
       <ProgramPage
-        head="none"
-        programs={offeredPrograms}
-        activeProgramId={activeProgramId}
+        program={active}
         catalog={programCatalog}
         library={libraryMap}
-        onChooseProgram={handleActiveProgramChange}
-        sessions={sessions}
-        now={at}
-        weekStartsOn={weekStartsOn}
-        resolve={resolveListExercise}
-        onNewProgram={handleNewProgram}
-        onEditProgram={handleEditProgram}
-        onCopyProgram={handleCopyProgram}
-        onDeleteProgram={handleDeleteProgram}
-        onResetProgram={handleResetProgram}
         programMessage={programMessage}
-        userProgramIds={new Set(userPrograms.map((program) => program.id))}
-        bundledProgramIds={new Set(bundledPrograms.map((program) => program.id))}
-        programsOpen={programsOpen}
-        onProgramsOpenChange={setProgramsOpen}
-        programsActions={
-          active && deloadData.status === 'ready' && !deloadOn ? (
-            <ProgramDeloadStart
-              onStart={() => {
-                setDeload(true)
-                setProgramsOpen(false)
-              }}
-            />
-          ) : null
-        }
-        onBrowse={(muscles) => props.navigate({ tab: 'exercises', muscles })}
-        // V6-03: an Exercise's name opens the one Lift page.
+        // V6-03: a Plan's row opens the one Lift page.
         onOpenLift={(exerciseId) => props.navigate({ tab: 'lift', exerciseId })}
+        // DX-03: one row into Progress › Muscles.
+        onOpenMuscles={() => props.navigate({ tab: 'muscles' })}
+        // DX-03: the verdict Progress › Muscles gives, over the same Sessions.
+        muscleVerdict={musclesLine(
+          progressModel(
+            { program: active, sessions: finished, resolve: resolveListExercise, library: libraryMap, weekStart: weekStartsOn, bodyLog: [] },
+            at,
+          ),
+        )}
         // V6-15: the kg each lift opens on and the minutes, as Train says them.
         loadOf={(plan) => {
           const listed = resolveListExercise(plan.exerciseId)
@@ -327,13 +363,9 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
           )
           return kgCellText(liftPlan(exercise, plan, finished, at, deloadOn))
         }}
-        minutesOf={(workout) => (active ? workoutMinutes(active, workout, finished).minutes : workoutEstimate(workout).minutes)}
-        // v7 (study §1.8, build-plan step 11): the decisions live where the plan is changed.
-        decisions={active ? programDecisions(active, finished, resolveListExercise, at) : []}
-        onSwap={openSwap}
-        canSwap={canSwap}
+        minutesOf={(workout) => workoutMinutes(active, workout, finished).minutes}
+        links={links}
       />
-      {swapUi}
     </AppShell>
   )
 }

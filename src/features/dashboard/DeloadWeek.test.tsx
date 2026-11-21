@@ -23,19 +23,19 @@ function mount(s: Services, now: number) {
   const onStartWorkout = vi.fn()
   render(
     <ServicesProvider services={s}>
-      <DashboardScreen now={() => now} onStartWorkout={onStartWorkout} onOpenSettings={() => {}} />
+      <DashboardScreen now={() => now} onStartWorkout={onStartWorkout} />
     </ServicesProvider>,
   )
   return { onStartWorkout }
 }
 
 /** Train and the Program tab over one set of services: the Deload week is set on Program (V1-22),
- * from the head's overflow since V4-08. */
+ * from its "Deload week" row since DX-04. */
 function mountBoth(s: Services, now: number): void {
   render(
     <ServicesProvider services={s}>
       <ProgramFeature now={() => now} navigate={() => {}} onInSession={() => {}} />
-      <DashboardScreen now={() => now} onStartWorkout={() => {}} onOpenSettings={() => {}} />
+      <DashboardScreen now={() => now} onStartWorkout={() => {}} />
     </ServicesProvider>,
   )
 }
@@ -45,17 +45,20 @@ const TRAIN_LINE = 'Deload week: every load is 10 % lighter.'
 
 /** A Train row's `sets × kg`, as its text reads (`4×60 kg`). */
 const presetOf = (row: HTMLElement): string | null | undefined => row.querySelector('.dashboard-step-preset')?.textContent
-const PROGRAM_LINE = 'Deload week · lighter Presets · End'
-
-/** Opens the Program head's overflow (the Programs panel) and taps "Start a deload week" (V4-08). */
+/** DX-04: opens the Program tab's "Deload week" row and taps "Start a deload week". */
 async function startDeloadFromProgram(): Promise<void> {
-  fireEvent.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
+  await openDeloadPage()
   fireEvent.click(await screen.findByRole('button', { name: 'Start a deload week' }, SETTLE))
 }
 
-/** The Program tab's deload line under its title, matched on its whole text, or null. */
+/** DX-04: the Program tab's "Deload week" row opens its page. */
+async function openDeloadPage(): Promise<void> {
+  fireEvent.click(await screen.findByRole('button', { name: /^Deload week/ }, SETTLE))
+}
+
+/** While a deload is on, the Program's meta line ends "· Deload week" (DX-04); null while off. */
 function programLine(): HTMLElement | null {
-  return screen.queryByText((_, element) => element?.classList.contains('program-deload-line') === true && element.textContent === PROGRAM_LINE)
+  return screen.queryByText(/ · Deload week$/)
 }
 
 const squat = (rir: SetEntry['rir']): SetEntry[] =>
@@ -129,7 +132,9 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     await startDeloadFromProgram()
     await waitFor(() => expect(screen.getByText(TRAIN_LINE)).toBeTruthy(), SETTLE)
     expect((await db.settings.get('deloadWeek'))?.value).toBe(weekStart(FRI, 6))
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     await waitFor(() => expect(programLine()).not.toBeNull(), SETTLE)
+    expect(screen.getByRole('button', { name: /^Deload week/ })).toHaveTextContent('On this week')
   })
 
   test('O15 with weekStart 6, a switch turned on on Fri 23 Oct still reads on that Friday', async () => {
@@ -137,8 +142,9 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     await db.settings.put({ key: 'deloadWeek', value: weekStart(FRI, 6), updatedAt: FRI })
     await setActiveProgramId('assaf-ab-2026', FRI)
     mountBoth(servicesAt(FRI), FRI)
+    await waitFor(() => expect(programLine()).not.toBeNull(), SETTLE)
+    await openDeloadPage()
     expect(await screen.findByRole('button', { name: 'End deload week' }, SETTLE)).toBeTruthy()
-    expect(programLine()).not.toBeNull()
   })
 
   test('O15 with weekStart 6, the switch turned on on Fri 23 Oct reads off on Sat 24 Oct', async () => {
@@ -151,7 +157,7 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     expect(programLine()).toBeNull()
     expect(screen.queryByRole('button', { name: 'End deload week' })).toBeNull()
     expect(screen.queryByText(TRAIN_LINE)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Programs' }))
+    await openDeloadPage()
     expect(await screen.findByRole('button', { name: 'Start a deload week' }, SETTLE)).toBeTruthy()
   })
 
@@ -159,6 +165,7 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
     await db.settings.put({ key: 'deloadWeek', value: weekStart(TUE, 1), updatedAt: TUE })
     await setActiveProgramId('assaf-ab-2026', TUE)
     mountBoth(servicesAt(TUE), TUE)
+    await openDeloadPage()
     fireEvent.click(await screen.findByRole('button', { name: 'End deload week' }, SETTLE))
     await waitFor(() => expect(screen.queryByText(TRAIN_LINE)).toBeNull(), SETTLE)
     expect(await db.settings.get('deloadWeek')).toBeUndefined()
@@ -177,8 +184,8 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
         <ProgramFeature now={() => TUE} navigate={() => {}} onInSession={() => {}} />
       </ServicesProvider>,
     )
-    // Since V4-08 the Program tab's control is "Start a deload week" in its head's overflow.
-    fireEvent.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
+    // DX-04: the Program tab's control is "Start a deload week" on its "Deload week" page.
+    await openDeloadPage()
     expect(await screen.findByRole('button', { name: 'Start a deload week' }, SETTLE)).toBeTruthy()
   })
 
@@ -226,7 +233,7 @@ describe('Train Deload week switch (E21-T7; on the Program tab since V1-22)', ()
   })
 })
 
-describe('V4-08 the Deload week lives in the Program head\'s overflow', () => {
+describe('DX-04 the Deload week is a visible row on the Program tab', () => {
   test('V4-08 with no deload on, Program shows no Deload week switch and no deload line', async () => {
     await setActiveProgramId('assaf-ab-2026', TUE)
     render(
@@ -234,14 +241,14 @@ describe('V4-08 the Deload week lives in the Program head\'s overflow', () => {
         <ProgramFeature now={() => TUE} navigate={() => {}} onInSession={() => {}} />
       </ServicesProvider>,
     )
-    // Anchored on the stored deload state having loaded: the overflow offers to start one.
-    fireEvent.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
+    // Anchored on the stored deload state having loaded: the page offers to start one.
+    await openDeloadPage()
     await screen.findByRole('button', { name: 'Start a deload week' }, SETTLE)
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
-    expect(await screen.findByText('Weekly sets, planned', undefined, SETTLE)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(await screen.findByRole('button', { name: 'Deload week' }, SETTLE)).toBeTruthy()
     expect(screen.queryByRole('switch', { name: 'Deload week' })).toBeNull()
-    expect(screen.queryByText(/Deload week/)).toBeNull()
-    expect(screen.queryByRole('button', { name: 'End deload week' })).toBeNull()
+    expect(programLine()).toBeNull()
+    expect(screen.queryByText('On this week')).toBeNull()
   })
 
   test('V4-08 Start a deload week from the overflow shows the line under the title, and Train\'s Presets are the deload ones', async () => {
@@ -253,24 +260,17 @@ describe('V4-08 the Deload week lives in the Program head\'s overflow', () => {
 
     await startDeloadFromProgram()
 
-    // The panel closes on the choice, so the line is what shows; it sits before the plan.
-    await waitFor(() => expect(programLine()).not.toBeNull(), SETTLE)
-    expect(screen.queryByRole('dialog', { name: 'Programs' })).toBeNull()
-    const line = programLine() as HTMLElement
-    const end = within(line).getByRole('button', { name: 'End deload week' })
-    expect(end).toHaveTextContent('End')
+    // While on, the page offers End instead, and Train's Presets are the deload ones.
+    const end = await screen.findByRole('button', { name: 'End deload week' }, SETTLE)
+    expect(screen.queryByRole('button', { name: 'Start a deload week' })).toBeNull()
     await waitFor(() => expect(presetOf(squatRow())).not.toBe('4×60 kg'), SETTLE)
     expect(presetOf(squatRow())).toMatch(/^4×5\d(\.\d+)? kg$/)
     expect(screen.getByText(TRAIN_LINE)).toBeTruthy()
 
-    // While on, the overflow no longer offers to start one.
-    fireEvent.click(screen.getByRole('button', { name: 'Programs' }))
-    await screen.findByRole('dialog', { name: 'Programs' }, SETTLE)
-    expect(screen.queryByRole('button', { name: 'Start a deload week' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
-
     fireEvent.click(end)
-    await waitFor(() => expect(programLine()).toBeNull(), SETTLE)
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Deload week' })).toBeTruthy(), SETTLE)
+    expect(programLine()).toBeNull()
     await waitFor(() => expect(presetOf(squatRow())).toBe('4×60 kg'), SETTLE)
   })
 })

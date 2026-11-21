@@ -239,7 +239,7 @@ export function SettingsFeature(props: SettingsFeatureProps): JSX.Element {
         }
         sync={syncControls.sync}
         onSyncNow={() => {
-          void syncControls.syncNow()
+          return syncControls.syncNow()
         }}
         onAdoptAccount={() => {
           void syncControls.adoptAccount()

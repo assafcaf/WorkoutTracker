@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderApp } from './test/renderApp'
@@ -40,32 +40,12 @@ async function withActiveAbSplit(): Promise<void> {
 
 async function openProgramTab(user: User): Promise<void> {
   await user.click(await screen.findByRole('button', { name: 'Program' }, SETTLE))
-  await openProgramsPanel(user)
 }
 
-/**
- * Opens the Programs panel behind the Program tab's overflow (S7a), where the program list and
- * New program live; with no active Program, New program is on the page itself.
- */
-async function openProgramsPanel(user: User): Promise<void> {
-  await waitFor(() => {
-    const more = screen.queryByRole('button', { name: 'Programs' })
-    const newProgram = screen.queryByRole('button', { name: 'New program' })
-    expect(more ?? newProgram).not.toBeNull()
-  }, SETTLE)
-  const more = screen.queryByRole('button', { name: 'Programs' })
-  if (more !== null && more.getAttribute('aria-expanded') !== 'true') await user.click(more)
+/** DX-04: the Programs page, behind the Program tab's Programs row, where New program lives. */
+async function openProgramsPage(user: User): Promise<void> {
+  await user.click(await screen.findByRole('button', { name: 'Programs' }, SETTLE))
   await screen.findByRole('button', { name: 'New program' }, SETTLE)
-}
-
-/** The Program tab's action row for the Program named exactly `name`. */
-function actionsRow(name: string): HTMLElement {
-  const row = screen
-    .getAllByRole('button', { name: 'Copy' })
-    .map((button) => button.parentElement as HTMLElement)
-    .find((candidate) => within(candidate).queryByText(name) !== null)
-  if (row === undefined) throw new Error(`no Program tab row for ${name}`)
-  return row
 }
 
 test(
@@ -74,6 +54,7 @@ test(
     const user = userEvent.setup()
     await renderApp()
     await openProgramTab(user)
+    await openProgramsPage(user)
 
     await user.click(screen.getByRole('button', { name: 'New program' }))
 
@@ -90,7 +71,8 @@ test(
     await renderApp()
     await openProgramTab(user)
 
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Edit' }))
+    // DX-04: Edit is the Program tab's one header action.
+    await user.click(await screen.findByRole('button', { name: 'Edit A/B Split' }, SETTLE))
 
     // Progress Dashboard S7b: the editor's bar names the Program it edits.
     await screen.findByRole('heading', { name: 'Edit A/B Split' }, SETTLE)
@@ -105,8 +87,9 @@ test(
     await withActiveAbSplit()
     await renderApp()
     await openProgramTab(user)
+    await openProgramsPage(user)
 
-    await user.click(within(actionsRow('A/B Split')).getByRole('button', { name: 'Copy' }))
+    await user.click(screen.getByRole('button', { name: 'Copy A/B Split' }))
 
     await screen.findByRole('heading', { name: 'Copy program' }, SETTLE)
     expect(screen.queryByRole('heading', { name: /^Edit / })).toBeNull()

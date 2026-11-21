@@ -55,13 +55,13 @@ test('LiveStrip shows the name and time alone once every planned set is in', () 
   expect(container.querySelector('.live-strip-text')?.textContent).toBe('Workout A · 14:13')
 })
 
-test('LiveStrip returns to the session from its Return button, once per press', async () => {
+test('LiveStrip returns to the session from its Resume button, once per press', async () => {
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   const onReturn = vi.fn()
   render(<LiveStrip status={status()} onReturn={onReturn} />)
 
-  const button = screen.getByRole('button', { name: 'Return to Workout A' })
-  expect(button).toHaveTextContent('Return')
+  const button = screen.getByRole('button', { name: 'Resume Workout A' })
+  expect(button).toHaveTextContent('Resume')
   await user.click(button)
 
   expect(onReturn).toHaveBeenCalledTimes(1)
