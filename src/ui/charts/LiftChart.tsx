@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, RefObject } from 'react'
+import type { KeyboardEvent, PointerEvent, RefObject } from 'react'
 import { ChartReadout } from './ChartReadout'
 import { ticksFor } from './axis'
 import './LiftChart.css'
@@ -35,6 +35,15 @@ export type LiftChartProps = {
   bandCaption(fromAt: number, toAt: number): string
   /** Opens a point's Session from its readout. */
   onOpenSession?: (sessionId: string) => void
+}
+
+/** The index of the point whose x is nearest `x`. */
+export function nearestIndex(xs: number[], x: number): number {
+  let best = 0
+  xs.forEach((px, i) => {
+    if (Math.abs(px - x) < Math.abs(xs[best] - x)) best = i
+  })
+  return best
 }
 
 const HEIGHT = 168
@@ -103,8 +112,9 @@ export function placeLabels(items: { x: number; width: number }[], order: number
  * (steps for the top-set weight, slopes for est. strength), three hairline gridlines labelled on
  * the right, and no point labels. The latest point is a filled ink dot; the standing record --
  * the best real record in the range -- is a gold ring with `PR 90`. A deload is a grey band with
- * a hollow point, its caption in one lane under the axis. A gap of 14 days or more is dashed.
- * Each point owns a full-height column to tap or focus; the readout sits above the chart.
+ * a hollow point, its caption in one lane under the axis. A gap of 14 days or more  * A gap of 14 days or more is dashed.
+ * DX-18: the plot is one scrub area -- drag across it (or use the arrow keys) and the readout
+ * above the chart follows the nearest Session; untouched, it reads the latest one.
  */
 export function LiftChart({ points, summary, tickText, step = false, axisLabel, bandCaption, onOpenSession }: LiftChartProps): JSX.Element {
   const [ref, width] = useWidth()
@@ -122,8 +132,27 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
   const xOf = (at: number): number => (last === first ? width / 2 : PAD_X + ((at - first) / (last - first)) * (width - 2 * PAD_X))
   const placed = points.map((p) => ({ ...p, x: xOf(p.at), y: yOf(p.value) }))
   const end = placed.length - 1
-  const chosen = selected !== null && selected < placed.length ? placed[selected] : null
-  const toggle = (i: number): void => setSelected((current) => (current === i ? null : i))
+  const at = selected !== null && selected < placed.length ? selected : end
+  const chosen = placed[at]
+  const pick = (event: PointerEvent<HTMLDivElement>): void => {
+    const left = event.currentTarget.getBoundingClientRect().left
+    setSelected(nearestIndex(placed.map((p) => p.x), event.clientX - left))
+  }
+  const onKey = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const next =
+      event.key === 'ArrowRight' || event.key === 'ArrowUp'
+        ? Math.min(end, at + 1)
+        : event.key === 'ArrowLeft' || event.key === 'ArrowDown'
+          ? Math.max(0, at - 1)
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? end
+              : null
+    if (next === null) return
+    event.preventDefault()
+    setSelected(next)
+  }
 
   // The line: non-deload points, as steps or slopes; a long gap is dashed.
   const line = placed.filter((p) => !p.deload)
@@ -160,9 +189,7 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
 
   return (
     <div className="lift-chart">
-      {chosen ? (
-        <ChartReadout date={chosen.date} value={chosen.readout} sessionId={chosen.id} onOpenSession={onOpenSession} />
-      ) : null}
+      <ChartReadout date={chosen.date} value={chosen.readout} sessionId={chosen.id} onOpenSession={onOpenSession} />
       {axisLabel ? <p className="lift-chart-axis-label">{axisLabel}</p> : null}
       <div className="lift-chart-grid">
         <div className="lift-chart-canvas" ref={ref}>
@@ -175,6 +202,7 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
             ))}
             {solid.length > 0 ? <path className="lift-chart-line" d={solid.join(' ')} /> : null}
             {dashed.length > 0 ? <path className="lift-chart-line lift-chart-gap" d={dashed.join(' ')} /> : null}
+            {selected !== null ? <line className="lift-chart-cursor" x1={chosen.x} x2={chosen.x} y1={0} y2={HEIGHT} /> : null}
             {placed.map((p, i) => {
               const kind = p.deload ? 'deload' : i === best ? 'record' : i === lastLine ? 'last' : null
               if (kind === null && selected !== i) return null
@@ -184,6 +212,7 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
                   className={`lift-chart-point${kind ? ` lift-chart-point-${kind}` : ''}`}
                   data-record={kind === 'record' ? '' : undefined}
                   aria-pressed={selected === i}
+                  data-selected={i === at ? '' : undefined}
                   cx={p.x}
                   cy={p.y}
                   r={kind === 'record' ? 5.5 : kind === 'deload' ? 4 : 4.5}
@@ -196,35 +225,24 @@ export function LiftChart({ points, summary, tickText, step = false, axisLabel, 
               </text>
             )}
           </svg>
-          <div className="lift-chart-hits">
-            {placed.map((p, i) => {
-              const from = i === 0 ? 0 : (placed[i - 1].x + p.x) / 2
-              const to = i === end ? width : (p.x + placed[i + 1].x) / 2
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="lift-chart-hit btn-quiet"
-                  style={{ left: from, width: Math.max(0, to - from) }}
-                  aria-label={`${p.date} · ${p.readout}${p.deload ? ' · deload' : ''}${p.record ? ' · PR' : ''}`}
-                  aria-pressed={selected === i}
-                  onClick={() => toggle(i)}
-                  onKeyDown={(event: KeyboardEvent) => {
-                    if (event.key === 'ArrowRight' && i < end) {
-                      event.preventDefault()
-                      setSelected(i + 1)
-                      ;(event.currentTarget.nextElementSibling as HTMLElement | null)?.focus()
-                    } else if (event.key === 'ArrowLeft' && i > 0) {
-                      event.preventDefault()
-                      setSelected(i - 1)
-                      ;(event.currentTarget.previousElementSibling as HTMLElement | null)?.focus()
-                    }
-                  }}
-                  tabIndex={i === (selected ?? end) ? 0 : -1}
-                />
-              )
-            })}
-          </div>
+          <div
+            className="lift-chart-scrub"
+            role="slider"
+            tabIndex={0}
+            aria-label="Sessions on the chart"
+            aria-valuemin={1}
+            aria-valuemax={placed.length}
+            aria-valuenow={at + 1}
+            aria-valuetext={`${chosen.date} · ${chosen.readout}${chosen.deload ? ' · deload' : ''}${chosen.record ? ' · PR' : ''}`}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture?.(event.pointerId)
+              pick(event)
+            }}
+            onPointerMove={(event) => {
+              if (event.buttons > 0 || event.pointerType === 'touch') pick(event)
+            }}
+            onKeyDown={onKey}
+          />
         </div>
         <div className="lift-chart-y" aria-hidden="true" style={{ height: HEIGHT }}>
           {ticks.map((tick) => (

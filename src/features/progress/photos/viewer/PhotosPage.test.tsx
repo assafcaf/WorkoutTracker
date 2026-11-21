@@ -135,7 +135,7 @@ describe('photos page: the ways in', () => {
     expect(push).toHaveBeenCalledWith({ kind: 'photos' })
   })
 
-  test('Progress has a Photos row, which opens the Photos page', async () => {
+  test('DX-10 Progress has no Photos row: Photos is reached from Body only', async () => {
     const at = new Date(2026, 9, 15, 18, 5).getTime()
     await db.sessions.bulkPut(sessionsJson as unknown as Session[])
     await setActiveProgramId('assaf-ab-2026', at)
@@ -147,7 +147,9 @@ describe('photos page: the ways in', () => {
       </ServicesProvider>,
     )
     const more = await screen.findByRole('navigation', { name: 'More' }, SETTLE)
-    await user.click(within(more).getByRole('button', { name: /^Photos/ }))
-    expect(push).toHaveBeenCalledWith({ kind: 'photos' })
+    expect(within(more).queryByRole('button', { name: /^Photos/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Photos/ })).toBeNull()
+    await user.click(within(more).getByRole('button', { name: /^Body/ }))
+    expect(push).toHaveBeenCalledWith({ kind: 'body' })
   })
 })
