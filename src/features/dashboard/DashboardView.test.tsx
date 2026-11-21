@@ -211,6 +211,15 @@ describe('Train: doing a workout other than the one due', () => {
     expect(props.onStartWorkout).toHaveBeenCalledWith('workout-b')
   })
 
+  test('N1 the "Choose a workout" sheet closes with its X', () => {
+    renderView({ data: WITH_B })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+    const sheet = screen.getByRole('dialog', { name: 'Choose a workout' })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog', { name: 'Choose a workout' })).toBeNull()
+  })
+
   test('a Program with one workout offers no Change', () => {
     renderView()
     expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()

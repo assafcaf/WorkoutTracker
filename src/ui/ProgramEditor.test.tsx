@@ -678,3 +678,13 @@ test('V6 V5-10 DX-17 Rest reads as m:ss, steps by 15 s, and is stored in seconds
   const program = await save(user, onSave)
   expect(program.workouts[0].exercises[1].restSeconds).toBe(135)
 })
+
+test('N7 the Plan editor goes back with a bare ‹, not "‹ Back"', async () => {
+  const { user } = renderEditor(split())
+
+  await openPlan(user, workoutAt(0), 'Back Squat')
+  const backButton = screen.getByRole('button', { name: 'Back' })
+  expect(backButton.textContent).toBe('')
+  await back(user)
+  expect(screen.queryByRole('heading', { level: 1, name: 'Back Squat' })).toBeNull()
+})

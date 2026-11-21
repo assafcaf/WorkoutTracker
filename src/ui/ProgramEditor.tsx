@@ -565,9 +565,14 @@ export function ProgramEditor({
     return (
       <div className="program-editor plan-editor">
         <div className="program-editor-bar">
-          <button type="button" className="program-editor-back btn-quiet" onClick={() => setEditingPlan(null)}>
-            <Icon name="ChevronLeft" size={20} />
-            Back
+          {/* N7: the bare ‹ every pushed page wears. */}
+          <button
+            type="button"
+            className="program-editor-back icon-btn"
+            aria-label="Back"
+            onClick={() => setEditingPlan(null)}
+          >
+            <Icon name="ChevronLeft" size={24} />
           </button>
           <h1 className="program-editor-title">{exerciseName}</h1>
           <span aria-hidden="true" />

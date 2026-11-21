@@ -369,7 +369,13 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
         }
         sheet = (
           <Sheet label="Choose a workout" onClose={() => setChoosing(false)}>
-            <h2 className="dashboard-choose-title">Choose a workout</h2>
+            {/* N1: a visible way out, the X top-right; Escape and the scrim close it too. */}
+            <div className="sheet-head">
+              <h2 className="sheet-title">Choose a workout</h2>
+              <button type="button" className="sheet-close icon-btn" aria-label="Close" onClick={() => setChoosing(false)}>
+                <Icon name="X" size={24} />
+              </button>
+            </div>
             <ul className="program-choices" aria-label="Workouts">
               {[due, ...others].map((workout) => (
                 <li key={workout.workoutId}>

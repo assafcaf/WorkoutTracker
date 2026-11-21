@@ -332,12 +332,15 @@
 /* ---- The Plan editor page (DX-17): one row per field, a stepper or select at its end ---- */
 
 .program-editor-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  min-height: var(--tap-min);
-  padding: 0 var(--space-2) 0 0;
-  font-size: var(--text-md);
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  margin-left: calc(var(--space-3) * -1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
 }
 
 .plan-editor-rows {
