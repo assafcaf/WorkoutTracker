@@ -1577,7 +1577,7 @@ test('O21 closing History returns to the same open Set with its logged Set and r
 
   await toolsRow(user, 'History')
   const dialog = await screen.findByRole('dialog', { name: 'Back squat' }, SETTLE)
-  await user.click(within(dialog).getByRole('button', { name: 'Done' }))
+  await user.click(within(dialog).getByRole('button', { name: 'Back' }))
 
   await waitFor(
     () => expect(screen.queryByRole('dialog', { name: 'Back squat' })).toBeNull(),

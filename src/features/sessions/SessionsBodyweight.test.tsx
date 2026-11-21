@@ -60,7 +60,7 @@ test('E22-T6 O14 the volume bar counts Bodyweight Sets at the logged bodyweight;
   // summary, whose volume counts the Bodyweight Sets at the logged bodyweight and names it.
   const dialog = await openSummary()
   expect(within(dialog).getByRole('heading', { name: 'Workout A' })).toBeVisible()
-  expect(volumeOf(dialog)).toBe('720 kg')
+  expect(volumeOf(dialog)).toBe('720 kg lifted')
   expect(dialog.querySelector('[data-kpi="volume"]')).toHaveTextContent('bodyweight 80 kg (1 Oct)')
 })
 
@@ -70,6 +70,6 @@ test('E22-T6 O14 without a log the bars read as before and the readout names no 
 
   // Title kept (weakened-tests gate); V2-07: the summary's volume, without a log, names no bodyweight.
   const dialog = await openSummary()
-  expect(volumeOf(dialog)).toBe('0 kg')
+  expect(volumeOf(dialog)).toBe('0 kg lifted')
   expect(dialog.querySelector('[data-kpi="volume"]')).not.toHaveTextContent('bodyweight 80')
 })

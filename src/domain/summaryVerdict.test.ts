@@ -158,3 +158,29 @@ test('v7 nextLine names the Workout Train puts up next', () => {
   }
   expect(nextLine(mon, [mon], program)).toBe('Next: Workout A')
 })
+
+test('DX-14 nextLine names the day too, the next of the usual days: "Next: Workout B · Wednesday"', () => {
+  const program: Program = {
+    id: 'ab',
+    name: 'A / B',
+    units: 'kg',
+    sessionsPerWeek: 3,
+    workouts: [
+      { id: 'a', name: 'Workout A', exercises: [{ ...PLAN, sets: 1 }] },
+      { id: 'b', name: 'Workout B', exercises: [PLAN] },
+    ],
+  }
+  const DAY = 24 * 3_600_000
+  const at = (offset: number, id: string, workoutId: string): Session => ({
+    id,
+    programId: 'ab',
+    workoutId,
+    startedAt: MON_12_OCT + offset * DAY,
+    finishedAt: MON_12_OCT + offset * DAY + 3_600_000,
+    entries: sets([[60, 10]]),
+  })
+  // Mondays and Wednesdays in the four weeks before, then Monday 12 Oct itself.
+  const history = [-28, -26, -21, -19, -14, -12, -7, -5].map((d, i) => at(d, `h${i}`, i % 2 === 0 ? 'a' : 'b'))
+  const mon = at(0, 'mon', 'a')
+  expect(nextLine(mon, [...history, mon], program)).toBe('Next: Workout B · Wednesday')
+})

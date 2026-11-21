@@ -2053,8 +2053,11 @@ function sessionSummary(): HTMLElement | null {
 // lift against last time instead. These helpers read what it does show.
 
 /** The lift names in the summary's Lift by lift, in order. */
+/** The lifts the Session logged (DX-14: the Plans it never logged follow them, greyed, apart). */
 function summaryLifts(summary: HTMLElement): string[] {
-  return [...summary.querySelectorAll('.session-summary-move-name')].map((name) => name.textContent ?? '')
+  return [...summary.querySelectorAll('.session-summary-move:not(.session-summary-move--skipped) .session-summary-move-name')].map(
+    (name) => name.textContent ?? '',
+  )
 }
 
 /** The summary shows no muscle: no rows, no map, no Worked today. */

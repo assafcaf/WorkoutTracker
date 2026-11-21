@@ -85,7 +85,7 @@ test('V6 past summary drops the week line and labels the volume line', () => {
   expect(dialog.textContent).not.toContain('This week')
   expect(dialog.textContent).not.toContain('next up')
   expect(dialog.textContent).not.toContain('Next:')
-  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toMatch(/^[\d,]+ kg$/)
+  expect(dialog.querySelector('[data-kpi="volume"] .session-summary-kpi-value')?.textContent).toMatch(/^[\d,]+ kg lifted$/)
 })
 
 test('V6 past summary names the muscles "Muscles worked", in whole Sets', () => {

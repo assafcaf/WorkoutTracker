@@ -166,6 +166,7 @@ export function SessionSummary({
   onSaveChanges,
   bodyLog = [],
   photos = null,
+  weekStartsOn = 1,
   openUrl = (url: string): void => {
     window.location.href = url
   },
@@ -218,9 +219,18 @@ export function SessionSummary({
       : comparedDays.length === 1 && comparedDays[0] !== null
         ? `vs ${humanDate(comparedDays[0])}`
         : 'vs last time'
-  const next = program && !past ? nextLine(session, all, program) : null
-  // The volume is one small number in the totals line (study §1.6): the kilos alone.
-  const volumeText = volumeLine(session.id, all, resolve, bodyLog).split(' · ')[0]
+  const next = program && !past ? nextLine(session, all, program, weekStartsOn) : null
+  // DX-14: the Workout's Plans this Session never logged (a swap counts as its planned lift), so a
+  // short Session's summary lists the whole Workout, not one row over a blank screen.
+  const loggedIds = new Set(lifts.map((lift) => lift.exerciseId))
+  const swappedTo = session.swaps ?? {}
+  const notLogged = partial
+    ? (plannedWorkout?.exercises ?? [])
+        .filter((plan) => !loggedIds.has(plan.exerciseId) && !loggedIds.has(swappedTo[plan.exerciseId] ?? ''))
+        .map((plan) => ({ exerciseId: plan.exerciseId, name: resolve(plan.exerciseId)?.name ?? plan.exerciseId, sets: plan.sets }))
+    : []
+  // The volume is one small number in the totals line (study §1.6), labelled (DX-14): "600 kg lifted".
+  const volumeText = `${volumeLine(session.id, all, resolve, bodyLog).split(' · ')[0]} lifted`
   const dayText = formatDay(new Date(session.startedAt), new Date())
 
   async function saveChanges(): Promise<void> {
@@ -380,7 +390,7 @@ export function SessionSummary({
         </section>
       ) : null}
 
-      {lifts.length > 0 ? (
+      {lifts.length > 0 || notLogged.length > 0 ? (
         <section className="session-summary-section" aria-label="Lift by lift">
           <div className="session-summary-caption-row">
             <h3 className="session-summary-caption">Lift by lift</h3>
@@ -411,6 +421,16 @@ export function SessionSummary({
                   </span>
                 </div>
                 <Verdict verdict={lift.line.verdict} />
+              </div>
+            ))}
+            {notLogged.map((lift) => (
+              <div key={lift.exerciseId} className="session-summary-move session-summary-move--skipped">
+                <div className="session-summary-move-main">
+                  <span className="session-summary-move-name">{lift.name}</span>
+                </div>
+                <span className="session-summary-verdict status-mark" data-tone="flat">
+                  {`0 of ${plural(lift.sets, 'set', 'sets')}`}
+                </span>
               </div>
             ))}
           </div>
