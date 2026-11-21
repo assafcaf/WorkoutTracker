@@ -5038,7 +5038,7 @@ function snackbar(): HTMLElement | null {
   return document.querySelector<HTMLElement>('.snackbar')
 }
 
-test('V1-17 a screen opened on a swap shows the Swapped from <planned> · Undo snackbar', () => {
+test('N4 a screen opened on a swap shows the one bottom snackbar Swapped to <new> · Undo', () => {
   renderSetScreen({
     swappedFrom: { name: 'Deadlift', onUndo: vi.fn() },
     swapFor: { name: 'Deadlift', onUndo: vi.fn() },
@@ -5046,20 +5046,21 @@ test('V1-17 a screen opened on a swap shows the Swapped from <planned> · Undo s
 
   const bar = snackbar() as HTMLElement
   expect(bar).not.toBeNull()
-  expect(bar).toHaveTextContent('Swapped from Deadlift')
-  // Title kept (weakened-tests gate); V6: Undo is said once, by the lasting "Undo swap" line,
-  // so the snackbar carries no Undo of its own.
-  expect(within(bar).queryByRole('button')).toBeNull()
+  expect(bar).toHaveTextContent('Swapped to Back squat')
+  // N4: drawn over the bottom of the screen, not in the anchor above the Dials.
+  expect(bar).not.toHaveClass('snackbar--inline')
+  expect(bar.parentElement).toBe(document.body)
+  // The one Undo on the screen is the snackbar's; the "for Deadlift" line carries none.
   expect(screen.getAllByRole('button', { name: /Undo/ })).toHaveLength(1)
-  expect(screen.getByRole('button', { name: 'Undo swap' })).toBeVisible()
+  expect(within(bar).getByRole('button', { name: 'Undo' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Undo swap' })).toBeNull()
 })
 
 test('V1-17 Undo on the swap snackbar calls onUndo once and the snackbar goes', async () => {
   const onUndo = vi.fn()
   const { user } = renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo }, swapFor: { name: 'Deadlift', onUndo } })
 
-  // Title kept (weakened-tests gate); V6: the one Undo is the swap line's "Undo swap".
-  await user.click(screen.getByRole('button', { name: 'Undo swap' }))
+  await user.click(within(snackbar() as HTMLElement).getByRole('button', { name: 'Undo' }))
 
   expect(onUndo).toHaveBeenCalledTimes(1)
   expect(snackbar()).toBeNull()
@@ -5085,7 +5086,7 @@ test('V1-17 logging a Set of the swapped-in Exercise takes the swap snackbar awa
 
   await user.click(logButton())
 
-  await waitFor(() => expect(screen.queryByText(/Swapped from/)).toBeNull())
+  await waitFor(() => expect(screen.queryByText(/Swapped to/)).toBeNull())
 })
 
 test('V1-17 a screen opened without a swap shows no snackbar, and a later swappedFrom is ignored', () => {
@@ -5208,20 +5209,18 @@ test('V6 V5-04 the snackbars on the Set screen sit above the Dials, never over t
   expect(anchor.compareDocumentPosition(dials) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
-test('V6 V5-04 the swap snackbar reads Swapped from Deadlift with no separator after it', () => {
+test('V6 V5-04 N4 the swap snackbar reads Swapped to <new> with no separator after it', () => {
   renderSetScreen({ swappedFrom: { name: 'Deadlift', onUndo: vi.fn() } })
 
-  expect((document.querySelector('.snackbar-message') as HTMLElement).textContent).toBe('Swapped from Deadlift')
+  expect((document.querySelector('.snackbar-message') as HTMLElement).textContent).toBe('Swapped to Back squat')
 })
 
-test('V6 V5-02 a swapped-in Exercise says "for <planned>" under its counter, with Undo swap while given', async () => {
-  const onUndo = vi.fn()
-  const { user } = renderSetScreen({ swapFor: { name: 'Deadlift', onUndo } })
+test('V6 V5-02 a swapped-in Exercise says "for <planned>" under its counter, with no Undo of its own (N4)', () => {
+  renderSetScreen({ swapFor: { name: 'Deadlift', onUndo: vi.fn() } })
 
   const line = document.querySelector('.set-swapped') as HTMLElement
   expect(line).toHaveTextContent('for Deadlift')
-  await user.click(within(line).getByRole('button', { name: 'Undo swap' }))
-  expect(onUndo).toHaveBeenCalledTimes(1)
+  expect(within(line).queryByRole('button')).toBeNull()
 })
 
 test('V6 V5-02 with askStartWeight the Plate line asks Set a starting weight until the weight moves', async () => {

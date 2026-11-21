@@ -207,15 +207,14 @@ export type SetScreenProps = {
   onFinishWorkout?(): void
   /**
    * V1-17: this Exercise was just swapped in for the planned one from Now. The screen opens with
-   * the dark snackbar "Swapped from Deadlift" for UNDO_MS, as Delete set's does, until a Set is
-   * logged here. V6: it carries no Undo of its own -- the lasting `swapFor` line's "Undo swap"
-   * is the one Undo; `onUndo` is kept so callers still type-check.
+   * the bottom snackbar "Swapped to Rack pull · Undo" for UNDO_MS (N4), until a Set is logged
+   * here; its Undo is the one Undo of the swap.
    */
   swappedFrom?: { name: string; onUndo(): void } | null
   /**
    * V6 (V5-02): this Exercise stands in for the planned one `name` while the swap lasts. A quiet
-   * line under the set counter says "for Deadlift", with "Undo swap" while `onUndo` is given
-   * (nothing of this Exercise logged yet). It stays as long as the swap does, unlike the snackbar.
+   * line under the set counter says "for Deadlift". It stays as long as the swap does; the Undo
+   * is the snackbar's (N4). `onUndo` is kept for callers.
    */
   swapFor?: { name: string; onUndo?(): void } | null
   /**
@@ -1812,21 +1811,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {props.swapFor ? (
               <p className="set-swapped">
                 <span>{`for ${props.swapFor.name}`}</span>
-                {props.swapFor.onUndo === undefined ? null : (
-                  <>
-                    <span aria-hidden="true">·</span>
-                    <button
-                      type="button"
-                      className="set-swapped-undo btn-quiet"
-                      onClick={() => {
-                        setSwapUndoShown(false)
-                        props.swapFor?.onUndo?.()
-                      }}
-                    >
-                      Undo swap
-                    </button>
-                  </>
-                )}
               </p>
             ) : null}
             {/* V6-01, v7 (study §1.3): the advice stays one tap away, but quiet and up here with
@@ -2148,11 +2132,21 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           {undo === null ? null : (
             <Snackbar inline message={undoMessage} actionLabel="Undo" onAction={() => void restoreSet()} />
           )}
-          {undo !== null || !swapUndoShown || swappedFrom === null ? null : (
-            // V6: no Undo here; the swap line's "Undo swap" is the one Undo on the screen.
-            <Snackbar inline message={`Swapped from ${swappedFrom.name}`} />
-          )}
+
         </div>
+
+        {/* N4: the one swap feedback, the bottom snackbar "Swapped to Rack pull · Undo", until it
+            times out or a Set is logged. */}
+        {undo !== null || !swapUndoShown || swappedFrom === null ? null : (
+          <Snackbar
+            message={`Swapped to ${exercise.name}`}
+            actionLabel="Undo"
+            onAction={() => {
+              setSwapUndoShown(false)
+              swappedFrom.onUndo()
+            }}
+          />
+        )}
 
         {done ? (
           // V4-07: the Exercise once its Sets are in, as the hand-over shows it: "Deadlift done ·

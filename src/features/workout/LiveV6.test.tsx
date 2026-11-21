@@ -15,7 +15,7 @@ import { WorkoutFeature } from './WorkoutFeature'
 // - V5-01: Discard lands on Train with "Session discarded · Undo", and Undo brings the Session
 //   back as it was.
 // - V5-02: a swapped-in Exercise opens on one Preset wherever it is shown (Now, All, Now again),
-//   and Now keeps a quiet "for <planned> · Undo swap" line while the swap stands.
+//   and Now keeps a quiet "for <planned>" line while the swap stands; Undo is the swap snackbar's (N4).
 
 const NOW = 1_700_000_000_000
 const SETTLE = { timeout: 3000 }
@@ -103,22 +103,29 @@ test('V6 V5-02 a swapped-in Exercise opens on the planned load on Now, on All, a
   expect(await logButton()).toHaveTextContent('Log set 1 · 8 × 10')
 })
 
-test('V6 V5-02 Now keeps a quiet "for <planned> · Undo swap" line while the swap stands', async () => {
+test('V6 V5-02 N4 a swap shows "Swapped to <new> · Undo" at the bottom; Now keeps a quiet "for <planned>" line', async () => {
   const { user } = renderFeature(await servicesOnWorkoutBDue())
   await openSeatedCurls(user)
   await swapTo(user, 'Seated biceps curls', 'Hammer Curls')
 
-  // Reopened from All, long after the snackbar: the line is still there.
+  // Reopened from All, long after the snackbar: the line is still there, with no Undo of its own.
   await showAll(user)
   await user.click(await screen.findByRole('button', { name: /^Hammer Curls/ }, SETTLE))
   await screen.findByRole('heading', { level: 1, name: 'Hammer Curls' }, SETTLE)
   const line = await screen.findByText('for Seated biceps curls', undefined, SETTLE)
   expect(line.closest('.set-swapped')).not.toBeNull()
+  expect(within(line.closest('.set-swapped') as HTMLElement).queryByRole('button')).toBeNull()
+})
 
-  await user.click(within(line.closest('.set-swapped') as HTMLElement).getByRole('button', { name: 'Undo swap' }))
+test('N4 Undo on the "Swapped to" snackbar takes the swap back', async () => {
+  const { user } = renderFeature(await servicesOnWorkoutBDue())
+  await openSeatedCurls(user)
+  await swapTo(user, 'Seated biceps curls', 'Hammer Curls')
+
+  const bar = (await screen.findByText('Swapped to Hammer Curls', undefined, SETTLE)).closest('.snackbar') as HTMLElement
+  await user.click(within(bar).getByRole('button', { name: 'Undo' }))
   expect(await screen.findByRole('heading', { level: 1, name: 'Seated biceps curls' }, SETTLE)).toBeVisible()
   await waitFor(async () => expect((await storedActiveSession())?.swaps?.['seated-biceps-curls']).toBeUndefined())
-  expect(screen.queryByText('for Seated biceps curls')).toBeNull()
 })
 
 test('V6 V5-02 a swap onto other equipment with no history asks "Set a starting weight"', async () => {
