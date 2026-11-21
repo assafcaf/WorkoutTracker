@@ -183,6 +183,7 @@ export function DashboardScreen({ onStartWorkout, now = Date.now, notices, resum
         card: dueCard ? trainCardOf(dueCard, histories, more, deloadOn, sessions, resolve, at) : null,
         cards,
         due: due ? { ...dockWorkout(due.workout), last: due.lastDoneAt === null ? null : formatDay(new Date(due.lastDoneAt), new Date(at)) } : null,
+        others: visible.filter((workout) => workout.id !== due?.workout.id).map(dockWorkout),
         meta: day.meta,
         rest: day.rest,
       }

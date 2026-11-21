@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { AppShell } from '../../ui/AppShell'
 import { SetFigure } from '../../ui/figures'
 import { Icon } from '../../ui/icons'
+import { Sheet } from '../../ui/Sheet'
 import './DashboardScreen.css'
 import type { TrainCard, TrainLiftRow } from './trainCard'
 
@@ -29,6 +31,8 @@ export type DashboardData =
       due: DockWorkout | null
       /** The card of every other workout, by workout id: a Session in progress may be one of them. */
       cards?: Record<string, TrainCard>
+      /** The Program's other workouts, which "Change" offers to do instead of the one due. */
+      others?: DockWorkout[]
       /** DX-01: the one meta line, `Thursday · 2 of 3 this week` or `Rest day · next: …`. */
       meta?: string
       /** DX-01: a rest day: Start reads "Start … anyway", in outline. */
@@ -322,6 +326,11 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
   let title = 'Train'
   let meta: string | undefined
   let body: ReactNode = null
+  // A workout other than the one due, chosen from "Change" (the < > arrows' labelled successor).
+  const [pickedId, setPickedId] = useState<string | null>(null)
+  const [choosing, setChoosing] = useState(false)
+  let actions: ReactNode = null
+  let sheet: ReactNode = null
   let dock: ReactNode = resume?.onResume ? <ResumeDock resume={resume} /> : null
 
   if (data.kind === 'no-program') {
@@ -340,27 +349,69 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
             : (data.cards?.[resume.workoutId] ?? null)
       body = card ? <DueCard card={card} onOpenLift={props.onOpenLift} /> : null
     } else if (due) {
-      title = due.name
-      meta = data.meta
-      const card = data.card
+      const others = data.others ?? []
+      const picked = pickedId === null ? undefined : others.find((other) => other.workoutId === pickedId)
+      const offered = picked ?? due
+      title = offered.name
+      meta = picked ? `Instead of ${due.name}` : data.meta
+      const card = picked ? (data.cards?.[picked.workoutId] ?? null) : data.card
+      if (others.length > 0) {
+        actions = (
+          <button type="button" className="btn-quiet dashboard-change" onClick={() => setChoosing(true)}>
+            Change
+          </button>
+        )
+      }
+      if (choosing) {
+        const choose = (workoutId: string | null): void => {
+          setPickedId(workoutId)
+          setChoosing(false)
+        }
+        sheet = (
+          <Sheet label="Choose a workout" onClose={() => setChoosing(false)}>
+            <h2 className="dashboard-choose-title">Choose a workout</h2>
+            <ul className="program-choices" aria-label="Workouts">
+              {[due, ...others].map((workout) => (
+                <li key={workout.workoutId}>
+                  <button
+                    type="button"
+                    className="program-choice cell"
+                    aria-current={workout.workoutId === offered.workoutId ? 'true' : undefined}
+                    onClick={() => choose(workout.workoutId === due.workoutId ? null : workout.workoutId)}
+                  >
+                    <span className="program-choice-text">
+                      <span className="program-choice-name">{workout.name}</span>
+                      <span className="program-choice-summary">
+                        {workout.workoutId === due.workoutId ? 'Due next' : workout.last ? `Last done ${workout.last}` : 'Not done yet'}
+                      </span>
+                    </span>
+                    {workout.workoutId === offered.workoutId ? <Icon name="Check" size={18} /> : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Sheet>
+        )
+      }
       body = (
         <>
-          {card ? <Headline card={card} offered={due} /> : null}
+          {card ? <Headline card={card} offered={offered} /> : null}
           {card ? <DueCard card={card} onOpenLift={props.onOpenLift} /> : null}
         </>
       )
       const sets = card?.lifts.reduce((sum, lift) => sum + (lift.sets ?? 0), 0) ?? 0
-      dock = <StartDock offered={due} sets={sets > 0 ? sets : null} rest={data.rest ?? false} onStart={props.onStartWorkout} />
+      dock = <StartDock offered={offered} sets={sets > 0 ? sets : null} rest={!picked && (data.rest ?? false)} onStart={props.onStartWorkout} />
     }
   }
 
   return (
-    <AppShell title={title} subtitle={meta}>
+    <AppShell title={title} subtitle={meta} actions={actions}>
       <div className="dashboard">
         {props.notices ? <div className="dashboard-notices">{props.notices}</div> : null}
         {body}
         {dock}
       </div>
+      {sheet}
     </AppShell>
   )
 }

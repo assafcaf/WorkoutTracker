@@ -188,3 +188,31 @@ describe('the change note', () => {
     expect(screen.queryByText('Eased after 34 days off')).toBeNull()
   })
 })
+
+describe('Train: doing a workout other than the one due', () => {
+  const B_CARD = { ...(READY as Extract<DashboardData, { kind: 'ready' }>).card!, name: 'Workout B' }
+  const WITH_B: DashboardData = {
+    ...(READY as Extract<DashboardData, { kind: 'ready' }>),
+    others: [{ workoutId: 'workout-b', name: 'Workout B', last: 'Mon 12 Oct', minutes: 60 }],
+    cards: { 'workout-b': B_CARD },
+  }
+
+  test('a labelled "Change" opens the workouts; choosing one makes it the title and the Start', () => {
+    const props = renderView({ data: WITH_B })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+    const sheet = screen.getByRole('dialog', { name: 'Choose a workout' })
+    expect(within(sheet).getByText('Due next')).toBeTruthy()
+    fireEvent.click(within(sheet).getByRole('button', { name: /Workout B/ }))
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Workout B' })).toBeTruthy()
+    expect(screen.getByText('Instead of Workout A')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Start Workout B' }))
+    expect(props.onStartWorkout).toHaveBeenCalledWith('workout-b')
+  })
+
+  test('a Program with one workout offers no Change', () => {
+    renderView()
+    expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()
+  })
+})
