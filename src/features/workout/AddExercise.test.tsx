@@ -85,7 +85,7 @@ test('O23 the added Exercise logs like any other and shows in the summary and th
     expect(stored.added?.map((plan) => plan.exerciseId)).toEqual(['Dumbbell_Bench_Press'])
   }, SETTLE)
 
-  await user.click(await screen.findByRole('button', { name: 'All exercises' }, SETTLE))
+  await user.click(await screen.findByRole('radio', { name: 'All' }, SETTLE))
   await finishWorkout(user)
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   expect(within(summary).getAllByText(/Dumbbell Bench Press/).length).toBeGreaterThan(0)

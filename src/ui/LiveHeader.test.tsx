@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import { LiveHeader } from './LiveHeader'
 
@@ -6,11 +6,11 @@ function meta(): string {
   return (document.querySelector('.live-header-meta')?.textContent ?? '').replace(/\s+/g, ' ')
 }
 
-test('V2-11 after a PR the header sub-line ends · 1 PR', () => {
+test('V2-11 DX-19 after a PR the header line 2 reads "3 of 23 sets · n min" and names no PR', () => {
   render(
     <LiveHeader
       workoutName="Workout B"
-      startedAt={Date.now()}
+      startedAt={Date.now() - 4 * 60_000}
       onMinimise={vi.fn()}
       onFinish={vi.fn()}
       sets={{ done: 3, planned: 23 }}
@@ -19,30 +19,29 @@ test('V2-11 after a PR the header sub-line ends · 1 PR', () => {
   )
 
   // v7 (study §1.5): no PR count in the live header; the PR is on its Set's cell.
-  expect(meta()).toMatch(/· 3\/23 sets$/)
+  expect(meta()).toBe('3 of 23 sets · 4 min')
   expect(meta()).not.toContain('PR')
   expect(document.querySelector('.live-header-prs')).toBeNull()
 })
 
-test('V2-11 with no PR yet the header sub-line names no PR', () => {
+test('DX-19 a 2 px bar under the header fills to the Sets logged', () => {
   render(
     <LiveHeader
       workoutName="Workout B"
       startedAt={Date.now()}
       onMinimise={vi.fn()}
       onFinish={vi.fn()}
-      sets={{ done: 3, planned: 23 }}
-      prs={0}
+      sets={{ done: 1, planned: 4 }}
     />,
   )
 
-  expect(meta()).toMatch(/· 3\/23 sets$/)
-  expect(meta()).not.toContain('PR')
+  const bar = screen.getByRole('progressbar', { name: 'Sets logged' })
+  expect(bar).toHaveAttribute('aria-valuenow', '1')
+  expect(bar).toHaveAttribute('aria-valuemax', '4')
+  expect((bar.firstElementChild as HTMLElement).style.width).toBe('25%')
 })
 
-test('V5 with nothing logged, Finish says so and offers Discard workout', async () => {
-  const { fireEvent, screen } = await import('@testing-library/react')
-  const onDiscard = vi.fn()
+test('DX-14 with every Set logged, Finish finishes at once', () => {
   const onFinish = vi.fn()
   render(
     <LiveHeader
@@ -50,61 +49,48 @@ test('V5 with nothing logged, Finish says so and offers Discard workout', async 
       startedAt={Date.now()}
       onMinimise={vi.fn()}
       onFinish={onFinish}
+      sets={{ done: 23, planned: 23 }}
+      setsLeft={0}
+    />,
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
+  expect(onFinish).toHaveBeenCalledTimes(1)
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+test('DX-14 with Sets left, Finish asks once: Finish Session, Keep going and a close X, and no Discard', () => {
+  const onFinish = vi.fn()
+  const onDiscard = vi.fn()
+  render(
+    <LiveHeader
+      workoutName="Workout B"
+      startedAt={Date.now()}
+      onMinimise={vi.fn()}
+      onFinish={onFinish}
       onDiscard={onDiscard}
-      sets={{ done: 0, planned: 23 }}
-      setsLeft={23}
+      sets={{ done: 1, planned: 23 }}
+      setsLeft={22}
     />,
   )
 
   fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
-  expect(screen.getByText('Nothing logged yet')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Discard workout' }))
-  expect(onDiscard).toHaveBeenCalledTimes(1)
-  expect(onFinish).not.toHaveBeenCalled()
-})
+  const sheet = screen.getByRole('dialog')
+  expect(within(sheet).getByRole('heading', { name: 'Finish with 22 sets not logged?' })).toBeTruthy()
+  expect(within(sheet).getByRole('button', { name: 'Finish Session' })).toHaveClass('btn-primary')
+  expect(within(sheet).getByRole('button', { name: 'Keep going' })).toHaveClass('btn-secondary')
+  expect(within(sheet).getByRole('button', { name: 'Close' })).toBeTruthy()
+  expect(within(sheet).queryByRole('button', { name: /Discard/ })).toBeNull()
 
-test('V5 with sets logged, the Finish sheet keeps Finish workout and adds Discard workout', async () => {
-  const { fireEvent, screen } = await import('@testing-library/react')
-  render(
-    <LiveHeader
-      workoutName="Workout B"
-      startedAt={Date.now()}
-      onMinimise={vi.fn()}
-      onFinish={vi.fn()}
-      onDiscard={vi.fn()}
-      sets={{ done: 3, planned: 23 }}
-      setsLeft={20}
-    />,
-  )
-
+  fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
-  expect(screen.getByRole('button', { name: 'Finish workout' })).toBeTruthy()
-  expect(screen.getByRole('button', { name: 'Discard workout' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Finish Session' }))
+  expect(onFinish).toHaveBeenCalledTimes(1)
+  expect(onDiscard).not.toHaveBeenCalled()
 })
 
-test('V6 V5-01 with nothing logged, the Finish sheet leads with Discard workout and Finish workout is only a quiet last option', async () => {
-  const { fireEvent, screen } = await import('@testing-library/react')
-  render(
-    <LiveHeader
-      workoutName="Workout B"
-      startedAt={Date.now()}
-      onMinimise={vi.fn()}
-      onFinish={vi.fn()}
-      onDiscard={vi.fn()}
-      sets={{ done: 0, planned: 23 }}
-      setsLeft={23}
-    />,
-  )
-
-  fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
-  const discard = screen.getByRole('button', { name: 'Discard workout' })
-  expect(discard).toHaveClass('btn-primary')
-  expect(screen.getByRole('button', { name: 'Finish workout' })).toHaveClass('btn-quiet')
-  const actions = [...document.querySelectorAll('.finish-confirm-actions button')].map((b) => b.textContent)
-  expect(actions).toEqual(['Discard workout', 'Keep going', 'Finish workout'])
-})
-
-test('V6 V5-15 when the title line does not fit (large text), the elapsed time goes and the set count stays', () => {
+test('V6 V5-15 when the title line does not fit (large text), the minutes go and the set count stays', () => {
   const widths = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) {
     return this.classList.contains('live-header-meta') ? 189 : 0
   })
@@ -121,13 +107,13 @@ test('V6 V5-15 when the title line does not fit (large text), the elapsed time g
     />,
   )
 
-  expect(meta()).toBe('1/23 sets')
-  expect(document.querySelector('.live-header-meta [role="timer"], .live-header-meta time')).toBeNull()
+  expect(meta()).toBe('1 of 23 sets')
+  expect(document.querySelector('.live-header-meta [role="timer"]')).toBeNull()
   widths.mockRestore()
   clients.mockRestore()
 })
 
-test('V6 V5-15 when the title line fits, it keeps the elapsed time before the set count', () => {
+test('V6 V5-15 when the title line fits, it keeps the minutes after the set count', () => {
   render(
     <LiveHeader
       workoutName="Workout B"
@@ -138,27 +124,5 @@ test('V6 V5-15 when the title line fits, it keeps the elapsed time before the se
     />,
   )
 
-  expect(meta()).toMatch(/^\S+ · 1\/23 sets$/)
-})
-
-test('V5-01 with sets logged, Discard asks again naming the sets before it discards', async () => {
-  const { fireEvent, screen } = await import('@testing-library/react')
-  const onDiscard = vi.fn()
-  render(
-    <LiveHeader
-      workoutName="Workout B"
-      startedAt={Date.now()}
-      onMinimise={vi.fn()}
-      onFinish={vi.fn()}
-      onDiscard={onDiscard}
-      sets={{ done: 2, planned: 23 }}
-      setsLeft={21}
-    />,
-  )
-
-  fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
-  fireEvent.click(screen.getByRole('button', { name: 'Discard workout' }))
-  expect(onDiscard).not.toHaveBeenCalled()
-  fireEvent.click(screen.getByRole('button', { name: 'Discard 2 logged sets' }))
-  expect(onDiscard).toHaveBeenCalledTimes(1)
+  expect(meta()).toBe('1 of 23 sets · 1 min')
 })

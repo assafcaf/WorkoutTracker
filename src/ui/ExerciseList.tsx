@@ -245,8 +245,6 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
   } = props
   const [editingNote, setEditingNote] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
-  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
-  const setCount = session.entries.length
   // The baseline a done cell's PR tag is measured against: the finished Sessions before this one.
   const earlier = sessions.filter(
     (other) => other.id !== session.id && other.finishedAt !== null && other.startedAt < session.startedAt,
@@ -393,23 +391,11 @@ export function ExerciseList(props: ExerciseListProps): JSX.Element {
         {note === undefined || note === '' ? 'Add note' : 'Edit note'}
       </button>
     )}
-    {onDiscard === undefined ? null : confirmingDiscard ? (
-      <div className="exercise-discard-confirm" role="group" aria-label="Discard workout">
-        <p>{`Discard this workout? Its ${setCount} ${setCount === 1 ? 'set is' : 'sets are'} deleted.`}</p>
-        <button type="button" className="exercise-discard-confirm-yes btn-danger" onClick={onDiscard}>
-          Discard
-        </button>
-        <button
-          type="button"
-          className="exercise-discard-confirm-cancel btn-quiet"
-          onClick={() => setConfirmingDiscard(false)}
-        >
-          Cancel
-        </button>
-      </div>
-    ) : (
-      <button type="button" className="exercise-discard btn-danger" onClick={() => setConfirmingDiscard(true)}>
-        Discard workout
+    {/* DX-14: Discard lives here only, as red text at the very bottom, 24 px clear of the other
+        actions. No confirm: the caller offers "Session discarded · Undo" instead. */}
+    {onDiscard === undefined ? null : (
+      <button type="button" className="exercise-discard btn-danger" onClick={onDiscard}>
+        Discard Session
       </button>
     )}
     </>

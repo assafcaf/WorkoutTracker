@@ -22,7 +22,7 @@
   padding: var(--space-4) 20px var(--space-5);
 }
 
-/* The day and duration (Edit beside them on a past workout) over the Workout, which has the
+/* The day and duration over the Workout, which has the
  * full width to itself. */
 .session-summary-head {
   display: flex;
@@ -61,15 +61,31 @@
   letter-spacing: -0.02em;
 }
 
-.session-summary-edit {
+/* Session detail (DX-14): ‹ Back on the left, Edit as text on the right, no Done bar. */
+.session-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--tap-min);
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0;
+}
+
+.session-summary-back {
   display: grid;
-  flex: none;
   place-items: center;
   width: var(--tap-min);
   min-height: var(--tap-min);
-  margin-right: calc(-1 * var(--space-2));
   border: 0;
   border-radius: var(--radius-md);
+}
+
+.session-summary-edit {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
 }
 
 /* "5 of 7 lifts beat Wednesday. Two records.": the comparison in ink, the rest in ink-2. */
@@ -316,21 +332,4 @@
 .session-summary-save-actions {
   display: flex;
   gap: var(--space-3);
-}
-
-/* V5: Delete workout, straight from a Session opened on Sessions; the screen offers Undo. A quiet
- * danger text button at the foot of the body, away from Done. */
-.session-summary-delete {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  gap: var(--space-2);
-  min-height: var(--tap-min);
-  padding: 0 var(--space-2);
-  margin-left: calc(-1 * var(--space-2));
-  border: 0;
-  border-radius: var(--radius-md);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
 }

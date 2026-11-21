@@ -87,7 +87,7 @@ test('O27 skipping the rest cancels the push', async () => {
   const { user, scheduleRest, cancelRest } = await startWorkoutA({ sets: 1, ageMs: 1000 })
   await waitFor(() => expect(scheduleRest).toHaveBeenCalled(), SETTLE)
 
-  await user.click(screen.getByRole('button', { name: 'Now' }))
+  await user.click(screen.getByRole('radio', { name: 'Set' }))
   await user.click(await screen.findByRole('button', { name: 'Skip rest' }, SETTLE))
 
   await waitFor(() => expect(cancelRest).toHaveBeenCalled(), SETTLE)
@@ -98,7 +98,7 @@ test('O27 +15 s schedules the moved end', async () => {
   await waitFor(() => expect(scheduleRest).toHaveBeenCalledTimes(1), SETTLE)
   const first = (scheduleRest.mock.calls[0] as unknown as [number, string])[0]
 
-  await user.click(screen.getByRole('button', { name: 'Now' }))
+  await user.click(screen.getByRole('radio', { name: 'Set' }))
   await user.click(await screen.findByRole('button', { name: 'Rest 15 seconds more' }, SETTLE))
 
   await waitFor(() => expect(scheduleRest).toHaveBeenCalledTimes(2), SETTLE)

@@ -12,28 +12,26 @@ test('V1-10 given the bar under the live header, when it renders, then it holds 
   expect(screen.queryByRole('img')).toBeNull()
 })
 
-test('Live Now | All is one segmented switch, telling the view picked', async () => {
+test('DX-19 the view switch is a two-segment control "Set | All" that always shows both, the current one checked', async () => {
   const user = userEvent.setup()
   const onViewChange = vi.fn()
   render(<LiveSessionBar view="now" onViewChange={onViewChange} />)
 
-  // V3-07: one header button, not a segmented band: on Now it reads "All exercises".
-  expect(screen.queryByRole('radiogroup')).toBeNull()
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  const group = screen.getByRole('radiogroup', { name: 'View' })
+  expect(within(group).getByRole('radio', { name: 'Set' })).toBeChecked()
+  expect(within(group).getByRole('radio', { name: 'All' })).not.toBeChecked()
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   expect(onViewChange).toHaveBeenCalledWith('all')
 })
 
-test('V3-07 on All the header button goes back to Now, and the keyboard reaches it', async () => {
+test('DX-19 on All the control still names both views, and Set goes back to the Set', async () => {
   const user = userEvent.setup()
   const onViewChange = vi.fn()
   render(<LiveSessionBar view="all" onViewChange={onViewChange} />)
 
-  const now = screen.getByRole('button', { name: 'Now' })
-  await user.tab()
-  expect(now).toHaveFocus()
-  await user.keyboard('{Enter}')
+  expect(screen.getByRole('radio', { name: 'All' })).toBeChecked()
+  await user.click(screen.getByRole('radio', { name: 'Set' }))
   expect(onViewChange).toHaveBeenCalledWith('now')
-  expect(screen.queryByRole('button', { name: 'All exercises' })).toBeNull()
 })
 
 const squat: Exercise = { id: 'squat', name: 'Back squat', weightStep: 2.5, startWeight: 20, bodyweight: false, libraryId: 'a' }

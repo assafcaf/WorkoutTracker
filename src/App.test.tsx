@@ -43,12 +43,15 @@ import { showAll, finishWorkout } from './test/live'
 
 
 /**
- * Opens the set screen's exercise tools sheet from its ⋯ button (S3b) and taps its row `name`:
- * "Swap exercise", "Exercise info", "Lift history", "Rest time" ... Without a row, only opens it.
+ * DX-07: taps one of the set screen's labelled tools under the Exercise's name ("Swap", "Notes",
+ * "History"); without a name, waits for the row to be there.
  */
-async function toolsRow(user: UserEvent, name?: string): Promise<void> {
-  await user.click(await screen.findByRole('button', { name: 'Exercise tools' }, { timeout: 3000 }))
-  if (name !== undefined) await user.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }))
+async function toolsRow(user: UserEvent, name?: 'Swap' | 'Notes' | 'History'): Promise<void> {
+  if (name === undefined) {
+    await screen.findByRole('group', { name: 'Exercise tools' }, { timeout: 3000 })
+    return
+  }
+  await user.click(await screen.findByRole('button', { name }, { timeout: 3000 }))
 }
 
 const LIBRARY = [...libraryFixture, ...extraLibraryFixture] as unknown as LibraryExercise[]
@@ -1117,7 +1120,7 @@ test('O11 the set screen back control returns to the exercise list', async () =>
   await openBackSquat(user)
 
   // The Live session's All view is the exercise list (S2).
-  const back = screen.queryByRole('button', { name: 'All exercises' })
+  const back = screen.queryByRole('radio', { name: 'All' })
   expect(back, 'the set screen offers no back control').not.toBeNull()
   await user.click(back as HTMLElement)
 
@@ -1180,7 +1183,7 @@ async function startLogOneSetAndBackToPicker(user: UserEvent): Promise<void> {
   }, SETTLE)
   // Back out of the set screen to the exercise list (All), then minimise the Live session to
   // the picker -- the session stays in progress the whole way (proven by O10 and O11 above).
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Minimise' }))
 }
@@ -1503,7 +1506,7 @@ function detailOverlay(): HTMLElement | null {
   return document.body.querySelector('.exercise-detail')
 }
 
-test('L14 tapping Exercise info on the deadlift set screen opens the in-app detail overlay for Barbell_Deadlift headed "Deadlift"', async () => {
+test('L14 DX-07 the deadlift set screen offers no Exercise info: it is "How to do it" on the lift page', async () => {
   const user = userEvent.setup()
   await renderApp()
   await findStartButton()
@@ -1511,52 +1514,8 @@ test('L14 tapping Exercise info on the deadlift set screen opens the in-app deta
   await openExercise(user, 'Deadlift')
   await findSteppers()
 
-  await toolsRow(user, 'Exercise info')
-
-  const overlay = detailOverlay()
-  expect(overlay, 'no in-app detail overlay was rendered').not.toBeNull()
-  expect(within(overlay as HTMLElement).getByRole('heading', { name: 'Deadlift' })).toBeVisible()
-  // Hand-checked against src/data/library/exercises.json: Barbell_Deadlift's only primary
-  // muscle is lower back -- proof this is really that library entry, not just any heading.
-  // E10-T4 rewrote this field as a `MuscleChip` (O8), so the muscle name is no longer in the
-  // paragraph's own text node -- `textContent` still carries the same string.
-  const primaryMuscleField = within(overlay as HTMLElement).getByText('Primary muscle:', {
-    exact: false,
-  })
-  expect(primaryMuscleField).toBeVisible()
-  expect(primaryMuscleField.textContent).toBe('Primary muscle: lower back')
-})
-
-test('L14 the set screen underneath the detail overlay is not unmounted, so its dials survive the round trip', async () => {
-  const user = userEvent.setup()
-  await renderApp()
-  await findStartButton()
-  await startWorkout(user, 'Workout B')
-  await openExercise(user, 'Deadlift')
-  await findSteppers()
-  // Nudges the dial off its preset value, so a remounted set screen would be caught below.
-  unfoldSteppers()
-  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
-  const weightBefore = readoutValue(weightReadout())
-
-  await toolsRow(user, 'Exercise info')
-
-  expect(detailOverlay(), 'no in-app detail overlay was rendered').not.toBeNull()
-  // The set screen underneath was not unmounted: its dials are still in the document.
-  expect(screen.getByRole('button', { name: /^Weight, / })).toBeInTheDocument()
-
-  // [F1, fix-popups] the overlay is a real modal popup, not content in normal document flow
-  // below the set screen -- the operator's device-check defect ("the details appear in the
-  // bottom instead of a dedicated popup"). Extends this existing L14 guarantee rather than
-  // replacing it: the "not unmounted" assertions above are unchanged.
-  const overlay = detailOverlay() as HTMLElement
-  expect(overlay).toHaveAttribute('role', 'dialog')
-  expect(overlay).toHaveAttribute('aria-modal', 'true')
-
-  await user.click(within(overlay).getByRole('button', { name: 'Back' }))
-
+  expect(screen.queryByRole('button', { name: /Exercise info/ })).toBeNull()
   expect(detailOverlay()).toBeNull()
-  expect(readoutValue(weightReadout())).toBe(weightBefore)
 })
 
 test('L14 tapping a row on the Exercises tab opens the same in-app detail overlay', async () => {
@@ -1627,7 +1586,7 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
   await openExercise(user, 'Seated biceps curls')
   await findSteppers()
 
-  await toolsRow(user, 'Swap exercise')
+  await toolsRow(user, 'Swap')
 
   expect(await screen.findByRole('searchbox', { name: /search/i }, SETTLE)).toBeVisible()
   // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
@@ -1658,7 +1617,7 @@ test('F2 tapping Alternatives on a live set opens the alternatives list as a mod
   await openExercise(user, 'Seated biceps curls')
   await findSteppers()
 
-  await toolsRow(user, 'Swap exercise')
+  await toolsRow(user, 'Swap')
 
   const dialog = await screen.findByRole(
     'dialog',
@@ -1686,7 +1645,7 @@ test('F3 the Alternatives overlay carries the shared overlay-panel class', async
   await openExercise(user, 'Seated biceps curls')
   await findSteppers()
 
-  await toolsRow(user, 'Swap exercise')
+  await toolsRow(user, 'Swap')
 
   const dialog = await screen.findByRole(
     'dialog',
@@ -1704,7 +1663,7 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   await openExercise(user, 'Seated biceps curls')
   await findSteppers()
 
-  await toolsRow(user, 'Swap exercise')
+  await toolsRow(user, 'Swap')
   // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
   await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
   const hammerRowName = await screen.findByText(
@@ -1718,7 +1677,7 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await findSteppers()
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
 
   // The done exercise carries the planned sets, rep range and rest -- seated-biceps-curls'
   // own plan (sets: 3, repRange: [10, 12], restSeconds: 90).
@@ -1738,7 +1697,7 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   await openExercise(user, 'Seated biceps curls')
   await findSteppers()
 
-  await toolsRow(user, 'Swap exercise')
+  await toolsRow(user, 'Swap')
   // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
   await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
   const hammerRowName = await screen.findByText(
@@ -1752,7 +1711,7 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await findSteppers()
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
 
   const swappedRow = await screen.findByRole(
     'button',
@@ -1785,7 +1744,7 @@ const HAMMER_ROW = /^Hammer Curls[ ]+for Seated biceps curls/
  * Curls, and waits for the exercise list to show the swapped row.
  */
 async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLElement> {
-  await toolsRow(user, 'Swap exercise')
+  await toolsRow(user, 'Swap')
   // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
   await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
   const hammerRowName = await screen.findByText(
@@ -1800,7 +1759,7 @@ async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLEleme
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await findSteppers()
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
   return screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)
 }
 
@@ -1867,7 +1826,7 @@ test('S8 once the first Hammer_Curls set is logged under it, Undo swap is no lon
   expect(await screen.findByRole('button', { name: 'Undo swap' }, SETTLE)).toBeVisible()
 
   await logFirstHammerCurlsSet(user)
-  await user.click(screen.getByRole('button', { name: 'All exercises' }))
+  await user.click(screen.getByRole('radio', { name: 'All' }))
 
   expect(await screen.findByRole('button', { name: HAMMER_ROW }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Undo swap' })).toBeNull()
@@ -2912,7 +2871,7 @@ describe('E6-T10', { timeout: 15_000 }, () => {
     await logAllThreePlannedBackSquatSets(user)
     const beforeReopen = await activeSessionEntries()
 
-    await user.click(screen.getByRole('button', { name: 'All exercises' }))
+    await user.click(screen.getByRole('radio', { name: 'All' }))
     await user.click(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE))
 
     // V4-07: the done block stands where the counter was.
@@ -3125,10 +3084,12 @@ describe('E8-T4', { timeout: 15_000 }, () => {
     const bar = actionBar()
     expect(bar, 'the set screen has no sticky action bar').not.toBeNull()
     expect((bar as HTMLElement).contains(log)).toBe(true)
-    // v7 (study §1.4): the hand-over runs in back squat's Rest, whose bar is Skip rest; the next
-    // Exercise's Log set 1 waits beside it, quiet, one tap away.
-    expect(screen.getByRole('button', { name: 'Skip rest' })).toHaveClass('btn-secondary')
+    // DX-05: the hand-over runs in back squat's Rest; the bar holds only the next Exercise's
+    // filled Log set 1, and the rest ring is the skip control.
+    expect((bar as HTMLElement).querySelector('.skip-rest')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Skip rest' })).toHaveClass('rest-ring-skip')
     expect(log).toHaveClass('log-set')
+    expect(log).toHaveClass('btn-primary')
     expect(addSet).toHaveClass('btn-quiet')
     expect(addSet.compareDocumentPosition(log) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull()
@@ -3170,7 +3131,7 @@ describe('E8-T4', { timeout: 15_000 }, () => {
     // V3-01: with every other Exercise done the primary reads Finish workout; All returns to
     // the Workout's list.
     expect(await screen.findByRole('button', { name: 'Finish workout' }, SETTLE)).toHaveClass('btn-primary')
-    await user.click(screen.getByRole('button', { name: 'All exercises' }))
+    await user.click(screen.getByRole('radio', { name: 'All' }))
 
     expect(await screen.findByRole('button', { name: /^Back squat/ }, SETTLE)).toBeVisible()
     const header = shellHeader()

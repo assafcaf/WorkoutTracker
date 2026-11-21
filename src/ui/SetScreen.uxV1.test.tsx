@@ -117,14 +117,17 @@ test('V1-03 during Rest the Log set bar shows under the Rest panel and logs in o
     restFrom: { entry: set(1, 47.5, 10, BASE), planRestSeconds: 180 },
   })
 
-  // v7 (study §1.4): the Rest ring is in the body; the dock holds Skip rest, the outlined bar, and
-  // Log set beside it -- still one tap, still the only Log set.
+  // DX-05: the Rest ring is in the body and is Skip; the dock holds one filled Log set, the only
+  // primary on the screen and the only Log set.
   const panel = document.querySelector('.set-screen .rest-panel') as HTMLElement
   const bar = screen.getByRole('button', { name: 'Log set 2 · 57.5 × 9' })
   expect(panel).not.toBeNull()
   expect(panel.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(bar.closest('.set-dock')).not.toBeNull()
-  expect(screen.getByRole('button', { name: 'Skip rest' }).closest('.set-dock')).not.toBeNull()
+  expect(bar).toHaveClass('btn-primary')
+  expect(document.querySelectorAll('.set-dock button')).toHaveLength(1)
+  expect(document.querySelectorAll('.btn-primary')).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Skip rest' }).closest('.rest-ring')).not.toBeNull()
   expect(screen.getAllByRole('button', { name: /^Log set/ })).toHaveLength(1)
 
   await user.click(bar)
@@ -212,12 +215,14 @@ test('V1-07 during Rest the Next line ends with the per-side plates', () => {
   expect(within(card).getByText('Same plates: 20')).toBeVisible()
 })
 
-test('V1-07 the tools sheet no longer has a Plates segment', async () => {
+test('V1-07 DX-07 no tools sheet and no Plates control: the W cell holds the Warm-ups, Notes its sheet', async () => {
   const { user } = renderLive({ plates, onSaveExerciseNote: vi.fn(async () => undefined) })
-  await user.click(screen.getByRole('button', { name: 'Exercise tools' }))
-  const sheet = screen.getByRole('dialog')
-  expect(within(sheet).queryByRole('radio', { name: 'Plates' })).toBeNull()
-  expect(within(sheet).getByRole('radio', { name: 'Warm-up' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Exercise tools' })).toBeNull()
+  expect(screen.queryByRole('radio', { name: 'Plates' })).toBeNull()
+  await user.click(screen.getByRole('button', { name: /^Warm-up: / }))
+  expect(within(screen.getByRole('group', { name: 'Warm-ups' })).getByRole('button', { name: 'Add warm-ups' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Notes' }))
+  expect(screen.getAllByRole('dialog')).toHaveLength(1)
 })
 
 // --- V1-11 ----------------------------------------------------------------------------------
@@ -246,11 +251,10 @@ test('V1-11 the Rest panel shows the countdown, "of 3:00" and the Use offer, and
   expect(panel.textContent).not.toContain('usually')
   expect(panel.querySelector('.rest-bar')).toBeNull()
   expect(panel.textContent).not.toContain('0:00')
-  // V3-03: the usual rest's Use offer moved to ⋯ › Rest time; the dock carries no decision.
+  // V3-03: the usual rest's Use offer is in the rest Dial's sheet; the dock carries no decision.
   expect(screen.queryByRole('button', { name: 'Use 2:40 for Back squat' })).toBeNull()
-  fireEvent.click(screen.getByRole('button', { name: 'Exercise tools' }))
-  // V1-16: folded into Rest time's own sheet, one tap further.
-  fireEvent.click(screen.getByRole('button', { name: /^Rest time/ }))
+  // DX-07: the ring's "of 3:00" opens it.
+  fireEvent.click(screen.getByRole('button', { name: 'Rest time 3:00, change' }))
   expect(screen.getByRole('button', { name: 'Use 2:40 for Back squat' })).toBeVisible()
 })
 
@@ -266,9 +270,10 @@ test('V1-11 the ±15 s buttons say what they change', () => {
 
 // --- V1-19 ----------------------------------------------------------------------------------
 
-test('V1-19 an upcoming Set cell\'s border is drawn in --color-muted, at least 3:1', () => {
-  const border = declarationsFor(css(), '.set-cell--future').get('border') ?? ''
-  expect(border).toContain('var(--color-muted)')
+test('V1-19 DX-24 an upcoming Set cell has no border and its text is --color-muted, at least 3:1', () => {
+  const future = declarationsFor(css(), '.set-cells .set-cell--future')
+  expect(future.get('border-color')).toBe('transparent')
+  expect(future.get('color')).toBe('var(--color-muted)')
   const t = tokens()
   expect(contrastRatio(t.get('--color-muted') as string, t.get('--color-surface') ?? '#FFFFFF')).toBeGreaterThanOrEqual(3)
 })
