@@ -204,5 +204,7 @@ test('V1-26 the headline says "above" for a muscle over the range, not "at the t
   const sentence = screen.getByText(/^On plan for 2 weeks/)
   expect(sentence).toHaveTextContent('Shoulders 21 is above the typical 10–20.')
   expect(sentence).not.toHaveTextContent(/Shoulders 21[^.]*at the top/)
-  expect(sentence).toHaveTextContent('Lats 19 sits at the top of the typical 10–20.')
+  // DX-03: the rows below the range are named in the same sentence; the near-top clause is gone.
+  expect(sentence).toHaveTextContent('Calves 8 and Abs 3 are below it.')
+  expect(sentence).not.toHaveTextContent(/at the top/)
 })

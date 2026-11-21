@@ -136,15 +136,18 @@ function build(data: MusclesData, now: number, span: Span): Model {
   const under = rows.filter((r) => r.plan > 0 && r.done < r.plan - 0.5)
   // Near the top of the range, and over it, said apart (V1-26): 21 is above 10–20, not at its top.
   const named = (list: Row[]): string => list.map((r) => `${r.label} ${whole(r.done)}`).join(' and ')
-  const top = rows.filter((r) => r.done >= 18 && standingOf(r.done) === 'within')
   const above = rows.filter((r) => standingOf(r.done) === 'above')
+  // DX-03: the rows below the range are named too, so the sentence never reads "on plan" alone
+  // over rows that say "below 10–20".
+  const below = rows.filter((r) => standingOf(r.done) === 'below')
+  const belowNames = below.length > 2 ? `${below.length} muscles` : named(below)
   const topText =
     (above.length === 0
       ? ''
       : ` ${named(above)} ${above.length === 1 ? 'is' : 'are'} above the typical ${BAND.from}–${BAND.to}.`) +
-    (top.length === 0
+    (below.length === 0
       ? ''
-      : ` ${named(top)} ${top.length === 1 ? 'sits' : 'sit'} at the top of the typical ${BAND.from}–${BAND.to}.`)
+      : ` ${belowNames} ${below.length === 1 ? 'is' : 'are'} below ${above.length === 0 ? `the typical ${BAND.from}–${BAND.to}` : 'it'}.`)
   const sentence =
     (under.length === 0
       ? `On plan for ${complete.length === 1 ? '1 week' : `${complete.length} weeks`}.`
