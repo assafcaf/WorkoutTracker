@@ -228,11 +228,11 @@
 /* "Change": the Train tab's one way to do a workout other than the one due. */
 .dashboard-change {
   min-height: 44px;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .dashboard-choose-title {
-  margin: 0 0 var(--space-2, 8px);
-  font-size: 1.125rem;
-  font-weight: 600;
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
 }
