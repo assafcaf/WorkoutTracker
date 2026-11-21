@@ -1,18 +1,35 @@
-/* The Notifications and Reminders groups reuse the Settings card and row classes; only the
- * explaining line, the weekday chip row and the time field are new. Tokens only. */
+/* The Reminders group reuses the Settings card and row classes; only the explaining line, the
+ * weekday chip row and the time field are new. Tokens only.
+ *
+ * DX-18: the weekday chips are a 7-column grid of 44 px-tall chips, the row's full width, so
+ * every day is a whole tap target on a 390 px phone. */
 
 .notify-note {
   color: var(--color-muted);
   font-size: var(--text-sm);
 }
 
-.notify-days {
-  flex-wrap: wrap;
-  gap: var(--space-2);
+.notify-howto {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  line-height: 1.375rem;
 }
 
-.notify-chip:disabled {
-  opacity: 0.5;
+.settings-action.notify-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.notify-chip {
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 0;
+  justify-content: center;
+  font-size: var(--text-sm);
 }
 
 .notify-time {

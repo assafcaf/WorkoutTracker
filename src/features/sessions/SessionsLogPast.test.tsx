@@ -57,12 +57,13 @@ test('V6-13 Log a past workout: a date and a Workout open the editor on its Sets
   renderScreen()
   const user = userEvent.setup()
 
-  await user.click(await screen.findByRole('button', { name: 'Log a past workout' }, SETTLE))
+  // DX-11: the header's text button says what it does.
+  await user.click(await screen.findByRole('button', { name: 'Log past' }, SETTLE))
   const sheet = screen.getByRole('dialog', { name: 'Log a past workout' })
   const date = within(sheet).getByLabelText('Date') as HTMLInputElement
   expect(date.max).toBe('2026-10-13')
   fireEvent.change(date, { target: { value: '2026-10-10' } })
-  await user.click(within(sheet).getByRole('button', { name: 'Workout B' }))
+  await user.click(within(sheet).getByRole('button', { name: 'Log Workout B' }))
 
   expect(await screen.findByRole('heading', { name: 'Log · Workout B · Sat 10 Oct', level: 1 }, SETTLE)).toBeVisible()
   // Workout B's first Plan, Deadlift, never logged: its Sets open at its start weight.
@@ -80,13 +81,13 @@ test('V6-13 Cancel on a logged-past draft stores nothing', async () => {
   renderScreen()
   const user = userEvent.setup()
 
-  // With nothing finished yet, the entry point is there too.
+  // DX-21: with nothing finished yet, the empty state's one action is the way in.
   await user.click(await screen.findByRole('button', { name: 'Log a past workout' }, SETTLE))
-  await user.click(within(screen.getByRole('dialog', { name: 'Log a past workout' })).getByRole('button', { name: 'Workout A' }))
+  await user.click(within(screen.getByRole('dialog', { name: 'Log a past workout' })).getByRole('button', { name: 'Log Workout A' }))
   await screen.findByRole('heading', { name: /^Log · Workout A · Mon 12 Oct$/ }, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
-  expect(await screen.findByText(/No finished workouts yet/, {}, SETTLE)).toBeVisible()
+  expect(await screen.findByText('Your Sessions appear here.', {}, SETTLE)).toBeVisible()
   expect(await db.sessions.count()).toBe(0)
 })
 
@@ -110,9 +111,11 @@ test('V6-13 an Exercise added to a past Session in the editor is saved with it',
   await user.click(await screen.findByRole('button', { name: /Mon 12 Oct.*Workout A/ }, SETTLE))
   await user.click(within(screen.getByRole('dialog', { name: 'Session summary' })).getByRole('button', { name: 'Edit session' }))
   await user.click(await screen.findByRole('button', { name: 'Add exercise' }, SETTLE))
-  const picker = screen.getByRole('dialog', { name: 'Add exercise' })
+  const picker = screen.getByRole('dialog', { name: 'Add to Workout A' })
   await user.type(within(picker).getByRole('searchbox', { name: 'Search exercises' }), 'deadlift')
   await user.click(within(picker).getByRole('button', { name: 'Deadlift' }))
+  // The added Set opens in the Set sheet; its Save keeps it, then the editor's Save stores it.
+  await user.click(within(screen.getByRole('dialog', { name: 'Deadlift · Set 1' })).getByRole('button', { name: 'Save' }))
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(async () => {

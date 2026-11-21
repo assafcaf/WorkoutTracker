@@ -107,10 +107,13 @@ export function ExerciseDetail({
       <div className="exercise-detail-profile">
         <p className="exercise-detail-field">Primary muscle: {muscleChips(entry.primaryMuscles)}</p>
         <p className="exercise-detail-field">Secondary muscles: {muscleChips(entry.secondaryMuscles)}</p>
-        <p className="exercise-detail-field">Equipment: {entry.equipment}</p>
-        <p className="exercise-detail-field">Mechanic: {entry.mechanic}</p>
-        <p className="exercise-detail-field">Force: {entry.force}</p>
-        <p className="exercise-detail-field">Level: {entry.level}</p>
+        {/* DX-22: one plain line, not four "Label: value" rows. */}
+        <p className="exercise-detail-field exercise-detail-meta">
+          {[entry.equipment, entry.mechanic, entry.level]
+            .filter((part): part is string => typeof part === 'string' && part.length > 0)
+            .map((part, i) => (i === 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+            .join(' · ')}
+        </p>
       </div>
 
       <BodyMap counts={exerciseRegionCounts(entry)} scale="exercise" />

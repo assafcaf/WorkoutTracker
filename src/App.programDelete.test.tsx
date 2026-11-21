@@ -219,13 +219,9 @@ async function resetAndConfirm(user: User, name: string): Promise<void> {
   await user.click(within(actionsRow(name)).getByRole('button', { name: 'Confirm' }))
 }
 
-/** The editor's visible Workouts, top to bottom: each `Workout name` input's `<fieldset>`. */
+/** The editor's visible Workouts, top to bottom: each a `<section>` named after it (DX-17). */
 function editorWorkouts(): HTMLElement[] {
-  return (screen.queryAllByLabelText('Workout name') as HTMLInputElement[]).map((input) => {
-    const group = input.closest('fieldset')
-    if (group === null) throw new Error('a Workout name input is not inside a <fieldset>')
-    return group
-  })
+  return Array.from(document.querySelectorAll<HTMLElement>('section.program-editor-workout'))
 }
 
 /**
@@ -243,11 +239,9 @@ function planRowText(exercise: string): string | null {
   return [exercise, figure.split(' · ')[0].trim(), rest].filter((part) => part !== '').join(' | ')
 }
 
-/** The editor's visible Workout whose name input holds exactly `name`. */
+/** The editor's visible Workout named exactly `name`. */
 function editorWorkout(name: string): HTMLElement {
-  const found = editorWorkouts().find(
-    (group) => (within(group).getByLabelText('Workout name') as HTMLInputElement).value === name,
-  )
+  const found = editorWorkouts().find((section) => section.getAttribute('aria-label') === name)
   if (found === undefined) throw new Error(`no editor Workout named ${name}`)
   return found
 }
@@ -260,9 +254,8 @@ async function editProgram(user: User, name: string): Promise<void> {
 }
 
 async function removeWorkout(user: User, name: string): Promise<void> {
-  // Remove workout sits in the Workout's options menu (S7b).
-  await user.click(within(editorWorkout(name)).getByRole('button', { name: `Options for ${name}` }))
-  await user.click(within(editorWorkout(name)).getByRole('button', { name: 'Remove workout' }))
+  // DX-17: "Remove" is a text button beside the Workout's name.
+  await user.click(within(editorWorkout(name)).getByRole('button', { name: `Remove ${name}` }))
 }
 
 async function setField(user: User, scope: HTMLElement, label: string, value: string): Promise<void> {
@@ -554,10 +547,12 @@ test('O11 with a Session in progress, editing its Workout’s Plans and saving i
   await cancel(user)
   // ...and not for changing its numbers.
   await editProgram(user, 'Push Pull Legs')
-  const push = editorWorkout('Push')
-  await setField(user, push, 'Max reps', '12')
-  await setField(user, push, 'Min reps', '10')
-  await setField(user, push, 'Starting weight (kg)', '70')
+  // DX-17: the numbers are steppers on the Plan's editor, pushed by a tap on its row.
+  await user.click(within(editorWorkout('Push')).getAllByRole('button', { name: /, \d+ × / })[0])
+  for (let i = 0; i < 4; i += 1) await user.click(screen.getByRole('button', { name: 'Increase Max reps' }))
+  for (let i = 0; i < 4; i += 1) await user.click(screen.getByRole('button', { name: 'Increase Min reps' }))
+  for (let i = 0; i < 4; i += 1) await user.click(screen.getByRole('button', { name: 'Increase Starting weight' }))
+  await user.click(screen.getByRole('button', { name: 'Back' }))
   await save(user)
   await editorClosed()
 

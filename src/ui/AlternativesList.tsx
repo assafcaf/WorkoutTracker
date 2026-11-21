@@ -1,8 +1,6 @@
-import { useState } from 'react'
 import { alternativesFor, swapAlternatives } from '../domain/alternatives'
-import { matchesQuery } from '../domain/search'
-import { Icon } from './icons'
 import type { LibraryExercise } from '../types'
+import { ExercisePickerList, pickerRow } from './ExercisePicker'
 import './AlternativesList.css'
 
 export type AlternativesListProps = {
@@ -10,9 +8,9 @@ export type AlternativesListProps = {
   library: Map<string, LibraryExercise>
   gymEquipment: string[] | null
   /**
-   * Swaps to the alternative for today's session. Left `undefined` for a browse-only list (a
-   * caller with nothing to swap into, e.g. "Similar exercises" on the detail screen), in which
-   * case no row offers "Do this instead" (named "Do <Alternative> instead", V2-14).
+   * Swaps to the alternative for today's session: a row tap calls it. Left `undefined` for a
+   * browse-only list, where a row tap opens it; a short `limit` list (Exercise info's "Similar
+   * exercises") always opens its rows.
    */
   onChoose?(id: string): void
   onOpenDetail(id: string): void
@@ -20,20 +18,19 @@ export type AlternativesListProps = {
   limit?: number
   /**
    * V6-10: the swap list (`swapAlternatives`): the lifter's logged lifts first, keyed by library
-   * id, each shown under its own name and chosen as its own Exercise id (the one with history);
-   * at most `SWAP_SHOWN` rows until "Show all". Unset: the plain
-   * ranked list (`alternativesFor`).
+   * id, each shown under its own name and chosen as its own Exercise id (the one with history).
+   * Unset: the plain ranked list (`alternativesFor`).
    */
   swap?: { logged: Map<string, { id: string; name: string }>; exclude?: ReadonlySet<string> }
 }
 
-/** V6-10: rows the swap list shows before "Show all". */
+/** V6-10: the stand-ins a swap shows under "Similar" before "All". */
 export const SWAP_SHOWN = 6
 
 /**
- * The ranked alternatives list for `target` (E5-T12): a search box that narrows the ranked
- * rows -- built from `alternativesFor` (E5-T5) -- by name, each row offering "Do this instead"
- * when `onChoose` is given.
+ * The ranked alternatives for `target` (E5-T12), drawn by the one Exercise list (DX-08): search,
+ * "My gym only", and rows whose whole width is the target -- choose when `onChoose` is given,
+ * else open the detail. No "Do this instead" buttons.
  */
 export function AlternativesList({
   target,
@@ -44,87 +41,31 @@ export function AlternativesList({
   limit,
   swap,
 }: AlternativesListProps): JSX.Element {
-  const [query, setQuery] = useState('')
-  // Lifts the equipment filter for this rendered list only, when it leaves nothing ranked
-  // (S12) -- never a prop-changing callback, since there isn't one for "just this list".
-  const [showAllEquipment, setShowAllEquipment] = useState(false)
-  // V6-10: the swap list past its first rows.
-  const [showAll, setShowAll] = useState(false)
-
-  const effectiveGymEquipment = showAllEquipment ? null : gymEquipment
-  const ranked = swap
-    ? swapAlternatives(target, library, effectiveGymEquipment, new Set(swap.logged.keys())).filter(
-        (alternative) => !swap.exclude?.has(alternative.id),
-      )
-    : alternativesFor(target, library, effectiveGymEquipment)
-  const nameOf = (alternative: LibraryExercise): string => swap?.logged.get(alternative.id)?.name ?? alternative.name
-
-  if (ranked.length === 0 && effectiveGymEquipment !== null) {
-    return (
-      <div className="alternatives-list">
-        <p className="alternatives-empty">{"No alternatives with your gym's equipment"}</p>
-        <button
-          type="button"
-          className="alternatives-show-all btn-quiet"
-          onClick={() => setShowAllEquipment(true)}
-        >
-          Show all equipment
-        </button>
-      </div>
-    )
-  }
-
-  const matching = ranked.filter(
-    (alternative) => matchesQuery(alternative.name, query) || matchesQuery(nameOf(alternative), query),
-  )
-  // A search looks through every alternative; the swap list's first rows are its short list.
-  const cap = swap && !showAll && query.trim() === '' ? SWAP_SHOWN : limit
-  const shown = cap === undefined ? matching : matching.slice(0, cap)
-  const hidden = matching.length - shown.length
+  // A short list (Exercise info's "Similar exercises", `limit`) is fixed: ranked for the gym, no
+  // search or chip; when the gym leaves none, every piece of equipment counts. The full list is
+  // ranked without the gym's filter, and its "My gym only" chip applies it, and can lift it.
+  const bare = limit !== undefined
+  const rank = (equipment: string[] | null): LibraryExercise[] =>
+    swap
+      ? swapAlternatives(target, library, equipment, new Set(swap.logged.keys())).filter(
+          (alternative) => !swap.exclude?.has(alternative.id),
+        )
+      : alternativesFor(target, library, equipment)
+  const forGym = bare ? rank(gymEquipment) : []
+  const ranked = bare && forGym.length > 0 ? forGym : rank(null)
+  const pickId = (id: string): string => swap?.logged.get(id)?.id ?? id
+  const rows = ranked.map((entry) => pickerRow(entry, { name: swap?.logged.get(entry.id)?.name }))
 
   return (
     <div className="alternatives-list">
-      {/* V5-11: it says what it searches, beside a magnifier. */}
-      <label className="alternatives-search-field">
-        <Icon name="Search" size={18} />
-        <input
-          type="search"
-          aria-label="Search alternatives"
-          placeholder="Search exercises"
-          className="alternatives-search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
-      <ul className="alternatives-rows">
-        {shown.map((alternative) => (
-          <li key={alternative.id} className="alternatives-row">
-            <button
-              type="button"
-              className="alternatives-row-open cell"
-              onClick={() => onOpenDetail(alternative.id)}
-            >
-              <span className="alternatives-row-name">{nameOf(alternative)}</span>
-            </button>
-            {onChoose ? (
-              <button
-                type="button"
-                className="alternatives-row-choose btn-secondary"
-                // V2-14: every row's button reads the same, so its name says which Exercise.
-                aria-label={`Do ${nameOf(alternative)} instead`}
-                onClick={() => onChoose(swap?.logged.get(alternative.id)?.id ?? alternative.id)}
-              >
-                Do this instead
-              </button>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      {swap && hidden > 0 && limit === undefined ? (
-        <button type="button" className="alternatives-show-all btn-quiet" onClick={() => setShowAll(true)}>
-          {`Show all (${matching.length})`}
-        </button>
-      ) : null}
+      <ExercisePickerList
+        rows={rows}
+        gymEquipment={bare ? undefined : gymEquipment}
+        searchable={!bare}
+        limit={limit}
+        // A short list on Exercise info is for browsing: its rows open their own detail.
+        onPick={(id) => (onChoose && !bare ? onChoose(pickId(id)) : onOpenDetail(id))}
+      />
     </div>
   )
 }

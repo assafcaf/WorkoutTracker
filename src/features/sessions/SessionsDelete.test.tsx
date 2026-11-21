@@ -7,8 +7,8 @@ import { ServicesProvider } from '../ServicesProvider'
 import { SessionsScreen } from './SessionsScreen'
 
 // V5: the owner found deleting a workout convoluted (open it, Edit, then Delete). A Session
-// opened on Sessions, from its row or its calendar day, now offers "Delete workout" at once; the
-// delete happens straight away and "Workout deleted · Undo" takes it back. "Now" is Tue 13 Oct
+// opened on Sessions, from its row or its calendar day, is deleted from its editor (DX-11: one
+// "Delete Session", at once); "Session deleted · Undo" takes it back for 8 s. "Now" is Tue 13 Oct
 // 2026, 18:00 local.
 
 const at = (month: number, day: number, hour = 9): number => new Date(2026, month - 1, day, hour).getTime()
@@ -43,18 +43,24 @@ function renderScreen(): void {
 
 const rows = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>('.session-row')]
 
-test('V5 Delete workout on an opened Session deletes it at once: its row, its calendar day and the count go', async () => {
+/** Opens the Session on `day` and deletes it from its editor's Delete Session (DX-11). */
+async function deleteFromEditor(day: string): Promise<void> {
+  await userEvent.click(await screen.findByRole('button', { name: day }, SETTLE))
+  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  await userEvent.click(within(summary).getByRole('button', { name: 'Edit session' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Delete Session' }, SETTLE))
+}
+
+test('DX-11 Delete Session deletes it at once: its row, its calendar day and the count go', async () => {
   await seed('mon', at(10, 12), 'workout-b')
   await seed('fri', at(10, 9), 'workout-a')
   renderScreen()
 
-  await userEvent.click(await screen.findByRole('button', { name: 'Workout B, Mon 12 Oct' }, SETTLE))
-  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
-  await userEvent.click(within(summary).getByRole('button', { name: 'Delete workout' }))
+  await deleteFromEditor('Workout B, Mon 12 Oct')
 
   expect(screen.queryByRole('dialog', { name: 'Session summary' })).toBeNull()
-  // V6 (V5-04): the snackbar names the workout, with no separator trailing before Undo.
-  expect(await screen.findByRole('status')).toHaveTextContent('Workout B deleted · Mon 12 OctUndo')
+  // DX-11: "Session deleted · Undo", no separator trailing before Undo.
+  expect(await screen.findByRole('status')).toHaveTextContent('Session deletedUndo')
   await waitFor(() => expect(rows()).toHaveLength(1), SETTLE)
   expect(rows()[0]).toHaveTextContent('Workout A')
   expect(screen.queryByRole('button', { name: 'Workout B, Mon 12 Oct' })).toBeNull()
@@ -64,14 +70,12 @@ test('V5 Delete workout on an opened Session deletes it at once: its row, its ca
   expect((await db.sessions.get('mon'))?.deletedAt).toBe(NOW)
 })
 
-test('V5 Undo after Delete workout puts the Session back, in the list, the calendar and storage', async () => {
+test('DX-11 Undo after Delete Session puts the Session back, in the list, the calendar and storage', async () => {
   await seed('mon', at(10, 12), 'workout-b')
   renderScreen()
 
-  await userEvent.click(await screen.findByRole('button', { name: 'Workout B, Mon 12 Oct' }, SETTLE))
-  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
-  await userEvent.click(within(summary).getByRole('button', { name: 'Delete workout' }))
-  await screen.findByText(/No finished workouts yet/, {}, SETTLE)
+  await deleteFromEditor('Workout B, Mon 12 Oct')
+  await screen.findByText('Your Sessions appear here.', {}, SETTLE)
 
   await userEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Undo' }))
   expect(await screen.findByRole('button', { name: 'Workout B, Mon 12 Oct' }, SETTLE)).toBeVisible()
@@ -82,17 +86,15 @@ test('V5 Undo after Delete workout puts the Session back, in the list, the calen
   expect(stored?.entries).toHaveLength(1)
 })
 
-test('V5 the editor’s Delete workout also deletes at once with Undo', async () => {
+test('DX-11 Delete Session is offered once: in the editor, not beside Save, and not on the open Session', async () => {
   await seed('mon', at(10, 12), 'workout-b')
   renderScreen()
 
   await userEvent.click(await screen.findByRole('button', { name: 'Workout B, Mon 12 Oct' }, SETTLE))
   const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   await userEvent.click(within(summary).getByRole('button', { name: 'Edit session' }))
-  await userEvent.click(await screen.findByRole('button', { name: 'Delete workout' }, SETTLE))
-  // The editor's own inline confirm stays.
-  await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
-  expect(await screen.findByRole('status', {}, SETTLE)).toHaveTextContent('Workout B deleted · Mon 12 Oct')
-  await screen.findByText(/No finished workouts yet/, {}, SETTLE)
+  const remove = await screen.findByRole('button', { name: 'Delete Session' }, SETTLE)
+  expect(screen.getAllByRole('button', { name: /delete/i })).toEqual([remove])
+  expect(remove.closest('.session-editor-bar')).toBeNull()
 })

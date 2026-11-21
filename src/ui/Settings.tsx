@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type ReactNode } from 'react'
+import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react'
 import type { PlateInventory } from '../types'
 import type { SyncView } from '../services/syncView'
 import { formatDay } from '../domain/dates'
@@ -7,6 +7,7 @@ import { PlateInventoryEditor } from './PlateInventoryEditor'
 import { Select, Switch } from './controls'
 import { Icon } from './icons'
 import { NotificationSettings, type NotificationSettingsProps } from './NotificationSettings'
+import { SettingsPage } from './SettingsPage'
 import './Settings.css'
 
 export type { SyncView }
@@ -54,6 +55,80 @@ export type SettingsProps = {
   onKeepScreenOnDuringRestChange?(on: boolean): void
   /** Push notifications and reminders (E24-T9); omitted, the Reminders group does not render. */
   notifications?: NotificationSettingsProps
+  /** The trainee's height in cm, `null` when unset; omitted while it is still being read. */
+  heightCm?: number | null
+  /**
+   * Stores the height (100 to 250 cm), or clears it with `null`. Given, and the height read, the
+   * Body group renders with its "Height (cm)" field (Body's own page no longer edits it).
+   */
+  onHeightCmChange?(cm: number | null): void
+}
+
+const HEIGHT_MIN = 100
+const HEIGHT_MAX = 250
+
+/**
+ * The Body group's "Height (cm)" field: typed freely, saved when it leaves the field -- a whole
+ * number from 100 to 250, or empty to clear it; anything else says so and saves nothing.
+ */
+function HeightField({
+  heightCm,
+  onChange,
+}: {
+  heightCm: number | null | undefined
+  onChange(cm: number | null): void
+}): JSX.Element {
+  const [text, setText] = useState(heightCm === null || heightCm === undefined ? '' : String(heightCm))
+  const [fault, setFault] = useState(false)
+  // A height read or synced in later shows in the field.
+  useEffect(() => {
+    setText(heightCm === null || heightCm === undefined ? '' : String(heightCm))
+    setFault(false)
+  }, [heightCm])
+
+  function commit(): void {
+    const trimmed = text.trim()
+    if (trimmed === '') {
+      setFault(false)
+      if (heightCm !== null && heightCm !== undefined) onChange(null)
+      return
+    }
+    const cm = Number(trimmed)
+    if (!Number.isInteger(cm) || cm < HEIGHT_MIN || cm > HEIGHT_MAX) {
+      setFault(true)
+      return
+    }
+    setFault(false)
+    if (cm !== heightCm) onChange(cm)
+  }
+
+  return (
+    <>
+      <label className="settings-action">
+        <span className="settings-action-label">Height (cm)</span>
+        <input
+          className="settings-number"
+          type="number"
+          inputMode="numeric"
+          min={HEIGHT_MIN}
+          max={HEIGHT_MAX}
+          value={text}
+          aria-invalid={fault || undefined}
+          aria-describedby={fault ? 'settings-height-fault' : undefined}
+          onChange={(event) => setText(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur()
+          }}
+        />
+      </label>
+      {fault ? (
+        <p id="settings-height-fault" className="settings-action settings-fault">
+          {`Height is a whole number from ${HEIGHT_MIN} to ${HEIGHT_MAX} cm.`}
+        </p>
+      ) : null}
+    </>
+  )
 }
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -61,7 +136,9 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 /**
  * The Settings page in three groups (V2-09), as iOS Settings groups its lists:
  *
- * - **Workout**: Track effort, Keep screen on during rest, Week starts on, Bar and plates.
+ * - **Workout**: Track effort, Keep screen on during rest, Week starts on, and a Bar and plates
+ *   row that pushes its page (DX-23).
+ * - **Body**: Height (cm), when `onHeightCmChange` is given.
  * - **Reminders**: notifications and the reminder days and time.
  * - **Data & sync**: the account and Sync now, the "Last backup" line, Export and Import
  *   backup, then `dataExtras` (the sets CSV and the Strong or Hevy import) and Apple Health.
@@ -93,7 +170,10 @@ export function Settings(props: SettingsProps): JSX.Element {
     keepScreenOnDuringRest = true,
     onKeepScreenOnDuringRestChange,
     notifications,
+    heightCm,
+    onHeightCmChange,
   } = props
+  const [platesOpen, setPlatesOpen] = useState(false)
 
   // DX-13: "Sync now" answers under itself: "Syncing…", then the result the sync settled on.
   const [asked, setAsked] = useState(false)
@@ -164,22 +244,39 @@ export function Settings(props: SettingsProps): JSX.Element {
             </Select>
           </label>
           {plateInventory ? (
-            <details className="settings-disclosure">
-              <summary className="settings-action">
-                <span className="settings-action-label">Bar and plates</span>
-                <Icon name="ChevronRight" size={18} />
-              </summary>
-              <div className="settings-disclosure-body" role="group" aria-label="Bar and plates">
-                <PlateInventoryEditor
-                  inventory={plateInventory}
-                  onChange={(next) => onPlateInventoryChange?.(next)}
-                  error={plateInventoryError}
-                />
-              </div>
-            </details>
+            // DX-23: one row that pushes the Bar and plates page.
+            <button
+              type="button"
+              className="settings-action btn-quiet"
+              aria-haspopup="dialog"
+              onClick={() => setPlatesOpen(true)}
+            >
+              <span className="settings-action-label">Bar and plates</span>
+              <span className="settings-action-value">{`${plateInventory.barKg} kg bar`}</span>
+              <Icon name="ChevronRight" size={18} />
+            </button>
           ) : null}
         </div>
       </fieldset>
+      {plateInventory && platesOpen ? (
+        <SettingsPage title="Bar and plates" onBack={() => setPlatesOpen(false)}>
+          <div role="group" aria-label="Bar and plates">
+            <PlateInventoryEditor
+              inventory={plateInventory}
+              onChange={(next) => onPlateInventoryChange?.(next)}
+              error={plateInventoryError}
+            />
+          </div>
+        </SettingsPage>
+      ) : null}
+      {onHeightCmChange && heightCm !== undefined ? (
+        <section className="settings-group" aria-label="Body">
+          <h2 className="settings-legend">Body</h2>
+          <div className="settings-card">
+            <HeightField heightCm={heightCm} onChange={onHeightCmChange} />
+          </div>
+        </section>
+      ) : null}
       {notifications ? <NotificationSettings {...notifications} /> : null}
       <section className="settings-group" aria-label="Data & sync">
         <h2 className="settings-legend">Data &amp; sync</h2>

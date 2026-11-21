@@ -1,16 +1,14 @@
 import { useState } from 'react'
 import type { Muscle } from '../../types'
-import { MUSCLES } from '../../data/library'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { myLifts } from '../../domain/myLifts'
 import { newPlan, uuid } from '../../domain/programs'
-import { matchesExercise, matchesQuery } from '../../domain/search'
 import { CustomExerciseForm, type CustomExerciseValues } from '../../ui/CustomExerciseForm'
 import { GymEquipmentSwitches } from '../../ui/GymEquipmentSwitches'
 import { ExerciseHistoryOverlay } from '../../ui/ExerciseHistoryOverlay'
-import { LibraryList, MyLiftsList } from '../../ui/LibraryList'
-import { Select } from '../../ui/controls'
+import { LibraryList, myLiftRow } from '../../ui/LibraryList'
+import { lastSetTexts } from '../../ui/ExercisePicker'
 import { Icon } from '../../ui/icons'
 import type { AppRoute } from '../routes'
 import { DetailOverlay } from '../overlays/DetailOverlay'
@@ -111,7 +109,24 @@ export function ExercisesFeature({
         activePlans.map((plan) => plan.exerciseId),
         sessions,
         resolve,
-      ).filter((lift) => matchesQuery(lift.name, search))
+      )
+  // DX-08: My lifts lead the one Exercise list, each with its last Set; under "All" they are not
+  // repeated, and every other row shows its own last Set when it has one.
+  const today = new Date(now())
+  const liftLibraryIds = new Set(
+    shownLifts.map((lift) => resolve(lift.exerciseId)?.libraryId).filter((id): id is string => id !== undefined),
+  )
+  const lead =
+    shownLifts.length === 0
+      ? undefined
+      : {
+          title: 'My lifts',
+          rows: shownLifts.map((lift) => {
+            const libraryId = resolve(lift.exerciseId)?.libraryId
+            return myLiftRow(lift, today, libraryId === undefined ? undefined : libraryMap.get(libraryId))
+          }),
+        }
+  const lastSets = lastSetTexts(sessions, resolve, today)
   const openLift = onOpenLift ?? setHistoryLiftId
   const historyExercise = historyLiftId === null ? undefined : resolve(historyLiftId)
 
@@ -165,7 +180,6 @@ export function ExercisesFeature({
   }
 
   const filteredLibrary = library.filter((exercise) => {
-    const matchesSearch = matchesExercise(exercise, search)
     const matchesMuscle = muscle === '' || exercise.primaryMuscles.includes(muscle as Muscle)
     const matchesEquipment =
       equipment === ''
@@ -173,58 +187,13 @@ export function ExercisesFeature({
         : equipment === 'none'
           ? exercise.equipment === null
           : exercise.equipment === equipment
-
-    return matchesSearch && matchesMuscle && matchesEquipment
+    return matchesMuscle && matchesEquipment && !liftLibraryIds.has(exercise.id)
   })
 
+  // DX-08: the library is the one Exercise list -- search, "My gym only", My lifts, then All, in
+  // one scroll; the muscle and equipment selects are gone (a Region's muscles still narrow it).
   return (
     <>
-      <label className="library-search-field">
-        <Icon name="Search" size={18} />
-        <input
-          type="search"
-          aria-label="Search exercises"
-          placeholder="Search exercises"
-          className="library-search"
-          value={search}
-          onChange={(event) => setFilter({ search: event.target.value })}
-        />
-      </label>
-      {shownLifts.length === 0 ? null : (
-        <>
-          <h2 className="library-section-heading">My lifts</h2>
-          <MyLiftsList lifts={shownLifts} now={new Date(now())} onOpenLift={openLift} />
-          <h2 className="library-section-heading">{`All exercises (${library.length})`}</h2>
-        </>
-      )}
-      <div className="library-filters">
-        <Select
-          aria-label="Muscle"
-          className="library-filter"
-          value={muscle}
-          onChange={(event) => setFilter({ muscle: event.target.value })}
-        >
-          <option value="">All muscles</option>
-          {MUSCLES.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </Select>
-        <Select
-          aria-label="Equipment"
-          className="library-filter"
-          value={equipment}
-          onChange={(event) => setFilter({ equipment: event.target.value })}
-        >
-          <option value="">All equipment</option>
-          {equipmentOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </Select>
-      </div>
       <details className="library-gym">
         <summary className="library-gym-summary">
           <span>My gym&apos;s equipment</span>
@@ -241,6 +210,11 @@ export function ExercisesFeature({
         onOpen={setOpenLibraryId}
         gymEquipment={gymEquipment.data}
         initialMuscles={initialMuscles ?? undefined}
+        lead={lead}
+        onOpenLead={openLift}
+        lastSets={lastSets}
+        query={search}
+        onQueryChange={(next) => setFilter({ search: next })}
         onNew={() => {
           setFormError(null)
           setForm({ editing: null })

@@ -1399,12 +1399,10 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
   // Hand-checked against the real library fixture's alphabetically (locale-aware) first name --
   // the first-10 default view F4 now requires.
   expect(await screen.findByText('3/4 Sit-Up', {}, SETTLE)).toBeVisible()
-  // V6-03: My lifts sits above the catalog; the catalog still shows its first 10.
-  expect(catalogRows()).toHaveLength(10)
-  const pager = screen.getByRole('navigation', { name: 'Pages' })
-  expect(within(pager).getByText(`Page 1 of ${Math.ceil(LIBRARY.length / 10)}`)).toBeVisible()
-  expect(within(pager).getByRole('button', { name: 'Previous' })).toBeDisabled()
-  expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
+  // V6-03: My lifts sits above the catalog. DX-08: one list, no pager -- the catalog grows as it
+  // scrolls (jsdom has no IntersectionObserver, so every row is drawn here).
+  expect(catalogRows().length).toBeGreaterThan(10)
+  expect(screen.queryByRole('navigation', { name: 'Pages' })).toBeNull()
   expect(currentTabNames()).toEqual(['Program'])
     expect(screen.getByRole('searchbox', { name: 'Search exercises' })).toBeVisible()
 })
@@ -1425,66 +1423,36 @@ test('L9 tapping the Exercises tab shows the library, with a search box, and mak
  * Program's lifts above the catalog and is searched too ("lat" finds Lateral raises).
  */
 function catalogRows(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>('.library-list:not(.my-lifts-list) > li')]
+  const sections = document.querySelectorAll<HTMLElement>('.picker-section')
+  const all = sections[sections.length - 1]
+  return all ? [...all.querySelectorAll<HTMLElement>('li.picker-row')] : []
 }
 
-test('L10 the search box narrows by name, the muscle and equipment filters narrow further -- to their first 10 with more reachable via the pager -- and a combination matching nothing shows "No exercises match"', async () => {
+test('L10 DX-08 the search box narrows the one list by name, and a search matching nothing shows "No exercises match"', async () => {
   const user = userEvent.setup()
   await renderApp()
   await findStartButton()
   await pressTab(user, 'Exercises')
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
 
-  // Hand-checked against the real library fixture: 36 names contain "lat", case-insensitively --
-  // above the 10-per-page cap, so only the first 10 show until Next is tapped.
+  // Hand-checked against the real library fixture: more than 10 names contain "lat". DX-08: no
+  // pager, and no muscle or equipment selects -- every match is in the one list.
   const latMatches = LIBRARY.filter((exercise) => exercise.name.toLowerCase().includes('lat'))
   expect(latMatches.length).toBeGreaterThan(10)
   await user.type(search, 'lat')
   await waitFor(() => {
     const rows = catalogRows()
-    expect(rows).toHaveLength(10)
+    expect(rows.length).toBeGreaterThan(10)
     rows.forEach((row) => {
       expect(textOf(row).toLowerCase()).toContain('lat')
     })
   }, SETTLE)
-  let pager = screen.getByRole('navigation', { name: 'Pages' })
-  // 7 pages since the exercises-dataset extras joined the library (4 before).
-  expect(within(pager).getByText('Page 1 of 7')).toBeVisible()
-  expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
+  expect(screen.queryByRole('navigation', { name: 'Pages' })).toBeNull()
+  expect(screen.queryByRole('combobox', { name: /muscle/i })).toBeNull()
+  expect(screen.queryByRole('combobox', { name: /equipment/i })).toBeNull()
 
-  await user.click(within(pager).getByRole('button', { name: 'Next' }))
-  await waitFor(() => {
-    const rows = catalogRows()
-    expect(rows).toHaveLength(10)
-    rows.forEach((row) => {
-      expect(textOf(row).toLowerCase()).toContain('lat')
-    })
-  }, SETTLE)
-  expect(
-    within(screen.getByRole('navigation', { name: 'Pages' })).getByText('Page 2 of 7'),
-  ).toBeVisible()
-
-  // Clearing the search and setting muscle to biceps and equipment to dumbbell narrows to
-  // exercises matching both (hand-checked: 24 in the real library fixture, by primaryMuscles),
-  // also above the cap -- and changing the filter resets back to the new result's own first 10
-  // (page 1), per O18.
-  const bicepsDumbbellMatches = LIBRARY.filter(
-    (exercise) => exercise.primaryMuscles.includes('biceps') && exercise.equipment === 'dumbbell',
-  )
-  expect(bicepsDumbbellMatches.length).toBeGreaterThan(10)
   await user.clear(search)
-  await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
-  await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
-  await waitFor(() => {
-    expect(catalogRows()).toHaveLength(10)
-  }, SETTLE)
-  pager = screen.getByRole('navigation', { name: 'Pages' })
-  expect(within(pager).getByText(`Page 1 of ${Math.ceil(bicepsDumbbellMatches.length / 10)}`)).toBeVisible()
-  expect(within(pager).getByRole('button', { name: 'Next' })).toBeEnabled()
-
-  // Typing "lat" back in on top of those two filters matches nothing in the real library
-  // fixture (hand-checked: 0), which is what "No exercises match" is for.
-  await user.type(search, 'lat')
+  await user.type(search, 'zzqqxx')
   expect(await screen.findByText('No exercises match', {}, SETTLE)).toBeVisible()
   expect(screen.queryAllByRole('listitem')).toHaveLength(0)
 })
@@ -1521,23 +1489,16 @@ test('L14 tapping a row on the Exercises tab opens the same in-app detail overla
   await findStartButton()
   await pressTab(user, 'Exercises')
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
-  await user.type(search, 'Barbell Squat')
+  await user.type(search, 'Hammer Curls')
 
-  // The real library also has "Barbell Squat To A Bench", so a name-prefix match is ambiguous;
-  // an exact match on the row's own name text (LibraryList's `.library-row-name`) is not.
-  const squatRowName = await screen.findByText(
-    'Barbell Squat',
-    { selector: '.library-row-name' },
-    SETTLE,
-  )
-  const squatRowButton = squatRowName.closest('button')
-  if (!squatRowButton) throw new Error('the Barbell Squat row is not inside a button')
-  await user.click(squatRowButton)
+  // Hammer Curls is in no Program, so its row reads its library name; an exact match on the
+  // row's accessible name (its Exercise's name, DX-08) ignores longer names that contain it.
+  await user.click(await screen.findByRole('button', { name: 'Hammer Curls' }, SETTLE))
 
   const overlay = detailOverlay()
   expect(overlay, 'no in-app detail overlay was rendered').not.toBeNull()
   expect(
-    within(overlay as HTMLElement).getByRole('heading', { name: 'Barbell Squat' }),
+    within(overlay as HTMLElement).getByRole('heading', { name: 'Hammer Curls' }),
   ).toBeVisible()
 })
 
@@ -1547,17 +1508,10 @@ test('F1 tapping a row on the Exercises tab opens the detail overlay as a modal 
   await findStartButton()
   await pressTab(user, 'Exercises')
   const search = await screen.findByRole('searchbox', { name: /search/i }, SETTLE)
-  await user.type(search, 'Barbell Squat')
-  const squatRowName = await screen.findByText(
-    'Barbell Squat',
-    { selector: '.library-row-name' },
-    SETTLE,
-  )
-  const squatRowButton = squatRowName.closest('button')
-  if (!squatRowButton) throw new Error('the Barbell Squat row is not inside a button')
-  await user.click(squatRowButton)
+  await user.type(search, 'Hammer Curls')
+  await user.click(await screen.findByRole('button', { name: 'Hammer Curls' }, SETTLE))
 
-  const dialog = await screen.findByRole('dialog', { name: 'Barbell Squat' }, SETTLE)
+  const dialog = await screen.findByRole('dialog', { name: 'Hammer Curls' }, SETTLE)
   expect(dialog).toHaveAttribute('aria-modal', 'true')
   // The popup sits over the Exercises tab rather than replacing it: the tab's own search box
   // is still in the document underneath. Exact name, not a /search/i regex: the dialog's own
@@ -1587,16 +1541,12 @@ test('S6 tapping Alternatives on the seated biceps curls set screen opens the ra
   await toolsRow(user, 'Swap')
 
   expect(await screen.findByRole('searchbox', { name: /search/i }, SETTLE)).toBeVisible()
-  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
-  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
-  const hammerRowName = await screen.findByText(
-    'Hammer Curls',
-    { selector: '.alternatives-row-name' },
-    SETTLE,
-  )
-  const hammerRow = hammerRowName.closest('li')
-  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  expect(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' })).toBeVisible()
+  // DX-08: the one Exercise picker -- ranked "Similar" first, then every Exercise; a row is one
+  // tap target that swaps to it.
+  const dialog = screen.getByRole('dialog', { name: 'Swap Seated biceps curls' })
+  expect(within(dialog).getByRole('region', { name: 'Similar' })).toBeVisible()
+  expect((await within(dialog).findAllByRole('button', { name: 'Hammer Curls' }, SETTLE))[0]).toBeVisible()
+  expect(screen.queryByRole('button', { name: /^Show all/ })).toBeNull()
 })
 
 // --- F2/F3: the alternatives overlay renders as a modal popup (fix-popups) -----------------
@@ -1620,7 +1570,7 @@ test('F2 tapping Alternatives on a live set opens the alternatives list as a mod
 
   const dialog = await screen.findByRole(
     'dialog',
-    { name: 'Alternatives to Seated biceps curls' },
+    { name: 'Swap Seated biceps curls' },
     SETTLE,
   )
   expect(dialog).toHaveAttribute('aria-modal', 'true')
@@ -1629,7 +1579,7 @@ test('F2 tapping Alternatives on a live set opens the alternatives list as a mod
   await user.click(within(dialog).getByRole('button', { name: 'Close' }))
 
   await waitFor(() => {
-    expect(screen.queryByRole('dialog', { name: 'Alternatives to Seated biceps curls' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Swap Seated biceps curls' })).toBeNull()
   }, SETTLE)
   // The set screen underneath stays mounted, and nothing was swapped.
   expect(screen.getByRole('button', { name: /^Weight, / })).toBeInTheDocument()
@@ -1649,7 +1599,7 @@ test('F3 the Alternatives overlay carries the shared overlay-panel class', async
 
   const dialog = await screen.findByRole(
     'dialog',
-    { name: 'Alternatives to Seated biceps curls' },
+    { name: 'Swap Seated biceps curls' },
     SETTLE,
   )
   expect(dialog).toHaveClass('overlay-panel')
@@ -1665,16 +1615,8 @@ test('S7 tapping "Do this instead" on Hammer_Curls records the swap and updates 
   await findSteppers()
 
   await toolsRow(user, 'Swap')
-  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
-  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
-  const hammerRowName = await screen.findByText(
-    'Hammer Curls',
-    { selector: '.alternatives-row-name' },
-    SETTLE,
-  )
-  const hammerRow = hammerRowName.closest('li')
-  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  await user.click(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' }))
+  // DX-08: a row of the one Exercise picker swaps to it in one tap.
+  await user.click((await screen.findAllByRole('button', { name: 'Hammer Curls' }, SETTLE))[0])
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await findSteppers()
@@ -1700,16 +1642,8 @@ test('S7 opening the swapped row shows a set screen for Hammer_Curls prefilled w
   await findSteppers()
 
   await toolsRow(user, 'Swap')
-  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
-  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
-  const hammerRowName = await screen.findByText(
-    'Hammer Curls',
-    { selector: '.alternatives-row-name' },
-    SETTLE,
-  )
-  const hammerRow = hammerRowName.closest('li')
-  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  await user.click(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' }))
+  // DX-08: a row of the one Exercise picker swaps to it in one tap.
+  await user.click((await screen.findAllByRole('button', { name: 'Hammer Curls' }, SETTLE))[0])
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
   await findSteppers()
@@ -1747,16 +1681,8 @@ const HAMMER_ROW = /^Hammer Curls[ ]+for Seated biceps curls/
  */
 async function swapSeatedCurlsForHammerCurls(user: UserEvent): Promise<HTMLElement> {
   await toolsRow(user, 'Swap')
-  // V6-10: the swap list opens on its first 6 rows; Hammer Curls is under Show all.
-  await user.click(await screen.findByRole('button', { name: /^Show all/ }, SETTLE))
-  const hammerRowName = await screen.findByText(
-    'Hammer Curls',
-    { selector: '.alternatives-row-name' },
-    SETTLE,
-  )
-  const hammerRow = hammerRowName.closest('li')
-  if (!hammerRow) throw new Error('the Hammer Curls row is not inside a list item')
-  await user.click(within(hammerRow).getByRole('button', { name: 'Do Hammer Curls instead' }))
+  // DX-08: a row of the one Exercise picker swaps to it in one tap.
+  await user.click((await screen.findAllByRole('button', { name: 'Hammer Curls' }, SETTLE))[0])
   // The swap now stays on the Set screen (E16-T12); the list row is one Back away.
   // The chosen Exercise's Set screen opens under the closing overlay; All waits for both.
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SETTLE)
@@ -3258,15 +3184,13 @@ describe('E8-T8', () => {
 // Before E11-T15, App held the Exercises search and filters, and tapping away and back never
 // reset them. Moving each tab into its own screen group must not lose that.
 
-test('O14 the Exercises search and filters survive leaving and returning to the tab', async () => {
+test('O14 the Exercises search survives leaving and returning to the tab', async () => {
   const user = userEvent.setup()
   await renderApp()
   await findStartButton()
   await pressTab(user, 'Exercises')
   const search = await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)
   await user.type(search, 'curl')
-  await user.selectOptions(screen.getByRole('combobox', { name: /muscle/i }), 'biceps')
-  await user.selectOptions(screen.getByRole('combobox', { name: /equipment/i }), 'dumbbell')
 
   await pressTab(user, 'Train')
   await findStartButton()
@@ -3275,9 +3199,7 @@ test('O14 the Exercises search and filters survive leaving and returning to the 
   expect(await screen.findByRole('searchbox', { name: 'Search exercises' }, SETTLE)).toHaveValue(
     'curl',
   )
-  expect(screen.getByRole('combobox', { name: /muscle/i })).toHaveValue('biceps')
-  expect(screen.getByRole('combobox', { name: /equipment/i })).toHaveValue('dumbbell')
-  // The list is still narrowed by them: the unfiltered first row is not shown.
+  // The list is still narrowed by it: the unfiltered first row is not shown.
   expect(screen.queryByText('3/4 Sit-Up')).toBeNull()
 })
 

@@ -472,7 +472,6 @@ const PRIMARY_ACTIONS: ReadonlyArray<readonly [string, string]> = [
   ['src/ui/SessionSummary.css', '.session-summary-done'], // Done
   ['src/ui/ImportConfirm.css', '.import-confirm-confirm'],
   ['src/ui/UpdatePill.css', '.update-pill'],
-  ['src/ui/AlternativesList.css', '.alternatives-row-choose'],
 ]
 
 test('O1 every primary action paints --color-primary with a --color-on-primary label', () => {

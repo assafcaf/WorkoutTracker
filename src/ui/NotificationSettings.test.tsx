@@ -25,23 +25,30 @@ test('O25 off shows Turn on notifications and the tap calls enable', async () =>
   expect(props.onEnable).toHaveBeenCalledTimes(1)
 })
 
-test('O25 on shows Turn off and the tap calls disable', async () => {
+test('O25 on shows Turn off notifications and the tap calls disable', async () => {
   const props = setup({ status: 'on' })
-  await userEvent.click(screen.getByRole('button', { name: 'Turn off' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Turn off notifications' }))
   expect(props.onDisable).toHaveBeenCalledTimes(1)
   expect(screen.queryByRole('button', { name: 'Turn on notifications' })).toBeNull()
 })
 
-test.each<[NotificationStatus, RegExp]>([
-  ['unsupported', /can.t send notifications/i],
-  ['not-installed', /Home Screen/i],
-  ['denied', /iOS Settings/i],
-  ['unconfigured', /aren.t set up/i],
-  ['signed-out', /sign in/i],
-])('O25 %s shows one explaining line and no button', (status, line) => {
+test.each<[NotificationStatus, string, RegExp]>([
+  ['unsupported', 'Not available in this browser', /can.t send notifications/i],
+  ['not-installed', 'Add to Home Screen to turn on', /Home Screen/i],
+  ['denied', 'Blocked in iOS Settings', /iOS Settings/i],
+  ['unconfigured', 'Not set up yet', /aren.t set up/i],
+  ['signed-out', 'Sign in to turn on', /sign in/i],
+])('O25 DX-23 %s is one Reminders row whose tap opens the how-to; no other control', async (status, reason, line) => {
   setup({ status })
-  expect(screen.getByText(line)).toBeTruthy()
-  expect(screen.queryByRole('button', { name: /turn on|turn off/i })).toBeNull()
+  const row = screen.getByRole('button', { name: `Reminders ${reason}` })
+  expect(screen.getAllByRole('button')).toEqual([row])
+  expect(screen.queryByRole('textbox')).toBeNull()
+  expect(document.querySelector('input')).toBeNull()
+
+  await userEvent.click(row)
+
+  const page = screen.getByRole('dialog', { name: 'Reminders' })
+  expect(page).toHaveTextContent(line)
 })
 
 test('O26 weekday chips follow Week start order', () => {
@@ -63,10 +70,18 @@ test('O26 Off stores null', async () => {
   expect(props.onRemindersChange).toHaveBeenLastCalledWith(null)
 })
 
-test('O26 with push not on, the reminders show disabled with the hint', () => {
+test('O26 DX-23 with push off, no day chip or time shows: only Turn on notifications', () => {
   setup({ status: 'off' })
-  expect(screen.getByText('Turn on notifications first')).toBeTruthy()
-  expect((screen.getByRole('button', { name: 'Sunday' }) as HTMLButtonElement).disabled).toBe(true)
+  expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Turn on notifications'])
+  expect(screen.queryByRole('button', { name: 'Sunday' })).toBeNull()
+  expect(document.querySelector('input[type="time"]')).toBeNull()
+  expect(screen.queryByText('Turn on notifications first')).toBeNull()
+})
+
+test('DX-18 with push on, the seven day chips sit in one row group', () => {
+  setup({ status: 'on' })
+  const days = screen.getByRole('group', { name: 'Reminder days' })
+  expect(days.querySelectorAll('.notify-chip')).toHaveLength(7)
 })
 
 test('E25-T1 O5 on shows Send a test notification as a quiet settings action and the tap calls onTest', async () => {

@@ -1,30 +1,9 @@
-/* The muscle chip (E10-T3, E17-T10): a neutral pill showing one muscle's name, its family shown
- * only as data, by the `.muscle-dot` (src/styles/components.css) it holds. */
+/* A muscle's name (DX-15): 14 px grey text. No pill, no family dot or tint; colour carries
+ * meaning only, and a Muscle family is not a state. */
 
 .muscle-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-pill);
-  background: var(--color-raised);
-  color: var(--color-text);
-  font-size: var(--text-xs);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
   text-transform: capitalize;
-}
-
-.muscle-chip[data-family='push'] .muscle-dot {
-  background: var(--data-push);
-}
-
-.muscle-chip[data-family='pull'] .muscle-dot {
-  background: var(--data-pull);
-}
-
-.muscle-chip[data-family='legs'] .muscle-dot {
-  background: var(--data-legs);
-}
-
-.muscle-chip[data-family='core'] .muscle-dot {
-  background: var(--data-core);
 }

@@ -75,7 +75,24 @@ test('S6a SessionsScreen is headed Sessions and says so when nothing is finished
   renderScreen()
 
   expect(await screen.findByRole('heading', { name: 'Sessions', level: 1 }, SETTLE)).toBeVisible()
-  expect(await screen.findByText(/No finished workouts yet/, {}, SETTLE)).toBeVisible()
+  expect(await screen.findByText('Your Sessions appear here.', {}, SETTLE)).toBeVisible()
+})
+
+test('DX-21 the empty Sessions tab draws the calendar with today outlined, one line and one action', async () => {
+  renderScreen()
+
+  await screen.findByText('Your Sessions appear here.', {}, SETTLE)
+  const calendar = screen.getByRole('region', { name: 'Last 6 weeks' })
+  expect(calendar.querySelectorAll('.calendar-day[data-today]')).toHaveLength(1)
+  const empty = document.querySelector('.sessions-empty') as HTMLElement
+  expect(within(empty).getAllByRole('button').map((button) => button.textContent)).toEqual(['Log a past workout'])
+})
+
+test('DX-13 the Sessions header carries the one sync line: on this phone, not synced', async () => {
+  renderScreen()
+
+  await screen.findByRole('heading', { name: 'Sessions', level: 1 }, SETTLE)
+  expect(await screen.findByText('Saved on this phone · not synced', {}, SETTLE)).toBeVisible()
 })
 
 test('S6a SessionsScreen reports onInSession(false)', async () => {
@@ -203,7 +220,7 @@ test('S6a a Session row opens its summary, headed by its Workout and day', async
   expect(within(dialog).getByText('Tue 13 Oct')).toBeVisible()
 })
 
-test('S6a Edit session on the summary opens the History editor, and Delete workout removes the Session', async () => {
+test('S6a Edit session on the summary opens the History editor, and Delete Session removes the Session', async () => {
   await seedSession('tue', at(10, 13), 'workout-a', 3)
   renderScreen()
   const user = userEvent.setup()
@@ -216,15 +233,14 @@ test('S6a Edit session on the summary opens the History editor, and Delete worko
   expect(screen.queryByRole('dialog', { name: 'Session summary' })).toBeNull()
   // V6-14: the editor's one header names what it does, the Workout and the day.
   expect(await screen.findByRole('heading', { name: 'Edit · Workout A · Tue 13 Oct', level: 1 }, SETTLE)).toBeVisible()
-  await user.click(screen.getByRole('button', { name: 'Delete workout' }))
-  await user.click(screen.getByRole('button', { name: 'Confirm' }))
+  await user.click(screen.getByRole('button', { name: 'Delete Session' }))
 
-  expect(await screen.findByText(/No finished workouts yet/, {}, SETTLE)).toBeVisible()
+  expect(await screen.findByText('Your Sessions appear here.', {}, SETTLE)).toBeVisible()
 })
 
 test('S6a a Session finished through services shows on the Sessions tab without a reload', async () => {
   const services = renderScreen()
-  await screen.findByText(/No finished workouts yet/, {}, SETTLE)
+  await screen.findByText('Your Sessions appear here.', {}, SETTLE)
 
   await act(async () => {
     const session = await services.sessions.start('assaf-ab-2026', 'workout-a')

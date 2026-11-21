@@ -1,7 +1,7 @@
 import { resolveExercise } from '../../data/resolve'
 import type { Exercise, LibraryExercise } from '../../types'
-import { AlternativesList } from '../../ui/AlternativesList'
-import { Icon } from '../../ui/icons'
+import { swapAlternatives } from '../../domain/alternatives'
+import { ExercisePicker } from '../../ui/ExercisePicker'
 import '../../ui/AlternativesOverlay.css'
 
 export type AlternativesOverlayProps = {
@@ -20,14 +20,21 @@ export type AlternativesOverlayProps = {
   loggedIds?: Iterable<string>
   /** V6-10: the Exercise ids already in today's Workout; their library entries are not offered. */
   taken?: Iterable<string>
-  /** V6R-02: the heading in place of "Alternatives to <name>", e.g. "Replace <name> in Workout A". */
+  /** V6R-02: the heading in place of "Swap <name>", e.g. "Replace <name> in Workout A". */
   heading?: string
+  /** DX-08: each Exercise's last Set as a row shows it (`lastSetTexts`). Omitted, none show. */
+  lastSets?: Map<string, string>
 }
 
+/** DX-08: the stand-ins shown under "Similar" before "All". */
+const SIMILAR_SHOWN = 6
+
 /**
- * The ranked alternatives overlay App.tsx renders over the current view (E5-T12, E6-T4): ranked
- * against the planned exercise's own library entry, and headed with the Plan's current name
- * for it, which can differ from the library's. Renders nothing while either cannot be resolved.
+ * The swap picker App.tsx renders over the current view (E5-T12, E6-T4), as the one Exercise
+ * picker (DX-08): "Swap <Plan's name>", the ranked stand-ins under "Similar" (the lifter's logged
+ * lifts first, under their own names), then every other Exercise under "All". A row tap picks it.
+ * `onOpenDetail` is kept for callers; rows no longer open the detail. Renders nothing while the
+ * planned Exercise or its library entry cannot be resolved.
  */
 export function AlternativesOverlay({
   plannedId,
@@ -35,11 +42,11 @@ export function AlternativesOverlay({
   library,
   gymEquipment,
   onPick,
-  onOpenDetail,
   onClose,
   loggedIds = [],
   taken = [],
   heading,
+  lastSets,
 }: AlternativesOverlayProps): JSX.Element | null {
   const libraryMap = new Map(library.map((entry) => [entry.id, entry] as const))
   const planned = resolveExercise(plannedId, catalog, libraryMap)
@@ -57,30 +64,23 @@ export function AlternativesOverlay({
     if (exercise && !logged.has(exercise.libraryId)) logged.set(exercise.libraryId, { id, name: exercise.name })
   }
 
+  // DX-08: the one Exercise picker. The ranked stand-ins lead under "Similar", then "All".
+  const similar = swapAlternatives(target, libraryMap, null, new Set(logged.keys()))
+    .filter((alternative) => !exclude.has(alternative.id))
+    .slice(0, SIMILAR_SHOWN)
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="alternatives-heading"
-      className="overlay-panel alternatives-overlay"
-    >
-      <div className="alternatives-overlay-header">
-        <h2 id="alternatives-heading" className="alternatives-overlay-heading">
-          {heading ?? `Alternatives to ${planned.name}`}
-        </h2>
-        {/* V5-11: an X the size of a thumb, still named Close. */}
-        <button type="button" className="alternatives-overlay-close icon-btn" aria-label="Close" onClick={onClose}>
-          <Icon name="X" size={22} />
-        </button>
-      </div>
-      <AlternativesList
-        target={target}
-        library={libraryMap}
-        gymEquipment={gymEquipment}
-        onChoose={onPick}
-        onOpenDetail={onOpenDetail}
-        swap={{ logged, exclude }}
-      />
-    </div>
+    <ExercisePicker
+      headingId="alternatives-heading"
+      title={heading ?? `Swap ${planned.name}`}
+      library={library.filter((entry) => entry.id !== target.id)}
+      taken={[...exclude]}
+      similar={similar}
+      gymEquipment={gymEquipment}
+      nameOf={(entry) => logged.get(entry.id)?.name ?? entry.name}
+      pickIdOf={(entry) => logged.get(entry.id)?.id ?? entry.id}
+      lastSets={lastSets}
+      onPick={onPick}
+      onClose={onClose}
+    />
   )
 }

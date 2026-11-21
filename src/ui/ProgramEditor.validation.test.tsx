@@ -145,20 +145,11 @@ function workoutNameInputs(): HTMLInputElement[] {
   return screen.queryAllByLabelText('Workout name') as HTMLInputElement[]
 }
 
+/** DX-17: each visible Workout is a `<section>`. */
 function workoutAt(index: number): HTMLElement {
-  const input = workoutNameInputs()[index]
-  const group = input?.closest('fieldset')
-  if (group === null || group === undefined) throw new Error(`no visible Workout at ${index}`)
-  return group
-}
-
-function planByName(workout: HTMLElement, name: string): HTMLElement {
-  const item = within(workout)
-    .queryAllByText(name)
-    .map((el) => el.closest('li'))
-    .find((el): el is HTMLLIElement => el !== null)
-  if (item === undefined) throw new Error(`no Plan for ${name}`)
-  return item
+  const section = document.querySelectorAll<HTMLElement>('section.program-editor-workout')[index]
+  if (section === undefined) throw new Error(`no visible Workout at ${index}`)
+  return section
 }
 
 async function pickInto(
@@ -169,15 +160,7 @@ async function pickInto(
 ): Promise<void> {
   await user.click(within(workout).getByRole('button', { name: 'Add exercise' }))
   await user.type(screen.getByLabelText('Search exercises'), query)
-  const row = screen
-    .getAllByRole('listitem')
-    .find(
-      (item) =>
-        (item.textContent ?? '').includes(name) &&
-        within(item).queryByRole('button', { name: 'Pick' }) !== null,
-    )
-  if (row === undefined) throw new Error(`no pickable row for ${name}`)
-  await user.click(within(row).getByRole('button', { name: 'Pick' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name }))
 }
 
 // --- O16: a named fault disables Save, described on its field, gone once fixed -------------------
@@ -205,12 +188,14 @@ test('O16 the empty-name fault disables Save and is the accessible description o
 test('O16 the sessions-per-week fault disables Save and is the accessible description of Sessions per week, until fixed', async () => {
   const { user } = renderEditor(badSessions())
 
-  const sessions = screen.getByLabelText('Sessions per week')
+  const sessions = screen.getByRole('group', { name: 'Sessions per week' })
   expect(describedByText(sessions)).toBe('Sessions per week: 1 to 14')
   expect(saveButton()).toBeDisabled()
 
-  await user.clear(sessions)
-  await user.type(sessions, '5')
+  // DX-17: a stepper; stepping down brings it back in range.
+  for (let i = 0; i < 6; i += 1) {
+    await user.click(screen.getByRole('button', { name: 'Decrease Sessions per week' }))
+  }
 
   expect(screen.queryByText('Sessions per week: 1 to 14')).toBeNull()
   expect(saveButton()).toBeEnabled()
@@ -219,17 +204,20 @@ test('O16 the sessions-per-week fault disables Save and is the accessible descri
 test('O16 a rep-range fault disables Save and describes both Min reps and Max reps with the same message, until fixed', async () => {
   const { user } = renderEditor(badRepRange())
 
-  const plan = planByName(workoutAt(0), 'Back Squat')
-  const minReps = within(plan).getByLabelText('Min reps')
-  const maxReps = within(plan).getByLabelText('Max reps')
+  // The fault reads on the Plan's row, and on its editor's reps steppers (DX-17).
+  expect(within(workoutAt(0)).getByText('Rep range: min is more than max')).toBeInTheDocument()
+  expect(saveButton()).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: /^Back Squat, / }))
+  const minReps = screen.getByRole('group', { name: 'Min reps' })
+  const maxReps = screen.getByRole('group', { name: 'Max reps' })
   expect(describedByText(minReps)).toBe('Rep range: min is more than max')
   expect(describedByText(maxReps)).toBe('Rep range: min is more than max')
-  expect(saveButton()).toBeDisabled()
 
-  await user.clear(minReps)
-  await user.type(minReps, '5')
+  await user.click(screen.getByRole('button', { name: 'Decrease Min reps' }))
+  await user.click(screen.getByRole('button', { name: 'Decrease Min reps' }))
 
   expect(screen.queryByText('Rep range: min is more than max')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Back' }))
   expect(saveButton()).toBeEnabled()
 })
 
@@ -241,6 +229,8 @@ test("O16 the blank-workout-name fault disables Save and is the accessible descr
   expect(saveButton()).toBeDisabled()
 
   await user.type(workoutNameInput, 'Upper')
+  // The name field stays open while it is typed into.
+  expect(within(workoutAt(0)).getByLabelText('Workout name')).toHaveValue('Upper')
 
   expect(screen.queryByText('Name is empty')).toBeNull()
   expect(saveButton()).toBeEnabled()

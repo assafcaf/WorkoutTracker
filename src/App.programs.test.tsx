@@ -89,17 +89,40 @@ function queryProgram(name: string): HTMLElement | null {
   return row?.querySelector<HTMLElement>('.programs-list-choose') ?? null
 }
 
-/** The editor's visible Workouts, top to bottom: each `Workout name` input's `<fieldset>`. */
+/** The editor's visible Workouts, top to bottom: each a `<section>` (DX-17). */
 function editorWorkouts(): HTMLElement[] {
-  return (screen.queryAllByLabelText('Workout name') as HTMLInputElement[]).map((input) => {
-    const group = input.closest('fieldset')
-    if (group === null) throw new Error('a Workout name input is not inside a <fieldset>')
-    return group
+  return Array.from(document.querySelectorAll<HTMLElement>('section.program-editor-workout'))
+}
+
+/** Each visible Workout's name: its heading, or its name field while it is named. */
+function editorWorkoutNames(): string[] {
+  return editorWorkouts().map((section) => {
+    const input = section.querySelector('input')
+    return input ? input.value : section.querySelector('h3')?.textContent ?? ''
   })
 }
 
-function valuesOf(scope: HTMLElement, label: string): string[] {
-  return (within(scope).queryAllByLabelText(label) as HTMLInputElement[]).map((i) => i.value)
+/**
+ * DX-17: each Plan row's numbers, read from its shorthand ("Back squat, 4 × 8–10 · 60 kg · 3:00
+ * rest"; Rest shows only when it is not 1:30).
+ */
+function plansOf(scope: HTMLElement): { sets: string; min: string; max: string; rest: string }[] {
+  return Array.from(scope.querySelectorAll('.program-editor-plan-row')).map((row) => {
+    const label = row.getAttribute('aria-label') ?? ''
+    const reps = / (\d+) × (\d+)(?:–(\d+))?/.exec(label)
+    const rest = / · (\d+:\d\d) rest$/.exec(label)
+    return {
+      sets: reps?.[1] ?? '',
+      min: reps?.[2] ?? '',
+      max: reps?.[3] ?? reps?.[2] ?? '',
+      rest: rest?.[1] ?? '1:30',
+    }
+  })
+}
+
+function valuesOf(scope: HTMLElement, label: 'Sets' | 'Min reps' | 'Max reps' | 'Rest'): string[] {
+  const key = ({ Sets: 'sets', 'Min reps': 'min', 'Max reps': 'max', Rest: 'rest' } as const)[label]
+  return plansOf(scope).map((plan) => plan[key])
 }
 
 async function addWorkout(user: User, name: string): Promise<HTMLElement> {
@@ -110,25 +133,29 @@ async function addWorkout(user: User, name: string): Promise<HTMLElement> {
   return added
 }
 
-/** `Add exercise` on `workout`, search `query`, then `Pick` on the row named exactly `name`. */
+/** `Add exercise` on `workout`, search `query`, then tap the row named exactly `name` (DX-08). */
 async function pickInto(user: User, workout: HTMLElement, query: string, name: string): Promise<void> {
   await user.click(within(workout).getByRole('button', { name: 'Add exercise' }))
-  const dialog = await screen.findByRole('dialog', { name: 'Add exercise' }, SETTLE)
+  const dialog = await screen.findByRole('dialog', { name: /^Add to / }, SETTLE)
   await user.type(within(dialog).getByLabelText('Search exercises'), query)
-  const row = await waitFor(() => {
-    const found = within(dialog)
-      .getAllByRole('listitem')
-      .find((item) => within(item).queryByText(name) !== null)
-    if (found === undefined) throw new Error(`no pickable row for ${name}`)
-    return found
-  }, SETTLE)
-  await user.click(within(row).getByRole('button', { name: 'Pick' }))
+  const row = await waitFor(() => within(dialog).getByRole('button', { name }), SETTLE)
+  await user.click(row)
 }
 
-async function setField(user: User, scope: HTMLElement, label: string, value: string): Promise<void> {
-  const input = within(scope).getByLabelText(label)
-  await user.clear(input)
-  await user.type(input, value)
+/** The number a stepper shows: "4", "1:30" as seconds, "60 kg". */
+function steppedNumber(label: string): number {
+  const text = screen.getByRole('group', { name: label }).querySelector('output')?.textContent ?? ''
+  const clock = /^(\d+):(\d\d)$/.exec(text)
+  return clock ? Number(clock[1]) * 60 + Number(clock[2]) : Number.parseFloat(text)
+}
+
+/** DX-17: steps the Plan editor's `label` stepper until it shows `target`. */
+async function stepTo(user: User, label: string, target: number): Promise<void> {
+  for (let guard = 0; guard < 200 && steppedNumber(label) !== target; guard += 1) {
+    const direction = steppedNumber(label) < target ? 'Increase' : 'Decrease'
+    await user.click(screen.getByRole('button', { name: `${direction} ${label}` }))
+  }
+  expect(steppedNumber(label)).toBe(target)
 }
 
 async function save(user: User): Promise<void> {
@@ -151,19 +178,22 @@ async function buildPushPullLegs(user: User): Promise<void> {
   await user.type(await screen.findByLabelText('Program name', undefined, SETTLE), 'Push Pull Legs')
 
   const push = await addWorkout(user, 'Push')
-  const pull = await addWorkout(user, 'Pull')
-  const legs = await addWorkout(user, 'Legs')
+  await addWorkout(user, 'Pull')
+  await addWorkout(user, 'Legs')
 
   await pickInto(user, push, 'bench press', BENCH)
-  await setField(user, push, 'Sets', '4')
-  await setField(user, push, 'Min reps', '6')
-  await setField(user, push, 'Max reps', '8')
-  // V6 (V5-10): Rest reads m:ss; plain seconds typed in still save as seconds.
-  await setField(user, push, 'Rest (m:ss)', '120')
-  await setField(user, push, 'Starting weight (kg)', '60')
+  // DX-17: the Plan's numbers are steppers on its Plan editor.
+  await user.click(within(push).getByRole('button', { name: new RegExp(`^${BENCH.replace(/[-]/g, '\\-')}, `) }))
+  await stepTo(user, 'Sets', 4)
+  await stepTo(user, 'Min reps', 6)
+  await stepTo(user, 'Max reps', 8)
+  await stepTo(user, 'Rest', 120)
+  await stepTo(user, 'Starting weight', 60)
+  await user.click(screen.getByRole('button', { name: 'Back' }))
 
-  await pickInto(user, pull, 'barbell deadlift', 'Barbell Deadlift')
-  await pickInto(user, legs, 'barbell squat', 'Barbell Squat')
+  // The Plan editor replaced the list, so its Workouts are read again.
+  await pickInto(user, editorWorkouts()[1], 'barbell deadlift', 'Barbell Deadlift')
+  await pickInto(user, editorWorkouts()[2], 'barbell squat', 'Barbell Squat')
 
   await save(user)
   await editorClosed()
@@ -342,9 +372,7 @@ test(
 
     const name = (await screen.findByLabelText('Program name', undefined, SETTLE)) as HTMLInputElement
     expect(name.value).toBe('A/B Split (copy)')
-    expect(
-      (screen.getAllByLabelText('Workout name') as HTMLInputElement[]).map((i) => i.value),
-    ).toEqual(['Workout A', 'Workout B'])
+    expect(editorWorkoutNames()).toEqual(['Workout A', 'Workout B'])
   },
   LONG,
 )
@@ -365,11 +393,11 @@ test(
     expect(valuesOf(a, 'Min reps')).toEqual(['8', '10', '8', '10', '8', '10', '10'])
     expect(valuesOf(a, 'Max reps')).toEqual(['10', '12', '10', '15', '10', '15', '12'])
     // V6 (V5-10): Rest reads as m:ss, as everywhere else in the app.
-    expect(valuesOf(a, 'Rest (m:ss)')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
+    expect(valuesOf(a, 'Rest')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
     expect(valuesOf(b, 'Sets')).toEqual(['3', '4', '3', '4', '3', '3', '3'])
     expect(valuesOf(b, 'Min reps')).toEqual(['8', '5', '10', '8', '10', '10', '10'])
     expect(valuesOf(b, 'Max reps')).toEqual(['10', '8', '12', '10', '15', '15', '12'])
-    expect(valuesOf(b, 'Rest (m:ss)')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
+    expect(valuesOf(b, 'Rest')).toEqual(['3:00', '1:30', '1:30', '1:30', '1:30', '1:30', '1:30'])
   },
   LONG,
 )
@@ -482,7 +510,9 @@ test(
     await openProgramTab(user)
     await editActive(user, 'A/B Split')
     await screen.findByLabelText('Program name', undefined, SETTLE)
-    await setField(user, document.body, 'Program name', 'A/B Split v2')
+    const programName = screen.getByLabelText('Program name')
+    await user.clear(programName)
+    await user.type(programName, 'A/B Split v2')
     await save(user)
     await editorClosed()
 
@@ -542,9 +572,7 @@ test(
     await screen.findByText('Couldn’t save — try again', undefined, SETTLE)
 
     expect((screen.getByLabelText('Program name') as HTMLInputElement).value).toBe('My split')
-    expect(
-      (screen.getAllByLabelText('Workout name') as HTMLInputElement[]).map((i) => i.value),
-    ).toEqual(['Workout A', 'Workout B'])
+    expect(editorWorkoutNames()).toEqual(['Workout A', 'Workout B'])
     vi.restoreAllMocks()
     expect(await storedUserPrograms()).toEqual([])
   },
