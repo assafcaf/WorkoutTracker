@@ -50,6 +50,12 @@ async function mount(sessions: Session[]) {
 }
 
 describe('E18-T10 O20 Progress home with 45 Sessions', () => {
+  test('N6 the headline is the page title: no "Progress" heading repeats the tab label', async () => {
+    await mount(fixture)
+    await waitFor(() => screen.getByRole('heading', { level: 1, name: LEAD }), SETTLE)
+    expect(screen.queryByRole('heading', { name: 'Progress' })).toBeNull()
+  })
+
   test('DX-02 opens on the headline, its sentence and a grey meta line; no date, no calendar', async () => {
     // DX-02: the headline block is the count of moving lifts, one sentence on the exceptions and
     // the meta line "Since 23 Jul · 31 Sessions"; the 6-week dot grid and the date are gone.

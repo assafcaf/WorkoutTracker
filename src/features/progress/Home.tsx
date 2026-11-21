@@ -167,11 +167,12 @@ export function rowFacts(model: ProgressModel, id: string): LedgerFacts | null {
 }
 
 /**
- * A status as a ledger row says it (study §1.7): `Up to 15 kg` on a Ready lift with a load to go
- * to, `Flat since 7 Aug` on a Flat one, else the status word (`Moving`, `Lowered`).
+ * A status as a ledger row says it (study §1.7), always leading with the one status word (DX-03):
+ * `Ready · 15 kg` on a Ready lift with a load to go to, `Flat since 7 Aug` on a Flat one, else the
+ * word (`Moving`, `Lowered`).
  */
 export function statusWords(status: LiftStatus, bodyweight: boolean): string {
-  if (status.kind === 'ready' && !status.swap && status.next) return `Up to ${leverText(status.next.lever, bodyweight)}`
+  if (status.kind === 'ready' && !status.swap && status.next) return `Ready · ${leverText(status.next.lever, bodyweight)}`
   if (status.kind === 'stalled' && status.since !== undefined) return `Flat since ${dayMonth(status.since)}`
   return status.label
 }
@@ -430,16 +431,23 @@ export function Home({ push, navigate, now = Date.now }: HomeProps): JSX.Element
     </nav>
   )
 
+  // N6: with a verdict, the headline is the page title ("12 of 14 lifts are moving"), its
+  // exceptions and the meta line under it; the tab bar already says "Progress".
   return (
-    <AppShell title="Progress">
+    <AppShell
+      title={headline ? headline.title : 'Progress'}
+      subtitle={
+        headline ? (
+          <>
+            {headline.exceptions ? <p className="progress-exceptions">{headline.exceptions}</p> : null}
+            <p className="progress-meta">{`Since ${dayMonth(since)} · ${sessionsText(inWindow)}`}</p>
+          </>
+        ) : undefined
+      }
+    >
       <div className="progress-home">
         {headline ? (
           <>
-            <header className="progress-headline">
-              <h2 className="progress-title">{headline.title}</h2>
-              {headline.exceptions ? <p className="progress-exceptions">{headline.exceptions}</p> : null}
-              <p className="progress-meta">{`Since ${dayMonth(since)} · ${sessionsText(inWindow)}`}</p>
-            </header>
             {links}
             <section className="progress-lifts" aria-label="Lifts">
               <LiftsList model={model} onOpen={open} group />

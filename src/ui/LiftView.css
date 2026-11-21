@@ -156,10 +156,11 @@
   font-weight: var(--weight-semibold);
 }
 
+/* The chosen chip: an ink outline, never filled like a primary button (BTN-01). */
 .lift-chips .lift-chip[aria-checked='true'] {
-  border: 1px solid var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  border: 2px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
 }
 
 /* Range: text tabs, the selected one underlined. */
