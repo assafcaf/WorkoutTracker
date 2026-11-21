@@ -1,36 +1,61 @@
-/* The History editor (E12-T6): a draft of a finished Session, its times and its Sets.
+/* The Session editor (E12-T6, DX-11): a draft of a finished Session, its times and its Sets.
+ * Cancel and Save in the header; each Set one row into the Set sheet; Delete Session alone at
+ * the very bottom.
  *
  * Every colour comes through a `var(--…)` from src/styles/tokens.css, which is the palette's
  * one definition site.
  */
 
-.session-editor {
+.session-editor-page {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   color: var(--color-text);
 }
 
-/* V6-14: the one header ("Edit, Workout B, Mon 12 Oct"); it wraps, never truncates. v7: drawn
- * as every pushed page's compact bar (`.app-header-bar`): 56 px on the surface, the title centred
- * in 16 px semibold over a hairline, sticky while the draft scrolls under it. */
-.session-editor-heading {
+/* DX-11: Cancel · "Edit · Workout B · Mon 12 Oct" · Save, as every pushed page's compact bar
+ * (`.app-header-bar`): 56 px on the surface over a hairline, sticky while the draft scrolls. The
+ * title wraps, never truncates. */
+.session-editor-bar {
   position: sticky;
   top: 0;
   z-index: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
+  gap: var(--space-1);
   min-height: calc(56px + var(--safe-top));
   margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) 0;
-  padding: var(--safe-top) var(--space-4) 0;
+  padding: var(--safe-top) var(--space-2) 0;
   border-bottom: 1px solid var(--color-hairline);
   background: var(--color-surface);
+}
+
+.session-editor-heading {
+  margin: 0;
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   line-height: 1.375rem;
   text-align: center;
   overflow-wrap: break-word;
+}
+
+.session-editor-cancel,
+.session-editor-save {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
+}
+
+.session-editor-save {
+  font-weight: var(--weight-semibold);
+}
+
+.session-editor-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .session-editor-times {
@@ -89,22 +114,32 @@
   list-style: none;
 }
 
-/* One Set row: 52 px, a hairline between rows. */
-.session-editor-set {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 52px;
-}
-
 .session-editor-set + .session-editor-set {
   border-top: 1px solid var(--color-hairline);
 }
 
+/* DX-11: one Set, one 52 px row: its values, then a chevron into the Set sheet. */
+.session-editor-set-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.session-editor-set-row > svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
 .session-editor-set-values {
   flex: 1;
-  /* A Set's values stay on one line; at large text Edit and Delete wrap under them instead. */
   white-space: nowrap;
   font-size: var(--text-md);
   font-weight: var(--weight-medium);
@@ -118,48 +153,21 @@
   font-weight: var(--weight-semibold);
 }
 
+.session-editor-add {
+  align-self: flex-start;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
 /* V6-13: Add exercise, under the last Exercise. */
 .session-editor-add-exercise {
   align-self: flex-start;
   min-height: var(--tap-min);
   padding: 0 var(--space-4);
-}
-
-.session-editor-dials {
-  flex-basis: 100%;
-}
-
-.session-editor-set-action,
-.session-editor-add,
-.session-editor-cancel,
-.session-editor-delete {
-  min-height: var(--tap-min);
-  padding: 0 var(--space-3);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-}
-
-.session-editor-add {
-  align-self: flex-start;
-}
-
-.session-editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
-.session-editor-save {
-  min-height: var(--tap-min);
-  padding: 0 var(--space-4);
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: var(--text-md);
-}
-
-.session-editor-save:disabled {
-  opacity: 0.5;
 }
 
 .session-editor-note {
@@ -183,4 +191,102 @@
 /* Deload session (V2-10): moved here from the summary, saved with the draft. */
 .session-editor-deload {
   min-height: var(--tap-min);
+}
+
+/* DX-11: Delete Session, red text alone on its row, at least 24 px under the Note and Photos. */
+.session-editor-delete-row {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-5);
+  padding-bottom: var(--space-4);
+}
+
+.session-editor-delete {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
+}
+
+/* ---- The Set sheet (DX-08): the live Set screen's Dials, Cancel and Save in its head ---- */
+
+.session-set-sheet-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.session-set-title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.375rem;
+  text-align: center;
+}
+
+.session-set-cancel,
+.session-set-save {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
+}
+
+.session-set-save {
+  font-weight: var(--weight-semibold);
+}
+
+.session-set-dials {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* As the live Set screen's instrument: 64 px steppers around the big number. */
+.session-set-dials .dial--scrub {
+  grid-template-columns: 64px minmax(0, 1fr) 64px;
+}
+
+.session-set-dials .dial--scrub .dial-step {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+}
+
+.session-set-dials .dial--scrub .dial-body {
+  gap: var(--space-1);
+  min-height: 96px;
+}
+
+.session-set-dials .dial--scrub .dial-readout {
+  font-size: calc(var(--text-display) * 1.375);
+  line-height: 1;
+}
+
+.session-set-dials .dial--scrub .dial-readout[data-length='4'] {
+  font-size: calc(var(--text-display) * 1.0625);
+}
+
+.session-set-dials .dial--scrub .dial-readout[data-length='long'] {
+  font-size: calc(var(--text-display) * 0.8125);
+}
+
+.session-set-dials .dial--scrub .dial-unit {
+  font-size: var(--text-lg);
+}
+
+/* DX-11: Delete set, red text at the sheet's foot. */
+.session-set-delete {
+  align-self: center;
+  min-height: var(--tap-min);
+  margin-top: var(--space-4);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
 }

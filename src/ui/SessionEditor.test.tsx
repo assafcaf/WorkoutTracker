@@ -98,6 +98,18 @@ function saveButton(): HTMLElement {
   return screen.getByRole('button', { name: 'Save' })
 }
 
+/** DX-11: a Set's row opens the Set sheet. */
+async function openSet(user: ReturnType<typeof userEvent.setup>, exercise: string, name: RegExp): Promise<HTMLElement> {
+  await user.click(within(group(exercise)).getByRole('button', { name }))
+  return screen.getByRole('dialog')
+}
+
+/** DX-11: a Set is deleted from its sheet's "Delete set", at once. */
+async function deleteSet(user: ReturnType<typeof userEvent.setup>, exercise: string, name: RegExp): Promise<void> {
+  const sheet = await openSet(user, exercise, name)
+  await user.click(within(sheet).getByRole('button', { name: 'Delete set' }))
+}
+
 /** The draft `onSave` was handed, with its entries ordered by Exercise then `setIndex`. */
 async function savedDraft(onSave: Mock): Promise<Session> {
   await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
@@ -143,7 +155,7 @@ test('O13 SessionEditor shows the start and end as editable local date-time fiel
   expect(endField()).toBeEnabled()
 })
 
-test('O13 SessionEditor groups the Sets by Exercise, each Set with an edit and a delete control', () => {
+test('DX-11 SessionEditor groups the Sets by Exercise, each Set one row into its sheet, no Delete in the row', () => {
   renderEditor()
 
   const squat = group('Back squat')
@@ -152,14 +164,13 @@ test('O13 SessionEditor groups the Sets by Exercise, each Set with an edit and a
   expect(within(squat).getByText(setFigure('65 × 5'))).toBeVisible()
   for (const setIndex of [1, 2, 3]) {
     expect(within(squat).getByRole('button', { name: new RegExp(`^Edit Back squat set ${setIndex},`) })).toBeVisible()
-    expect(within(squat).getByRole('button', { name: new RegExp(`^Delete Back squat set ${setIndex},`) })).toBeVisible()
   }
+  expect(within(squat).queryByRole('button', { name: /^Delete/ })).toBeNull()
   expect(within(squat).queryByRole('button', { name: /^Edit Back squat set 4,/ })).toBeNull()
 
   const dips = group('Dips')
   expect(within(dips).getByText(setFigure('BW × 10'))).toBeVisible()
   expect(within(dips).getByRole('button', { name: 'Edit Dips set 1, BW × 10' })).toBeVisible()
-  expect(within(dips).getByRole('button', { name: 'Delete Dips set 1, BW × 10' })).toBeVisible()
   expect(within(dips).queryByText(setFigure('60 × 8'))).toBeNull()
 })
 
@@ -183,9 +194,12 @@ test('O14 SessionEditor saves an edited Set with its new values, keeping its set
   const { onSave } = renderEditor()
   const user = userEvent.setup()
 
-  await user.click(within(group('Back squat')).getByRole('button', { name: /^Edit Back squat set 1,/ }))
-  await user.click(within(screen.getByRole('group', { name: 'Weight (kg)' })).getByRole('button', { name: 'Increase weight' }))
-  await user.click(within(screen.getByRole('group', { name: 'Reps' })).getByRole('button', { name: 'Increase reps' }))
+  const sheet = await openSet(user, 'Back squat', /^Edit Back squat set 1,/)
+  expect(sheet).toHaveAccessibleName('Back squat · Set 1')
+  await user.click(within(sheet).getByRole('button', { name: 'Increase weight' }))
+  await user.click(within(sheet).getByRole('button', { name: 'Increase reps' }))
+  await user.click(within(sheet).getByRole('button', { name: 'Save' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
   await user.click(saveButton())
 
   expect(await savedDraft(onSave)).toEqual({
@@ -198,7 +212,7 @@ test('O14 SessionEditor saves a deleted Set gone and the Exercise\'s later Sets 
   const { onSave } = renderEditor()
   const user = userEvent.setup()
 
-  await user.click(within(group('Back squat')).getByRole('button', { name: /^Delete Back squat set 1,/ }))
+  await deleteSet(user, 'Back squat', /^Edit Back squat set 1,/)
   expect(within(group('Back squat')).queryByText(setFigure('60 × 8'))).toBeNull()
   await user.click(saveButton())
 
@@ -242,7 +256,7 @@ test('O14 SessionEditor adds a Set after a delete at the renumbered next setInde
   const { onSave } = renderEditor()
   const user = userEvent.setup()
 
-  await user.click(within(group('Back squat')).getByRole('button', { name: /^Delete Back squat set 3,/ }))
+  await deleteSet(user, 'Back squat', /^Edit Back squat set 3,/)
   await user.click(within(group('Back squat')).getByRole('button', { name: 'Add set' }))
   await user.click(saveButton())
 
@@ -271,7 +285,7 @@ test('O14 SessionEditor Cancel calls onCancel and never onSave', async () => {
   const { onSave, onCancel } = renderEditor()
   const user = userEvent.setup()
 
-  await user.click(within(group('Back squat')).getByRole('button', { name: /^Delete Back squat set 2,/ }))
+  await deleteSet(user, 'Back squat', /^Edit Back squat set 2,/)
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
   expect(onCancel).toHaveBeenCalledTimes(1)
@@ -283,7 +297,7 @@ test('O14 SessionEditor shows a rejected save\'s message and keeps the draft', a
   renderEditor(finished(), onSave)
   const user = userEvent.setup()
 
-  await user.click(within(group('Back squat')).getByRole('button', { name: /^Delete Back squat set 1,/ }))
+  await deleteSet(user, 'Back squat', /^Edit Back squat set 1,/)
   await user.click(saveButton())
 
   expect(await screen.findByRole('alert')).toHaveTextContent('the workout could not be saved')
@@ -319,9 +333,9 @@ test('O15 SessionEditor with every Set deleted shows the no-sets line and disabl
   const { onSave } = renderEditor(finished([squat1, dips1]))
   const user = userEvent.setup()
 
-  await user.click(within(group('Back squat')).getByRole('button', { name: /^Delete Back squat set 1,/ }))
+  await deleteSet(user, 'Back squat', /^Edit Back squat set 1,/)
   expect(saveButton()).toBeEnabled()
-  await user.click(within(screen.getByRole('group', { name: 'Dips' })).getByRole('button', { name: /^Delete Dips set 1,/ }))
+  await deleteSet(user, 'Dips', /^Edit Dips set 1,/)
 
   expect(
     screen.getByText('A workout needs at least one set. Delete the workout instead.'),
@@ -349,24 +363,58 @@ function renderEditorWithDelete(): { onDelete: Mock; onSave: Mock } {
   return { onDelete, onSave }
 }
 
-test('O16 SessionEditor Delete workout asks to confirm inline and does not delete until confirmed', async () => {
+test('DX-11 SessionEditor Delete Session deletes at once (the caller offers Undo), alone at the bottom', async () => {
   const { onDelete } = renderEditorWithDelete()
   const user = userEvent.setup()
 
-  await user.click(screen.getByRole('button', { name: 'Delete workout' }))
-
-  expect(screen.getByRole('button', { name: 'Confirm' })).toBeVisible()
-  expect(onDelete).not.toHaveBeenCalled()
-
-  await user.click(screen.getByRole('button', { name: 'Confirm' }))
+  const remove = screen.getByRole('button', { name: 'Delete Session' })
+  expect(remove.parentElement?.children).toHaveLength(1)
+  // It comes after Save and Cancel, the Note and every Set.
+  const buttons = screen.getAllByRole('button')
+  expect(buttons[buttons.length - 1]).toBe(remove)
+  await user.click(remove)
 
   expect(onDelete).toHaveBeenCalledTimes(1)
 })
 
-test('O16 SessionEditor without onDelete shows no Delete workout', () => {
+test('DX-11 SessionEditor without onDelete shows no Delete Session', () => {
   renderEditor()
 
-  expect(screen.queryByRole('button', { name: 'Delete workout' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Delete Session' })).toBeNull()
+})
+
+test('DX-11 Cancel and Save sit in the editor header, beside its heading', () => {
+  renderEditor()
+
+  const bar = screen.getByRole('heading', { name: 'Edit · Upper A · 14 Nov 2023' }).parentElement as HTMLElement
+  expect(within(bar).getByRole('button', { name: 'Cancel' })).toBeVisible()
+  expect(within(bar).getByRole('button', { name: 'Save' })).toBeVisible()
+})
+
+test('DX-11 deleting a Set shows "Set deleted · Undo", and Undo puts it back', async () => {
+  const { onSave } = renderEditor()
+  const user = userEvent.setup()
+
+  await deleteSet(user, 'Back squat', /^Edit Back squat set 1,/)
+  expect(within(group('Back squat')).queryByText(setFigure('60 × 8'))).toBeNull()
+  expect(screen.getByRole('status')).toHaveTextContent('Set deleted')
+  await user.click(screen.getByRole('button', { name: 'Undo' }))
+
+  expect(within(group('Back squat')).getByText(setFigure('60 × 8'))).toBeVisible()
+  await user.click(saveButton())
+  expect(await savedDraft(onSave)).toEqual({ ...finished(), entries: ordered(finished().entries) })
+})
+
+test('DX-08 the Set sheet holds the live Set screen\'s Dials: weight and reps, each a 64 px stepper pair', async () => {
+  renderEditor()
+  const user = userEvent.setup()
+
+  const sheet = await openSet(user, 'Back squat', /^Edit Back squat set 2,/)
+  expect(sheet.querySelectorAll('.session-set-dials .dial--scrub')).toHaveLength(2)
+  expect(within(sheet).getByRole('button', { name: 'Increase weight' })).toBeVisible()
+  expect(within(sheet).getByRole('button', { name: 'Decrease reps' })).toBeVisible()
+  await user.click(within(sheet).getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
 })
 
 // --- E14-T4: the Session note in the editor --------------------------------------------------
@@ -414,12 +462,11 @@ function rolesOf(button: HTMLElement): string[] {
   return [...button.classList].filter((name) => BUTTON_ROLES.includes(name))
 }
 
-test('E17 O11 SessionEditor Delete set wears btn-danger and no other role', () => {
+test('E17 O11 SessionEditor Delete set wears btn-danger and no other role', async () => {
   renderEditor()
+  const sheet = await openSet(userEvent.setup(), 'Back squat', /^Edit Back squat set 1,/)
 
-  expect(
-    rolesOf(within(group('Back squat')).getByRole('button', { name: /^Delete Back squat set 1,/ })),
-  ).toEqual(['btn-danger'])
+  expect(rolesOf(within(sheet).getByRole('button', { name: 'Delete set' }))).toEqual(['btn-danger'])
 })
 
 // --- V2-10 / V1-24: the Deload session switch lives here, and the editor opens at its top ------
@@ -459,8 +506,8 @@ test('V6-14 a warm-up Set reads "W 40 × 5", the W muted and named Warm-up', () 
   const warmUp = within(squat).getAllByRole('listitem')[0]
   expect(warmUp.querySelector('.session-editor-set-values')).toHaveTextContent(/^W\s?40\s?×\s?5$/)
   expect(warmUp.querySelector('.session-editor-set-kind')).toHaveAttribute('aria-hidden', 'true')
-  expect(within(squat).getByRole('button', { name: 'Delete Back squat set 1, warm-up 40 × 5' })).toBeVisible()
-  expect(within(squat).getByRole('button', { name: 'Delete Back squat set 2, 62.5 × 6' })).toBeVisible()
+  expect(within(squat).getByRole('button', { name: 'Edit Back squat set 1, warm-up 40 × 5' })).toBeVisible()
+  expect(within(squat).getByRole('button', { name: 'Edit Back squat set 2, 62.5 × 6' })).toBeVisible()
 })
 
 test('V6-14 no two controls in the editor share an accessible name', () => {
@@ -469,7 +516,7 @@ test('V6-14 no two controls in the editor share an accessible name', () => {
   const names = screen.getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)
   const repeated = names.filter((name, index) => name !== 'Add set' && names.indexOf(name) !== index)
   expect(repeated).toEqual([])
-  expect(screen.getByRole('button', { name: 'Delete Dips set 1, BW × 10' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Edit Dips set 1, BW × 10' })).toBeVisible()
 })
 
 test('V6-13 in Log mode the heading reads "Log · Workout · day"', () => {
@@ -507,15 +554,17 @@ test('V6-13 Add exercise picks an Exercise and adds it with one Set, open on the
   const user = userEvent.setup()
 
   await user.click(screen.getByRole('button', { name: 'Add exercise' }))
-  const picker = screen.getByRole('dialog', { name: 'Add exercise' })
+  const picker = screen.getByRole('dialog', { name: 'Add to Upper A' })
   // Already in the Session: not offered again.
   expect(within(picker).queryByRole('button', { name: 'Back squat' })).toBeNull()
   await user.click(within(picker).getByRole('button', { name: 'Dips' }))
 
-  expect(screen.queryByRole('dialog', { name: 'Add exercise' })).toBeNull()
+  expect(screen.queryByRole('dialog', { name: 'Add to Upper A' })).toBeNull()
+  // The new Set opens in its sheet.
+  const sheet = screen.getByRole('dialog', { name: 'Dips · Set 1' })
+  await user.click(within(sheet).getByRole('button', { name: 'Save' }))
   const dips = group('Dips')
   expect(within(dips).getByText(setFigure('BW × 8'))).toBeVisible()
-  expect(within(dips).getByRole('button', { name: 'Edit Dips set 1, BW × 8' })).toHaveAttribute('aria-pressed', 'true')
 
   await user.click(saveButton())
   const draft = await savedDraft(onSave)

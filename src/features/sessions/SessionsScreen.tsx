@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import { formatDay } from '../../domain/dates'
@@ -17,9 +17,9 @@ import type { Weekday } from '../../domain/stats/weeks'
 import { computeRecords, recordCount } from '../../domain/stats/records'
 import { sessionVolume } from '../../domain/volume'
 import type { BodyLog, ExercisePlan, Muscle, Program, Session } from '../../types'
-import { AppShell } from '../../ui/AppShell'
+import { AppShell, ShellChromeContext } from '../../ui/AppShell'
 import { CalendarWeekCells } from '../../ui/CalendarWeek'
-import { Icon } from '../../ui/icons'
+import { lastSetTexts } from '../../ui/ExercisePicker'
 import { workoutLetterOf, workoutToneAt, type WorkoutTone } from '../../ui/workoutMark'
 import { SessionEditor } from '../../ui/SessionEditor'
 import { Sheet } from '../../ui/Sheet'
@@ -28,7 +28,8 @@ import { SessionSummary } from '../../ui/SessionSummary'
 import { dayOf } from '../../domain/bodyLog'
 import { SessionPhotos } from '../progress/photos/session/SessionPhotos'
 import type { AppRoute } from '../routes'
-import { useServices } from '../ServicesProvider'
+import { useServices, useSyncControls } from '../ServicesProvider'
+import { SyncLine } from './SyncLine'
 import { useServiceData } from '../useServiceData'
 import './SessionsScreen.css'
 
@@ -44,8 +45,8 @@ export type SessionsScreenProps = {
 /** The weeks the calendar draws (V3-09): six rows of seven days above the list. */
 const CALENDAR_WEEKS = 6
 
-/** How long "Workout deleted · Undo" stays (V5), as long as Body's "Entry deleted · Undo". */
-const UNDO_MS = 6000
+/** How long "Session deleted · Undo" stays (DX-11). */
+const UNDO_MS = 8000
 
 const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -171,13 +172,15 @@ export function SessionsScreen({
   const [editingId, setEditingId] = useState<string | null>(null)
   /** V5: a calendar day with two or more Sessions, open as a chooser of them. */
   const [chooser, setChooser] = useState<{ day: number; sessions: Session[] } | null>(null)
-  /** V5: the Session just deleted, as it was, while "Workout deleted · Undo" shows. */
+  /** V5: the Session just deleted, as it was, while "Session deleted · Undo" shows. */
   const [deleted, setDeleted] = useState<Session | null>(null)
   /** V6-13: the "Log a past workout" sheet, open on the day it will log (`YYYY-MM-DD`). */
   const [loggingDay, setLoggingDay] = useState<string | null>(null)
   /** V6-13: a missed Session's draft, open in the editor until it is saved or cancelled. */
   const [pastDraft, setPastDraft] = useState<Session | null>(null)
   const services = useServices()
+  const { sync } = useSyncControls()
+  const { onOpenSettings } = useContext(ShellChromeContext)
 
   useEffect(() => {
     if (!deleted) return
@@ -271,6 +274,8 @@ export function SessionsScreen({
     return [...(workout?.exercises.map((plan) => plan.exerciseId) ?? []), ...Object.values(session.swaps ?? {})]
   }
 
+  const lastSets = lastSetTexts(sessions, resolve, new Date(today))
+
   // V6-14: the editor draws the one header ("Edit · Workout B · Mon 12 Oct"), so the shell draws none.
   const editSession = editingId ? sessions.find((session) => session.id === editingId) ?? null : null
   if (editSession) {
@@ -285,6 +290,7 @@ export function SessionsScreen({
             now={today}
             addable={addable}
             plannedIds={plannedIdsOf(editSession)}
+            lastSets={lastSets}
             renderPhotos={(day) => <SessionPhotos day={day} variant="editor" />}
             onSave={async (draft) => {
               await services.sessions.save(draft)
@@ -310,6 +316,7 @@ export function SessionsScreen({
             now={today}
             addable={addable}
             plannedIds={plannedIdsOf(pastDraft)}
+            lastSets={lastSets}
             renderPhotos={(day) => <SessionPhotos day={day} variant="editor" />}
             onSave={async (draft) => {
               await services.sessions.logPast(draft)
@@ -339,39 +346,59 @@ export function SessionsScreen({
       }),
     )
   }
-  // V6-13: the one entry point, beside the title, so the list still comes first (V2-07).
+  // V6-13: the one entry point, beside the title, so the list still comes first (V2-07). DX-11:
+  // a text button that says what it does, "Log past", in place of a bare "+".
+  const openLogPast = (): void => setLoggingDay(isoDay(today - DAY_MS))
   const logPastButton = activeProgram ? (
     <button
       type="button"
-      className="sessions-log-past icon-btn"
-      aria-label="Log a past workout"
+      className="sessions-log-past btn-quiet"
       aria-haspopup="dialog"
-      onClick={() => setLoggingDay(isoDay(today - DAY_MS))}
+      onClick={openLogPast}
     >
-      <Icon name="Plus" size={24} />
+      Log past
     </button>
   ) : null
+  const calendar = (
+    <SessionsCalendar
+      sessions={sessions}
+      programs={programs}
+      now={today}
+      weekStartsOn={weekStartsOn}
+      onOpenDay={(day, onDay) => {
+        if (onDay.length === 1) setSummarySessionId(onDay[0].id)
+        else setChooser({ day, sessions: onDay })
+      }}
+    />
+  )
 
   const summarySession = summarySessionId
     ? sessions.find((session) => session.id === summarySessionId) ?? null
     : null
 
   return (
-    <AppShell title="Sessions" actions={logPastButton ?? undefined}>
+    <AppShell
+      title="Sessions"
+      subtitle={<SyncLine sync={sync} now={today} onOpen={onOpenSettings} />}
+      actions={logPastButton ?? undefined}
+    >
       {sessions.length === 0 ? (
-        <p className="sessions-empty">No finished workouts yet. Finish one and it appears here.</p>
+        // DX-21: the calendar still draws, today outlined, so its frame is learned; one line and
+        // one way to the first Session.
+        <div className="sessions-screen">
+          {calendar}
+          <div className="sessions-empty">
+            <p className="sessions-empty-line">Your Sessions appear here.</p>
+            {activeProgram ? (
+              <button type="button" className="sessions-empty-action btn-quiet" onClick={openLogPast}>
+                Log a past workout
+              </button>
+            ) : null}
+          </div>
+        </div>
       ) : (
         <div className="sessions-screen">
-          <SessionsCalendar
-            sessions={sessions}
-            programs={programs}
-            now={today}
-            weekStartsOn={weekStartsOn}
-            onOpenDay={(day, onDay) => {
-              if (onDay.length === 1) setSummarySessionId(onDay[0].id)
-              else setChooser({ day, sessions: onDay })
-            }}
-          />
+          {calendar}
           {sessionsByWeek(sessions, today, weekStartsOn).map((week) => (
             <section key={week.start} className="sessions-week" aria-label={week.label}>
               <h2 className="sessions-caption">{week.label}</h2>
@@ -484,20 +511,14 @@ export function SessionsScreen({
                 className="sessions-chooser-option btn-secondary"
                 onClick={() => logPast(workout.id)}
               >
-                {workout.name}
+                {`Log ${workout.name}`}
               </button>
             ))}
           </div>
         </Sheet>
       ) : null}
-      {/* V5-04: it names the workout it took away, "Workout B deleted · Mon 12 Oct". */}
-      {deleted ? (
-        <Snackbar
-          message={`${workoutNameOf(deleted, programs)} deleted · ${formatDay(new Date(deleted.startedAt), new Date(today))}`}
-          actionLabel="Undo"
-          onAction={undoDelete}
-        />
-      ) : null}
+      {/* DX-11: "Session deleted · Undo", for 8 s. */}
+      {deleted ? <Snackbar message="Session deleted" actionLabel="Undo" onAction={undoDelete} /> : null}
     </AppShell>
   )
 }

@@ -17,9 +17,9 @@ async function alternativesFixture() {
   return { library, target }
 }
 
-/** The name a row shows, read from `.alternatives-row-name`, the way `LibraryList` rows are. */
+/** The name a row shows, read from `.picker-row-name` (DX-08: the one Exercise list's rows). */
 function rowName(row: HTMLElement): string {
-  return (row.querySelector('.alternatives-row-name')?.textContent ?? '').trim()
+  return (row.querySelector('.picker-row-name')?.textContent ?? '').trim()
 }
 
 /** The row named `name` exactly, or throws -- `library` has near-duplicate names, so an exact
@@ -47,7 +47,7 @@ test('S6 AlternativesList opens with a search box', async () => {
   expect(screen.getByRole('searchbox', { name: /search/i })).toBeVisible()
 })
 
-test('S6 AlternativesList lists every ranked alternative, each offering "Do this instead"', async () => {
+test('S6 DX-08 AlternativesList lists every ranked alternative, the whole row its target (no "Do this instead")', async () => {
   const { library, target } = await alternativesFixture()
 
   render(
@@ -63,10 +63,8 @@ test('S6 AlternativesList lists every ranked alternative, each offering "Do this
   expect(screen.getAllByRole('listitem')).toHaveLength(134)
 
   const hammerCurls = rowNamed('Hammer Curls')
-  const choose = within(hammerCurls).getByRole('button', { name: 'Do Hammer Curls instead' })
-  expect(choose).toBeVisible()
-  // The visible label stays short; only the accessible name carries the Exercise (V2-14).
-  expect(choose).toHaveTextContent('Do this instead')
+  expect(within(hammerCurls).getAllByRole('button')).toHaveLength(1)
+  expect(screen.queryByRole('button', { name: /instead/ })).toBeNull()
 })
 
 test('S6 typing in the search box narrows the alternatives list by name', async () => {
@@ -92,7 +90,7 @@ test('S6 typing in the search box narrows the alternatives list by name', async 
   expect(rowName(rows[0])).toBe('Cross Body Hammer Curl')
 })
 
-test('S7 tapping "Do this instead" on a row calls onChoose with that alternative\'s id', async () => {
+test('S7 DX-08 tapping a row calls onChoose with that alternative\'s id', async () => {
   const { library, target } = await alternativesFixture()
   const onChoose = vi.fn()
   const user = userEvent.setup()
@@ -107,40 +105,27 @@ test('S7 tapping "Do this instead" on a row calls onChoose with that alternative
     />,
   )
 
-  await user.click(within(rowNamed('Hammer Curls')).getByRole('button', { name: 'Do Hammer Curls instead' }))
+  await user.click(within(rowNamed('Hammer Curls')).getByRole('button', { name: 'Hammer Curls' }))
 
   expect(onChoose).toHaveBeenCalledTimes(1)
   expect(onChoose).toHaveBeenCalledWith('Hammer_Curls')
 })
 
-// --- V2-14 (docs/ux-expert/iterations/v2/report.md) -----------------------------------------
+// --- V2-14, DX-08: each row is named by its own Exercise; a browse list opens it ------------------
 
-test('V2-14 no two swap buttons share an accessible name, and each names its own Exercise', async () => {
+test('V2-14 DX-08 no two rows share an accessible name, and a browse-only list opens the tapped row', async () => {
   const { library, target } = await alternativesFixture()
+  const onOpenDetail = vi.fn()
 
-  render(
-    <AlternativesList
-      target={target}
-      library={library}
-      gymEquipment={null}
-      onChoose={vi.fn()}
-      onOpenDetail={vi.fn()}
-      limit={11}
-    />,
-  )
+  render(<AlternativesList target={target} library={library} gymEquipment={null} onOpenDetail={onOpenDetail} limit={11} />)
 
   const rows = screen.getAllByRole('listitem')
   expect(rows).toHaveLength(11)
-  const names = rows.map((row) => {
-    const choose = within(row).getAllByRole('button').find((button) => button.classList.contains('alternatives-row-choose'))
-    if (!choose) throw new Error(`no swap button in the row for "${rowName(row)}"`)
-    const name = choose.getAttribute('aria-label') ?? ''
-    expect(within(row).getByRole('button', { name })).toBe(choose)
-    expect(name).toBe(`Do ${rowName(row)} instead`)
-    return name
-  })
+  const names = rows.map((row) => within(row).getByRole('button').getAttribute('aria-label'))
   expect(new Set(names).size).toBe(names.length)
-  expect(screen.queryByRole('button', { name: 'Do this instead' })).toBeNull()
+  await userEvent.click(within(rows[0]).getByRole('button'))
+  expect(onOpenDetail).toHaveBeenCalledWith(expect.any(String))
+  expect(onOpenDetail.mock.calls[0][0]).not.toBe('Seated_Dumbbell_Curl')
 })
 
 // --- S12: an equipment filter that leaves nothing explains itself -----------------------------
@@ -184,7 +169,7 @@ const EQUIPMENT_ONLY_LIBRARY = new Map<string, LibraryExercise>([
   [EQUIPMENT_ONLY_CANDIDATE.id, EQUIPMENT_ONLY_CANDIDATE],
 ])
 
-test('S12 AlternativesList reads "No alternatives with your gym\'s equipment" and offers "Show all equipment" when gymEquipment leaves no alternatives', () => {
+test('S12 DX-08 when the gym leaves no alternatives, the list says so and "My gym only" is on to turn off', () => {
   render(
     <AlternativesList
       target={EQUIPMENT_ONLY_TARGET}
@@ -194,11 +179,11 @@ test('S12 AlternativesList reads "No alternatives with your gym\'s equipment" an
     />,
   )
 
-  expect(screen.getByText("No alternatives with your gym's equipment")).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Show all equipment' })).toBeVisible()
+  expect(screen.getByText('No exercises match')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'My gym only' })).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('S12 tapping "Show all equipment" lifts the equipment filter for this list only, showing what it was hiding', async () => {
+test('S12 DX-08 turning "My gym only" off lifts the equipment filter for this list only, showing what it was hiding', async () => {
   const user = userEvent.setup()
 
   render(
@@ -211,10 +196,10 @@ test('S12 tapping "Show all equipment" lifts the equipment filter for this list 
   )
   expect(screen.queryByText('Machine Only Candidate')).not.toBeInTheDocument()
 
-  await user.click(screen.getByRole('button', { name: 'Show all equipment' }))
+  await user.click(screen.getByRole('button', { name: 'My gym only' }))
 
   expect(screen.getByText('Machine Only Candidate')).toBeVisible()
-  expect(screen.queryByText("No alternatives with your gym's equipment")).not.toBeInTheDocument()
+  expect(screen.queryByText('No exercises match')).not.toBeInTheDocument()
 })
 
 test('O34 the search box forgives a typo and word order', async () => {

@@ -1,0 +1,25 @@
+/* The − value + stepper (DX-17, DX-23): two 44 px buttons around a tabular value. */
+
+.stepper {
+  display: inline-grid;
+  grid-template-columns: var(--tap-min) minmax(4.5rem, auto) var(--tap-min);
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.stepper-step {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+.stepper-value {
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

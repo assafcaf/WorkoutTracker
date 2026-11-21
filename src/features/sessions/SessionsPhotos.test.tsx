@@ -75,8 +75,8 @@ test('Photos2 O2 Edit on a past workout shows the Photos row with that day photo
 test('Photos2 O2 Log a past workout shows the Photos row for the logged day', async () => {
   const user = userEvent.setup()
   renderScreen()
-  await user.click(await screen.findByRole('button', { name: 'Log a past workout' }, SETTLE))
-  await user.click(within(screen.getByRole('dialog', { name: 'Log a past workout' })).getByRole('button', { name: 'Workout A' }))
+  await user.click(await screen.findByRole('button', { name: /^Log (past|a past workout)$/ }, SETTLE))
+  await user.click(within(screen.getByRole('dialog', { name: 'Log a past workout' })).getByRole('button', { name: 'Log Workout A' }))
   await screen.findByRole('heading', { name: /^Log · Workout A · / }, SETTLE)
   const row = await screen.findByRole('group', { name: 'Photos' }, SETTLE)
   await user.click(within(row).getByRole('button', { name: 'Add photos' }))

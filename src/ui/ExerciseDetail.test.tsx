@@ -82,25 +82,25 @@ test('L11 ExerciseDetail shows the instructions as a numbered list in dataset or
 
 // --- O8: primary/secondary muscles wear their family chip (E10-T4) -------------------------
 
-test('O8 ExerciseDetail renders the primary muscle as a muscle-chip with its family', () => {
+test('O8 DX-15 ExerciseDetail renders the primary muscle as a muscle-chip, grey text with no family tint', () => {
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   const field = screen.getByText('Primary muscle:', { exact: false })
   const chip = within(field).getByText('quadriceps')
   expect(chip).toHaveClass('muscle-chip')
-  expect(chip).toHaveAttribute('data-family', 'legs')
+  expect(chip).not.toHaveAttribute('data-family')
 })
 
-test('O8 ExerciseDetail renders each secondary muscle as its own muscle-chip with its family', () => {
+test('O8 DX-15 ExerciseDetail renders each secondary muscle as its own muscle-chip, with no family tint', () => {
   render(<ExerciseDetail entry={BARBELL_SQUAT} photos={[]} onBack={onBack} library={LIBRARY} gymEquipment={null} onOpenDetail={onOpenDetail} />)
 
   const field = screen.getByText('Secondary muscles:', { exact: false })
   const calves = within(field).getByText('calves')
   expect(calves).toHaveClass('muscle-chip')
-  expect(calves).toHaveAttribute('data-family', 'legs')
+  expect(calves).not.toHaveAttribute('data-family')
   const lowerBack = within(field).getByText('lower back')
   expect(lowerBack).toHaveClass('muscle-chip')
-  expect(lowerBack).toHaveAttribute('data-family', 'core')
+  expect(lowerBack).not.toHaveAttribute('data-family')
 })
 
 // --- F1: the detail screen renders as a modal popup (fix-popups) ---------------------------
@@ -411,8 +411,9 @@ test('S13 no "Similar exercises" row offers "Do this instead" when ExerciseDetai
   expect(screen.queryByRole('button', { name: /^Do .+ instead$/ })).not.toBeInTheDocument()
 })
 
-test('S13 every "Similar exercises" row offers "Do this instead" when ExerciseDetail is opened from a live set, and tapping it calls onChoose with that row\'s id', async () => {
+test('S13 DX-08 opened from a live set, a "Similar exercises" row is still one target that opens its detail; no "Do this instead"', async () => {
   const onChoose = vi.fn()
+  const onOpenDetailSpy = vi.fn()
   const user = userEvent.setup()
 
   render(
@@ -422,16 +423,18 @@ test('S13 every "Similar exercises" row offers "Do this instead" when ExerciseDe
       onBack={onBack}
       library={SIMILAR_LIBRARY}
       gymEquipment={null}
-      onOpenDetail={onOpenDetail}
+      onOpenDetail={onOpenDetailSpy}
       onChoose={onChoose}
     />,
   )
 
   for (const name of TOP_FIVE_NAMES) {
-    expect(within(rowFor(name)).getByRole('button', { name: `Do ${name} instead` })).toBeVisible()
+    expect(within(rowFor(name)).getAllByRole('button')).toHaveLength(1)
   }
+  expect(screen.queryByRole('button', { name: /^Do .+ instead$/ })).not.toBeInTheDocument()
 
-  await user.click(within(rowFor('Beta Curl')).getByRole('button', { name: 'Do Beta Curl instead' }))
+  await user.click(openControlFor('Beta Curl'))
 
-  expect(onChoose).toHaveBeenCalledWith('Beta_Curl')
+  expect(onOpenDetailSpy).toHaveBeenCalledWith('Beta_Curl')
+  expect(onChoose).not.toHaveBeenCalled()
 })

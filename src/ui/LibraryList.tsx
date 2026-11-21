@@ -1,10 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
 import { shortDay } from '../domain/lifts'
 import type { MyLift } from '../domain/myLifts'
 import { formatSet } from '../domain/setText'
 import type { LibraryExercise, Muscle } from '../types'
-import { MuscleChip } from './MuscleChip'
+import { ExercisePickerList, pickerRow, type PickerRow, type PickerSection } from './ExercisePicker'
 import './LibraryList.css'
+
+/** A lift of "My lifts" as a picker row: its name, and its latest top Set and when. */
+export function myLiftRow(lift: MyLift, now: Date, entry?: LibraryExercise): PickerRow {
+  return {
+    key: lift.exerciseId,
+    name: lift.name,
+    muscle: entry?.primaryMuscles[0] ?? null,
+    last:
+      lift.top !== null && lift.lastAt !== null ? `${formatSet(lift.top)} · ${shortDay(lift.lastAt, now)}` : 'Not logged yet',
+    aliases: entry ? [entry.name, ...(entry.aliases ?? [])] : undefined,
+    equipment: entry?.equipment,
+    primaryMuscles: entry?.primaryMuscles,
+  }
+}
 
 export type MyLiftsListProps = {
   /** The lifter's own lifts, in the order to show them (`myLifts`). */
@@ -15,38 +28,30 @@ export type MyLiftsListProps = {
 }
 
 /**
- * The Exercises tab's "My lifts" (V6-03 step 3): one card, one 52 px button per lift, its name
- * over its latest top Set and when (`62.5 × 8 · 13 Oct`), or "Not logged yet".
+ * The lifter's own lifts (V6-03 step 3) as rows of the one Exercise list (DX-08): a name over its
+ * latest top Set and when (`62.5 × 8 · 13 Oct`), or "Not logged yet".
  */
 export function MyLiftsList({ lifts, now, onOpenLift }: MyLiftsListProps): JSX.Element {
   return (
-    <ul className="library-list my-lifts-list" aria-label="My lifts">
-      {lifts.map((lift) => (
-        <li key={lift.exerciseId} className="library-row">
-          <button
-            type="button"
-            className="library-row-button my-lifts-row cell"
-            onClick={() => onOpenLift(lift.exerciseId)}
-          >
-            <span className="library-row-name">{lift.name}</span>
-            <span className="my-lifts-latest">
-              {lift.top !== null && lift.lastAt !== null
-                ? `${formatSet(lift.top)} · ${shortDay(lift.lastAt, now)}`
-                : 'Not logged yet'}
-            </span>
-          </button>
-        </li>
-      ))}
+    <ul className="picker-rows my-lifts-list" aria-label="My lifts">
+      {lifts.map((lift) => {
+        const row = myLiftRow(lift, now)
+        return (
+          <li key={row.key} className="picker-row">
+            <button type="button" className="picker-row-button cell" onClick={() => onOpenLift(lift.exerciseId)}>
+              <span className="picker-row-name">{row.name}</span>
+              <span className="picker-row-meta">{row.last}</span>
+            </button>
+          </li>
+        )
+      })}
     </ul>
   )
 }
 
-/** Rows per page of the Previous/Next pager (O16-O18). */
-const PAGE_SIZE = 10
-
 export type LibraryListProps = {
   library: LibraryExercise[]
-  /** Opens an exercise's detail screen. Wired to a no-op by App in E5-T3; E5-T8 wires it up. */
+  /** Opens an exercise's detail screen: what a row tap does when no `onPick` is given. */
   onOpen(id: string): void
   /**
    * The gym's saved equipment, or `null` when nothing has been saved -- filters the list to it
@@ -58,24 +63,24 @@ export type LibraryListProps = {
    * and non-empty, only exercises with at least one of them among `primaryMuscles` are listed.
    */
   initialMuscles?: Muscle[]
-  /** When given, each row shows a `Pick` button calling it with the row's id (E9-T7). */
+  /** When given, a row tap picks the row (DX-08: the whole row, no "Pick" button). */
   onPick?(id: string): void
   /** When given, a `New exercise` button calls it (E19-T11). */
   onNew?(): void
+  /** A section before "All" (the library's "My lifts"); a tap on one of its rows goes to `onOpenLead`. */
+  lead?: PickerSection
+  onOpenLead?(key: string): void
+  /** Each Exercise's last Set as a row shows it, by library id (`lastSetTexts`). */
+  lastSets?: Map<string, string>
+  /** The search text, when the caller keeps it. */
+  query?: string
+  onQueryChange?(query: string): void
 }
 
 /**
- * The library exercises given, sorted by name and rendered one row per exercise, each showing
- * its name and primary muscle.
- *
- * `library` is not filtered here: per E5-T3's ticket, the search box and the muscle/equipment
- * filters live in `App.tsx`, which passes this component an already-filtered array.
- *
- * The "My gym only" chip (E5-T16) defaults to on and, while on and `gymEquipment` is not
- * `null`, filters `library` down to exercises whose equipment is in `gymEquipment` -- an
- * exercise with no equipment or `body only` always passes, the same predicate `alternativesFor`
- * uses (src/domain/alternatives.ts). `initialMuscles` (E5-T20), when non-empty, further keeps
- * only exercises primary in at least one of them.
+ * The Exercise library as the one Exercise list (DX-08): search, "My gym only", an optional lead
+ * section, then every exercise by name in one continuous scroll (no pager), each row its name
+ * over its muscle in grey and its last Set. The whole row is the target.
  */
 export function LibraryList({
   library,
@@ -84,117 +89,39 @@ export function LibraryList({
   initialMuscles,
   onPick,
   onNew,
+  lead,
+  onOpenLead,
+  lastSets,
+  query,
+  onQueryChange,
 }: LibraryListProps): JSX.Element {
-  const [gymOnly, setGymOnly] = useState(true)
-  const [page, setPage] = useState(0)
-  const listRef = useRef<HTMLUListElement>(null)
-
-  const passesEquipment = (exercise: LibraryExercise): boolean => {
-    if (exercise.equipment === null || exercise.equipment === 'body only') return true
-    if (gymEquipment === null) return true
-    return gymEquipment.includes(exercise.equipment)
-  }
-
-  const passesMuscles = (exercise: LibraryExercise): boolean =>
-    initialMuscles === undefined ||
-    initialMuscles.length === 0 ||
-    exercise.primaryMuscles.some((muscle) => initialMuscles.includes(muscle))
-
-  const filtered = library.filter(
-    (exercise) =>
-      passesMuscles(exercise) && (!gymOnly || gymEquipment === null || passesEquipment(exercise)),
-  )
-  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
-
-  // Whenever the filtered/sorted result itself changes -- a new `library` prop (App's search/
-  // muscle/equipment filters), `gymOnly`, or `initialMuscles` -- the pager resets back to page 1,
-  // keyed on the sorted ids rather than array identity so a same-content re-filter (e.g. toggling
-  // gymOnly back) also resets (O18).
-  const sortedKey = sorted.map((exercise) => exercise.id).join(',')
-  const previousKey = useRef(sortedKey)
-  useEffect(() => {
-    if (previousKey.current !== sortedKey) {
-      previousKey.current = sortedKey
-      setPage(0)
-    }
-  }, [sortedKey])
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const visible = sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
-
+  const rows = [...library]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((entry) => pickerRow(entry, { last: lastSets?.get(entry.id) ?? null }))
+  const leadKeys = new Set(lead?.rows.map((row) => row.key) ?? [])
+  const open = onPick ?? onOpen
   return (
     <div className="library-list-container">
-      {onNew === undefined ? null : (
-        <button type="button" className="library-new btn-secondary" onClick={onNew}>
-          New exercise
-        </button>
-      )}
-      <button
-        type="button"
-        className="library-gym-only-chip chip"
-        aria-pressed={gymOnly}
-        onClick={() => setGymOnly((current) => !current)}
-      >
-        My gym only
-      </button>
-      {sorted.length === 0 ? (
-        <p className="library-empty">No exercises match</p>
-      ) : (
-        <>
-          <ul className="library-list" ref={listRef}>
-            {visible.map((exercise) => (
-              <li key={exercise.id} className="library-row">
-                <button
-                  type="button"
-                  className="library-row-button cell"
-                  onClick={() => onOpen(exercise.id)}
-                >
-                  <span className="library-row-name">{exercise.name}</span>
-                  <MuscleChip muscle={exercise.primaryMuscles[0]} />
-                </button>
-                {onPick === undefined ? null : (
-                  <button
-                    type="button"
-                    className="library-row-pick btn-secondary"
-                    onClick={() => onPick(exercise.id)}
-                  >
-                    Pick
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-          {totalPages > 1 && (
-            <nav aria-label="Pages" className="library-pager">
-              <button
-                type="button"
-                className="library-pager-button btn-secondary"
-                disabled={page === 0}
-                onClick={() => {
-                  setPage((current) => current - 1)
-                  listRef.current?.scrollIntoView?.()
-                }}
-              >
-                Previous
-              </button>
-              <span aria-live="polite">
-                Page {page + 1} of {totalPages}
-              </span>
-              <button
-                type="button"
-                className="library-pager-button btn-secondary"
-                disabled={page + 1 >= totalPages}
-                onClick={() => {
-                  setPage((current) => current + 1)
-                  listRef.current?.scrollIntoView?.()
-                }}
-              >
-                Next
-              </button>
-            </nav>
-          )}
-        </>
-      )}
+      <ExercisePickerList
+        rows={rows}
+        lead={lead}
+        allTitle={`All exercises (${library.length})`}
+        gymEquipment={gymEquipment}
+        muscles={initialMuscles}
+        query={query}
+        onQueryChange={onQueryChange}
+        onPick={(key) => {
+          if (leadKeys.has(key) && onOpenLead) onOpenLead(key)
+          else open(key)
+        }}
+        tools={
+          onNew === undefined ? undefined : (
+            <button type="button" className="library-new btn-quiet" onClick={onNew}>
+              New exercise
+            </button>
+          )
+        }
+      />
     </div>
   )
 }
