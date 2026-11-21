@@ -4,7 +4,6 @@
 // per lift, one totals line; no muscles, no week line and no "Next". The finish summary (no Edit,
 // no Delete) is covered by SessionSummary.test.tsx.
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeAll, expect, test, vi } from 'vitest'
 import sessionsJson from '../test/fixtures/stats/sessions.json'
 import { loadCatalog, loadPrograms } from '../data/catalog'
@@ -110,7 +109,7 @@ test('DX-14 Session detail has Edit as text in its header and a Back, and no Don
   expect(within(dialog).getByRole('button', { name: 'Back' }).closest('.session-summary-bar')).not.toBeNull()
 })
 
-test('DX-14 Session detail embedded in a page has no panel and no Back of its own; Edit stays', async () => {
+test('DX-06 Session detail embedded in a page has no panel and no bar of its own: the page carries ‹ and Edit', async () => {
   const onEdit = vi.fn()
   render(
     <SessionSummary
@@ -130,6 +129,6 @@ test('DX-14 Session detail embedded in a page has no panel and no Back of its ow
   expect(screen.queryByRole('dialog')).toBeNull()
   const region = screen.getByRole('region', { name: 'Session summary' })
   expect(within(region).queryByRole('button', { name: 'Back' })).toBeNull()
-  await userEvent.click(within(region).getByRole('button', { name: 'Edit session' }))
-  expect(onEdit).toHaveBeenCalledTimes(1)
+  expect(within(region).queryByRole('button', { name: 'Edit session' })).toBeNull()
+  expect(region.querySelector('.session-summary-bar')).toBeNull()
 })

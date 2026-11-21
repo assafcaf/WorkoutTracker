@@ -109,3 +109,11 @@ test('F3 the popup components do not each redeclare position: fixed on their own
     'these stylesheets should get position: fixed from the shared .overlay-panel class instead of declaring their own copy',
   ).toEqual([])
 })
+
+test('DX-06 a pushed overlay page sits under the tab bar, so the bar stays on Exercise info and Bar and plates', () => {
+  const pushedZ = Number(
+    declarationsFor(readFileSync(overlayPath, 'utf-8'), '.overlay-panel.overlay-panel--pushed').get('z-index'),
+  )
+  const tabBarZ = Number(declarationsFor(readFileSync(tabBarPath, 'utf-8'), '.tab-bar').get('z-index'))
+  expect(pushedZ).toBeLessThan(tabBarZ)
+})

@@ -53,8 +53,8 @@ export type SessionSummaryProps = {
    */
   onDelete?(): void
   /**
-   * Session detail drawn inside the caller's own page (the Shell, with its own ‹ back): no
-   * overlay panel and no back control of its own. Omitted, Session detail is a full-screen panel
+   * Session detail drawn inside the caller's own page (the Shell, with its own ‹ back and Edit,
+   * DX-06): no overlay panel and no bar of its own. Omitted, Session detail is a full-screen panel
    * with a ‹ Back in its header that calls `onClose`.
    */
   embedded?: boolean
@@ -312,16 +312,13 @@ export function SessionSummary({
 
   const body = (
     <div className="session-summary-body">
-      {past ? (
-        // Session detail (DX-14): ‹ Back (unless the caller's page has its own) and Edit as text.
+      {past && !embedded ? (
+        // Session detail (DX-14): ‹ Back and Edit as text. Embedded, the page's own header
+        // carries both (DX-06).
         <div className="session-summary-bar">
-          {embedded ? (
-            <span />
-          ) : (
-            <button type="button" className="session-summary-back icon-btn" aria-label="Back" onClick={onClose}>
-              <Icon name="ChevronLeft" size={24} />
-            </button>
-          )}
+          <button type="button" className="session-summary-back icon-btn" aria-label="Back" onClick={onClose}>
+            <Icon name="ChevronLeft" size={24} />
+          </button>
           {onEdit ? (
             <button type="button" className="session-summary-edit btn-quiet"
               aria-label="Edit session" onClick={onEdit}>

@@ -963,6 +963,18 @@ export function WorkoutFeature({
           sessions={sessions}
           plan={historyPlan}
           onClose={() => setHistoryFor(null)}
+          // DX-07: "How to do it ›" on the lift page puts the Exercise's info in its place.
+          renderInfo={(libraryId, nav) => (
+            <DetailOverlay
+              libraryId={libraryId}
+              catalog={catalog}
+              library={library}
+              videos={videos}
+              gymEquipment={gymEquipment}
+              onBack={nav.back}
+              onOpenDetail={nav.open}
+            />
+          )}
         />
       )
     }

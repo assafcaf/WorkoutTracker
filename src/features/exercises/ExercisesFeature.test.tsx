@@ -266,10 +266,10 @@ test('V6-03 with no onOpenLift, a My lifts row opens that lift History overlay',
 
   await user.click(within(mine).getByRole('button', { name: /^Deadlift/ }))
 
-  // The one Lift page as a sheet: headed by the lift's name, closed with Done.
+  // The one Lift page: headed by the lift's name, left with a bare ‹ (DX-06, N7).
   const dialog = await screen.findByRole('dialog', { name: 'Deadlift' }, SETTLE)
   expect(dialog).toBeVisible()
-  await user.click(within(dialog).getByRole('button', { name: 'Done' }))
+  await user.click(within(dialog).getByRole('button', { name: 'Back' }))
   expect(screen.queryByRole('dialog', { name: 'Deadlift' })).toBeNull()
 })
 

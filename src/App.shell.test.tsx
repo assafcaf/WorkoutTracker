@@ -294,3 +294,31 @@ test('Progress to a lift to a Session is two taps, and Back returns each step', 
     vi.useRealTimers()
   }
 })
+
+test('DX-06 Session detail is a pushed page with the tab bar and a bare ‹; its editor is full screen with Cancel and Save', async () => {
+  const at = Date.now() - 2 * 24 * 3600_000
+  const done: Session = {
+    id: 'past-a',
+    programId: 'assaf-ab-2026',
+    workoutId: 'workout-a',
+    startedAt: at,
+    finishedAt: at + 60 * 60_000,
+    entries: [{ exerciseId: 'back-squat', setIndex: 1, weightKg: 60, reps: 8, loggedAt: at + 60_000 }],
+  }
+  await db.sessions.put(done)
+  const user = userEvent.setup()
+  await renderApp()
+  await trainReady()
+
+  await pressTab(user, 'Sessions')
+  const rows = await screen.findAllByRole('button', { name: /Workout A/ }, SETTLE)
+  await user.click(rows.find((row) => row.classList.contains('session-row')) as HTMLElement)
+  expect(await screen.findByRole('heading', { level: 1, name: 'Session' }, SETTLE)).toBeVisible()
+  expect(within(mainNav()).getByRole('button', { name: 'Sessions' })).toHaveAttribute('aria-current', 'page')
+  expect(screen.getByRole('button', { name: 'Back' }).textContent).toBe('')
+
+  await user.click(screen.getByRole('button', { name: 'Edit session' }))
+  expect(await screen.findByRole('button', { name: 'Save' }, SETTLE)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+  expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
+})

@@ -1502,7 +1502,7 @@ test('L14 tapping a row on the Exercises tab opens the same in-app detail overla
   ).toBeVisible()
 })
 
-test('F1 tapping a row on the Exercises tab opens the detail overlay as a modal dialog, with the Exercises tab still mounted underneath', async () => {
+test('F1 DX-06 tapping a row on the Exercises tab opens the detail as a pushed page over it, with the Exercises tab still mounted underneath', async () => {
   const user = userEvent.setup()
   await renderApp()
   await findStartButton()
@@ -1512,7 +1512,8 @@ test('F1 tapping a row on the Exercises tab opens the detail overlay as a modal 
   await user.click(await screen.findByRole('button', { name: 'Hammer Curls' }, SETTLE))
 
   const dialog = await screen.findByRole('dialog', { name: 'Hammer Curls' }, SETTLE)
-  expect(dialog).toHaveAttribute('aria-modal', 'true')
+  // DX-06: a pushed page that keeps the tab bar reachable, so not modal.
+  expect(dialog).toHaveClass('overlay-panel--pushed')
   // The popup sits over the Exercises tab rather than replacing it: the tab's own search box
   // is still in the document underneath. Exact name, not a /search/i regex: the dialog's own
   // "Similar exercises" section composes AlternativesList, whose own search box is named
@@ -2098,7 +2099,8 @@ async function openOnlyHistorySession(user: UserEvent): Promise<HTMLElement> {
   await pressTab(user, 'Sessions')
   const row = await screen.findByRole('listitem', {}, SETTLE)
   await user.click(within(row).getByRole('button'))
-  return screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  // DX-06: Session detail is a pushed page in the Shell, its summary a region of it.
+  return screen.findByRole('region', { name: 'Session summary' }, SETTLE)
 }
 
 test('M16 tapping Finish workout shows the session summary with its body map on the session scale', async () => {

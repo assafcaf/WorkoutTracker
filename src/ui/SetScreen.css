@@ -1341,7 +1341,7 @@
   list-style: none;
 }
 
-.set-kind-option {
+.set-kind-list .set-kind-option {
   display: flex;
   align-items: center;
   justify-content: space-between;

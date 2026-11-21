@@ -80,11 +80,11 @@ test('E22-T6 O15 tapping a day with one Session opens its summary', async () => 
 
   // Title kept (weakened-tests gate); V5: the calendar day opens it, as its row does.
   await userEvent.click(screen.getByRole('button', { name: 'Workout B, Mon 12 Oct' }))
-  const dialog = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  const dialog = await screen.findByRole('region', { name: 'Session summary' }, SETTLE)
   expect(within(dialog).getByRole('heading', { name: 'Workout B' })).toBeVisible()
-  await userEvent.click(within(dialog).getByRole('button', { name: 'Back' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Back' }))
   await userEvent.click(sessionRows()[0])
-  expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
+  expect(await screen.findByRole('region', { name: 'Session summary' }, SETTLE)).toBeVisible()
 })
 
 test('E22-T6 O15 a day with two Sessions lists both inline, each opening its summary', async () => {
@@ -104,7 +104,7 @@ test('E22-T6 O15 a day with two Sessions lists both inline, each opening its sum
     'Workout B · 17:00',
   ])
   await userEvent.click(within(chooser).getByRole('button', { name: 'Workout B · 17:00' }))
-  const dialog = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  const dialog = await screen.findByRole('region', { name: 'Session summary' }, SETTLE)
   expect(within(dialog).getByRole('heading', { name: 'Workout B' })).toBeVisible()
   expect(screen.queryByRole('dialog', { name: 'Mon 12 Oct' })).toBeNull()
 })

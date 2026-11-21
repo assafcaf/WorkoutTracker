@@ -10,8 +10,9 @@ export type SettingsPageProps = {
 }
 
 /**
- * A Settings page pushed over the list (DX-23): ‹ Back and its title in a bar, then its rows on
- * the same 16 px gutter as every page. Escape goes back too.
+ * A Settings page pushed over the list (DX-23, DX-06): a bare ‹ and its title in a bar, then its
+ * rows on the same 16 px gutter as every page; the tab bar stays under it, like every pushed
+ * page. Escape goes back too.
  */
 export function SettingsPage({ title, onBack, children }: SettingsPageProps): JSX.Element {
   const headingId = useId()
@@ -23,11 +24,10 @@ export function SettingsPage({ title, onBack, children }: SettingsPageProps): JS
     return () => window.removeEventListener('keydown', onKey)
   }, [onBack])
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby={headingId} className="settings-page overlay-panel">
+    <div role="dialog" aria-labelledby={headingId} className="settings-page overlay-panel overlay-panel--pushed">
       <div className="settings-page-bar">
-        <button type="button" className="settings-page-back btn-quiet" onClick={onBack}>
-          <Icon name="ChevronLeft" size={20} />
-          Back
+        <button type="button" className="settings-page-back icon-btn" aria-label="Back" onClick={onBack}>
+          <Icon name="ChevronLeft" size={24} />
         </button>
         <h2 id={headingId} className="settings-page-title">
           {title}

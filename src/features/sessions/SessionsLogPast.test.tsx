@@ -52,14 +52,16 @@ function renderScreen(): void {
   )
 }
 
-test('V6-13 Log a past workout: a date and a Workout open the editor on its Sets, and Save adds the Session', async () => {
+test('V6-13 Log a past Session: a date and a Workout open the editor on its Sets, and Save adds the Session', async () => {
   await seedSession('mon', at(10, 12))
   renderScreen()
   const user = userEvent.setup()
 
   // DX-11: the header's text button says what it does.
   await user.click(await screen.findByRole('button', { name: 'Log past' }, SETTLE))
-  const sheet = screen.getByRole('dialog', { name: 'Log a past workout' })
+  const sheet = screen.getByRole('dialog', { name: 'Log a past Session' })
+  // N1: a visible way out.
+  expect(within(sheet).getByRole('button', { name: 'Close' })).toBeVisible()
   const date = within(sheet).getByLabelText('Date') as HTMLInputElement
   expect(date.max).toBe('2026-10-13')
   fireEvent.change(date, { target: { value: '2026-10-10' } })
@@ -82,8 +84,8 @@ test('V6-13 Cancel on a logged-past draft stores nothing', async () => {
   const user = userEvent.setup()
 
   // DX-21: with nothing finished yet, the empty state's one action is the way in.
-  await user.click(await screen.findByRole('button', { name: 'Log a past workout' }, SETTLE))
-  await user.click(within(screen.getByRole('dialog', { name: 'Log a past workout' })).getByRole('button', { name: 'Log Workout A' }))
+  await user.click(await screen.findByRole('button', { name: 'Log a past Session' }, SETTLE))
+  await user.click(within(screen.getByRole('dialog', { name: 'Log a past Session' })).getByRole('button', { name: 'Log Workout A' }))
   await screen.findByRole('heading', { name: /^Log · Workout A · Mon 12 Oct$/ }, SETTLE)
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
@@ -97,7 +99,7 @@ test('V6-14 the Session editor shows one header, "Edit · Workout A · Mon 12 Oc
   const user = userEvent.setup()
 
   await user.click(await screen.findByRole('button', { name: /Mon 12 Oct.*Workout A/ }, SETTLE))
-  await user.click(within(screen.getByRole('dialog', { name: 'Session summary' })).getByRole('button', { name: 'Edit session' }))
+  await user.click(screen.getByRole('button', { name: 'Edit session' }))
 
   expect(await screen.findByRole('heading', { name: 'Edit · Workout A · Mon 12 Oct' }, SETTLE)).toBeVisible()
   expect(screen.queryByRole('heading', { name: 'Sessions' })).toBeNull()
@@ -109,7 +111,7 @@ test('V6-13 an Exercise added to a past Session in the editor is saved with it',
   const user = userEvent.setup()
 
   await user.click(await screen.findByRole('button', { name: /Mon 12 Oct.*Workout A/ }, SETTLE))
-  await user.click(within(screen.getByRole('dialog', { name: 'Session summary' })).getByRole('button', { name: 'Edit session' }))
+  await user.click(screen.getByRole('button', { name: 'Edit session' }))
   await user.click(await screen.findByRole('button', { name: 'Add exercise' }, SETTLE))
   const picker = screen.getByRole('dialog', { name: 'Add to Workout A' })
   await user.type(within(picker).getByRole('searchbox', { name: 'Search exercises' }), 'deadlift')
@@ -122,4 +124,14 @@ test('V6-13 an Exercise added to a past Session in the editor is saved with it',
     const stored = await db.sessions.get('mon')
     expect(stored?.entries.filter((entry) => entry.exerciseId === 'deadlift')).toHaveLength(1)
   }, SETTLE)
+})
+
+test('N1 the Log a past Session sheet closes with its X', async () => {
+  await seedSession('mon', at(10, 12))
+  renderScreen()
+  const user = userEvent.setup()
+
+  await user.click(await screen.findByRole('button', { name: 'Log past' }, SETTLE))
+  await user.click(within(screen.getByRole('dialog', { name: 'Log a past Session' })).getByRole('button', { name: 'Close' }))
+  expect(screen.queryByRole('dialog', { name: 'Log a past Session' })).toBeNull()
 })

@@ -46,7 +46,7 @@ async function renderScreen(weigh: boolean): Promise<void> {
 async function openSummary(): Promise<HTMLElement> {
   const thisWeek = await screen.findByRole('region', { name: 'This week' }, SETTLE)
   await userEvent.click(within(thisWeek).getByRole('button'))
-  return screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
+  return screen.findByRole('region', { name: 'Session summary' }, SETTLE)
 }
 
 const volumeOf = (dialog: HTMLElement): string =>

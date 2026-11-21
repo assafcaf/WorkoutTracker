@@ -247,6 +247,17 @@ export function ExercisesFeature({
             activePlans.find((plan) => plan.exerciseId === historyExercise.id) ?? newPlan(historyExercise.id)
           }
           onClose={() => setHistoryLiftId(null)}
+          renderInfo={(libraryId, nav) => (
+            <DetailOverlay
+              libraryId={libraryId}
+              catalog={catalog}
+              library={library}
+              videos={videos}
+              gymEquipment={gymEquipment.data}
+              onBack={nav.back}
+              onOpenDetail={nav.open}
+            />
+          )}
         />
       )}
       {form === null ? null : (

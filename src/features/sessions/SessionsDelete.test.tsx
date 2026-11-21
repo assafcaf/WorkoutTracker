@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { db } from '../../storage/db'
 import { createServices } from '../../services'
 import { ServicesProvider } from '../ServicesProvider'
@@ -46,8 +46,8 @@ const rows = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>('.s
 /** Opens the Session on `day` and deletes it from its editor's Delete Session (DX-11). */
 async function deleteFromEditor(day: string): Promise<void> {
   await userEvent.click(await screen.findByRole('button', { name: day }, SETTLE))
-  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
-  await userEvent.click(within(summary).getByRole('button', { name: 'Edit session' }))
+  await screen.findByRole('region', { name: 'Session summary' }, SETTLE)
+  await userEvent.click(screen.getByRole('button', { name: 'Edit session' }))
   await userEvent.click(await screen.findByRole('button', { name: 'Delete Session' }, SETTLE))
 }
 
@@ -58,7 +58,7 @@ test('DX-11 Delete Session deletes it at once: its row, its calendar day and the
 
   await deleteFromEditor('Workout B, Mon 12 Oct')
 
-  expect(screen.queryByRole('dialog', { name: 'Session summary' })).toBeNull()
+  expect(screen.queryByRole('region', { name: 'Session summary' })).toBeNull()
   // DX-11: "Session deleted · Undo", no separator trailing before Undo.
   expect(await screen.findByRole('status')).toHaveTextContent('Session deletedUndo')
   await waitFor(() => expect(rows()).toHaveLength(1), SETTLE)
@@ -91,10 +91,25 @@ test('DX-11 Delete Session is offered once: in the editor, not beside Save, and 
   renderScreen()
 
   await userEvent.click(await screen.findByRole('button', { name: 'Workout B, Mon 12 Oct' }, SETTLE))
-  const summary = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
-  await userEvent.click(within(summary).getByRole('button', { name: 'Edit session' }))
+  await screen.findByRole('region', { name: 'Session summary' }, SETTLE)
+  await userEvent.click(screen.getByRole('button', { name: 'Edit session' }))
 
   const remove = await screen.findByRole('button', { name: 'Delete Session' }, SETTLE)
   expect(screen.getAllByRole('button', { name: /delete/i })).toEqual([remove])
   expect(remove.closest('.session-editor-bar')).toBeNull()
+})
+
+test('DX-11 after Delete Session the list opens at its top, not far down where the editor was', async () => {
+  await seed('mon', at(10, 12), 'workout-b')
+  await seed('fri', at(10, 9), 'workout-a')
+  const scrollTo = vi.fn()
+  vi.stubGlobal('scrollTo', scrollTo)
+  try {
+    renderScreen()
+    await deleteFromEditor('Workout B, Mon 12 Oct')
+    await waitFor(() => expect(rows()).toHaveLength(1), SETTLE)
+    expect(scrollTo).toHaveBeenLastCalledWith(0, 0)
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })
