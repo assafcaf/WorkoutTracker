@@ -291,7 +291,6 @@ export function SessionsScreen({
             addable={addable}
             plannedIds={plannedIdsOf(editSession)}
             lastSets={lastSets}
-            renderPhotos={(day) => <SessionPhotos day={day} variant="editor" />}
             onSave={async (draft) => {
               await services.sessions.save(draft)
               setEditingId(null)
@@ -317,7 +316,6 @@ export function SessionsScreen({
             addable={addable}
             plannedIds={plannedIdsOf(pastDraft)}
             lastSets={lastSets}
-            renderPhotos={(day) => <SessionPhotos day={day} variant="editor" />}
             onSave={async (draft) => {
               await services.sessions.logPast(draft)
               setPastDraft(null)
@@ -459,7 +457,6 @@ export function SessionsScreen({
             setSummarySessionId(null)
             setEditingId(summarySession.id)
           }}
-          onDelete={() => deleteSession(summarySession)}
           onBrowse={(muscles: Muscle[]) => {
             setSummarySessionId(null)
             navigate({ tab: 'exercises', muscles })

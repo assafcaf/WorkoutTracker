@@ -82,7 +82,7 @@ test('E22-T6 O15 tapping a day with one Session opens its summary', async () => 
   await userEvent.click(screen.getByRole('button', { name: 'Workout B, Mon 12 Oct' }))
   const dialog = await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)
   expect(within(dialog).getByRole('heading', { name: 'Workout B' })).toBeVisible()
-  await userEvent.click(within(dialog).getByRole('button', { name: 'Done' }))
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Back' }))
   await userEvent.click(sessionRows()[0])
   expect(await screen.findByRole('dialog', { name: 'Session summary' }, SETTLE)).toBeVisible()
 })
