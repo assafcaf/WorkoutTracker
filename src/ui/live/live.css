@@ -9,18 +9,20 @@
   padding-top: var(--space-2);
 }
 
-/* The Set | All control (DX-19): two segments in the header row, 44 px tall, before Finish. */
+/* The Set | All control (DX-19): two segments in the header row, before Finish. DX-18: the
+ * track is 50 px so each segment itself (inside its 3 px inset) is at the 44 px tap floor. */
 .live-view-switch {
   flex: none;
   margin-right: var(--space-2);
 }
 
 .live-view-switch .segmented {
-  height: var(--tap-min);
+  height: 50px;
 }
 
 .live-view-switch .segmented-option {
-  min-width: 44px;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
 }
 
 /* A bullet bar: a thin track, today's amount filled along it, a tick where the compared amount
