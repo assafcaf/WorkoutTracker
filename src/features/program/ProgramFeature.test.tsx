@@ -150,6 +150,8 @@ test('DX-04 first run: the Program tab is the same "Choose a Program" rows, with
   expect(await screen.findByRole('heading', { level: 1, name: 'Choose a Program' }, SETTLE)).toBeVisible()
   expect(document.querySelector('.btn-primary')).toBeNull()
   expect(screen.getByRole('button', { name: /^Settings/ })).toBeVisible()
+  // The choices are the Programs: no second "Programs ›" row.
+  expect(screen.queryByRole('button', { name: 'Programs' })).toBeNull()
   await user.click(screen.getByRole('button', { name: /^A\/B Split/ }))
   expect(await screen.findByRole('heading', { level: 1, name: 'A/B Split' }, SETTLE)).toBeVisible()
 })

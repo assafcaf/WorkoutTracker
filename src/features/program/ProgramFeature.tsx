@@ -330,7 +330,8 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
             canUse
             onChoose={handleActiveProgramChange}
           />
-          <ProgramLinks {...links} />
+          {/* DX-04: the choices above are the Programs; no second "Programs ›" row here. */}
+          <ProgramLinks {...links} onOpenPrograms={undefined} />
         </div>
       </AppShell>
     )

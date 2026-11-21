@@ -116,7 +116,8 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
 }
 
 export type ProgramLinksProps = {
-  onOpenPrograms(): void
+  /** Omitted (first run, where the Programs are the page's own rows), no Programs row is drawn. */
+  onOpenPrograms?(): void
   /** Omitted (no Program yet), the Deload week row is not drawn. */
   onOpenDeload?(): void
   /** The Deload week is on this week. */
@@ -134,9 +135,11 @@ export type ProgramLinksProps = {
 export function ProgramLinks(props: ProgramLinksProps): JSX.Element {
   return (
     <ul className="program-rows program-links" aria-label="More">
-      <li>
-        <RowButton label="Programs" onClick={props.onOpenPrograms} />
-      </li>
+      {props.onOpenPrograms ? (
+        <li>
+          <RowButton label="Programs" onClick={props.onOpenPrograms} />
+        </li>
+      ) : null}
       {props.onOpenDeload ? (
         <li>
           <RowButton label="Deload week" detail={props.deloadOn ? 'On this week' : undefined} onClick={props.onOpenDeload} />
