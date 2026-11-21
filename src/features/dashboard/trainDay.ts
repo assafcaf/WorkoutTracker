@@ -67,9 +67,25 @@ export type TrainDay = {
 }
 
 /**
+ * Without Reminders, whether today is off the trainee's usual days with the week's sessions still
+ * fitting on the usual days left in it: a Mon/Wed/Fri lifter with 1 left on Thursday rests (Friday
+ * takes it), but with 2 left Thursday is needed.
+ */
+function offUsualDay(usual: number[], now: number, weekStartsOn: Weekday, left: number): boolean {
+  if (usual.length === 0 || usual.includes(new Date(now).getDay())) return false
+  const weekEnd = addDays(weekStart(now, weekStartsOn), 7)
+  let usualLeft = 0
+  for (let at = addDays(startOfDay(now), 1); at < weekEnd; at = addDays(at, 1)) {
+    if (usual.includes(new Date(at).getDay())) usualLeft += 1
+  }
+  return usualLeft >= left
+}
+
+/**
  * Whether today is a rest day, and the meta line. Today is a rest day once a Session is
- * finished today, once the week's sessions are all done, or when Reminders are set and today is
- * not one of their days. Otherwise it is a training day: the trainee has sessions left this week.
+ * finished today, once the week's sessions are all done, when Reminders are set and today is
+ * not one of their days, or -- without Reminders -- when today is off the usual days and the
+ * sessions left still fit on the usual days left this week (DX-01). Otherwise it is a training day: the trainee has sessions left this week.
  * A rest day names the Workout due and, when known (the Reminders' days, else the usual ones),
  * the day it falls on.
  */
@@ -80,12 +96,14 @@ export function trainDayOf(input: TrainDayInput): TrainDay {
   const today0 = startOfDay(now)
   const doneToday = sessions.some((s) => startOfDay(s.finishedAt ?? s.startedAt) === today0)
   const reminders = input.reminders ?? []
-  const offDay = reminders.length > 0 && !reminders.includes(new Date(now).getDay())
+  const usual = reminders.length > 0 ? [] : usualDays(sessions, now, weekStartsOn)
+  const offDay =
+    reminders.length > 0 ? !reminders.includes(new Date(now).getDay()) : offUsualDay(usual, now, weekStartsOn, week.planned - week.done)
   const rest = doneToday || week.done >= week.planned || offDay
   if (!rest) {
     return { rest, meta: `${LONG_DAYS[new Date(now).getDay()]} · ${week.done} of ${week.planned} this week` }
   }
-  const days = reminders.length > 0 ? reminders : usualDays(sessions, now, weekStartsOn)
+  const days = reminders.length > 0 ? reminders : usual
   const next = nextDayOf(days, now)
   const lead = doneToday ? 'Done today' : 'Rest day'
   if (dueName === null) return { rest, meta: lead }

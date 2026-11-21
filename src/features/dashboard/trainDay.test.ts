@@ -43,6 +43,20 @@ describe('trainDayOf (DX-01)', () => {
     })
   })
 
+  it('off the usual days with the sessions left fitting on the usual days still to come, it is a rest day', () => {
+    // Mon/Wed/Fri lifter on Thursday with 2 of 3 done: Friday takes the last one.
+    const sessions = [...REGULAR, done('mon', day(9, 12)), done('wed', day(9, 14))]
+    expect(trainDayOf({ ...base, sessions, now: day(9, 15, 8) })).toEqual({
+      rest: true,
+      meta: 'Rest day · next: Workout B, Friday',
+    })
+  })
+
+  it('on a usual day with sessions left it trains, whatever the count', () => {
+    const sessions = [...REGULAR, done('mon', day(9, 12)), done('wed', day(9, 14))]
+    expect(trainDayOf({ ...base, sessions, now: day(9, 16, 8) }).rest).toBe(false)
+  })
+
   it('once the week is done it is a rest day naming the next Workout and its usual day', () => {
     const sessions = [...REGULAR, done('mon', day(9, 12)), done('tue', day(9, 13)), done('wed', day(9, 14))]
     expect(trainDayOf({ ...base, sessions, now: day(9, 15, 8) })).toEqual({
