@@ -30,7 +30,7 @@
  * bar on every tab, so a tabbed shell reserves the strip's height as well. */
 .live-strip ~ .app-shell-tabbed,
 .live-strip ~ * .app-shell-tabbed {
-  padding-bottom: calc(var(--tap-min) + var(--space-1) + var(--safe-bottom) + var(--live-strip-height));
+  padding-bottom: calc(var(--tap-min) + var(--space-1) + var(--safe-bottom) + 56px);
 }
 
 /* A full-screen mode (the Live session) is drawn on the surface, as in S2/S3. */
@@ -137,7 +137,7 @@
 
 .live-strip ~ .app-shell-tabbed > .action-bar,
 .live-strip ~ * .app-shell-tabbed > .action-bar {
-  bottom: calc(var(--tap-min) + var(--space-1) + 1px + var(--safe-bottom) + var(--live-strip-height));
+  bottom: calc(var(--tap-min) + var(--space-1) + 1px + var(--safe-bottom) + 56px);
 }
 
 /* The slot a screen fills the bar through: out of the layout altogether, so the controls it

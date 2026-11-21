@@ -105,7 +105,7 @@ export function ProgramsList(props: ProgramsListProps): JSX.Element {
       ) : null}
       <ul className="program-rows">
         <li>
-          <button type="button" className="program-row cell programs-list-new" onClick={props.onNew}>
+          <button type="button" className="program-row cell" onClick={props.onNew}>
             <span className="program-row-label">New program</span>
             <Icon name="Plus" size={18} />
           </button>

@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
-import { AppShell, SettingsButton, ShellChromeContext } from './AppShell'
+import { AppShell, ShellChromeContext } from './AppShell'
 import { TabBar } from './TabBar'
 
 /**
@@ -63,7 +63,7 @@ test('O7 AppShell renders the screen it was given inside the main region', () =>
 
 test('O7 AppShell lays the header, the main region, the action bar and the tab bar out in that order', () => {
   const { container } = render(
-    <AppShell title="Workout A" action={<button type="button">Finish workout</button>} tab="dashboard" onTabChange={vi.fn()}>
+    <AppShell title="Workout A" action={<button type="button">Finish workout</button>} tab="train" onTabChange={vi.fn()}>
       <p>the exercise list</p>
     </AppShell>,
   )
@@ -166,15 +166,15 @@ test('O7 AppShell renders no action bar when it is given no action', () => {
 
 // --- the tab bar the shell holds -----------------------------------------------------------
 
-// Title kept (weakened-tests gate); the Progress Dashboard redesign has four tabs.
-test('O7 AppShell holds a nav labelled Main with exactly the Workout, Program, Exercises, History and Settings tabs when it is given a tab', () => {
+// DX-01: four tabs, one per moment, Train first.
+test('O7 AppShell holds a nav labelled Main with exactly the Train, Sessions, Progress and Program tabs when it is given a tab', () => {
   render(
-    <AppShell title="Dashboard" tab="dashboard" onTabChange={vi.fn()}>
+    <AppShell title="Dashboard" tab="train" onTabChange={vi.fn()}>
       <p>the program picker</p>
     </AppShell>,
   )
 
-  expect(tabNames()).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
+  expect(tabNames()).toEqual(['Train', 'Sessions', 'Progress', 'Program'])
 })
 
 test('O7 AppShell marks the tab it was given, and no other, as the current page', () => {
@@ -201,7 +201,7 @@ test('O7 AppShell reports the tab that was pressed to its onTabChange', async ()
   const user = userEvent.setup()
   const onTabChange = vi.fn()
   render(
-    <AppShell title="Dashboard" tab="dashboard" onTabChange={onTabChange}>
+    <AppShell title="Dashboard" tab="train" onTabChange={onTabChange}>
       <p>the program picker</p>
     </AppShell>,
   )
@@ -226,83 +226,86 @@ test('O7 AppShell renders no tab bar when it is given no tab', () => {
   expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
 })
 
-// Titles kept (weakened-tests gate): Settings is no longer a tab but the Dashboard header's
-// gear, and the backup-due marker rides on the gear.
-test('O7 AppShell puts a backup-due marker on the Settings tab when settingsBadge is set', () => {
+// --- DX-06: one Shell rule ---------------------------------------------------------------
+
+test('DX-06 a pushed page keeps the tab bar, with a back chevron and its title centred, and no Done', async () => {
+  const user = userEvent.setup()
+  const onBack = vi.fn()
   const { container } = render(
-    <AppShell title="Dashboard" tab="dashboard" onTabChange={vi.fn()} actions={<SettingsButton onOpen={vi.fn()} badge />}>
-      <p>the dashboard</p>
-    </AppShell>,
+    <ShellChromeContext.Provider value={{ tab: 'progress', onTabChange: vi.fn() }}>
+      <AppShell title="Muscles" onBack={onBack}>
+        <p>the muscles</p>
+      </AppShell>
+    </ShellChromeContext.Provider>,
   )
 
-  const settings = screen.getByRole('button', { name: 'Settings' })
-  const badge = container.querySelector('.settings-open-badge')
-  expect(badge).not.toBeNull()
-  expect(settings.contains(badge)).toBe(true)
-  // The gear sits in the header, not the tab bar.
-  expect(container.querySelector('header.app-header')?.contains(settings)).toBe(true)
-  // Whether the marker is a label or its own text, what it announces has to say why it is
-  // there; a bare dot tells a screen-reader user nothing.
-  expect(
-    `${badge?.getAttribute('aria-label') ?? ''} ${badge?.textContent ?? ''}`,
-  ).toMatch(/back ?up/i)
+  expect(screen.getByRole('navigation', { name: 'Main' })).toBeVisible()
+  const header = container.querySelector('header.app-header-bar') as HTMLElement
+  expect(within(header).getByRole('heading', { level: 1, name: 'Muscles' })).toBeInTheDocument()
+  expect(within(header).queryByRole('button', { name: 'Done' })).toBeNull()
+  await user.click(within(header).getByRole('button', { name: 'Back' }))
+  expect(onBack).toHaveBeenCalledTimes(1)
 })
 
-test('O7 AppShell leaves the Settings tab named exactly Settings while the backup-due marker is shown', () => {
+test('DX-06 a pushed page with an action bar keeps the tab bar too', () => {
   render(
-    <AppShell title="Dashboard" tab="dashboard" onTabChange={vi.fn()} actions={<SettingsButton onOpen={vi.fn()} badge />}>
-      <p>the dashboard</p>
-    </AppShell>,
+    <ShellChromeContext.Provider value={{ tab: 'progress', onTabChange: vi.fn() }}>
+      <AppShell title="Body" onBack={vi.fn()} action={<button type="button" className="btn-primary">Save</button>}>
+        <p>the body log</p>
+      </AppShell>
+    </ShellChromeContext.Provider>,
   )
 
-  // The marker sits inside the gear, so unless the gear names itself the trainee -- and every
-  // test that reaches Settings by name -- loses the control called "Settings".
-  expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible()
-  expect(tabNames()).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
+  expect(screen.getByRole('navigation', { name: 'Main' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Save' })).toBeVisible()
 })
 
-test('O7 AppShell shows no backup-due marker when settingsBadge is not set', () => {
-  const { container } = render(
-    <AppShell title="Dashboard" tab="dashboard" onTabChange={vi.fn()} actions={<SettingsButton onOpen={vi.fn()} />}>
-      <p>the dashboard</p>
-    </AppShell>,
+test('DX-06 an editor (fullScreen) and the Live session (its own header) draw no tab bar', () => {
+  const { unmount } = render(
+    <ShellChromeContext.Provider value={{ tab: 'sessions', onTabChange: vi.fn() }}>
+      <AppShell title="Edit session" fullScreen ownHeader>
+        <p>the editor</p>
+      </AppShell>
+    </ShellChromeContext.Provider>,
   )
+  expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
+  unmount()
 
-  expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible()
-  expect(container.querySelector('.settings-open-badge')).toBeNull()
+  render(
+    <ShellChromeContext.Provider value={{ tab: 'train', onTabChange: vi.fn() }}>
+      <AppShell title="Back squat" header={<header>live</header>}>
+        <p>the set screen</p>
+      </AppShell>
+    </ShellChromeContext.Provider>,
+  )
+  expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull()
 })
 
 // --- the tab bar on its own ----------------------------------------------------------------
 
-// Titles kept (weakened-tests gate); the Progress Dashboard redesign has four tabs.
-test('O7 TabBar offers the five tabs as buttons inside a nav labelled Main', () => {
-  const { container } = render(<TabBar current="dashboard" onChange={vi.fn()} />)
+test('O7 TabBar offers the four tabs as buttons inside a nav labelled Main', () => {
+  const { container } = render(<TabBar current="train" onChange={vi.fn()} />)
 
-  expect(tabNames()).toEqual(['Home', 'Progress', 'Sessions', 'Program'])
+  expect(tabNames()).toEqual(['Train', 'Sessions', 'Progress', 'Program'])
   // E3-T8's tap-target audit reads its floor off `.tab-bar-tab`, so the class is contract.
   expect([...container.querySelectorAll('nav.tab-bar button.tab-bar-tab')]).toHaveLength(4)
 })
 
 // M11: the tab bar in order, and every tab a real, clickable button -- the CSS tap-target
 // floor is `.tab-bar-tab`'s job in src/styles/cssAudit.test.ts, not jsdom viewport mocking here.
-test('M11 TabBar renders Workout, Program, Exercises, History and Settings in that order, each a clickable button', async () => {
+test('M11 TabBar renders Train, Sessions, Progress and Program in that order, each a clickable button', async () => {
   const user = userEvent.setup()
   const onChange = vi.fn()
-  render(<TabBar current="dashboard" onChange={onChange} />)
+  render(<TabBar current="train" onChange={onChange} />)
 
-  const order = ['Home', 'Progress', 'Sessions', 'Program']
+  const order = ['Train', 'Sessions', 'Progress', 'Program']
   expect(tabNames()).toEqual(order)
 
   for (const name of order) {
     await user.click(screen.getByRole('button', { name }))
   }
 
-  expect(onChange.mock.calls.map((call) => call[0])).toEqual([
-    'dashboard',
-    'lifts',
-    'sessions',
-    'program',
-  ])
+  expect(onChange.mock.calls.map((call) => call[0])).toEqual(['train', 'sessions', 'progress', 'program'])
 })
 
 test('O7 TabBar marks its current tab, and no other, as the current page', () => {
@@ -320,11 +323,11 @@ test('O7 TabBar marks its current tab, and no other, as the current page', () =>
 test('O7 TabBar reports the tab that was pressed to its onChange', async () => {
   const user = userEvent.setup()
   const onChange = vi.fn()
-  render(<TabBar current="dashboard" onChange={onChange} />)
+  render(<TabBar current="train" onChange={onChange} />)
 
   await user.click(screen.getByRole('button', { name: 'Progress' }))
 
-  expect(onChange.mock.calls).toEqual([['lifts']])
+  expect(onChange.mock.calls).toEqual([['progress']])
 })
 
 // --- E10-T5 (O13): the court stripe under the header title ---------------------------------
@@ -394,7 +397,7 @@ test('O13 CourtStripe is used in exactly the Shell header, the session summary a
 
 test('AppShell given ownHeader draws no header of its own, an unpadded main region, and keeps the tab bar', () => {
   const { container } = render(
-    <AppShell title="Dashboard" ownHeader tab="dashboard" onTabChange={vi.fn()}>
+    <AppShell title="Dashboard" ownHeader tab="train" onTabChange={vi.fn()}>
       <p>the screen with its own header</p>
     </AppShell>,
   )
@@ -404,26 +407,9 @@ test('AppShell given ownHeader draws no header of its own, an unpadded main regi
   expect(screen.getByRole('navigation', { name: 'Main' })).toBeVisible()
 })
 
-// S7a: under a lead (the Program tab's Program | Exercises switch) the screen's actions ride the
-// lead's row, and the large title keeps only its text.
-test('S7a a tab screen under a lead carries its actions on the lead row, not beside its title', () => {
-  render(
-    <ShellChromeContext.Provider value={{ tab: 'program', onTabChange: vi.fn(), lead: <span>Switch</span> }}>
-      <AppShell title="A/B Split" actions={<button type="button" className="btn-quiet">Edit</button>}>
-        <p>body</p>
-      </AppShell>
-    </ShellChromeContext.Provider>,
-  )
-
-  const lead = screen.getByText('Switch').parentElement as HTMLElement
-  expect(within(lead).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
-  const header = screen.getByRole('heading', { level: 1, name: 'A/B Split' }).closest('header') as HTMLElement
-  expect(within(header).queryByRole('button', { name: 'Edit' })).toBeNull()
-})
-
 test('S6b a tab screen with no lead keeps its actions beside its title', () => {
   render(
-    <AppShell title="Lifts" tab="lifts" onTabChange={vi.fn()} actions={<button type="button" className="btn-quiet">Edit</button>}>
+    <AppShell title="Lifts" tab="progress" onTabChange={vi.fn()} actions={<button type="button" className="btn-quiet">Edit</button>}>
       <p>body</p>
     </AppShell>,
   )

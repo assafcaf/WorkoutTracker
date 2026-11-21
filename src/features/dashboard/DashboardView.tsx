@@ -236,7 +236,7 @@ function DueCard({ card, onOpenLift }: { card: TrainCard; onOpenLift?(exerciseId
 function ResumeDock({ resume }: { resume: DashboardResume }): JSX.Element {
   return (
     <div className="dashboard-dock">
-      <button type="button" className="btn-primary dashboard-start resume-workout" onClick={resume.onResume}>
+      <button type="button" className="btn-primary dashboard-start" onClick={resume.onResume}>
         {`Resume ${resume.workoutName}`}
       </button>
     </div>
@@ -261,13 +261,15 @@ function StartDock({
   return (
     <div className="dashboard-dock">
       <p className="dashboard-due-size">{sets ? `${sets} sets · about ${offered.minutes} min` : `about ${offered.minutes} min`}</p>
-      <button
-        type="button"
-        className={rest ? 'btn-secondary dashboard-start' : 'btn-primary dashboard-start'}
-        onClick={() => onStart(offered.workoutId)}
-      >
-        {rest ? `Start ${offered.name} anyway` : `Start ${offered.name}`}
-      </button>
+      {rest ? (
+        <button type="button" className="btn-secondary dashboard-start" onClick={() => onStart(offered.workoutId)}>
+          {`Start ${offered.name} anyway`}
+        </button>
+      ) : (
+        <button type="button" className="btn-primary dashboard-start" onClick={() => onStart(offered.workoutId)}>
+          {`Start ${offered.name}`}
+        </button>
+      )}
     </div>
   )
 }
