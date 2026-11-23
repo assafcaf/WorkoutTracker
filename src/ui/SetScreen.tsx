@@ -588,7 +588,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // under the cells rather than in a sheet.
   const [notesOpen, setNotesOpen] = useState(false)
   // N3: the short list of Set kinds, opened only by the labelled "Working ▾" button.
-  const [kindsOpen, setKindsOpen] = useState(false)
   // The Exercise's Settings sheet: the weight jump and the rest between Sets, in one place.
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [planRest, setPlanRest] = useState<number>(plan.restSeconds)
@@ -1632,35 +1631,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
   // N3: the Set kind's short list, one row per kind, the chosen one checked; a tap picks and closes.
   const kindTitle = `${onWarmup ? 'Warm-up' : `Set ${position}`} type`
-  const kindSheet = !kindsOpen ? null : (
-    <Sheet label={kindTitle} onClose={() => setKindsOpen(false)}>
-      <div className="sheet-head">
-        <h2 className="sheet-title">{kindTitle}</h2>
-        <button type="button" className="sheet-close icon-btn" aria-label="Close" onClick={() => setKindsOpen(false)}>
-          <Icon name="X" size={24} />
-        </button>
-      </div>
-      <ul className="set-kind-list" role="radiogroup" aria-label={kindTitle}>
-        {KIND_LIST.map((kind) => (
-          <li key={kind ?? 'working'}>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={open.kind === kind}
-              className="set-kind-option cell"
-              onClick={() => {
-                chooseKind(kind)
-                setKindsOpen(false)
-              }}
-            >
-              <span>{setKindLabel(kind)}</span>
-              {open.kind === kind ? <Icon name="Check" size={18} /> : null}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </Sheet>
-  )
 
   /** A new rest between Sets for this Exercise: shown at once, stored in the Program's Plan. */
   function changeRest(seconds: number): void {
@@ -1672,7 +1642,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       .catch((cause: unknown) => setRestSaved({ error: cause instanceof Error ? cause.message : String(cause) }))
   }
 
-  const settingsTitle = `${exercise.name} settings`
+  const settingsTitle = exercise.name
   const showJump = !exercise.bodyweight && props.onWeightStepChange !== undefined
   const showRest = props.onUseRestForExercise !== undefined
   const settingsSheet = !settingsOpen ? null : (
@@ -1683,6 +1653,31 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           <Icon name="X" size={24} />
         </button>
       </div>
+      {done ? null : (
+        <>
+          <p className="sheet-caption">{kindTitle}</p>
+          <ul className="set-kind-list" role="radiogroup" aria-label={kindTitle}>
+            {KIND_LIST.map((kind) => (
+              <li key={kind ?? 'working'}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={open.kind === kind}
+                  className="set-kind-option cell"
+                  onClick={() => {
+                    chooseKind(kind)
+                    setSettingsOpen(false)
+                  }}
+                >
+                  <span>{setKindLabel(kind)}</span>
+                  {open.kind === kind ? <Icon name="Check" size={18} /> : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {showJump || showRest ? <p className="sheet-caption">Settings</p> : null}
       <div className="set-settings">
         {showJump ? (
           <label className="set-settings-row">
@@ -1908,19 +1903,19 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
           </div>
         </div>
 
-        {/* DX-07: the Exercise's tools as three labelled text buttons under its name, no "...":
-            Swap opens the alternatives, Notes the note's short sheet, History the lift page. */}
-        {onOpenAlternatives === undefined && noteTools === null && onOpenHistory === undefined && done && props.onWeightStepChange === undefined && props.onUseRestForExercise === undefined ? null : (
+        {/* The Exercise's tools: Swap, Notes, History and How to as outlined buttons on the left
+            (each opens one thing), and ⋯ on the right for the Set type and the Exercise's settings
+            (weight jump, rest between Sets), which are changed rarely. */}
           <div className="set-tools-row" role="group" aria-label="Exercise tools">
             {onOpenAlternatives === undefined ? null : (
-              <button type="button" className="set-tool btn-quiet" onClick={() => onOpenAlternatives(exercise.id)}>
+              <button type="button" className="set-tool chip" onClick={() => onOpenAlternatives(exercise.id)}>
                 Swap
               </button>
             )}
             {noteTools === null ? null : (
               <button
                 type="button"
-                className="set-tool btn-quiet"
+                className="set-tool chip"
                 onClick={() => {
                   setEditingNote(false)
                   setNotesOpen(true)
@@ -1930,39 +1925,30 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
               </button>
             )}
             {onOpenHistory === undefined ? null : (
-              <button type="button" className="set-tool btn-quiet" onClick={() => onOpenHistory(exercise.id)}>
+              <button type="button" className="set-tool chip" onClick={() => onOpenHistory(exercise.id)}>
                 History
               </button>
             )}
             {props.onOpenInfo === undefined ? null : (
-              <button type="button" className="set-tool btn-quiet" onClick={() => props.onOpenInfo?.(exercise.id)}>
+              <button type="button" className="set-tool chip" onClick={() => props.onOpenInfo?.(exercise.id)}>
                 How to
               </button>
             )}
-            {props.onWeightStepChange === undefined && props.onUseRestForExercise === undefined ? null : (
-              <button
-                type="button"
-                className="set-tool btn-quiet"
-                aria-haspopup="dialog"
-                onClick={() => setSettingsOpen(true)}
-              >
-                Settings
-              </button>
-            )}
-            {/* N3: the Set kind is its own labelled control, never a side effect of a chip tap. */}
-            {done ? null : (
-              <button
-                type="button"
-                className="set-tool set-tool-kind btn-quiet"
-                aria-haspopup="dialog"
-                aria-label={`${onWarmup ? 'Warm-up' : `Set ${position}`} type: ${setKindLabel(open.kind)}`}
-                onClick={() => setKindsOpen(true)}
-              >
-                {`${setKindLabel(open.kind)} ▾`}
-              </button>
-            )}
+            <button
+              type="button"
+              className="set-tool-more icon-btn"
+              aria-haspopup="dialog"
+              aria-label={
+                done
+                  ? `${exercise.name} settings`
+                  : `${onWarmup ? 'Warm-up' : `Set ${position}`} type: ${setKindLabel(open.kind)} · settings`
+              }
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Icon name="Ellipsis" size={24} />
+            </button>
           </div>
-        )}
+
 
         {/* The set cells: today's logged Sets (tap one to edit it), the Set on the steppers
             outlined, and the planned Sets still to come, dashed. V6-16, v7 (study §1.2): the first
@@ -2327,7 +2313,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       {actionBar === null ? dock : createPortal(dock, actionBar)}
 
       {notesSheet}
-      {kindSheet}
       {settingsSheet}
       {editSheet}
       {restDialSheet}
