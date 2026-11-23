@@ -190,7 +190,7 @@ async function openWarmups(user: UserEvent): Promise<HTMLElement> {
   return screen.queryByRole('group', { name: 'Warm-ups' }) ?? document.body
 }
 
-/** The current Set's kind control (N3): the labelled "Working ▾" button, "Set 1 type: Working". */
+/** The ⋯ button, named with the current Set's kind: "Set 1 type: Working · settings". */
 function kindControl(): HTMLElement {
   return screen.getByRole('button', { name: /type: / })
 }
@@ -215,7 +215,7 @@ const KIND_NAMES: Record<string, string> = {
   AMRAP: 'AMRAP',
 }
 
-/** N3: picks the current Set's kind from the list the "Working ▾" button opens. */
+/** N3: picks the current Set's kind from the list the ⋯ sheet holds. */
 async function chooseKindInTools(user: UserEvent, label: string): Promise<void> {
   if (currentKind() !== label) {
     await user.click(kindControl())
@@ -813,8 +813,8 @@ test('O1 playRestOver is not called when a set screen opens with this Session re
 // onWeightStepChange; a rest change is stored in the Plan through onUseRestForExercise.
 
 async function openSettings(user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> {
-  await user.click(screen.getByRole('button', { name: 'Settings' }))
-  return screen.getByRole('dialog', { name: 'Back squat settings' })
+  await user.click(screen.getByRole('button', { name: /settings$/ }))
+  return screen.getByRole('dialog', { name: 'Back squat' })
 }
 
 test('O1 the weight jump reads the catalog 2.5 kg for back squat and the + moves by it', async () => {
@@ -854,9 +854,11 @@ test('the rest between sets is set in Settings and saved to the Program', async 
   expect(within(rest).getByRole('status', { hidden: true })?.textContent).not.toBe(before)
 })
 
-test('O1 no Settings without anything to store', () => {
-  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
-  expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull()
+test('O1 ⋯ shows no Settings rows without anything to store them', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+  const sheet = await openSettings(user)
+  expect(within(sheet).queryByRole('combobox', { name: 'Weight jump' })).toBeNull()
+  expect(within(sheet).queryByText('Settings')).toBeNull()
 })
 
 test('O1 a stored jump of 5 opens the control reading 5 kg', async () => {
@@ -887,7 +889,7 @@ test('V1-16 DX-07 no "..." and no Bodyweight control: Swap, Notes and History ar
   expect(screen.queryByRole('combobox')).toBeNull()
   expect(screen.queryByRole('button', { name: /What can I lift/ })).toBeNull()
   const row = screen.getByRole('group', { name: 'Exercise tools' })
-  expect(within(row).getAllByRole('button').map((button) => button.textContent)).toEqual(['Swap', 'Notes', 'History', 'How to', 'Settings', 'Working ▾'])
+  expect(within(row).getAllByRole('button').map((button) => button.textContent)).toEqual(['Swap', 'Notes', 'History', 'How to', ''])
   const name = screen.getByRole('heading', { name: 'Back squat' })
   expect(name.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   await user.click(within(row).getByRole('button', { name: 'History' }))
@@ -4480,14 +4482,14 @@ test('N3 a tap on the current Set cell never changes its kind', async () => {
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 
-test('N3 the labelled "Working ▾" button opens one short list of kinds; a pick sets it and closes', async () => {
+test('N3 ⋯ at the right of the tools row holds the Set type list; a pick sets it and closes', async () => {
   const { user } = renderSetScreen()
 
-  const button = screen.getByRole('button', { name: 'Set 1 type: Working' })
-  expect(button).toHaveTextContent('Working ▾')
-  expect(within(screen.getByRole('group', { name: 'Exercise tools' })).getByRole('button', { name: /type: / })).toBe(button)
-  await user.click(button)
-  const sheet = screen.getByRole('dialog', { name: 'Set 1 type' })
+  const row = screen.getByRole('group', { name: 'Exercise tools' })
+  const more = within(row).getByRole('button', { name: 'Set 1 type: Working · settings' })
+  expect(row.lastElementChild).toBe(more)
+  await user.click(more)
+  const sheet = screen.getByRole('dialog', { name: 'Back squat' })
   expect(within(sheet).getAllByRole('radio').map((radio) => radio.textContent)).toEqual([
     'Working',
     'Warm-up',
@@ -4498,7 +4500,7 @@ test('N3 the labelled "Working ▾" button opens one short list of kinds; a pick
   expect(within(sheet).getByRole('radio', { name: 'Working' })).toHaveAttribute('aria-checked', 'true')
   await user.click(within(sheet).getByRole('radio', { name: 'Failure' }))
   expect(screen.queryByRole('dialog')).toBeNull()
-  expect(screen.getByRole('button', { name: 'Set 1 type: Failure' })).toHaveTextContent('Failure ▾')
+  expect(screen.getByRole('button', { name: 'Set 1 type: Failure · settings' })).toBeTruthy()
 })
 
 test('DX-07 the current cell\'s corner shows the kind letter, as a logged Set\'s does', async () => {
