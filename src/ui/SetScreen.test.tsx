@@ -806,19 +806,23 @@ test('O1 playRestOver is not called when a set screen opens with this Session re
   expect(playRestOver).not.toHaveBeenCalled()
 })
 
-// --- E8-T8 O1: the weight jump control, per Exercise ----------------------------------------
+// --- E8-T8 O1: the weight jump, in the Exercise's Settings sheet ------------------------------
 //
-// "Jumps of 2.5 kg" sits under the weight: the jump the weight's − and + move by. A change
-// moves the Dial at once and is stored for this Exercise through onWeightStepChange.
+// "Settings" in the tools row opens "<Exercise> settings": the weight jump the − and + move by,
+// and the rest between Sets. A jump change moves the Dial at once and is stored through
+// onWeightStepChange; a rest change is stored in the Plan through onUseRestForExercise.
 
-function jumpControl(): HTMLSelectElement {
-  return screen.getByRole('combobox', { name: 'Weight jump' }) as HTMLSelectElement
+async function openSettings(user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> {
+  await user.click(screen.getByRole('button', { name: 'Settings' }))
+  return screen.getByRole('dialog', { name: 'Back squat settings' })
 }
 
 test('O1 the weight jump reads the catalog 2.5 kg for back squat and the + moves by it', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onWeightStepChange: vi.fn() })
 
-  expect(jumpControl().value).toBe('2.5')
+  const sheet = await openSettings(user)
+  expect((within(sheet).getByRole('combobox', { name: 'Weight jump' }) as HTMLSelectElement).value).toBe('2.5')
+  await user.click(within(sheet).getByRole('button', { name: 'Close' }))
   unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   expect(readoutValue(weightReadout())).toBe('62.5')
@@ -828,39 +832,39 @@ test('O1 choosing a 5 kg jump moves the + by 5 and stores it for this Exercise',
   const onWeightStepChange = vi.fn()
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onWeightStepChange })
 
-  await user.selectOptions(jumpControl(), '5')
+  const sheet = await openSettings(user)
+  await user.selectOptions(within(sheet).getByRole('combobox', { name: 'Weight jump' }), '5')
   expect(onWeightStepChange).toHaveBeenCalledWith(5)
+  await user.click(within(sheet).getByRole('button', { name: 'Close' }))
   unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   expect(readoutValue(weightReadout())).toBe('65')
 })
 
-test('O1 no jump control without a place to store it', () => {
+test('the rest between sets is set in Settings and saved to the Program', async () => {
+  const onUseRestForExercise = vi.fn(async () => undefined)
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onUseRestForExercise, programName: 'A/B Split' })
+
+  const sheet = await openSettings(user)
+  const rest = within(sheet).getByRole('group', { name: 'Rest between sets' })
+  const before = within(rest).getByRole('status', { hidden: true })?.textContent
+  await user.click(within(rest).getByRole('button', { name: 'Increase Rest between sets' }))
+  expect(onUseRestForExercise).toHaveBeenCalledWith(squatPlan.restSeconds + 15)
+  expect(await within(sheet).findByText('Saved to A/B Split')).toBeTruthy()
+  expect(within(rest).getByRole('status', { hidden: true })?.textContent).not.toBe(before)
+})
+
+test('O1 no Settings without anything to store', () => {
   renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
-  expect(screen.queryByRole('combobox', { name: 'Weight jump' })).toBeNull()
-})
-
-test('O1 choosing 5 from the step options moves Increase weight from 60 to 65', async () => {
-  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
-
-  unfoldSteppers()
-  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
-
-  expect(readoutValue(weightReadout())).toBe('65')
-})
-
-test('O1 choosing 5 from the step options rebuilds the Ladder with rungs 5, 10, 15', () => {
-  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
-
-  const column = screen.getByRole('listbox', { name: 'Weight ladder' })
-  const rungs = within(column).getAllByRole('option')
-  expect(rungs.slice(0, 3).map((rung) => readoutValue(rung))).toEqual(['5', '10', '15'])
+  expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull()
 })
 
 test('O1 a stored jump of 5 opens the control reading 5 kg', async () => {
   const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5, onWeightStepChange: vi.fn() })
 
-  expect(jumpControl().value).toBe('5')
+  const sheet = await openSettings(user)
+  expect((within(sheet).getByRole('combobox', { name: 'Weight jump' }) as HTMLSelectElement).value).toBe('5')
+  await user.click(within(sheet).getByRole('button', { name: 'Close' }))
   unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Decrease weight' }))
   expect(readoutValue(weightReadout())).toBe('55')
@@ -880,10 +884,10 @@ test('V1-16 DX-07 no "..." and no Bodyweight control: Swap, Notes and History ar
   expect(screen.queryByRole('button', { name: 'Exercise tools' })).toBeNull()
   expect(screen.queryByText('Bodyweight exercise')).toBeNull()
   expect(screen.queryByRole('switch')).toBeNull()
-  expect(screen.queryAllByRole('combobox').map((box) => box.getAttribute('aria-label'))).toEqual(['Weight jump'])
+  expect(screen.queryByRole('combobox')).toBeNull()
   expect(screen.queryByRole('button', { name: /What can I lift/ })).toBeNull()
   const row = screen.getByRole('group', { name: 'Exercise tools' })
-  expect(within(row).getAllByRole('button').map((button) => button.textContent)).toEqual(['Swap', 'Notes', 'History', 'Working ▾'])
+  expect(within(row).getAllByRole('button').map((button) => button.textContent)).toEqual(['Swap', 'Notes', 'History', 'How to', 'Settings', 'Working ▾'])
   const name = screen.getByRole('heading', { name: 'Back squat' })
   expect(name.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   await user.click(within(row).getByRole('button', { name: 'History' }))
@@ -5300,4 +5304,12 @@ test('DX-24 on a tall screen the instrument takes the height down to the Log bar
   expect(tallScreenDecls('.set-instrument .set-dials').get('justify-content')).toBe('space-evenly')
   expect(tallScreenDecls('.set-instrument .dial--scrub .dial-step').get('height')).toBe('120px')
   expect(tallScreenDecls('.set-instrument ~ .set-spacer--after').get('flex')).toBe('0 0 0')
+})
+
+test('"How to" is its own button in the tools row and opens the Exercise info', async () => {
+  const onOpenInfo = vi.fn()
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onOpenInfo })
+  const row = screen.getByRole('group', { name: 'Exercise tools' })
+  await user.click(within(row).getByRole('button', { name: 'How to' }))
+  expect(onOpenInfo).toHaveBeenCalledWith('back-squat')
 })

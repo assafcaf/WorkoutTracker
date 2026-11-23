@@ -31,7 +31,10 @@ import { SetKindRow, setKindLabel } from './SetKindRow'
 import { Sheet } from './Sheet'
 import { Snackbar } from './Snackbar'
 import { useWakeLock } from './useWakeLock'
-import { WeightDial, WeightStepControl } from './WeightDial'
+import { WeightDial } from './WeightDial'
+import { WEIGHT_STEPS } from '../domain/dial'
+import { Select } from './controls'
+import { Stepper } from './Stepper'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
 import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind } from '../types'
@@ -136,10 +139,10 @@ export type SetScreenProps = {
   sessionStartedAt?: number
   /**
    * The stored weight step for this Exercise (E8-T8), or `null`/omitted to open on its catalog
-   * `weightStep`. Read on open; the "Jumps of" control under the weight changes it for this Exercise.
+   * `weightStep`. Read on open; the Exercise's Settings sheet changes it.
    */
   weightStep?: number | null
-  /** Stores a new weight jump for this Exercise, chosen under the weight; no control without it. */
+  /** Stores a new weight jump for this Exercise, chosen in its Settings sheet; no row without it. */
   onWeightStepChange?(step: number): void
   /**
    * No longer called (V1-16): the Bodyweight switch left the in-workout tools sheet for Program ›
@@ -586,6 +589,10 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const [notesOpen, setNotesOpen] = useState(false)
   // N3: the short list of Set kinds, opened only by the labelled "Working ▾" button.
   const [kindsOpen, setKindsOpen] = useState(false)
+  // The Exercise's Settings sheet: the weight jump and the rest between Sets, in one place.
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [planRest, setPlanRest] = useState<number>(plan.restSeconds)
+  const [restSaved, setRestSaved] = useState<null | 'saved' | { error: string }>(null)
   const [warmupsOpen, setWarmupsOpen] = useState(false)
 
   // V1-17: the swap's Undo, shown from the screen's opening until it times out or a Set is logged.
@@ -844,7 +851,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
       setError(null)
       clearUndo()
       setHistory(merged)
-      setRestFrom({ entry, planRestSeconds: plan.restSeconds })
+      setRestFrom({ entry, planRestSeconds: planRest })
       setOverKey(null)
       if (confirmTimer.current !== null) clearTimeout(confirmTimer.current)
       setJustLogged(open.setIndex)
@@ -1339,7 +1346,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on what the line reads
     [done, loggedKey, earlier.length, exercise.id, props.lastTime],
   )
-  const sheetOpen = notesOpen || draft !== null || restDialOpen
+  const sheetOpen = notesOpen || draft !== null || restDialOpen || settingsOpen
   // Behind a sheet the screen is out of reach of the keyboard and a screen reader (S3b, S2b).
   const hiddenBehindSheet = sheetOpen ? { 'aria-hidden': true as const, inert: '' } : {}
 
@@ -1655,6 +1662,74 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
     </Sheet>
   )
 
+  /** A new rest between Sets for this Exercise: shown at once, stored in the Program's Plan. */
+  function changeRest(seconds: number): void {
+    setPlanRest(seconds)
+    setRestSaved(null)
+    props
+      .onUseRestForExercise?.(seconds)
+      .then(() => setRestSaved('saved'))
+      .catch((cause: unknown) => setRestSaved({ error: cause instanceof Error ? cause.message : String(cause) }))
+  }
+
+  const settingsTitle = `${exercise.name} settings`
+  const showJump = !exercise.bodyweight && props.onWeightStepChange !== undefined
+  const showRest = props.onUseRestForExercise !== undefined
+  const settingsSheet = !settingsOpen ? null : (
+    <Sheet label={settingsTitle} onClose={() => setSettingsOpen(false)}>
+      <div className="sheet-head">
+        <h2 className="sheet-title">{settingsTitle}</h2>
+        <button type="button" className="sheet-close icon-btn" aria-label="Close" onClick={() => setSettingsOpen(false)}>
+          <Icon name="X" size={24} />
+        </button>
+      </div>
+      <div className="set-settings">
+        {showJump ? (
+          <label className="set-settings-row">
+            <span className="set-settings-label">Weight jump</span>
+            <Select
+              aria-label="Weight jump"
+              value={weightStep}
+              onChange={(event) => {
+                const step = Number(event.target.value)
+                setWeightStep(step)
+                props.onWeightStepChange?.(step)
+              }}
+            >
+              {WEIGHT_STEPS.map((step) => (
+                <option key={step} value={step}>
+                  {`${step} kg`}
+                </option>
+              ))}
+            </Select>
+          </label>
+        ) : null}
+        {showRest ? (
+          <div className="set-settings-row">
+            <span className="set-settings-label">Rest between sets</span>
+            <Stepper
+              label="Rest between sets"
+              value={formatRest(planRest)}
+              canDecrease={planRest > 0}
+              canIncrease={planRest < 600}
+              onDecrease={() => changeRest(Math.max(0, planRest - 15))}
+              onIncrease={() => changeRest(Math.min(600, planRest + 15))}
+            />
+          </div>
+        ) : null}
+        {restSaved === null ? null : restSaved === 'saved' ? (
+          <p className="set-settings-note">
+            {props.programName === undefined ? 'Saved' : `Saved to ${props.programName}`}
+          </p>
+        ) : (
+          <p className="set-settings-note" role="alert">
+            {restSaved.error}
+          </p>
+        )}
+      </div>
+    </Sheet>
+  )
+
   const editedEntry = editing === null ? undefined : loggedSets.find((entry) => entry.setIndex === editing)
   const editTitle =
     editing === null
@@ -1712,7 +1787,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   const restDialSheet = !restDialOpen ? null : (
     <Sheet label="Rest" onClose={() => setRestDialOpen(false)}>
       <RestDial
-        seconds={restFrom === null ? plan.restSeconds : restLengthOf(restFrom.entry, restFrom.planRestSeconds)}
+        seconds={restFrom === null ? planRest : restLengthOf(restFrom.entry, restFrom.planRestSeconds)}
         onSet={setRestFromDial}
         onCancel={() => setRestDialOpen(false)}
       />
@@ -1835,7 +1910,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
         {/* DX-07: the Exercise's tools as three labelled text buttons under its name, no "...":
             Swap opens the alternatives, Notes the note's short sheet, History the lift page. */}
-        {onOpenAlternatives === undefined && noteTools === null && onOpenHistory === undefined && done ? null : (
+        {onOpenAlternatives === undefined && noteTools === null && onOpenHistory === undefined && done && props.onWeightStepChange === undefined && props.onUseRestForExercise === undefined ? null : (
           <div className="set-tools-row" role="group" aria-label="Exercise tools">
             {onOpenAlternatives === undefined ? null : (
               <button type="button" className="set-tool btn-quiet" onClick={() => onOpenAlternatives(exercise.id)}>
@@ -1857,6 +1932,21 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
             {onOpenHistory === undefined ? null : (
               <button type="button" className="set-tool btn-quiet" onClick={() => onOpenHistory(exercise.id)}>
                 History
+              </button>
+            )}
+            {props.onOpenInfo === undefined ? null : (
+              <button type="button" className="set-tool btn-quiet" onClick={() => props.onOpenInfo?.(exercise.id)}>
+                How to
+              </button>
+            )}
+            {props.onWeightStepChange === undefined && props.onUseRestForExercise === undefined ? null : (
+              <button
+                type="button"
+                className="set-tool btn-quiet"
+                aria-haspopup="dialog"
+                onClick={() => setSettingsOpen(true)}
+              >
+                Settings
               </button>
             )}
             {/* N3: the Set kind is its own labelled control, never a side effect of a chip tap. */}
@@ -2207,16 +2297,6 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                   </div>
                 </div>
               )}
-              {exercise.bodyweight || props.onWeightStepChange === undefined ? null : (
-                // The jump the weight's − and + move by, per Exercise, where the jump is felt.
-                <WeightStepControl
-                  step={weightStep}
-                  onStepChange={(step) => {
-                    setWeightStep(step)
-                    props.onWeightStepChange?.(step)
-                  }}
-                />
-              )}
               <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
             </div>
 
@@ -2248,6 +2328,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
 
       {notesSheet}
       {kindSheet}
+      {settingsSheet}
       {editSheet}
       {restDialSheet}
 
