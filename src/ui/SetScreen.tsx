@@ -31,7 +31,7 @@ import { SetKindRow, setKindLabel } from './SetKindRow'
 import { Sheet } from './Sheet'
 import { Snackbar } from './Snackbar'
 import { useWakeLock } from './useWakeLock'
-import { WeightDial } from './WeightDial'
+import { WeightDial, WeightStepControl } from './WeightDial'
 import './SetScreen.css'
 import type { MuscleFamily } from '../domain/muscles'
 import type { Exercise, ExercisePlan, PlateInventory, Session, SetEntry, SetKind } from '../types'
@@ -136,13 +136,10 @@ export type SetScreenProps = {
   sessionStartedAt?: number
   /**
    * The stored weight step for this Exercise (E8-T8), or `null`/omitted to open on its catalog
-   * `weightStep`. Read once, on open. It is set in Program › Exercises (V1-16), not on Now.
+   * `weightStep`. Read on open; the "Jumps of" control under the weight changes it for this Exercise.
    */
   weightStep?: number | null
-  /**
-   * No longer called (V1-16): the step control left the in-workout tools sheet for Program ›
-   * Exercises, which stores the same setting. Kept so existing callers still type-check.
-   */
+  /** Stores a new weight jump for this Exercise, chosen under the weight; no control without it. */
   onWeightStepChange?(step: number): void
   /**
    * No longer called (V1-16): the Bodyweight switch left the in-workout tools sheet for Program ›
@@ -510,7 +507,7 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
   // The Bodyweight setting (E16-T13) and the weight step (E8-T8) as the caller resolved them from
   // what Program › Exercises stores (V1-16); the in-workout sheet no longer changes either.
   const exercise: Exercise = givenExercise
-  const [weightStep] = useState<number>(props.weightStep ?? exercise.weightStep)
+  const [weightStep, setWeightStep] = useState<number>(props.weightStep ?? exercise.weightStep)
   const effectiveExercise: Exercise = { ...exercise, weightStep }
 
   // What the next Set presets from as last time. Without `logged`, the Sets this screen logs or
@@ -2209,6 +2206,16 @@ export function SetScreen(props: SetScreenProps): JSX.Element {
                     )}
                   </div>
                 </div>
+              )}
+              {exercise.bodyweight || props.onWeightStepChange === undefined ? null : (
+                // The jump the weight's − and + move by, per Exercise, where the jump is felt.
+                <WeightStepControl
+                  step={weightStep}
+                  onStepChange={(step) => {
+                    setWeightStep(step)
+                    props.onWeightStepChange?.(step)
+                  }}
+                />
               )}
               <RepsDial variant="scrub" value={open.reps} onChange={(reps) => setOpen({ ...open, reps })} />
             </div>

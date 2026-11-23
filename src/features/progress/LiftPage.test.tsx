@@ -205,15 +205,9 @@ describe('DX-12 DX-18 DX-20 the lift page sections', () => {
     for (const name of ['Records', 'Rep maxes', 'Sessions']) expect(screen.getByRole('heading', { name })).toBeVisible()
   })
 
-  it('DX-12 "How to do it ›" sits at the top and opens the exercise info', async () => {
-    const onHowTo = vi.fn()
-    render(
-      <LiftPageView exerciseId="back-squat" sessions={sessions} program={program} resolve={resolve} now={NOW} onHowTo={onHowTo} />,
-    )
-    const link = screen.getByRole('button', { name: 'How to do it ›' })
-    expect(link.compareDocumentPosition(screen.getByRole('region', { name: 'Status' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    await userEvent.setup().click(link)
-    expect(onHowTo).toHaveBeenCalledTimes(1)
+  it('technique lives in Exercises and the live Session, not on a Progress page', () => {
+    open('back-squat')
+    expect(screen.queryByRole('button', { name: /How to do it/ })).toBeNull()
   })
 
   it('DX-03 a Flat lift whose action is a variation keeps "Swap for a variation ›"', async () => {

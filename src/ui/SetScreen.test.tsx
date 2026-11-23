@@ -806,36 +806,38 @@ test('O1 playRestOver is not called when a set screen opens with this Session re
   expect(playRestOver).not.toHaveBeenCalled()
 })
 
-// --- E8-T8 O1: the weight step control, per Exercise ----------------------------------------
+// --- E8-T8 O1: the weight jump control, per Exercise ----------------------------------------
 //
-// V1-16: the step control left the in-workout tools sheet for Program › Exercises, which stores
-// the same setting. The screen reads it once, as `weightStep`, and offers no control of its own.
-// The titles stay; the bodies hold the step as the screen now receives it.
+// "Jumps of 2.5 kg" sits under the weight: the jump the weight's − and + move by. A change
+// moves the Dial at once and is stored for this Exercise through onWeightStepChange.
 
-/** The step control, if any: a native select named "Step <n> kg". */
-function stepControls(): HTMLElement[] {
-  return screen.queryAllByRole('combobox', { name: /^Step / })
+function jumpControl(): HTMLSelectElement {
+  return screen.getByRole('combobox', { name: 'Weight jump' }) as HTMLSelectElement
 }
 
-test('O1 back-squats set screen shows a Step 2.5 kg control by default', async () => {
-  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+test('O1 the weight jump reads the catalog 2.5 kg for back squat and the + moves by it', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onWeightStepChange: vi.fn() })
 
-  // The catalog's 2.5 kg step drives the Dial; the tools sheet has no Step row (V1-16).
-  await openTools(user)
-  expect(stepControls()).toEqual([])
-  await closeSheet(user)
+  expect(jumpControl().value).toBe('2.5')
   unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Increase weight' }))
   expect(readoutValue(weightReadout())).toBe('62.5')
 })
 
-test('O1 choosing 5 from the step options updates the control to read Step 5 kg', async () => {
-  // Chosen in Program › Exercises, the step reaches the screen as `weightStep`.
-  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
+test('O1 choosing a 5 kg jump moves the + by 5 and stores it for this Exercise', async () => {
+  const onWeightStepChange = vi.fn()
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], onWeightStepChange })
 
-  await openTools(user)
-  expect(stepControls()).toEqual([])
-  expect(screen.queryByText('Step')).toBeNull()
+  await user.selectOptions(jumpControl(), '5')
+  expect(onWeightStepChange).toHaveBeenCalledWith(5)
+  unfoldSteppers()
+  await user.click(screen.getByRole('button', { name: 'Increase weight' }))
+  expect(readoutValue(weightReadout())).toBe('65')
+})
+
+test('O1 no jump control without a place to store it', () => {
+  renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)] })
+  expect(screen.queryByRole('combobox', { name: 'Weight jump' })).toBeNull()
 })
 
 test('O1 choosing 5 from the step options moves Increase weight from 60 to 65', async () => {
@@ -855,33 +857,16 @@ test('O1 choosing 5 from the step options rebuilds the Ladder with rungs 5, 10, 
   expect(rungs.slice(0, 3).map((rung) => readoutValue(rung))).toEqual(['5', '10', '15'])
 })
 
-test('O1 choosing 5 from the step options tells the caller onWeightStepChange with 5', async () => {
-  // Nothing on Now chooses a step any more, so the screen never calls it, even through a log.
-  const onWeightStepChange = vi.fn()
-  const { user } = renderSetScreen({
-    lastEntries: [historyEntry(1, 60, 10)],
-    weightStep: 5,
-    onWeightStepChange,
-  })
+test('O1 a stored jump of 5 opens the control reading 5 kg', async () => {
+  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5, onWeightStepChange: vi.fn() })
 
-  await openTools(user)
-  await closeSheet(user)
-  await user.click(logButton())
-
-  await waitFor(async () => expect(await storedEntries()).toHaveLength(1))
-  expect(onWeightStepChange).not.toHaveBeenCalled()
-})
-
-test('O1 a weightStep prop of 5 opens the control already reading Step 5 kg', async () => {
-  const { user } = renderSetScreen({ lastEntries: [historyEntry(1, 60, 10)], weightStep: 5 })
-
+  expect(jumpControl().value).toBe('5')
   unfoldSteppers()
   await user.click(screen.getByRole('button', { name: 'Decrease weight' }))
   expect(readoutValue(weightReadout())).toBe('55')
-  expect(stepControls()).toEqual([])
 })
 
-test('V1-16 DX-07 no "..." and no Step or Bodyweight control: Swap, Notes and History are labelled buttons under the name', async () => {
+test('V1-16 DX-07 no "..." and no Bodyweight control: Swap, Notes and History are labelled buttons under the name', async () => {
   const onOpenHistory = vi.fn()
   const { user } = renderSetScreen({
     lastEntries: [historyEntry(1, 60, 10)],
@@ -895,7 +880,7 @@ test('V1-16 DX-07 no "..." and no Step or Bodyweight control: Swap, Notes and Hi
   expect(screen.queryByRole('button', { name: 'Exercise tools' })).toBeNull()
   expect(screen.queryByText('Bodyweight exercise')).toBeNull()
   expect(screen.queryByRole('switch')).toBeNull()
-  expect(screen.queryByRole('combobox')).toBeNull()
+  expect(screen.queryAllByRole('combobox').map((box) => box.getAttribute('aria-label'))).toEqual(['Weight jump'])
   expect(screen.queryByRole('button', { name: /What can I lift/ })).toBeNull()
   const row = screen.getByRole('group', { name: 'Exercise tools' })
   expect(within(row).getAllByRole('button').map((button) => button.textContent)).toEqual(['Swap', 'Notes', 'History', 'Working ▾'])
