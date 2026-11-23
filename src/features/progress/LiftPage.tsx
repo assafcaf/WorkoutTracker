@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { resolveExercise } from '../../data/resolve'
 import { applyBodyweight } from '../../domain/bodyweight'
 import type { Resolve } from '../../domain/muscles'
@@ -6,7 +5,6 @@ import type { Weekday } from '../../domain/stats/weeks'
 import type { BodyLog, ExercisePlan, Program, Session } from '../../types'
 import { AppShell } from '../../ui/AppShell'
 import { LiftView } from '../../ui/LiftView'
-import { DetailOverlay } from '../overlays/DetailOverlay'
 import type { AppRoute } from '../routes'
 import { useServiceData } from '../useServiceData'
 import { useProgramSwap } from './useProgramSwap'
@@ -26,8 +24,6 @@ export type LiftPageViewProps = {
   onSwap?: () => void
   /** The body log, passed to the lift page for the relative-strength line. */
   bodyLog?: BodyLog
-  /** Opens the Exercise's info from "How to do it ›" at the top (DX-12). */
-  onHowTo?: () => void
 }
 
 function planFor(program: Program | undefined, exerciseId: string): ExercisePlan | undefined {
@@ -51,7 +47,6 @@ export function LiftPageView({
   onOpenSession,
   onSwap,
   bodyLog,
-  onHowTo,
 }: LiftPageViewProps): JSX.Element {
   const exercise = resolve(exerciseId)
   if (!exercise) {
@@ -66,7 +61,6 @@ export function LiftPageView({
       onOpenSession={onOpenSession}
       onSwap={onSwap}
       bodyLog={bodyLog}
-      onHowTo={onHowTo}
     />
   )
 }
@@ -90,10 +84,8 @@ export function LiftPage({ page, onBack, navigate, now = Date.now }: LiftPagePro
   )
 
   const { canSwap, openSwap, swapUi } = useProgramSwap()
-  const [info, setInfo] = useState<string | null>(null)
 
   let body: JSX.Element | null = null
-  let infoUi: JSX.Element | null = null
   let title = 'Lift'
   if (sessionsData.status === 'ready' && programsData.status === 'ready' && catalogData.status === 'ready') {
     const { catalog, library } = catalogData.data
@@ -117,29 +109,13 @@ export function LiftPage({ page, onBack, navigate, now = Date.now }: LiftPagePro
         onOpenSession={navigate ? (sessionId) => navigate({ tab: 'history', sessionId }) : undefined}
         // V6R-02: the short swap list, replacing the lift in the Program, with Undo.
         onSwap={canSwap(page.exerciseId) ? () => openSwap(page.exerciseId) : undefined}
-        onHowTo={exercise ? () => setInfo(exercise.libraryId) : undefined}
       />
     )
-    if (info !== null) {
-      infoUi = (
-        <DetailOverlay
-          libraryId={info}
-          heading={info === exercise?.libraryId ? exercise.name : undefined}
-          catalog={catalog}
-          library={library}
-          videos={catalogData.data.videos}
-          gymEquipment={null}
-          onBack={() => setInfo(null)}
-          onOpenDetail={setInfo}
-        />
-      )
-    }
   }
   return (
     <AppShell title={title} onBack={onBack}>
       {body}
       {swapUi}
-      {infoUi}
     </AppShell>
   )
 }

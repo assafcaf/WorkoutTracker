@@ -143,6 +143,12 @@
   font-size: var(--text-sm);
 }
 
+/* On the live Set screen it sits centred under the plates, between the weight and the reps. */
+.set-dials .dial-step-control {
+  justify-content: center;
+  align-self: center;
+}
+
 /* The rest Dial (E13-T9): the same column, with Set rest and Cancel in place of minus/plus. */
 .rest-dial {
   grid-template-columns: 1fr;

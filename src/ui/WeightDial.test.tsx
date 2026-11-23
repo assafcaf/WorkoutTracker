@@ -19,7 +19,9 @@ const pushUps = exerciseOf('push-ups')
 
 /** The step control: a native select named for the weight step it currently reads. */
 function stepControl(step: number): HTMLElement {
-  return screen.getByRole('combobox', { name: `Step ${step} kg` })
+  const control = screen.getByRole('combobox', { name: 'Weight jump' }) as HTMLSelectElement
+  expect(control.value).toBe(String(step))
+  return control
 }
 
 // --- O1: the per-Exercise step control -----------------------------------------------------
@@ -30,10 +32,10 @@ test('O1 the step control is shown for a loaded Exercise given onStepChange, and
   expect(stepControl(2.5)).toBeInTheDocument()
 
   rerender(<WeightDial exercise={backSquat} value={60} onChange={vi.fn()} />)
-  expect(screen.queryByRole('combobox', { name: /^Step/ })).toBeNull()
+  expect(screen.queryByRole('combobox', { name: 'Weight jump' })).toBeNull()
 })
 
-test('O1 the step control reads Step 2.5 kg for back-squat when onStepChange is given', () => {
+test('O1 the step control reads 2.5 kg for back-squat when onStepChange is given', () => {
   render(<WeightStepControl step={backSquat.weightStep} onStepChange={vi.fn()} />)
 
   expect(stepControl(2.5)).toBeInTheDocument()
@@ -43,7 +45,7 @@ test('O1 the step control offers 0.5, 1, 1.25, 2.5, 5, 10 as its options', () =>
   render(<WeightStepControl step={2.5} onStepChange={vi.fn()} />)
 
   const options = within(stepControl(2.5)).getAllByRole('option')
-  expect(options.map((option) => option.textContent)).toEqual(['0.5', '1', '1.25', '2.5', '5', '10'])
+  expect(options.map((option) => option.textContent)).toEqual(['0.5 kg', '1 kg', '1.25 kg', '2.5 kg', '5 kg', '10 kg'])
 })
 
 test('O1 choosing 5 from the step options calls onStepChange with 5', async () => {

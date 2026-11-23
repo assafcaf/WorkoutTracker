@@ -158,18 +158,13 @@ export function WeightStepControl(props: {
   step: number
   onStepChange(step: number): void
 }): JSX.Element {
-  const label = `Step ${props.step} kg`
   return (
     <label className="dial-step-control">
-      {label}
-      <Select
-        aria-label={label}
-        value={props.step}
-        onChange={(event) => props.onStepChange(Number(event.target.value))}
-      >
+      Jumps of
+      <Select aria-label="Weight jump" value={props.step} onChange={(event) => props.onStepChange(Number(event.target.value))}>
         {WEIGHT_STEPS.map((step) => (
           <option key={step} value={step}>
-            {step}
+            {`${step} kg`}
           </option>
         ))}
       </Select>
