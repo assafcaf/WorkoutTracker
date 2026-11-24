@@ -191,6 +191,21 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
       })
   }
 
+  /** Saves the active Program's Workouts in a new order, the rotation Train follows. */
+  function handleReorderWorkouts(program: Program, workoutIds: string[]): void {
+    const byId = new Map(program.workouts.map((workout) => [workout.id, workout] as const))
+    const workouts = workoutIds.map((id) => byId.get(id)).filter((workout): workout is Workout => workout !== undefined)
+    const stored = userPrograms.find((candidate) => candidate.id === program.id)
+    const toSave: UserProgram = { ...program, workouts, createdAt: stored?.createdAt ?? Date.now() }
+    services.programs.save(toSave).then(
+      () => setProgramMessage(null),
+      (error: unknown) =>
+        setProgramMessage(
+          error instanceof ServiceError && error.code === 'in-progress' ? IN_PROGRESS_MESSAGE : SAVE_ERROR,
+        ),
+    )
+  }
+
   function handleDeleteProgram(id: string): void {
     services.programs
       .remove(id)
@@ -384,6 +399,7 @@ export function ProgramFeature(props: ProgramFeatureProps): JSX.Element {
         // V6-15: the kg each lift opens on and the minutes, as Train says them.
         loadOf={planLoadOf}
         minutesOf={minutesIn(active)}
+        onReorderWorkouts={(ids) => handleReorderWorkouts(active, ids)}
         links={links}
       />
     </AppShell>

@@ -3,6 +3,7 @@ import { assertPlansAreInCatalog } from '../data/catalog'
 import { workoutEstimate } from '../domain/dashboard'
 import { familyWeekly } from '../domain/programVolume'
 import { formatRest } from '../domain/rest'
+import { useState } from 'react'
 import { Icon } from './icons'
 import { planRowText, wholeCount, workoutSizeText } from './program/planText'
 import './ProgramPage.css'
@@ -30,6 +31,11 @@ export type ProgramPageProps = {
   muscleVerdict?: string
   /** The list group under the Workouts (DX-04). */
   links: ProgramLinksProps
+  /**
+   * Saves a new Workout order: every Workout id of the Program, hidden ones kept in place. The
+   * order is the rotation Train follows. Omitted, the order cannot be changed here.
+   */
+  onReorderWorkouts?(workoutIds: string[]): void
   /** A line the page shows when set (a refused change). */
   programMessage?: string | null
 }
@@ -50,6 +56,20 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
   assertPlansAreInCatalog(program, catalog)
   const lookup = (id: string): Exercise | undefined => catalog.get(id)
   const workouts = program.workouts.filter((workout) => !workout.hidden)
+  const [ordering, setOrdering] = useState(false)
+  const canOrder = props.onReorderWorkouts !== undefined && workouts.length > 1
+
+  /** Moves a shown Workout one place; hidden Workouts keep their slots in the stored order. */
+  function move(workoutId: string, by: -1 | 1): void {
+    const shown = workouts.map((workout) => workout.id)
+    const from = shown.indexOf(workoutId)
+    const to = from + by
+    if (from < 0 || to < 0 || to >= shown.length) return
+    ;[shown[from], shown[to]] = [shown[to], shown[from]]
+    let next = 0
+    const ids = program.workouts.map((workout) => (workout.hidden ? workout.id : shown[next++]))
+    props.onReorderWorkouts?.(ids)
+  }
 
   function renderPlan(plan: ExercisePlan, index: number): JSX.Element {
     const name = catalog.get(plan.exerciseId)?.name ?? plan.exerciseId
@@ -77,18 +97,45 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
     )
   }
 
-  function renderWorkout(workout: Workout): JSX.Element {
+  function renderWorkout(workout: Workout, index: number): JSX.Element {
     const { sets, minutes: planned } = workoutEstimate(workout)
     const minutes = props.minutesOf?.(workout) ?? planned
     const headingId = `program-workout-${workout.id}`
     return (
       <section key={workout.id} className="program-workout" aria-labelledby={headingId}>
-        <h2 className="program-workout-title" id={headingId}>
-          {`${workout.name} · ${workoutSizeText(sets, minutes)}`}
-        </h2>
-        <ul className="program-plans" aria-label={workout.name}>
-          {workout.exercises.map(renderPlan)}
-        </ul>
+        <div className="program-workout-head">
+          <h2 className="program-workout-title" id={headingId}>
+            {ordering ? `${index + 1}. ${workout.name}` : `${workout.name} · ${workoutSizeText(sets, minutes)}`}
+          </h2>
+          {ordering ? (
+            <span className="program-workout-move">
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label={`Move ${workout.name} up`}
+                disabled={index === 0}
+                onClick={() => move(workout.id, -1)}
+              >
+                <Icon name="ChevronUp" size={22} />
+              </button>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label={`Move ${workout.name} down`}
+                disabled={index === workouts.length - 1}
+                onClick={() => move(workout.id, 1)}
+              >
+                <Icon name="ChevronDown" size={22} />
+              </button>
+            </span>
+          ) : null}
+        </div>
+        {/* While ordering, the Workouts read as one short list: their Plans fold away. */}
+        {ordering ? null : (
+          <ul className="program-plans" aria-label={workout.name}>
+            {workout.exercises.map(renderPlan)}
+          </ul>
+        )}
       </section>
     )
   }
@@ -103,6 +150,21 @@ export function ProgramPage(props: ProgramPageProps): JSX.Element {
         <p className="program-page-message" role="status">
           {programMessage}
         </p>
+      ) : null}
+      {canOrder ? (
+        <div className="program-order">
+          <p className="program-order-note">
+            {ordering ? 'Train follows this order, then starts again.' : 'Workouts rotate in this order.'}
+          </p>
+          <button
+            type="button"
+            className="program-order-toggle btn-quiet"
+            aria-pressed={ordering}
+            onClick={() => setOrdering(!ordering)}
+          >
+            {ordering ? 'Done' : 'Change order'}
+          </button>
+        </div>
       ) : null}
       {workouts.map(renderWorkout)}
       <ul className="program-rows">
