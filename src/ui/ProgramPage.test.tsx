@@ -97,3 +97,44 @@ test('DX-16 no text on the Program tab is under 14 px', () => {
   expect(declarationsFor(css, '.program-plan-row').get('font-size')).toBe('var(--text-md)')
   expect(declarationsFor(css, '.program-plan-figure').get('white-space')).toBe('nowrap')
 })
+
+test('Change order shows the Workouts as a short numbered list with up and down; a move saves the new rotation', async () => {
+  const onReorderWorkouts = vi.fn()
+  renderPage({ onReorderWorkouts })
+  const user = userEvent.setup()
+
+  expect(screen.getByText('Workouts rotate in this order.')).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: 'Change order' }))
+  expect(screen.getByRole('heading', { level: 2, name: '1. Workout A' })).toBeTruthy()
+  expect(screen.getByRole('heading', { level: 2, name: '2. Workout B' })).toBeTruthy()
+  expect(screen.queryByRole('list', { name: 'Workout A' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Move Workout A up' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Move Workout B down' })).toBeDisabled()
+
+  await user.click(screen.getByRole('button', { name: 'Move Workout B up' }))
+  expect(onReorderWorkouts).toHaveBeenCalledWith(['workout-b', 'workout-a'])
+  await user.click(screen.getByRole('button', { name: 'Done' }))
+  expect(screen.getByRole('list', { name: 'Workout A' })).toBeTruthy()
+})
+
+test('a hidden Workout keeps its place when the shown ones swap', async () => {
+  const program: Program = {
+    ...assaf,
+    workouts: [
+      { ...assaf.workouts[0] },
+      { ...assaf.workouts[0], id: 'hidden-one', name: 'Old', hidden: true },
+      { ...assaf.workouts[1] },
+    ],
+  }
+  const onReorderWorkouts = vi.fn()
+  renderPage({ program, onReorderWorkouts })
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Change order' }))
+  await user.click(screen.getByRole('button', { name: 'Move Workout A down' }))
+  expect(onReorderWorkouts).toHaveBeenCalledWith(['workout-b', 'hidden-one', 'workout-a'])
+})
+
+test('no Change order without a way to save it', () => {
+  renderPage()
+  expect(screen.queryByRole('button', { name: 'Change order' })).toBeNull()
+})

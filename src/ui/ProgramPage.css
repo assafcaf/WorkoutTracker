@@ -212,3 +212,40 @@
 .deload-panel-action {
   min-height: var(--tap-min);
 }
+
+/* The Workout order: one quiet line over the Workouts and its Change order / Done. */
+.program-order {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.program-order-note {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.program-order-toggle {
+  min-height: var(--tap-min);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+.program-workout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.program-workout-move {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.program-workout-move .icon-btn {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+}

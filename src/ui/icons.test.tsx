@@ -8,7 +8,8 @@ import { describe, expect, test } from 'vitest'
 import { Icon, type IconName } from './icons'
 
 const NAMES: IconName[] = [
-  'ChevronDown', 'ChevronLeft', 'ChevronRight', 'Check', 'X', 'Plus', 'Minus', 'Trash',
+  'ChevronDown',
+  'ChevronUp', 'ChevronLeft', 'ChevronRight', 'Check', 'X', 'Plus', 'Minus', 'Trash',
   'Pencil', 'Clock', 'Info', 'History', 'Swap', 'Settings', 'Cloud', 'CloudOff', 'Dumbbell',
   'ChartLine', 'ListChecks', 'Search', 'ArrowUp', 'ArrowRight', 'CloudCheck', 'Share', 'LayoutDashboard', 'Home', 'Calendar', 'TrendingUp', 'ClipboardList', 'Gear', 'Grip', 'Ellipsis', 'Tag',
 ]
